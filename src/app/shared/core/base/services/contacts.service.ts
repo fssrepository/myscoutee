@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { ProfileViewData } from '../interfaces/profile.interface';
-import { DemoContactsService } from '../../demo/services/contacts.service';
+import { LocalContactsService } from '../../local/services/contacts.service';
 import { HttpContactsService } from '../../http/services/contacts.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -10,13 +10,13 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class ContactsService extends BaseRouteModeService {
-  private readonly demoContactsService = inject(DemoContactsService);
+  private readonly localContactsService = inject(LocalContactsService);
   private readonly httpContactsService = inject(HttpContactsService);
 
-  private get contactsService(): DemoContactsService | HttpContactsService {
+  private get contactsService(): LocalContactsService | HttpContactsService {
     return this.resolveRouteService(
       '/navigator/contacts',
-      this.demoContactsService,
+      this.localContactsService,
       this.httpContactsService
     );
   }

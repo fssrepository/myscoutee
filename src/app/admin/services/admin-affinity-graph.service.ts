@@ -11,7 +11,7 @@ import {
   type AdminAffinityGraphNodeDto,
   type AdminAffinityGraphTileDto
 } from '../../shared/core/base/interfaces/admin-affinity-graph.interface';
-import { DemoAdminAffinityGraphRepository } from '../../shared/core/demo/repositories/admin-affinity-graph.repository';
+import { LocalAdminAffinityGraphRepository } from '../../shared/core/local/repositories/admin-affinity-graph.repository';
 import {
   HttpAdminAffinityGraphRepository,
   type AdminAffinityGraphRangeParams,
@@ -19,7 +19,7 @@ import {
 } from '../../shared/core/http';
 import { SessionService } from '../../shared/core/base/services/session.service';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import { I18nService } from '../../shared/i18n';
+import { I18nService } from '../../shared/core';
 
 const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
 const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
@@ -39,7 +39,7 @@ const AFFINITY_GRAPH_LABEL_KEYS = {
   providedIn: 'root'
 })
 export class AdminAffinityGraphService {
-  private readonly demoRepository = inject(DemoAdminAffinityGraphRepository);
+  private readonly demoRepository = inject(LocalAdminAffinityGraphRepository);
   private readonly httpRepository = inject(HttpAdminAffinityGraphRepository);
   private readonly sessionService = inject(SessionService);
   private readonly routeDelay = inject(RouteDelayService);
@@ -235,7 +235,7 @@ export class AdminAffinityGraphService {
     };
   }
 
-  private components(nodes: AdminAffinityGraphNodeDto[], edges: AdminAffinityGraphEdgeDto[]): DemoGraphComponent[] {
+  private components(nodes: AdminAffinityGraphNodeDto[], edges: AdminAffinityGraphEdgeDto[]): AffinityGraphComponentGroup[] {
     const parent = new Map(nodes.map(node => [node.id, node.id]));
     const find = (id: string): string => {
       const parentId = parent.get(id) ?? id;
@@ -268,7 +268,7 @@ export class AdminAffinityGraphService {
       .sort((left, right) => right.nodes.length - left.nodes.length || left.id.localeCompare(right.id));
   }
 
-  private forestFromComponent(component: DemoGraphComponent, index: number): AdminAffinityGraphForestDto {
+  private forestFromComponent(component: AffinityGraphComponentGroup, index: number): AdminAffinityGraphForestDto {
     const representative = [...component.nodes].sort((left, right) => {
       const leftWeight = this.nodeWeight(left.id, component.edges);
       const rightWeight = this.nodeWeight(right.id, component.edges);
@@ -588,7 +588,7 @@ export class AdminAffinityGraphService {
   }
 }
 
-interface DemoGraphComponent {
+interface AffinityGraphComponentGroup {
   id: string;
   nodes: AdminAffinityGraphNodeDto[];
   edges: AdminAffinityGraphEdgeDto[];

@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ExplanationGuideService } from '../../../core';
 import type { HelpCenterSection } from '../../../core/base/models';
-import { I18nPipe } from '../../../i18n';
+import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 

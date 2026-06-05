@@ -7,7 +7,7 @@ import type {
 } from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
-import { DemoActivityMembersService } from '../../demo/services/activity-members.service';
+import { LocalActivityMembersService } from '../../local/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -16,13 +16,13 @@ import { BaseRouteModeService } from './base-route-mode.service';
 })
 export class ActivityMembersService extends BaseRouteModeService {
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
-  private readonly demoActivityMembersService = inject(DemoActivityMembersService);
+  private readonly localActivityMembersService = inject(LocalActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly appCtx = inject(AppContext);
 
 
-  private get activityMembersService(): DemoActivityMembersService | HttpActivityMembersService {
-    return this.resolveRouteService('/activities/events/members', this.demoActivityMembersService, this.httpActivityMembersService);
+  private get activityMembersService(): LocalActivityMembersService | HttpActivityMembersService {
+    return this.resolveRouteService('/activities/events/members', this.localActivityMembersService, this.httpActivityMembersService);
   }
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {

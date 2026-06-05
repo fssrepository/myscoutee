@@ -10,7 +10,7 @@ import {
   SessionService,
   UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
-  type DemoUserListItemDto,
+  type UserSelectorListItemDto,
   type AdminNotificationCenterState,
   type AdminNotificationRule,
   type AdminNotificationRuleParameter,
@@ -34,14 +34,14 @@ import {
 import type { ChatRecord } from '../../shared/core/base/models/chat.model';
 import type { ChatPopupMessage } from '../../shared/core/base/models/chat.model';
 import {
-  DemoAdminAffinityGraphRepository,
-  DemoChatsRepository,
-  DemoHelpCenterService,
-  DemoIdeaPostsService,
-  DemoShareTokensRepository,
-  DemoUsersRatingsRepository,
-  DemoUsersRepository
-} from '../../shared/core/demo';
+  LocalAdminAffinityGraphRepository,
+  LocalChatsRepository,
+  LocalHelpCenterService,
+  LocalIdeaPostsService,
+  LocalShareTokensRepository,
+  LocalUsersRatingsRepository,
+  LocalUsersRepository
+} from '../../shared/core/local';
 import { AdminModerationRepository } from '../repositories/admin-moderation.repository';
 import { AdminMonitoringRepository } from '../repositories/admin-monitoring.repository';
 import { AdminNotificationsRepository } from '../repositories/admin-notifications.repository';
@@ -55,7 +55,7 @@ import { AdminParamsSeedBuilder } from '../builders/admin-params-seed.builder';
 import { AdminProfileSeedBuilder } from '../builders/admin-profile-seed.builder';
 import { AdminStatsSeedBuilder } from '../builders/admin-stats-seed.builder';
 import type { AdminDashboardDto } from '../models/admin-dashboard.model';
-import type { DemoAdminHelpTarget } from '../models/admin-help.model';
+import type { AdminHelpTarget } from '../models/admin-help.model';
 import type {
   AdminChatMessageDto,
   AdminFeedbackDto,
@@ -125,13 +125,13 @@ export class AdminWorkspaceService {
   private readonly location = inject(Location);
   private readonly sessionService = inject(SessionService);
   private readonly shell = inject(AdminShellService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
-  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
-  private readonly demoAffinityGraphRepository = inject(DemoAdminAffinityGraphRepository);
-  private readonly demoChatsRepository = inject(DemoChatsRepository);
-  private readonly demoShareTokensRepository = inject(DemoShareTokensRepository);
-  private readonly demoHelpCenterService = inject(DemoHelpCenterService);
-  private readonly demoIdeaPostsService = inject(DemoIdeaPostsService);
+  private readonly demoUsersRepository = inject(LocalUsersRepository);
+  private readonly demoUsersRatingsRepository = inject(LocalUsersRatingsRepository);
+  private readonly demoAffinityGraphRepository = inject(LocalAdminAffinityGraphRepository);
+  private readonly demoChatsRepository = inject(LocalChatsRepository);
+  private readonly demoShareTokensRepository = inject(LocalShareTokensRepository);
+  private readonly demoHelpCenterService = inject(LocalHelpCenterService);
+  private readonly demoIdeaPostsService = inject(LocalIdeaPostsService);
   private readonly adminModerationRepository = inject(AdminModerationRepository);
   private readonly adminMonitoringRepository = inject(AdminMonitoringRepository);
   private readonly adminNotificationsRepository = inject(AdminNotificationsRepository);
@@ -150,7 +150,7 @@ export class AdminWorkspaceService {
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
   readonly activeAdmin = computed(() => this.dashboardRef()?.activeAdmin ?? null);
-  readonly adminUsers = signal<DemoUserListItemDto[]>([
+  readonly adminUsers = signal<UserSelectorListItemDto[]>([
     {
       id: 'admin-demo-ava',
       name: 'Ava',
@@ -194,7 +194,7 @@ export class AdminWorkspaceService {
 
   async prepareDemoAdminSelector(
     onProgress?: (state: AdminBootstrapProgressState) => void
-  ): Promise<DemoUserListItemDto[]> {
+  ): Promise<UserSelectorListItemDto[]> {
     if (this.usesHttpAdminApi) {
       onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
       return this.adminUsers();
@@ -250,7 +250,7 @@ export class AdminWorkspaceService {
     }
   }
 
-  restoreAdminPreview(): DemoUserListItemDto | null {
+  restoreAdminPreview(): UserSelectorListItemDto | null {
     const adminId = this.readStoredAdminId();
     if (!adminId) {
       return null;
@@ -724,7 +724,7 @@ export class AdminWorkspaceService {
     await this.demoChatsRepository.flushToIndexedDb();
   }
 
-  private demoAdminHelpTargets(): DemoAdminHelpTarget[] {
+  private demoAdminHelpTargets(): AdminHelpTarget[] {
     return AdminHelpSeedBuilder.demoAdminHelpTargets();
   }
 

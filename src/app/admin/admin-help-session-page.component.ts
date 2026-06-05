@@ -11,14 +11,14 @@ import {
   SessionService,
   ShareTokensService,
   UsersService,
-  type DemoUserListItemDto,
+  type UserSelectorListItemDto,
   type ShareTokenResolvedItem
 } from '../shared/core';
 import type { AssetCard } from '../shared/core/base/models';
 import {
-  type DemoBootstrapProgressStage,
-  type DemoBootstrapProgressState
-} from '../shared/core/demo';
+  type LocalBootstrapProgressStage,
+  type LocalBootstrapProgressState
+} from '../shared/core/local';
 import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 
 @Component({
@@ -74,8 +74,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
   protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
   protected selectorLoadingLabel = 'Preparing demo data';
-  protected selectorLoadingStage: DemoBootstrapProgressStage = 'selector';
-  protected selectorUsers: DemoUserListItemDto[] = [];
+  protected selectorLoadingStage: LocalBootstrapProgressStage = 'selector';
+  protected selectorUsers: UserSelectorListItemDto[] = [];
   protected selectorSelectedUserId = '';
   protected error = '';
 
@@ -107,7 +107,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const demoUsersPromise = environment.activitiesDataSource !== 'http' || !environment.firebaseLoginEnabled
       ? this.prepareDemoSelectorUsers()
-      : Promise.resolve<DemoUserListItemDto[]>([]);
+      : Promise.resolve<UserSelectorListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
       this.fail('This support link expired or is no longer available.');
@@ -160,7 +160,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
   }
 
-  private applyProgress(state: DemoBootstrapProgressState): void {
+  private applyProgress(state: LocalBootstrapProgressState): void {
     this.commitSelectorState(() => {
       this.selectorLoadingProgress = state.percent;
       this.selectorLoadingLabel = state.label;
@@ -168,7 +168,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     });
   }
 
-  private async prepareDemoSelectorUsers(): Promise<DemoUserListItemDto[]> {
+  private async prepareDemoSelectorUsers(): Promise<UserSelectorListItemDto[]> {
     this.commitSelectorState(() => {
       this.selectorSubmitting = false;
       this.selectorLoading = true;

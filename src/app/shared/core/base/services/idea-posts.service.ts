@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { DemoIdeaPostsService } from '../../demo/services/idea-posts.service';
+import { LocalIdeaPostsService } from '../../local/services/idea-posts.service';
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
 import type { IdeaArticleDetail, IdeaPost, IdeaPostSaveRequest } from '../models';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
@@ -12,7 +12,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 export class IdeaPostsService extends BaseRouteModeService {
   private static readonly ARTICLE_FALLBACK_IMAGE_URL = 'assets/idea/article-fallback.svg';
 
-  private readonly demoIdeaPostsService = inject(DemoIdeaPostsService);
+  private readonly localIdeaPostsService = inject(LocalIdeaPostsService);
   private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
   private readonly postsRef = signal<IdeaPost[]>([]);
   private readonly adminPostsRef = signal<IdeaPost[]>([]);
@@ -183,8 +183,8 @@ export class IdeaPostsService extends BaseRouteModeService {
     this.applyPublishedPosts(merged.filter(current => current.published));
   }
 
-  private ideaService(): DemoIdeaPostsService | HttpIdeaPostsService {
-    return this.resolveRouteService('/ideas', this.demoIdeaPostsService, this.httpIdeaPostsService);
+  private ideaService(): LocalIdeaPostsService | HttpIdeaPostsService {
+    return this.resolveRouteService('/ideas', this.localIdeaPostsService, this.httpIdeaPostsService);
   }
 
   private clonePosts(posts: readonly IdeaPost[]): IdeaPost[] {

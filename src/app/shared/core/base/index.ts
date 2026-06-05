@@ -4,8 +4,9 @@ export * from './converters';
 export * from './formatters';
 export * from './guards';
 export * from './models';
-export { AppMemoryDb, DemoMemoryDb, HttpMemoryDb } from './db';
+export { AppMemoryDb, LocalMemoryDb, HttpMemoryDb } from './db';
 export { BaseUsersRatingsRepository } from './repositories/users-ratings.repository';
+export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
 export {
   USER_BY_ID_LOAD_CONTEXT_KEY,
@@ -22,6 +23,7 @@ export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
 export { ContactsService } from './services/contacts.service';
+export { I18nService } from './services/i18n.service';
 export { RouteDelayService } from './services/route-delay.service';
 export { RouteIntervalSchedulerService } from './services/route-interval-scheduler.service';
 export { ActivityMembersService } from './services/activity-members.service';

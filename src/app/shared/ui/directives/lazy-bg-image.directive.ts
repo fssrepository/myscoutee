@@ -13,7 +13,7 @@ import {
   inject
 } from '@angular/core';
 
-import { I18nService } from '../../i18n';
+import { I18nService } from '../../core';
 import { ProgressIndicatorComponent } from '../components/progress-indicator';
 
 @Directive({

@@ -16,7 +16,7 @@ export abstract class BaseRouteModeService {
       && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
   }
 
-  protected resolveRouteService<TDemo, THttp>(route: string, demoService: TDemo, httpService: THttp): TDemo | THttp {
-    return this.isDemoModeEnabled(route) ? demoService : httpService;
+  protected resolveRouteService<TDemo, THttp>(route: string, localService: TDemo, httpService: THttp): TDemo | THttp {
+    return this.isDemoModeEnabled(route) ? localService : httpService;
   }
 }

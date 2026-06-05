@@ -1,19 +1,19 @@
 import type * as AppTypes from '../../../core/base/models';
-import type { DemoEventCardRecord } from '../../demo/models/events.model';
+import type { ActivityEventCardRecord } from '../models/events.model';
 import {
   ActivityEventInfoCardBuilder,
   type ActivityEventInfoCardOptions
 } from '../builders/activity-event-info-card.builder';
 
 export function buildActivityEventRows(
-  records: readonly DemoEventCardRecord[],
+  records: readonly ActivityEventCardRecord[],
   options: ActivityEventInfoCardOptions = {}
 ): AppTypes.ActivityListRow[] {
   return records.map(record => toActivityEventRow(record, options));
 }
 
 export function toActivityEventRow(
-  record: DemoEventCardRecord,
+  record: ActivityEventCardRecord,
   options: ActivityEventInfoCardOptions = {}
 ): AppTypes.ActivityListRow {
   const rowType = resolveActivityEventRowType(record);
@@ -57,7 +57,7 @@ export function toActivityEventRow(
   };
 }
 
-function resolveActivityEventRowType(record: DemoEventCardRecord): AppTypes.ActivityListRow['type'] {
+function resolveActivityEventRowType(record: ActivityEventCardRecord): AppTypes.ActivityListRow['type'] {
   const status = normalizeEventStatusCode(record.status);
   if (status === 'INV') {
     return 'invitations';

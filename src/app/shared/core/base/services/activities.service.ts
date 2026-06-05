@@ -17,7 +17,7 @@ import {
   toActivitiesPageRequest
 } from '../converters';
 import { AppContext } from '../context';
-import type { DemoEventRecord } from '../../demo/models/events.model';
+import type { ActivityEventRecord } from '../models/events.model';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
@@ -26,7 +26,7 @@ import { UsersService } from './users.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export interface ActivitiesEventDisplaySync extends AppTypes.ActivitiesEventSyncPayload {
-  displayRecord: DemoEventRecord;
+  displayRecord: ActivityEventRecord;
   displayRow: AppTypes.ActivityListRow;
 }
 
@@ -55,7 +55,7 @@ export class ActivitiesService extends BaseRouteModeService {
     return this.loadChats(request, options);
   }
 
-  async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<DemoEventRecord>> {
+  async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<ActivityEventRecord>> {
     const filters = this.resolveExploreFilters(query.filters);
     const result = await this.eventsService.queryEventExplorePage({
       ...filters,
@@ -70,7 +70,7 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   buildEventDisplayRow(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: { activeUserId?: string | null } = {}
   ): AppTypes.ActivityListRow {
     const activeUserId = `${options.activeUserId ?? this.resolveActiveUserId()}`.trim();
@@ -227,7 +227,7 @@ export class ActivitiesService extends BaseRouteModeService {
     return Math.max(1, Math.trunc(Number(value)));
   }
 
-  private cloneExploreRecord(record: DemoEventRecord): DemoEventRecord {
+  private cloneExploreRecord(record: ActivityEventRecord): ActivityEventRecord {
     return {
       ...record,
       topics: [...record.topics]

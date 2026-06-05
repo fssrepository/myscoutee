@@ -22,7 +22,6 @@ import {
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   AppContext,
@@ -35,7 +34,7 @@ import {
   type UserGameSocialCard
 } from '../../../shared/core';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -54,7 +53,7 @@ import {
 type LocalPopup = 'history' | 'filter' | null;
 
 interface LeavingGameCardState {
-  candidate: DemoUser;
+  candidate: UserDto;
   imageUrl: string | null;
   imageCount: number;
   imageIndex: number;
@@ -63,8 +62,8 @@ interface LeavingGameCardState {
 }
 
 interface PairModeRoundState {
-  woman: DemoUser | null;
-  man: DemoUser | null;
+  woman: UserDto | null;
+  man: UserDto | null;
   socialCard?: UserGameSocialCard;
 }
 
@@ -77,7 +76,7 @@ interface HomeSmartListFilters {
 interface HomeSingleSmartListRow {
   id: string;
   mode: 'single';
-  candidate: DemoUser;
+  candidate: UserDto;
   socialCard?: UserGameSocialCard;
 }
 
@@ -165,7 +164,7 @@ export class HomeComponent implements OnDestroy {
     { key: 'separated-friends', label: 'Inside Network', icon: 'group_add' },
     { key: 'pair', label: 'Outside Network', icon: 'groups' }
   ];
-  private users: DemoUser[] = [];
+  private users: UserDto[] = [];
   protected selectedRating = 0;
   protected selectedHomeMode: UserGameMode = 'single';
   protected leftSocialQuery = '';
@@ -280,7 +279,7 @@ export class HomeComponent implements OnDestroy {
     private readonly gameService: GameService,
     private readonly usersService: UsersService
   ) {
-    this.users = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
+    this.users = this.gameService.getGameCardsUsersSnapshot() as UserDto[];
     this.unregisterExplanationContext = this.explanationGuide.registerContext('home.game');
     this.activeUserId = this.getActiveUserId();
     const initialFilter = createInitialGameFilter(this.activeUser);
@@ -363,7 +362,7 @@ export class HomeComponent implements OnDestroy {
     this.unregisterExplanationContext = null;
   }
 
-  protected get activeUser(): DemoUser {
+  protected get activeUser(): UserDto {
     const localUser = this.users.find(user => user.id === this.activeUserId) ?? this.users[0] ?? null;
     const contextUser = this.appCtx.activeUserProfile();
     if (!localUser) {
@@ -474,7 +473,7 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  protected get candidatePool(): DemoUser[] {
+  protected get candidatePool(): UserDto[] {
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     const hasResolvedServiceStack = serviceStack.cardUserIds.length > 0
       || serviceStack.socialCards.length > 0
@@ -484,13 +483,13 @@ export class HomeComponent implements OnDestroy {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards)
         .map(card => usersById.get(card.userId))
-        .filter((user): user is DemoUser => !!user);
+        .filter((user): user is UserDto => !!user);
     }
     if (!this.isPairMode && hasResolvedServiceStack) {
       const usersById = new Map(this.users.map(user => [user.id, user] as const));
       return serviceStack.cardUserIds
         .map(id => usersById.get(id))
-        .filter((user): user is DemoUser => !!user);
+        .filter((user): user is UserDto => !!user);
     }
     const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
     const metUserIds = this.selectedHomeMode !== 'single' && !this.isSyntheticPairMode
@@ -504,7 +503,7 @@ export class HomeComponent implements OnDestroy {
       .filter(user => this.matchesFilter(user));
   }
 
-  protected get activeCandidate(): DemoUser | null {
+  protected get activeCandidate(): UserDto | null {
     const pool = this.candidatePool;
     if (pool.length === 0 || this.cardIndex < 0) {
       return null;
@@ -516,11 +515,11 @@ export class HomeComponent implements OnDestroy {
     return pool[this.cardIndex] ?? null;
   }
 
-  protected get pairModeWomanCandidate(): DemoUser | null {
+  protected get pairModeWomanCandidate(): UserDto | null {
     return this.pairModeCandidateForGender('woman');
   }
 
-  protected get pairModeManCandidate(): DemoUser | null {
+  protected get pairModeManCandidate(): UserDto | null {
     return this.pairModeCandidateForGender('man');
   }
 
@@ -900,7 +899,7 @@ export class HomeComponent implements OnDestroy {
     void this.reloadServiceCardStack();
   }
 
-  protected gameCardOverlay(candidate: DemoUser, imageIndex: number): { primary: string; secondary: string } | null {
+  protected gameCardOverlay(candidate: UserDto, imageIndex: number): { primary: string; secondary: string } | null {
     const safeImageIndex = Math.max(0, imageIndex);
     const cards = this.gameCardOverlayCards(candidate);
     if (safeImageIndex >= cards.length) {
@@ -909,7 +908,7 @@ export class HomeComponent implements OnDestroy {
     return cards[safeImageIndex] ?? null;
   }
 
-  private gameCardOverlayCards(candidate: DemoUser): Array<{ primary: string; secondary: string }> {
+  private gameCardOverlayCards(candidate: UserDto): Array<{ primary: string; secondary: string }> {
     const cards: Array<{ primary: string; secondary: string }> = [];
     const seen = new Set<string>();
     const usedLabels = new Set<string>();
@@ -951,7 +950,7 @@ export class HomeComponent implements OnDestroy {
     return cards;
   }
 
-  private publicOverlayDetailValue(candidate: DemoUser, label: string): string {
+  private publicOverlayDetailValue(candidate: UserDto, label: string): string {
     const normalizedLabel = this.normalizeOverlayLabel(label);
     const normalizedKey = this.normalizeOverlayLabel(PROFILE_DETAIL_LABEL_KEYS[normalizedLabel] ?? label);
     if (!PUBLIC_PROFILE_DETAIL_KEYS.has(normalizedKey)) {
@@ -1148,25 +1147,25 @@ export class HomeComponent implements OnDestroy {
     return this.activeCandidate ? this.initialsForCandidate(this.activeCandidate) : 'NO';
   }
 
-  protected pairModeCandidateImageStack(candidate: DemoUser | null): string[] {
+  protected pairModeCandidateImageStack(candidate: UserDto | null): string[] {
     return candidate ? this.imageStackForCandidate(candidate) : [];
   }
 
-  protected pairModeCandidateImageIndex(gender: DemoUser['gender']): number {
+  protected pairModeCandidateImageIndex(gender: UserDto['gender']): number {
     return gender === 'woman' ? this.pairModeWomanImageIndex : this.pairModeManImageIndex;
   }
 
-  protected isPairModeCandidateImageLoading(gender: DemoUser['gender']): boolean {
+  protected isPairModeCandidateImageLoading(gender: UserDto['gender']): boolean {
     return gender === 'woman' ? this.isPairModeWomanImageLoading : this.isPairModeManImageLoading;
   }
 
-  protected isPairModeCandidateImageIndicatorRevealing(gender: DemoUser['gender']): boolean {
+  protected isPairModeCandidateImageIndicatorRevealing(gender: UserDto['gender']): boolean {
     return gender === 'woman'
       ? this.isPairModeWomanImageIndicatorRevealing
       : this.isPairModeManImageIndicatorRevealing;
   }
 
-  protected pairModeCandidateImage(candidate: DemoUser | null, gender: DemoUser['gender']): string | null {
+  protected pairModeCandidateImage(candidate: UserDto | null, gender: UserDto['gender']): string | null {
     if (!candidate) {
       return null;
     }
@@ -1182,7 +1181,7 @@ export class HomeComponent implements OnDestroy {
     return stack.find(url => !this.failedCandidateImageUrls.has(url)) ?? null;
   }
 
-  protected selectPairModeCandidateImage(gender: DemoUser['gender'], index: number): void {
+  protected selectPairModeCandidateImage(gender: UserDto['gender'], index: number): void {
     const candidate = gender === 'woman' ? this.pairModeWomanCandidate : this.pairModeManCandidate;
     if (!candidate) {
       return;
@@ -1202,7 +1201,7 @@ export class HomeComponent implements OnDestroy {
     this.beginPairModeCandidateImageLoading(gender, true);
   }
 
-  protected onPairModeCandidateImageReady(candidate: DemoUser, gender: DemoUser['gender'], imageUrl: string): void {
+  protected onPairModeCandidateImageReady(candidate: UserDto, gender: UserDto['gender'], imageUrl: string): void {
     if (!this.isPairMode || !imageUrl) {
       return;
     }
@@ -1245,7 +1244,7 @@ export class HomeComponent implements OnDestroy {
     finalizeReady();
   }
 
-  protected onPairModeCandidateImageError(candidate: DemoUser, gender: DemoUser['gender'], imageUrl: string): void {
+  protected onPairModeCandidateImageError(candidate: UserDto, gender: UserDto['gender'], imageUrl: string): void {
     this.onPairModeCandidateImageReady(candidate, gender, imageUrl);
     if (!imageUrl) {
       return;
@@ -1284,11 +1283,11 @@ export class HomeComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  protected pairModeCandidateInitials(candidate: DemoUser | null): string {
+  protected pairModeCandidateInitials(candidate: UserDto | null): string {
     return candidate ? this.initialsForCandidate(candidate) : '∅';
   }
 
-  protected candidateActivityBadge(candidate: DemoUser | null): string | null {
+  protected candidateActivityBadge(candidate: UserDto | null): string | null {
     if (!candidate) {
       return null;
     }
@@ -1679,7 +1678,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private buildSyntheticPairRoundsCacheKey(
-    candidates: readonly DemoUser[],
+    candidates: readonly UserDto[],
     excludedPairKeys: readonly string[]
   ): string {
     const candidateIdsKey = candidates.map(candidate => candidate.id).join('|');
@@ -1732,10 +1731,10 @@ export class HomeComponent implements OnDestroy {
     }, HomeComponent.GAME_RATING_CONFIRMATION_MS + 24);
   }
 
-  private homeCandidateSlides(candidate: DemoUser | null): SingleCardData['slides'];
-  private homeCandidateSlides(candidate: DemoUser | null, socialCard: UserGameSocialCard | undefined): SingleCardData['slides'];
+  private homeCandidateSlides(candidate: UserDto | null): SingleCardData['slides'];
+  private homeCandidateSlides(candidate: UserDto | null, socialCard: UserGameSocialCard | undefined): SingleCardData['slides'];
   private homeCandidateSlides(
-    candidate: DemoUser | null,
+    candidate: UserDto | null,
     socialCard?: UserGameSocialCard
   ): SingleCardData['slides'] {
     if (!candidate) {
@@ -1760,9 +1759,9 @@ export class HomeComponent implements OnDestroy {
   }
 
   private homePairCardSlot(
-    gender: DemoUser['gender'],
+    gender: UserDto['gender'],
     label: string,
-    candidate: DemoUser | null,
+    candidate: UserDto | null,
     socialCard?: UserGameSocialCard
   ): PairCardData['slots'][number] {
     return {
@@ -1844,14 +1843,14 @@ export class HomeComponent implements OnDestroy {
       .join(':');
   }
 
-  private isGameCandidateVisibleForSelectedMode(user: DemoUser): boolean {
+  private isGameCandidateVisibleForSelectedMode(user: UserDto): boolean {
     if (this.isSeparatedFriendsMode) {
       return user.profileStatus === 'public' || user.profileStatus === 'friends only';
     }
     return user.profileStatus === 'public';
   }
 
-  private userById(userId: string): DemoUser | null {
+  private userById(userId: string): UserDto | null {
     return this.users.find(user => user.id === userId) ?? null;
   }
 
@@ -1899,7 +1898,7 @@ export class HomeComponent implements OnDestroy {
     return side === 'left' ? 'Friend A' : 'Friend B';
   }
 
-  private homeCandidatePrimaryLine(candidate: DemoUser, socialCard?: UserGameSocialCard): string {
+  private homeCandidatePrimaryLine(candidate: UserDto, socialCard?: UserGameSocialCard): string {
     if (socialCard?.socialContext === 'friends-in-common') {
       return `${candidate.name}, ${candidate.age}`;
     }
@@ -1907,7 +1906,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private homeCandidateSecondaryLine(
-    candidate: DemoUser,
+    candidate: UserDto,
     socialCard: UserGameSocialCard | undefined,
     fallback: string | null | undefined
   ): string {
@@ -1978,11 +1977,11 @@ export class HomeComponent implements OnDestroy {
     };
   }
 
-  private matchesFilter(user: DemoUser): boolean {
+  private matchesFilter(user: UserDto): boolean {
     return this.matchesUserWithFilter(user, this.gameFilter);
   }
 
-  private matchesUserWithFilter(user: DemoUser, filter: GameFilterForm): boolean {
+  private matchesUserWithFilter(user: UserDto, filter: GameFilterForm): boolean {
     if (user.age < filter.ageMin || user.age > filter.ageMax) {
       return false;
     }
@@ -2054,19 +2053,19 @@ export class HomeComponent implements OnDestroy {
     return true;
   }
 
-  private userInterests(user: DemoUser): string[] {
+  private userInterests(user: UserDto): string[] {
     return getGameUserInterests(user, this.userFacetById);
   }
 
-  private userValues(user: DemoUser): string[] {
+  private userValues(user: UserDto): string[] {
     return getGameUserValues(user, this.userFacetById);
   }
 
-  private userFacet(user: DemoUser): GameUserFacet {
+  private userFacet(user: UserDto): GameUserFacet {
     return getGameUserFacet(user, this.userFacetById);
   }
 
-  private pairModeCandidateForGender(gender: DemoUser['gender']): DemoUser | null {
+  private pairModeCandidateForGender(gender: UserDto['gender']): UserDto | null {
     const visibleCount = Math.min(this.gameStackCardsLoaded, this.pairModeCycleSize());
     if (this.cardIndex < 0 || this.cardIndex >= visibleCount) {
       return null;
@@ -2131,7 +2130,7 @@ export class HomeComponent implements OnDestroy {
     return rounds[index] ?? null;
   }
 
-  private imageStackForCandidate(candidate: DemoUser): string[] {
+  private imageStackForCandidate(candidate: UserDto): string[] {
     const explicitImages = (candidate.images ?? []).filter(Boolean);
     if (explicitImages.length > 0) {
       return explicitImages;
@@ -2148,7 +2147,7 @@ export class HomeComponent implements OnDestroy {
     return portraitIndexes.map(index => `https://randomuser.me/api/portraits/${genderFolder}/${index}.jpg`);
   }
 
-  private initialsForCandidate(candidate: DemoUser): string {
+  private initialsForCandidate(candidate: UserDto): string {
     const parts = candidate.name.split(' ').filter(Boolean);
     if (parts.length === 0) {
       return 'U';
@@ -2236,7 +2235,7 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  private beginPairModeCandidateImageLoading(gender: DemoUser['gender'], forceLoadingPulse = false): void {
+  private beginPairModeCandidateImageLoading(gender: UserDto['gender'], forceLoadingPulse = false): void {
     const candidate = gender === 'woman' ? this.pairModeWomanCandidate : this.pairModeManCandidate;
     const imageUrl = this.pairModeCandidateImage(candidate, gender);
     if (!imageUrl) {
@@ -2296,7 +2295,7 @@ export class HomeComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private triggerPairModeCandidateImageIndicatorReveal(gender: DemoUser['gender']): void {
+  private triggerPairModeCandidateImageIndicatorReveal(gender: UserDto['gender']): void {
     this.clearPairModeCandidateImageIndicatorRevealTimer(gender);
     if (gender === 'woman') {
       this.isPairModeWomanImageIndicatorRevealing = false;
@@ -2334,7 +2333,7 @@ export class HomeComponent implements OnDestroy {
     setTimeout(() => startReveal(), 0);
   }
 
-  private clearPairModeCandidateImageIndicatorRevealTimer(gender: DemoUser['gender']): void {
+  private clearPairModeCandidateImageIndicatorRevealTimer(gender: UserDto['gender']): void {
     if (gender === 'woman') {
       if (this.pairModeWomanImageIndicatorRevealTimer) {
         clearTimeout(this.pairModeWomanImageIndicatorRevealTimer);
@@ -2348,7 +2347,7 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  private clearPairModeCandidateImageLoadingPulseTimer(gender: DemoUser['gender']): void {
+  private clearPairModeCandidateImageLoadingPulseTimer(gender: UserDto['gender']): void {
     if (gender === 'woman') {
       if (this.pairModeWomanImageLoadingPulseTimer) {
         clearTimeout(this.pairModeWomanImageLoadingPulseTimer);
@@ -2362,7 +2361,7 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  private startGameCardLeaveAnimation(candidate: DemoUser, rating: number): void {
+  private startGameCardLeaveAnimation(candidate: UserDto, rating: number): void {
     this.leavingPairModeWomanCard = null;
     this.leavingPairModeManCard = null;
     const stack = this.imageStackForCandidate(candidate);
@@ -2409,8 +2408,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private buildPairModeLeavingCardState(
-    candidate: DemoUser | null,
-    gender: DemoUser['gender'],
+    candidate: UserDto | null,
+    gender: UserDto['gender'],
     rating: number
   ): LeavingGameCardState | null {
     if (!candidate) {
@@ -2651,7 +2650,7 @@ export class HomeComponent implements OnDestroy {
     }
   }
 
-  private gameCandidatesForRound(roundIndex: number): DemoUser[] {
+  private gameCandidatesForRound(roundIndex: number): UserDto[] {
     if (roundIndex < 0) {
       return [];
     }
@@ -2660,7 +2659,7 @@ export class HomeComponent implements OnDestroy {
       if (!round) {
         return [];
       }
-      const candidates: DemoUser[] = [];
+      const candidates: UserDto[] = [];
       if (round.woman) {
         candidates.push(round.woman);
       }
@@ -2712,7 +2711,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private mergeGameStackUsersIntoHomeUsers(): void {
-    const snapshotUsers = this.gameService.getGameCardsUsersSnapshot() as DemoUser[];
+    const snapshotUsers = this.gameService.getGameCardsUsersSnapshot() as UserDto[];
     if (snapshotUsers.length === 0) {
       return;
     }
@@ -2725,7 +2724,7 @@ export class HomeComponent implements OnDestroy {
     this.invalidateSyntheticPairRoundsCache();
   }
 
-  private toHomeUser(user: UserDto): DemoUser {
+  private toHomeUser(user: UserDto): UserDto {
     return {
       ...user,
       languages: [...(user.languages ?? [])],
@@ -2748,7 +2747,7 @@ export class HomeComponent implements OnDestroy {
     };
   }
 
-  private createFallbackActiveUser(): DemoUser {
+  private createFallbackActiveUser(): UserDto {
     return {
       id: this.activeUserId || this.appCtx.activeUserId().trim(),
       name: '',
@@ -2790,7 +2789,7 @@ export class HomeComponent implements OnDestroy {
     };
   }
 
-  private mergeActiveUserFromContext(localUser: DemoUser, contextUser: UserDto): DemoUser {
+  private mergeActiveUserFromContext(localUser: UserDto, contextUser: UserDto): UserDto {
     return {
       ...localUser,
       name: contextUser.name,

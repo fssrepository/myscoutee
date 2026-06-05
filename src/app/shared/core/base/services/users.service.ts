@@ -2,10 +2,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { type LoadStatus } from '../context';
 import { AppContext, type ActivityCounters } from '../context';
-import { type DemoBootstrapProgressState, DemoUsersService } from '../../demo';
+import { type LocalBootstrapProgressState, LocalUsersService } from '../../local';
 import { HttpUsersService } from '../../http';
 import type {
-  DemoUserListItemDto,
+  UserSelectorListItemDto,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
@@ -36,9 +36,9 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 interface RoutedUserService extends UserService {
   queryAvailableDemoUsers(
     requestTimeoutMs?: number,
-    onProgress?: (state: DemoBootstrapProgressState) => void
+    onProgress?: (state: LocalBootstrapProgressState) => void
   ): Promise<UsersListQueryResponse>;
-  prepareUserSession?(userId: string, onProgress?: (state: DemoBootstrapProgressState) => void): Promise<void>;
+  prepareUserSession?(userId: string, onProgress?: (state: LocalBootstrapProgressState) => void): Promise<void>;
   peekCachedUsers?(): UserDto[];
   peekCachedUserById?(userId: string): UserDto | null;
 }
@@ -47,7 +47,7 @@ interface RoutedUserService extends UserService {
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
-  private readonly demoUsersService = inject(DemoUsersService);
+  private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
 
@@ -113,17 +113,17 @@ export class UsersService extends BaseRouteModeService {
   }
 
   private get userService(): RoutedUserService {
-    return this.resolveRouteService('/auth/me', this.demoUsersService, this.httpUsersService);
+    return this.resolveRouteService('/auth/me', this.localUsersService, this.httpUsersService);
   }
 
   private get userSelectorService(): RoutedUserService {
-    return this.resolveRouteService('/auth/demo-users', this.demoUsersService, this.httpUsersService);
+    return this.resolveRouteService('/auth/demo-users', this.localUsersService, this.httpUsersService);
   }
 
   async loadAvailableDemoUsers(
     requestTimeoutMs?: number,
-    onProgress?: (state: DemoBootstrapProgressState) => void
-  ): Promise<DemoUserListItemDto[]> {
+    onProgress?: (state: LocalBootstrapProgressState) => void
+  ): Promise<UserSelectorListItemDto[]> {
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
@@ -144,7 +144,7 @@ export class UsersService extends BaseRouteModeService {
 
   async prepareDemoUserSession(
     userId: string,
-    onProgress?: (state: DemoBootstrapProgressState) => void
+    onProgress?: (state: LocalBootstrapProgressState) => void
   ): Promise<void> {
     if (!this.isDemoModeEnabled('/auth/me')) {
       onProgress?.({

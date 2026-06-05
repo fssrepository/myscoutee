@@ -12,18 +12,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
-  ProfileOnboardingService,
-  RouteIntervalSchedulerService,
-  UserExperiencesService,
-  UsersService,
-  type ProfileOnboardingAssessment,
-  type ProfileOnboardingDraft,
-  type ProfileOnboardingStepId,
-  type UserDto
-} from '../../../shared/core';
+  ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
   DetailPrivacy,
   ExperienceEntry,

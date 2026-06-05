@@ -4,7 +4,7 @@ import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData } from '../../../ui';
 import { AppContext } from '../context';
 import { ActivityResourceBuilder, type ActivitySubEventResourceInfoCardOptions } from '../builders';
-import { DemoActivityResourcesService } from '../../demo/services/activity-resources.service';
+import { LocalActivityResourcesService } from '../../local/services/activity-resources.service';
 import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -12,15 +12,15 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class ActivityResourcesService extends BaseRouteModeService {
-  private readonly demoActivityResourcesService = inject(DemoActivityResourcesService);
+  private readonly localActivityResourcesService = inject(LocalActivityResourcesService);
   private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
   private readonly appCtx = inject(AppContext);
 
 
-  private get activityResourcesService(): DemoActivityResourcesService | HttpActivityResourcesService {
+  private get activityResourcesService(): LocalActivityResourcesService | HttpActivityResourcesService {
     return this.resolveRouteService(
       '/activities/events/subevent-resources',
-      this.demoActivityResourcesService,
+      this.localActivityResourcesService,
       this.httpActivityResourcesService
     );
   }

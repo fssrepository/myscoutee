@@ -10,8 +10,8 @@ import type {
   UserGameDataService,
   UserGameMode
 } from '../interfaces/game.interface';
-import { DemoGameService } from '../../demo';
-import { DemoUsersRatingsRepository } from '../../demo/repositories/users-ratings.repository';
+import { LocalGameService } from '../../local';
+import { LocalUsersRatingsRepository } from '../../local/repositories/users-ratings.repository';
 import { HttpGameService } from '../../http';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -34,8 +34,8 @@ interface UserGameCardsStackState {
 export class GameService extends BaseRouteModeService {
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
-  private readonly demoGameService = inject(DemoGameService);
-  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
+  private readonly localGameService = inject(LocalGameService);
+  private readonly localUsersRatingsRepository = inject(LocalUsersRatingsRepository);
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
@@ -50,11 +50,11 @@ export class GameService extends BaseRouteModeService {
   }
 
   private get gameDataService(): UserGameDataService {
-    return this.resolveRouteService('/game-cards/query', this.demoGameService, this.httpGameService);
+    return this.resolveRouteService('/game-cards/query', this.localGameService, this.httpGameService);
   }
 
   private get usersRatingsRepository(): BaseUsersRatingsRepository {
-    return this.resolveRouteService('/activities/rates', this.demoUsersRatingsRepository, this.httpUsersRatingsRepository);
+    return this.resolveRouteService('/activities/rates', this.localUsersRatingsRepository, this.httpUsersRatingsRepository);
   }
 
   getGameCardsUsersSnapshot(): UserDto[] {
@@ -72,7 +72,7 @@ export class GameService extends BaseRouteModeService {
       return false;
     }
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
+      return this.localGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
     }
     return false;
   }
@@ -83,7 +83,7 @@ export class GameService extends BaseRouteModeService {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoGameService.queryMetUserIds(normalizedUserId);
+      return this.localGameService.queryMetUserIds(normalizedUserId);
     }
     return [];
   }
@@ -97,7 +97,7 @@ export class GameService extends BaseRouteModeService {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
+      return this.localUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
     }
     return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
   }
@@ -108,7 +108,7 @@ export class GameService extends BaseRouteModeService {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
+      return this.localUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
     }
     return this.httpUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
   }
@@ -122,7 +122,7 @@ export class GameService extends BaseRouteModeService {
     bridgeUserId?: string,
     bridgeCount?: number
   ): void {
-    this.resolveRouteService('/activities/rates', this.demoGameService, this.httpGameService)
+    this.resolveRouteService('/activities/rates', this.localGameService, this.httpGameService)
       .recordGameCardRating(raterUserId, ratedUserId, rating, mode, socialContext, bridgeUserId, bridgeCount);
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
@@ -160,7 +160,7 @@ export class GameService extends BaseRouteModeService {
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
     if (this.isDemoModeEnabled('/game-cards/query')) {
-      await this.demoGameService.whenReady();
+      await this.localGameService.whenReady();
     }
     const normalizedUserId = request.userId.trim();
 

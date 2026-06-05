@@ -34,6 +34,8 @@ export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { MediaService } from './base/services/media.service';
 export { ContactsService } from './base/services/contacts.service';
+export { I18nService } from './base/services/i18n.service';
+export { I18nBundleRepository, type StoredI18nBundle } from './base/repositories/i18n-bundle.repository';
 export { EventsService } from './base/services/events.service';
 export { RouteDelayService } from './base/services/route-delay.service';
 export { RouteIntervalSchedulerService } from './base/services/route-interval-scheduler.service';

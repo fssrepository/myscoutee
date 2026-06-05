@@ -18,7 +18,8 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
-import { I18nPipe, I18nService } from '../../../shared/i18n';
+import { I18nService } from '../../../shared/core';
+import { I18nPipe } from '../../../shared/ui';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';

@@ -2,7 +2,7 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import type { RateRecord } from '../../../../../shared/core/base/models/rate.model';
-import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../../../shared/core/base/interfaces/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   PairCardComponent,
@@ -44,7 +44,7 @@ import {
 } from './activities-rate-template.builder';
 
 export interface ActivitiesRateTemplateContext {
-  getUsers: () => readonly DemoUser[];
+  getUsers: () => readonly UserDto[];
   getRateCardUsers: () => readonly RateCardPerson[];
   getRateCardUserById: (userId: string) => RateCardPerson | null;
   getActiveUserGender: () => 'woman' | 'man';
@@ -253,7 +253,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 }
 
 interface ActivitiesRatesControllerDeps {
-  getUsers: () => readonly DemoUser[];
+  getUsers: () => readonly UserDto[];
   getActiveUserGender: () => 'woman' | 'man';
   getActivitiesPrimaryFilter: () => AppTypes.ActivitiesPrimaryFilter;
   getActivitiesRateFilter: () => AppTypes.RateFilterKey;
@@ -305,7 +305,7 @@ export class ActivitiesRatesController {
   private static readonly EDITOR_DOCK_VISIBILITY_HOLD_MS = 120;
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private isRatingBarBlinking = false;
-  private cachedRateCardUsersSource: readonly DemoUser[] | null = null;
+  private cachedRateCardUsersSource: readonly UserDto[] | null = null;
   private cachedRateCardUsers: readonly RateCardPerson[] = [];
   private cachedRateCardUsersById = new Map<string, RateCardPerson>();
 
@@ -965,7 +965,7 @@ export class ActivitiesRatesController {
 }
 
 function toActivitiesRateCardPerson(
-  user: ImageCardPerson | DemoUser | null | undefined
+  user: ImageCardPerson | UserDto | null | undefined
 ): RateCardPerson | null {
   if (!user) {
     return null;

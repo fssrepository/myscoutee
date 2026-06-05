@@ -6,24 +6,24 @@ import type {
   UserRateOutboxRecord,
   UserRateRecord
 } from '../interfaces/game.interface';
-import { ASSETS_TABLE_NAME } from '../../demo/models/assets.model';
-import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../demo/models/activity-members.model';
-import { ACTIVITY_RESOURCES_TABLE_NAME } from '../../demo/models/activity-resources.model';
-import { CHATS_TABLE_NAME } from '../../demo/models/chats.model';
-import { EVENT_FEEDBACK_TABLE_NAME } from '../../demo/models/event-feedback.model';
-import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
-import { HELP_CENTER_TABLE_NAME } from '../../demo/models/help-center.model';
-import { IDEA_POSTS_TABLE_NAME } from '../../demo/models/idea-posts.model';
-import { CONTACTS_TABLE_NAME } from '../../demo/models/contacts.model';
-import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../demo/models/profile-experiences.model';
-import { SHARE_TOKENS_TABLE_NAME } from '../../demo/models/share-tokens.model';
-import type { DemoMemorySchema } from '../../demo/models/memory.model';
+import { ASSETS_TABLE_NAME } from '../models/assets.model';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../models/activity-members.model';
+import { ACTIVITY_RESOURCES_TABLE_NAME } from '../models/activity-resources.model';
+import { CHATS_TABLE_NAME } from '../models/chats.model';
+import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
+import { EVENTS_TABLE_NAME } from '../models/events.model';
+import { HELP_CENTER_TABLE_NAME } from '../models/help-center.model';
+import { IDEA_POSTS_TABLE_NAME } from '../models/idea-posts.model';
+import { CONTACTS_TABLE_NAME } from '../models/contacts.model';
+import { PROFILE_EXPERIENCES_TABLE_NAME } from '../models/profile-experiences.model';
+import { SHARE_TOKENS_TABLE_NAME } from '../models/share-tokens.model';
+import type { AppMemorySchema } from '../models/memory.model';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,
   USER_RATES_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME
-} from '../../demo/models/users.model';
+} from '../models/users.model';
 import type {
   ContactMethodDraft,
   ContactMethodType,
@@ -81,8 +81,8 @@ export class AppMemoryDb {
     SHARE_TOKENS_TABLE_NAME,
     EVENTS_TABLE_NAME
   ] as const;
-  private readonly _tables = signal<DemoMemorySchema>(this.loadInitialState());
-  private pendingPersistState: DemoMemorySchema | null = null;
+  private readonly _tables = signal<AppMemorySchema>(this.loadInitialState());
+  private pendingPersistState: AppMemorySchema | null = null;
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
   private resetStoragePromise: Promise<void> | null = null;
   private storageResetComplete = false;
@@ -105,7 +105,7 @@ export class AppMemoryDb {
       : this.completeInactiveHydration();
   }
 
-  read(): DemoMemorySchema {
+  read(): AppMemorySchema {
     return this._tables();
   }
 
@@ -117,7 +117,7 @@ export class AppMemoryDb {
     }
   }
 
-  write(updater: (current: DemoMemorySchema) => DemoMemorySchema): void {
+  write(updater: (current: AppMemorySchema) => AppMemorySchema): void {
     const next = this.normalizeState(updater(this._tables()));
     this._tables.set(next);
     if (!this.hydrationComplete || !this.storageEnabled) {
@@ -271,7 +271,7 @@ export class AppMemoryDb {
     return this.queryActivityRateRecordsFromMemory(normalizedQuery);
   }
 
-  private createEmptyState(): DemoMemorySchema {
+  private createEmptyState(): AppMemorySchema {
     return {
       [ASSETS_TABLE_NAME]: {
         byId: {},
@@ -349,7 +349,7 @@ export class AppMemoryDb {
     };
   }
 
-  private loadInitialState(): DemoMemorySchema {
+  private loadInitialState(): AppMemorySchema {
     const fallback = this.createEmptyState();
     if (!this.canUseStorage()) {
       return fallback;
@@ -366,7 +366,7 @@ export class AppMemoryDb {
     }
   }
 
-  private persist(state: DemoMemorySchema): void {
+  private persist(state: AppMemorySchema): void {
     if (!this.canUseStorage()) {
       return;
     }
@@ -377,7 +377,7 @@ export class AppMemoryDb {
     }
   }
 
-  private schedulePersist(state: DemoMemorySchema): void {
+  private schedulePersist(state: AppMemorySchema): void {
     this.pendingPersistState = state;
     if (this.persistTimerId !== null) {
       clearTimeout(this.persistTimerId);
@@ -422,7 +422,7 @@ export class AppMemoryDb {
     }
   }
 
-  private mergeHydratedStateWithCurrent(incoming: DemoMemorySchema, current: DemoMemorySchema): DemoMemorySchema {
+  private mergeHydratedStateWithCurrent(incoming: AppMemorySchema, current: AppMemorySchema): AppMemorySchema {
     const currentHelpCenter = current[HELP_CENTER_TABLE_NAME];
     const incomingHelpCenter = incoming[HELP_CENTER_TABLE_NAME];
     const currentPrivacyConsentsById = currentHelpCenter.privacyConsentsById ?? {};
@@ -448,7 +448,7 @@ export class AppMemoryDb {
     };
   }
 
-  private async readFromIndexedDb(): Promise<DemoMemorySchema | null> {
+  private async readFromIndexedDb(): Promise<AppMemorySchema | null> {
     const primaryDb = await this.openIndexedDb();
     if (primaryDb) {
       const primarySnapshot = await this.readStateFromIndexedDb(primaryDb);
@@ -459,7 +459,7 @@ export class AppMemoryDb {
     return null;
   }
 
-  private async readStateFromIndexedDb(db: IDBDatabase): Promise<DemoMemorySchema | null> {
+  private async readStateFromIndexedDb(db: IDBDatabase): Promise<AppMemorySchema | null> {
     const partialState: Record<string, unknown> = {};
     let hasStoredTable = false;
     await Promise.all(AppMemoryDb.SCHEMA_TABLE_KEYS.map(async key => {
@@ -478,7 +478,7 @@ export class AppMemoryDb {
     return this.normalizeState(partialState, this.createEmptyState());
   }
 
-  private async persistToIndexedDb(state: DemoMemorySchema, force = false): Promise<void> {
+  private async persistToIndexedDb(state: AppMemorySchema, force = false): Promise<void> {
     const db = await this.openIndexedDb(force);
     if (!db) {
       return;
@@ -494,7 +494,7 @@ export class AppMemoryDb {
 
   private indexedDbEntryForPersistence(key: string, value: unknown): unknown {
     const entry = key === EVENTS_TABLE_NAME
-      ? this.eventsTableForPersistence(value as DemoMemorySchema[typeof EVENTS_TABLE_NAME])
+      ? this.eventsTableForPersistence(value as AppMemorySchema[typeof EVENTS_TABLE_NAME])
       : value;
     return this.indexedDbPlainValue(entry);
   }
@@ -574,25 +574,25 @@ export class AppMemoryDb {
     return next;
   }
 
-  private stateForIndexedDbPersistence(state: DemoMemorySchema): DemoMemorySchema {
+  private stateForIndexedDbPersistence(state: AppMemorySchema): AppMemorySchema {
     return state;
   }
 
-  private stateForLocalStoragePersistence(state: DemoMemorySchema): Partial<DemoMemorySchema> {
+  private stateForLocalStoragePersistence(state: AppMemorySchema): Partial<AppMemorySchema> {
     return {
       [USER_RATES_OUTBOX_TABLE_NAME]: state[USER_RATES_OUTBOX_TABLE_NAME]
     };
   }
 
   private eventsTableForPersistence(
-    table: DemoMemorySchema[typeof EVENTS_TABLE_NAME]
-  ): DemoMemorySchema[typeof EVENTS_TABLE_NAME] {
-    const byId: DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'] = {};
+    table: AppMemorySchema[typeof EVENTS_TABLE_NAME]
+  ): AppMemorySchema[typeof EVENTS_TABLE_NAME] {
+    const byId: AppMemorySchema[typeof EVENTS_TABLE_NAME]['byId'] = {};
     for (const [id, record] of Object.entries(table?.byId ?? {})) {
       const next = { ...(record as unknown as Record<string, unknown>) };
       delete next['acceptedMemberUserIds'];
       delete next['pendingMemberUserIds'];
-      byId[id] = next as unknown as DemoMemorySchema[typeof EVENTS_TABLE_NAME]['byId'][string];
+      byId[id] = next as unknown as AppMemorySchema[typeof EVENTS_TABLE_NAME]['byId'][string];
     }
     return {
       byId,
@@ -796,23 +796,23 @@ export class AppMemoryDb {
     } satisfies ActivityRateCursorPayload);
   }
 
-  private normalizeState(value: unknown, fallback = this.createEmptyState()): DemoMemorySchema {
-    const source = (value && typeof value === 'object') ? value as Partial<DemoMemorySchema> : {};
-    const usersSource = source[USERS_TABLE_NAME] as Partial<DemoMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
-    const assetsSource = source[ASSETS_TABLE_NAME] as Partial<DemoMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined;
-    const activityMembersSource = source[ACTIVITY_MEMBERS_TABLE_NAME] as Partial<DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined;
-    const activityResourcesSource = source[ACTIVITY_RESOURCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined;
-    const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
-    const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
-    const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
-    const chatsSource = source[CHATS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
-    const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
-    const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<DemoMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
-    const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
-    const contactsSource = source[CONTACTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CONTACTS_TABLE_NAME]> | undefined;
-    const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
-    const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<DemoMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
-    const eventsSource = source[EVENTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
+  private normalizeState(value: unknown, fallback = this.createEmptyState()): AppMemorySchema {
+    const source = (value && typeof value === 'object') ? value as Partial<AppMemorySchema> : {};
+    const usersSource = source[USERS_TABLE_NAME] as Partial<AppMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
+    const assetsSource = source[ASSETS_TABLE_NAME] as Partial<AppMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined;
+    const activityMembersSource = source[ACTIVITY_MEMBERS_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined;
+    const activityResourcesSource = source[ACTIVITY_RESOURCES_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined;
+    const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
+    const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
+    const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
+    const chatsSource = source[CHATS_TABLE_NAME] as Partial<AppMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
+    const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
+    const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
+    const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
+    const contactsSource = source[CONTACTS_TABLE_NAME] as Partial<AppMemorySchema[typeof CONTACTS_TABLE_NAME]> | undefined;
+    const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<AppMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
+    const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<AppMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
+    const eventsSource = source[EVENTS_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
     const userRatesOutboxById = this.normalizeUserRatesOutboxById(
       outboxSource?.byId,
       fallback[USER_RATES_OUTBOX_TABLE_NAME].byId
@@ -964,39 +964,39 @@ export class AppMemoryDb {
 
   private normalizeActivityMembersById(
     value: unknown,
-    fallback: DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId']
-  ): DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId'] {
+    fallback: AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId'] {
     return value && typeof value === 'object'
-      ? { ...(value as DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId']) }
+      ? { ...(value as AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]['byId']) }
       : { ...fallback };
   }
 
   private normalizeActivityResourcesById(
     value: unknown,
-    fallback: DemoMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId']
-  ): DemoMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId'] {
+    fallback: AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId'] {
     return value && typeof value === 'object'
-      ? { ...(value as DemoMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId']) }
+      ? { ...(value as AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId']) }
       : { ...fallback };
   }
 
   private normalizeAssetsById(
     value: unknown,
-    fallback: DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']
-  ): DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId'] {
+    fallback: AppMemorySchema[typeof ASSETS_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof ASSETS_TABLE_NAME]['byId'] {
     return value && typeof value === 'object'
-      ? { ...(value as DemoMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
+      ? { ...(value as AppMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
       : { ...fallback };
   }
 
   private normalizeUserRatesById(
     value: unknown,
-    fallback: DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId']
-  ): DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] {
+    fallback: AppMemorySchema[typeof USER_RATES_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] {
     const source = value && typeof value === 'object'
       ? value as Record<string, unknown>
       : fallback as Record<string, unknown>;
-    const next: DemoMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] = {};
+    const next: AppMemorySchema[typeof USER_RATES_TABLE_NAME]['byId'] = {};
     for (const [id, record] of Object.entries(source)) {
       const normalized = this.normalizeUserRateRecord(record);
       if (normalized) {
@@ -1008,12 +1008,12 @@ export class AppMemoryDb {
 
   private normalizeUserRatesOutboxById(
     value: unknown,
-    fallback: DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId']
-  ): DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] {
+    fallback: AppMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] {
     const source = value && typeof value === 'object'
       ? value as Record<string, unknown>
       : fallback as Record<string, unknown>;
-    const next: DemoMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] = {};
+    const next: AppMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]['byId'] = {};
     for (const [id, record] of Object.entries(source)) {
       if (!record || typeof record !== 'object') {
         continue;
@@ -1106,13 +1106,13 @@ export class AppMemoryDb {
 
   private normalizeProfileExperiencesByUserId(
     value: unknown,
-    fallback: DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId']
-  ): DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'] {
+    fallback: AppMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId']
+  ): AppMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'] {
     if (!value || typeof value !== 'object') {
       return { ...fallback };
     }
 
-    const next: DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'] = {};
+    const next: AppMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'] = {};
     for (const [userId, entries] of Object.entries(value as Record<string, unknown>)) {
       if (!userId.trim() || !Array.isArray(entries)) {
         continue;
@@ -1121,7 +1121,7 @@ export class AppMemoryDb {
         .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
         .map(entry => ({
           id: `${entry['id'] ?? ''}`.trim(),
-          type: `${entry['type'] ?? 'Workspace'}`.trim() as DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'][string][number]['type'],
+          type: `${entry['type'] ?? 'Workspace'}`.trim() as AppMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]['byUserId'][string][number]['type'],
           title: `${entry['title'] ?? ''}`.trim(),
           org: `${entry['org'] ?? ''}`.trim(),
           city: `${entry['city'] ?? ''}`.trim(),
@@ -1136,13 +1136,13 @@ export class AppMemoryDb {
 
   private normalizeContactsByOwnerUserId(
     value: unknown,
-    fallback: DemoMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId']
-  ): DemoMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId'] {
+    fallback: AppMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId']
+  ): AppMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId'] {
     if (!value || typeof value !== 'object') {
       return { ...fallback };
     }
 
-    const next: DemoMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId'] = {};
+    const next: AppMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId'] = {};
     for (const [ownerUserId, contacts] of Object.entries(value as Record<string, unknown>)) {
       const normalizedOwnerUserId = ownerUserId.trim();
       if (!normalizedOwnerUserId || !Array.isArray(contacts)) {
@@ -1214,7 +1214,7 @@ export class AppMemoryDb {
   }
 
   private normalizeActivityMembersIdsByOwnerKey(
-    source: Partial<DemoMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined
+    source: Partial<AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivityMembersById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
@@ -1249,7 +1249,7 @@ export class AppMemoryDb {
   }
 
   private normalizeActivityResourcesIdsByOwnerKey(
-    source: Partial<DemoMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined
+    source: Partial<AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivityResourcesById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
@@ -1284,7 +1284,7 @@ export class AppMemoryDb {
   }
 
   private normalizeAssetsIdsByOwnerUserId(
-    source: Partial<DemoMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined
+    source: Partial<AppMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
     const normalizedById = this.normalizeAssetsById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
@@ -1319,7 +1319,7 @@ export class AppMemoryDb {
   }
 
   private normalizeUserRatesIdsByRelevantUserId(
-    source: Partial<DemoMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined
+    source: Partial<AppMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
     const normalizedById = this.normalizeUserRatesById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
@@ -1400,7 +1400,7 @@ export class AppMemoryDb {
 @Injectable({
   providedIn: 'root'
 })
-export class DemoMemoryDb extends AppMemoryDb {
+export class LocalMemoryDb extends AppMemoryDb {
   protected override get storageScope(): AppStorageScope {
     return 'demo';
   }

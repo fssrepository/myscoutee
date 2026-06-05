@@ -13,16 +13,16 @@ import type {
   EventFeedbackSubmitRequestDto,
   SubEventLeaderboardState
 } from '../../../core/base/models';
-import { DemoEventsService } from '../../demo';
+import { LocalEventsService } from '../../local';
 import { HttpEventsService } from '../../http';
 import type {
-  DemoEventActivitiesListQueryResult,
-  DemoEventActivitiesQuery,
-  DemoEventExploreQuery,
-  DemoEventExploreQueryResult,
-  DemoEventRecord,
-  DemoRepositoryEventItemType
-} from '../../demo/models/events.model';
+  ActivityEventActivitiesListQueryResult,
+  ActivityEventActivitiesQuery,
+  ActivityEventExploreQuery,
+  ActivityEventExploreQueryResult,
+  ActivityEventRecord,
+  ActivityEventRepositoryItemType
+} from '../models/events.model';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -30,74 +30,74 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class EventsService extends BaseRouteModeService {
-  private readonly demoEventsService = inject(DemoEventsService);
+  private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
 
   get demoModeEnabled(): boolean {
     return this.isDemoModeEnabled('/activities/events');
   }
 
-  private get eventsService(): DemoEventsService | HttpEventsService {
-    return this.resolveRouteService('/activities/events', this.demoEventsService, this.httpEventsService);
+  private get eventsService(): LocalEventsService | HttpEventsService {
+    return this.resolveRouteService('/activities/events', this.localEventsService, this.httpEventsService);
   }
 
-  queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryItemsByUser(userId);
   }
 
-  peekItemsByUser(userId: string): DemoEventRecord[] {
+  peekItemsByUser(userId: string): ActivityEventRecord[] {
     return this.eventsService.peekItemsByUser(userId);
   }
 
-  queryInvitationItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  queryInvitationItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryInvitationItemsByUser(userId);
   }
 
-  queryEventItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  queryEventItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryEventItemsByUser(userId);
   }
 
-  queryHostingItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryHostingItemsByUser(userId);
   }
 
-  queryTrashedItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryTrashedItemsByUser(userId);
   }
 
   async queryActivitiesEventListPage(
-    query: DemoEventActivitiesQuery,
+    query: ActivityEventActivitiesQuery,
     signal?: AbortSignal
-  ): Promise<DemoEventActivitiesListQueryResult> {
+  ): Promise<ActivityEventActivitiesListQueryResult> {
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoEventsService.queryActivitiesEventListPage(query, signal);
+      return this.localEventsService.queryActivitiesEventListPage(query, signal);
     }
     return this.httpEventsService.queryActivitiesEventListPage(query, signal);
   }
 
-  queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
+  queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryExploreItems(userId);
   }
 
-  peekExploreItems(userId: string): DemoEventRecord[] {
+  peekExploreItems(userId: string): ActivityEventRecord[] {
     return this.eventsService.peekExploreItems(userId);
   }
 
-  async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
+  async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoEventsService.queryEventExplorePage(query);
+      return this.localEventsService.queryEventExplorePage(query);
     }
     return this.httpEventsService.queryEventExplorePage(query);
   }
 
-  peekEventExplorePage(query: DemoEventExploreQuery): DemoEventExploreQueryResult {
+  peekEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoEventsService.peekEventExplorePage(query);
+      return this.localEventsService.peekEventExplorePage(query);
     }
     return this.httpEventsService.peekEventExplorePage(query);
   }
 
-  peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {
+  peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
@@ -109,7 +109,7 @@ export class EventsService extends BaseRouteModeService {
     return known.find(record => record.id === normalizedItemId) ?? null;
   }
 
-  async queryKnownItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+  async queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
@@ -125,23 +125,23 @@ export class EventsService extends BaseRouteModeService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     return this.eventsService.trashItem(userId, type, sourceId);
   }
 
-  publishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     return this.eventsService.publishItem(userId, type, sourceId);
   }
 
-  unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     return this.eventsService.unpublishItem(userId, type, sourceId);
   }
 
-  restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     return this.eventsService.restoreItem(userId, type, sourceId);
   }
 
-  takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     return this.eventsService.takeOverItem(userId, type, sourceId);
   }
 
@@ -156,7 +156,7 @@ export class EventsService extends BaseRouteModeService {
     subEventIndex?: number | null;
     action: string;
     reason?: string | null;
-  }): Promise<DemoEventRecord | null> {
+  }): Promise<ActivityEventRecord | null> {
     return this.eventsService.applyStageAction(request);
   }
 
@@ -176,7 +176,7 @@ export class EventsService extends BaseRouteModeService {
       bookingConfirmed?: boolean;
       pendingReason?: 'approval' | 'waitlist' | null;
     } = {}
-  ): Promise<DemoEventRecord | null> {
+  ): Promise<ActivityEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
   }
 
@@ -295,7 +295,7 @@ export class EventsService extends BaseRouteModeService {
     return this.organizerEventFeedbackCardData(item, false);
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
+  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
     return this.eventsService.syncEventSnapshot(payload);
   }
 

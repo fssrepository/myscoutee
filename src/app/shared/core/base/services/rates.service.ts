@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { RateRecord } from '../models/rate.model';
 import type { ActivityRatePageResult } from '../interfaces/game.interface';
-import { DemoRatesService } from '../../demo';
+import { LocalRatesService } from '../../local';
 import { HttpRatesService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { GameService } from './game.service';
@@ -12,12 +12,12 @@ import { GameService } from './game.service';
   providedIn: 'root'
 })
 export class RatesService extends BaseRouteModeService {
-  private readonly demoRatesService = inject(DemoRatesService);
+  private readonly localRatesService = inject(LocalRatesService);
   private readonly httpRatesService = inject(HttpRatesService);
   private readonly gameService = inject(GameService);
 
-  private get ratesService(): DemoRatesService | HttpRatesService {
-    return this.resolveRouteService('/activities/rates', this.demoRatesService, this.httpRatesService);
+  private get ratesService(): LocalRatesService | HttpRatesService {
+    return this.resolveRouteService('/activities/rates', this.localRatesService, this.httpRatesService);
   }
 
   recordActivityRate(

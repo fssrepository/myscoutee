@@ -14,7 +14,7 @@ import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import { EventsService } from '../../../core/base/services/events.service';
-import type { DemoEventRecord } from '../../../core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../core/base/models/events.model';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
 import { ProgressIndicatorComponent } from '../progress-indicator';
@@ -755,7 +755,7 @@ export class EventCheckoutPopupComponent {
 
   protected resolvePricing(
     pricing: AppTypes.PricingConfig | null | undefined,
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     slotId: string | null,
     slot: AppTypes.EventSlotOccurrence | null
   ): PricingSnapshot {
@@ -1103,7 +1103,7 @@ export class EventCheckoutPopupComponent {
     this.availableSlotDateKeySet = new Set(this.availableSlotDateEntriesCache.map(item => item.key));
   }
 
-  private isRecordFull(record: DemoEventRecord): boolean {
+  private isRecordFull(record: ActivityEventRecord): boolean {
     return Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
       && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
   }

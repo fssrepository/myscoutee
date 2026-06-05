@@ -15,7 +15,7 @@ import { AppInstallPromptComponent } from './shared/ui/components/app-install-pr
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { FirebaseMessagingService } from './shared/core/base/services/firebase-messaging.service';
 import { PwaService } from './shared/core/base/services/pwa.service';
-import { I18nService } from './shared/i18n';
+import { I18nService } from './shared/core';
 
 @Component({
   selector: 'app-root',

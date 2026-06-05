@@ -10,7 +10,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../shared/core/base/models';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import { INFO_CARD_AVAILABLE_ACTIONS } from '../../../shared/ui';
 import type {
   InfoCardData,

@@ -9,7 +9,7 @@ import type {
 import type { ExperienceEntry } from '../models/profile.model';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ExperienceDocumentImportService } from './experience-document-import.service';
-import { DemoUserExperiencesService } from '../../demo';
+import { LocalUserExperiencesService } from '../../local';
 import { HttpUserExperiencesService } from '../../http';
 
 @Injectable({
@@ -18,14 +18,14 @@ import { HttpUserExperiencesService } from '../../http';
 export class UserExperiencesService extends BaseRouteModeService {
   private readonly injector = inject(Injector);
   private readonly parser = inject(ExperienceDocumentImportService);
-  private demoServiceRef: DemoUserExperiencesService | null = null;
+  private localServiceRef: LocalUserExperiencesService | null = null;
   private httpServiceRef: HttpUserExperiencesService | null = null;
 
-  private get demoService(): DemoUserExperiencesService {
-    if (!this.demoServiceRef) {
-      this.demoServiceRef = this.injector.get(DemoUserExperiencesService);
+  private get localService(): LocalUserExperiencesService {
+    if (!this.localServiceRef) {
+      this.localServiceRef = this.injector.get(LocalUserExperiencesService);
     }
-    return this.demoServiceRef;
+    return this.localServiceRef;
   }
 
   private get httpService(): HttpUserExperiencesService {
@@ -36,7 +36,7 @@ export class UserExperiencesService extends BaseRouteModeService {
   }
 
   private get persistenceService(): UserExperiencesPersistenceService {
-    return this.resolveRouteService('/auth/me/experiences', this.demoService, this.httpService);
+    return this.resolveRouteService('/auth/me/experiences', this.localService, this.httpService);
   }
 
   async loadUserExperiences(userId: string): Promise<ExperienceEntry[]> {

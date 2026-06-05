@@ -8,7 +8,7 @@ import type {
   AdminMonitoringHealth,
   AdminMonitoringMetricDto
 } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminMonitoringService } from '../../services/admin-monitoring.service';
 import { AdminShellService } from '../../services/admin-shell.service';

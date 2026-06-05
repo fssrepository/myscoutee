@@ -28,7 +28,7 @@ import {
   RouteIntervalSchedulerService
 } from '../../../shared/core';
 import { HttpMediaService } from '../../../shared/core/http';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import { CounterBadgePipe, PricingEditorComponent, ProgressIndicatorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
@@ -78,7 +78,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private lastHandledOpenSubEventsRequest = 0;
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
-  private currentRecord: DemoEventRecord | null = null;
+  private currentRecord: ActivityEventRecord | null = null;
   private currentSourcePublished = false;
   private publishedCapacityMaxFloor = 0;
   private currentMemberSummary: AppTypes.ActivityMembersSummary | null = null;
@@ -1423,7 +1423,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
-  private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
+  private openRecord(record: ActivityEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
     const source = EventEditorConverter.toEventEditorSourceFromRecord(record, target);
     if (readOnly) {
       this.eventEditorService.openView(source);

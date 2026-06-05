@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { DemoLandingContentService } from '../../demo/services/landing-content.service';
+import { LocalLandingContentService } from '../../local/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
 import type { LandingContentState } from '../models';
 import type { InfoCardData } from '../../../ui';
@@ -18,7 +18,7 @@ export interface LandingContentDisplayState {
 })
 export class LandingContentService extends BaseRouteModeService {
   private static readonly LANDING_CONTENT_ROUTE = '/landing/content';
-  private readonly demoLandingContentService = inject(DemoLandingContentService);
+  private readonly localLandingContentService = inject(LocalLandingContentService);
   private readonly httpLandingContentService = inject(HttpLandingContentService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly ideaPosts = inject(IdeaPostsService);
@@ -68,10 +68,10 @@ export class LandingContentService extends BaseRouteModeService {
     return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
   }
 
-  private landingService(): DemoLandingContentService | HttpLandingContentService {
+  private landingService(): LocalLandingContentService | HttpLandingContentService {
     return this.resolveRouteService(
       LandingContentService.LANDING_CONTENT_ROUTE,
-      this.demoLandingContentService,
+      this.localLandingContentService,
       this.httpLandingContentService
     );
   }

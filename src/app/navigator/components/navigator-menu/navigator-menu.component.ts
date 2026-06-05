@@ -14,16 +14,10 @@ import {
 } from '../../../shared/core';
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import {
-  resolveHostTierColorClass,
-  resolveHostTierIcon,
-  resolveHostTierToneClass,
-  resolveMemberImpressionTitle,
-  resolveTraitColorClass,
-  resolveTraitIcon,
-  resolveTraitToneClass
+  resolveHostTierColorClass, resolveHostTierIcon, resolveHostTierToneClass, resolveMemberImpressionTitle, resolveTraitColorClass, resolveTraitIcon, resolveTraitToneClass
 } from '../../navigator-presenters';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';

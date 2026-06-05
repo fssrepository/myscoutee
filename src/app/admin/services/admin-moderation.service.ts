@@ -6,10 +6,10 @@ import { ActivitiesPopupStateService } from '../../activity/services/activities-
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
 import type { ChatPopupMessage, ChatRecord } from '../../shared/core/base/models/chat.model';
 import {
-  DemoChatsRepository,
-  DemoUsersRepository,
-  type DemoChatRecord
-} from '../../shared/core/demo';
+  LocalChatsRepository,
+  LocalUsersRepository,
+  type ChatThreadRecord
+} from '../../shared/core/local';
 import type { AdminDashboardDto } from '../models/admin-dashboard.model';
 import type { AdminReportedUserDto } from '../models/admin-moderation.model';
 import type { AdminUserDto } from '../models/admin-profile.model';
@@ -27,8 +27,8 @@ export class AdminModerationService {
   private readonly http = inject(HttpClient);
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly shell = inject(AdminShellService);
-  private readonly demoUsersRepository = inject(DemoUsersRepository);
-  private readonly demoChatsRepository = inject(DemoChatsRepository);
+  private readonly demoUsersRepository = inject(LocalUsersRepository);
+  private readonly demoChatsRepository = inject(LocalChatsRepository);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
@@ -201,7 +201,7 @@ export class AdminModerationService {
       initials: admin.initials,
       gender: 'woman' as const
     };
-    const userChat: DemoChatRecord = {
+    const userChat: ChatThreadRecord = {
       id: chatId,
       avatar: admin.initials,
       title: 'MyScoutee Support',
@@ -225,7 +225,7 @@ export class AdminModerationService {
       mine: false,
       readBy: []
     };
-    const adminChat: DemoChatRecord = {
+    const adminChat: ChatThreadRecord = {
       id: chatId,
       avatar: reportedUser?.initials || 'U',
       title: `MyScoutee Support · ${reportedUser?.name || 'Reported user'}`,

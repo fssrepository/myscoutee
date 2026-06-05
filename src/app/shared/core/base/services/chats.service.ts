@@ -4,11 +4,11 @@ import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { ChatRecord } from '../models/chat.model';
-import type { DemoUser } from '../interfaces/user.interface';
+import type { UserDto } from '../interfaces/user.interface';
 import type { PageResult } from '../../../ui';
 import { buildActivityChatRows } from '../converters';
-import type { DemoChatRecord } from '../../demo/models/chats.model';
-import { DemoChatsService } from '../../demo';
+import type { ChatThreadRecord } from '../models/chats.model';
+import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
@@ -20,20 +20,20 @@ import { UsersService } from './users.service';
 export class ChatsService extends BaseRouteModeService {
   private static readonly CHAT_ROUTE = '/activities/chats';
 
-  private readonly demoChatsService = inject(DemoChatsService);
+  private readonly localChatsService = inject(LocalChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly usersService = inject(UsersService);
 
-  private get chatsService(): DemoChatsService | HttpChatsService {
-    return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.demoChatsService, this.httpChatsService);
+  private get chatsService(): LocalChatsService | HttpChatsService {
+    return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
   }
 
-  async queryChatItemsByUser(userId: string): Promise<DemoChatRecord[]> {
+  async queryChatItemsByUser(userId: string): Promise<ChatThreadRecord[]> {
     return this.chatsService.queryChatItemsByUser(userId);
   }
 
-  peekChatItemsByUser(userId: string): DemoChatRecord[] {
+  peekChatItemsByUser(userId: string): ChatThreadRecord[] {
     return this.chatsService.peekChatItemsByUser(userId);
   }
 
@@ -139,7 +139,7 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 
-  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<DemoChatRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
     return this.chatsService.updateSupportCase(chat, action);
   }
 
@@ -287,7 +287,7 @@ export class ChatsService extends BaseRouteModeService {
     request: ActivitiesPageRequest,
     options: {
       chatItems?: readonly ChatRecord[];
-      users?: readonly DemoUser[];
+      users?: readonly UserDto[];
     } = {}
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
     const users = options.users ?? this.usersService.peekCachedUsers();

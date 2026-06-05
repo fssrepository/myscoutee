@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivityInviteOwnerContext } from '../interfaces/activity-invite.interface';
-import { DemoActivityInviteCandidatesService } from '../../demo/services/activity-invite-candidates.service';
+import { LocalActivityInviteCandidatesService } from '../../local/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';
 import { AppContext } from '../context';
@@ -16,17 +16,17 @@ const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
   providedIn: 'root'
 })
 export class ActivityInviteCandidatesService extends BaseRouteModeService {
-  private readonly demoActivityInviteCandidatesService = inject(DemoActivityInviteCandidatesService);
+  private readonly localActivityInviteCandidatesService = inject(LocalActivityInviteCandidatesService);
   private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
 
 
-  private get inviteCandidatesService(): DemoActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
+  private get inviteCandidatesService(): LocalActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
     return this.resolveRouteService(
       ACTIVITY_INVITE_CANDIDATES_ROUTE,
-      this.demoActivityInviteCandidatesService,
+      this.localActivityInviteCandidatesService,
       this.httpActivityInviteCandidatesService
     );
   }

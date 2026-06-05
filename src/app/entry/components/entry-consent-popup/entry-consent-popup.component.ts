@@ -7,7 +7,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
 import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
-import { I18nService } from '../../../shared/i18n';
+import { I18nService } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 

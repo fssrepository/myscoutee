@@ -4,16 +4,14 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import {
-  DEMO_BOOTSTRAP_PROGRESS_STEPS,
-  DEMO_SESSION_PROGRESS_STEPS,
-  type DemoBootstrapProgressStage
-} from '../../../shared/core/demo';
-import type { DemoUserListItemDto } from '../../../shared/core';
+  LOCAL_BOOTSTRAP_PROGRESS_STEPS, LOCAL_SESSION_PROGRESS_STEPS, type LocalBootstrapProgressStage
+} from '../../../shared/core/local';
+import type { UserSelectorListItemDto } from '../../../shared/core';
 
-type DemoUserProgressSegment = {
-  stage: DemoBootstrapProgressStage;
+type UserSelectorProgressSegment = {
+  stage: LocalBootstrapProgressStage;
   start: number;
   width: number;
 };
@@ -35,10 +33,10 @@ export class EntryDemoUserSelectorComponent {
   @Input() loading = false;
   @Input() loadingProgress = 0;
   @Input() loadingLabel = 'Preparing demo data';
-  @Input() loadingStage: DemoBootstrapProgressStage = 'selector';
+  @Input() loadingStage: LocalBootstrapProgressStage = 'selector';
   @Input() errorMessage = '';
   @Input() submitting = false;
-  @Input() users: DemoUserListItemDto[] = [];
+  @Input() users: UserSelectorListItemDto[] = [];
   @Input() title = 'Select demo user';
   @Input() subtitle = 'Login disabled mode. Choose a demo user to open perspective-based data.';
   @Input() selectedUserId = '';
@@ -68,7 +66,7 @@ export class EntryDemoUserSelectorComponent {
     this.retryRequested.emit();
   }
 
-  protected userStatusClass(user: DemoUserListItemDto): string {
+  protected userStatusClass(user: UserSelectorListItemDto): string {
     switch (user.profileStatus) {
       case 'blocked':
         return 'demo-user-item-blocked';
@@ -79,7 +77,7 @@ export class EntryDemoUserSelectorComponent {
     }
   }
 
-  protected userStatusLabel(user: DemoUserListItemDto): string {
+  protected userStatusLabel(user: UserSelectorListItemDto): string {
     switch (user.profileStatus) {
       case 'blocked':
         return 'Blocked';
@@ -90,15 +88,15 @@ export class EntryDemoUserSelectorComponent {
     }
   }
 
-  protected userGenderLabel(user: DemoUserListItemDto): string {
+  protected userGenderLabel(user: UserSelectorListItemDto): string {
     return user.gender === 'woman' ? 'woman' : 'man';
   }
 
-  protected userAvatarClass(user: DemoUserListItemDto): string {
+  protected userAvatarClass(user: UserSelectorListItemDto): string {
     return this.isNewProfile(user) ? 'user-color-setup' : `user-color-${user.gender}`;
   }
 
-  protected isNewProfile(user: DemoUserListItemDto): boolean {
+  protected isNewProfile(user: UserSelectorListItemDto): boolean {
     const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
     const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
     const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
@@ -108,7 +106,7 @@ export class EntryDemoUserSelectorComponent {
       || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
   }
 
-  protected selectedUser(): DemoUserListItemDto | null {
+  protected selectedUser(): UserSelectorListItemDto | null {
     const normalizedUserId = this.selectedUserId.trim();
     if (!normalizedUserId) {
       return null;
@@ -116,10 +114,10 @@ export class EntryDemoUserSelectorComponent {
     return this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
   }
 
-  protected loadingSegments(): ReadonlyArray<DemoUserProgressSegment> {
+  protected loadingSegments(): ReadonlyArray<UserSelectorProgressSegment> {
     const steps = this.loadingStage.startsWith('session')
-      ? DEMO_SESSION_PROGRESS_STEPS
-      : DEMO_BOOTSTRAP_PROGRESS_STEPS;
+      ? LOCAL_SESSION_PROGRESS_STEPS
+      : LOCAL_BOOTSTRAP_PROGRESS_STEPS;
     return steps
       .slice(0, -1)
       .map((step, index) => ({

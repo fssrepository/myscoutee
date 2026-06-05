@@ -92,7 +92,7 @@ export interface UserLocationEligibilityResponseDto {
   locationRequired?: boolean;
 }
 
-export interface DemoUserListItemDto {
+export interface UserSelectorListItemDto {
   id: string;
   name: string;
   city: string;
@@ -154,10 +154,8 @@ export interface UserDto {
   };
 }
 
-
-export type DemoUser = UserDto;
 export interface UsersListQueryResponse {
-  users: DemoUserListItemDto[];
+  users: UserSelectorListItemDto[];
 }
 
 export interface UserByIdQueryResponse {

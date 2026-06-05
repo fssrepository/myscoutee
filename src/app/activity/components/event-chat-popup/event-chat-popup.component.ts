@@ -21,7 +21,7 @@ import { ActivitiesPopupStateService } from '../../services/activities-popup-sta
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, ChatVoiceClipsService, EventsService, ShareTokensService } from '../../../shared/core';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
   CounterBadgePipe,
   SmartListComponent,
@@ -117,7 +117,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected chatHeaderContext: AppTypes.PopupHeaderContext | null = null;
   protected chatHeaderControlsHydrated = false;
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
-  private resolvedChatEventRecord: DemoEventRecord | null = null;
+  private resolvedChatEventRecord: ActivityEventRecord | null = null;
   private resolvedChatEventRecordKey = '';
   private resolvedChatResourceState: AppTypes.ActivitySubEventResourceState | null = null;
   private resolvedChatResourceStateKey = '';
@@ -3705,7 +3705,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return `${chat.eventId ?? ''}`.trim() ? 'mainEvent' : 'general';
   }
 
-  private resolveSelectedChatEventRecord(chat: ChatRecord): DemoEventRecord | null {
+  private resolveSelectedChatEventRecord(chat: ChatRecord): ActivityEventRecord | null {
     const eventId = `${chat.eventId ?? ''}`.trim();
     if (!eventId) {
       return null;
@@ -3718,7 +3718,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private resolveSelectedChatSubEvent(
     chat: ChatRecord,
-    eventRecord: DemoEventRecord | null
+    eventRecord: ActivityEventRecord | null
   ): AppTypes.SubEventFormItem | null {
     const subEventId = `${chat.subEventId ?? ''}`.trim();
     if (!subEventId) {

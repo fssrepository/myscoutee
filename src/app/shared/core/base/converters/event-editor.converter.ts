@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../models';
-import type { DemoEventRecord } from '../../demo/models/events.model';
+import type { ActivityEventRecord } from '../models/events.model';
 import { PricingBuilder } from '../builders/pricing.builder';
 
 export class EventEditorConverter {
@@ -291,7 +291,7 @@ export class EventEditorConverter {
   }
 
   static toEventEditorSourceFromRecord(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     target: AppTypes.EventEditorTarget
   ): Record<string, unknown> {
     const slotTemplates = this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []);

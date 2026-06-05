@@ -13,7 +13,7 @@ import type {
   AdminNotificationScheduleSlot,
   AdminNotificationIntervalUnit
 } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminNotificationsService } from '../../services/admin-notifications.service';
 import { AdminShellService } from '../../services/admin-shell.service';

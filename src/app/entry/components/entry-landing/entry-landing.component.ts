@@ -6,20 +6,14 @@ import { Observable, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
-  InfoCardComponent,
-  type InfoCardData
+  InfoCardComponent, type InfoCardData
 } from '../../../shared/ui/components/card';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
-  SmartListComponent,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListItemRenderState,
-  type SmartListLoadPage
+  SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
 

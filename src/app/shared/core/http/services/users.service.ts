@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type {
-  DemoUserListItemDto,
+  UserSelectorListItemDto,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserByIdQueryResponse,
@@ -50,7 +50,7 @@ export class HttpUsersService implements UserService {
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse> {
-    type HttpDemoUserListEntry = Partial<UserDto> & Partial<DemoUserListItemDto> & {
+    type HttpDemoUserListEntry = Partial<UserDto> & Partial<UserSelectorListItemDto> & {
       gender?: string | null;
     };
     const response = await this.routeDelay.withRequestTimeout(
@@ -67,7 +67,7 @@ export class HttpUsersService implements UserService {
     return {
       users: response
         .map(user => this.toDemoUserListItem(user))
-        .filter((user): user is DemoUserListItemDto => user !== null)
+        .filter((user): user is UserSelectorListItemDto => user !== null)
     };
   }
 
@@ -847,7 +847,7 @@ export class HttpUsersService implements UserService {
     return error instanceof Error && error.message === message;
   }
 
-  private toDemoUserListItem(user: Partial<UserDto> & Partial<DemoUserListItemDto> & { gender?: string | null }): DemoUserListItemDto | null {
+  private toDemoUserListItem(user: Partial<UserDto> & Partial<UserSelectorListItemDto> & { gender?: string | null }): UserSelectorListItemDto | null {
     const id = `${user.id ?? ''}`.trim();
     if (!id) {
       return null;

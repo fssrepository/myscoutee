@@ -2,14 +2,14 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type * as AppTypes from '../../shared/core/base/models';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
-import { DemoEventFeedbackBuilder } from '../../shared/core/demo/builders';
+import { LocalEventFeedbackBuilder } from '../../shared/core/local/builders';
 import { EventsService } from '../../shared/core/base';
 import { AppContext, type UserDto } from '../../shared/core';
-import type { DemoEventSeedItem } from '../../shared/core/demo/models/event-seed-item.model';
+import type { ActivityEventSeedItem } from '../../shared/core/base/models/event-seed-item.model';
 
 export interface EventFeedbackPopupSource {
-  eventItems: DemoEventSeedItem[];
-  ownedEventItems: DemoEventSeedItem[];
+  eventItems: ActivityEventSeedItem[];
+  ownedEventItems: ActivityEventSeedItem[];
   users: UserDto[];
   activeUser: UserDto;
   eventDatesById: Record<string, string>;
@@ -1186,7 +1186,7 @@ export class EventFeedbackPopupStateService {
   private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
     const source = this.sourceRef();
     if (!source) return [];
-    return DemoEventFeedbackBuilder.buildEventFeedbackCards({
+    return LocalEventFeedbackBuilder.buildEventFeedbackCards({
       eventItems: source.eventItems,
       users: source.users,
       activeUser: source.activeUser,

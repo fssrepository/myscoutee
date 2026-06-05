@@ -1,6 +1,6 @@
 import type { LocationCoordinates } from '../interfaces/location.interface';
 import type { PopupHeaderLookup } from './popup.model';
-import type { ChatRecord } from '../models/chat.model';
+import type { ChatRecord } from './chat.model';
 import type { AssetCard, AssetType } from './asset.model';
 import type { ActivityMemberEntry } from './activity-member.model';
 import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';

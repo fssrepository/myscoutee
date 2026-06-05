@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
-import { I18nService } from '../../../shared/i18n';
+import { I18nService } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { NavigatorService } from '../../navigator.service';

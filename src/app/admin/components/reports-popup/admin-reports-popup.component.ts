@@ -15,7 +15,7 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -698,7 +698,7 @@ export class AdminReportsPopupComponent {
     name: string,
     initials: string,
     gender: string
-  ): DemoUser {
+  ): UserDto {
     return {
       id: id || 'admin',
       name: name || 'Admin',

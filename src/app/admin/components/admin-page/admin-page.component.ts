@@ -7,7 +7,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { NavigatorComponent } from '../../../navigator';
 import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 import { SessionService, AppPopupContext } from '../../../shared/core';
-import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
+import type { LocalBootstrapProgressStage } from '../../../shared/core/local';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';
@@ -55,7 +55,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
   protected selectorLoadingLabel = 'Preparing admin data';
-  protected selectorLoadingStage: DemoBootstrapProgressStage = 'selector';
+  protected selectorLoadingStage: LocalBootstrapProgressStage = 'selector';
   protected selectorErrorMessage = '';
   protected readonly restoringWorkspace = signal(this.currentRouteIsWorkspace());
   protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
@@ -306,7 +306,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private toDemoProgressStage(stage: AdminBootstrapProgressState['stage']): DemoBootstrapProgressStage {
+  private toDemoProgressStage(stage: AdminBootstrapProgressState['stage']): LocalBootstrapProgressStage {
     switch (stage) {
       case 'indexedDb':
         return 'indexedDb';

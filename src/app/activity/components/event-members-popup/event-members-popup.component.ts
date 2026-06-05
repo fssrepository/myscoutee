@@ -18,7 +18,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
   CounterBadgePipe,
   LazyBgImageDirective,
@@ -92,7 +92,7 @@ export class EventMembersPopupComponent {
   protected canShowInviteButton = false;
   private lookupRef: AppTypes.PopupHeaderLookup | null = null;
 
-  private ownerRecord: DemoEventRecord | null = null;
+  private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
   private canManageMembers = false;
   private inlineItemActionMenu: InlineMemberActionMenu | null = null;
@@ -821,7 +821,7 @@ export class EventMembersPopupComponent {
   }
 
   private applyOwnerRecord(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options?: {
       subtitle?: string;
       canManage?: boolean;

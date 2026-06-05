@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { DemoHelpCenterService } from '../../demo/services/help-center.service';
+import { LocalHelpCenterService } from '../../local/services/help-center.service';
 import { HttpHelpCenterService } from '../../http/services/help-center.service';
 import type {
   HelpCenterDocumentKind,
@@ -17,7 +17,7 @@ export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
   providedIn: 'root'
 })
 export class HelpCenterService extends BaseRouteModeService {
-  private readonly demoHelpCenterService = inject(DemoHelpCenterService);
+  private readonly localHelpCenterService = inject(LocalHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
   private readonly helpStateRef = signal<HelpCenterState | null>(null);
   private readonly privacyStateRef = signal<HelpCenterState | null>(null);
@@ -114,12 +114,12 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.cloneState(state);
   }
 
-  private helpService(kind: HelpCenterDocumentKind): DemoHelpCenterService | HttpHelpCenterService {
-    return this.resolveRouteService(`/${kind}/active`, this.demoHelpCenterService, this.httpHelpCenterService);
+  private helpService(kind: HelpCenterDocumentKind): LocalHelpCenterService | HttpHelpCenterService {
+    return this.resolveRouteService(`/${kind}/active`, this.localHelpCenterService, this.httpHelpCenterService);
   }
 
-  private privacyConsentService(): DemoHelpCenterService | HttpHelpCenterService {
-    return this.resolveRouteService('/privacy/consents', this.demoHelpCenterService, this.httpHelpCenterService);
+  private privacyConsentService(): LocalHelpCenterService | HttpHelpCenterService {
+    return this.resolveRouteService('/privacy/consents', this.localHelpCenterService, this.httpHelpCenterService);
   }
 
   private setState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {

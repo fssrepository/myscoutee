@@ -3,7 +3,7 @@ import { Component, HostListener, OnDestroy, computed, effect, inject, signal } 
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { DemoUserImpressionsBuilder } from '../../../shared/core/demo/builders';
+import { LocalUserImpressionsBuilder } from '../../../shared/core/local/builders';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import {
@@ -223,7 +223,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private hasUserImpressionsData(user: UserDto): boolean {
-    return DemoUserImpressionsBuilder.hasImpressionsData(
+    return LocalUserImpressionsBuilder.hasImpressionsData(
       this.appCtx.getUserImpressions(user.id) ?? user.impressions
     );
   }
@@ -435,7 +435,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     kind: 'host' | 'member'
   ): NavigatorImpressionsTraitCardViewModel[] {
     const section = this.activeUserImpressionsSection(user, kind)
-      ?? DemoUserImpressionsBuilder.withResolvedImpressions(user).impressions?.[kind]
+      ?? LocalUserImpressionsBuilder.withResolvedImpressions(user).impressions?.[kind]
       ?? null;
     const cardsById = new Map<string, NavigatorImpressionsTraitCardViewModel>();
     for (const trait of section?.personalityTraits ?? []) {
@@ -492,7 +492,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded.toFixed(1);
     }
-    return (DemoUserImpressionsBuilder.seededMetric(user, 1, 38, 50) / 10).toFixed(1);
+    return (LocalUserImpressionsBuilder.seededMetric(user, 1, 38, 50) / 10).toFixed(1);
   }
 
   private resolveHostTotalEvents(user: UserDto): number {
@@ -500,7 +500,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return DemoUserImpressionsBuilder.seededMetric(user, 9, 12, 80);
+    return LocalUserImpressionsBuilder.seededMetric(user, 9, 12, 80);
   }
 
   private resolveHostAttendanceNoShowSummary(user: UserDto): string {
@@ -508,8 +508,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const hostAttendanceTotal = this.resolveHostTotalEvents(user) * DemoUserImpressionsBuilder.seededMetric(user, 18, 8, 14);
-    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (DemoUserImpressionsBuilder.seededMetric(user, 2, 74, 96) / 100));
+    const hostAttendanceTotal = this.resolveHostTotalEvents(user) * LocalUserImpressionsBuilder.seededMetric(user, 18, 8, 14);
+    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (LocalUserImpressionsBuilder.seededMetric(user, 2, 74, 96) / 100));
     return `${Math.max(0, hostAttendanceTotal - hostAttendanceAttended)}`;
   }
 
@@ -518,8 +518,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const total = DemoUserImpressionsBuilder.seededMetric(user, 19, 60, 220);
-    const repeat = Math.floor(total * (DemoUserImpressionsBuilder.seededMetric(user, 4, 36, 84) / 100));
+    const total = LocalUserImpressionsBuilder.seededMetric(user, 19, 60, 220);
+    const repeat = Math.floor(total * (LocalUserImpressionsBuilder.seededMetric(user, 4, 36, 84) / 100));
     return `${repeat}`;
   }
 
@@ -528,7 +528,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return DemoUserImpressionsBuilder.seededMetric(user, 32, 90, 520);
+    return LocalUserImpressionsBuilder.seededMetric(user, 32, 90, 520);
   }
 
   private resolveHostVibeBadgeItems(user: UserDto): string[] {
@@ -536,9 +536,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    const vibe = this.vibeCategories[DemoUserImpressionsBuilder.seededMetric(user, 5, 0, this.vibeCategories.length - 1)];
+    const vibe = this.vibeCategories[LocalUserImpressionsBuilder.seededMetric(user, 5, 0, this.vibeCategories.length - 1)];
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `${vibe} ${DemoUserImpressionsBuilder.seededMetric(user, 20, 18, 86)}%`,
+      `${vibe} ${LocalUserImpressionsBuilder.seededMetric(user, 20, 18, 86)}%`,
       this.vibeIcons
     ));
   }
@@ -561,7 +561,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       return this.sortImpressionsBadgeItems(loaded);
     }
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `Sports ${DemoUserImpressionsBuilder.seededMetric(user, 21, 8, 48)}%, Road Trip ${DemoUserImpressionsBuilder.seededMetric(user, 22, 6, 36)}%`,
+      `Sports ${LocalUserImpressionsBuilder.seededMetric(user, 21, 8, 48)}%, Road Trip ${LocalUserImpressionsBuilder.seededMetric(user, 22, 6, 36)}%`,
       this.categoryIcons
     ));
   }
@@ -579,7 +579,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    const attended = DemoUserImpressionsBuilder.seededMetric(user, 23, 4, 96);
+    const attended = LocalUserImpressionsBuilder.seededMetric(user, 23, 4, 96);
     return Math.max(0, 100 - attended);
   }
 
@@ -588,7 +588,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return DemoUserImpressionsBuilder.seededMetric(user, 24, 80, 460);
+    return LocalUserImpressionsBuilder.seededMetric(user, 24, 80, 460);
   }
 
   private resolveMemberReturneesSummary(user: UserDto): string {
@@ -597,7 +597,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       return `${loaded}`;
     }
     const total = this.resolveMemberPeopleMet(user);
-    const repeat = Math.floor(total * (DemoUserImpressionsBuilder.seededMetric(user, 33, 18, 72) / 100));
+    const repeat = Math.floor(total * (LocalUserImpressionsBuilder.seededMetric(user, 33, 18, 72) / 100));
     return `${repeat}`;
   }
 
@@ -606,10 +606,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    const first = this.vibeCategories[DemoUserImpressionsBuilder.seededMetric(user, 25, 0, this.vibeCategories.length - 1)];
-    const second = this.vibeCategories[DemoUserImpressionsBuilder.seededMetric(user, 26, 0, this.vibeCategories.length - 1)];
+    const first = this.vibeCategories[LocalUserImpressionsBuilder.seededMetric(user, 25, 0, this.vibeCategories.length - 1)];
+    const second = this.vibeCategories[LocalUserImpressionsBuilder.seededMetric(user, 26, 0, this.vibeCategories.length - 1)];
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `${first} ${DemoUserImpressionsBuilder.seededMetric(user, 27, 18, 74)}%, ${second} ${DemoUserImpressionsBuilder.seededMetric(user, 28, 12, 62)}%`,
+      `${first} ${LocalUserImpressionsBuilder.seededMetric(user, 27, 18, 74)}%, ${second} ${LocalUserImpressionsBuilder.seededMetric(user, 28, 12, 62)}%`,
       this.vibeIcons
     ));
   }
@@ -636,7 +636,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       return this.sortImpressionsBadgeItems(loaded);
     }
     return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `Outdoors ${DemoUserImpressionsBuilder.seededMetric(user, 29, 40, 95)}%, Games ${DemoUserImpressionsBuilder.seededMetric(user, 30, 35, 95)}%, Culture ${DemoUserImpressionsBuilder.seededMetric(user, 31, 25, 90)}%`,
+      `Outdoors ${LocalUserImpressionsBuilder.seededMetric(user, 29, 40, 95)}%, Games ${LocalUserImpressionsBuilder.seededMetric(user, 30, 35, 95)}%, Culture ${LocalUserImpressionsBuilder.seededMetric(user, 31, 25, 90)}%`,
       this.categoryIcons
     ));
   }

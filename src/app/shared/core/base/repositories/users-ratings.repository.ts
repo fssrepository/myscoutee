@@ -9,7 +9,7 @@ import type {
 import type { RateRecord } from '../models/rate.model';
 import {
   USER_RATES_OUTBOX_TABLE_NAME
-} from '../../demo/models/users.model';
+} from '../models/users.model';
 
 export abstract class BaseUsersRatingsRepository {
   protected abstract readonly memoryDb: AppMemoryDb;

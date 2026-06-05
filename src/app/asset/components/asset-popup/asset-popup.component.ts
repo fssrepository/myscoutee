@@ -16,21 +16,11 @@ import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.co
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 import {
-  BasketComponent,
-  CounterBadgePipe,
-  InfoCardComponent,
-  ProgressIndicatorComponent,
-  SmartListComponent,
-  type BasketChip,
-  type InfoCardMenuActionEvent,
-  type ListQuery,
-  type SingleRowData,
-  type SmartListConfig,
-  type SmartListStateChange,
-  ConfirmationDialogComponent
+  BasketComponent, CounterBadgePipe, InfoCardComponent, ProgressIndicatorComponent, SmartListComponent, type BasketChip, type InfoCardMenuActionEvent, type ListQuery, type SingleRowData, type SmartListConfig, type SmartListStateChange, ConfirmationDialogComponent
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { I18nPipe, I18nService } from '../../../shared/i18n';
+import { I18nService } from '../../../shared/core';
+import { I18nPipe } from '../../../shared/ui';
 
 interface AssetTicketListFilters {
   userId?: string;

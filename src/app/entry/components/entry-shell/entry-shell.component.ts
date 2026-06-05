@@ -6,16 +6,16 @@ import {
   LandingContentService,
   USERS_LOAD_CONTEXT_KEY,
   UsersService,
-  type DemoUserListItemDto,
+  type UserSelectorListItemDto,
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
-import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
+import type { LocalBootstrapProgressStage } from '../../../shared/core/local';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
 import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { I18nService } from '../../../shared/i18n';
+import { I18nService } from '../../../shared/core';
 import type { InfoCardData } from '../../../shared/ui';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
@@ -83,11 +83,11 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showUserSelector = false;
-  protected demoSelectorUsers: DemoUserListItemDto[] = [];
+  protected demoSelectorUsers: UserSelectorListItemDto[] = [];
   protected demoSelectorLoading = false;
   protected demoSelectorLoadingProgress = 0;
   protected demoSelectorLoadingLabel = 'Preparing demo data';
-  protected demoSelectorLoadingStage: DemoBootstrapProgressStage = 'selector';
+  protected demoSelectorLoadingStage: LocalBootstrapProgressStage = 'selector';
   protected demoSelectorErrorMessage = '';
   protected demoSelectorSubmitting = false;
   protected demoSelectorSelectedUserId = '';
@@ -515,7 +515,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     });
   }
 
-  private isNewDemoProfile(user: DemoUserListItemDto): boolean {
+  private isNewDemoProfile(user: UserSelectorListItemDto): boolean {
     const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
     const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
     const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));

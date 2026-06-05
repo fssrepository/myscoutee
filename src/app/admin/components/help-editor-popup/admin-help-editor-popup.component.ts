@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
-import { I18nService } from '../../../shared/i18n/i18n.service';
+import { I18nService } from '../../../shared/core';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
