@@ -361,7 +361,7 @@
 }
 
 .user-menu-header-admin {
-  padding-right: 4.95rem;
+  padding-right: 0.95rem;
 }
 
 .user-menu-header.status-public {
@@ -565,10 +565,12 @@
 
 .user-menu-header-admin .user-meta-compact {
   align-items: flex-start;
-  align-self: center;
+  align-self: stretch;
+  justify-content: center;
   text-align: left;
   gap: 0.24rem;
-  padding-right: 0.2rem;
+  min-height: 96px;
+  padding: 2.05rem 0 0 0;
 }
 
 .user-name {
@@ -598,6 +600,7 @@
   justify-content: flex-start;
   max-width: 100%;
   line-height: 1.18;
+  padding-right: 2.45rem;
 }
 
 .user-city-line .mat-icon {
