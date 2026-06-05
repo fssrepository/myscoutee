@@ -233,6 +233,13 @@ export class AdminWorkspaceService {
       return false;
     }
     try {
+      if (this.isFirebaseAdminMode) {
+        const session = await this.sessionService.ensureSession();
+        if (session?.kind !== 'firebase') {
+          this.clearAdminSession();
+          return false;
+        }
+      }
       if (this.usesHttpAdminApi && !this.isFirebaseAdminMode) {
         this.sessionService.startDemoSession(adminId);
       }
@@ -874,6 +881,7 @@ export class AdminWorkspaceService {
       about,
       images,
       profileStatus: 'public',
+      admin: true,
       activities: {
         game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
         chat: 1,

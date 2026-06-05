@@ -50,6 +50,10 @@ export class AppLocationService {
       if (!activeUser) {
         return;
       }
+      if (activeUser.admin === true) {
+        this.stopCoordinateWatch();
+        return;
+      }
       this.runLocationSyncFlow(activeUserId, activeUser);
     });
   }
@@ -123,7 +127,7 @@ export class AppLocationService {
   }
 
   private runLocationSyncFlow(userId: string, activeUser: UserDto): void {
-    if (!activeUser?.id?.trim()) {
+    if (!activeUser?.id?.trim() || activeUser.admin === true) {
       return;
     }
     if (activeUser.profileStatus === 'onboarding') {
@@ -307,7 +311,7 @@ export class AppLocationService {
     coordinates: LocationCoordinates
   ): void {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
-    if (this.usersService.demoModeEnabled || !activeUser?.id?.trim() || !normalizedCoordinates) {
+    if (this.usersService.demoModeEnabled || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
       return;
     }
 
@@ -323,7 +327,7 @@ export class AppLocationService {
     userId: string,
     fallbackUser: UserDto
   ): Promise<void> {
-    if (this.usersService.demoModeEnabled || !fallbackUser?.id?.trim() || this.syncingUserIds.has(userId)) {
+    if (this.usersService.demoModeEnabled || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
       return;
     }
 
@@ -341,6 +345,9 @@ export class AppLocationService {
     this.syncingUserIds.add(userId);
     try {
       const currentUser = this.resolveTrackedUser(userId) ?? fallbackUser;
+      if (currentUser.admin === true) {
+        return;
+      }
       const savedUser = await this.httpUsersService.saveUserProfile({
         ...currentUser,
         locationCoordinates: normalizedCoordinates
