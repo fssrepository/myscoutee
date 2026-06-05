@@ -1,11 +1,11 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-5a5ee03637d5-20260605014906";
-const BUILD_ID = "5a5ee03637d5-20260605014906";
+const CACHE_VERSION = "build-922347429b0a-20260605115156";
+const BUILD_ID = "922347429b0a-20260605115156";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
-const PRECACHE_URLS = [
+const PRECACHE_CORE_URLS = [
   './',
   './index.html',
   './manifest.webmanifest',
@@ -20,6 +20,127 @@ const PRECACHE_URLS = [
   './assets/i18n/en.json',
   './assets/i18n/hu.json'
 ];
+const PRECACHE_BUILD_URLS = [
+  "./chunk-25NDO3HA.js",
+  "./chunk-2HC4JZT7.js",
+  "./chunk-2IIDJAS6.js",
+  "./chunk-2XJRZXYO.js",
+  "./chunk-3QOL7Y2B.js",
+  "./chunk-465L3SCW.js",
+  "./chunk-4LK3ISK2.js",
+  "./chunk-4P5V5UVW.js",
+  "./chunk-4QSWEVSB.js",
+  "./chunk-6C4AGIWW.js",
+  "./chunk-6J24YOV4.js",
+  "./chunk-6RZKZRLX.js",
+  "./chunk-6UDDMYQW.js",
+  "./chunk-6XAQLXU4.js",
+  "./chunk-6YVZEJ5T.js",
+  "./chunk-7JWTFO2Q.js",
+  "./chunk-7TJ46QPF.js",
+  "./chunk-AKU6O2MV.js",
+  "./chunk-DWPEE34Q.js",
+  "./chunk-E2CMUCJN.js",
+  "./chunk-EISOP244.js",
+  "./chunk-EZO6RMZP.js",
+  "./chunk-FQXAE4TG.js",
+  "./chunk-G4HSNVCY.js",
+  "./chunk-HEYJDJSE.js",
+  "./chunk-HLNUPO2K.js",
+  "./chunk-HP6BWQ2U.js",
+  "./chunk-INRKNFIH.js",
+  "./chunk-KH3YOA4N.js",
+  "./chunk-KYNJMGUD.js",
+  "./chunk-LMRYUL4L.js",
+  "./chunk-M3LXJW5H.js",
+  "./chunk-MEGZUTPF.js",
+  "./chunk-MQN6LTSF.js",
+  "./chunk-NCH35MZO.js",
+  "./chunk-O53I6E4G.js",
+  "./chunk-OBZGO6AA.js",
+  "./chunk-OW2ZX2RX.js",
+  "./chunk-R4DJQS6B.js",
+  "./chunk-TNBKBUXB.js",
+  "./chunk-UEGVYLGQ.js",
+  "./chunk-UQAFJP4M.js",
+  "./chunk-UXMQMNGP.js",
+  "./chunk-VEL2SHBS.js",
+  "./chunk-XDWBGEZF.js",
+  "./chunk-XGNOZ5LW.js",
+  "./chunk-XO2HXENS.js",
+  "./chunk-XOFWMES3.js",
+  "./chunk-Y2WQ5MX4.js",
+  "./chunk-Y3RDBVHB.js",
+  "./chunk-YAWER5IQ.js",
+  "./chunk-ZIYRFVSA.js",
+  "./main-GGFJ6AQJ.js",
+  "./media/material-icons-JLIDJUWE.woff",
+  "./media/material-icons-LEZCGFVT.woff2",
+  "./media/material-icons-outlined-7BWLPMFK.woff2",
+  "./media/material-icons-outlined-PCUTWIDZ.woff",
+  "./media/material-icons-round-SLOHZIXU.woff",
+  "./media/material-icons-round-WEHMTW23.woff2",
+  "./media/material-icons-sharp-HCCYMPXE.woff2",
+  "./media/material-icons-sharp-U4OLFP3G.woff",
+  "./media/material-icons-two-tone-LCGWGE2N.woff",
+  "./media/material-icons-two-tone-M5N5K6F5.woff2",
+  "./media/roboto-cyrillic-300-normal-LEZQ3MKH.woff",
+  "./media/roboto-cyrillic-300-normal-LQYCE6GI.woff2",
+  "./media/roboto-cyrillic-400-normal-JZANGCVN.woff",
+  "./media/roboto-cyrillic-400-normal-V3H5IIDP.woff2",
+  "./media/roboto-cyrillic-500-normal-P7R5B5PS.woff",
+  "./media/roboto-cyrillic-500-normal-RHUEYUET.woff2",
+  "./media/roboto-cyrillic-ext-300-normal-7ILTRYFN.woff",
+  "./media/roboto-cyrillic-ext-300-normal-D7ENCFLY.woff2",
+  "./media/roboto-cyrillic-ext-400-normal-37DU6NPA.woff",
+  "./media/roboto-cyrillic-ext-400-normal-J2JSVX6B.woff2",
+  "./media/roboto-cyrillic-ext-500-normal-CDI2P3CX.woff2",
+  "./media/roboto-cyrillic-ext-500-normal-LPNI233Q.woff",
+  "./media/roboto-greek-300-normal-7NUG2XNM.woff2",
+  "./media/roboto-greek-300-normal-XWVECM7G.woff",
+  "./media/roboto-greek-400-normal-S2O6A3MB.woff",
+  "./media/roboto-greek-400-normal-VPVGP5YU.woff2",
+  "./media/roboto-greek-500-normal-2BKWU2PG.woff",
+  "./media/roboto-greek-500-normal-XWJR77VV.woff2",
+  "./media/roboto-greek-ext-300-normal-P3ERUMZ4.woff",
+  "./media/roboto-greek-ext-300-normal-UB4UOTHV.woff2",
+  "./media/roboto-greek-ext-400-normal-AFHRTL5D.woff",
+  "./media/roboto-greek-ext-400-normal-IONFYYIZ.woff2",
+  "./media/roboto-greek-ext-500-normal-EPUYIZBL.woff",
+  "./media/roboto-greek-ext-500-normal-UMWLP6CJ.woff2",
+  "./media/roboto-latin-300-normal-OEKYIRZ4.woff",
+  "./media/roboto-latin-300-normal-ZNJYGCVX.woff2",
+  "./media/roboto-latin-400-normal-LOX3CHMS.woff2",
+  "./media/roboto-latin-400-normal-TWCS3G4O.woff",
+  "./media/roboto-latin-500-normal-D6YDQ3CR.woff2",
+  "./media/roboto-latin-500-normal-HOJMQAXQ.woff",
+  "./media/roboto-latin-ext-300-normal-H24XD56Q.woff",
+  "./media/roboto-latin-ext-300-normal-ROZM7SZ2.woff2",
+  "./media/roboto-latin-ext-400-normal-DKWFTT22.woff",
+  "./media/roboto-latin-ext-400-normal-JLTDD7L3.woff2",
+  "./media/roboto-latin-ext-500-normal-JYCUQIKH.woff2",
+  "./media/roboto-latin-ext-500-normal-QWBPCWM4.woff",
+  "./media/roboto-math-300-normal-6WXYN4KX.woff2",
+  "./media/roboto-math-300-normal-LOKQ5YA5.woff",
+  "./media/roboto-math-400-normal-DRZ46ZLW.woff",
+  "./media/roboto-math-400-normal-M62DA447.woff2",
+  "./media/roboto-math-500-normal-NNN526L6.woff",
+  "./media/roboto-math-500-normal-X2DSP56O.woff2",
+  "./media/roboto-symbols-300-normal-EOLMKP7X.woff2",
+  "./media/roboto-symbols-300-normal-GV2F4YAV.woff",
+  "./media/roboto-symbols-400-normal-RS3SF2FB.woff2",
+  "./media/roboto-symbols-400-normal-ZCAYNMUT.woff",
+  "./media/roboto-symbols-500-normal-CCVW4T3A.woff",
+  "./media/roboto-symbols-500-normal-USW6FYVZ.woff2",
+  "./media/roboto-vietnamese-300-normal-FARA53FV.woff",
+  "./media/roboto-vietnamese-300-normal-JVDCXID7.woff2",
+  "./media/roboto-vietnamese-400-normal-KACKQ7ZL.woff2",
+  "./media/roboto-vietnamese-400-normal-R3IJFZXV.woff",
+  "./media/roboto-vietnamese-500-normal-SNWSONII.woff",
+  "./media/roboto-vietnamese-500-normal-VJX2WMYG.woff2",
+  "./styles-LXW2PNP6.css"
+];
+const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
 self.addEventListener('install', event => {
   self.skipWaiting();
@@ -68,6 +189,10 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin === self.location.origin) {
+    if (isLandingContentRequest(url)) {
+      event.respondWith(staleWhileRevalidate(request, API_CACHE, matchAnyLandingContent, event));
+      return;
+    }
     if (isApiCacheable(url)) {
       event.respondWith(networkFirst(request, API_CACHE));
       return;
@@ -112,6 +237,10 @@ function isApiCacheable(url) {
   return url.pathname.startsWith('/api/auth/me') || url.pathname.startsWith('/api/assets/tickets');
 }
 
+function isLandingContentRequest(url) {
+  return url.pathname === '/api/landing/content';
+}
+
 function isStaticAsset(url, request) {
   if (url.pathname.endsWith('/app-sw.js')) {
     return false;
@@ -153,8 +282,45 @@ async function networkFirst(request, cacheName) {
         return fallback;
       }
     }
-    throw new Error('Network unavailable and no cached response.');
+    return unavailableResponse(request);
   }
+}
+
+async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
+  const refresh = fetchAndCache(request, cache).catch(() => null);
+  event?.waitUntil(refresh.then(() => undefined));
+  if (cached) {
+    return cached;
+  }
+  const fallback = fallbackMatcher ? await fallbackMatcher(cache, request) : null;
+  if (fallback) {
+    return fallback;
+  }
+  return await refresh || unavailableResponse(request);
+}
+
+async function fetchAndCache(request, cache) {
+  const response = await fetch(request, { cache: 'no-store' });
+  if (response && (response.ok || response.type === 'opaque')) {
+    cache.put(request, response.clone());
+  }
+  return response;
+}
+
+async function matchAnyLandingContent(cache, request) {
+  const exact = await cache.match(request);
+  if (exact) {
+    return exact;
+  }
+  const keys = await cache.keys();
+  for (const key of keys) {
+    if (isLandingContentRequest(new URL(key.url))) {
+      return cache.match(key);
+    }
+  }
+  return null;
 }
 
 async function cacheFirst(request, cacheName) {
@@ -163,11 +329,35 @@ async function cacheFirst(request, cacheName) {
   if (cached) {
     return cached;
   }
-  const response = await fetch(request);
-  if (response && (response.ok || response.type === 'opaque')) {
-    cache.put(request, response.clone());
+  try {
+    const response = await fetch(request);
+    if (response && (response.ok || response.type === 'opaque')) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return unavailableResponse(request);
   }
-  return response;
+}
+
+function unavailableResponse(request) {
+  if (request.mode === 'navigate') {
+    return new Response('<!doctype html><title>MyScoutee</title><body>No network</body>', {
+      status: 503,
+      statusText: 'Service Unavailable',
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store'
+      }
+    });
+  }
+  return new Response('', {
+    status: 503,
+    statusText: 'Service Unavailable',
+    headers: {
+      'Cache-Control': 'no-store'
+    }
+  });
 }
 
 function parsePushPayload(event) {
