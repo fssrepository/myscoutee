@@ -5,7 +5,7 @@
     }
     <aside class="user-menu-panel" [class.open]="ui.open" [class.is-covered]="isCoveredByAssetPopup()">
       @if (isAdminMode()) {
-        <div class="user-menu-header status-friends">
+        <div class="user-menu-header user-menu-header-admin status-friends">
           <button
             #settingsButton
             type="button"
@@ -31,7 +31,7 @@
           @if (ui.settingsOpen) {
             <app-navigator-settings-menu></app-navigator-settings-menu>
           }
-          <div class="user-header-main">
+          <div class="user-header-main user-header-main-admin">
             <div class="avatar-stack">
               <span
                 class="user-avatar user-avatar-large"
@@ -49,18 +49,18 @@
                 <span>ADMIN</span>
               </span>
             </div>
-          <div class="user-meta user-meta-compact">
-            <span class="user-name">{{ user.name }}</span>
-            <span class="user-city-line">
-              <mat-icon>admin_panel_settings</mat-icon>
-              <span>Admin workspace</span>
-            </span>
+            <div class="user-meta user-meta-compact">
+              <span class="user-name">{{ user.name }}</span>
+              <span class="user-city-line">
+                <mat-icon>admin_panel_settings</mat-icon>
+                <span>Admin workspace</span>
+              </span>
+            </div>
           </div>
-        </div>
-        <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open admin profile" (click)="openAdminProfileShortcut($event)">
-          <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
-          <mat-icon>edit</mat-icon>
-        </button>
+          <button #profileEditorButton type="button" class="header-open-cue" [disabled]="!isOnline()" aria-label="Open admin profile" (click)="openAdminProfileShortcut($event)">
+            <span class="navigator-action-ripple" matRipple [matRippleTrigger]="profileEditorButton" aria-hidden="true"></span>
+            <mat-icon>edit</mat-icon>
+          </button>
         </div>
         <div class="user-menu-content">
           @if (!isOnline()) {

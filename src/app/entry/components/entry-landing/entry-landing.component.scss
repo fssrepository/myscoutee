@@ -40,7 +40,7 @@
 
 .entry-preview-badge {
   position: absolute;
-  top: -1.18rem;
+  top: -1.25rem;
   right: -0.32rem;
   z-index: 8;
   min-height: 22px;
@@ -59,13 +59,8 @@
   line-height: 1;
   text-transform: uppercase;
   white-space: nowrap;
-  cursor: pointer;
   font-family: inherit;
-}
-
-.entry-preview-badge:focus-visible {
-  outline: 2px solid rgba(133, 93, 17, 0.42);
-  outline-offset: 2px;
+  pointer-events: none;
 }
 
 .entry-version-label {
@@ -520,8 +515,7 @@
 
 .entry-carousel-arrow {
   position: absolute;
-  top: calc(50% - 2.05rem);
-  transform: translateY(-50%);
+  top: calc(50% - 3.36rem);
   z-index: 2;
   width: 42px;
   height: 42px;
@@ -539,7 +533,6 @@
     background-color 0.18s ease,
     border-color 0.18s ease,
     color 0.18s ease,
-    transform 0.18s ease,
     box-shadow 0.18s ease;
 }
 
@@ -548,11 +541,6 @@
   border-color: rgba(64, 101, 169, 0.36);
   color: #4e43d9;
   box-shadow: 0 12px 24px rgba(29, 52, 91, 0.2);
-  transform: translateY(-50%);
-}
-
-.entry-carousel-arrow:active {
-  transform: translateY(-50%) scale(0.96);
 }
 
 .entry-carousel-arrow:focus-visible,
@@ -894,7 +882,7 @@
 }
 
 .entry-ideas-carousel-arrow {
-  top: calc(50% - 1.05rem);
+  top: calc(50% - 2.36rem);
 }
 
 .entry-ideas-carousel-dots {
@@ -1789,11 +1777,12 @@
     top: -1.02rem;
     right: -0.22rem;
     max-width: min(48vw, 122px);
-    min-height: 20px;
+    min-height: 16px;
     padding: 0.02rem 0.34rem 0.02rem 0.46rem;
-    font-size: 0.56rem;
+    font-size: 0.65rem;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 16px;
   }
 
   .entry-preview-badge span:first-child {
@@ -1860,7 +1849,7 @@
   }
 
   .entry-carousel-arrow {
-    top: calc(50% - 2.15rem);
+    top: calc(50% - 3.28rem);
     width: 36px;
     height: 36px;
     background: rgba(255, 255, 255, 0.88);
@@ -1946,7 +1935,7 @@
   }
 
   .entry-ideas-carousel-arrow {
-    top: calc(50% - 1.3rem);
+    top: calc(50% - 2.43rem);
   }
 
   .entry-ideas-carousel .entry-carousel-arrow-prev {

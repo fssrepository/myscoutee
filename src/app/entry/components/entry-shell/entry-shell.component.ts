@@ -548,17 +548,35 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }
 
     return new Promise<LocationCoordinates | null>(resolve => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (coordinates: LocationCoordinates | null): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        resolve(coordinates);
+      };
+
+      timeoutId = setTimeout(
+        () => finish(null),
+        EntryShellComponent.LOCATION_REQUEST_TIMEOUT_MS + 500
+      );
+
       navigator.geolocation.getCurrentPosition(
         position => {
           const latitude = Number(position.coords.latitude);
           const longitude = Number(position.coords.longitude);
           if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            resolve(null);
+            finish(null);
             return;
           }
-          resolve({ latitude, longitude });
+          finish({ latitude, longitude });
         },
-        () => resolve(null),
+        () => finish(null),
         {
           enableHighAccuracy: false,
           timeout: EntryShellComponent.LOCATION_REQUEST_TIMEOUT_MS,
@@ -882,8 +900,10 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.grantedLocationEligibilityPromise = this.resolveBrowserLocationAccess(requestToken)
       .finally(() => {
         if (requestToken === this.grantedLocationEligibilityRequestToken) {
-          this.grantedLocationEligibilityPromise = null;
-          this.syncEntryAuthGateState();
+          this.ngZone.run(() => {
+            this.grantedLocationEligibilityPromise = null;
+            this.syncEntryAuthGateState();
+          });
         }
       });
     this.deferEntryAuthLocationRequiredLabel('Checking location');
@@ -904,8 +924,11 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
     try {
-      await this.queryGeolocationPermissionState();
+      const permissionState = await this.queryGeolocationPermissionState();
       if (requestToken !== this.grantedLocationEligibilityRequestToken) {
+        return;
+      }
+      if (permissionState !== 'granted') {
         return;
       }
 

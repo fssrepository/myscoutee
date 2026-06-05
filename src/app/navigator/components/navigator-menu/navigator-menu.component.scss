@@ -360,6 +360,10 @@
   background: linear-gradient(180deg, rgba(227, 238, 255, 0.9), rgba(248, 250, 255, 0.96));
 }
 
+.user-menu-header-admin {
+  padding-right: 4.95rem;
+}
+
 .user-menu-header.status-public {
   background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
   border-bottom-color: rgba(47, 143, 102, 0.34);
@@ -448,6 +452,18 @@
   align-items: center;
   gap: 0.82rem;
   min-width: 0;
+}
+
+.user-header-main-admin {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.95rem;
+  max-width: 100%;
+}
+
+.user-header-main-admin .avatar-stack {
+  justify-self: start;
 }
 
 .avatar-stack {
@@ -547,11 +563,26 @@
   min-width: 0;
 }
 
+.user-menu-header-admin .user-meta-compact {
+  align-items: flex-start;
+  align-self: center;
+  text-align: left;
+  gap: 0.24rem;
+  padding-right: 0.2rem;
+}
+
 .user-name {
   font-size: clamp(1.3rem, 2.4vw, 1.9rem);
   line-height: 1.12;
   font-weight: 800;
   color: #22324a;
+}
+
+.user-menu-header-admin .user-name {
+  display: block;
+  max-width: 100%;
+  font-size: 1.28rem;
+  overflow-wrap: anywhere;
 }
 
 .user-city-line {
@@ -561,6 +592,12 @@
   font-size: 1.02rem;
   color: rgba(27, 45, 70, 0.78);
   font-weight: 700;
+}
+
+.user-menu-header-admin .user-city-line {
+  justify-content: flex-start;
+  max-width: 100%;
+  line-height: 1.18;
 }
 
 .user-city-line .mat-icon {
