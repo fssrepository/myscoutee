@@ -20,8 +20,8 @@ import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.in
 import type { LocationCoordinates } from '../../base/interfaces/location.interface';
 import {
   LocalUserFilterPreferencesBuilder,
-  LocalUserImpressionsBuilder,
-  LocalUserMenuCountersBuilder
+  LocalUserMenuCountersBuilder,
+  LocalUserRealtimeSnapshotBuilder
 } from '../builders';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
@@ -178,7 +178,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     }
     const counterOverrides = loadedUser ? this.buildInitialMenuCounterOverrides(loadedUser) : null;
     const user = loadedUser
-      ? LocalUserImpressionsBuilder.withResolvedImpressions(this.withSeededActivityCounts(loadedUser, counterOverrides))
+      ? this.withSeededActivityCounts(loadedUser, counterOverrides)
       : null;
     const allUsers = this.usersRepository.queryGameStackUsers(normalizedUserId);
     const filterCount = allUsers.length;
@@ -207,10 +207,13 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!loadedUser) {
       return null;
     }
-    const user = LocalUserImpressionsBuilder.withResolvedImpressions(loadedUser);
     const nextCursor = this.resolveRealtimeCursor(normalizedUserId, this.parseRealtimeCursor(cursor));
-    const counters = LocalUserImpressionsBuilder.buildSimulatedRealtimeCounters(user, nextCursor);
-    const impressions = LocalUserImpressionsBuilder.buildSimulatedRealtimeImpressions(user.impressions, counters, nextCursor);
+    const counters = LocalUserRealtimeSnapshotBuilder.buildSimulatedRealtimeCounters(loadedUser, nextCursor);
+    const impressions = LocalUserRealtimeSnapshotBuilder.buildSimulatedRealtimeImpressions(
+      loadedUser.impressions,
+      counters,
+      nextCursor
+    );
     return {
       userId: normalizedUserId,
       counters,

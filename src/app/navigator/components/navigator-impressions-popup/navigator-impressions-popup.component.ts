@@ -3,12 +3,12 @@ import { Component, HostListener, OnDestroy, computed, effect, inject, signal } 
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { LocalUserImpressionsBuilder } from '../../../shared/core/local/builders';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   AppContext,
   type UserDto,
+  type UserImpressionsDto,
   type UserImpressionsSectionDto
 } from '../../../shared/core';
 import {
@@ -87,10 +87,6 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   private readonly appCtx = inject(AppContext);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly vibeCategories = APP_STATIC_DATA.vibeCategories;
-  private readonly vibeIcons = APP_STATIC_DATA.vibeIcons;
-  private readonly categoryIcons = APP_STATIC_DATA.categoryIcons;
-  private readonly memberTraitIcons = APP_STATIC_DATA.memberTraitIcons;
   private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
   private readonly pulseFlagsRef = signal<NavigatorImpressionsPulseFlags>({
     ...NavigatorImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
@@ -223,9 +219,40 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private hasUserImpressionsData(user: UserDto): boolean {
-    return LocalUserImpressionsBuilder.hasImpressionsData(
+    return this.hasImpressionsData(
       this.appCtx.getUserImpressions(user.id) ?? user.impressions
     );
+  }
+
+  private hasImpressionsData(impressions: UserImpressionsDto | undefined): boolean {
+    return this.hasImpressionsSectionData(impressions?.host)
+      || this.hasImpressionsSectionData(impressions?.member);
+  }
+
+  private hasImpressionsSectionData(section: UserImpressionsSectionDto | undefined): boolean {
+    if (!section) {
+      return false;
+    }
+    const hasPositiveMetric = [
+      section.averageRating,
+      section.peopleMet,
+      section.totalEvents,
+      section.repeatCount,
+      section.noShowCount
+    ].some(value => Number.isFinite(value) && Number(value) > 0);
+    const hasBadges = [
+      section.vibeBadges,
+      section.personalityBadges,
+      section.categoryBadges
+    ].some(items => (items ?? []).some(item => item.trim().length > 0));
+    const hasTraits = (section.personalityTraits ?? []).some(trait =>
+      `${trait.id ?? trait.label ?? ''}`.trim().length > 0
+      && (
+        (Number.isFinite(trait.percent) && Number(trait.percent) > 0)
+        || (Number.isFinite(trait.evidenceCount) && Number(trait.evidenceCount) > 0)
+      )
+    );
+    return hasPositiveMetric || hasBadges || hasTraits;
   }
 
   protected getHostTierColorClass(tier: string): string {
@@ -434,9 +461,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     user: UserDto,
     kind: 'host' | 'member'
   ): NavigatorImpressionsTraitCardViewModel[] {
-    const section = this.activeUserImpressionsSection(user, kind)
-      ?? LocalUserImpressionsBuilder.withResolvedImpressions(user).impressions?.[kind]
-      ?? null;
+    const section = this.activeUserImpressionsSection(user, kind);
     const cardsById = new Map<string, NavigatorImpressionsTraitCardViewModel>();
     for (const trait of section?.personalityTraits ?? []) {
       const card = this.resolveTraitCard(trait.id ?? trait.label ?? '', trait.label ?? '');
@@ -492,7 +517,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded.toFixed(1);
     }
-    return (LocalUserImpressionsBuilder.seededMetric(user, 1, 38, 50) / 10).toFixed(1);
+    return '0.0';
   }
 
   private resolveHostTotalEvents(user: UserDto): number {
@@ -500,7 +525,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return LocalUserImpressionsBuilder.seededMetric(user, 9, 12, 80);
+    return 0;
   }
 
   private resolveHostAttendanceNoShowSummary(user: UserDto): string {
@@ -508,9 +533,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const hostAttendanceTotal = this.resolveHostTotalEvents(user) * LocalUserImpressionsBuilder.seededMetric(user, 18, 8, 14);
-    const hostAttendanceAttended = Math.floor(hostAttendanceTotal * (LocalUserImpressionsBuilder.seededMetric(user, 2, 74, 96) / 100));
-    return `${Math.max(0, hostAttendanceTotal - hostAttendanceAttended)}`;
+    return '0';
   }
 
   private resolveHostRepeatSummary(user: UserDto): string {
@@ -518,9 +541,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const total = LocalUserImpressionsBuilder.seededMetric(user, 19, 60, 220);
-    const repeat = Math.floor(total * (LocalUserImpressionsBuilder.seededMetric(user, 4, 36, 84) / 100));
-    return `${repeat}`;
+    return '0';
   }
 
   private resolveHostPeopleMet(user: UserDto): number {
@@ -528,7 +549,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return LocalUserImpressionsBuilder.seededMetric(user, 32, 90, 520);
+    return 0;
   }
 
   private resolveHostVibeBadgeItems(user: UserDto): string[] {
@@ -536,11 +557,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    const vibe = this.vibeCategories[LocalUserImpressionsBuilder.seededMetric(user, 5, 0, this.vibeCategories.length - 1)];
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `${vibe} ${LocalUserImpressionsBuilder.seededMetric(user, 20, 18, 86)}%`,
-      this.vibeIcons
-    ));
+    return [];
   }
 
   private resolveHostPersonalityBadgeItems(user: UserDto): string[] {
@@ -552,7 +569,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    return this.sortImpressionsBadgeItems(['🧠 Communication 60%', '🧩 Coordination 40%']);
+    return [];
   }
 
   private resolveHostCategoryBadgeItems(user: UserDto): string[] {
@@ -560,10 +577,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `Sports ${LocalUserImpressionsBuilder.seededMetric(user, 21, 8, 48)}%, Road Trip ${LocalUserImpressionsBuilder.seededMetric(user, 22, 6, 36)}%`,
-      this.categoryIcons
-    ));
+    return [];
   }
 
   private resolveMemberTotalEvents(user: UserDto): number {
@@ -571,7 +585,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return this.resolveHostTotalEvents(user);
+    return 0;
   }
 
   private resolveMemberNoShowCount(user: UserDto): number {
@@ -579,8 +593,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    const attended = LocalUserImpressionsBuilder.seededMetric(user, 23, 4, 96);
-    return Math.max(0, 100 - attended);
+    return 0;
   }
 
   private resolveMemberPeopleMet(user: UserDto): number {
@@ -588,7 +601,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return loaded;
     }
-    return LocalUserImpressionsBuilder.seededMetric(user, 24, 80, 460);
+    return 0;
   }
 
   private resolveMemberReturneesSummary(user: UserDto): string {
@@ -596,9 +609,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded !== null) {
       return `${loaded}`;
     }
-    const total = this.resolveMemberPeopleMet(user);
-    const repeat = Math.floor(total * (LocalUserImpressionsBuilder.seededMetric(user, 33, 18, 72) / 100));
-    return `${repeat}`;
+    return '0';
   }
 
   private resolveMemberVibeBadgeItems(user: UserDto): string[] {
@@ -606,12 +617,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    const first = this.vibeCategories[LocalUserImpressionsBuilder.seededMetric(user, 25, 0, this.vibeCategories.length - 1)];
-    const second = this.vibeCategories[LocalUserImpressionsBuilder.seededMetric(user, 26, 0, this.vibeCategories.length - 1)];
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `${first} ${LocalUserImpressionsBuilder.seededMetric(user, 27, 18, 74)}%, ${second} ${LocalUserImpressionsBuilder.seededMetric(user, 28, 12, 62)}%`,
-      this.vibeIcons
-    ));
+    return [];
   }
 
   private resolveMemberPersonalityBadgeItems(user: UserDto): string[] {
@@ -623,11 +629,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    return this.sortImpressionsBadgeItems([
-      'psychiatry Adventurer 60%',
-      `${this.memberTraitIcons['Deep Thinker'] ?? ''} Deep Thinker 30%`.trim(),
-      `${this.memberTraitIcons['Empath'] ?? ''} Empath 10%`.trim()
-    ]);
+    return [];
   }
 
   private resolveMemberCategoryBadgeItems(user: UserDto): string[] {
@@ -635,10 +637,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     if (loaded) {
       return this.sortImpressionsBadgeItems(loaded);
     }
-    return this.sortImpressionsBadgeItems(AppUtils.withContextIconItems(
-      `Outdoors ${LocalUserImpressionsBuilder.seededMetric(user, 29, 40, 95)}%, Games ${LocalUserImpressionsBuilder.seededMetric(user, 30, 35, 95)}%, Culture ${LocalUserImpressionsBuilder.seededMetric(user, 31, 25, 90)}%`,
-      this.categoryIcons
-    ));
+    return [];
   }
 
   private hasImpressionsTopMetricsChanged(

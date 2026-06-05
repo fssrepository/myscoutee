@@ -154,7 +154,8 @@ export class LocalBootstrapService {
 
     if (this.readyUserIds.has(normalizedUserId)) {
       const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
-      if (filterPreferencesChanged || activityCountersChanged) {
+      const impressionsChanged = this.usersRepository.stampSeededImpressionsForUser(normalizedUserId);
+      if (filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
         onProgress?.(localBootstrapProgressStep('sessionIndexedDb'));
         await this.usersRepository.flushToIndexedDb();
         await this.waitForUiYield();
@@ -173,7 +174,8 @@ export class LocalBootstrapService {
       this.eventsRepository.queryItemsByUser(normalizedUserId)
     );
     const activityCountersChanged = this.usersRepository.stampSeededActivityCountsForUser(normalizedUserId);
-    if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged) {
+    const impressionsChanged = this.usersRepository.stampSeededImpressionsForUser(normalizedUserId);
+    if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
       onProgress?.(localBootstrapProgressStep('sessionIndexedDb'));
       await this.usersRepository.flushToIndexedDb();
       await this.waitForUiYield();

@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import {
   AppContext,
   HelpCenterService,
+  RouteIntervalSchedulerService,
   SessionService,
   UsersService,
   type ActivityMemberOwnerType,
@@ -61,6 +62,7 @@ export interface NavigatorProfileViewTarget {
   providedIn: 'root'
 })
 export class NavigatorService {
+  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -73,6 +75,7 @@ export class NavigatorService {
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
@@ -90,9 +93,9 @@ export class NavigatorService {
   private readonly contactsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
   private hydrationRequestVersion = 0;
-  private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
+  private stopUserRealtimeLongPollInterval: (() => void) | null = null;
   private userRealtimeLongPollInFlight = false;
-  private userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  private userRealtimeLongPollActiveIntervalKey = '';
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
@@ -747,27 +750,25 @@ export class NavigatorService {
   }
 
   private startUserRealtimeLongPoll(): void {
-    const intervalMs = this.resolveUserRealtimeLongPollIntervalMs();
-    if (this.userRealtimeLongPollTimer && this.userRealtimeLongPollActiveIntervalMs === intervalMs) {
+    const fallbackIntervalMs = this.resolveUserRealtimeLongPollIntervalMs();
+    const intervalKey = `${NavigatorService.USER_REALTIME_LONG_POLL_ROUTE}:${fallbackIntervalMs}`;
+    if (this.stopUserRealtimeLongPollInterval && this.userRealtimeLongPollActiveIntervalKey === intervalKey) {
       return;
     }
-    if (this.userRealtimeLongPollTimer) {
-      clearInterval(this.userRealtimeLongPollTimer);
-      this.userRealtimeLongPollTimer = null;
-    }
-    this.userRealtimeLongPollActiveIntervalMs = intervalMs;
-    this.userRealtimeLongPollTimer = setInterval(() => {
-      void this.runUserRealtimeLongPollTick();
-    }, intervalMs);
+    this.stopUserRealtimeLongPollInterval?.();
+    this.userRealtimeLongPollActiveIntervalKey = intervalKey;
+    this.stopUserRealtimeLongPollInterval = this.routeIntervalScheduler.startInterval(
+      NavigatorService.USER_REALTIME_LONG_POLL_ROUTE,
+      () => this.runUserRealtimeLongPollTick(),
+      { fallbackIntervalMs }
+    );
   }
 
   private stopUserRealtimeLongPoll(): void {
-    if (this.userRealtimeLongPollTimer) {
-      clearInterval(this.userRealtimeLongPollTimer);
-      this.userRealtimeLongPollTimer = null;
-    }
+    this.stopUserRealtimeLongPollInterval?.();
+    this.stopUserRealtimeLongPollInterval = null;
     this.userRealtimeLongPollInFlight = false;
-    this.userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+    this.userRealtimeLongPollActiveIntervalKey = '';
   }
 
   private resolveUserRealtimeLongPollIntervalMs(): number {

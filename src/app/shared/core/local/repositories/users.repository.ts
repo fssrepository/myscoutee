@@ -8,7 +8,12 @@ import {
   type UsersRecordCollection
 } from '../../base/models/users.model';
 import { LocalMemoryDb } from '../../base/db';
-import { LocalUserFilterPreferencesBuilder, LocalUserSeedBuilder, LocalUsersRepositoryBuilder } from '../builders';
+import {
+  LocalUserFilterPreferencesBuilder,
+  LocalUserImpressionsSeedBuilder,
+  LocalUserSeedBuilder,
+  LocalUsersRepositoryBuilder
+} from '../builders';
 import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
 import type { AppMemorySchema } from '../../base/models/memory.model';
 import { LocalChatsRepository } from './chats.repository';
@@ -90,6 +95,37 @@ export class LocalUsersRepository {
     }
     const stampedUser = this.applySeededActivityCounts(LocalUsersRepositoryBuilder.cloneUser(user));
     if (this.sameActivityCounts(user, stampedUser)) {
+      return false;
+    }
+
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [USERS_TABLE_NAME]: {
+        byId: {
+          ...currentState[USERS_TABLE_NAME].byId,
+          [normalizedUserId]: stampedUser
+        },
+        ids: [...currentState[USERS_TABLE_NAME].ids]
+      }
+    }));
+    return true;
+  }
+
+  stampSeededImpressionsForUser(userId: string): boolean {
+    this.init();
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    const table = this.memoryDb.read()[USERS_TABLE_NAME];
+    const user = table.byId[normalizedUserId];
+    if (!user) {
+      return false;
+    }
+    const stampedUser = LocalUserImpressionsSeedBuilder.withSeededImpressions(
+      LocalUsersRepositoryBuilder.cloneUser(user)
+    );
+    if (this.sameImpressions(user, stampedUser)) {
       return false;
     }
 
@@ -579,5 +615,9 @@ export class LocalUsersRepository {
       && normalizeCounter(leftEventFeedback?.removed) === normalizeCounter(rightEventFeedback?.removed)
       && normalizeCounter(left.activities.adminJobs) === normalizeCounter(right.activities.adminJobs)
       && normalizeCounter(left.activities.adminMetrics) === normalizeCounter(right.activities.adminMetrics);
+  }
+
+  private sameImpressions(left: UserDto, right: UserDto): boolean {
+    return JSON.stringify(left.impressions ?? null) === JSON.stringify(right.impressions ?? null);
   }
 }
