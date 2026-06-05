@@ -121,7 +121,7 @@ const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 5000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.075;
-const DEFAULT_MIN_DISTANCE = 24;
+const DEFAULT_MIN_DISTANCE = 16;
 controls.minDistance = DEFAULT_MIN_DISTANCE;
 controls.maxDistance = 2200;
 controls.zoomToCursor = true;
@@ -464,7 +464,7 @@ function updateForestBadges(options = {}) {
     component.forestPosition = center.clone();
 
     const memberCount = component.memberCountEstimate ?? component.nodes.length;
-    const scale = memberCount === 1 ? 5.2 : 8.5 + Math.sqrt(memberCount) * 1.35;
+    const scale = forestBadgeScale(memberCount);
     component.forestScale = scale;
 
     if (!component.forestBadge) {
@@ -498,10 +498,8 @@ function forestOverviewPositions() {
   const sortedComponents = sortedForestComponents();
   const positions = new Map();
   const mainCount = sortedComponents[0]?.memberCountEstimate ?? sortedComponents[0]?.nodes.length ?? 1;
-  const mainScale = mainCount === 1
-    ? 5.2
-    : 8.5 + Math.sqrt(mainCount) * 1.35;
-  const step = Math.max(10, mainScale * 0.64 + 8);
+  const mainScale = forestBadgeScale(mainCount);
+  const step = Math.max(13, mainScale * 0.54 + 8);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
   sortedComponents.forEach((component, index) => {
@@ -1903,7 +1901,7 @@ function projectedSpriteRadius(sprite, position, rect, minimum = 12) {
 }
 
 function currentZoomProgress() {
-  const fitDistance = Math.max(48, zoomReferenceFitDistance);
+  const fitDistance = Math.max(graphMinimumFitDistance(), zoomReferenceFitDistance);
   const nearDistance = Math.max(controls.minDistance, fitDistance * 0.18);
   const distance = camera.position.distanceTo(controls.target);
   return clamp((fitDistance - distance) / Math.max(1, fitDistance - nearDistance), 0, 1);
@@ -2298,6 +2296,7 @@ function resize() {
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
+  refreshGraphVisualSizing();
   clampViewportPanOffset();
   applyViewportOffset();
 }
@@ -2328,7 +2327,8 @@ function fitCameraToForestOverview(animateTarget) {
   updateVisibleForestComponents();
   const bounds = forestOverviewBounds();
   fitCameraToCenterRadius(bounds.center, bounds.radius, animateTarget, undefined, {
-    lockZoomIfFitted: shouldLockForestOverviewZoom()
+    lockZoomIfFitted: shouldLockForestOverviewZoom(),
+    fitPadding: 1.04
   });
 }
 
@@ -2345,10 +2345,10 @@ function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, opti
   const verticalFov = THREE.MathUtils.degToRad(camera.fov);
   const tanHalfFov = Math.tan(verticalFov / 2);
   const aspect = Math.max(0.1, camera.aspect || (viewport.fullWidth / Math.max(1, viewport.fullHeight)));
-  const fitPadding = options.fitPadding ?? 1.28;
+  const fitPadding = options.fitPadding ?? 1.12;
   const verticalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov);
   const horizontalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov * aspect * safeWidthRatio);
-  const distance = Math.max(48, verticalDistance, horizontalDistance);
+  const distance = Math.max(graphMinimumFitDistance(), verticalDistance, horizontalDistance);
   const target = center.clone();
   const defaultDirection = new THREE.Vector3(0.24, 0.34, 1);
   const fittedOrbitDistance = distance * defaultDirection.length();
@@ -3717,8 +3717,48 @@ function colorForGender(gender) {
 }
 
 function updateNodeBadgeSizing(node) {
-  node.radius = node.degree === 0 ? 1.75 : 1.5 + Math.min(0.45, Math.sqrt(node.degree) * 0.06);
-  node.badgeScale = node.radius * 2;
+  const visualScale = graphVisualScaleMultiplier();
+  node.radius = node.degree === 0 ? 2.45 : 2.1 + Math.min(0.85, Math.sqrt(node.degree) * 0.1);
+  node.badgeScale = node.radius * 2 * visualScale;
+}
+
+function refreshGraphVisualSizing() {
+  for (const node of nodes) {
+    updateNodeBadgeSizing(node);
+  }
+  updateForestBadges();
+  applyNodeState();
+}
+
+function forestBadgeScale(memberCount) {
+  const count = Math.max(1, Math.trunc(Number(memberCount) || 1));
+  const baseScale = count === 1 ? 8.8 : 11.2 + Math.sqrt(count) * 2.05;
+  return baseScale * graphVisualScaleMultiplier();
+}
+
+function graphVisualScaleMultiplier() {
+  const width = Math.max(1, window.innerWidth || 1);
+  if (width >= 1280) {
+    return 1.32;
+  }
+  if (width >= 900) {
+    return 1.22;
+  }
+  if (width >= 700) {
+    return 1.14;
+  }
+  return 1.08;
+}
+
+function graphMinimumFitDistance() {
+  const width = Math.max(1, window.innerWidth || 1);
+  if (width >= 1280) {
+    return 30;
+  }
+  if (width >= 760) {
+    return 28;
+  }
+  return 26;
 }
 
 function refreshNodeBadge(node) {
