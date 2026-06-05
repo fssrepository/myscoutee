@@ -74,11 +74,11 @@
                 }
               }
             },
-            "production-demo": {
+            "github": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.demo-github.ts"
+                  "with": "src/environments/environment.github.ts"
                 }
               ],
               "budgets": [
@@ -103,58 +103,11 @@
                 }
               }
             },
-            "demo-github": {
+            "dev": {
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.demo-github.ts"
-                }
-              ],
-              "budgets": [
-                {
-                  "type": "initial",
-                  "maximumWarning": "500kB",
-                  "maximumError": "3MB"
-                },
-                {
-                  "type": "anyComponentStyle",
-                  "maximumWarning": "20kB",
-                  "maximumError": "400kB"
-                }
-              ],
-              "outputHashing": "all",
-              "optimization": {
-                "styles": {
-                  "inlineCritical": true
-                },
-                "fonts": {
-                  "inline": true
-                }
-              }
-            },
-            "development": {
-              "outputPath": {
-                "base": "dev",
-                "browser": ""
-              },
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true
-            },
-            "demo-npm": {
-              "outputPath": {
-                "base": "dev",
-                "browser": ""
-              },
-              "optimization": false,
-              "extractLicenses": false,
-              "sourceMap": true
-            },
-            "demo-http": {
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.demo-http.ts"
+                  "with": "src/environments/environment.dev.ts"
                 }
               ],
               "outputPath": {
@@ -195,7 +148,7 @@
               }
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "dev"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
@@ -207,26 +160,20 @@
             "production": {
               "buildTarget": "myscoutee:build:production"
             },
-            "development": {
-              "buildTarget": "myscoutee:build:development"
-            },
-            "demo-npm": {
-              "buildTarget": "myscoutee:build:demo-npm"
-            },
-            "demo-http": {
-              "buildTarget": "myscoutee:build:demo-http"
+            "dev": {
+              "buildTarget": "myscoutee:build:dev"
             },
             "e2e": {
               "buildTarget": "myscoutee:build:e2e"
             },
-            "demo-github": {
-              "buildTarget": "myscoutee:build:demo-github"
+            "github": {
+              "buildTarget": "myscoutee:build:github"
             },
             "production-serve": {
               "buildTarget": "myscoutee:build:production"
             }
           },
-          "defaultConfiguration": "development"
+          "defaultConfiguration": "dev"
         },
         "test": {
           "builder": "@angular/build:unit-test"
