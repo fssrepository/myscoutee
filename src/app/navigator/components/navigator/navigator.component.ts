@@ -51,7 +51,7 @@ export class NavigatorComponent {
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly navigatorContactsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly explanationPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
@@ -65,7 +65,7 @@ export class NavigatorComponent {
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
   protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
-  protected readonly navigatorContactsPopupComponent = this.navigatorContactsPopupComponentRef.asReadonly();
+  protected readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
   protected readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
 
   constructor() {
@@ -122,8 +122,8 @@ export class NavigatorComponent {
 
     effect(() => {
       const isContactsOpen = this.navigatorService.contactsPopupOpen();
-      if (isContactsOpen && !this.navigatorContactsPopupComponentRef()) {
-        void this.ensureNavigatorContactsPopupLoaded();
+      if (isContactsOpen && !this.contactsPopupComponentRef()) {
+        void this.ensureContactsPopupLoaded();
       }
     });
 
@@ -293,12 +293,12 @@ export class NavigatorComponent {
     this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
   }
 
-  private async ensureNavigatorContactsPopupLoaded(): Promise<void> {
-    if (this.navigatorContactsPopupComponentRef()) {
+  private async ensureContactsPopupLoaded(): Promise<void> {
+    if (this.contactsPopupComponentRef()) {
       return;
     }
-    const module = await import('../navigator-contacts-popup/navigator-contacts-popup.component');
-    this.navigatorContactsPopupComponentRef.set(module.NavigatorContactsPopupComponent);
+    const module = await import('../contacts-popup/contacts-popup.component');
+    this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
   }
 
   private async ensureExplanationPopupLoaded(): Promise<void> {

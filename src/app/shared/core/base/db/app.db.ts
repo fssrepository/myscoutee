@@ -14,6 +14,7 @@ import { EVENT_FEEDBACK_TABLE_NAME } from '../../demo/models/event-feedback.mode
 import { EVENTS_TABLE_NAME } from '../../demo/models/events.model';
 import { HELP_CENTER_TABLE_NAME } from '../../demo/models/help-center.model';
 import { IDEA_POSTS_TABLE_NAME } from '../../demo/models/idea-posts.model';
+import { CONTACTS_TABLE_NAME } from '../../demo/models/contacts.model';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../demo/models/profile-experiences.model';
 import { SHARE_TOKENS_TABLE_NAME } from '../../demo/models/share-tokens.model';
 import type { DemoMemorySchema } from '../../demo/models/memory.model';
@@ -23,6 +24,11 @@ import {
   USER_RATES_TABLE_NAME,
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../../demo/models/users.model';
+import type {
+  ContactMethodDraft,
+  ContactMethodType,
+  StoredContact
+} from '../models/contact.model';
 import {
   type AppStorageScope,
   APP_STORAGE_SCOPE,
@@ -70,6 +76,7 @@ export class AppMemoryDb {
     EVENT_FEEDBACK_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
+    CONTACTS_TABLE_NAME,
     PROFILE_EXPERIENCES_TABLE_NAME,
     SHARE_TOKENS_TABLE_NAME,
     EVENTS_TABLE_NAME
@@ -323,6 +330,10 @@ export class AppMemoryDb {
         byId: {},
         ids: []
       },
+      [CONTACTS_TABLE_NAME]: {
+        byOwnerUserId: {},
+        ownerUserIds: []
+      },
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: {},
         userIds: []
@@ -504,6 +515,9 @@ export class AppMemoryDb {
         || this.hasEntries(table['auditIds'])
         || this.hasEntries(table['privacyConsentIds'])
       );
+    }
+    if (key === CONTACTS_TABLE_NAME) {
+      return this.hasEntries(table['ownerUserIds']);
     }
     if (key === PROFILE_EXPERIENCES_TABLE_NAME) {
       return this.hasEntries(table['userIds']);
@@ -795,12 +809,17 @@ export class AppMemoryDb {
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<DemoMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
+    const contactsSource = source[CONTACTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof CONTACTS_TABLE_NAME]> | undefined;
     const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<DemoMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
     const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<DemoMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
     const eventsSource = source[EVENTS_TABLE_NAME] as Partial<DemoMemorySchema[typeof EVENTS_TABLE_NAME]> | undefined;
     const userRatesOutboxById = this.normalizeUserRatesOutboxById(
       outboxSource?.byId,
       fallback[USER_RATES_OUTBOX_TABLE_NAME].byId
+    );
+    const contactsByOwnerUserId = this.normalizeContactsByOwnerUserId(
+      contactsSource?.byOwnerUserId,
+      fallback[CONTACTS_TABLE_NAME].byOwnerUserId
     );
     return {
       [ASSETS_TABLE_NAME]: {
@@ -901,6 +920,10 @@ export class AppMemoryDb {
         ids: Array.isArray(ideaPostsSource?.ids)
           ? ideaPostsSource.ids.map(id => String(id))
           : [...fallback[IDEA_POSTS_TABLE_NAME].ids]
+      },
+      [CONTACTS_TABLE_NAME]: {
+        byOwnerUserId: contactsByOwnerUserId,
+        ownerUserIds: Object.keys(contactsByOwnerUserId)
       },
       [PROFILE_EXPERIENCES_TABLE_NAME]: {
         byUserId: this.normalizeProfileExperiencesByUserId(profileExperiencesSource?.byUserId, fallback[PROFILE_EXPERIENCES_TABLE_NAME].byUserId),
@@ -1109,6 +1132,79 @@ export class AppMemoryDb {
         .filter(entry => entry.id.length > 0);
     }
     return next;
+  }
+
+  private normalizeContactsByOwnerUserId(
+    value: unknown,
+    fallback: DemoMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId']
+  ): DemoMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId'] {
+    if (!value || typeof value !== 'object') {
+      return { ...fallback };
+    }
+
+    const next: DemoMemorySchema[typeof CONTACTS_TABLE_NAME]['byOwnerUserId'] = {};
+    for (const [ownerUserId, contacts] of Object.entries(value as Record<string, unknown>)) {
+      const normalizedOwnerUserId = ownerUserId.trim();
+      if (!normalizedOwnerUserId || !Array.isArray(contacts)) {
+        continue;
+      }
+      const normalizedContacts = contacts
+        .filter((contact): contact is Record<string, unknown> => !!contact && typeof contact === 'object')
+        .map(contact => this.normalizeContact(contact))
+        .filter((contact): contact is StoredContact => Boolean(contact));
+      if (normalizedContacts.length > 0) {
+        next[normalizedOwnerUserId] = normalizedContacts;
+      }
+    }
+    return next;
+  }
+
+  private normalizeContact(value: Record<string, unknown>): StoredContact | null {
+    const id = `${value['id'] ?? ''}`.trim();
+    const userId = `${value['userId'] ?? ''}`.trim();
+    if (!id && !userId) {
+      return null;
+    }
+    return {
+      id: id || userId,
+      userId,
+      name: `${value['name'] ?? ''}`.trim() || 'Contact',
+      initials: `${value['initials'] ?? ''}`.trim(),
+      gender: value['gender'] === 'woman' ? 'woman' : 'man',
+      city: `${value['city'] ?? ''}`.trim(),
+      avatarUrl: `${value['avatarUrl'] ?? ''}`.trim(),
+      headline: `${value['headline'] ?? ''}`.trim(),
+      createdAtIso: `${value['createdAtIso'] ?? ''}`.trim(),
+      updatedAtIso: `${value['updatedAtIso'] ?? ''}`.trim(),
+      methods: (Array.isArray(value['methods']) ? value['methods'] : [])
+        .filter((method): method is Record<string, unknown> => !!method && typeof method === 'object')
+        .map(method => this.normalizeContactMethod(method))
+        .filter((method): method is ContactMethodDraft => Boolean(method))
+    };
+  }
+
+  private normalizeContactMethod(value: Record<string, unknown>): ContactMethodDraft | null {
+    const type = `${value['type'] ?? ''}`.trim() as ContactMethodType;
+    const methodType: ContactMethodType = [
+      'phone',
+      'sms',
+      'whatsapp',
+      'email',
+      'facebook',
+      'instagram',
+      'telegram',
+      'linkedin',
+      'website'
+    ].includes(type) ? type : 'phone';
+    const methodValue = `${value['value'] ?? ''}`.trim();
+    if (!methodValue) {
+      return null;
+    }
+    return {
+      id: `${value['id'] ?? ''}`.trim(),
+      type: methodType,
+      value: methodValue
+    };
   }
 
   private normalizeIdList(value: unknown, fallback: readonly string[]): string[] {

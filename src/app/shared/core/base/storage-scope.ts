@@ -29,6 +29,7 @@ export const APP_INDEXED_DB_KEYS = {
   eventFeedback: 'eventFeedback',
   helpCenter: 'helpCenter',
   ideaPosts: 'ideaPosts',
+  contacts: 'contacts',
   profileExperiences: 'profileExperiences',
   shareTokens: 'shareTokens',
   users: 'users',
@@ -97,10 +98,6 @@ export function appLocationStorageKey(userId: string, scope: AppStorageScope = A
 
 export function chatVoiceClipTableKey(key: string): string {
   return `${APP_INDEXED_DB_KEYS.chatVoiceClipPrefix}:${key.trim()}`;
-}
-
-export function navigatorContactsStorageKey(userId: string, scope: AppStorageScope = APP_STORAGE_SCOPE): string {
-  return scopedStorageKey(`navigator.contacts.v1.${userId.trim()}`, scope);
 }
 
 export function offlineCacheUserStorageKey(userId: string, scope: AppStorageScope = APP_STORAGE_SCOPE): string {

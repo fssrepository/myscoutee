@@ -9,7 +9,7 @@ import type {
   ActivityInviteCandidatesQuery,
   ActivityInviteCandidatesRepository
 } from '../../base/interfaces/activity-invite.interface';
-import { navigatorContactsStorageKey } from '../../base/storage-scope';
+import { DemoContactsRepository } from './contacts.repository';
 import { DemoUsersRatingsRepository } from './users-ratings.repository';
 import { DemoUsersRepository } from './users.repository';
 
@@ -19,6 +19,7 @@ import { DemoUsersRepository } from './users.repository';
 export class DemoActivityInviteCandidatesRepository implements ActivityInviteCandidatesRepository {
   private readonly usersRepository = inject(DemoUsersRepository);
   private readonly usersRatingsRepository = inject(DemoUsersRatingsRepository);
+  private readonly contactsRepository = inject(DemoContactsRepository);
 
   async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<AppTypes.ActivityMemberEntry[]> {
     const activeUserId = query.activeUserId.trim();
@@ -37,22 +38,11 @@ export class DemoActivityInviteCandidatesRepository implements ActivityInviteCan
 
     // Filter out existing contacts at the repository level if the owner is an asset
     if (query.owner.ownerType === 'asset') {
-      const storageKey = navigatorContactsStorageKey(activeUserId);
-      try {
-        const rawContacts = localStorage.getItem(storageKey);
-        if (rawContacts) {
-          const contacts = JSON.parse(rawContacts);
-          if (Array.isArray(contacts)) {
-            for (const contact of contacts) {
-              const contactUserId = (contact.userId || contact.id || '').trim();
-              if (contactUserId) {
-                existingUserIds.add(contactUserId);
-              }
-            }
-          }
+      for (const contact of this.contactsRepository.queryContactsByUser(activeUserId)) {
+        const contactUserId = (contact.userId || contact.id || '').trim();
+        if (contactUserId) {
+          existingUserIds.add(contactUserId);
         }
-      } catch {
-        // Ignore storage errors
       }
     }
 

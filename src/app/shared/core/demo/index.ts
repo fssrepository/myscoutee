@@ -6,6 +6,7 @@ export { type DemoCountryPartition, type DemoCountryPartitionBounds } from './mo
 export { EVENTS_TABLE_NAME, type DemoEventRecord, type DemoEventsMemorySchema } from './models/events.model';
 export { type DemoHelpCenterMemorySchema } from './models/help-center.model';
 export { type DemoIdeaPostsMemorySchema } from './models/idea-posts.model';
+export { CONTACTS_TABLE_NAME, type DemoContactsMemorySchema } from './models/contacts.model';
 export { PROFILE_EXPERIENCES_TABLE_NAME, type DemoProfileExperiencesMemorySchema } from './models/profile-experiences.model';
 export { USERS_TABLE_NAME, type DemoUsersMemorySchema } from './models/users.model';
 export { DemoAssetsRepository } from './repositories/assets.repository';
@@ -21,6 +22,7 @@ export { DemoEventFeedbackRepository } from './repositories/event-feedback.repos
 export { DemoHelpCenterRepository } from './repositories/help-center.repository';
 export { DemoIdeaPostsRepository } from './repositories/idea-posts.repository';
 export { DemoMediaRepository } from './repositories/media.repository';
+export { DemoContactsRepository } from './repositories/contacts.repository';
 export { DemoShareTokensRepository } from './repositories/share-tokens.repository';
 export { DemoProfileExperiencesRepository } from './repositories/profile-experiences.repository';
 export { DemoUsersRatingsRepository } from './repositories/users-ratings.repository';
@@ -45,7 +47,7 @@ export { DemoHelpCenterService } from './services/help-center.service';
 export { DemoIdeaPostsService } from './services/idea-posts.service';
 export { DemoLandingContentService } from './services/landing-content.service';
 export { DemoMediaService } from './services/media.service';
-export { DemoNavigatorContactsService } from './services/navigator-contacts.service';
+export { DemoContactsService } from './services/contacts.service';
 export { DemoUserExperiencesService } from './services/user-experiences.service';
 export { DemoRatesService } from './services/rates.service';
 export { DemoUsersService } from './services/users.service';

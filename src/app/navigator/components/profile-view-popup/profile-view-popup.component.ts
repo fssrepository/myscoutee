@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, computed, effect, inject, signal, untracked } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
@@ -61,7 +61,8 @@ export class ProfileViewPopupComponent {
 
   constructor() {
     effect(() => {
-      this.syncTarget(this.target());
+      const target = this.target();
+      untracked(() => this.syncTarget(target));
     });
   }
 

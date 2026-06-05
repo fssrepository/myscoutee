@@ -56,7 +56,7 @@ export class I18nService {
     '.admin-feedback-detail-field p',
     '.profile-view-experience-description',
     '.user-name',
-    '.navigator-contact-title-wrap h3',
+    '.contact-title-wrap h3',
     '.profile-name-line'
   ].join(',');
 

@@ -518,14 +518,10 @@ export class NavigatorService {
     const targetUserId = embeddedUser?.id?.trim() || userId;
     const targetLabel = `${request.label ?? embeddedUser?.name ?? ''}`.trim() || null;
     const currentTarget = this.profileViewTargetRef();
-    const currentEmbeddedUserId = currentTarget?.user?.id?.trim() || '';
-    const nextEmbeddedUserId = embeddedUser?.id?.trim() || '';
-    if (
-      currentTarget?.userId === targetUserId
-      && currentEmbeddedUserId === nextEmbeddedUserId
-      && currentTarget.label === targetLabel
-    ) {
-      return;
+    if (currentTarget?.userId === targetUserId && currentTarget.label === targetLabel) {
+      if (!embeddedUser || currentTarget.user) {
+        return;
+      }
     }
     this.profileViewTargetRef.set({
       userId: targetUserId,

@@ -10,6 +10,7 @@ import { DemoEventsRepository } from '../repositories/events.repository';
 import { DemoEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { DemoHelpCenterService } from './help-center.service';
 import { DemoIdeaPostsService } from './idea-posts.service';
+import { DemoContactsService } from './contacts.service';
 import { DemoProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { DemoUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import { DemoUsersRepository } from '../repositories/users.repository';
@@ -23,6 +24,7 @@ export type DemoBootstrapProgressStage =
   | 'chats'
   | 'events'
   | 'users'
+  | 'contacts'
   | 'feedback'
   | 'ratings'
   | 'affinityGraph'
@@ -55,7 +57,8 @@ export const DEMO_BOOTSTRAP_PROGRESS_STEPS: readonly DemoBootstrapProgressStep[]
   { stage: 'chats', percent: 11, label: 'Loading chats' },
   { stage: 'events', percent: 22, label: 'Loading events' },
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
-  { stage: 'feedback', percent: 44, label: 'Preparing event feedback' },
+  { stage: 'contacts', percent: 40, label: 'Preparing contacts' },
+  { stage: 'feedback', percent: 46, label: 'Preparing event feedback' },
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
   { stage: 'assets', percent: 64, label: 'Preparing owned assets' },
   { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
@@ -97,6 +100,7 @@ export class DemoBootstrapService {
   private readonly profileExperiencesRepository = inject(DemoProfileExperiencesRepository);
   private readonly helpCenterService = inject(DemoHelpCenterService);
   private readonly ideaPostsService = inject(DemoIdeaPostsService);
+  private readonly contactsService = inject(DemoContactsService);
 
   private bootstrapPromise: Promise<void> | null = null;
   private ready = false;
@@ -208,6 +212,9 @@ export class DemoBootstrapService {
       seededUserIds = seededUsers
         .map(user => user.id.trim())
         .filter(userId => userId.length > 0);
+    });
+    await this.runBootstrapStep('contacts', () => {
+      this.contactsService.seedDefaultContacts(seededUsers);
     });
     this.profileExperiencesRepository.init();
     await this.runBootstrapStep('feedback', () => {

@@ -19,6 +19,6 @@ export * from './activities-ui.model';
 export * from './activities.model';
 export * from './share-token.model';
 export * from './idea-post.model';
-export * from './navigator-contact.model';
+export * from './contact.model';
 export * from './admin-notification.model';
 export * from './admin-monitoring.model';
