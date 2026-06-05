@@ -2085,7 +2085,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private async persistVoiceClipByConfiguredMode(voiceKey: string): Promise<string | null> {
     const mimeType = this.voiceClipMimeType || 'audio/webm';
-    if (this.activitiesContext.dataMode === 'demo') {
+    if (this.activitiesContext.dataMode === 'local') {
       try {
         const voiceUrl = await this.chatVoiceClipsService.saveVoiceClip(voiceKey, {
           dataUrl: this.voiceClipDataUrl,

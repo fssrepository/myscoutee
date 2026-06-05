@@ -47,8 +47,8 @@ describe('BaseRouteModeService', () => {
     expect(service.resolve('/privacy/consents')).toBe('http');
   });
 
-  it('uses demo storage for selector sessions when the app is built for demo data', () => {
-    environment.activitiesDataSource = 'demo';
+  it('uses local storage for selector sessions when the app is built for local data', () => {
+    environment.activitiesDataSource = 'local';
     environment.firebaseLoginEnabled = false;
     currentSession = { kind: 'demo', userId: 'demo-user' };
 

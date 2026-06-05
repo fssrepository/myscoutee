@@ -1517,7 +1517,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
+    return environment.activitiesDataSource === 'local';
   }
 
   private startDraftAutosaveLoop(): void {

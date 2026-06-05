@@ -91,8 +91,8 @@ export class ActivitiesPopupStateService {
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
 
-  readonly dataMode = environment.activitiesDataSource === 'demo'
-    ? 'demo'
+  readonly dataMode = environment.activitiesDataSource === 'local'
+    ? 'local'
     : 'http';
 
   openActivities(

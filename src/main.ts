@@ -88,7 +88,7 @@ function markBootstrapFailed(err: unknown): void {
 }
 
 async function resetDemoStorageBeforeBootstrap(): Promise<void> {
-  if (environment.activitiesDataSource !== 'demo') {
+  if (environment.activitiesDataSource !== 'local') {
     return;
   }
   try {
