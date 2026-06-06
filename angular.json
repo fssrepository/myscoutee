@@ -103,6 +103,15 @@
                 }
               }
             },
+            "local": {
+              "outputPath": {
+                "base": "local",
+                "browser": ""
+              },
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            },
             "dev": {
               "fileReplacements": [
                 {
@@ -160,6 +169,9 @@
             "production": {
               "buildTarget": "myscoutee:build:production"
             },
+            "local": {
+              "buildTarget": "myscoutee:build:local"
+            },
             "dev": {
               "buildTarget": "myscoutee:build:dev"
             },
@@ -173,7 +185,7 @@
               "buildTarget": "myscoutee:build:production"
             }
           },
-          "defaultConfiguration": "dev"
+          "defaultConfiguration": "local"
         },
         "test": {
           "builder": "@angular/build:unit-test"
