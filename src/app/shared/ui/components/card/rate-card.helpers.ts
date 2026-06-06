@@ -148,7 +148,6 @@ function profileViewForUser(user: RateCardPerson | null | undefined): CardProfil
   }
   return {
     userId,
-    user: user?.profile ?? null,
     label: user?.name ?? null
   };
 }

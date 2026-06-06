@@ -3,9 +3,8 @@ import { Component, DoCheck, Input, TemplateRef, ViewChild } from '@angular/core
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { delay, from } from 'rxjs';
+import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   ProgressIndicatorComponent,
   SmartListComponent,
@@ -29,7 +28,6 @@ interface SupplyBringDialogState {
 interface SupplyContributionListFilters {
   revision?: number;
   contextKey?: string;
-  showProgress?: boolean;
 }
 
 export interface EventSupplyContributionsPopupHost {
@@ -84,8 +82,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected supplyContributionSmartListQuery: Partial<ListQuery<SupplyContributionListFilters>> = {
     filters: {
       revision: 0,
-      contextKey: '',
-      showProgress: true
+      contextKey: ''
     }
   };
 
@@ -106,17 +103,13 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected readonly supplyContributionSmartListLoadPage: SmartListLoadPage<
     AppTypes.SubEventSupplyContributionRow,
     SupplyContributionListFilters
-  > = query => from(this.host.loadRowsPage(query)).pipe(
-    delay(resolveCurrentDemoDelayMs(query.filters?.showProgress ? 1500 : 0))
-  );
+  > = query => from(this.host.loadRowsPage(query));
 
   protected readonly supplyContributionSmartListConfig: SmartListConfig<
     AppTypes.SubEventSupplyContributionRow,
     SupplyContributionListFilters
   > = {
     pageSize: 12,
-    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
-    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -155,8 +148,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       this.supplyContributionSmartListQuery = {
         filters: {
           revision: Date.now(),
-          contextKey,
-          showProgress: true
+          contextKey
         }
       };
       return;

@@ -6,9 +6,9 @@ import { catchError, throwError } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AppContext } from '../base/context';
 import { SessionService } from '../base/services/session.service';
-import { scopedStorageKey } from '../base/storage-scope';
+import { APP_STORAGE_KEYS } from '../base/storage-scope';
 
-const ADMIN_SESSION_STORAGE_KEY = scopedStorageKey('admin.session.v1');
+const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
 
 function isApiRequest(url: string): boolean {

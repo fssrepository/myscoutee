@@ -151,7 +151,7 @@ export class EditableImageCarouselComponent implements OnChanges {
     this.uploadingSlotIndex = normalizedSlotIndex;
     this.refreshView();
     try {
-      const result = await this.media.uploadImage('content', 'admin', 'shared', file);
+      const result = await this.media.uploadImage('admin', 'shared', file);
       if (!result.uploaded || !result.imageUrl) {
         return;
       }

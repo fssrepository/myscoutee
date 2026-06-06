@@ -6,16 +6,16 @@ import {
   LandingContentService,
   USERS_LOAD_CONTEXT_KEY,
   UsersService,
-  type DemoUserListItemDto,
+  type BootstrapProcessStage,
+  type UserSelectorListItemDto,
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
-import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
-import { scopedStorageKey } from '../../../shared/core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { I18nService } from '../../../shared/i18n';
+import { I18nService } from '../../../shared/core';
 import type { InfoCardData } from '../../../shared/ui';
 import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
@@ -42,15 +42,11 @@ export interface EntryDemoUserSelectionEvent {
   styleUrl: './entry-shell.component.scss'
 })
 export class EntryShellComponent implements OnChanges, OnDestroy {
-  private static readonly ENTRY_CONSENT_KEY = scopedStorageKey('entry.gdpr-consent.v1');
-  private static readonly ENTRY_CONSENT_AUDIT_KEY = scopedStorageKey('entry.gdpr-consent-audit.v1');
+  private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
+  private static readonly ENTRY_CONSENT_AUDIT_KEY = APP_STORAGE_KEYS.entryConsentAudit;
   private static readonly ENTRY_CONSENT_AUDIT_MAX = 30;
-  private static readonly LANDING_ARTICLES_LOADING_WINDOW_MS = 3000;
-  private static readonly ENTRY_PRIVACY_LOADING_WINDOW_MS = 3000;
-  private static readonly LOCATION_ELIGIBILITY_CACHE_KEY = scopedStorageKey('entry.login-location-eligibility.v1');
-  private static readonly LOCATION_ELIGIBILITY_CACHE_TTL_MS = 10 * 60 * 1000;
   private static readonly LOCATION_REQUEST_TIMEOUT_MS = 4500;
-  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 15 * 60 * 1000;
+  private static readonly LOCATION_REQUEST_MAXIMUM_AGE_MS = 0;
 
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -78,9 +74,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected showEntryConsentPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
-  protected entryPrivacyLoadingProgress = 0;
   protected landingArticlesLoading = true;
-  protected landingArticlesLoadingProgress = 0;
   protected landingIdeaCards: InfoCardData[] = [];
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable in your country';
@@ -89,29 +83,31 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showUserSelector = false;
-  protected demoSelectorUsers: DemoUserListItemDto[] = [];
+  protected demoSelectorUsers: UserSelectorListItemDto[] = [];
   protected demoSelectorLoading = false;
   protected demoSelectorLoadingProgress = 0;
   protected demoSelectorLoadingLabel = 'Preparing demo data';
-  protected demoSelectorLoadingStage: DemoBootstrapProgressStage = 'selector';
+  protected demoSelectorLoadingStage: BootstrapProcessStage = 'selector';
   protected demoSelectorErrorMessage = '';
   protected demoSelectorSubmitting = false;
   protected demoSelectorSelectedUserId = '';
   protected showFirebaseAuthPopup = false;
   private demoSelectorRequestToken = 0;
   private landingContentRequestToken = 0;
-  private entryPrivacyLoadingStartedAtMs = 0;
-  private entryPrivacyLoadingTimer: ReturnType<typeof setTimeout> | null = null;
-  private landingArticlesLoadingStartedAtMs = 0;
-  private landingArticlesLoadingInterval: ReturnType<typeof setInterval> | null = null;
   private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
   private locationEligibilityResolvedFromCoordinates = false;
   private grantedLocationEligibilityPromise: Promise<void> | null = null;
   private grantedLocationEligibilityRequestToken = 0;
+  private browserLocationAutoRequestAttempted = false;
   private geolocationPermissionStatus: PermissionStatus | null = null;
+  private geolocationPermissionState: PermissionState | null = null;
   private readonly geolocationPermissionChangeHandler = (): void => {
     this.ngZone.run(() => {
-      this.resolveGrantedLocationAccessIfNeeded();
+      this.geolocationPermissionState = this.geolocationPermissionStatus?.state ?? null;
+      if (this.geolocationPermissionState === 'granted') {
+        this.browserLocationAutoRequestAttempted = false;
+      }
+      this.syncEntryAuthGateState();
     });
   };
 
@@ -132,8 +128,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.landingContentRequestToken += 1;
     this.grantedLocationEligibilityRequestToken += 1;
     this.unbindGeolocationPermissionStatus();
-    this.clearEntryPrivacyLoadingWindow();
-    this.clearLandingArticlesLoadingWindow();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -192,10 +186,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return;
     }
     if (this.loginEligibilityBusy) {
-      return;
-    }
-    const allowed = await this.ensureHttpLoginAccessAllowed();
-    if (!allowed) {
       return;
     }
     if (this.firebaseAuthProfile) {
@@ -311,10 +301,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private initializeEntryFlow(): void {
     this.entryConsentViewOnly = false;
     this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
-    this.entryPrivacyLoadingProgress = 0;
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
-    this.landingArticlesLoadingProgress = 0;
     this.syncLandingLoginAvailability(null, 'reset');
     this.showUserSelector = false;
     this.demoSelectorLoading = false;
@@ -325,7 +313,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.demoSelectorSubmitting = false;
     this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
-    this.restoreCachedLocationEligibility();
     void this.loadEntryContent();
   }
 
@@ -360,9 +347,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.loginEligibilityBusy = true;
     try {
       const gateState = this.landingLoginAvailability;
-      if (gateState && gateState.securityGateEnabled !== true) {
-        return true;
-      }
       if (this.locationEligibilityResolvedFromCoordinates && gateState?.eligible === true) {
         return true;
       }
@@ -370,7 +354,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         this.confirmationDialogService.openInfo(
           this.loginUnavailableMessage(gateState),
           {
-            title: 'Login Unavailable',
+            title: 'Please register',
             confirmLabel: 'OK'
           }
         );
@@ -531,7 +515,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     });
   }
 
-  private isNewDemoProfile(user: DemoUserListItemDto): boolean {
+  private isNewDemoProfile(user: UserSelectorListItemDto): boolean {
     const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
     const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
     const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
@@ -564,17 +548,35 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }
 
     return new Promise<LocationCoordinates | null>(resolve => {
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const finish = (coordinates: LocationCoordinates | null): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (timeoutId !== null) {
+          clearTimeout(timeoutId);
+        }
+        resolve(coordinates);
+      };
+
+      timeoutId = setTimeout(
+        () => finish(null),
+        EntryShellComponent.LOCATION_REQUEST_TIMEOUT_MS + 500
+      );
+
       navigator.geolocation.getCurrentPosition(
         position => {
           const latitude = Number(position.coords.latitude);
           const longitude = Number(position.coords.longitude);
           if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-            resolve(null);
+            finish(null);
             return;
           }
-          resolve({ latitude, longitude });
+          finish({ latitude, longitude });
         },
-        () => resolve(null),
+        () => finish(null),
         {
           enableHighAccuracy: false,
           timeout: EntryShellComponent.LOCATION_REQUEST_TIMEOUT_MS,
@@ -611,7 +613,23 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
             throw new Error(this.uiText('Location permission was not granted. Use the browser prompt or site settings, then try again.'));
           }
 
-          const result = await this.usersService.checkLocationEligibility(coordinates);
+          let result: UserLocationEligibilityResponseDto;
+          try {
+            result = await this.usersService.checkLocationEligibility(coordinates);
+          } catch {
+            this.markEntryNetworkUnavailable();
+            settle(false);
+            setTimeout(() => {
+              this.confirmationDialogService.openInfo(
+                this.uiText('The server is not reachable right now. Please try again when the network is back.'),
+                {
+                  title: this.uiText('No network'),
+                  confirmLabel: this.uiText('OK')
+                }
+              );
+            }, 0);
+            return;
+          }
           this.syncLandingLoginAvailability(result, 'coordinates');
           if (result.eligible) {
             settle(true);
@@ -623,7 +641,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
             this.confirmationDialogService.openInfo(
               this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
               {
-                title: this.uiText('Login Unavailable'),
+                title: this.uiText('Please register'),
                 confirmLabel: this.uiText('OK')
               }
             );
@@ -750,9 +768,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           if (requestToken !== this.landingContentRequestToken) {
             return;
           }
-          this.entryNetworkUnavailable = true;
           this.landingIdeaCards = [];
-          this.syncLandingLoginAvailability(null, 'reset');
+          this.markEntryNetworkUnavailable();
           this.finishEntryPrivacyLoad(requestToken);
         });
       }
@@ -790,90 +807,25 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   private startEntryPrivacyLoadingWindow(): void {
-    this.clearEntryPrivacyLoadingWindow();
     this.entryPrivacyLoading = true;
-    this.entryPrivacyLoadingProgress = 0.02;
-    this.entryPrivacyLoadingStartedAtMs = performance.now();
-    this.updateEntryPrivacyLoadingWindow();
-  }
-
-  private updateEntryPrivacyLoadingWindow(): void {
-    if (!this.entryPrivacyLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.entryPrivacyLoadingStartedAtMs);
-    const nextProgress = Math.min(1, elapsed / EntryShellComponent.ENTRY_PRIVACY_LOADING_WINDOW_MS);
-    this.entryPrivacyLoadingProgress = Math.max(this.entryPrivacyLoadingProgress, nextProgress);
-    if (nextProgress >= 1) {
-      return;
-    }
-    this.entryPrivacyLoadingTimer = setTimeout(() => {
-      this.ngZone.run(() => {
-        this.updateEntryPrivacyLoadingWindow();
-        this.changeDetectorRef.markForCheck();
-      });
-    }, 80);
   }
 
   private endEntryPrivacyLoadingWindow(): void {
-    this.clearEntryPrivacyLoadingWindow();
     this.entryPrivacyLoading = false;
-    this.entryPrivacyLoadingProgress = 1;
-  }
-
-  private clearEntryPrivacyLoadingWindow(): void {
-    if (!this.entryPrivacyLoadingTimer) {
-      return;
-    }
-    clearTimeout(this.entryPrivacyLoadingTimer);
-    this.entryPrivacyLoadingTimer = null;
   }
 
   private startLandingArticlesLoadingWindow(): void {
-    this.clearLandingArticlesLoadingWindow();
     this.landingArticlesLoading = true;
-    this.landingArticlesLoadingProgress = 0.02;
-    this.landingArticlesLoadingStartedAtMs = performance.now();
-    this.updateLandingArticlesLoadingWindow();
-    this.landingArticlesLoadingInterval = this.ngZone.runOutsideAngular(() =>
-      setInterval(() => {
-        this.ngZone.run(() => {
-          this.updateLandingArticlesLoadingWindow();
-          this.changeDetectorRef.markForCheck();
-        });
-      }, 16)
-    );
   }
 
   private endLandingArticlesLoadingWindow(): void {
-    this.clearLandingArticlesLoadingWindow();
-    this.landingArticlesLoadingProgress = 1;
     this.changeDetectorRef.markForCheck();
     setTimeout(() => {
       this.ngZone.run(() => {
         this.landingArticlesLoading = false;
-        this.landingArticlesLoadingProgress = 0;
-        this.landingArticlesLoadingStartedAtMs = 0;
         this.changeDetectorRef.markForCheck();
       });
     }, 100);
-  }
-
-  private updateLandingArticlesLoadingWindow(): void {
-    if (!this.landingArticlesLoading) {
-      return;
-    }
-    const elapsed = Math.max(0, performance.now() - this.landingArticlesLoadingStartedAtMs);
-    const nextProgress = Math.min(1, elapsed / EntryShellComponent.LANDING_ARTICLES_LOADING_WINDOW_MS);
-    this.landingArticlesLoadingProgress = Math.max(this.landingArticlesLoadingProgress, nextProgress);
-  }
-
-  private clearLandingArticlesLoadingWindow(): void {
-    if (!this.landingArticlesLoadingInterval) {
-      return;
-    }
-    clearInterval(this.landingArticlesLoadingInterval);
-    this.landingArticlesLoadingInterval = null;
   }
 
   private syncLandingLoginAvailability(
@@ -884,6 +836,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       this.locationEligibilityResolvedFromCoordinates = true;
     } else if (source === 'reset') {
       this.locationEligibilityResolvedFromCoordinates = false;
+      this.browserLocationAutoRequestAttempted = false;
     }
     this.landingLoginAvailability = availability
       ? {
@@ -894,10 +847,13 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
           locationRequired: false
       }
       : null;
-    if (source === 'coordinates' && this.landingLoginAvailability?.eligible === true) {
-      this.saveCachedLocationEligibility(this.landingLoginAvailability);
-    }
     this.syncEntryAuthGateState();
+  }
+
+  private markEntryNetworkUnavailable(): void {
+    this.entryNetworkUnavailable = true;
+    this.entryNetworkUnavailableLabel = 'No network';
+    this.syncLandingLoginAvailability(null, 'reset');
   }
 
   private syncEntryAuthGateState(): void {
@@ -906,7 +862,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.entryAuthUnavailableLabel = 'Unavailable in your country';
     this.entryAuthLocationRequired = !this.entryNetworkUnavailable && loginEnabled && this.isLoginLocationRequiredByLandingBundle();
     this.deferEntryAuthLocationRequiredLabel(this.grantedLocationEligibilityPromise ? 'Checking location' : 'Allow location');
-    this.resolveGrantedLocationAccessIfNeeded();
+    this.resolveBrowserLocationAccessIfNeeded();
     this.changeDetectorRef.markForCheck();
   }
 
@@ -919,13 +875,12 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private isLoginLocationRequiredByLandingBundle(): boolean {
     return !this.entryNetworkUnavailable
-      && !this.locationEligibilityResolvedFromCoordinates
-      && this.landingLoginAvailability?.securityGateEnabled !== false;
+      && !this.locationEligibilityResolvedFromCoordinates;
   }
 
   private openBundledLoginUnavailableInfo(): void {
     this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
-      title: 'Login Unavailable',
+      title: 'Please register',
       confirmLabel: 'OK'
     });
   }
@@ -935,17 +890,20 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
-  private resolveGrantedLocationAccessIfNeeded(): void {
-    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise) {
+  private resolveBrowserLocationAccessIfNeeded(): void {
+    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
       return;
     }
 
+    this.browserLocationAutoRequestAttempted = true;
     const requestToken = ++this.grantedLocationEligibilityRequestToken;
-    this.grantedLocationEligibilityPromise = this.resolveGrantedLocationAccess(requestToken)
+    this.grantedLocationEligibilityPromise = this.resolveBrowserLocationAccess(requestToken)
       .finally(() => {
         if (requestToken === this.grantedLocationEligibilityRequestToken) {
-          this.grantedLocationEligibilityPromise = null;
-          this.deferEntryAuthLocationRequiredLabel('Allow location');
+          this.ngZone.run(() => {
+            this.grantedLocationEligibilityPromise = null;
+            this.syncEntryAuthGateState();
+          });
         }
       });
     this.deferEntryAuthLocationRequiredLabel('Checking location');
@@ -964,10 +922,13 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }, 0);
   }
 
-  private async resolveGrantedLocationAccess(requestToken: number): Promise<void> {
+  private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
     try {
       const permissionState = await this.queryGeolocationPermissionState();
-      if (requestToken !== this.grantedLocationEligibilityRequestToken || permissionState !== 'granted') {
+      if (requestToken !== this.grantedLocationEligibilityRequestToken) {
+        return;
+      }
+      if (permissionState !== 'granted') {
         return;
       }
 
@@ -976,7 +937,15 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         return;
       }
 
-      const result = await this.usersService.checkLocationEligibility(coordinates);
+      let result: UserLocationEligibilityResponseDto;
+      try {
+        result = await this.usersService.checkLocationEligibility(coordinates);
+      } catch {
+        if (requestToken === this.grantedLocationEligibilityRequestToken) {
+          this.ngZone.run(() => this.markEntryNetworkUnavailable());
+        }
+        return;
+      }
       if (requestToken !== this.grantedLocationEligibilityRequestToken) {
         return;
       }
@@ -998,6 +967,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     try {
       const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
       this.bindGeolocationPermissionStatus(status);
+      this.geolocationPermissionState = status.state;
       return status.state;
     } catch {
       return null;
@@ -1011,6 +981,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
     this.unbindGeolocationPermissionStatus();
     this.geolocationPermissionStatus = status;
+    this.geolocationPermissionState = status.state;
     status.addEventListener('change', this.geolocationPermissionChangeHandler);
   }
 
@@ -1021,52 +992,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
     this.geolocationPermissionStatus.removeEventListener('change', this.geolocationPermissionChangeHandler);
     this.geolocationPermissionStatus = null;
-  }
-
-  private restoreCachedLocationEligibility(): void {
-    if (typeof sessionStorage === 'undefined') {
-      return;
-    }
-    try {
-      const raw = sessionStorage.getItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
-      if (!raw) {
-        return;
-      }
-      const parsed = JSON.parse(raw) as {
-        savedAtMs?: number;
-        availability?: Partial<UserLocationEligibilityResponseDto> | null;
-      };
-      const savedAtMs = Math.trunc(Number(parsed.savedAtMs) || 0);
-      if (!savedAtMs || Date.now() - savedAtMs > EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_TTL_MS) {
-        sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
-        return;
-      }
-      if (parsed.availability?.eligible === true) {
-        this.syncLandingLoginAvailability({
-          eligible: true,
-          partitionKey: parsed.availability.partitionKey ?? null,
-          message: parsed.availability.message ?? null,
-          securityGateEnabled: parsed.availability.securityGateEnabled === true,
-          locationRequired: false
-        }, 'coordinates');
-      }
-    } catch {
-      sessionStorage.removeItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY);
-    }
-  }
-
-  private saveCachedLocationEligibility(availability: UserLocationEligibilityResponseDto): void {
-    if (typeof sessionStorage === 'undefined') {
-      return;
-    }
-    try {
-      sessionStorage.setItem(EntryShellComponent.LOCATION_ELIGIBILITY_CACHE_KEY, JSON.stringify({
-        savedAtMs: Date.now(),
-        availability
-      }));
-    } catch {
-      // Cache is only a speed-up for the landing gate.
-    }
+    this.geolocationPermissionState = null;
   }
 
 }

@@ -13,16 +13,15 @@ import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { delay, from, of } from 'rxjs';
+import { from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, ChatVoiceClipsService, EventsService, ShareTokensService } from '../../../shared/core';
+import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, AppContext, AppPopupContext, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
   CounterBadgePipe,
   SmartListComponent,
@@ -32,7 +31,6 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { HttpMediaService } from '../../../shared/core/http';
 import { NavigatorService } from '../../../navigator';
 
 interface ChatThreadFilters {
@@ -104,7 +102,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly httpMediaService = inject(HttpMediaService);
+  private readonly mediaService = inject(MediaService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly location = inject(Location);
 
@@ -118,7 +116,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected chatHeaderContext: AppTypes.PopupHeaderContext | null = null;
   protected chatHeaderControlsHydrated = false;
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
-  private resolvedChatEventRecord: DemoEventRecord | null = null;
+  private resolvedChatEventRecord: ActivityEventRecord | null = null;
   private resolvedChatEventRecordKey = '';
   private resolvedChatResourceState: AppTypes.ActivitySubEventResourceState | null = null;
   private resolvedChatResourceStateKey = '';
@@ -177,7 +175,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatHistoryPageSize = 10;
   private readonly chatInitialLoadMessageCount = 15;
   private readonly chatHistoryPreloadOffsetPx = 48;
-  private readonly chatLoadOlderDelayMs = resolveCurrentRouteDelayMs('/activities/chats', 1500);
   private readonly chatTypingIdleMs = 1800;
   private readonly chatTypingRemoteTtlMs = 3200;
   private readonly chatTransientFxMs = 1600;
@@ -191,7 +188,6 @@ export class EventChatPopupComponent implements OnDestroy {
     initialPageCount: 1,
     initialPageSize: this.chatInitialLoadMessageCount,
     preloadOffsetPx: this.chatHistoryPreloadOffsetPx,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     showStickyHeader: false,
     showFirstGroupMarker: true,
     loadTriggerEdge: 'end',
@@ -218,7 +214,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (query.page === 0 && sessionKey && this.initialChatLoadedSessionKey !== sessionKey) {
       return from(this.loadInitialChatThreadPage(query, sessionKey));
     }
-    return of(this.chatThreadPageResult(query)).pipe(delay(query.page > 0 ? this.chatLoadOlderDelayMs : 0));
+    return of(this.chatThreadPageResult(query));
   };
 
   @ViewChild('chatThreadSmartList')
@@ -2067,11 +2063,7 @@ export class EventChatPopupComponent implements OnDestroy {
     attachment: AppTypes.ChatMessageAttachment,
     file: File
   ): Promise<AppTypes.ChatMessageAttachment> {
-    if (this.activitiesContext.dataMode !== 'http') {
-      return { ...attachment };
-    }
-    const upload = await this.httpMediaService.uploadImage(
-      'chat',
+    const upload = await this.mediaService.uploadImage(
       this.activeUserId() || 'chat',
       `${chat.id || 'chat'}-${Date.now()}`,
       file
@@ -2088,31 +2080,24 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private async persistVoiceClipByConfiguredMode(voiceKey: string): Promise<string | null> {
     const mimeType = this.voiceClipMimeType || 'audio/webm';
-    if (this.activitiesContext.dataMode === 'demo') {
-      try {
-        const voiceUrl = await this.chatVoiceClipsService.saveVoiceClip(voiceKey, {
-          dataUrl: this.voiceClipDataUrl,
-          mimeType,
-          durationSeconds: this.voiceRecorderSeconds,
-          sizeBytes: this.voiceClipSizeBytes
-        });
-        this.voiceAttachmentSrcByKey[voiceUrl] = this.voiceClipDataUrl;
-        return voiceUrl;
-      } catch {
-        this.voiceRecorderError = 'Voice clip could not be saved on this device.';
-        return null;
-      }
-    }
-
     const session = this.session();
     const ownerId = `${session?.item.id ?? this.activeUserId() ?? 'chat'}`.trim();
     const extension = mimeType.includes('mp4') || mimeType.includes('aac') ? 'm4a' : mimeType.includes('ogg') ? 'ogg' : 'webm';
     const file = this.dataUrlToFile(this.voiceClipDataUrl, `${voiceKey.replace(/[^a-zA-Z0-9._-]+/g, '-')}.${extension}`, mimeType);
-    const upload = await this.httpMediaService.uploadAudio('chat', ownerId || 'chat', voiceKey, file);
+    const upload = await this.mediaService.uploadAudio(ownerId || 'chat', voiceKey, file, {
+      dataUrl: this.voiceClipDataUrl,
+      durationSeconds: this.voiceRecorderSeconds,
+      sizeBytes: this.voiceClipSizeBytes
+    });
     if (upload.uploaded && upload.audioUrl) {
+      if (this.chatVoiceClipsService.isVoiceClipUrl(upload.audioUrl)) {
+        this.voiceAttachmentSrcByKey[upload.audioUrl] = this.voiceClipDataUrl;
+      }
       return upload.audioUrl;
     }
-    this.voiceRecorderError = 'Voice upload failed.';
+    this.voiceRecorderError = this.activitiesContext.dataMode === 'local'
+      ? 'Voice clip could not be saved on this device.'
+      : 'Voice upload failed.';
     return null;
   }
 
@@ -3708,7 +3693,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return `${chat.eventId ?? ''}`.trim() ? 'mainEvent' : 'general';
   }
 
-  private resolveSelectedChatEventRecord(chat: ChatRecord): DemoEventRecord | null {
+  private resolveSelectedChatEventRecord(chat: ChatRecord): ActivityEventRecord | null {
     const eventId = `${chat.eventId ?? ''}`.trim();
     if (!eventId) {
       return null;
@@ -3721,7 +3706,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private resolveSelectedChatSubEvent(
     chat: ChatRecord,
-    eventRecord: DemoEventRecord | null
+    eventRecord: ActivityEventRecord | null
   ): AppTypes.SubEventFormItem | null {
     const subEventId = `${chat.subEventId ?? ''}`.trim();
     if (!subEventId) {

@@ -7,7 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
 import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
-import type { DemoEventSeedItem } from '../../../shared/core/demo/models/event-seed-item.model';
+import type { ActivityEventSeedItem } from '../../../shared/core/base/models/event-seed-item.model';
 import {
   CounterBadgePipe,
   InfoCardComponent,
@@ -20,9 +20,8 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface EventFeedbackListFilters {
@@ -78,7 +77,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly eventRecordsRef = signal<DemoEventRecord[]>([]);
+  private readonly eventRecordsRef = signal<ActivityEventRecord[]>([]);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
   private eventRecordsLoadPromise: Promise<void> | null = null;
@@ -201,7 +200,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     EventFeedbackListFilters
   > = {
     pageSize: 12,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/feedback'),
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -302,13 +300,13 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
   }
 
-  public get eventItems(): DemoEventSeedItem[] {
+  public get eventItems(): ActivityEventSeedItem[] {
     return this.uniqueEventRecords()
       .filter(record => record.type === 'events' && !record.isTrashed && !record.isInvitation && !record.isAdmin)
       .map(record => this.toDemoEventSeedItem(record));
   }
 
-  public get ownedEventItems(): DemoEventSeedItem[] {
+  public get ownedEventItems(): ActivityEventSeedItem[] {
     return this.uniqueEventRecords()
       .filter(record => !record.isTrashed && !record.isInvitation && !!record.isAdmin)
       .map(record => this.toDemoEventSeedItem(record));
@@ -726,7 +724,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     }
   }
 
-  private eventRecordById(eventId: string): DemoEventRecord | null {
+  private eventRecordById(eventId: string): ActivityEventRecord | null {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -734,8 +732,8 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     return this.uniqueEventRecords().find(record => record.id === normalizedEventId) ?? null;
   }
 
-  private uniqueEventRecords(): DemoEventRecord[] {
-    const byId = new Map<string, DemoEventRecord>();
+  private uniqueEventRecords(): ActivityEventRecord[] {
+    const byId = new Map<string, ActivityEventRecord>();
     for (const record of this.eventRecordsRef()) {
       const recordId = record.id?.trim() ?? '';
       if (!recordId) {
@@ -749,8 +747,8 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     return [...byId.values()];
   }
 
-  private shouldPreferEventRecord(candidate: DemoEventRecord, current: DemoEventRecord): boolean {
-    const score = (record: DemoEventRecord) =>
+  private shouldPreferEventRecord(candidate: ActivityEventRecord, current: ActivityEventRecord): boolean {
+    const score = (record: ActivityEventRecord) =>
       (record.isAdmin ? 8 : 0)
       + (record.type === 'hosting' ? 4 : 0)
       + (!record.isInvitation ? 2 : 0)
@@ -758,7 +756,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     return score(candidate) > score(current);
   }
 
-  private collectEventRecordUserIds(records: readonly DemoEventRecord[]): string[] {
+  private collectEventRecordUserIds(records: readonly ActivityEventRecord[]): string[] {
     return [...new Set(records.flatMap(record => [
       `${record.creatorUserId ?? ''}`.trim(),
       ...(this.activityMembersService.peekSummaryByOwner({ ownerType: 'event', ownerId: record.id })?.acceptedMemberUserIds ?? [])
@@ -991,7 +989,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     }
   }
 
-  private toDemoEventSeedItem(record: DemoEventRecord): DemoEventSeedItem {
+  private toDemoEventSeedItem(record: ActivityEventRecord): ActivityEventSeedItem {
     return {
       id: record.id,
       avatar: record.avatar,

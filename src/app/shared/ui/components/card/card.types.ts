@@ -88,7 +88,6 @@ export interface CardImageSlide {
 
 export interface CardProfileViewData {
   userId: string;
-  user?: unknown | null;
   label?: string | null;
 }
 

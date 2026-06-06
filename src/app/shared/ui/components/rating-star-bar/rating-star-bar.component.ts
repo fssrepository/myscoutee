@@ -2,7 +2,7 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nPipe } from '../../../i18n';
+import { I18nPipe } from '../../pipes';
 
 export type RatingStarBarPresentation = 'list' | 'fullscreen';
 export type RatingStarBarAnimation = 'default' | 'blink' | 'none';

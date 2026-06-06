@@ -128,7 +128,11 @@
       <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
       <article class="idea-editor-nested-panel idea-editor-viewer-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
-          <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
+          <app-progress-indicator
+            kind="load-ring"
+            state="loading"
+            [durationMs]="articlePanelLoadProgressDurationMs()"
+          ></app-progress-indicator>
           <span>{{ articlePanelLoadingLabel() }}</span>
         </div>
       </article>
@@ -167,7 +171,11 @@
       <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
       <article class="idea-editor-nested-panel idea-editor-form-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
-          <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
+          <app-progress-indicator
+            kind="load-ring"
+            state="loading"
+            [durationMs]="articlePanelLoadProgressDurationMs()"
+          ></app-progress-indicator>
           <span>{{ articlePanelLoadingLabel() }}</span>
         </div>
       </article>
@@ -261,7 +269,11 @@
         @if (articlePanelLoading && articlePanelLoadingMode === 'editor') {
           <div class="idea-editor-form-loading-overlay" aria-busy="true">
             <div class="idea-editor-panel-loading-card">
-              <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
+              <app-progress-indicator
+                kind="load-ring"
+                state="loading"
+                [durationMs]="articlePanelLoadProgressDurationMs()"
+              ></app-progress-indicator>
               <span>{{ articlePanelLoadingLabel() }}</span>
             </div>
           </div>

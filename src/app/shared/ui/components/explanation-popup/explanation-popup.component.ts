@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ExplanationGuideService } from '../../../core';
 import type { HelpCenterSection } from '../../../core/base/models';
-import { I18nPipe } from '../../../i18n';
+import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 
@@ -28,7 +28,6 @@ export class ExplanationPopupComponent {
   protected readonly guide = inject(ExplanationGuideService);
   protected readonly popupOpen = this.guide.popupOpen;
   protected readonly loading = this.guide.loading;
-  protected readonly loadingProgress = this.guide.loadingProgress;
   protected readonly activeRevision = this.guide.visibleRevision;
   private readonly lazyImagePlaceholderUrl = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private readonly fallbackWideSectionIds = new Set<string>([

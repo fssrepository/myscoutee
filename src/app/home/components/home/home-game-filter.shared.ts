@@ -1,4 +1,4 @@
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 
 export const GAME_FILTER_AGE_MIN = 18;
 export const GAME_FILTER_AGE_MAX = 120;
@@ -33,7 +33,7 @@ export interface GameFilterForm {
   values: string[];
   physiques: string[];
   languages: string[];
-  genders: Array<DemoUser['gender']>;
+  genders: Array<UserDto['gender']>;
   horoscopes: string[];
   traitLabels: string[];
   smoking: string[];
@@ -71,9 +71,9 @@ export interface GameFilterOptionGroup {
 }
 
 export interface HomeGameFilterPopupContext {
-  activeUser: DemoUser;
+  activeUser: UserDto;
   filter: GameFilterForm;
-  users: readonly DemoUser[];
+  users: readonly UserDto[];
   userFacets: Readonly<Record<string, GameUserFacet>>;
   interestOptionGroups: readonly GameFilterOptionGroup[];
   valueOptionGroups: readonly GameFilterOptionGroup[];
@@ -99,7 +99,7 @@ export function parseGameHeightCm(height: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-export function createInitialGameFilter(activeUser?: Pick<DemoUser, 'age' | 'height'> | null): GameFilterForm {
+export function createInitialGameFilter(activeUser?: Pick<UserDto, 'age' | 'height'> | null): GameFilterForm {
   const activeAge = typeof activeUser?.age === 'number' && activeUser.age >= GAME_FILTER_AGE_MIN
     ? activeUser.age
     : 30;
@@ -189,7 +189,7 @@ export function normalizeGameFilter(filter: GameFilterForm): GameFilterForm {
 
 export function isGameFilterActive(
   filter: GameFilterForm,
-  activeUser?: Pick<DemoUser, 'age' | 'height'> | null
+  activeUser?: Pick<UserDto, 'age' | 'height'> | null
 ): boolean {
   const baseline = createInitialGameFilter(activeUser);
   return (
@@ -218,21 +218,21 @@ export function isGameFilterActive(
 }
 
 export function getGameUserFacet(
-  user: DemoUser,
+  user: UserDto,
   userFacets: Readonly<Record<string, GameUserFacet>>
 ): GameUserFacet {
   return userFacets[user.id] ?? DEFAULT_GAME_USER_FACET;
 }
 
 export function getGameUserInterests(
-  user: DemoUser,
+  user: UserDto,
   userFacets: Readonly<Record<string, GameUserFacet>>
 ): string[] {
   return getGameUserFacet(user, userFacets).interests;
 }
 
 export function getGameUserValues(
-  user: DemoUser,
+  user: UserDto,
   userFacets: Readonly<Record<string, GameUserFacet>>
 ): string[] {
   return getGameUserFacet(user, userFacets).values;

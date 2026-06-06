@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nPipe } from '../../../i18n';
+import { I18nPipe } from '../../pipes';
 
 @Component({
   selector: 'app-install-prompt',

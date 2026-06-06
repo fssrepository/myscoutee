@@ -25,6 +25,7 @@ import {
   type ProgressIndicatorBarConfig,
   type ProgressIndicatorPlacement
 } from '../progress-indicator';
+import { ROUTE_CONFIG } from '../../../core/base/config';
 import {
   RatingStarBarComponent,
   type RatingStarBarConfig
@@ -117,6 +118,7 @@ type SmartListCalendarWindow = {
 })
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly DEFAULT_LOADING_DELAY_MS = 0;
+  private static readonly DEFAULT_LOADING_WINDOW_MS = ROUTE_CONFIG.defaultRequestTimeoutMs;
   private static readonly DEFAULT_MOBILE_PAGE_SIZE_CAP = 6;
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
@@ -2723,7 +2725,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return;
     }
     const elapsed = Math.max(0, performance.now() - this.loadingStartedAtMs);
-    const windowMs = Math.max(600, this.config.loadingWindowMs ?? 3000);
+    const windowMs = Math.max(600, this.config.loadingWindowMs ?? SmartListComponent.DEFAULT_LOADING_WINDOW_MS);
     const nextProgress = Math.min(1, Math.max(0, elapsed / windowMs));
     this.loadingProgress = Math.max(this.loadingProgress, nextProgress);
     this.loadingOverdue = elapsed >= windowMs && this.loadingCounter > 0;

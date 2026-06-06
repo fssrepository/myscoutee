@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivityMembersSummary } from '../../../core/base/models';
-import type { DemoEventRecord } from '../../demo/models/events.model';
-import { DemoEventEditorDataService } from '../../demo/services/event-editor-data.service';
+import type { ActivityEventRecord } from '../models/events.model';
+import { LocalEventEditorDataService } from '../../local/services/event-editor-data.service';
 import { HttpEventEditorDataService } from '../../http/services/event-editor-data.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -10,30 +10,30 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class EventEditorDataService extends BaseRouteModeService {
-  private readonly demoEventEditorDataService = inject(DemoEventEditorDataService);
+  private readonly localEventEditorDataService = inject(LocalEventEditorDataService);
   private readonly httpEventEditorDataService = inject(HttpEventEditorDataService);
 
-  peekKnownItemById(userId: string, itemId: string): DemoEventRecord | null {
+  peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
     return this.isDemoModeEnabled('/activities/events')
-      ? this.demoEventEditorDataService.peekKnownItemById(userId, itemId)
+      ? this.localEventEditorDataService.peekKnownItemById(userId, itemId)
       : this.httpEventEditorDataService.peekKnownItemById(userId, itemId);
   }
 
-  queryKnownItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+  queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     return this.isDemoModeEnabled('/activities/events')
-      ? this.demoEventEditorDataService.queryKnownItemById(userId, itemId)
+      ? this.localEventEditorDataService.queryKnownItemById(userId, itemId)
       : this.httpEventEditorDataService.queryKnownItemById(userId, itemId);
   }
 
-  loadFullItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+  loadFullItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     return this.isDemoModeEnabled('/activities/events')
-      ? this.demoEventEditorDataService.loadFullItemById(userId, itemId)
+      ? this.localEventEditorDataService.loadFullItemById(userId, itemId)
       : this.httpEventEditorDataService.loadFullItemById(userId, itemId);
   }
 
   querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
     return this.isDemoModeEnabled('/activities/events/members')
-      ? this.demoEventEditorDataService.querySummaryByOwnerId(ownerId)
+      ? this.localEventEditorDataService.querySummaryByOwnerId(ownerId)
       : this.httpEventEditorDataService.querySummaryByOwnerId(ownerId);
   }
 

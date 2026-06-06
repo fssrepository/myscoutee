@@ -9,14 +9,13 @@ import type { UserDto } from '../interfaces/user.interface';
 import { UsersService } from './users.service';
 import { SessionService } from './session.service';
 import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';
-import { scopedStorageKey } from '../storage-scope';
+import { appLocationStorageKey } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AppLocationService {
-  private static readonly STORAGE_PREFIX = 'location.v1';
-  private static readonly ACCESS_RESTRICTED_TITLE = 'Login Unavailable';
+  private static readonly ACCESS_RESTRICTED_TITLE = 'Please register';
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
 
@@ -49,6 +48,10 @@ export class AppLocationService {
 
       const activeUser = this.resolveTrackedUser(activeUserId);
       if (!activeUser) {
+        return;
+      }
+      if (activeUser.admin === true) {
+        this.stopCoordinateWatch();
         return;
       }
       this.runLocationSyncFlow(activeUserId, activeUser);
@@ -106,7 +109,7 @@ export class AppLocationService {
       headline: '',
       about: '',
       images: imageUrl?.trim() ? [imageUrl.trim()] : [],
-      profileStatus: 'public',
+      profileStatus: 'onboarding',
       activities: {
         game: 0,
         chat: 0,
@@ -124,7 +127,11 @@ export class AppLocationService {
   }
 
   private runLocationSyncFlow(userId: string, activeUser: UserDto): void {
-    if (!activeUser?.id?.trim()) {
+    if (!activeUser?.id?.trim() || activeUser.admin === true) {
+      return;
+    }
+    if (activeUser.profileStatus === 'onboarding') {
+      this.stopCoordinateWatch();
       return;
     }
 
@@ -304,7 +311,7 @@ export class AppLocationService {
     coordinates: LocationCoordinates
   ): void {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
-    if (this.usersService.demoModeEnabled || !activeUser?.id?.trim() || !normalizedCoordinates) {
+    if (this.usersService.demoModeEnabled || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
       return;
     }
 
@@ -320,7 +327,7 @@ export class AppLocationService {
     userId: string,
     fallbackUser: UserDto
   ): Promise<void> {
-    if (this.usersService.demoModeEnabled || !fallbackUser?.id?.trim() || this.syncingUserIds.has(userId)) {
+    if (this.usersService.demoModeEnabled || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
       return;
     }
 
@@ -338,6 +345,9 @@ export class AppLocationService {
     this.syncingUserIds.add(userId);
     try {
       const currentUser = this.resolveTrackedUser(userId) ?? fallbackUser;
+      if (currentUser.admin === true) {
+        return;
+      }
       const savedUser = await this.httpUsersService.saveUserProfile({
         ...currentUser,
         locationCoordinates: normalizedCoordinates
@@ -362,7 +372,7 @@ export class AppLocationService {
             allowEscapeClose: false,
             onConfirm: async () => {
               await this.sessionService.logout();
-              await this.router.navigateByUrl('/entry');
+              await this.router.navigateByUrl(this.router.url.split('?')[0].startsWith('/admin') ? '/admin' : '/entry');
             }
           });
         }
@@ -394,6 +404,6 @@ export class AppLocationService {
   }
 
   private storageKey(userId: string): string {
-    return scopedStorageKey(`${AppLocationService.STORAGE_PREFIX}:${userId.trim()}`);
+    return appLocationStorageKey(userId);
   }
 }

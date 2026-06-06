@@ -1,13 +1,12 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { DemoLandingContentService } from '../../demo/services/landing-content.service';
+import { LocalLandingContentService } from '../../local/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
 import type { LandingContentState } from '../models';
 import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { HelpCenterService } from './help-center.service';
 import { IdeaPostsService } from './idea-posts.service';
-import { RouteDelayService } from './route-delay.service';
 
 export interface LandingContentDisplayState {
   state: LandingContentState;
@@ -19,11 +18,10 @@ export interface LandingContentDisplayState {
 })
 export class LandingContentService extends BaseRouteModeService {
   private static readonly LANDING_CONTENT_ROUTE = '/landing/content';
-  private readonly demoLandingContentService = inject(DemoLandingContentService);
+  private readonly localLandingContentService = inject(LocalLandingContentService);
   private readonly httpLandingContentService = inject(HttpLandingContentService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly ideaPosts = inject(IdeaPostsService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly stateRef = signal<LandingContentState | null>(null);
   private loadPromise: Promise<LandingContentState> | null = null;
   private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
@@ -57,11 +55,8 @@ export class LandingContentService extends BaseRouteModeService {
       return this.cloneDisplayState(current);
     }
     if (!this.displayLoadPromise) {
-      this.displayLoadPromise = Promise.all([
-        this.loadOnce(),
-        this.waitForRouteDelay()
-      ])
-        .then(([state]) => this.cloneDisplayState(state))
+      this.displayLoadPromise = this.loadOnce()
+        .then(state => this.cloneDisplayState(state))
         .finally(() => {
           this.displayLoadPromise = null;
         });
@@ -73,16 +68,12 @@ export class LandingContentService extends BaseRouteModeService {
     return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
   }
 
-  private landingService(): DemoLandingContentService | HttpLandingContentService {
+  private landingService(): LocalLandingContentService | HttpLandingContentService {
     return this.resolveRouteService(
       LandingContentService.LANDING_CONTENT_ROUTE,
-      this.demoLandingContentService,
+      this.localLandingContentService,
       this.httpLandingContentService
     );
-  }
-
-  private waitForRouteDelay(): Promise<void> {
-    return this.routeDelay.waitForRouteDelay(LandingContentService.LANDING_CONTENT_ROUTE);
   }
 
   private cloneDisplayState(state: LandingContentState): LandingContentDisplayState {

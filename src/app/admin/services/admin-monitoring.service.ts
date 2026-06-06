@@ -14,14 +14,10 @@ import type {
   AdminMonitoringTone
 } from '../../shared/core';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import { AdminMonitoringSeedBuilder } from '../builders/admin-monitoring-seed.builder';
 import { AdminMonitoringRepository } from '../repositories/admin-monitoring.repository';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
-const ADMIN_MONITORING_STORAGE_TIMEOUT_MS = 2500;
-const ADMIN_MONITORING_HTTP_TIMEOUT_MS = 12000;
 const ADMIN_MONITORING_LOAD_ROUTE = '/admin/monitoring';
-const ADMIN_MONITORING_LOAD_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
@@ -33,18 +29,25 @@ export class AdminMonitoringService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
+  monitoringLoadProgressWindowMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_MONITORING_LOAD_ROUTE);
+  }
+
   async loadMonitoringState(): Promise<AdminMonitoringStateDto> {
     return this.withAdminMonitoringDemoDelay(this.loadMonitoringStateSnapshot());
   }
 
   private async loadMonitoringStateSnapshot(): Promise<AdminMonitoringStateDto> {
     if (this.workspace.usesHttpAdminApi) {
-      const state = await this.withHttpTimeout(this.http
+      const state = await this.routeDelay.withRequestTimeout(ADMIN_MONITORING_LOAD_ROUTE, this.http
         .get<AdminMonitoringStateDto>(`${this.apiBaseUrl}/admin/monitoring`, {
           params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' }
         })
-        .toPromise());
-      return this.normalizeMonitoringState(state ?? this.buildDefaultMonitoringState(), 'http');
+        .toPromise(), 'Monitoring request timed out.');
+      if (!state) {
+        throw new Error('Admin monitoring state is unavailable.');
+      }
+      return this.normalizeMonitoringState(state, 'http');
     }
     return this.readDemoMonitoringState();
   }
@@ -54,10 +57,7 @@ export class AdminMonitoringService {
       return work;
     }
     const delay = this.routeDelay.waitForRouteDelay(
-      ADMIN_MONITORING_LOAD_ROUTE,
-      undefined,
-      undefined,
-      ADMIN_MONITORING_LOAD_DEMO_DELAY_MS
+      ADMIN_MONITORING_LOAD_ROUTE
     );
     try {
       const [result] = await Promise.all([work, delay]);
@@ -69,19 +69,12 @@ export class AdminMonitoringService {
   }
 
   private async readDemoMonitoringState(): Promise<AdminMonitoringStateDto> {
-    await this.withStorageFallback(this.repository.whenReady(), undefined);
-    const existing = await this.withStorageFallback(
-      this.repository.readStore<AdminMonitoringStateDto>(),
-      null
-    );
+    await this.repository.whenReady();
+    const existing = await this.repository.readStore<AdminMonitoringStateDto>();
     if (!existing?.categories?.length) {
       throw new Error('Demo monitoring state is not bootstrapped.');
     }
     return this.normalizeMonitoringState(existing, 'demo');
-  }
-
-  private buildDefaultMonitoringState(): AdminMonitoringStateDto {
-    return this.normalizeMonitoringState(AdminMonitoringSeedBuilder.buildDefaultMonitoringState(), 'demo');
   }
 
   private normalizeMonitoringState(
@@ -92,7 +85,7 @@ export class AdminMonitoringService {
     const categories = (state.categories ?? []).map(category => this.normalizeMonitoringCategory(category));
     return {
       generatedAtIso: `${state.generatedAtIso ?? ''}`.trim() || new Date().toISOString(),
-      source: ['demo', 'http', 'fallback'].includes(normalizedSource) ? normalizedSource : source,
+      source: ['demo', 'http'].includes(normalizedSource) ? normalizedSource : source,
       health: this.normalizeMonitoringHealth(state.health),
       categories
     };
@@ -229,46 +222,4 @@ export class AdminMonitoringService {
     return String(value);
   }
 
-  private withStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
-    return new Promise<T>(resolve => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (value: T) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        resolve(value);
-      };
-      timeoutId = setTimeout(() => finish(fallback), ADMIN_MONITORING_STORAGE_TIMEOUT_MS);
-      task.then(finish).catch(() => finish(fallback));
-    });
-  }
-
-  private withHttpTimeout<T>(task: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (callback: () => void) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        callback();
-      };
-      timeoutId = setTimeout(
-        () => finish(() => reject(new Error('Monitoring request timed out.'))),
-        ADMIN_MONITORING_HTTP_TIMEOUT_MS
-      );
-      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
-    });
-  }
 }

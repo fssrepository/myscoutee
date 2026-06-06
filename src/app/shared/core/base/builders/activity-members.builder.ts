@@ -1,6 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import type { DemoUser } from '../interfaces/user.interface';
+import type { UserDto } from '../interfaces/user.interface';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
@@ -135,8 +135,8 @@ export class ActivityMembersBuilder {
     acceptedMembers: number,
     pendingMembers: number,
     options: {
-      activeUser: DemoUser;
-      users: readonly DemoUser[];
+      activeUser: UserDto;
+      users: readonly UserDto[];
     }
   ): ActivityMemberEntry[] {
     if (acceptedMembers <= 0 && pendingMembers <= 0) {
@@ -149,7 +149,7 @@ export class ActivityMembersBuilder {
     const seed = AppUtils.hashText(`${rowKey}:${acceptedMembers}:${pendingMembers}`);
     const candidates = [options.activeUser, ...options.users.filter(user => user.id !== options.activeUser.id)];
     const used = new Set<string>();
-    const pickUser = (offset: number): DemoUser => {
+    const pickUser = (offset: number): UserDto => {
       if (candidates.length === 0) {
         return options.activeUser;
       }
@@ -199,7 +199,7 @@ export class ActivityMembersBuilder {
   }
 
   static toActivityMemberEntry(
-    user: DemoUser,
+    user: UserDto,
     row: ActivityListRow,
     rowKey: string,
     activeUserId: string,
@@ -234,8 +234,8 @@ export class ActivityMembersBuilder {
     row: ActivityListRow,
     rowKey: string,
     count: number,
-    users: readonly DemoUser[],
-    activeUser: DemoUser,
+    users: readonly UserDto[],
+    activeUser: UserDto,
     forcedMetWhere = APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere
   ): ActivityMemberEntry[] {
     const templates = users.length > 0 ? users : [activeUser];
@@ -274,8 +274,8 @@ export class ActivityMembersBuilder {
   static generateActivityMembersForRow(
     row: ActivityListRow,
     rowKey: string,
-    users: readonly DemoUser[],
-    activeUser: DemoUser,
+    users: readonly UserDto[],
+    activeUser: UserDto,
     metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
   ): ActivityMemberEntry[] {
     if (row.type === 'invitations') {
@@ -306,7 +306,7 @@ export class ActivityMembersBuilder {
       return leftWeight - rightWeight;
     });
     const targets = this.resolveGeneratedMemberTargets(row, seed, orderedOthers.length);
-    const picked: DemoUser[] = [
+    const picked: UserDto[] = [
       activeUser,
       ...orderedOthers.slice(0, Math.max(0, targets.acceptedTarget - 1))
     ];
@@ -397,8 +397,8 @@ export class ActivityMembersBuilder {
     acceptedMembers: number,
     pendingMembers: number,
     options: {
-      activeUser: DemoUser;
-      users: readonly DemoUser[];
+      activeUser: UserDto;
+      users: readonly UserDto[];
     },
     metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
   ): ActivityMemberEntry[] {

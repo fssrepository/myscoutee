@@ -1,29 +1,70 @@
 export interface RouteConfigEntry {
   routePrefix: string;
-  demoDelayMs: number;
+  demoDelayMs?: number;
+  requestTimeoutMs?: number;
+  intervalMs?: number;
   http?: boolean;
 }
 
 export interface RouteConfig {
   defaultDemoDelayMs: number;
+  defaultRequestTimeoutMs: number;
+  defaultIntervalMs: number;
   entries: RouteConfigEntry[];
 }
 
 export interface ResolvedRouteConfig {
   routePrefix: string;
   demoDelayMs: number;
+  requestTimeoutMs: number;
+  intervalMs: number;
   http: boolean;
 }
 
 export const ROUTE_CONFIG: RouteConfig = {
-  defaultDemoDelayMs: 300,
+  defaultDemoDelayMs: 1500,
+  defaultRequestTimeoutMs: 3000,
+  defaultIntervalMs: 0,
   entries: [
     {
       routePrefix: '/auth/demo-users',
-      demoDelayMs: 0
+      demoDelayMs: 1500,
+      requestTimeoutMs: 10000
     },
     {
       routePrefix: '/auth/me',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/onboarding-draft-autosave',
+      intervalMs: 30000
+    },
+    {
+      routePrefix: '/auth/me/feedback',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/experiences',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/preferences',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/report-user',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/realtime/long-poll',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/logout',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/auth/me/delete',
       demoDelayMs: 1500
     },
     {
@@ -31,7 +72,19 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/help/active',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/privacy',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/privacy/active',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/privacy/consents',
       demoDelayMs: 1500
     },
     {
@@ -39,7 +92,15 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/explanation/active',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/landing/content',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin',
       demoDelayMs: 1500
     },
     {
@@ -47,11 +108,23 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/help/revisions',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/privacy',
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/privacy/revisions',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/explanation',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/explanation/revisions',
       demoDelayMs: 1500
     },
     {
@@ -63,6 +136,22 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/reports/blocked-users',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/reports/warn',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/reports/block',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/reports/unblock',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/feedback',
       demoDelayMs: 1500
     },
@@ -71,7 +160,27 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/admin/notifications/save',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/notifications/run',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/admin/params',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/params/save',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/params/history',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/admin/params/revert',
       demoDelayMs: 1500
     },
     {
@@ -96,6 +205,18 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/activities/events',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/activities/events/draft-autosave',
+      intervalMs: 5000
+    },
+    {
+      routePrefix: '/activities/events/explore',
+      demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/activities/events/checkout',
       demoDelayMs: 1500
     },
     {
@@ -125,6 +246,21 @@ export const ROUTE_CONFIG: RouteConfig = {
     {
       routePrefix: '/assets/tickets',
       demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/media/images/import',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 15000
+    },
+    {
+      routePrefix: '/media/images',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 15000
+    },
+    {
+      routePrefix: '/media/audio',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 20000
     },
     {
       routePrefix: '/navigator/contacts',
@@ -159,6 +295,8 @@ export function resolveRouteConfig(url: string): ResolvedRouteConfig {
   return {
     routePrefix: entry?.routePrefix ?? normalizedUrl,
     demoDelayMs: normalizeDelayMs(entry?.demoDelayMs ?? ROUTE_CONFIG.defaultDemoDelayMs),
+    requestTimeoutMs: normalizeDelayMs(entry?.requestTimeoutMs ?? ROUTE_CONFIG.defaultRequestTimeoutMs),
+    intervalMs: normalizeDelayMs(entry?.intervalMs ?? ROUTE_CONFIG.defaultIntervalMs),
     http: entry?.http === true
   };
 }

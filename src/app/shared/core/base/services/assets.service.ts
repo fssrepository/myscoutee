@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData } from '../../../ui';
 import { AssetInfoCardBuilder } from '../builders';
-import { DemoAssetsService } from '../../demo/services/assets.service';
+import { LocalAssetsService } from '../../local/services/assets.service';
 import { HttpAssetsService } from '../../http/services/assets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -11,16 +11,20 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class AssetsService extends BaseRouteModeService {
-  private readonly demoAssetsService = inject(DemoAssetsService);
+  private readonly localAssetsService = inject(LocalAssetsService);
   private readonly httpAssetsService = inject(HttpAssetsService);
 
 
-  private get assetsService(): DemoAssetsService | HttpAssetsService {
-    return this.resolveRouteService('/assets', this.demoAssetsService, this.httpAssetsService);
+  private get assetsService(): LocalAssetsService | HttpAssetsService {
+    return this.resolveRouteService('/assets', this.localAssetsService, this.httpAssetsService);
   }
 
   peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
     return this.assetsService.peekOwnedAssetsByUser(userId);
+  }
+
+  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+    return this.assetsService.peekOwnedAssetById(userId, assetId);
   }
 
   async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
@@ -28,19 +32,16 @@ export class AssetsService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    if (this.isDemoModeEnabled('/assets')) {
-      return this.demoAssetsService.queryOwnedAssetsByUser(normalizedUserId);
+    return this.assetsService.queryOwnedAssetsByUser(normalizedUserId);
+  }
+
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
     }
-    const cachedCards = this.httpAssetsService.peekOwnedAssetsByUser(normalizedUserId);
-    const { value } = await this.loadWithRecovery(
-      () => this.httpAssetsService.queryOwnedAssetsByUser(normalizedUserId),
-      () => cachedCards,
-      {
-        shouldRecover: cards => cards.length === 0 && cachedCards.length > 0,
-        hasRecoveryValue: cards => cards.length > 0
-      }
-    );
-    return value;
+    return this.assetsService.loadFullOwnedAssetById(normalizedUserId, normalizedAssetId);
   }
 
   async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {

@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  activitiesDataSource: 'http' as 'demo' | 'http',
+  activitiesDataSource: 'http' as 'local' | 'http',
   bootstrapOffsetInDays: 0,
   apiBaseUrl: '/api',
   serviceWorkerEnabled: false,

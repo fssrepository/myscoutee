@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import type { DemoEventRecord } from '../../demo/models/events.model';
+import type { ActivityEventRecord } from '../../base/models/events.model';
 import { toActivityEventRow } from '../../base/converters/activities-event.converter';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
@@ -31,7 +31,7 @@ export class HttpAssetTicketsRepository {
 
     try {
       const response = await this.http
-        .get<{ records?: DemoEventRecord[]; total?: number } | null>(`${this.apiBaseUrl}/assets/tickets`, {
+        .get<{ records?: ActivityEventRecord[]; total?: number } | null>(`${this.apiBaseUrl}/assets/tickets`, {
           params: new HttpParams()
             .set('userId', normalizedUserId)
             .set('page', String(Math.max(0, Math.trunc(Number(query.page) || 0))))
@@ -77,7 +77,7 @@ export class HttpAssetTicketsRepository {
     return this.cloneRows(offlineRows);
   }
 
-  protected buildTicketRows(records: readonly DemoEventRecord[]): AppTypes.ActivityListRow[] {
+  protected buildTicketRows(records: readonly ActivityEventRecord[]): AppTypes.ActivityListRow[] {
     return this.cloneRows(records
       .filter(record => !record.isInvitation)
       .filter(record => !record.isTrashed)

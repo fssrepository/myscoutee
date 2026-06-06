@@ -2,6 +2,11 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { RouteDelayService } from '../../base/services/route-delay.service';
+
+const HTTP_MEDIA_IMAGE_UPLOAD_ROUTE = '/media/images';
+const HTTP_MEDIA_IMAGE_IMPORT_ROUTE = '/media/images/import';
+const HTTP_MEDIA_AUDIO_UPLOAD_ROUTE = '/media/audio';
 
 export interface HttpMediaUploadResult {
   uploaded: boolean;
@@ -18,10 +23,10 @@ export interface HttpMediaAudioUploadResult {
 })
 export class HttpMediaService {
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async uploadImage(
-    scope: string,
     ownerId: string,
     entityId: string,
     file: File
@@ -35,7 +40,6 @@ export class HttpMediaService {
       };
     }
     const formData = new FormData();
-    formData.append('scope', scope);
     formData.append('ownerId', normalizedOwnerId);
     formData.append('entityId', normalizedEntityId);
     formData.append('image', file, file.name);
@@ -45,9 +49,13 @@ export class HttpMediaService {
         imageUrl?: string | null;
         url?: string | null;
       };
-      const response = await this.http
-        .post<UploadResponse | null>(`${this.apiBaseUrl}/media/images`, formData)
-        .toPromise();
+      const response = await this.routeDelay.withRequestTimeout(
+        HTTP_MEDIA_IMAGE_UPLOAD_ROUTE,
+        this.http
+          .post<UploadResponse | null>(`${this.apiBaseUrl}/media/images`, formData)
+          .toPromise(),
+        'Media image upload request timeout.'
+      );
       const imageUrl = this.normalizeReturnedMediaUrl(
         (typeof response?.imageUrl === 'string' && response.imageUrl.trim().length > 0
           ? response.imageUrl.trim()
@@ -69,7 +77,6 @@ export class HttpMediaService {
   }
 
   async importImage(
-    scope: string,
     ownerId: string,
     entityId: string,
     imageUrl: string
@@ -89,14 +96,17 @@ export class HttpMediaService {
         imageUrl?: string | null;
         url?: string | null;
       };
-      const response = await this.http
-        .post<UploadResponse | null>(`${this.apiBaseUrl}/media/images/import`, {
-          scope,
-          ownerId: normalizedOwnerId,
-          entityId: normalizedEntityId,
-          imageUrl: normalizedImageUrl
-        })
-        .toPromise();
+      const response = await this.routeDelay.withRequestTimeout(
+        HTTP_MEDIA_IMAGE_IMPORT_ROUTE,
+        this.http
+          .post<UploadResponse | null>(`${this.apiBaseUrl}/media/images/import`, {
+            ownerId: normalizedOwnerId,
+            entityId: normalizedEntityId,
+            imageUrl: normalizedImageUrl
+          })
+          .toPromise(),
+        'Media image import request timeout.'
+      );
       const storedImageUrl = this.normalizeReturnedMediaUrl(
         (typeof response?.imageUrl === 'string' && response.imageUrl.trim().length > 0
           ? response.imageUrl.trim()
@@ -118,10 +128,10 @@ export class HttpMediaService {
   }
 
   async uploadAudio(
-    scope: 'chat',
     ownerId: string,
     entityId: string,
-    file: File
+    file: File,
+    _options?: unknown
   ): Promise<HttpMediaAudioUploadResult> {
     const normalizedOwnerId = ownerId.trim();
     const normalizedEntityId = entityId.trim();
@@ -132,7 +142,6 @@ export class HttpMediaService {
       };
     }
     const formData = new FormData();
-    formData.append('scope', scope);
     formData.append('ownerId', normalizedOwnerId);
     formData.append('entityId', normalizedEntityId);
     formData.append('audio', file, file.name);
@@ -142,9 +151,13 @@ export class HttpMediaService {
         audioUrl?: string | null;
         url?: string | null;
       };
-      const response = await this.http
-        .post<UploadResponse | null>(`${this.apiBaseUrl}/media/audio`, formData)
-        .toPromise();
+      const response = await this.routeDelay.withRequestTimeout(
+        HTTP_MEDIA_AUDIO_UPLOAD_ROUTE,
+        this.http
+          .post<UploadResponse | null>(`${this.apiBaseUrl}/media/audio`, formData)
+          .toPromise(),
+        'Media audio upload request timeout.'
+      );
       const audioUrl = this.normalizeReturnedMediaUrl(
         (typeof response?.audioUrl === 'string' && response.audioUrl.trim().length > 0
           ? response.audioUrl.trim()

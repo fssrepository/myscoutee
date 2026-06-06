@@ -5,17 +5,9 @@
         <img class="entry-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
         <span class="entry-brand-copy">
           <span class="entry-brand-text">yScoutee</span>
-          <button
-            type="button"
-            class="entry-preview-badge"
-            matRipple
-            [matRippleColor]="'rgba(133, 93, 17, 0.14)'"
-            [attr.aria-label]="'landing.preview.open.guide' | i18n: 'Open preview guide'"
-            (click)="openPreviewGuide($event)"
-            >
+          <span class="entry-preview-badge">
             <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
-            <span class="entry-preview-badge-chevron" aria-hidden="true">&gt;</span>
-          </button>
+          </span>
         </span>
       </div>
       <div class="entry-header-actions">
@@ -64,10 +56,23 @@
               <mat-icon>{{ entryPrimaryCtaIcon }}</mat-icon>
               <span>{{ entryPrimaryCtaLabel }}</span>
             </button>
-            <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
-              <mat-icon>timeline</mat-icon>
-              <span>See how it works</span>
-            </a>
+            @if (showHowItWorksCta()) {
+              <a class="entry-cta entry-cta-ghost" href="#articles" (click)="scrollEntryTo('articles', $event)">
+                <mat-icon>timeline</mat-icon>
+                <span>{{ 'see.how.it.works' | i18n: 'See how it works' }}</span>
+              </a>
+            }
+            <button
+              type="button"
+              class="entry-cta entry-cta-bug"
+              matRipple
+              [matRippleColor]="'rgba(255, 245, 214, 0.18)'"
+              [attr.aria-label]="'landing.preview.open.guide' | i18n: 'Open preview guide'"
+              (click)="openPreviewGuide($event)"
+              >
+              <mat-icon>bug_report</mat-icon>
+              <span>{{ 'bug.report' | i18n: 'Bug report' }}</span>
+            </button>
           </div>
         </div>
 
@@ -81,7 +86,7 @@
             @if (!isFirstHowSlide) {
               <button
                 type="button"
-                class="entry-carousel-arrow entry-carousel-arrow-prev"
+                class="entry-carousel-arrow entry-carousel-arrow-prev motion-static"
                 aria-label="Previous step"
                 matRipple
                 [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
@@ -122,7 +127,7 @@
             @if (!isLastHowSlide) {
               <button
                 type="button"
-                class="entry-carousel-arrow entry-carousel-arrow-next"
+                class="entry-carousel-arrow entry-carousel-arrow-next motion-static"
                 aria-label="Next step"
                 matRipple
                 [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
@@ -161,7 +166,7 @@
           @if (ideaCarouselPageCount() > 1 && !isFirstIdeaCarouselPage) {
             <button
               type="button"
-              class="entry-carousel-arrow entry-ideas-carousel-arrow entry-carousel-arrow-prev"
+              class="entry-carousel-arrow entry-ideas-carousel-arrow entry-carousel-arrow-prev motion-static"
               aria-label="Previous articles"
               matRipple
               [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
@@ -201,16 +206,19 @@
               class="entry-ideas-carousel-loading"
               aria-live="polite"
               aria-busy="true"
-              [style.--entry-ideas-loading-progress]="articlesLoadingProgress"
               >
-              <span class="entry-ideas-carousel-progress-ring" aria-hidden="true"></span>
+              <app-progress-indicator
+                kind="load-ring"
+                state="loading"
+                [durationMs]="articlesLoadingDurationMs"
+              ></app-progress-indicator>
               <span class="entry-ideas-carousel-loading-label">{{ 'Loading articles' | i18n }}</span>
             </div>
           }
           @if (ideaCarouselPageCount() > 1 && !isLastIdeaCarouselPage) {
             <button
               type="button"
-              class="entry-carousel-arrow entry-ideas-carousel-arrow entry-carousel-arrow-next"
+              class="entry-carousel-arrow entry-ideas-carousel-arrow entry-carousel-arrow-next motion-static"
               aria-label="Next articles"
               matRipple
               [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
@@ -306,20 +314,23 @@
         </button>
       </header>
       <div class="entry-preview-guide-body">
-        <h2>{{ 'landing.preview.guide.title' | i18n: 'Preview version guide' }}</h2>
-        <p>{{ 'landing.preview.guide.intro' | i18n: 'MyScoutee is currently a test version. Use it with your own responsibility while features, data, and availability are still being improved.' }}</p>
-        <ol>
-          <li>{{ 'landing.preview.guide.step.1' | i18n: 'If something breaks, open Report Bugs and include what you expected, what happened, and the steps to repeat it.' }}</li>
-          <li>{{ 'landing.preview.guide.step.2' | i18n: 'Add your device, browser, and a screenshot when it helps. Do not include passwords, payment data, or private codes.' }}</li>
-          <li>{{ 'landing.preview.guide.step.3' | i18n: 'For account, safety, or privacy problems, use the in-app report and feedback tools after login so the team gets the right context.' }}</li>
-        </ol>
+        <h2>{{ 'landing.preview.guide.title' | i18n: 'Preview version' }}</h2>
+        <p>{{ 'landing.preview.guide.intro' | i18n: 'MyScoutee is currently a test version, so some features may still change or break.' }}</p>
+        <p class="entry-preview-guide-github-note">
+          <svg class="entry-github-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 .5A11.5 11.5 0 0 0 8.36 22.91c.58.11.79-.25.79-.56v-2.16c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.72 0-1.26.45-2.3 1.2-3.11-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.2 1.19a11.08 11.08 0 0 1 5.83 0c2.22-1.5 3.2-1.19 3.2-1.19.63 1.6.23 2.78.11 3.07.75.81 1.2 1.85 1.2 3.11 0 4.45-2.7 5.43-5.28 5.71.42.36.79 1.07.79 2.16v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/>
+          </svg>
+          <span>{{ 'landing.preview.guide.github' | i18n: 'Bug reports use GitHub Issues so fixes can be tracked. Add what happened and the steps to repeat it.' }}</span>
+        </p>
         <a
           class="entry-preview-guide-report-btn"
           href="https://github.com/fssrepository/myscoutee/issues"
           target="_blank"
           rel="noopener noreferrer"
           >
-          <mat-icon>bug_report</mat-icon>
+          <svg class="entry-github-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 .5A11.5 11.5 0 0 0 8.36 22.91c.58.11.79-.25.79-.56v-2.16c-3.22.7-3.9-1.37-3.9-1.37-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.57-.29-5.27-1.28-5.27-5.72 0-1.26.45-2.3 1.2-3.11-.12-.29-.52-1.47.11-3.07 0 0 .98-.31 3.2 1.19a11.08 11.08 0 0 1 5.83 0c2.22-1.5 3.2-1.19 3.2-1.19.63 1.6.23 2.78.11 3.07.75.81 1.2 1.85 1.2 3.11 0 4.45-2.7 5.43-5.28 5.71.42.36.79 1.07.79 2.16v3.18c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/>
+          </svg>
           <span>{{ 'landing.preview.guide.report.button' | i18n: 'Report Bugs' }}</span>
         </a>
       </div>

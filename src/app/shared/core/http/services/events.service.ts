@@ -16,19 +16,19 @@ import type {
   SubEventLeaderboardState
 } from '../../../core/base/models';
 import type {
-  DemoEventActivitiesListQueryResult,
-  DemoEventActivitiesQuery,
-  DemoEventExploreQuery,
-  DemoEventExploreQueryResult,
-  DemoEventListItem,
-  DemoEventRecord,
-  DemoEventScopeFilter,
-  DemoRepositoryEventItemType
-} from '../../demo/models/events.model';
+  ActivityEventActivitiesListQueryResult,
+  ActivityEventActivitiesQuery,
+  ActivityEventExploreQuery,
+  ActivityEventExploreQueryResult,
+  ActivityEventListItem,
+  ActivityEventRecord,
+  ActivityEventScopeFilter,
+  ActivityEventRepositoryItemType
+} from '../../base/models/events.model';
 
 interface HttpEventsFilterRequest {
   userId: string;
-  filter: DemoEventScopeFilter;
+  filter: ActivityEventScopeFilter;
   hostingPublicationFilter: 'all' | 'drafts';
   secondaryFilter?: 'recent' | 'relevant' | 'past';
   sort?: 'date' | 'distance' | 'relevance';
@@ -47,34 +47,34 @@ export class HttpEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events', userId);
   }
 
-  peekItemsByUser(_userId: string): DemoEventRecord[] {
+  peekItemsByUser(_userId: string): ActivityEventRecord[] {
     return [];
   }
 
-  async queryInvitationItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  async queryInvitationItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/invitations', userId);
   }
 
-  async queryEventItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  async queryEventItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/attending', userId);
   }
 
-  async queryHostingItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  async queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/hosting', userId);
   }
 
-  async queryTrashedItemsByUser(userId: string): Promise<DemoEventRecord[]> {
+  async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/trash', userId);
   }
 
   async queryActivitiesEventListPage(
-    query: DemoEventActivitiesQuery,
+    query: ActivityEventActivitiesQuery,
     signal?: AbortSignal
-  ): Promise<DemoEventActivitiesListQueryResult> {
+  ): Promise<ActivityEventActivitiesListQueryResult> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -85,7 +85,7 @@ export class HttpEventsService {
     }
     try {
       const response = await this.requestWithAbort(
-        this.http.post<DemoEventListItem[] | DemoEventActivitiesListQueryResult | null>(
+        this.http.post<ActivityEventListItem[] | ActivityEventActivitiesListQueryResult | null>(
           `${this.apiBaseUrl}/activities/events/filter`,
           {
             userId: normalizedUserId,
@@ -182,14 +182,14 @@ export class HttpEventsService {
     return error instanceof Error && error.name === 'AbortError';
   }
 
-  async queryExploreItems(userId: string): Promise<DemoEventRecord[]> {
+  async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     try {
       const response = await this.http
-        .post<DemoEventRecord[] | null>(`${this.apiBaseUrl}/activities/events/explore`, {
+        .post<ActivityEventRecord[] | null>(`${this.apiBaseUrl}/activities/events/explore`, {
           userId: normalizedUserId
         })
         .toPromise();
@@ -199,11 +199,11 @@ export class HttpEventsService {
     }
   }
 
-  peekExploreItems(_userId: string): DemoEventRecord[] {
+  peekExploreItems(_userId: string): ActivityEventRecord[] {
     return [];
   }
 
-  async queryEventExplorePage(query: DemoEventExploreQuery): Promise<DemoEventExploreQueryResult> {
+  async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -214,7 +214,7 @@ export class HttpEventsService {
     }
     try {
       const response = await this.http
-        .post<DemoEventRecord[] | DemoEventExploreQueryResult | null>(
+        .post<ActivityEventRecord[] | ActivityEventExploreQueryResult | null>(
           `${this.apiBaseUrl}/activities/events/explore`,
           {
             ...query,
@@ -246,7 +246,7 @@ export class HttpEventsService {
     }
   }
 
-  peekEventExplorePage(_query: DemoEventExploreQuery): DemoEventExploreQueryResult {
+  peekEventExplorePage(_query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
     return {
       records: [],
       total: 0,
@@ -254,23 +254,23 @@ export class HttpEventsService {
     };
   }
 
-  async trashItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  async trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/trash', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
-  async publishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  async publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/publish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
-  async unpublishItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  async unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
-  async restoreItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  async restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
-  async takeOverItem(userId: string, type: DemoRepositoryEventItemType, sourceId: string): Promise<void> {
+  async takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
     await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
   }
 
@@ -285,10 +285,10 @@ export class HttpEventsService {
     subEventIndex?: number | null;
     action: string;
     reason?: string | null;
-  }): Promise<DemoEventRecord | null> {
+  }): Promise<ActivityEventRecord | null> {
     const rawSubEventIndex = Number(request.subEventIndex);
     const response = await this.http
-      .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
+      .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
         userId: request.userId.trim(),
         sourceId: request.sourceId.trim(),
         subEventId: request.subEventId?.trim() || null,
@@ -330,14 +330,14 @@ export class HttpEventsService {
       bookingConfirmed?: boolean;
       pendingReason?: 'approval' | 'waitlist' | null;
     } = {}
-  ): Promise<DemoEventRecord | null> {
+  ): Promise<ActivityEventRecord | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
     const response = await this.http
-      .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
+      .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
         userId: normalizedUserId,
         type: 'events',
         sourceId: normalizedSourceId,
@@ -462,10 +462,10 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<DemoEventRecord | null> {
+  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
     try {
       const response = await this.http
-        .post<DemoEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
+        .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
         .toPromise();
       return this.cloneRecords(response ? [response] : [])[0] ?? null;
     } catch {
@@ -473,14 +473,14 @@ export class HttpEventsService {
     }
   }
 
-  private async getRecords(route: string, userId: string): Promise<DemoEventRecord[]> {
+  private async getRecords(route: string, userId: string): Promise<ActivityEventRecord[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     try {
       const response = await this.http
-        .get<DemoEventRecord[] | null>(`${this.apiBaseUrl}${route}`, {
+        .get<ActivityEventRecord[] | null>(`${this.apiBaseUrl}${route}`, {
           params: new HttpParams().set('userId', normalizedUserId)
         })
         .toPromise();
@@ -571,7 +571,7 @@ export class HttpEventsService {
     };
   }
 
-  private cloneRecords(records: DemoEventRecord[] | null | undefined): DemoEventRecord[] {
+  private cloneRecords(records: ActivityEventRecord[] | null | undefined): ActivityEventRecord[] {
     if (!Array.isArray(records)) {
       return [];
     }
@@ -637,12 +637,12 @@ export class HttpEventsService {
         rating: Math.max(0, Number(record.rating) || 0),
         boost: Math.max(0, Number(record.boost) || 0),
         affinity: Math.max(0, Number(record.affinity) || 0)
-      } satisfies DemoEventRecord;
+      } satisfies ActivityEventRecord;
       return normalizedRecord;
     });
   }
 
-  private cloneListItems(records: DemoEventListItem[] | null | undefined): DemoEventListItem[] {
+  private cloneListItems(records: ActivityEventListItem[] | null | undefined): ActivityEventListItem[] {
     if (!Array.isArray(records)) {
       return [];
     }

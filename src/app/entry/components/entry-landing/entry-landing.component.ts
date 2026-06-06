@@ -5,21 +5,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
-  InfoCardComponent,
-  type InfoCardData
+  InfoCardComponent, type InfoCardData
 } from '../../../shared/ui/components/card';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
-  SmartListComponent,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListItemRenderState,
-  type SmartListLoadPage
+  SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
 
@@ -41,6 +35,7 @@ interface HowStepSlide {
   standalone: true,
   imports: [
     InfoCardComponent,
+    ProgressIndicatorComponent,
     SmartListComponent,
     LazyBgImageDirective,
     MatRippleModule,
@@ -63,7 +58,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
   @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
   @Input() articlesLoading = false;
-  @Input() articlesLoadingProgress = 0;
+  @Input() articlesLoadingDurationMs = 3000;
   @Input() ideaCards: InfoCardData[] = [];
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'Unavailable in your country';
@@ -116,8 +111,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     pageSize: 10,
     initialPageSize: 10,
     initialPageCount: 1,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/landing/content', 1500),
-    loadingWindowMs: 3000,
     defaultView: 'day',
     defaultDirection: 'desc',
     defaultGroupBy: 'submittedDay',
@@ -260,6 +253,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
 
   protected get entryPrimaryCtaLabel(): string {
     return this.networkUnavailable ? this.networkUnavailableLabel : 'Start exploring';
+  }
+
+  protected showHowItWorksCta(): boolean {
+    return !this.networkUnavailable && (this.articlesLoading || this.featuredIdeaCards().length > 0);
   }
 
   protected get isFirstHowSlide(): boolean {
@@ -663,11 +660,11 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {
+    event?.preventDefault();
     const target = document.getElementById(sectionId);
     if (!target) {
       return;
     }
-    event?.preventDefault();
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 

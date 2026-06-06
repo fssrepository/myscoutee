@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { DemoHelpCenterService } from '../../demo/services/help-center.service';
+import { LocalHelpCenterService } from '../../local/services/help-center.service';
 import { HttpHelpCenterService } from '../../http/services/help-center.service';
 import type {
   HelpCenterDocumentKind,
@@ -10,18 +10,15 @@ import type {
   PrivacyConsentSaveRequest
 } from '../models';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { RouteDelayService } from './route-delay.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
-const ADMIN_HELP_CENTER_LOAD_DEMO_DELAY_MS = 1500;
 
 @Injectable({
   providedIn: 'root'
 })
 export class HelpCenterService extends BaseRouteModeService {
-  private readonly demoHelpCenterService = inject(DemoHelpCenterService);
+  private readonly localHelpCenterService = inject(LocalHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly helpStateRef = signal<HelpCenterState | null>(null);
   private readonly privacyStateRef = signal<HelpCenterState | null>(null);
   private readonly explanationStateRef = signal<HelpCenterState | null>(null);
@@ -74,25 +71,18 @@ export class HelpCenterService extends BaseRouteModeService {
     revisionId: string,
     revisionVersion?: number
   ): Promise<PrivacyConsentRecord | null> {
-    const consent = await this.helpService('privacy').loadPrivacyConsent(userId, revisionId, revisionVersion);
+    const consent = await this.privacyConsentService().loadPrivacyConsent(userId, revisionId, revisionVersion);
     return consent ? this.clonePrivacyConsent(consent) : null;
   }
 
   async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
-    return this.clonePrivacyConsent(await this.helpService('privacy').savePrivacyConsent(request));
+    return this.clonePrivacyConsent(await this.privacyConsentService().savePrivacyConsent(request));
   }
 
   async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
-    const load = service instanceof HttpHelpCenterService
-      ? service.loadAdminState(adminUserId, documentKind, lang, contextKey)
-      : this.withAdminHelpCenterDemoDelay(
-          service.loadState(documentKind, lang, contextKey),
-          documentKind,
-          contextKey
-        );
-    const state = await load;
+    const state = await service.loadAdminState(adminUserId, documentKind, lang, contextKey);
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
@@ -119,49 +109,17 @@ export class HelpCenterService extends BaseRouteModeService {
   }
 
   private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
-    const [state] = await Promise.all([
-      this.helpService(kind).loadState(kind, lang, contextKey),
-      this.routeDelay.waitForRouteDelay(`/${kind}/active`, undefined, undefined, 1500)
-    ]);
+    const state = await this.helpService(kind).loadState(kind, lang, contextKey);
     this.setState(kind, state);
     return this.cloneState(state);
   }
 
-  private helpService(kind: HelpCenterDocumentKind): DemoHelpCenterService | HttpHelpCenterService {
-    return this.resolveRouteService(`/${kind}/active`, this.demoHelpCenterService, this.httpHelpCenterService);
+  private helpService(kind: HelpCenterDocumentKind): LocalHelpCenterService | HttpHelpCenterService {
+    return this.resolveRouteService(`/${kind}/active`, this.localHelpCenterService, this.httpHelpCenterService);
   }
 
-  private async withAdminHelpCenterDemoDelay<T>(
-    work: Promise<T>,
-    kind: HelpCenterDocumentKind,
-    contextKey?: string | null
-  ): Promise<T> {
-    const delay = this.routeDelay.waitForRouteDelay(
-      this.adminRoute(kind, contextKey),
-      undefined,
-      undefined,
-      ADMIN_HELP_CENTER_LOAD_DEMO_DELAY_MS
-    );
-    try {
-      const [result] = await Promise.all([work, delay]);
-      return result;
-    } catch (error) {
-      await delay.catch(() => undefined);
-      throw error;
-    }
-  }
-
-  private adminRoute(kind: HelpCenterDocumentKind, contextKey?: string | null): string {
-    if (kind === 'privacy') {
-      return '/admin/privacy';
-    }
-    if (kind === 'explanation') {
-      const normalizedContextKey = `${contextKey ?? ''}`.trim();
-      return normalizedContextKey
-        ? `/admin/explanation/${normalizedContextKey}`
-        : '/admin/explanation/new';
-    }
-    return '/admin/help';
+  private privacyConsentService(): LocalHelpCenterService | HttpHelpCenterService {
+    return this.resolveRouteService('/privacy/consents', this.localHelpCenterService, this.httpHelpCenterService);
   }
 
   private setState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {

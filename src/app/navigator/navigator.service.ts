@@ -3,10 +3,11 @@ import { Router } from '@angular/router';
 import {
   AppContext,
   HelpCenterService,
+  RouteIntervalSchedulerService,
   SessionService,
   UsersService,
   type ActivityMemberOwnerType,
-  type ActivityCounterKey, type ActivityCounters,
+  type ActivityCounters,
   type EntryConsentState,
   type HelpCenterRevision,
   type PrivacyConsentRecord,
@@ -14,7 +15,7 @@ import {
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
-import { scopedStorageKey } from '../shared/core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../shared/core/base/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 
@@ -49,13 +50,11 @@ export interface NavigatorBindings {
 
 export interface NavigatorProfileViewRequest {
   userId: string;
-  user?: unknown | null;
   label?: string | null;
 }
 
 export interface NavigatorProfileViewTarget {
   userId: string;
-  user: UserDto | null;
   label: string | null;
 }
 
@@ -63,18 +62,20 @@ export interface NavigatorProfileViewTarget {
   providedIn: 'root'
 })
 export class NavigatorService {
+  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
   private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-  private static readonly ENTRY_CONSENT_KEY = scopedStorageKey('entry.gdpr-consent.v1');
-  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = scopedStorageKey('privacy.optional-approvals.v1');
-  private static readonly ADMIN_SESSION_STORAGE_KEY = scopedStorageKey('admin.session.v1');
+  private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
+  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = APP_STORAGE_KEYS.optionalPrivacyApprovals;
+  private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 
   private readonly usersService = inject(UsersService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
@@ -89,17 +90,17 @@ export class NavigatorService {
   private readonly profileEditorOpenRef = signal(false);
   private readonly profileViewTargetRef = signal<NavigatorProfileViewTarget | null>(null);
   private readonly impressionsPopupOpenRef = signal(false);
+  private readonly contactsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
   private hydrationRequestVersion = 0;
-  private userRealtimeLongPollTimer: ReturnType<typeof setInterval> | null = null;
+  private stopUserRealtimeLongPollInterval: (() => void) | null = null;
   private userRealtimeLongPollInFlight = false;
-  private userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+  private userRealtimeLongPollActiveIntervalKey = '';
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
   private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
-  private readonly userRealtimeBaseCountersByUserId: Record<string, Record<ActivityCounterKey, number>> = {};
 
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
@@ -110,6 +111,7 @@ export class NavigatorService {
   readonly reportUserContext = this.reportUserContextRef.asReadonly();
   readonly deletedAccountReactivationPending = this.deletedAccountReactivationPendingRef.asReadonly();
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
+  readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef(),
@@ -167,10 +169,12 @@ export class NavigatorService {
       if (!session || !activeUserId) {
         this.stopUserRealtimeLongPoll();
         this.impressionsPopupOpenRef.set(false);
+        this.contactsPopupOpenRef.set(false);
         return;
       }
       if (this.isAdminWorkspaceRoute() || this.isAdminProfileActive(activeUserId)) {
         this.impressionsPopupOpenRef.set(false);
+        this.contactsPopupOpenRef.set(false);
         this.activateUserRealtimeLongPoll(activeUserId);
         return;
       }
@@ -217,6 +221,7 @@ export class NavigatorService {
     this.closeMenu();
     this.closeSettingsPopup();
     this.closeImpressionsPopup();
+    this.closeContactsPopup();
     this.closeProfileEditor();
     this.closeProfileView();
   }
@@ -240,17 +245,6 @@ export class NavigatorService {
     this.syncHydratedUser(loadedUser);
     void this.helpCenterService.preloadAll();
     return loadedUser;
-  }
-
-  private asUserDto(value: unknown): UserDto | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const candidate = value as Partial<UserDto>;
-    if (typeof candidate.id !== 'string' || !candidate.id.trim()) {
-      return null;
-    }
-    return candidate as UserDto;
   }
 
   private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
@@ -294,10 +288,7 @@ export class NavigatorService {
           previousProfileStatus: null,
           deletedAtIso: null
         };
-        const saved = await this.usersService.saveUserProfile(reactivatedUser, {
-          minimumDurationMs: this.usersService.demoModeEnabled ? 1500 : 0,
-          returnFallbackOnFailure: false
-        });
+        const saved = await this.usersService.saveUserProfile(reactivatedUser);
         if (!saved) {
           throw new Error('Unable to reactivate account.');
         }
@@ -512,11 +503,14 @@ export class NavigatorService {
     if (!userId) {
       return;
     }
-    const embeddedUser = this.asUserDto(request.user);
+    const targetLabel = `${request.label ?? ''}`.trim() || null;
+    const currentTarget = this.profileViewTargetRef();
+    if (currentTarget?.userId === userId && currentTarget.label === targetLabel) {
+      return;
+    }
     this.profileViewTargetRef.set({
-      userId: embeddedUser?.id?.trim() || userId,
-      user: embeddedUser,
-      label: `${request.label ?? embeddedUser?.name ?? ''}`.trim() || null
+      userId,
+      label: targetLabel
     });
   }
 
@@ -604,6 +598,17 @@ export class NavigatorService {
     this.impressionsPopupOpenRef.set(true);
   }
 
+  openContactsPopup(): void {
+    if (!this.appCtx.activeUserId().trim()) {
+      return;
+    }
+    this.contactsPopupOpenRef.set(true);
+  }
+
+  closeContactsPopup(): void {
+    this.contactsPopupOpenRef.set(false);
+  }
+
   openDeleteAccountConfirm(): void {
     const activeUserName = this.appCtx.activeUserProfile()?.name?.trim() || 'this account';
     this.confirmationDialogService.open({
@@ -618,6 +623,7 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        this.closeContactsPopup();
         if (this.router.url.split('?')[0].startsWith('/admin')) {
           this.clearHydratedUser();
           localStorage.removeItem(NavigatorService.ADMIN_SESSION_STORAGE_KEY);
@@ -659,6 +665,7 @@ export class NavigatorService {
         this.closeSettingsPopup();
         this.closeProfileEditor();
         this.closeImpressionsPopup();
+        this.closeContactsPopup();
         const activeUserId = this.appCtx.activeUserId().trim();
         if (this.router.url.split('?')[0].startsWith('/admin')) {
           if (activeUserId) {
@@ -737,32 +744,29 @@ export class NavigatorService {
     if (!normalizedUserId || this.appCtx.activeUserId().trim() !== normalizedUserId) {
       return;
     }
-    this.captureUserRealtimeBaseCounters(normalizedUserId);
     this.startUserRealtimeLongPoll();
   }
 
   private startUserRealtimeLongPoll(): void {
-    const intervalMs = this.resolveUserRealtimeLongPollIntervalMs();
-    if (this.userRealtimeLongPollTimer && this.userRealtimeLongPollActiveIntervalMs === intervalMs) {
+    const fallbackIntervalMs = this.resolveUserRealtimeLongPollIntervalMs();
+    const intervalKey = `${NavigatorService.USER_REALTIME_LONG_POLL_ROUTE}:${fallbackIntervalMs}`;
+    if (this.stopUserRealtimeLongPollInterval && this.userRealtimeLongPollActiveIntervalKey === intervalKey) {
       return;
     }
-    if (this.userRealtimeLongPollTimer) {
-      clearInterval(this.userRealtimeLongPollTimer);
-      this.userRealtimeLongPollTimer = null;
-    }
-    this.userRealtimeLongPollActiveIntervalMs = intervalMs;
-    this.userRealtimeLongPollTimer = setInterval(() => {
-      void this.runUserRealtimeLongPollTick();
-    }, intervalMs);
+    this.stopUserRealtimeLongPollInterval?.();
+    this.userRealtimeLongPollActiveIntervalKey = intervalKey;
+    this.stopUserRealtimeLongPollInterval = this.routeIntervalScheduler.startInterval(
+      NavigatorService.USER_REALTIME_LONG_POLL_ROUTE,
+      () => this.runUserRealtimeLongPollTick(),
+      { fallbackIntervalMs }
+    );
   }
 
   private stopUserRealtimeLongPoll(): void {
-    if (this.userRealtimeLongPollTimer) {
-      clearInterval(this.userRealtimeLongPollTimer);
-      this.userRealtimeLongPollTimer = null;
-    }
+    this.stopUserRealtimeLongPollInterval?.();
+    this.stopUserRealtimeLongPollInterval = null;
     this.userRealtimeLongPollInFlight = false;
-    this.userRealtimeLongPollActiveIntervalMs = NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
+    this.userRealtimeLongPollActiveIntervalKey = '';
   }
 
   private resolveUserRealtimeLongPollIntervalMs(): number {
@@ -787,30 +791,6 @@ export class NavigatorService {
       || activeUser?.statusText === 'Admin workspace'
       || normalizedUserId === 'admin'
       || normalizedUserId.startsWith('admin-');
-  }
-
-  private captureUserRealtimeBaseCounters(userId: string): void {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    const user = this.appCtx.getUserProfile(normalizedUserId) ?? this.appCtx.activeUserProfile();
-    const overrides = this.appCtx.getUserCounterOverrides(normalizedUserId);
-    this.userRealtimeBaseCountersByUserId[normalizedUserId] = {
-      game: this.normalizeRealtimeCounterValue(overrides.game ?? user?.activities?.game),
-      chat: this.normalizeRealtimeCounterValue(overrides.chat ?? user?.activities?.chat),
-      invitations: this.normalizeRealtimeCounterValue(overrides.invitations ?? user?.activities?.invitations),
-      events: this.normalizeRealtimeCounterValue(overrides.events ?? user?.activities?.events),
-      hosting: this.normalizeRealtimeCounterValue(overrides.hosting ?? user?.activities?.hosting),
-      cars: this.normalizeRealtimeCounterValue(overrides.cars ?? user?.activities?.cars),
-      accommodation: this.normalizeRealtimeCounterValue(overrides.accommodation ?? user?.activities?.accommodation),
-      supplies: this.normalizeRealtimeCounterValue(overrides.supplies ?? user?.activities?.supplies),
-      tickets: this.normalizeRealtimeCounterValue(overrides.tickets ?? user?.activities?.tickets),
-      contacts: this.normalizeRealtimeCounterValue(overrides.contacts ?? user?.activities?.contacts),
-      feedback: this.normalizeRealtimeCounterValue(overrides.feedback ?? user?.activities?.feedback),
-      adminJobs: this.normalizeRealtimeCounterValue(overrides.adminJobs ?? user?.activities?.adminJobs),
-      adminMetrics: this.normalizeRealtimeCounterValue(overrides.adminMetrics ?? user?.activities?.adminMetrics)
-    };
   }
 
   private async runUserRealtimeLongPollTick(): Promise<void> {
@@ -843,10 +823,7 @@ export class NavigatorService {
     const shouldIgnoreNextImpressionsSnapshot = this.userIgnoreNextImpressionsSnapshotByUserId[userId] === true;
     const isSeenCursor = nextCursor.length > 0 && this.userSeenImpressionsCursorByUserId[userId] === nextCursor;
     const shouldSuppressImpressionBadges = shouldIgnoreNextImpressionsSnapshot || isSeenCursor;
-    const rawCounterPatch = this.normalizePolledCounterPatch(snapshot.counters);
-    const counterPatch = this.usersService.demoModeEnabled
-      ? this.resolveDemoPolledCounterPatch(userId, rawCounterPatch)
-      : rawCounterPatch;
+    const counterPatch = this.normalizePolledCounterPatch(snapshot.counters);
     const nextImpressions = snapshot.impressions
       ? (shouldSuppressImpressionBadges ? this.normalizeSeenImpressions(snapshot.impressions) : snapshot.impressions)
       : undefined;
@@ -918,88 +895,6 @@ export class NavigatorService {
           }
         : undefined
     };
-  }
-
-  private resolveDemoPolledCounterPatch(
-    userId: string,
-    pendingPatch: Partial<ActivityCounters>
-  ): Partial<ActivityCounters> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return pendingPatch;
-    }
-    const base = this.resolveUserRealtimeBaseCounters(normalizedUserId);
-    const next: Partial<ActivityCounters> = {};
-    const keys: ActivityCounterKey[] = [
-      'game',
-      'chat',
-      'invitations',
-      'events',
-      'hosting',
-      'cars',
-      'accommodation',
-      'supplies',
-      'tickets',
-      'contacts',
-      'feedback',
-      'adminJobs',
-      'adminMetrics'
-    ];
-    for (const key of keys) {
-      if (pendingPatch[key] === undefined) {
-        continue;
-      }
-      next[key] = this.normalizeRealtimeCounterValue(base[key] + (pendingPatch[key] ?? 0));
-    }
-    return next;
-  }
-
-  private resolveUserRealtimeBaseCounters(userId: string): Record<ActivityCounterKey, number> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0,
-        adminJobs: 0,
-        adminMetrics: 0
-      };
-    }
-    const existing = this.userRealtimeBaseCountersByUserId[normalizedUserId];
-    if (existing) {
-      return {
-        game: this.normalizeRealtimeCounterValue(existing.game),
-        chat: this.normalizeRealtimeCounterValue(existing.chat),
-        invitations: this.normalizeRealtimeCounterValue(existing.invitations),
-        events: this.normalizeRealtimeCounterValue(existing.events),
-        hosting: this.normalizeRealtimeCounterValue(existing.hosting),
-        cars: this.normalizeRealtimeCounterValue(existing.cars),
-        accommodation: this.normalizeRealtimeCounterValue(existing.accommodation),
-        supplies: this.normalizeRealtimeCounterValue(existing.supplies),
-        tickets: this.normalizeRealtimeCounterValue(existing.tickets),
-        contacts: this.normalizeRealtimeCounterValue(existing.contacts),
-        feedback: this.normalizeRealtimeCounterValue(existing.feedback),
-        adminJobs: this.normalizeRealtimeCounterValue(existing.adminJobs),
-        adminMetrics: this.normalizeRealtimeCounterValue(existing.adminMetrics)
-      };
-    }
-    this.captureUserRealtimeBaseCounters(normalizedUserId);
-    return this.resolveUserRealtimeBaseCounters(normalizedUserId);
-  }
-
-  private normalizeRealtimeCounterValue(value: unknown): number {
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return Math.max(0, Math.trunc(Number(value)));
   }
 
   private normalizePolledCounterPatch(

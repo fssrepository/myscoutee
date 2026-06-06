@@ -14,7 +14,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
-import { I18nPipe } from '../../../../i18n';
+import { I18nPipe } from '../../../pipes';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
 import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
 import type {

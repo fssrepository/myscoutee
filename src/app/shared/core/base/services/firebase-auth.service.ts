@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { getApp, getApps, initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
 import {
+  type ActionCodeSettings,
   FacebookAuthProvider,
   GoogleAuthProvider,
   browserLocalPersistence,
@@ -18,12 +19,13 @@ import {
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import { scopedStorageKey } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../storage-scope';
 
 export interface FirebaseAuthSignInResult {
   profile: AppTypes.FirebaseAuthProfile | null;
   emailVerificationSent?: boolean;
   email?: string;
+  errorMessage?: string;
 }
 
 export type FirebaseConfigFile = Pick<
@@ -37,7 +39,7 @@ export type FirebaseConfigFile = Pick<
   providedIn: 'root'
 })
 export class FirebaseAuthService {
-  private static readonly FIREBASE_AUTH_PROFILE_KEY = scopedStorageKey('firebase.auth-profile.v1');
+  private static readonly FIREBASE_AUTH_PROFILE_KEY = APP_STORAGE_KEYS.firebaseAuthProfile;
   private static readonly FIREBASE_CONFIG_PATH = 'keys/firebase.config.json';
 
   private firebaseAuthPromise: Promise<Auth | null> | null = null;
@@ -64,7 +66,8 @@ export class FirebaseAuthService {
         id: parsed.id,
         name: parsed.name,
         email: parsed.email,
-        initials: parsed.initials
+        initials: parsed.initials,
+        imageUrl: typeof parsed.imageUrl === 'string' ? parsed.imageUrl : undefined
       };
     } catch {
       return null;
@@ -91,8 +94,11 @@ export class FirebaseAuthService {
         };
       }
       return { profile: this.persistProfile(result.user) };
-    } catch {
-      return { profile: null };
+    } catch (error) {
+      return {
+        profile: null,
+        errorMessage: this.firebaseAuthErrorMessage(error)
+      };
     }
   }
 
@@ -106,6 +112,11 @@ export class FirebaseAuthService {
     }
     const currentUser = auth.currentUser ?? await this.waitForAuthState(auth);
     if (!currentUser) {
+      this.clearStoredProfile();
+      return null;
+    }
+    await currentUser.reload();
+    if (this.needsEmailVerification(currentUser)) {
       this.clearStoredProfile();
       return null;
     }
@@ -264,7 +275,8 @@ export class FirebaseAuthService {
       id: user.uid,
       name: fallbackName,
       email: user.email?.trim() || `${user.uid}@firebase.local`,
-      initials: this.initialsFromText(fallbackName)
+      initials: this.initialsFromText(fallbackName),
+      imageUrl: user.photoURL?.trim() || undefined
     };
   }
 
@@ -279,9 +291,9 @@ export class FirebaseAuthService {
       const email = `${request.email ?? ''}`.trim();
       const password = `${request.password ?? ''}`;
       const credential = await this.runEmailAuthRequest(auth, email, password, request.emailMode);
-      if (!credential.user.emailVerified) {
-        await sendEmailVerification(credential.user);
-        await signOut(auth);
+      await credential.user.reload();
+      if (this.needsEmailVerification(credential.user)) {
+        await sendEmailVerification(credential.user, this.emailVerificationActionCodeSettings());
         return {
           user: credential.user,
           emailVerificationSent: true
@@ -307,6 +319,19 @@ export class FirebaseAuthService {
       return createUserWithEmailAndPassword(auth, email, password);
     }
     return this.signInOrCreateEmailUser(auth, email, password);
+  }
+
+  private needsEmailVerification(user: User): boolean {
+    return !user.emailVerified && user.providerData.some(provider => provider.providerId === 'password');
+  }
+
+  private emailVerificationActionCodeSettings(): ActionCodeSettings {
+    const url = new URL('/entry', document.baseURI);
+    url.searchParams.set('onboarding', '1');
+    return {
+      url: url.toString(),
+      handleCodeInApp: false
+    };
   }
 
   private async signInOrCreateEmailUser(auth: Auth, email: string, password: string): Promise<{ user: User }> {
@@ -341,6 +366,27 @@ export class FirebaseAuthService {
     }
     const code = (error as { code?: unknown }).code;
     return typeof code === 'string' ? code.trim() : '';
+  }
+
+  private firebaseAuthErrorMessage(error: unknown): string {
+    switch (this.firebaseErrorCode(error)) {
+      case 'auth/email-already-in-use':
+        return 'This email is already registered. Use login instead.';
+      case 'auth/invalid-credential':
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        return 'Email or password is incorrect.';
+      case 'auth/operation-not-allowed':
+        return 'Email login is not enabled in Firebase.';
+      case 'auth/too-many-requests':
+        return 'Too many login attempts. Try again later.';
+      case 'auth/unauthorized-continue-uri':
+        return 'Firebase does not allow this verification redirect domain.';
+      default: {
+        const code = this.firebaseErrorCode(error);
+        return code ? `Firebase login failed (${code}).` : 'Firebase login failed.';
+      }
+    }
   }
 
   private initialsFromText(value: string): string {

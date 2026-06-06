@@ -6,8 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/base/models';
-import { scopedStorageKey } from '../../../shared/core/base/storage-scope';
-import { I18nService } from '../../../shared/i18n';
+import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
+import { I18nService } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 
@@ -19,7 +19,7 @@ import { LazyBgImageDirective } from '../../../shared/ui/directives';
   styleUrl: './entry-consent-popup.component.scss'
 })
 export class EntryConsentPopupComponent {
-  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = scopedStorageKey('privacy.optional-approvals.v1');
+  private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = APP_STORAGE_KEYS.optionalPrivacyApprovals;
 
   private readonly helpCenter = inject(HelpCenterService);
   private readonly i18n = inject(I18nService);
@@ -27,7 +27,7 @@ export class EntryConsentPopupComponent {
   @Input() open = false;
   @Input() viewOnly = false;
   @Input() loading = false;
-  @Input() loadingProgress = 0;
+  @Input() loadingDurationMs = 3000;
   @Input() approvalRequired = false;
 
   @Output() readonly closeRequested = new EventEmitter<void>();

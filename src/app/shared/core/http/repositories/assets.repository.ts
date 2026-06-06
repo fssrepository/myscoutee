@@ -42,6 +42,24 @@ export class HttpAssetsRepository {
     }
   }
 
+  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return null;
+    }
+    return this.peekOwnedAssetsByUser(userId).find(card => card.id === normalizedAssetId) ?? null;
+  }
+
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    const cards = await this.queryOwnedAssetsByUser(normalizedUserId);
+    return cards.find(card => card.id === normalizedAssetId) ?? null;
+  }
+
   private async queryAndCacheOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
     const response = await this.http
       .get<AppTypes.AssetCard[] | null>(`${this.apiBaseUrl}/assets`, {

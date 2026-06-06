@@ -11,14 +11,12 @@ import {
   SessionService,
   ShareTokensService,
   UsersService,
-  type DemoUserListItemDto,
+  type BootstrapProcessStage,
+  type BootstrapProcessState,
+  type UserSelectorListItemDto,
   type ShareTokenResolvedItem
 } from '../shared/core';
 import type { AssetCard } from '../shared/core/base/models';
-import {
-  type DemoBootstrapProgressStage,
-  type DemoBootstrapProgressState
-} from '../shared/core/demo';
 import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 
 @Component({
@@ -74,8 +72,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
   protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
   protected selectorLoadingLabel = 'Preparing demo data';
-  protected selectorLoadingStage: DemoBootstrapProgressStage = 'selector';
-  protected selectorUsers: DemoUserListItemDto[] = [];
+  protected selectorLoadingStage: BootstrapProcessStage = 'selector';
+  protected selectorUsers: UserSelectorListItemDto[] = [];
   protected selectorSelectedUserId = '';
   protected error = '';
 
@@ -107,7 +105,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const demoUsersPromise = environment.activitiesDataSource !== 'http' || !environment.firebaseLoginEnabled
       ? this.prepareDemoSelectorUsers()
-      : Promise.resolve<DemoUserListItemDto[]>([]);
+      : Promise.resolve<UserSelectorListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
       this.fail('This support link expired or is no longer available.');
@@ -151,29 +149,16 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   private async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
     if (!environment.firebaseLoginEnabled) {
-      const demoResolved = this.resolveDemoAdminHelpToken(token);
-      if (demoResolved) {
-        return demoResolved;
-      }
-    }
-    try {
-      const resolved = await Promise.race([
-        this.shareTokens.resolveToken(token, ''),
-        new Promise<null>(resolve => setTimeout(() => resolve(null), 1200))
-      ]);
-      if (resolved) {
-        return resolved;
-      }
-    } catch {
-      // Fall through to the demo-token fallback below.
-    }
-    if (!environment.firebaseLoginEnabled) {
       return this.resolveDemoAdminHelpToken(token);
     }
-    return null;
+    try {
+      return await this.shareTokens.resolveToken(token, '');
+    } catch {
+      return null;
+    }
   }
 
-  private applyProgress(state: DemoBootstrapProgressState): void {
+  private applyProgress(state: BootstrapProcessState): void {
     this.commitSelectorState(() => {
       this.selectorLoadingProgress = state.percent;
       this.selectorLoadingLabel = state.label;
@@ -181,7 +166,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     });
   }
 
-  private async prepareDemoSelectorUsers(): Promise<DemoUserListItemDto[]> {
+  private async prepareDemoSelectorUsers(): Promise<UserSelectorListItemDto[]> {
     this.commitSelectorState(() => {
       this.selectorSubmitting = false;
       this.selectorLoading = true;

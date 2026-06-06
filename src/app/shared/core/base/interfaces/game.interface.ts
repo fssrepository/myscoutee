@@ -141,7 +141,10 @@ export interface UserGameDataService {
     bridgeUserId?: string,
     bridgeCount?: number
   ): void;
-  queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse>;
+  queryUserGameCardsByFilter(
+    request: UserGameCardsQueryRequest,
+    requestTimeoutMs?: number
+  ): Promise<UserGameCardsQueryResponse>;
 }
 
 // Backward-compatible alias while callers migrate.

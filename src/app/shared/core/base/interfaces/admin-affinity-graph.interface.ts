@@ -1,4 +1,6 @@
-export const ADMIN_AFFINITY_GRAPH_STORE_KEY = 'adminAffinityGraph';
+import { APP_INDEXED_DB_KEYS } from '../storage-scope';
+
+export const ADMIN_AFFINITY_GRAPH_STORE_KEY = APP_INDEXED_DB_KEYS.adminAffinityGraph;
 
 export interface AdminAffinityGraphNodeDto {
   id: string;
@@ -45,6 +47,7 @@ export interface AdminAffinityGraphDto {
   forestLevel?: number | null;
   maxForestLevel?: number | null;
   maxZoom?: number | null;
+  labels?: Record<string, string> | null;
   nodes: AdminAffinityGraphNodeDto[];
   edges: AdminAffinityGraphEdgeDto[];
   forests?: AdminAffinityGraphForestDto[] | null;

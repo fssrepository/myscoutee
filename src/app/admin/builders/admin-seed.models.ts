@@ -214,7 +214,7 @@ export interface AdminSeedStatsRevenueDto {
 
 export interface AdminSeedStatsDashboardDto {
   generatedAtIso: string;
-  source: 'demo' | 'http' | 'fallback';
+  source: 'demo' | 'http';
   healthScore: number;
   healthLabelKey: string;
   healthSummaryKey: string;

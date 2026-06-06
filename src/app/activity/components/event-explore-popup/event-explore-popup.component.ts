@@ -48,13 +48,12 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
-  record: DemoEventRecord | null;
+  record: ActivityEventRecord | null;
 };
 
 @Component({
@@ -102,7 +101,7 @@ export class EventExplorePopupComponent {
   protected showOrderPicker = false;
   protected showViewPicker = false;
   protected showTopicPicker = false;
-  protected slotPickerRecord: DemoEventRecord | null = null;
+  protected slotPickerRecord: ActivityEventRecord | null = null;
   protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: AppTypes.EventExploreView = 'day';
@@ -119,13 +118,12 @@ export class EventExplorePopupComponent {
   protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
   protected selectedMembersTitle = '';
   protected selectedMembersPendingOnly = false;
-  protected selectedMembersRecord: DemoEventRecord | null = null;
+  protected selectedMembersRecord: ActivityEventRecord | null = null;
 
   private activeUserId = '';
   private eventEditorPrewarmStarted = false;
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
-  private readonly eventExploreJoinDelayMs = resolveCurrentRouteDelayMs('/activities/events', 1500);
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
@@ -135,12 +133,12 @@ export class EventExplorePopupComponent {
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
   @ViewChild('eventExploreSmartList')
-  private eventExploreSmartList?: SmartListComponent<DemoEventRecord, EventExploreFeedFilters>;
+  private eventExploreSmartList?: SmartListComponent<ActivityEventRecord, EventExploreFeedFilters>;
 
-  protected eventExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFeedFilters>>;
+  protected eventExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityEventRecord, EventExploreFeedFilters>>;
 
   @ViewChild('eventExploreItemTemplate', { read: TemplateRef })
-  private set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<DemoEventRecord, EventExploreFeedFilters>> | undefined) {
+  private set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<ActivityEventRecord, EventExploreFeedFilters>> | undefined) {
     this.eventExploreItemTemplateRef = value;
     this.cdr.markForCheck();
   }
@@ -149,10 +147,9 @@ export class EventExplorePopupComponent {
     from(this.loadEventExplorePage(query));
   protected readonly EventExploreBuilder = EventExploreBuilder;
 
-  protected readonly eventExploreSmartListConfig: SmartListConfig<DemoEventRecord, EventExploreFeedFilters> = {
+  protected readonly eventExploreSmartListConfig: SmartListConfig<ActivityEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events'),
     defaultView: 'list',
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
@@ -310,7 +307,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected onEventExploreSmartListStateChange(state: SmartListStateChange<DemoEventRecord, EventExploreFeedFilters>): void {
+  protected onEventExploreSmartListStateChange(state: SmartListStateChange<ActivityEventRecord, EventExploreFeedFilters>): void {
     this.eventExploreHeaderProgress = state.progress;
     this.eventExploreHeaderProgressLoading = state.loading;
     this.eventExploreHeaderLoadingProgress = state.loadingProgress;
@@ -472,7 +469,7 @@ export class EventExplorePopupComponent {
   }
 
   protected openEventExploreMembers(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
@@ -523,7 +520,7 @@ export class EventExplorePopupComponent {
   }
 
   protected runEventExploreViewAction(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
@@ -536,7 +533,7 @@ export class EventExplorePopupComponent {
   }
 
   protected runEventExploreJoinAction(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
@@ -575,7 +572,7 @@ export class EventExplorePopupComponent {
   }
 
   protected openHostImpressions(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
@@ -584,11 +581,11 @@ export class EventExplorePopupComponent {
     this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
 
-  protected canPreviewEventExploreMembers(record: DemoEventRecord): boolean {
+  protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {
     return record.blindMode === 'Open Event';
   }
 
-  protected onEventExploreInfoCardMenuAction(record: DemoEventRecord, action: InfoCardMenuActionEvent): void {
+  protected onEventExploreInfoCardMenuAction(record: ActivityEventRecord, action: InfoCardMenuActionEvent): void {
     if (action.actionId === 'view') {
       this.runEventExploreViewAction(record);
       return;
@@ -782,7 +779,7 @@ export class EventExplorePopupComponent {
 
   private async loadEventExplorePage(
     query: ListQuery<EventExploreFeedFilters>
-  ): Promise<PageResult<DemoEventRecord>> {
+  ): Promise<PageResult<ActivityEventRecord>> {
     const page = await this.activitiesService.loadExplore({
       ...query,
       filters: {
@@ -810,7 +807,7 @@ export class EventExplorePopupComponent {
     };
   }
 
-  protected eventExploreInfoCard(record: DemoEventRecord, groupLabel: string | null): InfoCardData {
+  protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
     return EventExploreBuilder.buildInfoCard(record, {
       groupLabel,
       topicToneGroups: this.topicFilterGroups,
@@ -818,7 +815,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private runEventExploreServiceChatAction(record: DemoEventRecord): void {
+  private runEventExploreServiceChatAction(record: ActivityEventRecord): void {
     const chat = this.buildEventExploreServiceChat(record);
     if (!chat) {
       return;
@@ -826,7 +823,7 @@ export class EventExplorePopupComponent {
     this.activitiesContext.openEventChat(chat);
   }
 
-  private buildEventExploreServiceChat(record: DemoEventRecord): (ChatRecord & { ownerUserId?: string }) | null {
+  private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatRecord & { ownerUserId?: string }) | null {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return null;
@@ -849,7 +846,7 @@ export class EventExplorePopupComponent {
     };
   }
 
-  private runEventExploreReportAction(record: DemoEventRecord): void {
+  private runEventExploreReportAction(record: ActivityEventRecord): void {
     const targetUserId = `${record.creatorUserId ?? ''}`.trim();
     if (!targetUserId || targetUserId === this.activeUserId.trim()) {
       return;
@@ -866,7 +863,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  private runEventExploreShareAction(record: DemoEventRecord): void {
+  private runEventExploreShareAction(record: ActivityEventRecord): void {
     void this.shareTokensService.createToken({
       kind: 'event',
       entityId: record.id,
@@ -1061,14 +1058,14 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  private eventMembersOwner(record: DemoEventRecord): ActivityMemberOwnerRef {
+  private eventMembersOwner(record: ActivityEventRecord): ActivityMemberOwnerRef {
     return {
       ownerType: 'event',
       ownerId: record.id
     };
   }
 
-  private async loadEventExploreMembers(owner: ActivityMemberOwnerRef, record: DemoEventRecord): Promise<void> {
+  private async loadEventExploreMembers(owner: ActivityMemberOwnerRef, record: ActivityEventRecord): Promise<void> {
     const members = await this.activityMembersService.queryMembersByOwner(owner);
     if (!this.selectedMembersRecord || this.selectedMembersRecord.id !== record.id) {
       return;
@@ -1077,7 +1074,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  private buildMemberEntries(record: DemoEventRecord): AppTypes.ActivityMemberEntry[] {
+  private buildMemberEntries(record: ActivityEventRecord): AppTypes.ActivityMemberEntry[] {
     const row = EventExploreBuilder.buildActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
     const summary = this.activityMembersService.peekSummaryByOwner(this.eventMembersOwner(record));
@@ -1131,7 +1128,7 @@ export class EventExplorePopupComponent {
     return entries;
   }
 
-  private hasTrackedMembership(record: DemoEventRecord, userId: string): boolean {
+  private hasTrackedMembership(record: ActivityEventRecord, userId: string): boolean {
     if (userId === this.activeUserId.trim() && this.locallyTrackedMembershipSourceIds.has(record.id)) {
       return true;
     }
@@ -1170,7 +1167,7 @@ export class EventExplorePopupComponent {
   }
 
   private requiresApprovalBeforePayment(
-    record: DemoEventRecord | null,
+    record: ActivityEventRecord | null,
     draft: EventCheckoutDraft | null = null
   ): boolean {
     if (record?.ticketing === true) {
@@ -1188,7 +1185,7 @@ export class EventExplorePopupComponent {
 
   private resolveCheckoutDraftMembershipStatus(
     sourceId: string,
-    record: DemoEventRecord | null
+    record: ActivityEventRecord | null
   ): 'accepted' | 'pending' | 'none' {
     const activeUserId = this.activeUserId.trim();
     const ownerId = sourceId.trim();
@@ -1215,7 +1212,7 @@ export class EventExplorePopupComponent {
   }
 
   private eventExploreJoinDialogTitle(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
     if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
@@ -1228,7 +1225,7 @@ export class EventExplorePopupComponent {
   }
 
   private eventExploreJoinConfirmLabel(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
     if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
@@ -1241,7 +1238,7 @@ export class EventExplorePopupComponent {
   }
 
   private eventExploreJoinBusyLabel(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
     if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
@@ -1254,7 +1251,7 @@ export class EventExplorePopupComponent {
   }
 
   private eventExploreJoinFailureMessage(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): string {
     if (this.isEventExploreRecordFull(record) && options.approvalGranted !== true) {
@@ -1266,7 +1263,7 @@ export class EventExplorePopupComponent {
     return record.ticketing ? 'Unable to continue booking right now.' : 'Unable to send request.';
   }
 
-  private shouldUseCheckoutFlow(record: DemoEventRecord): boolean {
+  private shouldUseCheckoutFlow(record: ActivityEventRecord): boolean {
     if (this.isEventExploreRecordFull(record)) {
       return true;
     }
@@ -1283,7 +1280,7 @@ export class EventExplorePopupComponent {
   }
 
   private openEventExploreCheckout(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: { approvalGranted?: boolean } = {}
   ): void {
     const dialogOptions = {
@@ -1301,13 +1298,11 @@ export class EventExplorePopupComponent {
       confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
       busyConfirmLabel: this.eventExploreJoinBusyLabel(record, dialogOptions),
       failureMessage: this.eventExploreJoinFailureMessage(record, dialogOptions),
-      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection, {
-        skipVisualDelay: true
-      })
+      onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
     });
   }
 
-  private openEventExploreSlotPicker(record: DemoEventRecord): void {
+  private openEventExploreSlotPicker(record: ActivityEventRecord): void {
     this.slotPickerRecord = record;
     this.showOrderPicker = false;
     this.showViewPicker = false;
@@ -1316,11 +1311,8 @@ export class EventExplorePopupComponent {
   }
 
   private async submitEventExploreJoinRequest(
-    record: DemoEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null,
-    options: {
-      skipVisualDelay?: boolean;
-    } = {}
+    record: ActivityEventRecord,
+    selection?: AppTypes.EventCheckoutSelection | null
   ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
@@ -1330,15 +1322,12 @@ export class EventExplorePopupComponent {
     const exitPromise = this.runEventExploreExitTransition(record, () => {
       this.removeVisibleEventExploreRecord(record);
     });
-    const delayPromise = options.skipVisualDelay
-      ? Promise.resolve()
-      : this.waitForEventExploreDelay(this.eventExploreJoinDelayMs);
     const peekedMembers = this.activityMembersService.peekMembersByOwner(owner);
     const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
     if (existingEntry) {
-      await Promise.all([exitPromise, delayPromise]);
+      await exitPromise;
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -1366,7 +1355,7 @@ export class EventExplorePopupComponent {
         bookingConfirmed: isAcceptedBooking,
         pendingReason
       });
-      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise, delayPromise]);
+      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise]);
       if (!joinedRecord) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
@@ -1424,7 +1413,7 @@ export class EventExplorePopupComponent {
     return true;
   }
 
-  private removeVisibleEventExploreRecord(record: DemoEventRecord): void {
+  private removeVisibleEventExploreRecord(record: ActivityEventRecord): void {
     if (!this.eventExploreSmartList) {
       return;
     }
@@ -1456,11 +1445,11 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private isEventExploreRecordLeaving(record: DemoEventRecord): boolean {
+  private isEventExploreRecordLeaving(record: ActivityEventRecord): boolean {
     return this.leavingEventExploreRecordIds.has(record.id);
   }
 
-  private async runEventExploreExitTransition(record: DemoEventRecord, onExited: () => void): Promise<void> {
+  private async runEventExploreExitTransition(record: ActivityEventRecord, onExited: () => void): Promise<void> {
     const isVisible = this.eventExploreSmartList?.itemsSnapshot().some(item => item.id === record.id) ?? false;
     if (!isVisible) {
       onExited();
@@ -1483,7 +1472,7 @@ export class EventExplorePopupComponent {
   private ensureMemberUserIds(
     sourceUserIds: readonly string[],
     count: number,
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     excluded: Set<string>,
     includeCreatorFirst: boolean
   ): string[] {
@@ -1520,7 +1509,7 @@ export class EventExplorePopupComponent {
     return result.slice(0, normalizedCount);
   }
 
-  private resolveUser(userId: string, record: DemoEventRecord): UserDto {
+  private resolveUser(userId: string, record: ActivityEventRecord): UserDto {
     return this.userByIdMap.get(userId)
       ?? this.userByIdMap.get(record.creatorUserId)
       ?? this.users[0]
@@ -1548,7 +1537,7 @@ export class EventExplorePopupComponent {
   }
 
   private buildJoinRequestEntry(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     accepted = false,
     pendingReason: 'approval' | 'waitlist' | null = null
   ): AppTypes.ActivityMemberEntry {
@@ -1579,7 +1568,7 @@ export class EventExplorePopupComponent {
   }
 
   private isConfirmedEventExploreBooking(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     selection?: AppTypes.EventCheckoutSelection | null
   ): boolean {
     if (this.isEventExploreSelectionFull(record, selection)) {
@@ -1595,7 +1584,7 @@ export class EventExplorePopupComponent {
   }
 
   private isEventExploreSelectionFull(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     selection?: AppTypes.EventCheckoutSelection | null
   ): boolean {
     const slotSourceId = `${selection?.slotSourceId ?? ''}`.trim();
@@ -1609,7 +1598,7 @@ export class EventExplorePopupComponent {
     return this.isEventExploreRecordFull(record);
   }
 
-  private isEventExploreRecordFull(record: DemoEventRecord | null): boolean {
+  private isEventExploreRecordFull(record: ActivityEventRecord | null): boolean {
     const capacityTotal = Math.max(0, Math.trunc(Number(record?.capacityTotal) || 0));
     if (capacityTotal <= 0) {
       return false;
@@ -1626,7 +1615,7 @@ export class EventExplorePopupComponent {
   }
 
   private buildActivitiesEventSyncPayload(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     members: readonly AppTypes.ActivityMemberEntry[],
     paymentSessionId: string | null = null
   ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {

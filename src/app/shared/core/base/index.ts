@@ -4,8 +4,9 @@ export * from './converters';
 export * from './formatters';
 export * from './guards';
 export * from './models';
-export { AppMemoryDb, DemoMemoryDb, HttpMemoryDb } from './db';
+export { AppMemoryDb, LocalMemoryDb, HttpMemoryDb } from './db';
 export { BaseUsersRatingsRepository } from './repositories/users-ratings.repository';
+export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
 export {
   USER_BY_ID_LOAD_CONTEXT_KEY,
@@ -21,7 +22,32 @@ export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
+export { AdminDemoDataService } from './services/admin-demo-data.service';
+export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
+export {
+  AdminModerationDataService,
+  type AdminModerationActionResult,
+  type AdminModerationUserPatch
+} from './services/admin-moderation-data.service';
+export {
+  AdminAffinityGraphService,
+  type AdminAffinityGraphRangeParams,
+  type AdminAffinityGraphTileParams
+} from './services/admin-affinity-graph.service';
+export { ContactsService } from './services/contacts.service';
+export { I18nService } from './services/i18n.service';
+export {
+  BOOTSTRAP_PROCESS_STEPS,
+  BootstrapProcessService,
+  SESSION_PROCESS_STEPS,
+  bootstrapProcessStep,
+  type BootstrapProcessListener,
+  type BootstrapProcessStage,
+  type BootstrapProcessState,
+  type BootstrapProcessStep
+} from './services/bootstrap.service';
 export { RouteDelayService } from './services/route-delay.service';
+export { RouteIntervalSchedulerService } from './services/route-interval-scheduler.service';
 export { ActivityMembersService } from './services/activity-members.service';
 export { ActivityResourcesService } from './services/activity-resources.service';
 export {
