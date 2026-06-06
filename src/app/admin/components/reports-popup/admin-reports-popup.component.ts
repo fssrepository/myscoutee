@@ -15,10 +15,9 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import type { AdminReportedUserDto, AdminReportDto } from '../../models/admin-moderation.model';
 import { AdminModerationService } from '../../services/admin-moderation.service';
@@ -90,8 +89,6 @@ export class AdminReportsPopupComponent {
   protected readonly reportsSmartListConfig: SmartListConfig<AdminReportListItem, AdminReportListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/admin/reports', 1500),
-    loadingWindowMs: 3000,
     defaultView: 'day',
     emptyLabel: 'No reports',
     emptyDescription: 'No moderation reports are waiting for review.',
@@ -120,8 +117,6 @@ export class AdminReportsPopupComponent {
   protected readonly blockedUsersSmartListConfig: SmartListConfig<AdminBlockedUserListItem, AdminBlockedUserListFilters> = {
     pageSize: 12,
     initialPageSize: 12,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/admin/reports/blocked-users', 1500),
-    loadingWindowMs: 3000,
     defaultView: 'day',
     emptyLabel: 'No blocked users',
     emptyDescription: 'No profiles are currently blocked by moderation.',
@@ -703,7 +698,7 @@ export class AdminReportsPopupComponent {
     name: string,
     initials: string,
     gender: string
-  ): DemoUser {
+  ): UserDto {
     return {
       id: id || 'admin',
       name: name || 'Admin',

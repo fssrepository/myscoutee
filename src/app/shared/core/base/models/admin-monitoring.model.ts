@@ -1,5 +1,5 @@
 export type AdminMonitoringHealth = 'ok' | 'watch' | 'alert';
-export type AdminMonitoringSource = 'demo' | 'http' | 'fallback';
+export type AdminMonitoringSource = 'demo' | 'http';
 export type AdminMonitoringTone = 'blue' | 'green' | 'gold' | 'red' | 'purple' | 'slate';
 export type AdminMonitoringNodeKind =
   | 'source'

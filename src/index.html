@@ -104,6 +104,69 @@
       letter-spacing: 0;
     }
 
+    .app-warmup-fallback-status {
+      display: none;
+      max-width: 22rem;
+      color: #37506f;
+      font-size: 0.86rem;
+      font-weight: 800;
+      line-height: 1.38;
+    }
+
+    .app-warmup-fallback-retry {
+      display: none;
+      min-width: 96px;
+      min-height: 38px;
+      border: 0;
+      border-radius: 8px;
+      background: #245f9f;
+      color: #ffffff;
+      font: inherit;
+      font-size: 0.86rem;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(36, 95, 159, 0.2);
+    }
+
+    .app-warmup-fallback-retry[hidden] {
+      display: none;
+    }
+
+    .app-warmup-offline .app-warmup-fallback {
+      gap: 0.72rem;
+    }
+
+    .app-warmup-offline .app-warmup-fallback-ring {
+      animation: none;
+      background: #d94848;
+    }
+
+    .app-warmup-offline .app-warmup-fallback-ring::before {
+      content: '!';
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      color: #ffffff;
+      font-size: 2rem;
+      font-weight: 900;
+    }
+
+    .app-warmup-offline .app-warmup-fallback-mark img {
+      opacity: 0;
+    }
+
+    .app-warmup-offline .app-warmup-fallback-status {
+      display: block;
+    }
+
+    .app-warmup-offline .app-warmup-fallback-retry:not([hidden]) {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     @keyframes app-warmup-spin {
       to {
         transform: rotate(1turn);
@@ -126,6 +189,93 @@
       }
     })();
   </script>
+  <script>
+    (function(){
+      var BOOTSTRAPPED_CLASS = 'app-bootstrapped';
+      var OFFLINE_CLASS = 'app-warmup-offline';
+      var FALLBACK_TIMEOUT_MS = 9000;
+      var DEFAULT_TITLE = 'No network';
+      var DEFAULT_MESSAGE = 'The app cannot finish loading because the server is not reachable.';
+
+      function isBootstrapped() {
+        return document.documentElement.classList.contains(BOOTSTRAPPED_CLASS);
+      }
+
+      function setText(selector, value) {
+        var element = document.querySelector(selector);
+        if (element) {
+          element.textContent = value;
+        }
+      }
+
+      function showWarmupFailure(title, message) {
+        if (isBootstrapped()) {
+          return;
+        }
+        document.documentElement.classList.add(OFFLINE_CLASS);
+        setText('[data-warmup-label]', title || DEFAULT_TITLE);
+        setText('[data-warmup-status]', message || DEFAULT_MESSAGE);
+        var fallback = document.querySelector('.app-warmup-fallback');
+        if (fallback) {
+          fallback.setAttribute('aria-label', title || DEFAULT_TITLE);
+        }
+        var retry = document.querySelector('[data-warmup-retry]');
+        if (retry) {
+          retry.hidden = false;
+        }
+      }
+
+      function isBootResource(target) {
+        if (!target || !target.tagName) {
+          return false;
+        }
+        var tagName = target.tagName.toLowerCase();
+        return tagName === 'script' || tagName === 'link';
+      }
+
+      function bindWarmupFallback() {
+        var retry = document.querySelector('[data-warmup-retry]');
+        if (retry) {
+          retry.addEventListener('click', function() {
+            window.location.reload();
+          });
+        }
+        if (navigator.onLine === false) {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+        }
+      }
+
+      window.__myscouteeWarmup = {
+        showNoNetwork: function() {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+        },
+        showFailure: showWarmupFailure
+      };
+
+      window.addEventListener('offline', function() {
+        showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+      });
+      window.addEventListener('error', function(event) {
+        if (isBootResource(event.target)) {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function() {
+        window.setTimeout(function() {
+          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+        }, 0);
+      });
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bindWarmupFallback, { once: true });
+      } else {
+        bindWarmupFallback();
+      }
+      window.setTimeout(function() {
+        showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+      }, FALLBACK_TIMEOUT_MS);
+    })();
+  </script>
 </head>
 <body>
   <app-root>
@@ -134,7 +284,9 @@
         <span class="app-warmup-fallback-ring" aria-hidden="true"></span>
         <img src="assets/logo/heart.webp" alt="">
       </span>
-      <span class="app-warmup-fallback-label">MyScoutee</span>
+      <span class="app-warmup-fallback-label" data-warmup-label>MyScoutee</span>
+      <span class="app-warmup-fallback-status" data-warmup-status></span>
+      <button class="app-warmup-fallback-retry" type="button" data-warmup-retry hidden>Retry</button>
     </section>
   </app-root>
 </body>

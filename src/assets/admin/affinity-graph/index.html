@@ -20,58 +20,83 @@
       <div class="side-panel-stack">
         <section class="control-panel" aria-label="Graph controls">
           <header class="control-header">
-            <h1>Affinity graph</h1>
-            <button id="reset-view" class="reset-button" type="button" title="Reset view" aria-label="Reset view">
-              Reset
-            </button>
+            <div class="control-title-group">
+              <h1>Affinity graph view</h1>
+              <p id="panel-view-label" class="control-view-label">Overview</p>
+            </div>
+            <div class="control-header-actions">
+              <button id="reset-view" class="reset-button" type="button" title="Reset view" aria-label="Reset view">
+                Reset
+              </button>
+              <button
+                id="panel-toggle"
+                class="panel-toggle-button"
+                type="button"
+                aria-controls="panel-expanded-body"
+                aria-expanded="true"
+                aria-label="Collapse graph panel"
+                title="Collapse panel"
+              >
+                <span id="panel-toggle-label">Collapse</span>
+                <span class="panel-toggle-caret" aria-hidden="true"></span>
+              </button>
+            </div>
           </header>
-          <dl class="metrics">
-            <div>
-              <dt>Members</dt>
-              <dd id="member-count">0</dd>
-            </div>
-            <div>
-              <dt>Links</dt>
-              <dd id="link-count">0</dd>
-            </div>
-            <div>
-              <dt>Components</dt>
-              <dd id="component-count">0</dd>
-            </div>
-            <div>
-              <dt>Isolated</dt>
-              <dd id="isolated-count">0</dd>
-            </div>
-          </dl>
-          <div class="range-field" hidden>
-            <label for="min-weight">
-              <span>Link range</span>
-              <output id="weight-range-value" for="min-weight max-weight">0.20 - 1.00</output>
-            </label>
-            <div class="range-slider">
-              <div class="range-slider__track"></div>
-              <div class="range-slider__fill"></div>
-              <input id="min-weight" type="range" min="0" max="1" value="0.20" step="0.01" aria-label="Minimum link strength">
-              <input id="max-weight" type="range" min="0" max="1" value="1.00" step="0.01" aria-label="Maximum link strength">
-            </div>
+          <div id="panel-compact-summary" class="panel-compact-summary" aria-live="polite">
+            <span class="compact-avatar compact-avatar--graph">AG</span>
+            <span class="compact-copy">
+              <span class="compact-eyebrow">Affinity graph view</span>
+              <strong>Overview</strong>
+              <small>Loading graph</small>
+            </span>
           </div>
-          <div class="depth-field" hidden>
-            <label for="link-depth">
-              <span>Link depth</span>
-              <output id="link-depth-value" for="link-depth">Direct</output>
-            </label>
-            <input id="link-depth" type="range" min="1" max="3" value="1" step="1" aria-label="Selected member link depth">
-          </div>
-          <aside id="member-panel" class="member-panel" aria-live="polite"></aside>
-        </section>
-
-        <aside class="help-panel" aria-label="Graph legend">
-          <div class="help-legend">
-            <div class="help-legend-row">
+          <div id="panel-expanded-body" class="panel-expanded-body">
+            <dl class="metrics">
+              <div>
+                <dt>Members</dt>
+                <dd id="member-count">0</dd>
+              </div>
+              <div>
+                <dt>Links</dt>
+                <dd id="link-count">0</dd>
+              </div>
+              <div>
+                <dt>Components</dt>
+                <dd id="component-count">0</dd>
+              </div>
+              <div>
+                <dt>Isolated</dt>
+                <dd id="isolated-count">0</dd>
+              </div>
+            </dl>
+            <div class="range-field" hidden>
+              <label for="min-weight">
+                <span>Link range</span>
+                <output id="weight-range-value" for="min-weight max-weight">0.20 - 1.00</output>
+              </label>
+              <div class="range-slider">
+                <div class="range-slider__track"></div>
+                <div class="range-slider__fill"></div>
+                <input id="min-weight" type="range" min="0" max="1" value="0.20" step="0.01" aria-label="Minimum link strength">
+                <input id="max-weight" type="range" min="0" max="1" value="1.00" step="0.01" aria-label="Maximum link strength">
+              </div>
+            </div>
+            <div class="depth-field" hidden>
+              <label for="link-depth">
+                <span>Link depth</span>
+                <output id="link-depth-value" for="link-depth">Direct</output>
+              </label>
+              <input id="link-depth" type="range" min="1" max="3" value="1" step="1" aria-label="Selected member link depth">
+            </div>
+            <div class="graph-legend-strip" aria-label="Graph legend">
               <span><i class="help-dot help-dot--woman"></i>Women</span>
               <span><i class="help-dot help-dot--man"></i>Men</span>
             </div>
+            <aside id="member-panel" class="member-panel" aria-live="polite"></aside>
           </div>
+        </section>
+
+        <aside class="help-panel" aria-label="Graph legend">
           <dl class="help-actions">
             <div class="help-action-card help-action-card--mouse">
               <dt>

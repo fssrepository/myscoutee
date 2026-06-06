@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { DemoEventCardRecord } from '../../demo/models/events.model';
+import type { ActivityEventCardRecord } from '../models/events.model';
 import type * as AppTypes from '../models';
 import type {
   InfoCardData,
@@ -15,7 +15,7 @@ export interface ActivityEventInfoCardOptions {
 
 export class ActivityEventInfoCardBuilder {
   static build(
-    record: DemoEventCardRecord,
+    record: ActivityEventCardRecord,
     options: ActivityEventInfoCardOptions = {}
   ): InfoCardData {
     const rowType = options.rowType ?? this.resolveRowType(record);
@@ -64,7 +64,7 @@ export class ActivityEventInfoCardBuilder {
     };
   }
 
-  private static resolveRowType(record: DemoEventCardRecord): AppTypes.ActivityListRow['type'] {
+  private static resolveRowType(record: ActivityEventCardRecord): AppTypes.ActivityListRow['type'] {
     const status = this.statusCode(record.status);
     if (status === 'INV' || record.isInvitation || record.type === 'invitations') {
       return 'invitations';
@@ -75,7 +75,7 @@ export class ActivityEventInfoCardBuilder {
     return 'events';
   }
 
-  private static dateRangeLabel(record: DemoEventCardRecord): string {
+  private static dateRangeLabel(record: ActivityEventCardRecord): string {
     const start = this.validDate(record.startAtIso);
     const end = this.validDate(record.endAtIso);
     if (!start) {
@@ -100,7 +100,7 @@ export class ActivityEventInfoCardBuilder {
     return Number.isFinite(date.getTime()) ? date : null;
   }
 
-  private static locationMetaRows(record: DemoEventCardRecord): string[] {
+  private static locationMetaRows(record: ActivityEventCardRecord): string[] {
     const location = `${record.location ?? record.creatorCity ?? ''}`.trim();
     const distanceLabel = this.distanceLabel(record);
     const line = location && distanceLabel
@@ -109,7 +109,7 @@ export class ActivityEventInfoCardBuilder {
     return line ? [line] : [];
   }
 
-  private static distanceLabel(record: DemoEventCardRecord): string {
+  private static distanceLabel(record: ActivityEventCardRecord): string {
     const distanceKm = Number(record.distanceKm);
     if (!Number.isFinite(distanceKm)) {
       return '';
@@ -131,7 +131,7 @@ export class ActivityEventInfoCardBuilder {
     return [{ label: pendingStatusLabelKey }];
   }
 
-  private static mediaStart(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): InfoCardData['mediaStart'] {
+  private static mediaStart(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): InfoCardData['mediaStart'] {
     if (rowType !== 'events' && rowType !== 'invitations') {
       return null;
     }
@@ -144,11 +144,11 @@ export class ActivityEventInfoCardBuilder {
     };
   }
 
-  private static isDraft(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static isDraft(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return rowType === 'hosting' && (record.published === false || this.statusCode(record.status) === 'DR');
   }
 
-  private static isPending(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type'], activeUserId: string): boolean {
+  private static isPending(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type'], activeUserId: string): boolean {
     if (this.isPendingReview(record)) {
       return true;
     }
@@ -166,23 +166,23 @@ export class ActivityEventInfoCardBuilder {
     return 'waiting.for.approval';
   }
 
-  private static isFull(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static isFull(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return rowType === 'events'
       && record.capacityTotal > 0
       && record.acceptedMembers >= record.capacityTotal;
   }
 
-  private static capacityLabel(record: DemoEventCardRecord): string {
+  private static capacityLabel(record: ActivityEventCardRecord): string {
     return `${Math.max(0, record.acceptedMembers)} / ${Math.max(record.acceptedMembers, record.capacityTotal)}`;
   }
 
-  private static pendingMemberCount(record: DemoEventCardRecord): number {
+  private static pendingMemberCount(record: ActivityEventCardRecord): number {
     return Math.max(0, Math.trunc(Number(record.pendingMembers) || 0));
   }
 
   private static surfaceTone(
     status: string,
-    record: DemoEventCardRecord,
+    record: ActivityEventCardRecord,
     rowType: AppTypes.ActivityListRow['type']
   ): InfoCardData['surfaceTone'] {
     switch (status) {
@@ -207,7 +207,7 @@ export class ActivityEventInfoCardBuilder {
 
   private static mediaEndTone(
     status: string,
-    record: DemoEventCardRecord,
+    record: ActivityEventCardRecord,
     rowType: AppTypes.ActivityListRow['type']
   ): NonNullable<InfoCardData['mediaEnd']>['tone'] {
     switch (status) {
@@ -226,7 +226,7 @@ export class ActivityEventInfoCardBuilder {
   }
 
   private static leadingIcon(
-    record: DemoEventCardRecord,
+    record: ActivityEventCardRecord,
     rowType: AppTypes.ActivityListRow['type'],
     status: string,
     pending: boolean
@@ -266,7 +266,7 @@ export class ActivityEventInfoCardBuilder {
     }
   }
 
-  private static menuActions(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type'], activeUserId: string): readonly InfoCardMenuAction[] {
+  private static menuActions(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type'], activeUserId: string): readonly InfoCardMenuAction[] {
     if (this.isTrashed(record)) {
       return this.shouldRestore(record) ? ['restore'] : [];
     }
@@ -312,20 +312,20 @@ export class ActivityEventInfoCardBuilder {
     return 'contactOrganizer';
   }
 
-  private static primaryActionId(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): InfoCardMenuAction {
+  private static primaryActionId(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): InfoCardMenuAction {
     if (rowType === 'invitations') {
       return 'viewInvitation';
     }
     return this.isDraft(record, rowType) ? 'editEvent' : 'manageEvent';
   }
 
-  private static shouldTakeOver(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static shouldTakeOver(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return this.statusCode(record.status) === 'UR'
       && record.isAdmin === true
       && (rowType === 'hosting' || rowType === 'events');
   }
 
-  private static shouldPublish(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static shouldPublish(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return !this.isTrashed(record)
       && !this.isPendingReview(record)
       && rowType === 'hosting'
@@ -333,7 +333,7 @@ export class ActivityEventInfoCardBuilder {
       && this.isDraft(record, rowType);
   }
 
-  private static shouldUnpublish(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static shouldUnpublish(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return !this.isTrashed(record)
       && !this.isPendingReview(record)
       && rowType === 'hosting'
@@ -341,7 +341,7 @@ export class ActivityEventInfoCardBuilder {
       && !this.isDraft(record, rowType);
   }
 
-  private static shouldPrimaryAction(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static shouldPrimaryAction(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     if (this.isTrashed(record) || this.isPendingReview(record)) {
       return false;
     }
@@ -351,16 +351,16 @@ export class ActivityEventInfoCardBuilder {
     return true;
   }
 
-  private static shouldView(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static shouldView(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     return !this.isTrashed(record) && (rowType === 'hosting' || rowType === 'events');
   }
 
-  private static shouldReport(record: DemoEventCardRecord, activeUserId: string): boolean {
+  private static shouldReport(record: ActivityEventCardRecord, activeUserId: string): boolean {
     const creatorUserId = record.creatorUserId.trim();
     return !this.isTrashed(record) && !!creatorUserId && creatorUserId !== activeUserId.trim();
   }
 
-  private static shouldSecondaryAction(record: DemoEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
+  private static shouldSecondaryAction(record: ActivityEventCardRecord, rowType: AppTypes.ActivityListRow['type']): boolean {
     if (this.isTrashed(record)) {
       return false;
     }
@@ -373,16 +373,16 @@ export class ActivityEventInfoCardBuilder {
     return true;
   }
 
-  private static shouldRestore(record: DemoEventCardRecord): boolean {
+  private static shouldRestore(record: ActivityEventCardRecord): boolean {
     return this.statusCode(record.status) === 'T';
   }
 
-  private static isPendingReview(record: DemoEventCardRecord): boolean {
+  private static isPendingReview(record: ActivityEventCardRecord): boolean {
     const status = this.statusCode(record.status);
     return status === 'UR' || status === 'B';
   }
 
-  private static isTrashed(record: DemoEventCardRecord): boolean {
+  private static isTrashed(record: ActivityEventCardRecord): boolean {
     const status = this.statusCode(record.status);
     return record.isTrashed === true || status === 'T' || status === 'D' || status === 'I';
   }

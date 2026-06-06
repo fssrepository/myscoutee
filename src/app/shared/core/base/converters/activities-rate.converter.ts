@@ -1,13 +1,13 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { RateRecord } from '../models/rate.model';
-import type { DemoUser } from '../interfaces/user.interface';
+import type { UserDto } from '../interfaces/user.interface';
 import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
 import { formatActivityMonthDayLabel } from '../formatters';
 
 interface BuildActivityRateRowsOptions {
   activeUserId: string;
-  users: readonly DemoUser[];
+  users: readonly UserDto[];
   filter: AppTypes.RateFilterKey;
   secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
   view: AppTypes.ActivitiesView;
@@ -72,7 +72,7 @@ function toActivityRateRow(
 
 function buildActivityRateImageCard(
   item: RateRecord,
-  primaryUser: DemoUser | null,
+  primaryUser: UserDto | null,
   options: BuildActivityRateRowsOptions,
   displayedDirection: RateRecord['direction'],
   distanceMetersExact: number
@@ -111,7 +111,7 @@ function buildActivityRateImageCard(
 
 function buildSingleRateImageUrls(
   item: RateRecord,
-  user: DemoUser | null,
+  user: UserDto | null,
   activeUserId: string
 ): string[] {
   const seedUserId = user?.id ?? activeUserId;
@@ -147,7 +147,7 @@ function buildPairRateDisplaySlots(
 function buildPairSlotSlides(
   item: RateRecord,
   slot: 'woman' | 'man',
-  user: DemoUser
+  user: UserDto
 ): PairCardSlot['slides'] {
   const seededCount = 2 + (AppUtils.hashText(`pair-rate-photo-count:${item.id}:${slot}:${user.id}`) % 2);
   return buildDisplayImageUrls(user.images, seededCount).map(imageUrl => ({
@@ -160,9 +160,9 @@ function buildPairSlotSlides(
 
 function resolvePrimaryRateUser(
   item: RateRecord,
-  users: readonly DemoUser[],
+  users: readonly UserDto[],
   activeUserId: string
-): DemoUser | null {
+): UserDto | null {
   return users.find(user => user.id === item.userId)
     ?? users.find(user => user.id === activeUserId)
     ?? null;
@@ -170,8 +170,8 @@ function resolvePrimaryRateUser(
 
 function resolvePairSlotUserById(
   userId: string | undefined,
-  users: readonly DemoUser[]
-): DemoUser | null {
+  users: readonly UserDto[]
+): UserDto | null {
   const normalizedUserId = `${userId ?? ''}`.trim();
   if (!normalizedUserId) {
     return null;
@@ -189,7 +189,7 @@ function resolvePairSlotLabel(item: RateRecord, index: 0 | 1): string {
   return index === 0 ? 'Person A' : 'Person B';
 }
 
-function toImageCardPerson(user: DemoUser): ImageCardPerson {
+function toImageCardPerson(user: UserDto): ImageCardPerson {
   return {
     id: user.id,
     name: user.name,
@@ -202,12 +202,12 @@ function toImageCardPerson(user: DemoUser): ImageCardPerson {
 
 function buildImageCardPairUsers(
   item: RateRecord,
-  users: readonly DemoUser[]
+  users: readonly UserDto[]
 ): ImageCardPerson[] {
   return [item.userId, item.secondaryUserId]
     .filter((userId): userId is string => typeof userId === 'string' && userId.trim().length > 0)
     .map(userId => resolvePairSlotUserById(userId, users))
-    .filter((user): user is DemoUser => Boolean(user))
+    .filter((user): user is UserDto => Boolean(user))
     .map(user => toImageCardPerson(user));
 }
 

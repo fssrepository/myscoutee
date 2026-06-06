@@ -4,6 +4,9 @@ export {
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
 } from './repositories/admin-affinity-graph.repository';
+export { HttpAdminAffinityGraphService } from './services/admin-affinity-graph.service';
+export { HttpAdminModerationService } from './services/admin-moderation.service';
+export { HttpAdminWorkspaceService } from './services/admin-workspace.service';
 export { HttpAssetTicketsRepository } from './repositories/asset-tickets.repository';
 export { HttpActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
 export { HttpActivityMembersRepository } from './repositories/activity-members.repository';
@@ -22,6 +25,7 @@ export { HttpHelpCenterService } from './services/help-center.service';
 export { HttpIdeaPostsService } from './services/idea-posts.service';
 export { HttpLandingContentService } from './services/landing-content.service';
 export { HttpMediaService } from './services/media.service';
+export { HttpContactsService } from './services/contacts.service';
 export { HttpRatesService } from './services/rates.service';
 export { HttpUserExperiencesService } from './services/user-experiences.service';
 export { HttpUsersService } from './services/users.service';

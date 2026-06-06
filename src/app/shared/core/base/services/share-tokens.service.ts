@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import { DemoShareTokensService } from '../../demo/services/share-tokens.service';
+import { LocalShareTokensService } from '../../local/services/share-tokens.service';
 import { HttpShareTokensService } from '../../http/services/share-tokens.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -9,11 +9,11 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class ShareTokensService extends BaseRouteModeService {
-  private readonly demoShareTokensService = inject(DemoShareTokensService);
+  private readonly localShareTokensService = inject(LocalShareTokensService);
   private readonly httpShareTokensService = inject(HttpShareTokensService);
 
-  private get shareTokensService(): DemoShareTokensService | HttpShareTokensService {
-    return this.resolveRouteService('/share-tokens', this.demoShareTokensService, this.httpShareTokensService);
+  private get shareTokensService(): LocalShareTokensService | HttpShareTokensService {
+    return this.resolveRouteService('/share-tokens', this.localShareTokensService, this.httpShareTokensService);
   }
 
   createToken(request: AppTypes.ShareTokenCreateRequest): Promise<string> {

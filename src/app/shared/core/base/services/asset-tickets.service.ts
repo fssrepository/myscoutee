@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import { DemoAssetTicketsService } from '../../demo/services/asset-tickets.service';
+import { LocalAssetTicketsService } from '../../local/services/asset-tickets.service';
 import { HttpAssetTicketsService } from '../../http/services/asset-tickets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -9,12 +9,12 @@ import { BaseRouteModeService } from './base-route-mode.service';
   providedIn: 'root'
 })
 export class AssetTicketsService extends BaseRouteModeService {
-  private readonly demoAssetTicketsService = inject(DemoAssetTicketsService);
+  private readonly localAssetTicketsService = inject(LocalAssetTicketsService);
   private readonly httpAssetTicketsService = inject(HttpAssetTicketsService);
 
 
-  private get assetTicketsService(): DemoAssetTicketsService | HttpAssetTicketsService {
-    return this.resolveRouteService('/assets/tickets', this.demoAssetTicketsService, this.httpAssetTicketsService);
+  private get assetTicketsService(): LocalAssetTicketsService | HttpAssetTicketsService {
+    return this.resolveRouteService('/assets/tickets', this.localAssetTicketsService, this.httpAssetTicketsService);
   }
 
   peekTicketCountByUser(userId: string): number {

@@ -19,7 +19,7 @@ import { from } from 'rxjs';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { RateRecord } from '../../../shared/core/base/models/rate.model';
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivitiesEventDisplaySync } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
@@ -87,20 +87,22 @@ import {
   ShareTokensService,
   toActivityChatRow,
   UsersService,
+  type ActivityCounterKey,
+  type ActivityCounters,
   type ActivityMembersSyncState
 } from '../../../shared/core';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
-import { DemoUserMenuCountersBuilder } from '../../../shared/core/demo/builders';
 import type {
-  DemoEventRecord,
-  DemoRepositoryEventItemType
-} from '../../../shared/core/demo/models/events.model';
-import { I18nPipe, I18nService } from '../../../shared/i18n';
+  ActivityEventRecord,
+  ActivityEventRepositoryItemType
+} from '../../../shared/core/base/models/events.model';
+import { I18nService } from '../../../shared/core';
+import { I18nPipe } from '../../../shared/ui';
 
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
 type ActivitiesEventSyncMessage = ActivitiesEventSyncPayload | ActivitiesEventDisplaySync;
+type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 
 interface ActivitiesEventScopeOption {
   key: AppTypes.ActivitiesEventScope;
@@ -213,28 +215,28 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesRateTemplateContext: ActivitiesRateTemplateContext = this.activitiesRates.templateContext;
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
-  protected get users(): DemoUser[] {
-    return this.usersService.peekCachedUsers() as DemoUser[];
+  protected get users(): UserDto[] {
+    return this.usersService.peekCachedUsers() as UserDto[];
   }
-  protected activeUser: DemoUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+  protected activeUser: UserDto = (this.appCtx.activeUserProfile() as UserDto | null)
     ?? this.users[0]
     ?? this.createFallbackActiveUser();
 
   protected chatItems: ChatRecord[] = [];
-  protected eventItems: DemoEventRecord[] = [];
-  protected hostingItems: DemoEventRecord[] = [];
-  protected invitationItems: DemoEventRecord[] = [];
+  protected eventItems: ActivityEventRecord[] = [];
+  protected hostingItems: ActivityEventRecord[] = [];
+  protected invitationItems: ActivityEventRecord[] = [];
   protected rateItems: RateRecord[] = [];
 
-  protected chatBadge = this.activeUser.activities.chat;
-  protected eventsBadge = this.activeUser.activities.event?.active ?? this.activeUser.activities.events;
-  protected allEventsScopeBadge = this.activeUser.activities.event?.all ?? this.activeUser.activities.events
-    + this.activeUser.activities.invitations
-    + this.activeUser.activities.hosting;
-  protected pendingBadge = this.activeUser.activities.event?.pending ?? 0;
-  protected hostingBadge = this.activeUser.activities.event?.hosting ?? this.activeUser.activities.hosting;
-  protected invitationsBadge = this.activeUser.activities.event?.invitations ?? this.activeUser.activities.invitations;
-  protected gameBadge = this.activeUser.activities.game;
+  protected get chatBadge(): number { return this.activityCounterValue('chat'); }
+  protected get eventsBadge(): number { return this.activityCounterValue('events'); }
+  protected get allEventsScopeBadge(): number { return this.eventCounterValue('all'); }
+  protected get pendingBadge(): number { return this.eventCounterValue('pending'); }
+  protected get hostingBadge(): number { return this.activityCounterValue('hosting'); }
+  protected get invitationsBadge(): number { return this.activityCounterValue('invitations'); }
+  protected get draftsBadge(): number { return this.eventCounterValue('drafts'); }
+  protected get trashBadge(): number { return this.eventCounterValue('trash'); }
+  protected get gameBadge(): number { return this.activityCounterValue('game'); }
 
   protected publishedHostingIds: ReadonlySet<string> = new Set<string>();
 
@@ -265,6 +267,34 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected get assetCards(): AppTypes.AssetCard[] {
     return this.ownedAssets.assetCards;
+  }
+
+  private activityCounterValue(key: ActivityCounterKey): number {
+    const activeUser = this.appCtx.activeUserProfile();
+    const activeUserId = activeUser?.id?.trim() ?? '';
+    if (!activeUser || !activeUserId) {
+      return 0;
+    }
+    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
+    return this.normalizeBadgeCounter(overrides[key] ?? activeUser.activities?.[key]);
+  }
+
+  private eventCounterValue(key: ActivityEventCounterKey): number {
+    const activeUser = this.appCtx.activeUserProfile();
+    const activeUserId = activeUser?.id?.trim() ?? '';
+    if (!activeUser || !activeUserId) {
+      return 0;
+    }
+    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
+    return this.normalizeBadgeCounter(overrides.event?.[key] ?? activeUser.activities?.event?.[key]);
+  }
+
+  private normalizeBadgeCounter(value: unknown): number {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(numericValue));
   }
   // ── ViewChild refs ────────────────────────────────────────────────────────
   @ViewChild('activitiesScroll')
@@ -339,7 +369,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, ActivitiesSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/chats'),
     defaultView: 'day',
     containerClass: () => this.activitiesSmartListClassMap(),
     listLayout: 'card-grid',
@@ -461,7 +490,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected selectedActivityMembersRowId: string | null = null;
   protected readonly trashedActivityRowsByKey: Record<string, AppTypes.ActivityListRow> = {};
 
-  protected getChatLastSender(item: ChatRecord): DemoUser {
+  protected getChatLastSender(item: ChatRecord): UserDto {
     return this.activitiesChats.getChatLastSender(item);
   }
 
@@ -573,10 +602,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesEvents.isActivityIdentityTrashed(type, id);
   }
 
-  protected trashedActivityCount(): number {
-    return this.activitiesEvents.trashedActivityCount() || this.activeUser.activities.event?.trash || 0;
-  }
-
   protected openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {
     this.activitiesEvents.openActivityRowInEventModule(row, readOnly);
   }
@@ -603,7 +628,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesIndividualRateSocialBadgeEnabled = svc.activitiesIndividualRateSocialBadgeEnabled();
       this.activitiesPairRateSocialBadgeEnabled = svc.activitiesPairRateSocialBadgeEnabled();
       this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
-      this.activitiesSmartListConfig.loadingDelayMs = this.resolveActivitiesLoadingDelayMs();
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
       this.showActivitiesSecondaryPicker = svc.activitiesShowSecondaryPicker();
       this.activitiesStickyValue         = svc.activitiesStickyValue();
@@ -615,7 +639,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     effect(() => {
       const activeUserId = this.appCtx.activeUserId().trim();
-      const nextActiveUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+      const nextActiveUser = (this.appCtx.activeUserProfile() as UserDto | null)
         ?? this.users.find(user => user.id === activeUserId)
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
@@ -795,7 +819,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesExplanationContextKey = null;
   }
 
-  private createFallbackActiveUser(): DemoUser {
+  private createFallbackActiveUser(): UserDto {
     return {
       id: this.appCtx.activeUserId().trim(),
       name: 'Demo User',
@@ -822,7 +846,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private hydrateStandaloneFallbackState(): void {
     if (!this.activeUser) {
-      this.activeUser = (this.appCtx.activeUserProfile() as DemoUser | null)
+      this.activeUser = (this.appCtx.activeUserProfile() as UserDto | null)
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
     }
@@ -1341,7 +1365,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private applyStandaloneEventRecords(records: readonly DemoEventRecord[], replaceExisting = false): void {
+  private applyStandaloneEventRecords(records: readonly ActivityEventRecord[], replaceExisting = false): void {
     const normalizedRecords = Array.isArray(records) ? records.map(record => ({ ...record })) : [];
     if (replaceExisting || this.eventItems.length === 0) {
       this.eventItems = normalizedRecords
@@ -1585,40 +1609,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected refreshSectionBadges(): void {
-    const memberEventItems = this.memberEventItems();
-    this.chatBadge = DemoUserMenuCountersBuilder.resolveSectionBadge(
-      this.chatItems.map(item => item.unread),
-      this.chatItems.length
-    );
-    const visibleInvitations = this.invitationItems
-      .filter(item => !this.isActivityIdentityTrashed('invitations', item.id));
-    this.invitationsBadge = visibleInvitations.length;
-    const visibleMemberEvents = memberEventItems
-      .filter(item => !this.isActivityIdentityTrashed('events', item.id))
-      .filter(item => !this.isTrashScopeEventRecord(item))
-      .filter(item => this.isAcceptedEventRecord(item) || this.isPendingEventRecord(item));
-    const visiblePendingEvents = visibleMemberEvents
-      .filter(item => this.isPendingEventRecord(item));
-    const visibleActiveEvents = visibleMemberEvents
-      .filter(item => this.isAcceptedEventRecord(item))
-      .filter(item => this.isUpcomingEventRecord(item));
-    this.eventsBadge = visibleActiveEvents.length;
-    const adminEvents = this.hostingItems
-      .filter(item => item.isAdmin)
-      .filter(item => !this.isActivityIdentityTrashed('hosting', item.id))
-      .filter(item => !this.isTrashScopeEventRecord(item));
-    const adminReviewEvents = adminEvents.filter(item => this.isPendingReviewEventRecord(item));
-    this.pendingBadge = visiblePendingEvents.length + adminReviewEvents.length;
-    this.hostingBadge = adminEvents.length;
-    this.allEventsScopeBadge = visibleActiveEvents.length
-      + visiblePendingEvents.length
-      + visibleInvitations.length
-      + adminEvents.length;
-    this.gameBadge = this.activeUser.activities.game;
-    this.syncActivityCounterOverrides();
+    this.cdr.markForCheck();
   }
 
-  private isAcceptedEventRecord(item: DemoEventRecord): boolean {
+  private isAcceptedEventRecord(item: ActivityEventRecord): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId || item.isAdmin === true) {
       return false;
@@ -1629,7 +1623,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.eventAcceptedMemberUserIds(item).includes(activeUserId);
   }
 
-  private isUpcomingEventRecord(item: DemoEventRecord): boolean {
+  private isUpcomingEventRecord(item: ActivityEventRecord): boolean {
     const endAtMs = AppUtils.toSortableDate(item.endAtIso);
     if (Number.isFinite(endAtMs) && endAtMs > 0) {
       return endAtMs > Date.now();
@@ -1638,7 +1632,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return !Number.isFinite(startAtMs) || startAtMs > Date.now();
   }
 
-  private isPendingEventRecord(item: DemoEventRecord): boolean {
+  private isPendingEventRecord(item: ActivityEventRecord): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId || item.isAdmin === true) {
       return false;
@@ -1654,31 +1648,31 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || this.eventPendingMemberUserIds(item).includes(activeUserId);
   }
 
-  private eventAcceptedMemberUserIds(item: Pick<DemoEventRecord, 'id'>): string[] {
+  private eventAcceptedMemberUserIds(item: Pick<ActivityEventRecord, 'id'>): string[] {
     return [...(this.activityMembersService.peekSummaryByOwner({
       ownerType: 'event',
       ownerId: item.id
     })?.acceptedMemberUserIds ?? [])];
   }
 
-  private eventPendingMemberUserIds(item: Pick<DemoEventRecord, 'id'>): string[] {
+  private eventPendingMemberUserIds(item: Pick<ActivityEventRecord, 'id'>): string[] {
     return [...(this.activityMembersService.peekSummaryByOwner({
       ownerType: 'event',
       ownerId: item.id
     })?.pendingMemberUserIds ?? [])];
   }
 
-  private isPendingReviewEventRecord(item: DemoEventRecord): boolean {
+  private isPendingReviewEventRecord(item: ActivityEventRecord): boolean {
     const status = this.activityEventRecordStatusCode(item);
     return status === 'UR' || status === 'B';
   }
 
-  private isTrashScopeEventRecord(item: DemoEventRecord): boolean {
+  private isTrashScopeEventRecord(item: ActivityEventRecord): boolean {
     const status = this.activityEventRecordStatusCode(item);
     return status === 'T' || status === 'D' || status === 'I';
   }
 
-  private activityEventRecordStatusCode(item: DemoEventRecord): string {
+  private activityEventRecordStatusCode(item: ActivityEventRecord): string {
     const status = `${item.status ?? ''}`.trim();
     switch (status) {
       case 'active':
@@ -1728,28 +1722,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return false;
   }
 
-  private syncActivityCounterOverrides(): void {
-    const activeUserId = this.activeUser?.id?.trim();
-    if (!activeUserId) {
-      return;
-    }
-    this.appCtx.patchUserCounterOverrides(activeUserId, {
-      chat: this.chatBadge,
-      invitations: this.invitationsBadge,
-      events: this.eventsBadge,
-      hosting: this.hostingBadge,
-      event: {
-        all: this.allEventsScopeBadge,
-        active: this.eventsBadge,
-        pending: this.pendingBadge,
-        invitations: this.invitationsBadge,
-        hosting: this.hostingBadge,
-        drafts: this.activeUser.activities.event?.drafts ?? 0,
-        trash: this.trashedActivityCount()
-      }
-    });
-  }
-
   private syncMobileViewFromViewport(): void {
     if (typeof window === 'undefined') {
       this.isMobileView = false;
@@ -1779,7 +1751,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return [...this.visibleActivityRows];
   }
 
-  private memberEventItems(): DemoEventRecord[] {
+  private memberEventItems(): ActivityEventRecord[] {
     const pendingDraftItems = this.pendingCheckoutDraftEventRecords();
     const pendingDraftSourceIds = new Set(pendingDraftItems.map(item => item.id));
     return [
@@ -1790,7 +1762,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ];
   }
 
-  private pendingCheckoutDraftEventRecords(): DemoEventRecord[] {
+  private pendingCheckoutDraftEventRecords(): ActivityEventRecord[] {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId) {
       return [];
@@ -1798,10 +1770,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.eventCheckoutDraftService.listByUser(activeUserId)
       .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
       .map(draft => this.buildPendingCheckoutDraftEventRecord(draft))
-      .filter((item): item is DemoEventRecord => Boolean(item));
+      .filter((item): item is ActivityEventRecord => Boolean(item));
   }
 
-  private buildPendingCheckoutDraftEventRecord(draft: EventCheckoutDraft): DemoEventRecord | null {
+  private buildPendingCheckoutDraftEventRecord(draft: EventCheckoutDraft): ActivityEventRecord | null {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     const sourceId = draft.sourceId.trim();
     if (!activeUserId || !sourceId) {
@@ -2038,7 +2010,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     Object.assign(row, this.withActivityEventInfoCard(row));
   }
 
-  private activityEventRecordForRow(row: AppTypes.ActivityListRow): DemoEventRecord | null {
+  private activityEventRecordForRow(row: AppTypes.ActivityListRow): ActivityEventRecord | null {
     if (row.type === 'hosting') {
       return this.hostingItems.find(item => item.id === row.id)
         ?? this.eventItems.find(item => item.id === row.id)
@@ -2206,7 +2178,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return entries;
   }
 
-  private resolveActivityMemberUser(userId: string): DemoUser {
+  private resolveActivityMemberUser(userId: string): UserDto {
     const normalizedUserId = userId.trim();
     if (normalizedUserId === this.activeUser.id) {
       return this.activeUser;
@@ -2600,9 +2572,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private buildSyncedEventRecord(
     sync: ActivitiesEventSyncPayload,
-    existing?: DemoEventRecord,
-    type: DemoRepositoryEventItemType = 'events'
-  ): DemoEventRecord {
+    existing?: ActivityEventRecord,
+    type: ActivityEventRepositoryItemType = 'events'
+  ): ActivityEventRecord {
     const imageUrl = sync.imageUrl.trim();
     const acceptedMembers = Number.isFinite(Number(sync.acceptedMembers))
       ? Math.max(0, Math.trunc(Number(sync.acceptedMembers)))
@@ -2616,7 +2588,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const published = sync.published === false
       ? false
       : (this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published ?? type !== 'hosting'));
-    const fallbackStatus: DemoEventRecord['status'] = type === 'hosting'
+    const fallbackStatus: ActivityEventRecord['status'] = type === 'hosting'
       ? (published ? 'H' : 'DR')
       : type === 'invitations'
         ? 'INV'
@@ -2696,9 +2668,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activityDisplayRecordForSync(
     sync: ActivitiesEventSyncMessage,
-    existing: DemoEventRecord | undefined,
-    type: DemoRepositoryEventItemType
-  ): DemoEventRecord {
+    existing: ActivityEventRecord | undefined,
+    type: ActivityEventRepositoryItemType
+  ): ActivityEventRecord {
     if (this.isActivitiesEventDisplaySync(sync) && sync.displayRecord.type === type) {
       return {
         ...sync.displayRecord,
@@ -2866,18 +2838,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   // ── User lookup ────────────────────────────────────────────────────────────
 
-  private userById(userId: string): DemoUser | undefined {
+  private userById(userId: string): UserDto | undefined {
     return this.users.find(u => u.id === userId);
-  }
-
-  private resolveActivitiesLoadingDelayMs(): number {
-    if (this.activitiesPrimaryFilter === 'events') {
-      return resolveCurrentRouteDelayMs('/activities/events');
-    }
-    if (this.activitiesPrimaryFilter === 'rates') {
-      return resolveCurrentRouteDelayMs('/activities/rates');
-    }
-    return resolveCurrentRouteDelayMs('/activities/chats');
   }
 
   private syncActivitiesSmartListQuery(): void {

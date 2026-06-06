@@ -17,7 +17,11 @@
       <div class="popup-body admin-params-body">
         @if (loading()) {
           <div class="admin-params-loading-state" aria-busy="true">
-            <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
+            <app-progress-indicator
+              kind="load-ring"
+              state="loading"
+              [durationMs]="paramsService.paramsLoadProgressWindowMs()"
+            ></app-progress-indicator>
             <span>{{ 'admin.params.loading' | i18n }}</span>
           </div>
         } @else if (state(); as paramsState) {
@@ -192,7 +196,11 @@
       <div class="popup-body admin-params-history-body">
         @if (historyLoading()) {
           <div class="admin-params-loading-state admin-params-history-loading-state" aria-busy="true">
-            <app-progress-indicator kind="load-ring" [position]="loadingProgress()"></app-progress-indicator>
+            <app-progress-indicator
+              kind="load-ring"
+              state="loading"
+              [durationMs]="paramsService.paramsHistoryProgressWindowMs()"
+            ></app-progress-indicator>
             <span>{{ 'admin.params.history.loading' | i18n }}</span>
           </div>
         } @else {

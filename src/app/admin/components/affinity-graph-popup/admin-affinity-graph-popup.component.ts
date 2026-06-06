@@ -3,7 +3,7 @@ import { Component, OnDestroy, computed, effect, inject, signal } from '@angular
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-import { AdminAffinityGraphService } from '../../services/admin-affinity-graph.service';
+import { AdminAffinityGraphPopupStateService } from '../../services/admin-affinity-graph-popup-state.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
@@ -22,7 +22,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);
   protected readonly popupKey = 'affinity-graph';
   private readonly document = inject(DOCUMENT);
-  private readonly affinityGraph = inject(AdminAffinityGraphService);
+  private readonly affinityGraph = inject(AdminAffinityGraphPopupStateService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly originalBodyOverflow = this.document.body.style.overflow;
   private readonly originalHtmlOverflow = this.document.documentElement.style.overflow;

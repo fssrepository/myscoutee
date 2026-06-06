@@ -5,7 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 import { PricingBuilder } from '../../../shared/core/base/builders';
-import { resolveCurrentDemoDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import {
   EventSubeventLeaderboardFifaMatch,
@@ -21,7 +20,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsService } from '../../../shared/core';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
   CounterBadgePipe,
@@ -321,7 +320,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected readonly casualSmartListConfig: SmartListConfig<EventSubeventsItem, { revision: number }> = {
     pageSize: 18,
-    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
     defaultView: 'list',
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -3234,7 +3232,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private applyHydratedOwnerRecord(
-    record: DemoEventRecord | null,
+    record: ActivityEventRecord | null,
     ownerId: string,
     sequence: number,
     mutationVersion: number

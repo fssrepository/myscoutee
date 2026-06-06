@@ -17,22 +17,15 @@ import {
 } from '../../shared/core';
 import { FirebaseAuthService } from '../../shared/core/base/services/firebase-auth.service';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import { AdminNotificationsSeedBuilder } from '../builders/admin-notifications-seed.builder';
 import { AdminNotificationsRepository } from '../repositories/admin-notifications.repository';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
 const OBSOLETE_NOTIFICATION_RULE_PARAMETER_KEYS = new Set([
   'jobs.process.randomGroups.historyPenalty'
 ]);
-const ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS = 2500;
-const ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS = 12000;
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
 const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
 const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
-const ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS = 1500;
-const ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS = 1500;
-const ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS = 1500;
-const ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS = 3000;
 const ADMIN_NOTIFICATION_INTERVAL_UNIT = {
   seconds: 'seconds',
   minutes: 'minutes',
@@ -64,20 +57,23 @@ export class AdminNotificationsService {
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   notificationCenterLoadProgressWindowMs(): number {
-    return ADMIN_NOTIFICATION_HTTP_PROGRESS_WINDOW_MS;
+    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_NOTIFICATION_LOAD_ROUTE);
   }
 
   async loadNotificationCenter(options?: { skipDemoDelay?: boolean }): Promise<AdminNotificationCenterState> {
     if (this.workspace.usesHttpAdminApi) {
-      const state = await this.withHttpTimeout(this.http
+      const state = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_LOAD_ROUTE, this.http
         .get<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
           params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' }
         })
-        .toPromise());
-      return this.normalizeNotificationCenter(state ?? this.buildDefaultNotificationCenter());
+        .toPromise(), 'Notification rules request timed out.');
+      if (!state) {
+        throw new Error('Admin notification center is unavailable.');
+      }
+      return this.normalizeNotificationCenter(state);
     }
     const existing = await this.readDemoNotificationCenter();
-    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, ADMIN_NOTIFICATION_LOAD_DEMO_DELAY_MS, options);
+    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_LOAD_ROUTE, options);
     return this.normalizeNotificationCenter(existing);
   }
 
@@ -87,17 +83,16 @@ export class AdminNotificationsService {
   ): Promise<AdminNotificationCenterState> {
     const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
     if (this.workspace.usesHttpAdminApi) {
-      const state = await this.withHttpTimeout(this.http
+      const state = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_SAVE_ROUTE, this.http
         .post<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
           adminUserId: this.workspace.activeAdmin()?.id ?? '',
           rules: normalizedRules
         })
-        .toPromise());
-      return this.normalizeNotificationCenter(state ?? {
-        rules: normalizedRules,
-        emailTemplates: [],
-        updatedDate: new Date().toISOString()
-      });
+        .toPromise(), 'Notification rules request timed out.');
+      if (!state) {
+        throw new Error('Admin notification center save returned no state.');
+      }
+      return this.normalizeNotificationCenter(state);
     }
     const existing = await this.loadNotificationCenter({ skipDemoDelay: true });
     const next = this.normalizeNotificationCenter({
@@ -105,11 +100,8 @@ export class AdminNotificationsService {
       emailTemplates: existing.emailTemplates,
       updatedDate: new Date().toISOString()
     });
-    await this.withStorageFallback(
-      this.repository.writeStore(next),
-      undefined
-    );
-    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, ADMIN_NOTIFICATION_SAVE_DEMO_DELAY_MS, options);
+    await this.repository.writeStore(next);
+    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, options);
     return next;
   }
 
@@ -126,12 +118,12 @@ export class AdminNotificationsService {
       };
     }
     if (this.workspace.usesHttpAdminApi) {
-      const result = await this.withHttpTimeout(this.http
+      const result = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_RUN_ROUTE, this.http
         .post<AdminNotificationRunResult>(
           `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/run`,
           { adminUserId: this.workspace.activeAdmin()?.id ?? '' }
         )
-        .toPromise());
+        .toPromise(), 'Notification rules request timed out.');
       return this.normalizeNotificationRunResult(result, normalizedRuleKey);
     }
     const state = await this.loadNotificationCenter({ skipDemoDelay: true });
@@ -177,7 +169,7 @@ export class AdminNotificationsService {
       };
     });
     const saved = await this.saveNotificationCenter(nextRules, { skipDemoDelay: true });
-    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_RUN_ROUTE, ADMIN_NOTIFICATION_RUN_DEMO_DELAY_MS);
+    await this.waitForAdminNotificationDemoDelay(ADMIN_NOTIFICATION_RUN_ROUTE);
     const updated = saved.rules.find(rule => rule.ruleKey === normalizedRuleKey);
     return {
       ruleKey: normalizedRuleKey,
@@ -194,12 +186,12 @@ export class AdminNotificationsService {
     if (!normalizedRuleKey || !this.workspace.usesHttpAdminApi) {
       return null;
     }
-    const rule = await this.withHttpTimeout(this.http
+    const rule = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_LOAD_ROUTE, this.http
       .get<AdminNotificationRule | null>(
         `${this.apiBaseUrl}/admin/notifications/${encodeURIComponent(normalizedRuleKey)}/runtime`,
         { params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' } }
       )
-      .toPromise());
+      .toPromise(), 'Notification rules request timed out.');
     return rule ? this.normalizeNotificationRule(rule) : null;
   }
 
@@ -237,19 +229,12 @@ export class AdminNotificationsService {
   }
 
   private async readDemoNotificationCenter(): Promise<AdminNotificationCenterState> {
-    await this.withStorageFallback(this.repository.whenReady(), undefined);
-    const existing = await this.withStorageFallback(
-      this.repository.readStore<AdminNotificationCenterState>(),
-      null
-    );
+    await this.repository.whenReady();
+    const existing = await this.repository.readStore<AdminNotificationCenterState>();
     if (!existing?.rules?.length) {
       throw new Error('Demo notification center is not bootstrapped.');
     }
     return this.normalizeNotificationCenter(existing);
-  }
-
-  private buildDefaultNotificationCenter(): AdminNotificationCenterState {
-    return this.normalizeNotificationCenter(AdminNotificationsSeedBuilder.buildDefaultNotificationCenter());
   }
 
   private normalizeNotificationCenter(state: AdminNotificationCenterState): AdminNotificationCenterState {
@@ -680,57 +665,13 @@ export class AdminNotificationsService {
     return baseUrl.toString();
   }
 
-  private withStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
-    return new Promise<T>(resolve => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (value: T) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        resolve(value);
-      };
-      timeoutId = setTimeout(() => finish(fallback), ADMIN_NOTIFICATION_STORAGE_TIMEOUT_MS);
-      task.then(finish).catch(() => finish(fallback));
-    });
-  }
-
-  private withHttpTimeout<T>(task: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (callback: () => void) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        callback();
-      };
-      timeoutId = setTimeout(
-        () => finish(() => reject(new Error('Notification rules request timed out.'))),
-        ADMIN_NOTIFICATION_HTTP_TIMEOUT_MS
-      );
-      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
-    });
-  }
-
   private async waitForAdminNotificationDemoDelay(
     route: string,
-    fallbackDelayMs: number,
     options?: { skipDemoDelay?: boolean }
   ): Promise<void> {
     if (this.workspace.usesHttpAdminApi || options?.skipDemoDelay === true) {
       return;
     }
-    await this.routeDelay.waitForRouteDelay(route, undefined, undefined, fallbackDelayMs);
+    await this.routeDelay.waitForRouteDelay(route);
   }
 }

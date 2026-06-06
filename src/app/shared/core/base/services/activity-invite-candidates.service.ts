@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivityInviteOwnerContext } from '../interfaces/activity-invite.interface';
-import { DemoActivityInviteCandidatesService } from '../../demo/services/activity-invite-candidates.service';
+import { LocalActivityInviteCandidatesService } from '../../local/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';
 import { AppContext } from '../context';
@@ -10,21 +10,23 @@ import { EventsService } from './events.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';
 
+const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
+
 @Injectable({
   providedIn: 'root'
 })
 export class ActivityInviteCandidatesService extends BaseRouteModeService {
-  private readonly demoActivityInviteCandidatesService = inject(DemoActivityInviteCandidatesService);
+  private readonly localActivityInviteCandidatesService = inject(LocalActivityInviteCandidatesService);
   private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
 
 
-  private get inviteCandidatesService(): DemoActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
+  private get inviteCandidatesService(): LocalActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
     return this.resolveRouteService(
-      '/activities/events/invite-candidates',
-      this.demoActivityInviteCandidatesService,
+      ACTIVITY_INVITE_CANDIDATES_ROUTE,
+      this.localActivityInviteCandidatesService,
       this.httpActivityInviteCandidatesService
     );
   }
@@ -71,7 +73,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
       ownerType,
       ownerId: normalizedOwnerId
     };
-    const currentMembers = await this.activityMembersService.queryMembersByOwner(ownerRef);
+    const currentMembers = this.activityMembersService.peekMembersByOwner(ownerRef);
     const existingUserIds = new Set(currentMembers.map(member => member.userId));
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const additions = selectedCandidates

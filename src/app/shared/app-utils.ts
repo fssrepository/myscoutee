@@ -1,5 +1,5 @@
 import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './core/base/models';
-import type { DemoUser } from './core/base/interfaces/user.interface';
+import type { UserDto } from './core/base/interfaces/user.interface';
 
 export class AppUtils {
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {
@@ -226,12 +226,12 @@ export class AppUtils {
       : (navigator.language || undefined);
   }
 
-  static findUserByName(users: DemoUser[], name: string): DemoUser | undefined {
+  static findUserByName(users: UserDto[], name: string): UserDto | undefined {
     const target = this.normalizeText(name);
     return users.find(user => this.normalizeText(user.name) === target);
   }
 
-  static resolveAssetRequestUserId(request: AssetMemberRequest, users: DemoUser[]): string {
+  static resolveAssetRequestUserId(request: AssetMemberRequest, users: UserDto[]): string {
     if (request.userId) {
       return request.userId;
     }

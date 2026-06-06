@@ -6,15 +6,15 @@ import { environment } from '../../../../../environments/environment';
 import { AppContext } from '../context';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { PwaService } from './pwa.service';
-import { scopedStorageKey } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
 export class FirebaseMessagingService {
-  private static readonly DEVICE_ID_STORAGE_KEY = scopedStorageKey('messaging.device-id.v1');
-  private static readonly TOKEN_STORAGE_KEY = scopedStorageKey('messaging.token.v1');
-  private static readonly TOKEN_USER_ID_STORAGE_KEY = scopedStorageKey('messaging.user-id.v1');
+  private static readonly DEVICE_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingDeviceId;
+  private static readonly TOKEN_STORAGE_KEY = APP_STORAGE_KEYS.messagingToken;
+  private static readonly TOKEN_USER_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingUserId;
 
   private readonly http = inject(HttpClient);
   private readonly appCtx = inject(AppContext);

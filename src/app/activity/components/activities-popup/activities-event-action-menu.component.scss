@@ -37,12 +37,19 @@
 .activities-event-action-menu.item-action-menu-desktop {
   position: fixed;
   right: auto;
-  z-index: 24;
+  z-index: 120;
   overflow-y: auto;
 }
 
 .activities-event-action-menu.item-action-menu-mobile {
-  z-index: 24;
+  z-index: 120;
+}
+
+.activities-event-action-menu.item-action-menu-desktop:not(.is-positioned) {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  animation: none;
 }
 
 .activities-event-action-menu.item-action-menu-desktop.is-open-up {

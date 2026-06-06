@@ -1,6 +1,4 @@
 import { CommonModule } from '@angular/common';
-import { environment } from '../../../../environments/environment';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -20,7 +18,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
   CounterBadgePipe,
   LazyBgImageDirective,
@@ -67,7 +65,6 @@ type MembersSummaryState = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent {
-  private static readonly DELETE_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -95,7 +92,7 @@ export class EventMembersPopupComponent {
   protected canShowInviteButton = false;
   private lookupRef: AppTypes.PopupHeaderLookup | null = null;
 
-  private ownerRecord: DemoEventRecord | null = null;
+  private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
   private canManageMembers = false;
   private inlineItemActionMenu: InlineMemberActionMenu | null = null;
@@ -129,8 +126,6 @@ export class EventMembersPopupComponent {
 
   protected readonly membersSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
     pageSize: 16,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/members'),
-    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -463,7 +458,6 @@ export class EventMembersPopupComponent {
     this.inlineItemActionMenu = null;
     this.navigatorService.openProfileView({
       userId,
-      user: entry.profile ?? this.usersService.peekCachedUserById(userId),
       label: entry.name
     });
     this.cdr.markForCheck();
@@ -482,17 +476,15 @@ export class EventMembersPopupComponent {
           }
         : member
     );
-    const pendingWindowPromise = this.minimumDeletePendingWindow();
     const approvePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await Promise.all([pendingWindowPromise, approvePromise]);
+    await approvePromise;
   }
 
   private async confirmRemoveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
-    const pendingWindowPromise = this.minimumDeletePendingWindow();
     const deletePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await Promise.all([pendingWindowPromise, deletePromise]);
+    await deletePromise;
   }
 
   private async confirmMemberAction(
@@ -504,9 +496,8 @@ export class EventMembersPopupComponent {
       return;
     }
     const previousMembers = this.currentOwnerMembers();
-    const pendingWindowPromise = this.minimumDeletePendingWindow();
     const actionPromise = this.runMemberActionAfterUiYield(owner, entry.userId, action, previousMembers);
-    await Promise.all([pendingWindowPromise, actionPromise]);
+    await actionPromise;
   }
 
   private memberRemovalTitle(entry: AppTypes.ActivityMemberEntry): string {
@@ -830,7 +821,7 @@ export class EventMembersPopupComponent {
   }
 
   private applyOwnerRecord(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options?: {
       subtitle?: string;
       canManage?: boolean;
@@ -1150,17 +1141,11 @@ export class EventMembersPopupComponent {
     this.isMobileView = window.innerWidth <= 760;
   }
 
-  private minimumDeletePendingWindow(): Promise<void> {
-    return this.demoModeEnabled
-      ? this.wait(EventMembersPopupComponent.DELETE_PENDING_WINDOW_MS)
-      : Promise.resolve();
-  }
-
   private async runMemberUpdateAfterUiYield(
     nextMembers: readonly AppTypes.ActivityMemberEntry[],
     previousMembers: readonly AppTypes.ActivityMemberEntry[]
   ): Promise<void> {
-    await this.waitForAnimationKickoff();
+    await this.waitForMemberActionRender();
     await this.commitMembers(nextMembers, previousMembers);
   }
 
@@ -1170,7 +1155,7 @@ export class EventMembersPopupComponent {
     action: 'disqualify' | 'reinstate',
     previousMembers: readonly AppTypes.ActivityMemberEntry[]
   ): Promise<void> {
-    await this.waitForAnimationKickoff();
+    await this.waitForMemberActionRender();
     if (!this.ownerId) {
       return;
     }
@@ -1203,32 +1188,15 @@ export class EventMembersPopupComponent {
     return entry.role === 'Admin' || entry.role === 'Manager';
   }
 
-  private async waitForAnimationKickoff(): Promise<void> {
-    await this.waitForNextPaint();
-    await this.wait(this.demoModeEnabled ? 96 : 16);
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
+  private async waitForMemberActionRender(): Promise<void> {
     await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
-  }
-
-  private async waitForNextPaint(): Promise<void> {
-    await new Promise<void>(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => resolve());
+      const run = () => resolve();
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
         return;
       }
-      setTimeout(() => resolve(), 0);
+      setTimeout(run, 0);
     });
-  }
-
-  private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
   }
 
   private activeUserId(): string {

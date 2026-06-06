@@ -1,4 +1,4 @@
-export interface DemoAdminHelpTarget {
+export interface AdminHelpTarget {
   key: string;
   messageId: string;
   attachmentId: string;

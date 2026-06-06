@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
-import type { DemoUser } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   FilterSelectorKind,
@@ -53,7 +53,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   protected filterDraft!: GameFilterForm;
   protected filterSelector: FilterSelectorKind | null = null;
   protected filterLanguageInput = '';
-  protected readonly genderFilterOptions: Array<{ value: DemoUser['gender']; label: string; icon: string }> = [
+  protected readonly genderFilterOptions: Array<{ value: UserDto['gender']; label: string; icon: string }> = [
     { value: 'woman', label: 'Woman', icon: 'female' },
     { value: 'man', label: 'Man', icon: 'male' }
   ];
@@ -485,7 +485,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     return `game-filter-language-tone-${this.filterLanguageToneIndex(value)}`;
   }
 
-  protected toggleFilterGender(gender: DemoUser['gender']): void {
+  protected toggleFilterGender(gender: UserDto['gender']): void {
     this.filterDraft.genders = this.toggleArraySelection(this.filterDraft.genders, gender);
   }
 
@@ -553,7 +553,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     return this.filterDraft.languages.includes(language);
   }
 
-  protected isGenderSelected(gender: DemoUser['gender']): boolean {
+  protected isGenderSelected(gender: UserDto['gender']): boolean {
     return this.filterDraft.genders.includes(gender);
   }
 
@@ -972,15 +972,15 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     }
   }
 
-  private userInterests(user: DemoUser): string[] {
+  private userInterests(user: UserDto): string[] {
     return getGameUserInterests(user, this.context?.userFacets ?? {});
   }
 
-  private userValues(user: DemoUser): string[] {
+  private userValues(user: UserDto): string[] {
     return getGameUserValues(user, this.context?.userFacets ?? {});
   }
 
-  private userFacet(user: DemoUser) {
+  private userFacet(user: UserDto) {
     return getGameUserFacet(user, this.context?.userFacets ?? {});
   }
 }

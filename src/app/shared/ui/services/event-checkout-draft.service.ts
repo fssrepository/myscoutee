@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import type { EventCheckoutLineItem } from '../../core/base/models';
-import { scopedStorageKey } from '../../core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../core/base/storage-scope';
 
 export interface EventCheckoutDraft {
   userId: string;
@@ -24,7 +24,7 @@ export interface EventCheckoutDraft {
   providedIn: 'root'
 })
 export class EventCheckoutDraftService {
-  private static readonly STORAGE_KEY = scopedStorageKey('event.checkout.drafts.v1');
+  private static readonly STORAGE_KEY = APP_STORAGE_KEYS.eventCheckoutDrafts;
   private readonly draftsRef = signal<Record<string, EventCheckoutDraft>>(this.readInitialDrafts());
 
   readonly drafts = this.draftsRef.asReadonly();

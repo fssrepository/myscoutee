@@ -10,6 +10,7 @@ import type {
   UserGameDataService
 } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
+import { RouteDelayService } from '../../base/services/route-delay.service';
 import { HttpUsersRatingsRepository } from '../repositories/users-ratings.repository';
 
 @Injectable({
@@ -18,6 +19,7 @@ import { HttpUsersRatingsRepository } from '../repositories/users-ratings.reposi
 export class HttpGameService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_QUERY_ROUTE = '/game-cards/query';
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly usersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly gameCardsUsersSnapshot: UserDto[] = [];
@@ -46,32 +48,40 @@ export class HttpGameService implements UserGameDataService {
     );
   }
 
-  async queryUserGameCardsByFilter(request: UserGameCardsQueryRequest): Promise<UserGameCardsQueryResponse> {
+  async queryUserGameCardsByFilter(
+    request: UserGameCardsQueryRequest,
+    requestTimeoutMs?: number
+  ): Promise<UserGameCardsQueryResponse> {
     const normalizedUserId = request.userId.trim();
     if (!normalizedUserId) {
       return { cards: null };
     }
     try {
-      const response = await this.http
-        .post<{
-          filterCount?: number;
-          cardUserIds?: string[];
-          nextCursor?: string | null;
-          users?: UserDto[];
-          socialCards?: UserGameSocialCard[];
-        } | null>(
-          `${this.apiBaseUrl}${HttpGameService.USER_GAME_CARDS_QUERY_ROUTE}`,
-          {
-            userId: normalizedUserId,
-            mode: request.mode ?? 'single',
-            leftQuery: request.leftQuery ?? null,
-            rightQuery: request.rightQuery ?? null,
-            filterPreferences: request.filterPreferences ?? null,
-            cursor: request.cursor ?? null,
-            pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10
-          }
-        )
-        .toPromise();
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpGameService.USER_GAME_CARDS_QUERY_ROUTE,
+        this.http
+          .post<{
+            filterCount?: number;
+            cardUserIds?: string[];
+            nextCursor?: string | null;
+            users?: UserDto[];
+            socialCards?: UserGameSocialCard[];
+          } | null>(
+            `${this.apiBaseUrl}${HttpGameService.USER_GAME_CARDS_QUERY_ROUTE}`,
+            {
+              userId: normalizedUserId,
+              mode: request.mode ?? 'single',
+              leftQuery: request.leftQuery ?? null,
+              rightQuery: request.rightQuery ?? null,
+              filterPreferences: request.filterPreferences ?? null,
+              cursor: request.cursor ?? null,
+              pageSize: Number.isFinite(request.pageSize) ? Math.max(1, Math.min(50, Math.trunc(Number(request.pageSize)))) : 10
+            }
+          )
+          .toPromise(),
+        'User game cards request timeout.',
+        requestTimeoutMs
+      );
       if (!response) {
         return { cards: null };
       }
@@ -102,7 +112,10 @@ export class HttpGameService implements UserGameDataService {
       return {
         cards
       };
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === 'User game cards request timeout.') {
+        throw error;
+      }
       return { cards: null };
     }
   }

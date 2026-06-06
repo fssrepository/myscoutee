@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { OrbitControls } from './vendor/OrbitControls.js';
-import { DEMO_AFFINITY_GRAPH } from './data.js';
 
 const GRAPH_DATA = normalizeGraphData(await loadInitialGraphData());
 const GRAPH_MEMBER_LABEL = GRAPH_DATA.source === 'http' ? 'Mongo members' : 'demo members';
@@ -13,6 +12,17 @@ const SEMANTIC_RENDER_NODE_LIMIT = 1200;
 const SEMANTIC_RENDER_EDGE_LIMIT = 5000;
 const FOREST_OVERVIEW_BASE_BUDGET = 16;
 const FOREST_OVERVIEW_LOAD_BUFFER = 4;
+const GRAPH_LABEL_KEYS = {
+  graphView: 'admin.affinity.graph.view',
+  clusterDetail: 'admin.affinity.graph.cluster.detail',
+  clusterEyebrow: 'admin.affinity.graph.cluster.eyebrow',
+  clusterViewLabel: 'admin.affinity.graph.cluster.view.label',
+  clusterTitle: 'admin.affinity.graph.cluster.title',
+  clusterIsolatedTitle: 'admin.affinity.graph.cluster.isolated.title',
+  clusterExpandedKicker: 'admin.affinity.graph.cluster.expanded.kicker',
+  clusterIsolatedKicker: 'admin.affinity.graph.cluster.isolated.kicker',
+  clusterSummary: 'admin.affinity.graph.cluster.summary'
+};
 
 const graphApp = document.querySelector('.graph-app');
 const canvas = document.querySelector('#graph-canvas');
@@ -30,6 +40,13 @@ const weightRangeValue = document.querySelector('#weight-range-value');
 const linkDepthInput = document.querySelector('#link-depth');
 const linkDepthValue = document.querySelector('#link-depth-value');
 const resetViewButton = document.querySelector('#reset-view');
+const panelToggleButton = document.querySelector('#panel-toggle');
+const panelToggleLabel = document.querySelector('#panel-toggle-label');
+const panelViewLabel = document.querySelector('#panel-view-label');
+const panelCompactSummary = document.querySelector('#panel-compact-summary');
+const panelExpandedBody = document.querySelector('#panel-expanded-body');
+const helpPanel = document.querySelector('.help-panel');
+const mobilePanelQuery = window.matchMedia('(max-width: 760px)');
 
 const demoNodes = GRAPH_DATA.nodes.filter(node => node.id !== 'u-onboarding');
 const hasServerNodeMetrics = demoNodes.some(node => Number(node.degree) > 0 || Number(node.weightedDegree) > 0);
@@ -104,7 +121,7 @@ const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 5000);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.075;
-const DEFAULT_MIN_DISTANCE = 24;
+const DEFAULT_MIN_DISTANCE = 16;
 controls.minDistance = DEFAULT_MIN_DISTANCE;
 controls.maxDistance = 2200;
 controls.zoomToCursor = true;
@@ -170,6 +187,7 @@ let selectionVisualAnimation = null;
 let layoutCenterAnchor = null;
 let lazyTileTimer = null;
 let lazyTileRequestSerial = 0;
+let lazyTileSuppressUntil = 0;
 const loadedTileKeys = new Set(GRAPH_LAZY_ENABLED ? ['0:0:0:*'] : []);
 const pendingTileKeys = new Set();
 const loadedComponentKeys = new Set();
@@ -192,6 +210,9 @@ const badgeCountAnimations = new Set();
 const loadedMemberImageUrls = new Set();
 const pendingMemberImageUrls = new Set();
 let memberPanelRenderSignature = '';
+let panelCompactSignature = '';
+let panelsExpanded = !mobilePanelQuery.matches;
+let panelExpansionTouched = false;
 if (GRAPH_LAZY_ENABLED) {
   loadedForestKeys.add(`0:${forestLoadLimitForLevel(0)}`);
 }
@@ -207,6 +228,7 @@ selectionSprite.visible = false;
 selectionSprite.renderOrder = 30;
 nodeGroup.add(selectionSprite);
 
+syncPanelChrome();
 createNodes();
 createForests();
 updateVisibleForestComponents();
@@ -219,14 +241,16 @@ updateStatBadges();
 graphApp?.classList.remove('graph-app--booting');
 publishGraphState(true);
 animate();
-scheduleLazyTileLoad(320);
 scheduleLazyForestLoad(360);
+scheduleLazyTileLoad(320);
 
 minWeightInput.addEventListener('input', () => handleWeightRangeInput('min'));
 maxWeightInput.addEventListener('input', () => handleWeightRangeInput('max'));
 linkDepthInput.addEventListener('input', handleLinkDepthInput);
 controls.addEventListener('change', () => {
-  scheduleLazyTileLoad(260);
+  if (performance.now() >= lazyTileSuppressUntil) {
+    scheduleLazyTileLoad(260);
+  }
   refreshSemanticZoomFromCamera();
   publishGraphState();
 });
@@ -234,6 +258,17 @@ controls.addEventListener('change', () => {
 resetViewButton.addEventListener('click', () => {
   clearForest();
 });
+panelToggleButton?.addEventListener('click', () => {
+  panelExpansionTouched = true;
+  setPanelsExpanded(!panelsExpanded);
+});
+if (typeof mobilePanelQuery.addEventListener === 'function') {
+  mobilePanelQuery.addEventListener('change', () => {
+    if (!panelExpansionTouched) {
+      setPanelsExpanded(!mobilePanelQuery.matches);
+    }
+  });
+}
 window.addEventListener('resize', resize);
 window.addEventListener('keydown', handleKeyPan);
 canvas.addEventListener('contextmenu', event => event.preventDefault());
@@ -429,7 +464,7 @@ function updateForestBadges(options = {}) {
     component.forestPosition = center.clone();
 
     const memberCount = component.memberCountEstimate ?? component.nodes.length;
-    const scale = memberCount === 1 ? 5.2 : 8.5 + Math.sqrt(memberCount) * 1.35;
+    const scale = forestBadgeScale(memberCount);
     component.forestScale = scale;
 
     if (!component.forestBadge) {
@@ -463,10 +498,8 @@ function forestOverviewPositions() {
   const sortedComponents = sortedForestComponents();
   const positions = new Map();
   const mainCount = sortedComponents[0]?.memberCountEstimate ?? sortedComponents[0]?.nodes.length ?? 1;
-  const mainScale = mainCount === 1
-    ? 5.2
-    : 8.5 + Math.sqrt(mainCount) * 1.35;
-  const step = Math.max(10, mainScale * 0.64 + 8);
+  const mainScale = forestBadgeScale(mainCount);
+  const step = Math.max(13, mainScale * 0.54 + 8);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
   sortedComponents.forEach((component, index) => {
@@ -899,7 +932,6 @@ function revealComponentGraph(componentId, previousVisibleNodeIds = new Set()) {
   rebuildEdges();
   renderMemberPanel(null);
   startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
-  scheduleLazyTileLoad(80, { refresh: true });
   publishPreviewState();
 }
 
@@ -1129,6 +1161,56 @@ function componentForId(componentId) {
   return componentById.get(String(componentId)) ?? null;
 }
 
+function setPanelsExpanded(expanded) {
+  panelsExpanded = Boolean(expanded);
+  syncPanelChrome();
+  requestAnimationFrame(() => {
+    resize();
+    publishGraphState(true);
+  });
+}
+
+function syncPanelChrome() {
+  graphApp?.classList.toggle('graph-app--panels-expanded', panelsExpanded);
+  graphApp?.classList.toggle('graph-app--panels-collapsed', !panelsExpanded);
+  if (panelToggleButton) {
+    panelToggleButton.setAttribute('aria-expanded', String(panelsExpanded));
+    panelToggleButton.setAttribute('aria-label', panelsExpanded ? 'Collapse graph panel' : 'Expand graph panel');
+    panelToggleButton.title = panelsExpanded ? 'Collapse panel' : 'Expand panel';
+  }
+  if (panelToggleLabel) {
+    panelToggleLabel.textContent = panelsExpanded ? 'Collapse' : 'Expand';
+  }
+  panelExpandedBody?.setAttribute('aria-hidden', String(!panelsExpanded));
+  helpPanel?.setAttribute('aria-hidden', String(!panelsExpanded));
+}
+
+function setPanelCompactSummary(signature, options) {
+  const nextSignature = String(signature);
+  if (panelViewLabel) {
+    panelViewLabel.textContent = options.viewLabel ?? options.eyebrow ?? 'Affinity graph view';
+  }
+  if (!panelCompactSummary || panelCompactSignature === nextSignature) {
+    return false;
+  }
+  panelCompactSignature = nextSignature;
+  panelCompactSummary.innerHTML = `
+    ${options.avatarHtml}
+    <span class="compact-copy">
+      <span class="compact-eyebrow">${escapeHtml(options.eyebrow ?? 'Affinity graph view')}</span>
+      <strong>${escapeHtml(options.title ?? 'Overview')}</strong>
+      <small>${escapeHtml(options.detail ?? '')}</small>
+    </span>
+  `;
+  hydrateLazyMemberImages(panelCompactSummary);
+  return true;
+}
+
+function graphCompactAvatarHtml(label = 'AG', tone = 'graph') {
+  const normalizedTone = tone === 'forest' ? 'compact-avatar--forest' : 'compact-avatar--graph';
+  return `<span class="compact-avatar ${normalizedTone}" aria-hidden="true">${escapeHtml(label)}</span>`;
+}
+
 function setMemberPanelHtml(signature, html, options = {}) {
   const nextSignature = String(signature);
   if (memberPanelRenderSignature === nextSignature) {
@@ -1160,6 +1242,16 @@ function renderMemberPanel(node) {
     }
     if (fullGraphExpanded) {
       const collapsedMembers = Math.max(0, nodes.length - visibleNodeIds.size);
+      setPanelCompactSummary(
+        `compact-full:${visibleNodeIds.size}:${collapsedMembers}:${visibleEdgeCount}`,
+        {
+          avatarHtml: graphCompactAvatarHtml('AG'),
+          eyebrow: 'Affinity graph view',
+          viewLabel: 'Expanded graph',
+          title: 'Expanded graph',
+          detail: `${visibleNodeIds.size} visible · ${collapsedMembers} collapsed · ${visibleEdgeCount} links`
+        }
+      );
       setMemberPanelHtml(
         `full:${visibleNodeIds.size}:${collapsedMembers}:${visibleEdgeCount}`,
         `<p class="empty-state">${visibleNodeIds.size} important members visible · ${collapsedMembers} collapsed · ${visibleEdgeCount} links in range.</p>`
@@ -1172,6 +1264,16 @@ function renderMemberPanel(node) {
       const forestLabel = visibleForests >= totalForests
         ? `${totalForests} clusters`
         : `${visibleForests} of ${totalForests} clusters`;
+      setPanelCompactSummary(
+        `compact-overview:${visibleForests}:${totalForests}:${graphTotals.members}:${graphTotals.isolated}`,
+        {
+          avatarHtml: graphCompactAvatarHtml('AG'),
+          eyebrow: 'Affinity graph view',
+          viewLabel: 'Forest overview',
+          title: 'Forest overview',
+          detail: `${forestLabel} · ${graphTotals.members} ${GRAPH_MEMBER_LABEL}`
+        }
+      );
       setMemberPanelHtml(
         `overview:${visibleForests}:${totalForests}:${graphTotals.members}:${graphTotals.isolated}`,
         `<p class="empty-state">${forestLabel} · ${graphTotals.members} ${GRAPH_MEMBER_LABEL} · ${graphTotals.isolated} isolated.</p>`
@@ -1179,6 +1281,16 @@ function renderMemberPanel(node) {
       return;
     }
     const hiddenCount = Math.max(0, Math.max(nodes.length, components.reduce((total, component) => total + (component.memberCountEstimate ?? component.nodes.length), 0)) - visibleNodeIds.size);
+    setPanelCompactSummary(
+      `compact-empty:${visibleNodeIds.size}:${hiddenCount}:${isolatedNodes.length}`,
+      {
+        avatarHtml: graphCompactAvatarHtml('AG'),
+        eyebrow: 'Affinity graph view',
+        viewLabel: 'Overview',
+        title: 'Overview',
+        detail: `${visibleNodeIds.size} visible · ${hiddenCount} collapsed · ${isolatedNodes.length} isolated`
+      }
+    );
     setMemberPanelHtml(
       `empty:${visibleNodeIds.size}:${hiddenCount}:${isolatedNodes.length}`,
       `<p class="empty-state">${visibleNodeIds.size} important members visible · ${hiddenCount} collapsed · ${isolatedNodes.length} isolated.</p>`
@@ -1231,6 +1343,14 @@ function renderMemberPanel(node) {
     ])
   });
 
+  setPanelCompactSummary(`compact:${panelSignature}`, {
+    avatarHtml: avatarMarkup,
+    eyebrow: 'Affinity graph view · Selected member',
+    viewLabel: 'Selected member',
+    title: node.name || 'Selected member',
+    detail: [node.city, node.age ? `${node.age}` : null, node.traitLabel].filter(Boolean).join(' · ')
+      || `${visibleConnections} visible links`
+  });
   setMemberPanelHtml(panelSignature, `
     <p class="member-kicker">${node.degree === 0 ? 'Isolated member' : 'Selected member'}</p>
     <div class="member-heading member-heading--profile">
@@ -1339,6 +1459,8 @@ function renderForestPanel(component) {
   const edgeCount = component.edgeCountEstimate ?? component.edges.length;
   const visibleMembers = visibleNodeIds.size;
   const collapsedMembers = Math.max(0, memberCount - visibleMembers);
+  const representative = forestRepresentativeForComponent(component);
+  const compactAvatarLabel = String(representative?.initials ?? '').trim().slice(0, 3).toUpperCase() || 'CG';
 
   const panelSignature = JSON.stringify({
     type: 'forest',
@@ -1350,9 +1472,16 @@ function renderForestPanel(component) {
     visibleEdgeCount
   });
 
+  setPanelCompactSummary(`compact:${panelSignature}`, {
+    avatarHtml: graphCompactAvatarHtml(compactAvatarLabel, 'forest'),
+    eyebrow: graphLabel('clusterEyebrow'),
+    viewLabel: graphLabel('clusterViewLabel'),
+    title: memberCount === 1 ? graphLabel('clusterIsolatedTitle') : graphLabel('clusterTitle'),
+    detail: graphLabel('clusterDetail', { visibleMembers, collapsedMembers, edgeCount })
+  });
   setMemberPanelHtml(panelSignature, `
-    <p class="member-kicker">${memberCount === 1 ? 'Isolated forest' : 'Expanded forest'}</p>
-    <p class="empty-state">${visibleMembers} important members visible · ${collapsedMembers} collapsed · ${edgeCount} links in forest.</p>
+    <p class="member-kicker">${memberCount === 1 ? graphLabel('clusterIsolatedKicker') : graphLabel('clusterExpandedKicker')}</p>
+    <p class="empty-state">${graphLabel('clusterSummary', { visibleMembers, collapsedMembers, edgeCount })}</p>
     <dl class="detail-grid">
       <div>
         <dt>Members</dt>
@@ -1772,7 +1901,7 @@ function projectedSpriteRadius(sprite, position, rect, minimum = 12) {
 }
 
 function currentZoomProgress() {
-  const fitDistance = Math.max(48, zoomReferenceFitDistance);
+  const fitDistance = Math.max(graphMinimumFitDistance(), zoomReferenceFitDistance);
   const nearDistance = Math.max(controls.minDistance, fitDistance * 0.18);
   const distance = camera.position.distanceTo(controls.target);
   return clamp((fitDistance - distance) / Math.max(1, fitDistance - nearDistance), 0, 1);
@@ -2116,13 +2245,39 @@ function currentViewRadius() {
 }
 
 function forestOverviewRadius() {
+  return forestOverviewBounds().radius;
+}
+
+function forestOverviewBounds() {
   const forestComponents = visibleForestComponents();
-  const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
-  return forestComponents.reduce((maxRadius, component) => {
-    const position = component.forestPosition ?? center;
-    const badgeRadius = (component.forestScale ?? 5) * 0.55;
-    return Math.max(maxRadius, position.distanceTo(center) + badgeRadius);
-  }, 8);
+  if (forestComponents.length === 0) {
+    return {
+      center: new THREE.Vector3(),
+      radius: 8
+    };
+  }
+
+  const box = new THREE.Box3();
+  for (const component of forestComponents) {
+    const position = component.forestPosition ?? new THREE.Vector3();
+    const badgeRadius = Math.max(5, (component.forestScale ?? 5) * 0.82);
+    box.expandByPoint(new THREE.Vector3(
+      position.x - badgeRadius,
+      position.y - badgeRadius,
+      position.z - badgeRadius
+    ));
+    box.expandByPoint(new THREE.Vector3(
+      position.x + badgeRadius,
+      position.y + badgeRadius,
+      position.z + badgeRadius
+    ));
+  }
+
+  const sphere = box.getBoundingSphere(new THREE.Sphere());
+  return {
+    center: sphere.center,
+    radius: Math.max(8, sphere.radius)
+  };
 }
 
 function radiusForPoints(points) {
@@ -2141,6 +2296,7 @@ function resize() {
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
+  refreshGraphVisualSizing();
   clampViewportPanOffset();
   applyViewportOffset();
 }
@@ -2169,10 +2325,10 @@ function fitCameraToVisibleTargets(animateTarget, durationMs) {
 
 function fitCameraToForestOverview(animateTarget) {
   updateVisibleForestComponents();
-  const forestComponents = visibleForestComponents();
-  const center = forestComponents[0]?.forestPosition?.clone() ?? new THREE.Vector3();
-  fitCameraToCenterRadius(center, forestOverviewRadius(), animateTarget, undefined, {
-    lockZoomIfFitted: shouldLockForestOverviewZoom()
+  const bounds = forestOverviewBounds();
+  fitCameraToCenterRadius(bounds.center, bounds.radius, animateTarget, undefined, {
+    lockZoomIfFitted: shouldLockForestOverviewZoom(),
+    fitPadding: 1.04
   });
 }
 
@@ -2186,7 +2342,13 @@ function fitCameraToPoints(points, animateTarget, durationMs) {
 function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, options = {}) {
   const viewport = graphViewportMetrics();
   const safeWidthRatio = clamp(viewport.safeWidth / Math.max(1, viewport.fullWidth), 0.58, 1);
-  const distance = Math.max(48, (radius * 1.68) / safeWidthRatio);
+  const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+  const tanHalfFov = Math.tan(verticalFov / 2);
+  const aspect = Math.max(0.1, camera.aspect || (viewport.fullWidth / Math.max(1, viewport.fullHeight)));
+  const fitPadding = options.fitPadding ?? 1.12;
+  const verticalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov);
+  const horizontalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov * aspect * safeWidthRatio);
+  const distance = Math.max(graphMinimumFitDistance(), verticalDistance, horizontalDistance);
   const target = center.clone();
   const defaultDirection = new THREE.Vector3(0.24, 0.34, 1);
   const fittedOrbitDistance = distance * defaultDirection.length();
@@ -2702,6 +2864,7 @@ function animate() {
 }
 
 function startCameraAnimation(targetPosition, targetLookAt, maxDistanceAfterAnimation = null, durationMs = 720) {
+  lazyTileSuppressUntil = Math.max(lazyTileSuppressUntil, performance.now() + durationMs + 120);
   cameraAnimation = {
     startedAt: performance.now(),
     durationMs,
@@ -3554,8 +3717,48 @@ function colorForGender(gender) {
 }
 
 function updateNodeBadgeSizing(node) {
-  node.radius = node.degree === 0 ? 1.75 : 1.5 + Math.min(0.45, Math.sqrt(node.degree) * 0.06);
-  node.badgeScale = node.radius * 2;
+  const visualScale = graphVisualScaleMultiplier();
+  node.radius = node.degree === 0 ? 2.45 : 2.1 + Math.min(0.85, Math.sqrt(node.degree) * 0.1);
+  node.badgeScale = node.radius * 2 * visualScale;
+}
+
+function refreshGraphVisualSizing() {
+  for (const node of nodes) {
+    updateNodeBadgeSizing(node);
+  }
+  updateForestBadges();
+  applyNodeState();
+}
+
+function forestBadgeScale(memberCount) {
+  const count = Math.max(1, Math.trunc(Number(memberCount) || 1));
+  const baseScale = count === 1 ? 8.8 : 11.2 + Math.sqrt(count) * 2.05;
+  return baseScale * graphVisualScaleMultiplier();
+}
+
+function graphVisualScaleMultiplier() {
+  const width = Math.max(1, window.innerWidth || 1);
+  if (width >= 1280) {
+    return 1.32;
+  }
+  if (width >= 900) {
+    return 1.22;
+  }
+  if (width >= 700) {
+    return 1.14;
+  }
+  return 1.08;
+}
+
+function graphMinimumFitDistance() {
+  const width = Math.max(1, window.innerWidth || 1);
+  if (width >= 1280) {
+    return 30;
+  }
+  if (width >= 760) {
+    return 28;
+  }
+  return 26;
 }
 
 function refreshNodeBadge(node) {
@@ -3866,10 +4069,10 @@ function seededVector(text) {
 }
 
 async function loadInitialGraphData() {
-  if (window.parent && window.parent !== window) {
-    return await requestGraphData('initialGraph');
+  if (!window.parent || window.parent === window) {
+    throw new Error('Affinity graph bridge is required.');
   }
-  return DEMO_AFFINITY_GRAPH;
+  return await requestGraphData('initialGraph');
 }
 
 function normalizeGraphData(data) {
@@ -3901,10 +4104,38 @@ function normalizeGraphData(data) {
     forestLevel: positiveInteger(data?.forestLevel, 0),
     maxForestLevel: positiveInteger(data?.maxForestLevel, 0),
     maxZoom: positiveInteger(data?.maxZoom, 0),
+    labels: normalizeGraphLabels(data?.labels),
     nodes: normalizedNodes,
     edges: normalizedEdges,
     forests: normalizedForests
   };
+}
+
+function graphLabel(key, values = {}) {
+  const template = GRAPH_DATA.labels?.[key] ?? key;
+  return interpolateGraphLabel(template, values);
+}
+
+function interpolateGraphLabel(template, values) {
+  return String(template ?? '').replace(/\{(\w+)}/g, (_match, key) => {
+    const value = values?.[key];
+    return value === null || value === undefined ? '' : String(value);
+  });
+}
+
+function normalizeGraphLabels(labels) {
+  if (!labels || typeof labels !== 'object') {
+    return {};
+  }
+  const normalized = {};
+  for (const [key, value] of Object.entries(labels)) {
+    const normalizedKey = String(key ?? '').trim();
+    const normalizedValue = String(value ?? '').trim();
+    if (normalizedKey && normalizedValue) {
+      normalized[normalizedKey] = normalizedValue;
+    }
+  }
+  return normalized;
 }
 
 function normalizeGraphNode(node) {

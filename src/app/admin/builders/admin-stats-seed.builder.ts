@@ -253,6 +253,8 @@ export class AdminStatsSeedBuilder {
           metric('avg-asset-price', 'stats.revenue.metric.avg.asset.price', 13313, '$133.13', 'payments', 'slate', 100),
           metric('actual-paid', 'stats.revenue.metric.actual.paid', 52200, '$522.00', 'paid', 'blue', 13),
           metric('paying-users', 'stats.revenue.metric.paying.users', 22, '22', 'group', 'red', 88),
+          metric('event-buyers', 'stats.revenue.metric.event.buyers', 14, '14', 'local_activity', 'green', 64),
+          metric('asset-borrowers', 'stats.revenue.metric.asset.borrowers', 18, '18', 'assignment_returned', 'gold', 67),
           metric('avg-payment', 'stats.revenue.metric.avg.payment', 2373, '$23.73', 'receipt_long', 'purple', 24)
         ],
         assetCategories: [

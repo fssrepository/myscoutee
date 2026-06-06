@@ -4,11 +4,11 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type { ChatRecord } from '../../../../../shared/core/base/models/chat.model';
-import type { DemoUser } from '../../../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../../../shared/core/base/interfaces/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
-import type { DemoEventRecord } from '../../../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../../../shared/core/base/models/events.model';
 import { CounterBadgePipe } from '../../../../../shared/ui';
-import { I18nPipe } from '../../../../../shared/i18n';
+import { I18nPipe } from '../../../../../shared/ui';
 import { ActivityResourceBuilder } from '../../../../../shared/core';
 import {
   buildActivitiesChatTemplateData,
@@ -135,16 +135,16 @@ type ActivitiesChatsHost = any;
 export class ActivitiesChatsController {
   constructor(private readonly host: ActivitiesChatsHost) {}
 
-  private cachedActiveUserRef: DemoUser | null = null;
-  private cachedUsersRef: readonly DemoUser[] | null = null;
+  private cachedActiveUserRef: UserDto | null = null;
+  private cachedUsersRef: readonly UserDto[] | null = null;
   private cachedChatItemsRef: readonly ChatRecord[] | null = null;
-  private readonly userByIdCache = new Map<string, DemoUser>();
+  private readonly userByIdCache = new Map<string, UserDto>();
   private readonly chatItemByIdCache = new Map<string, ChatRecord>();
-  private readonly chatMembersByIdCache = new Map<string, DemoUser[]>();
-  private readonly chatLastSenderByIdCache = new Map<string, DemoUser>();
-  private cachedOtherUsers: DemoUser[] = [];
+  private readonly chatMembersByIdCache = new Map<string, UserDto[]>();
+  private readonly chatLastSenderByIdCache = new Map<string, UserDto>();
+  private cachedOtherUsers: UserDto[] = [];
 
-  private get activeUser() { return this.host.activeUser as DemoUser; }
+  private get activeUser() { return this.host.activeUser as UserDto; }
   private get activitiesContext() { return this.host.activitiesContext; }
   private get activitiesService() { return this.host.activitiesService; }
   private get activityResourcesService() { return this.host.activityResourcesService; }
@@ -155,12 +155,12 @@ export class ActivitiesChatsController {
   private get eventDatesById() { return this.host.eventDatesById as Record<string, string>; }
   private get eventDistanceById() { return this.host.eventDistanceById as Record<string, number>; }
   private get eventEditorService() { return this.host.eventEditorService; }
-  private get eventItems() { return this.host.eventItems as DemoEventRecord[]; }
+  private get eventItems() { return this.host.eventItems as ActivityEventRecord[]; }
   private get eventSubEventsById() { return this.host.eventSubEventsById as Record<string, AppTypes.SubEventFormItem[]>; }
   private get hostingDatesById() { return this.host.hostingDatesById as Record<string, string>; }
   private get hostingDistanceById() { return this.host.hostingDistanceById as Record<string, number>; }
-  private get hostingItems() { return this.host.hostingItems as DemoEventRecord[]; }
-  private get users() { return this.host.users as DemoUser[]; }
+  private get hostingItems() { return this.host.hostingItems as ActivityEventRecord[]; }
+  private get users() { return this.host.users as UserDto[]; }
 
   private activityPendingMemberCount(row: AppTypes.ActivityListRow): number { return this.host.activityPendingMemberCount(row); }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
@@ -274,7 +274,7 @@ export class ActivitiesChatsController {
     return eventPending + subEventsPending;
   }
 
-  private resolveChatEventSource(item: ChatRecord): DemoEventRecord | null {
+  private resolveChatEventSource(item: ChatRecord): ActivityEventRecord | null {
     const eventId = this.normalizeLocationValue(item.eventId).trim();
     if (!eventId) {
       return this.resolveChatFocusEventSource();
@@ -284,7 +284,7 @@ export class ActivitiesChatsController {
       ?? this.resolveEventEditorSource();
   }
 
-  private buildChatEventActivityRow(record: DemoEventRecord): AppTypes.ActivityListRow {
+  private buildChatEventActivityRow(record: ActivityEventRecord): AppTypes.ActivityListRow {
     return this.activitiesService.buildEventDisplayRow({
       ...record,
       startAtIso: this.eventDatesById[record.id] ?? this.hostingDatesById[record.id] ?? record.startAtIso ?? this.defaultEventStartIso(),
@@ -298,7 +298,7 @@ export class ActivitiesChatsController {
     return `Stage ${index + 1}`;
   }
 
-  private resolveChatFocusEventSource(): DemoEventRecord | null {
+  private resolveChatFocusEventSource(): ActivityEventRecord | null {
     const editorSource = this.resolveEventEditorSource();
     if (editorSource) {
       return editorSource;
@@ -310,7 +310,7 @@ export class ActivitiesChatsController {
     return this.eventItems[0] ?? this.hostingItems[0] ?? null;
   }
 
-  private resolveEventEditorSource(): DemoEventRecord | null {
+  private resolveEventEditorSource(): ActivityEventRecord | null {
     if (!this.eventEditorService.isOpen()) {
       return null;
     }
@@ -335,8 +335,8 @@ export class ActivitiesChatsController {
     return this.buildFallbackEventEditorRecord(source, sourceId);
   }
 
-  private buildFallbackEventEditorRecord(source: object, sourceId: string): DemoEventRecord {
-    const value = source as Partial<DemoEventRecord> & {
+  private buildFallbackEventEditorRecord(source: object, sourceId: string): ActivityEventRecord {
+    const value = source as Partial<ActivityEventRecord> & {
       shortDescription?: string;
       startAt?: string;
       endAt?: string;
@@ -559,7 +559,7 @@ export class ActivitiesChatsController {
     return this.chatItemByIdCache.get(chatId);
   }
 
-  private getChatMembersById(chatId: string): DemoUser[] {
+  private getChatMembersById(chatId: string): UserDto[] {
     this.syncChatLookupCache();
     const cachedMembers = this.chatMembersByIdCache.get(chatId);
     if (cachedMembers) {
@@ -569,12 +569,12 @@ export class ActivitiesChatsController {
     const chatItem = this.getChatItemById(chatId);
     const explicitMembers = (chatItem?.memberIds ?? [])
       .map(memberId => this.userByIdCache.get(memberId))
-      .filter((user): user is DemoUser => Boolean(user));
+      .filter((user): user is UserDto => Boolean(user));
     const lastSender = chatItem?.lastSenderId
       ? this.userByIdCache.get(chatItem.lastSenderId) ?? null
       : null;
 
-    const orderedMembers: DemoUser[] = [];
+    const orderedMembers: UserDto[] = [];
     if (lastSender) {
       orderedMembers.push(lastSender);
     }
@@ -600,7 +600,7 @@ export class ActivitiesChatsController {
     const seed = AppUtils.hashText(chatId);
     const offsets = [0, 3, 7, 11, 15, 19];
     const memberCount = 3 + (seed % 3);
-    const picked: DemoUser[] = [];
+    const picked: UserDto[] = [];
     for (const offset of offsets) {
       const user = others[(seed + offset) % others.length];
       if (!picked.some(item => item.id === user.id)) {
@@ -626,7 +626,7 @@ export class ActivitiesChatsController {
     return uniqueIds.size;
   }
 
-  public getChatLastSender(item: ChatRecord): DemoUser {
+  public getChatLastSender(item: ChatRecord): UserDto {
     this.syncChatLookupCache();
     const cachedLastSender = this.chatLastSenderByIdCache.get(item.id);
     if (cachedLastSender) {

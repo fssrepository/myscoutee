@@ -13,10 +13,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { environment } from '../../../../environments/environment';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import {
   BasketComponent,
   LazyBgImageDirective,
@@ -34,9 +32,7 @@ import {
   ActivityInviteCandidatesService,
   ActivityMembersService,
   AppContext,
-  AppPopupContext,
-  NavigatorContactsService,
-  UsersService
+  AppPopupContext
 } from '../../../shared/core';
 import { NavigatorService } from '../../../navigator';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
@@ -63,16 +59,13 @@ interface ActivityInviteFilters {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AssetMemberPickerPopupComponent {
-  private static readonly CONFIRM_PENDING_WINDOW_MS = 1500;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly navigatorContactsService = inject(NavigatorContactsService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly usersService = inject(UsersService);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -110,8 +103,6 @@ export class AssetMemberPickerPopupComponent {
 
   protected readonly inviteSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, ActivityInviteFilters> = {
     pageSize: 16,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events/invite-candidates'),
-    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -256,14 +247,9 @@ export class AssetMemberPickerPopupComponent {
     const selected = this.selectedInviteChips();
     this.isConfirmPending = true;
     this.confirmErrorMessage = '';
-    const pendingWindowPromise = this.minimumPendingWindow();
     this.cdr.markForCheck();
     try {
-      const savePromise = this.runSaveAfterUiYield(selected);
-      await Promise.all([
-        pendingWindowPromise,
-        savePromise
-      ]);
+      await this.applySelection(selected);
       this.isConfirmPending = false;
       this.cdr.markForCheck();
       this.closeInvitePopup();
@@ -340,7 +326,6 @@ export class AssetMemberPickerPopupComponent {
     }
     this.navigatorService.openProfileView({
       userId,
-      user: candidate.profile ?? this.usersService.peekCachedUserById(userId),
       label: candidate.name
     });
   }
@@ -416,10 +401,6 @@ export class AssetMemberPickerPopupComponent {
           ? cachedMembers
           : await this.activityMembersService.queryMembersByOwner(ownerRef);
 
-        if (this.ownerType === 'asset') {
-          const contacts = this.navigatorContactsService.allContactsAsMemberEntries();
-          currentMembers = [...currentMembers, ...contacts];
-        }
         const existingUserIds = [
           ...new Set([
             ...currentMembers.map(member => member.userId),
@@ -495,7 +476,6 @@ export class AssetMemberPickerPopupComponent {
     });
   }
 
-
   private hasSelectionChanges(): boolean {
     if (this.selectedUserIds.length !== this.persistedSelectedUserIds.size) {
       return true;
@@ -511,56 +491,4 @@ export class AssetMemberPickerPopupComponent {
     await this.activityInviteCandidatesService.applyInvites(this.ownerId, selected, this.ownerType);
   }
 
-  private minimumPendingWindow(): Promise<void> {
-    return this.demoModeEnabled
-      ? this.wait(AssetMemberPickerPopupComponent.CONFIRM_PENDING_WINDOW_MS)
-      : Promise.resolve();
-  }
-
-  private async runSaveAfterUiYield(selected: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
-    await this.waitForAnimationKickoff();
-    await this.applySelection(selected);
-  }
-
-  private async waitForAnimationKickoff(): Promise<void> {
-    await this.waitForNextPaint();
-    await this.waitForNextPaint();
-    await this.yieldToCompositor();
-    await this.wait(this.demoModeEnabled ? 150 : 32);
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
-  }
-
-  private async waitForNextPaint(): Promise<void> {
-    await new Promise<void>(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => resolve());
-        return;
-      }
-      setTimeout(() => resolve(), 0);
-    });
-  }
-
-  private async yieldToCompositor(): Promise<void> {
-    await new Promise<void>(resolve => {
-      if (typeof MessageChannel !== 'undefined') {
-        const channel = new MessageChannel();
-        channel.port1.onmessage = () => resolve();
-        channel.port2.postMessage(undefined);
-        return;
-      }
-      setTimeout(() => resolve(), 0);
-    });
-  }
-
-  private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
-  }
 }

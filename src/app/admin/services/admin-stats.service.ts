@@ -1,9 +1,6 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
 import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import { AdminStatsRepository } from '../repositories/admin-stats.repository';
 import type {
   AdminStatsBreakdownItemDto,
   AdminStatsDashboardDto,
@@ -15,79 +12,36 @@ import type {
   AdminStatsSegmentDto,
   AdminStatsTimelinePointDto
 } from '../models/admin-stats.model';
+import { ADMIN_STATS_LOAD_ROUTE } from './admin-stats.constants';
+import { AdminStatsDemoService } from './admin-stats-demo.service';
+import { AdminStatsHttpService } from './admin-stats-http.service';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
-const ADMIN_STATS_STORAGE_TIMEOUT_MS = 2500;
-const ADMIN_STATS_HTTP_TIMEOUT_MS = 12000;
-const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
-const ADMIN_STATS_LOAD_DEMO_DELAY_MS = 1500;
+interface AdminStatsDataService {
+  readonly source: AdminStatsDashboardDto['source'];
+  loadStatsDashboard(): Promise<AdminStatsDashboardDto>;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdminStatsService {
-  private readonly http = inject(HttpClient);
   private readonly workspace = inject(AdminWorkspaceService);
-  private readonly repository = inject(AdminStatsRepository);
+  private readonly demoStatsService = inject(AdminStatsDemoService);
+  private readonly httpStatsService = inject(AdminStatsHttpService);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+
+  statsLoadProgressWindowMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_STATS_LOAD_ROUTE);
+  }
 
   async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
-    return this.withAdminStatsDemoDelay(this.loadStatsDashboardSnapshot());
+    const dataService = this.statsDataService;
+    return this.normalizeStatsDashboard(await dataService.loadStatsDashboard(), dataService.source);
   }
 
-  private async loadStatsDashboardSnapshot(): Promise<AdminStatsDashboardDto> {
-    if (this.workspace.usesHttpAdminApi) {
-      try {
-        const state = await this.withHttpTimeout(this.http
-          .get<AdminStatsDashboardDto>(`${this.apiBaseUrl}/admin/stats`, {
-            params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' }
-          })
-          .toPromise());
-        if (state) {
-          return this.normalizeStatsDashboard(state, 'http');
-        }
-      } catch {
-        // Fall back to the local snapshot if the stats read model is not available yet.
-      }
-    }
-
-    return this.readDemoStatsSnapshot();
-  }
-
-  private async withAdminStatsDemoDelay<T>(work: Promise<T>): Promise<T> {
-    if (this.workspace.usesHttpAdminApi) {
-      return work;
-    }
-    const delay = this.routeDelay.waitForRouteDelay(
-      ADMIN_STATS_LOAD_ROUTE,
-      undefined,
-      undefined,
-      ADMIN_STATS_LOAD_DEMO_DELAY_MS
-    );
-    try {
-      const [result] = await Promise.all([work, delay]);
-      return result;
-    } catch (error) {
-      await delay.catch(() => undefined);
-      throw error;
-    }
-  }
-
-  private async readDemoStatsSnapshot(): Promise<AdminStatsDashboardDto> {
-    await this.withStorageFallback(this.repository.whenReady(), undefined);
-    const existing = await this.withStorageFallback(
-      this.repository.readStore<AdminStatsDashboardDto>(),
-      null
-    );
-    if (!existing) {
-      throw new Error('Demo stats snapshot is not bootstrapped.');
-    }
-    const normalized = this.normalizeStatsDashboard(existing, 'demo');
-    if (!this.isFreshStatsDemoSnapshot(normalized)) {
-      throw new Error('Demo stats snapshot is stale.');
-    }
-    return normalized;
+  private get statsDataService(): AdminStatsDataService {
+    return this.workspace.usesHttpAdminApi ? this.httpStatsService : this.demoStatsService;
   }
 
   private normalizeStatsDashboard(
@@ -97,7 +51,7 @@ export class AdminStatsService {
     const normalizedSource = `${dashboard.source ?? source}`.trim() as AdminStatsDashboardDto['source'];
     return {
       generatedAtIso: `${dashboard.generatedAtIso ?? ''}`.trim() || new Date().toISOString(),
-      source: ['demo', 'http', 'fallback'].includes(normalizedSource) ? normalizedSource : source,
+      source: ['demo', 'http'].includes(normalizedSource) ? normalizedSource : source,
       healthScore: this.clampInteger(dashboard.healthScore, 0, 100, 0),
       healthLabelKey: `${dashboard.healthLabelKey ?? ''}`.trim() || 'stats.health.good',
       healthSummaryKey: `${dashboard.healthSummaryKey ?? ''}`.trim() || 'stats.health.summary',
@@ -217,19 +171,6 @@ export class AdminStatsService {
     };
   }
 
-  private isFreshStatsDemoSnapshot(snapshot: AdminStatsDashboardDto): boolean {
-    return snapshot.timeline.length > 0
-      && snapshot.eventTypes.length > 0
-      && snapshot.segments.some(segment => segment.key === 'community')
-      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'all-events'))
-      && snapshot.segments.some(segment => segment.items.some(item => item.key === 'profile-fill-average'))
-      && snapshot.graph.timeline.length > 0
-      && snapshot.graph.metrics.some(metric => metric.key === 'graph-network-quality')
-      && snapshot.revenue.timeline.length > 0
-      && snapshot.revenue.assetCategories.some(item => item.key === 'car')
-      && !snapshot.revenue.assetCategories.some(item => item.key === 'equipment' || item.key === 'transport');
-  }
-
   private normalizeStatsTone(value: string | null | undefined): AdminStatsMetricDto['tone'] {
     const normalized = `${value ?? ''}`.trim();
     return ['blue', 'green', 'gold', 'red', 'purple', 'slate'].includes(normalized)
@@ -255,46 +196,4 @@ export class AdminStatsService {
     return Math.max(min, Math.min(max, parsed));
   }
 
-  private withStorageFallback<T>(task: Promise<T>, fallback: T): Promise<T> {
-    return new Promise<T>(resolve => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (value: T) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        resolve(value);
-      };
-      timeoutId = setTimeout(() => finish(fallback), ADMIN_STATS_STORAGE_TIMEOUT_MS);
-      task.then(finish).catch(() => finish(fallback));
-    });
-  }
-
-  private withHttpTimeout<T>(task: Promise<T>): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      let finished = false;
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const finish = (callback: () => void) => {
-        if (finished) {
-          return;
-        }
-        finished = true;
-        if (timeoutId !== null) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        callback();
-      };
-      timeoutId = setTimeout(
-        () => finish(() => reject(new Error('Stats request timed out.'))),
-        ADMIN_STATS_HTTP_TIMEOUT_MS
-      );
-      task.then(value => finish(() => resolve(value))).catch(error => finish(() => reject(error)));
-    });
-  }
 }

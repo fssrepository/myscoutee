@@ -6,13 +6,12 @@ import { MatRippleModule } from '@angular/material/core';
 
 import { NavigatorComponent } from '../../../navigator';
 import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
-import { SessionService, AppPopupContext } from '../../../shared/core';
-import type { DemoBootstrapProgressStage } from '../../../shared/core/demo';
-import { ConfirmationDialogComponent, ProgressIndicatorComponent } from '../../../shared/ui/components';
+import { SessionService, AppPopupContext, type BootstrapProcessStage } from '../../../shared/core';
+import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
-import type { AdminBootstrapProgressState } from '../../models/admin-shell.model';
+import type { AdminBootstrapProcessState } from '../../models/admin-shell.model';
 
 @Component({
   selector: 'app-admin-page',
@@ -23,15 +22,12 @@ import type { AdminBootstrapProgressState } from '../../models/admin-shell.model
     MatRippleModule,
     NavigatorComponent,
     EntryDemoUserSelectorComponent,
-    ConfirmationDialogComponent,
-    ProgressIndicatorComponent
+    ConfirmationDialogComponent
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
-  private static readonly DEMO_RESTORE_MIN_DELAY_MS = 1500;
-
   protected readonly workspace = inject(AdminWorkspaceService);
   protected readonly shell = inject(AdminShellService);
   protected readonly sessionService = inject(SessionService);
@@ -58,10 +54,9 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected selectorSubmitting = false;
   protected selectorLoadingProgress = 0;
   protected selectorLoadingLabel = 'Preparing admin data';
-  protected selectorLoadingStage: DemoBootstrapProgressStage = 'selector';
+  protected selectorLoadingStage: BootstrapProcessStage = 'selector';
   protected selectorErrorMessage = '';
   protected readonly restoringWorkspace = signal(this.currentRouteIsWorkspace());
-  protected readonly restoreAvatarGateActive = signal(false);
   protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
   protected readonly feedbackPopupComponent = this.feedbackPopupComponentRef.asReadonly();
   protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
@@ -171,13 +166,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       return;
     }
     this.restoringWorkspace.set(true);
-    this.restoreAvatarGateActive.set(false);
     const restored = await this.workspace.restoreAdminSession();
-    if (restored && this.shouldUseDemoAvatarGate()) {
-      this.restoreAvatarGateActive.set(true);
-      await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
-    }
-    this.restoreAvatarGateActive.set(false);
     this.restoringWorkspace.set(false);
     if (!restored) {
       await this.router.navigateByUrl('/admin', { replaceUrl: true });
@@ -249,13 +238,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       this.selectorOpen = false;
       this.selectorLoading = false;
       this.selectorSubmitting = false;
-      this.restoringWorkspace.set(true);
-      if (this.shouldUseDemoAvatarGate()) {
-        this.restoreAvatarGateActive.set(true);
-        await this.delay(AdminPageComponent.DEMO_RESTORE_MIN_DELAY_MS);
-      }
-      this.restoreAvatarGateActive.set(false);
-      this.restoringWorkspace.set(false);
       await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
       return;
     }
@@ -281,11 +263,11 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  private applyProgress(state: AdminBootstrapProgressState): void {
+  private applyProgress(state: AdminBootstrapProcessState): void {
     this.commitSelectorState(() => {
       this.selectorLoadingProgress = state.percent;
       this.selectorLoadingLabel = state.label;
-      this.selectorLoadingStage = this.toDemoProgressStage(state.stage);
+      this.selectorLoadingStage = this.toDemoProcessStage(state.stage);
     });
   }
 
@@ -323,7 +305,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private toDemoProgressStage(stage: AdminBootstrapProgressState['stage']): DemoBootstrapProgressStage {
+  private toDemoProcessStage(stage: AdminBootstrapProcessState['stage']): BootstrapProcessStage {
     switch (stage) {
       case 'indexedDb':
         return 'indexedDb';
@@ -344,10 +326,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
   private currentRouteIsWorkspace(): boolean {
     return this.router.url.split('?')[0] === '/admin/workspace';
-  }
-
-  private shouldUseDemoAvatarGate(): boolean {
-    return !this.workspace.usesHttpAdminApi;
   }
 
   private async ensureReportsPopupLoaded(): Promise<void> {
@@ -422,7 +400,4 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.monitoringPopupComponentRef.set(module.AdminMonitoringPopupComponent);
   }
 
-  private delay(durationMs: number): Promise<void> {
-    return new Promise(resolve => window.setTimeout(resolve, Math.max(0, durationMs)));
-  }
 }

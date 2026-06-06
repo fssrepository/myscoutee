@@ -1,5 +1,5 @@
 import type * as AppTypes from '../models';
-import type { DemoEventRecord } from '../../demo/models/events.model';
+import type { ActivityEventRecord } from '../models/events.model';
 import { AppUtils } from '../../../app-utils';
 import { EventEditorConverter } from '../converters/event-editor.converter';
 import { PricingBuilder } from './pricing.builder';
@@ -286,7 +286,7 @@ export class EventEditorBuilder {
     acceptedMembers: number;
     pendingMembers: number;
     capacityTotal: number;
-    existingRecord: DemoEventRecord | null;
+    existingRecord: ActivityEventRecord | null;
     activeUserId: string | null;
     activeUserProfile: {
       name?: string;

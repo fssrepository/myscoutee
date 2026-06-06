@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, HostBinding, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostBinding, Input, OnChanges, OnDestroy, SimpleChanges, inject, signal } from '@angular/core';
 
 import { AppContext } from '../../../core';
 
-export type ProgressIndicatorKind = 'bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
+export type ProgressIndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type ProgressIndicatorPlacement = 'edge' | 'inline';
 export type ProgressIndicatorShape = 'circle' | 'button';
 export type ProgressIndicatorSize = 'sm' | 'md';
@@ -26,7 +26,7 @@ let progressIndicatorId = 0;
   styleUrl: './progress-indicator.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProgressIndicatorComponent {
+export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   private readonly appCtx = inject(AppContext);
 
   @Input() kind: ProgressIndicatorKind = 'bar';
@@ -38,10 +38,16 @@ export class ProgressIndicatorComponent {
   @Input() position = 0;
   @Input() perimeter = 100;
   @Input() durationMs = 3000;
+  @Input() autoProgress = true;
 
   protected readonly actionGradientId = `app-progress-action-gradient-${++progressIndicatorId}`;
   protected readonly actionErrorGradientId = `app-progress-action-error-gradient-${progressIndicatorId}`;
   protected readonly actionAccentGradientId = `app-progress-action-accent-gradient-${progressIndicatorId}`;
+  private readonly timedLoadPosition = signal(0);
+  private timedLoadStartedAtMs = 0;
+  private timedLoadFrameId: number | null = null;
+  private timedLoadTimerId: ReturnType<typeof setTimeout> | null = null;
+  private manualPositionInput = false;
 
   @HostBinding('class.app-progress-indicator-host')
   protected readonly hostClass = true;
@@ -49,6 +55,11 @@ export class ProgressIndicatorComponent {
   @HostBinding('class.app-progress-indicator-host--kind-bar')
   protected get hostBarKindClass(): boolean {
     return this.kind === 'bar';
+  }
+
+  @HostBinding('class.app-progress-indicator-host--kind-pill-bar')
+  protected get hostPillBarKindClass(): boolean {
+    return this.kind === 'pill-bar';
   }
 
   @HostBinding('class.app-progress-indicator-host--kind-load-ring')
@@ -109,8 +120,23 @@ export class ProgressIndicatorComponent {
   @HostBinding('attr.aria-hidden')
   protected readonly ariaHidden = 'true';
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['position']) {
+      this.manualPositionInput = true;
+    }
+    this.syncTimedLoadProgress();
+  }
+
+  ngOnDestroy(): void {
+    this.clearTimedLoadProgress();
+  }
+
   protected get isBarKind(): boolean {
     return this.kind === 'bar';
+  }
+
+  protected get isPillBarKind(): boolean {
+    return this.kind === 'pill-bar';
   }
 
   protected get isLoadRingKind(): boolean {
@@ -168,7 +194,13 @@ export class ProgressIndicatorComponent {
   }
 
   protected loadRingDashOffset(): number {
-    return this.resolvedPerimeter * (1 - this.clampUnit(this.position));
+    if (this.isSuccessState) {
+      return 0;
+    }
+    const position = this.usesTimedLoadProgress()
+      ? this.timedLoadPosition()
+      : this.position;
+    return this.resolvedPerimeter * (1 - this.clampUnit(position));
   }
 
   protected actionRingDashOffset(): number {
@@ -202,5 +234,67 @@ export class ProgressIndicatorComponent {
       return 0;
     }
     return Math.max(0, Math.min(1, numericValue));
+  }
+
+  private syncTimedLoadProgress(): void {
+    if (!this.usesTimedLoadProgress()) {
+      this.clearTimedLoadProgress();
+      return;
+    }
+    if (this.timedLoadStartedAtMs > 0) {
+      return;
+    }
+    this.timedLoadStartedAtMs = this.nowMs();
+    this.timedLoadPosition.set(0.02);
+    this.scheduleTimedLoadProgress();
+  }
+
+  private updateTimedLoadProgress(): void {
+    this.timedLoadFrameId = null;
+    this.timedLoadTimerId = null;
+    if (!this.usesTimedLoadProgress() || this.timedLoadStartedAtMs <= 0) {
+      this.clearTimedLoadProgress();
+      return;
+    }
+    const elapsedMs = Math.max(0, this.nowMs() - this.timedLoadStartedAtMs);
+    const durationMs = Math.max(1, Math.trunc(Number(this.durationMs) || 0));
+    this.timedLoadPosition.set(Math.min(0.92, elapsedMs / durationMs));
+    this.scheduleTimedLoadProgress();
+  }
+
+  private scheduleTimedLoadProgress(): void {
+    this.clearTimedLoadProgressHandle();
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      this.timedLoadFrameId = globalThis.requestAnimationFrame(() => this.updateTimedLoadProgress());
+      return;
+    }
+    this.timedLoadTimerId = setTimeout(() => this.updateTimedLoadProgress(), 80);
+  }
+
+  private clearTimedLoadProgress(): void {
+    this.clearTimedLoadProgressHandle();
+    this.timedLoadStartedAtMs = 0;
+    this.timedLoadPosition.set(0);
+  }
+
+  private clearTimedLoadProgressHandle(): void {
+    if (this.timedLoadFrameId !== null && typeof globalThis.cancelAnimationFrame === 'function') {
+      globalThis.cancelAnimationFrame(this.timedLoadFrameId);
+    }
+    if (this.timedLoadTimerId !== null) {
+      clearTimeout(this.timedLoadTimerId);
+    }
+    this.timedLoadFrameId = null;
+    this.timedLoadTimerId = null;
+  }
+
+  private usesTimedLoadProgress(): boolean {
+    return this.autoProgress && !this.manualPositionInput && this.isLoadRingKind && this.isLoadingState;
+  }
+
+  private nowMs(): number {
+    return typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
   }
 }

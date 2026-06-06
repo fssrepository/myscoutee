@@ -1,16 +1,16 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { ChatRecord } from '../models/chat.model';
-import type { DemoUser } from '../interfaces/user.interface';
+import type { UserDto } from '../interfaces/user.interface';
 
 interface BuildActivityChatRowsOptions {
-  users: readonly DemoUser[];
+  users: readonly UserDto[];
   activeUserId: string;
 }
 
 interface ResolvedBuildActivityChatRowsOptions extends BuildActivityChatRowsOptions {
-  userById: ReadonlyMap<string, DemoUser>;
-  fallbackUser: DemoUser | null;
+  userById: ReadonlyMap<string, UserDto>;
+  fallbackUser: UserDto | null;
 }
 
 export function buildActivityChatRows(
@@ -93,7 +93,7 @@ export function activityChatContextFilterKey(
 function resolveChatLastSender(
   item: ChatRecord,
   options: ResolvedBuildActivityChatRowsOptions
-): DemoUser | null {
+): UserDto | null {
   const lastSender = options.userById.get(item.lastSenderId) ?? null;
   if (lastSender) {
     return lastSender;
@@ -120,10 +120,10 @@ function resolveChatMemberCount(
 function resolveChatMembers(
   item: ChatRecord,
   options: ResolvedBuildActivityChatRowsOptions
-): DemoUser[] {
+): UserDto[] {
   const members = (item.memberIds ?? [])
     .map(memberId => options.userById.get(memberId) ?? null)
-    .filter((user): user is DemoUser => Boolean(user));
+    .filter((user): user is UserDto => Boolean(user));
   if (members.length > 0) {
     return uniqueUsersById(members);
   }
@@ -164,7 +164,7 @@ function serviceChatToneClass(item: ChatRecord): string {
 function resolveBuildActivityChatRowsOptions(
   options: BuildActivityChatRowsOptions
 ): ResolvedBuildActivityChatRowsOptions {
-  const userById = new Map<string, DemoUser>();
+  const userById = new Map<string, UserDto>();
   for (const user of options.users) {
     userById.set(user.id, user);
   }
@@ -175,9 +175,9 @@ function resolveBuildActivityChatRowsOptions(
   };
 }
 
-function uniqueUsersById(users: readonly DemoUser[]): DemoUser[] {
+function uniqueUsersById(users: readonly UserDto[]): UserDto[] {
   const seen = new Set<string>();
-  const unique: DemoUser[] = [];
+  const unique: UserDto[] = [];
   for (const user of users) {
     if (seen.has(user.id)) {
       continue;

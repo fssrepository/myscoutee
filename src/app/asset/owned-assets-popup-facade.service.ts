@@ -4,10 +4,8 @@ import { environment } from '../../environments/environment';
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
-import { resolveCurrentDemoDelayMs } from '../shared/core/base/services/route-delay.service';
 import { AssetPopupStateService } from './asset-popup-state.service';
-import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, type ActivityCounterKey } from '../shared/core';
-import { HttpMediaService } from '../shared/core/http';
+import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService, type ActivityCounterKey } from '../shared/core';
 
 export interface OwnedAssetsRuntimeHooks {
   onAssetsChanged?(): void;
@@ -20,15 +18,14 @@ export interface OwnedAssetsRuntimeHooks {
   providedIn: 'root'
 })
 export class OwnedAssetsPopupFacadeService {
-  private static readonly DEMO_PENDING_WINDOW_MS = 1500;
-
   private readonly assetPopupState = inject(AssetPopupStateService);
   private readonly assetsService = inject(AssetsService);
   private readonly appCtx = inject(AppContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  private readonly httpMediaService = inject(HttpMediaService);
+  private readonly mediaService = inject(MediaService);
   private readonly assetListRevisionRef = signal(0);
   private readonly assetListReloadRevisionRef = signal(0);
+  private readonly assetListLoadingRef = signal(false);
   private readonly uiRevisionRef = signal(0);
 
   readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
@@ -38,6 +35,7 @@ export class OwnedAssetsPopupFacadeService {
   assetFilter: AppTypes.AssetFilterType = 'Car';
   showAssetForm = false;
   editingAssetId: string | null = null;
+  isAssetFormLoading = false;
   isAssetFormSavePending = false;
   pendingAssetDeleteCardId: string | null = null;
   isAssetDeletePending = false;
@@ -56,6 +54,10 @@ export class OwnedAssetsPopupFacadeService {
   private pendingAssetImageFile: File | null = null;
   private pendingAssetSourceImageUrl = '';
   private assetMutationVersion = 0;
+  private assetFormLoadGeneration = 0;
+  private trackedAssetRefreshToken = 0;
+  private trackedAssetRefreshOwnerUserId = '';
+  private trackedAssetRefreshPromise: Promise<void> | null = null;
   private pendingAssetDeleteLabelValue = '';
   private pendingAssetDeleteErrorValue = '';
   private assetsExplanationContextKey: string | null = null;
@@ -63,6 +65,7 @@ export class OwnedAssetsPopupFacadeService {
 
   readonly assetListRevision = this.assetListRevisionRef.asReadonly();
   readonly assetListReloadRevision = this.assetListReloadRevisionRef.asReadonly();
+  readonly assetListLoading = this.assetListLoadingRef.asReadonly();
   readonly uiRevision = this.uiRevisionRef.asReadonly();
 
   get assetCards(): AppTypes.AssetCard[] {
@@ -92,6 +95,18 @@ export class OwnedAssetsPopupFacadeService {
 
   assetListRevisionValue(): number {
     return this.assetListRevisionRef();
+  }
+
+  async waitForAssetListLoad(ownerUserId: string): Promise<void> {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const refreshPromise = normalizedOwnerUserId
+      && normalizedOwnerUserId === this.trackedAssetRefreshOwnerUserId
+      ? this.trackedAssetRefreshPromise
+      : null;
+    if (!refreshPromise) {
+      return;
+    }
+    await refreshPromise;
   }
 
   initializeFromUser(userId: string): void {
@@ -236,7 +251,7 @@ export class OwnedAssetsPopupFacadeService {
           }
         })
       : Promise.resolve();
-    await this.awaitAssetMutationCompletion(persistPromise);
+    await persistPromise;
   }
 
   async promoteAssetRequestToManager(assetId: string, requestId: string): Promise<void> {
@@ -280,22 +295,32 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   assetFilterCount(type: AppTypes.AssetFilterType): number {
-    const source = this.appCtx.getUserProfile(this.resolveContextOwnerUserId());
+    const ownerUserId = this.resolveContextOwnerUserId();
+    const source = this.appCtx.getUserProfile(ownerUserId);
     const activeUser = source ?? this.appCtx.activeUserProfile();
-    const grouped = activeUser?.activities?.asset;
+    const overrides = ownerUserId ? this.appCtx.getUserCounterOverrides(ownerUserId) : {};
+    const grouped = overrides.asset ?? activeUser?.activities?.asset;
     const key = this.assetFilterCounterKey(type);
     switch (key) {
       case 'cars':
-        return grouped?.cars ?? activeUser?.activities?.cars ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.cars ?? overrides.cars ?? activeUser?.activities?.cars);
       case 'accommodation':
-        return grouped?.accommodation ?? activeUser?.activities?.accommodation ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.accommodation ?? overrides.accommodation ?? activeUser?.activities?.accommodation);
       case 'supplies':
-        return grouped?.supplies ?? activeUser?.activities?.supplies ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.supplies ?? overrides.supplies ?? activeUser?.activities?.supplies);
       case 'tickets':
-        return grouped?.tickets ?? activeUser?.activities?.tickets ?? 0;
+        return this.normalizeAssetFilterCount(grouped?.tickets ?? overrides.tickets ?? activeUser?.activities?.tickets);
       default:
-        return key ? activeUser?.activities?.[key] ?? 0 : 0;
+        return key ? this.normalizeAssetFilterCount(overrides[key] ?? activeUser?.activities?.[key]) : 0;
     }
+  }
+
+  private normalizeAssetFilterCount(value: unknown): number {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(numericValue));
   }
 
   eventVisibilityClass(option: AppTypes.EventVisibility): string {
@@ -311,7 +336,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   setAssetFormVisibility(option: AppTypes.EventVisibility): void {
-    if (this.isAssetFormSavePending) {
+    if (this.isAssetFormLoading || this.isAssetFormSavePending) {
       return;
     }
     this.assetFormVisibility = option;
@@ -333,6 +358,8 @@ export class OwnedAssetsPopupFacadeService {
     this.closeAssetForm();
     if (filter === 'Ticket') {
       this.assetPopupState.prepareTicketPopupOpen();
+    } else {
+      void this.refreshOwnedAssetsFromRepository(this.resolveOwnerUserId(), { trackLoading: true });
     }
     this.setAssetsExplanationContext(this.assetExplanationContextForFilter(filter));
     this.assetPopupState.setPrimaryVisible(true);
@@ -359,6 +386,8 @@ export class OwnedAssetsPopupFacadeService {
     this.activePopupFilter = filter;
     if (filter === 'Ticket') {
       this.assetPopupState.prepareTicketPopupOpen();
+    } else {
+      void this.refreshOwnedAssetsFromRepository(this.resolveOwnerUserId(), { trackLoading: true });
     }
     this.setAssetsExplanationContext(this.assetExplanationContextForFilter(filter));
     this.assetPopupState.setPrimaryVisible(true);
@@ -367,38 +396,16 @@ export class OwnedAssetsPopupFacadeService {
 
   openAssetForm(card?: AppTypes.AssetCard): void {
     this.itemActionMenu = null;
+    if (card) {
+      void this.openAssetFormForEdit(card);
+      return;
+    }
+    this.assetFormLoadGeneration += 1;
     this.showAssetForm = true;
+    this.isAssetFormLoading = false;
     this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
     this.pendingAssetSourceImageUrl = '';
-    if (card) {
-      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
-      const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
-      this.editingAssetId = card.id;
-      this.assetFormVisibility = card.visibility === 'Friends only'
-        ? 'Friends only'
-        : card.visibility === 'Invitation only'
-          ? 'Invitation only'
-          : 'Public';
-      this.assetForm = {
-        type: card.type,
-        title: card.title,
-        subtitle: card.subtitle,
-        category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
-        city: card.city,
-        capacityTotal: card.capacityTotal,
-        quantity: card.quantity,
-        details: card.details,
-        imageUrl,
-        sourceLink,
-        routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes),
-        topics: [...(card.topics ?? [])],
-        policies: (card.policies ?? []).map(item => ({ ...item })),
-        pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
-      };
-      this.touchUiState();
-      return;
-    }
     this.editingAssetId = null;
     const type = this.activeAssetType();
     this.assetFormVisibility = 'Public';
@@ -406,9 +413,49 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
+  private async openAssetFormForEdit(card: AppTypes.AssetCard): Promise<void> {
+    const generation = ++this.assetFormLoadGeneration;
+    const ownerUserId = this.resolveOwnerUserId();
+    this.showAssetForm = true;
+    this.isAssetFormLoading = Boolean(ownerUserId);
+    this.isAssetFormSavePending = false;
+    this.pendingAssetImageFile = null;
+    this.pendingAssetSourceImageUrl = '';
+    this.applyAssetFormFromCard(card);
+    this.touchUiState();
+
+    if (!ownerUserId) {
+      this.isAssetFormLoading = false;
+      this.touchUiState();
+      return;
+    }
+
+    try {
+      const loadedCard = await this.assetsService.loadFullOwnedAssetById(ownerUserId, card.id);
+      if (!this.isCurrentAssetFormLoad(generation, card.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.applyAssetCards(this.assetCardsRef.map(item => (
+          item.id === loadedCard.id ? loadedCard : item
+        )), { persist: false, reloadList: false });
+        this.applyAssetFormFromCard(loadedCard);
+      }
+      this.isAssetFormLoading = false;
+      this.touchUiState();
+    } catch {
+      if (this.isCurrentAssetFormLoad(generation, card.id)) {
+        this.isAssetFormLoading = false;
+        this.touchUiState();
+      }
+    }
+  }
+
   closeAssetForm(): void {
+    this.assetFormLoadGeneration += 1;
     this.showAssetForm = false;
     this.editingAssetId = null;
+    this.isAssetFormLoading = false;
     this.isAssetFormSavePending = false;
     this.pendingAssetImageFile = null;
     this.pendingAssetSourceImageUrl = '';
@@ -418,7 +465,43 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
+  private applyAssetFormFromCard(card: AppTypes.AssetCard): void {
+    const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
+    const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
+    this.editingAssetId = card.id;
+    this.assetFormVisibility = card.visibility === 'Friends only'
+      ? 'Friends only'
+      : card.visibility === 'Invitation only'
+        ? 'Invitation only'
+        : 'Public';
+    this.assetForm = {
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: card.quantity,
+      details: card.details,
+      imageUrl,
+      sourceLink,
+      routes: AssetCardBuilder.normalizeAssetRoutes(card.type, card.routes),
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
+    };
+  }
+
+  private isCurrentAssetFormLoad(generation: number, assetId: string): boolean {
+    return this.showAssetForm
+      && this.assetFormLoadGeneration === generation
+      && this.editingAssetId === assetId;
+  }
+
   canSubmitAssetForm(): boolean {
+    if (this.isAssetFormLoading) {
+      return false;
+    }
     const title = this.assetForm.title.trim();
     const capacityTotal = Math.max(0, Math.trunc(Number(this.assetForm.capacityTotal) || 0));
     const quantity = Math.max(0, Math.trunc(Number(this.assetForm.quantity) || 0));
@@ -448,6 +531,9 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   async refreshAssetFromSourceLink(): Promise<void> {
+    if (this.isAssetFormLoading) {
+      return;
+    }
     const sourceUrl = this.normalizedAssetSourcePreviewUrl(true);
     if (!sourceUrl) {
       return;
@@ -480,18 +566,24 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   canRefreshAssetFromSourceLink(): boolean {
+    if (this.isAssetFormLoading) {
+      return false;
+    }
     return Boolean(this.normalizedAssetSourcePreviewUrl(false));
   }
 
   applyAssetImageFile(file: File): void {
+    if (this.isAssetFormLoading) {
+      return;
+    }
     this.revokeObjectUrl(this.assetForm.imageUrl);
-    this.pendingAssetImageFile = environment.activitiesDataSource === 'http' ? file : null;
+    this.pendingAssetImageFile = file;
     this.pendingAssetSourceImageUrl = '';
     this.assetForm.imageUrl = URL.createObjectURL(file);
   }
 
   async saveAssetCard(): Promise<void> {
-    if (this.isAssetFormSavePending || !this.canSubmitAssetForm()) {
+    if (this.isAssetFormLoading || this.isAssetFormSavePending || !this.canSubmitAssetForm()) {
       return;
     }
     this.isAssetFormSavePending = true;
@@ -575,7 +667,7 @@ export class OwnedAssetsPopupFacadeService {
               }
             })
           : Promise.resolve();
-        await this.awaitAssetMutationCompletion(persistPromise);
+        await persistPromise;
       } else {
         const nextCard: AppTypes.AssetCard = {
           id: assetId,
@@ -602,7 +694,7 @@ export class OwnedAssetsPopupFacadeService {
               }
             })
           : Promise.resolve();
-        await this.awaitAssetMutationCompletion(persistPromise);
+        await persistPromise;
       }
       this.isAssetFormSavePending = false;
       this.closeAssetForm();
@@ -613,11 +705,8 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private async resolvePersistedAssetImageUrl(ownerUserId: string, assetId: string): Promise<string | null> {
-    if (environment.activitiesDataSource !== 'http') {
-      return this.assetForm.imageUrl.trim() || null;
-    }
     if (this.pendingAssetImageFile) {
-      const uploadResult = await this.httpMediaService.uploadImage('asset', ownerUserId, assetId, this.pendingAssetImageFile);
+      const uploadResult = await this.mediaService.uploadImage(ownerUserId, assetId, this.pendingAssetImageFile);
       if (!uploadResult.uploaded || !uploadResult.imageUrl) {
         return null;
       }
@@ -629,7 +718,7 @@ export class OwnedAssetsPopupFacadeService {
     }
     const pendingSourceImageUrl = this.pendingAssetSourceImageUrl.trim();
     if (pendingSourceImageUrl && pendingSourceImageUrl === this.assetForm.imageUrl.trim()) {
-      const importResult = await this.httpMediaService.importImage('asset', ownerUserId, assetId, pendingSourceImageUrl);
+      const importResult = await this.mediaService.importImage(ownerUserId, assetId, pendingSourceImageUrl);
       if (importResult.uploaded && importResult.imageUrl) {
         this.pendingAssetSourceImageUrl = '';
         this.assetForm.imageUrl = importResult.imageUrl;
@@ -746,22 +835,6 @@ export class OwnedAssetsPopupFacadeService {
       return false;
     }
     const ownerUserId = this.resolveOwnerUserId();
-    if (this.demoMutationWindowMs() > 0) {
-      this.markAssetMutation();
-      this.applyAssetCards(this.assetCardsRef.filter(card => card.id !== normalizedCardId), {
-        persist: false,
-        reloadList: false
-      });
-      for (const hooks of this.runtimeHooks) {
-        hooks.onAssetDeleted?.(normalizedCardId);
-        hooks.onAssetsChanged?.();
-      }
-      if (ownerUserId) {
-        void this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId).catch(() => undefined);
-      }
-      await this.wait(this.demoMutationWindowMs());
-      return true;
-    }
     if (ownerUserId) {
       await this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId);
     }
@@ -1001,36 +1074,47 @@ export class OwnedAssetsPopupFacadeService {
     this.assetsExplanationContextKey = null;
   }
 
-  private async awaitAssetMutationCompletion(persistPromise: Promise<void>): Promise<void> {
-    const demoWindowMs = this.demoMutationWindowMs();
-    if (demoWindowMs <= 0) {
-      await persistPromise;
-      return;
+  private refreshOwnedAssetsFromRepository(
+    ownerUserId: string,
+    options: { trackLoading?: boolean } = {}
+  ): Promise<void> {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return Promise.resolve();
     }
-    void persistPromise.catch(() => undefined);
-    await this.wait(demoWindowMs);
-  }
-
-  private demoMutationWindowMs(): number {
-    return resolveCurrentDemoDelayMs(OwnedAssetsPopupFacadeService.DEMO_PENDING_WINDOW_MS);
-  }
-
-  private async wait(delayMs: number): Promise<void> {
-    if (delayMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => {
-      setTimeout(() => resolve(), delayMs);
-    });
-  }
-
-  private async refreshOwnedAssetsFromRepository(ownerUserId: string): Promise<void> {
     const requestMutationVersion = this.assetMutationVersion;
-    const cards = await this.assetsService.queryOwnedAssetsByUser(ownerUserId);
-    if (this.activeOwnerUserId !== ownerUserId || requestMutationVersion !== this.assetMutationVersion) {
-      return;
+    const trackLoading = options.trackLoading === true;
+    const trackedToken = trackLoading ? ++this.trackedAssetRefreshToken : 0;
+    if (trackLoading) {
+      this.trackedAssetRefreshOwnerUserId = normalizedOwnerUserId;
+      this.assetListLoadingRef.set(true);
+      this.touchUiState();
     }
-    this.applyAssetCards(cards, { persist: false, reloadList: false });
+    const refreshPromise = (async () => {
+      try {
+        const cards = await this.assetsService.queryOwnedAssetsByUser(normalizedOwnerUserId);
+        if (
+          this.activeOwnerUserId !== normalizedOwnerUserId
+          || requestMutationVersion !== this.assetMutationVersion
+        ) {
+          return;
+        }
+        this.applyAssetCards(cards, { persist: false, reloadList: false });
+      } catch {
+        // Keep the popup usable with the already-peeked cache if the refresh fails.
+      } finally {
+        if (trackLoading && this.trackedAssetRefreshToken === trackedToken) {
+          this.trackedAssetRefreshPromise = null;
+          this.trackedAssetRefreshOwnerUserId = '';
+          this.assetListLoadingRef.set(false);
+          this.touchUiState();
+        }
+      }
+    })();
+    if (trackLoading) {
+      this.trackedAssetRefreshPromise = refreshPromise;
+    }
+    return refreshPromise;
   }
 
   private markAssetMutation(): void {

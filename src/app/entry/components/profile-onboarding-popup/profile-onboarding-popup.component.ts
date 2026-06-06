@@ -12,17 +12,10 @@ import { MatSelectModule } from '@angular/material/select';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { I18nPipe } from '../../../shared/i18n';
+import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
-  ProfileOnboardingService,
-  UserExperiencesService,
-  UsersService,
-  type ProfileOnboardingAssessment,
-  type ProfileOnboardingDraft,
-  type ProfileOnboardingStepId,
-  type UserDto
-} from '../../../shared/core';
+  MediaService, ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
   DetailPrivacy,
   ExperienceEntry,
@@ -62,24 +55,26 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
   styleUrl: './profile-onboarding-popup.component.scss'
 })
 export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
-  private static readonly DEMO_SAVE_MIN_BUSY_MS = 1500;
-  private static readonly DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS = 1500;
   private static readonly MAX_IMAGE_SLOTS = 8;
+  private static readonly MIN_REQUIRED_IMAGES = 3;
   private static readonly LANGUAGE_PANEL_GAP_PX = 8;
   private static readonly LANGUAGE_PANEL_MAX_HEIGHT_PX = 260;
-  private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 30_000;
 
   @ViewChild('onboardingImageInput') private onboardingImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('languageSelectRoot', { read: ElementRef }) private languageSelectRoot?: ElementRef<HTMLElement>;
   @Input() open = false;
   @Input() user: UserDto | null = null;
   @Input() mobile = false;
+  @Input() title = 'Profile setup';
+  @Input() message = '';
 
   @Output() readonly completed = new EventEmitter<UserDto>();
   @Output() readonly dismissed = new EventEmitter<void>();
 
   private readonly onboarding = inject(ProfileOnboardingService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly usersService = inject(UsersService);
+  private readonly mediaService = inject(MediaService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly document = inject(DOCUMENT);
@@ -90,13 +85,13 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private previousBodyOverscrollBehavior = '';
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
-  private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
 
   protected readonly steps: OnboardingStep[] = [
     { id: 'basics', title: 'Basics', optional: false },
-    { id: 'photos', title: 'Photos', optional: true },
+    { id: 'photos', title: 'Photos', optional: false },
     { id: 'identity', title: 'Identity', optional: true },
     { id: 'about', title: 'About', optional: true },
     { id: 'lifestyle', title: 'Lifestyle', optional: true },
@@ -193,6 +188,14 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected requiredMissingLabels(): string[] {
+    const labels = this.basicsMissingLabels();
+    if (this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
+      labels.push('3 photos');
+    }
+    return labels;
+  }
+
+  protected basicsMissingLabels(): string[] {
     if (!this.draft) {
       return [];
     }
@@ -223,7 +226,10 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return false;
     }
     if (this.currentStep().id === 'basics') {
-      return this.requiredMissingLabels().length === 0;
+      return this.basicsMissingLabels().length === 0;
+    }
+    if (this.currentStep().id === 'photos') {
+      return this.imageCount() >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
     }
     if (this.currentStep().id === 'review') {
       return this.requiredMissingLabels().length === 0;
@@ -619,8 +625,13 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected stepRequiredMissing(stepId: ProfileOnboardingStepId): boolean {
-    const step = this.steps.find(candidate => candidate.id === stepId);
-    return Boolean(step && !step.optional && this.requiredMissingLabels().length > 0);
+    if (stepId === 'basics') {
+      return this.basicsMissingLabels().length > 0;
+    }
+    if (stepId === 'photos') {
+      return this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
+    }
+    return false;
   }
 
   protected stepIcon(step: OnboardingStep): string {
@@ -641,7 +652,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected basicsErrorVisible(): boolean {
-    return this.attemptedContinue && this.currentStep().id === 'basics' && this.requiredMissingLabels().length > 0;
+    return this.attemptedContinue && this.currentStep().id === 'basics' && this.basicsMissingLabels().length > 0;
   }
 
   private async saveAndComplete(): Promise<void> {
@@ -655,11 +666,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     const payload = this.buildUserPayload(this.user, this.draft);
     let completionEmitted = false;
     try {
-      const savedUser = await this.usersService.saveUserProfile(payload, {
-        requestTimeoutMs: 8000,
-        minimumDurationMs: this.usersService.demoModeEnabled ? ProfileOnboardingPopupComponent.DEMO_SAVE_MIN_BUSY_MS : 0,
-        returnFallbackOnFailure: false
-      });
+      const savedUser = await this.usersService.saveUserProfile(payload);
       if (!savedUser) {
         throw new Error('Profile save returned no user.');
       }
@@ -899,7 +906,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.experienceEntriesLoading = true;
     this.cdr.detectChanges();
     try {
-      const entries = await this.loadExperienceEntriesWithBusyWindow(normalizedUserId);
+      const entries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
       if (token !== this.experienceLoadToken || !this.draft || this.draft.userId !== normalizedUserId) {
         return;
       }
@@ -926,38 +933,19 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     void this.loadExistingExperienceEntries(userId);
   }
 
-  private async loadExperienceEntriesWithBusyWindow(userId: string): Promise<ExperienceEntry[]> {
-    const startedAtMs = Date.now();
-    try {
-      return await this.userExperiencesService.loadUserExperiences(userId);
-    } finally {
-      if (this.usersService.demoModeEnabled) {
-        await this.waitForMinimumDuration(startedAtMs, ProfileOnboardingPopupComponent.DEMO_EXPERIENCE_LOAD_MIN_BUSY_MS);
-      }
-    }
-  }
-
-  private async waitForMinimumDuration(startedAtMs: number, minimumDurationMs: number): Promise<void> {
-    const remainingMs = minimumDurationMs - (Date.now() - startedAtMs);
-    if (remainingMs <= 0) {
-      return;
-    }
-    await new Promise<void>(resolve => setTimeout(resolve, remainingMs));
-  }
-
   private startDraftAutosaveLoop(): void {
     this.stopDraftAutosaveLoop();
-    this.draftAutosaveTimer = setInterval(() => {
+    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/auth/me/onboarding-draft-autosave', () => {
       void this.runDraftAutosaveIfNeeded();
-    }, ProfileOnboardingPopupComponent.DRAFT_AUTOSAVE_INTERVAL_MS);
+    });
   }
 
   private stopDraftAutosaveLoop(): void {
-    if (!this.draftAutosaveTimer) {
+    if (!this.stopDraftAutosave) {
       return;
     }
-    clearInterval(this.draftAutosaveTimer);
-    this.draftAutosaveTimer = null;
+    this.stopDraftAutosave();
+    this.stopDraftAutosave = null;
   }
 
   private resetDraftAutosaveTracking(): void {
@@ -989,14 +977,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.isDraftAutosavePending = true;
     try {
-      const savedUser = await this.usersService.saveUserProfile(
-        this.buildAutosaveUserPayload(this.user, this.draft),
-        {
-          requestTimeoutMs: 8000,
-          minimumDurationMs: 0,
-          returnFallbackOnFailure: false
-        }
-      );
+      const savedUser = await this.usersService.saveUserProfile(this.buildAutosaveUserPayload(this.user, this.draft));
       if (savedUser) {
         this.user = savedUser;
         this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
@@ -1041,7 +1022,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     add((draft.form.heightCm ?? 0) > 0);
     add(Boolean(draft.form.physique.trim()));
     add(draft.form.languages.length > 0);
-    add(draft.form.images.length > 0);
+    add(draft.form.images.length >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES);
     add(draft.form.about.trim().length >= 20);
     add(draft.form.values.length > 0);
     add(draft.form.interests.length > 0);
@@ -1129,16 +1110,13 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.cdr.detectChanges();
     try {
       this.syncDraftImagesFromSlots();
-      const uploadResult = await this.usersService.uploadUserProfileImage(this.user.id, file, slotIndex);
-      if (!uploadResult.uploaded) {
+      const uploadResult = await this.mediaService.uploadImage(this.user.id, `profile-${slotIndex}`, file);
+      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
+      if (!uploadResult.uploaded || !uploadedImageUrl) {
         throw new Error('Upload failed.');
       }
-      const verifiedImageUrl = await this.reloadUploadedImageUrl(this.user.id, slotIndex, uploadResult.imageUrl);
-      if (!verifiedImageUrl) {
-        throw new Error('Uploaded image was not available.');
-      }
       this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = verifiedImageUrl;
+      this.imageSlots[slotIndex] = uploadedImageUrl;
       this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
       this.syncDraftImagesFromSlots();
     } catch {
@@ -1147,21 +1125,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.uploadingImageSlotIndex = null;
       this.cdr.detectChanges();
     }
-  }
-
-  private async reloadUploadedImageUrl(
-    userId: string,
-    slotIndex: number,
-    uploadedImageUrl: string | null
-  ): Promise<string | null> {
-    if (uploadedImageUrl?.trim()) {
-      return uploadedImageUrl.trim();
-    }
-    const loadedUser = await this.usersService.loadUserById(userId, 2500);
-    const loadedImages = (loadedUser?.images ?? [])
-      .map(image => image.trim())
-      .filter(image => image.length > 0);
-    return loadedImages[slotIndex] ?? loadedImages[loadedImages.length - 1] ?? null;
   }
 
   private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {

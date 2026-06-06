@@ -10,8 +10,8 @@ import type {
   UserGameDataService,
   UserGameMode
 } from '../interfaces/game.interface';
-import { DemoGameService } from '../../demo';
-import { DemoUsersRatingsRepository } from '../../demo/repositories/users-ratings.repository';
+import { LocalGameService } from '../../local';
+import { LocalUsersRatingsRepository } from '../../local/repositories/users-ratings.repository';
 import { HttpGameService } from '../../http';
 import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
 import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -28,22 +28,14 @@ interface UserGameCardsStackState {
   requestInFlight: boolean;
 }
 
-class RequestTimeoutError extends Error {
-  constructor() {
-    super('Game request timeout.');
-    this.name = 'RequestTimeoutError';
-  }
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class GameService extends BaseRouteModeService {
-  private static readonly DEFAULT_REQUEST_TIMEOUT_MS = 3000;
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
-  private readonly demoGameService = inject(DemoGameService);
-  private readonly demoUsersRatingsRepository = inject(DemoUsersRatingsRepository);
+  private readonly localGameService = inject(LocalGameService);
+  private readonly localUsersRatingsRepository = inject(LocalUsersRatingsRepository);
   private readonly httpGameService = inject(HttpGameService);
   private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
   private readonly appCtx = inject(AppContext);
@@ -58,11 +50,11 @@ export class GameService extends BaseRouteModeService {
   }
 
   private get gameDataService(): UserGameDataService {
-    return this.resolveRouteService('/game-cards/query', this.demoGameService, this.httpGameService);
+    return this.resolveRouteService('/game-cards/query', this.localGameService, this.httpGameService);
   }
 
   private get usersRatingsRepository(): BaseUsersRatingsRepository {
-    return this.resolveRouteService('/activities/rates', this.demoUsersRatingsRepository, this.httpUsersRatingsRepository);
+    return this.resolveRouteService('/activities/rates', this.localUsersRatingsRepository, this.httpUsersRatingsRepository);
   }
 
   getGameCardsUsersSnapshot(): UserDto[] {
@@ -80,7 +72,7 @@ export class GameService extends BaseRouteModeService {
       return false;
     }
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
+      return this.localGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
     }
     return false;
   }
@@ -91,7 +83,7 @@ export class GameService extends BaseRouteModeService {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/events')) {
-      return this.demoGameService.queryMetUserIds(normalizedUserId);
+      return this.localGameService.queryMetUserIds(normalizedUserId);
     }
     return [];
   }
@@ -105,7 +97,7 @@ export class GameService extends BaseRouteModeService {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
+      return this.localUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
     }
     return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
   }
@@ -116,7 +108,7 @@ export class GameService extends BaseRouteModeService {
       return [];
     }
     if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.demoUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
+      return this.localUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
     }
     return this.httpUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
   }
@@ -130,7 +122,7 @@ export class GameService extends BaseRouteModeService {
     bridgeUserId?: string,
     bridgeCount?: number
   ): void {
-    this.resolveRouteService('/activities/rates', this.demoGameService, this.httpGameService)
+    this.resolveRouteService('/activities/rates', this.localGameService, this.httpGameService)
       .recordGameCardRating(raterUserId, ratedUserId, rating, mode, socialContext, bridgeUserId, bridgeCount);
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
@@ -168,9 +160,8 @@ export class GameService extends BaseRouteModeService {
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
     if (this.isDemoModeEnabled('/game-cards/query')) {
-      await this.demoGameService.whenReady();
+      await this.localGameService.whenReady();
     }
-    const normalizedTimeoutMs = this.resolveRequestTimeoutMs(requestTimeoutMs);
     const normalizedUserId = request.userId.trim();
 
     if (!normalizedUserId) {
@@ -181,8 +172,8 @@ export class GameService extends BaseRouteModeService {
     this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.withRequestTimeout(
-        this.gameDataService.queryUserGameCardsByFilter({
+      const response = await this.gameDataService.queryUserGameCardsByFilter(
+        {
           userId: normalizedUserId,
           mode: request.mode ?? 'single',
           leftQuery: request.leftQuery ?? null,
@@ -190,8 +181,8 @@ export class GameService extends BaseRouteModeService {
           filterPreferences: request.filterPreferences ?? null,
           cursor: request.cursor ?? null,
           pageSize: request.pageSize
-        }),
-        normalizedTimeoutMs
+        },
+        requestTimeoutMs
       );
       if (!response.cards) {
         this.setLoadStatus(USER_GAME_CARDS_LOAD_CONTEXT_KEY, 'success');
@@ -218,7 +209,7 @@ export class GameService extends BaseRouteModeService {
           : null
       };
     } catch (error) {
-      if (error instanceof RequestTimeoutError) {
+      if (error instanceof Error && error.message === 'User game cards request timeout.') {
         this.setLoadStatus(
           USER_GAME_CARDS_LOAD_CONTEXT_KEY,
           'timeout',
@@ -419,27 +410,15 @@ export class GameService extends BaseRouteModeService {
         excludedPairKeys
       );
     try {
-      const { value: cards } = await this.loadWithRecovery(
-        () => this.loadUserGameCardsPage(
-          normalizedUserId,
-          filterPreferences,
-          existingCursor,
-          pageSize,
-          mode,
-          leftQuery,
-          rightQuery,
-          requestTimeoutMs
-        ),
-        () => this.buildRecoveredGameCardsPage(
-          normalizedUserId,
-          fallbackIds,
-          fallbackSocialCards,
-          fallbackCursor
-        ),
-        {
-          shouldRecover: next => next === null,
-          hasRecoveryValue: next => this.hasRecoveredGameCards(next)
-        }
+      const cards = await this.loadUserGameCardsPage(
+        normalizedUserId,
+        filterPreferences,
+        existingCursor,
+        pageSize,
+        mode,
+        leftQuery,
+        rightQuery,
+        requestTimeoutMs
       );
       if (cards) {
         state.filterCount = this.mergeUserGameCardsStackFilterCount(state.filterCount, cards.filterCount, reset);
@@ -590,40 +569,6 @@ export class GameService extends BaseRouteModeService {
       .join(':');
   }
 
-  private buildRecoveredGameCardsPage(
-    userId: string,
-    cardUserIds: readonly string[],
-    socialCards: readonly UserGameSocialCard[],
-    nextCursor: string | null
-  ): UserGameCardsDto | null {
-    if (
-      cardUserIds.length === 0
-      && socialCards.length === 0
-      && nextCursor === null
-      && this.peekUserGameCardsStackSnapshot(userId).filterCount === null
-    ) {
-      return null;
-    }
-    return {
-      filterCount: this.peekUserGameCardsStackSnapshot(userId).filterCount ?? cardUserIds.length + socialCards.length,
-      cardUserIds: [...cardUserIds],
-      socialCards: socialCards.map(card => ({ ...card })),
-      nextCursor
-    };
-  }
-
-  private hasRecoveredGameCards(cards: UserGameCardsDto | null): boolean {
-    return Boolean(
-      cards
-      && (
-        cards.cardUserIds.length > 0
-        || (cards.socialCards?.length ?? 0) > 0
-        || cards.nextCursor !== null
-        || Number.isFinite(cards.filterCount)
-      )
-    );
-  }
-
   private ensureUserGameCardsStackState(userId: string): UserGameCardsStackState {
     const existing = this.userGameCardsStackStateByUserId[userId];
     if (existing) {
@@ -682,28 +627,4 @@ export class GameService extends BaseRouteModeService {
     this.appCtx.setStatus(contextKey, status, message);
   }
 
-  private resolveRequestTimeoutMs(value?: number): number {
-    if (!Number.isFinite(value)) {
-      return GameService.DEFAULT_REQUEST_TIMEOUT_MS;
-    }
-    return Math.max(1, Math.trunc(Number(value)));
-  }
-
-  private withRequestTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new RequestTimeoutError());
-      }, timeoutMs);
-      void promise.then(
-        result => {
-          clearTimeout(timer);
-          resolve(result);
-        },
-        error => {
-          clearTimeout(timer);
-          reject(error);
-        }
-      );
-    });
-  }
 }

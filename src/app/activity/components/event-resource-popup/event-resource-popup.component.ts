@@ -28,7 +28,6 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { ShareTokensService } from '../../../shared/core';
-import { resolveCurrentDemoDelayMs, resolveCurrentRouteDelayMs } from '../../../shared/core/base/services/route-delay.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface CapacityEditorState {
@@ -379,8 +378,6 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = {
     pageSize: 18,
-    loadingDelayMs: resolveCurrentDemoDelayMs(1500),
-    loadingWindowMs: 3000,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -422,7 +419,6 @@ export class EventResourcePopupComponent implements DoCheck {
   protected readonly assetExploreSmartListConfig: SmartListConfig<AppTypes.AssetCard, ResourceSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
-    loadingDelayMs: resolveCurrentRouteDelayMs('/activities/events', resolveCurrentDemoDelayMs(1500)),
     defaultView: 'list',
     presentation: 'list',
     headerProgress: {

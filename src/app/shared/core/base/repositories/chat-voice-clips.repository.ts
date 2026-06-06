@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppMemoryDb } from '../db';
 import type { ChatVoiceClip } from '../models';
+import { chatVoiceClipTableKey } from '../storage-scope';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +28,7 @@ export class ChatVoiceClipsRepository {
   }
 
   private storageKey(key: string): string {
-    return `chatVoiceClip:${key}`;
+    return chatVoiceClipTableKey(key);
   }
 
   private normalizeKey(key: string): string {

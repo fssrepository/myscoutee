@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { CardRenderState, InfoCardData, InfoCardMenuAction } from '../../../ui';
-import type { DemoEventRecord } from '../../demo/models/events.model';
+import type { ActivityEventRecord } from '../models/events.model';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
 type TopicToneGroup = {
@@ -11,7 +11,7 @@ type TopicToneGroup = {
 
 export class EventExploreBuilder {
   static buildInfoCard(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     options: {
       groupLabel?: string | null;
       topicToneGroups?: readonly TopicToneGroup[];
@@ -85,7 +85,7 @@ export class EventExploreBuilder {
   }
 
   static buildGroupLabel(
-    record: DemoEventRecord,
+    record: ActivityEventRecord,
     view: AppTypes.EventExploreView
   ): string {
     if (view === 'distance') {
@@ -99,7 +99,7 @@ export class EventExploreBuilder {
     return AppUtils.smartListDayLabel(parsed);
   }
 
-  static buildActivityRow(record: DemoEventRecord): AppTypes.ActivityListRow {
+  static buildActivityRow(record: ActivityEventRecord): AppTypes.ActivityListRow {
     const row = toActivityEventRow(record);
     return {
       ...row,
@@ -107,7 +107,7 @@ export class EventExploreBuilder {
     };
   }
 
-  private static menuActionsForRecord(record: DemoEventRecord): readonly InfoCardMenuAction[] {
+  private static menuActionsForRecord(record: ActivityEventRecord): readonly InfoCardMenuAction[] {
     const full = this.isFull(record);
     const actions: InfoCardMenuAction[] = [
       'view'
@@ -119,7 +119,7 @@ export class EventExploreBuilder {
     return actions;
   }
 
-  private static creatorOverlayTone(record: DemoEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
+  private static creatorOverlayTone(record: ActivityEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {
     const rating = AppUtils.clampNumber(record.rating, 0, 10);
     if (rating <= 3.0) {
       return 'cool';
@@ -137,13 +137,13 @@ export class EventExploreBuilder {
   }
 
   private static creatorAvatarOverlayTone(
-    record: DemoEventRecord
+    record: ActivityEventRecord
   ): 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8' {
     const toneIndex = (AppUtils.hashText(`${record.type}:${record.id}:${this.creatorInitials(record)}`) % 8) + 1;
     return `tone-${toneIndex}` as 'tone-1' | 'tone-2' | 'tone-3' | 'tone-4' | 'tone-5' | 'tone-6' | 'tone-7' | 'tone-8';
   }
 
-  private static visibilityTone(record: DemoEventRecord): 'public' | 'friends' | 'invitation' {
+  private static visibilityTone(record: ActivityEventRecord): 'public' | 'friends' | 'invitation' {
     if (record.visibility === 'Friends only') {
       return 'friends';
     }
@@ -153,35 +153,35 @@ export class EventExploreBuilder {
     return 'public';
   }
 
-  private static distanceLabel(record: DemoEventRecord): string {
+  private static distanceLabel(record: ActivityEventRecord): string {
     const rounded = Math.round(record.distanceKm * 10) / 10;
     return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
   }
 
-  private static typeLabel(record: DemoEventRecord): string {
+  private static typeLabel(record: ActivityEventRecord): string {
     return record.type === 'hosting' ? 'Hosting' : 'Event';
   }
 
-  private static creatorInitials(record: DemoEventRecord): string {
+  private static creatorInitials(record: ActivityEventRecord): string {
     return record.creatorInitials || AppUtils.initialsFromText(record.creatorName || record.title);
   }
 
-  private static membersLabel(record: DemoEventRecord): string {
+  private static membersLabel(record: ActivityEventRecord): string {
     if (record.capacityTotal <= 0) {
       return '0 / 0';
     }
     return `${record.acceptedMembers} / ${record.capacityTotal}`;
   }
 
-  private static isFull(record: DemoEventRecord): boolean {
+  private static isFull(record: ActivityEventRecord): boolean {
     return record.capacityTotal > 0 && record.acceptedMembers >= record.capacityTotal;
   }
 
-  private static canPreviewMembers(record: DemoEventRecord): boolean {
+  private static canPreviewMembers(record: ActivityEventRecord): boolean {
     return record.blindMode === 'Open Event';
   }
 
-  private static joinActionId(record: DemoEventRecord): InfoCardMenuAction {
+  private static joinActionId(record: ActivityEventRecord): InfoCardMenuAction {
     if (this.isFull(record)) {
       return 'joinWaitlist';
     }
@@ -190,7 +190,7 @@ export class EventExploreBuilder {
       : 'requestJoin';
   }
 
-  private static requiresBookingFlow(record: DemoEventRecord): boolean {
+  private static requiresBookingFlow(record: ActivityEventRecord): boolean {
     if (record.ticketing === true) {
       return true;
     }

@@ -1,4 +1,4 @@
-import { Component, inject, ViewChild, ElementRef, OnInit, OnDestroy, HostListener, effect } from '@angular/core';
+import { Component, inject, ViewChild, ElementRef, OnInit, OnDestroy, HostListener, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -25,10 +25,10 @@ import {
   AppPopupContext,
   EventEditorDataService,
   ExplanationGuideService,
-  RouteDelayService
+  MediaService,
+  RouteIntervalSchedulerService
 } from '../../../shared/core';
-import { HttpMediaService } from '../../../shared/core/http';
-import type { DemoEventRecord } from '../../../shared/core/demo/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import { CounterBadgePipe, PricingEditorComponent, ProgressIndicatorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
@@ -58,20 +58,16 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
-  private static readonly DRAFT_AUTOSAVE_INTERVAL_MS = 5000;
-  private static readonly DETAIL_LOAD_ROUTE = '/activities/events';
-  private static readonly DETAIL_LOAD_DEMO_DELAY_MS = 1500;
-  private static readonly DETAIL_LOAD_TIMEOUT_MS = 3000;
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
-  private readonly eventEditorDataService = inject(EventEditorDataService);
+  protected readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly httpMediaService = inject(HttpMediaService);
+  private readonly mediaService = inject(MediaService);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  private readonly routeDelay = inject(RouteDelayService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   @ViewChild('eventImageInput') eventImageInput!: ElementRef<HTMLInputElement>;
@@ -82,7 +78,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private lastHandledOpenSubEventsRequest = 0;
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
-  private currentRecord: DemoEventRecord | null = null;
+  private currentRecord: ActivityEventRecord | null = null;
   private currentSourcePublished = false;
   private publishedCapacityMaxFloor = 0;
   private currentMemberSummary: AppTypes.ActivityMembersSummary | null = null;
@@ -91,12 +87,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly slotDateControlValueCache = new Map<string, Date | null>();
   private pricingSlotCatalogCacheKey = '';
   private pricingSlotCatalogCache: AppTypes.PricingSlotReference[] = [];
-  private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
+  private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
-  protected isLoadingEventData = false;
+  protected readonly isLoadingEventData = signal(false);
 
   constructor() {
     effect(() => {
@@ -211,6 +207,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
       this.showMobileFrequencyPicker = false;
+      this.isLoadingEventData.set(false);
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
     });
@@ -281,6 +278,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showTopicPicker = false;
     this.showMobileFrequencyPicker = false;
     this.isSavePending = false;
+    this.isLoadingEventData.set(false);
     this.clearEventEditorExplanationContext();
     this.eventEditorService.close();
   }
@@ -944,7 +942,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.pendingEventImageFile && this.eventForm.imageUrl.startsWith('blob:')) {
       URL.revokeObjectURL(this.eventForm.imageUrl);
     }
-    this.pendingEventImageFile = this.demoModeEnabled ? null : file;
+    this.pendingEventImageFile = file;
     this.eventForm.imageUrl = URL.createObjectURL(file);
     target.value = '';
   }
@@ -1404,32 +1402,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isLoadingEventData = true;
+    this.isLoadingEventData.set(true);
     this.eventEditorService.open('edit', fallbackSource, readOnly);
     void this.refreshCurrentMemberSummary(row.id);
 
-    let isTimeout = false;
-    const timeoutPromise = new Promise<DemoEventRecord | null>(resolve => setTimeout(() => {
-      isTimeout = true;
-      resolve(null);
-    }, EventEditorPopupComponent.DETAIL_LOAD_TIMEOUT_MS));
-
     try {
-      const record = await Promise.race([
-        Promise.all([
-          this.eventEditorDataService.loadFullItemById(activeUserId, row.id),
-          this.routeDelay.waitForRouteDelay(
-            EventEditorPopupComponent.DETAIL_LOAD_ROUTE,
-            undefined,
-            undefined,
-            EventEditorPopupComponent.DETAIL_LOAD_DEMO_DELAY_MS
-          )
-        ]).then(([loadedRecord]) => loadedRecord),
-        timeoutPromise
-      ]);
+      const record = await this.eventEditorDataService.loadFullItemById(activeUserId, row.id);
 
-      this.isLoadingEventData = false;
-      if (!record || isTimeout) {
+      this.isLoadingEventData.set(false);
+      if (!record) {
         return;
       }
 
@@ -1438,11 +1419,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.editingEventId = this.currentRecord.id;
       this.openRecord(this.currentRecord, readOnly, this.editorTarget);
     } catch {
-      this.isLoadingEventData = false;
+      this.isLoadingEventData.set(false);
     }
   }
 
-  private openRecord(record: DemoEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
+  private openRecord(record: ActivityEventRecord, readOnly: boolean, target: AppTypes.EventEditorTarget): void {
     const source = EventEditorConverter.toEventEditorSourceFromRecord(record, target);
     if (readOnly) {
       this.eventEditorService.openView(source);
@@ -1536,22 +1517,22 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private get demoModeEnabled(): boolean {
-    return environment.activitiesDataSource === 'demo';
+    return environment.activitiesDataSource === 'local';
   }
 
   private startDraftAutosaveLoop(): void {
     this.stopDraftAutosaveLoop();
-    this.draftAutosaveTimer = setInterval(() => {
+    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/activities/events/draft-autosave', () => {
       void this.runDraftAutosaveIfNeeded();
-    }, EventEditorPopupComponent.DRAFT_AUTOSAVE_INTERVAL_MS);
+    });
   }
 
   private stopDraftAutosaveLoop(): void {
-    if (!this.draftAutosaveTimer) {
+    if (!this.stopDraftAutosave) {
       return;
     }
-    clearInterval(this.draftAutosaveTimer);
-    this.draftAutosaveTimer = null;
+    this.stopDraftAutosave();
+    this.stopDraftAutosave = null;
   }
 
   private resetDraftAutosaveTracking(): void {
@@ -2352,10 +2333,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private async resolvePersistedEventImageUrl(activeUserId: string, eventId: string): Promise<string | null> {
-    if (this.demoModeEnabled || !this.pendingEventImageFile) {
+    if (!this.pendingEventImageFile) {
       return this.eventForm.imageUrl.trim() || null;
     }
-    const uploadResult = await this.httpMediaService.uploadImage('event', activeUserId, eventId, this.pendingEventImageFile);
+    const uploadResult = await this.mediaService.uploadImage(activeUserId, eventId, this.pendingEventImageFile);
     if (!uploadResult.uploaded || !uploadResult.imageUrl) {
       return null;
     }

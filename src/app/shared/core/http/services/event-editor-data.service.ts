@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../../core/base/models';
-import type { DemoEventRecord } from '../../demo/models/events.model';
+import type { ActivityEventRecord } from '../../base/models/events.model';
 import { HttpActivityMembersService } from './activity-members.service';
 import { HttpEventsService } from './events.service';
 
@@ -12,11 +12,11 @@ export class HttpEventEditorDataService {
   private readonly eventsService = inject(HttpEventsService);
   private readonly activityMembersService = inject(HttpActivityMembersService);
 
-  peekKnownItemById(_userId: string, _itemId: string): DemoEventRecord | null {
+  peekKnownItemById(_userId: string, _itemId: string): ActivityEventRecord | null {
     return null;
   }
 
-  async queryKnownItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+  async queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
@@ -28,7 +28,7 @@ export class HttpEventEditorDataService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  loadFullItemById(userId: string, itemId: string): Promise<DemoEventRecord | null> {
+  loadFullItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     return this.queryKnownItemById(userId, itemId);
   }
 

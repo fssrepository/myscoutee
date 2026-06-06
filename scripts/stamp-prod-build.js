@@ -43,6 +43,7 @@ function stampIndexHtml() {
 function stampServiceWorker() {
   let serviceWorker = fs.readFileSync(serviceWorkerPath, 'utf8');
   const cacheVersion = JSON.stringify(`build-${buildId}`);
+  const precacheBuildUrls = collectPrecacheBuildAssetUrls();
   if (!/const\s+CACHE_VERSION\s*=/.test(serviceWorker)) {
     throw new Error(`Could not find CACHE_VERSION in ${serviceWorkerPath}.`);
   }
@@ -61,6 +62,13 @@ function stampServiceWorker() {
       `$1const BUILD_ID = ${JSON.stringify(buildId)};\n`
     );
   }
+  if (!/const\s+PRECACHE_BUILD_URLS\s*=/.test(serviceWorker)) {
+    throw new Error(`Could not find PRECACHE_BUILD_URLS in ${serviceWorkerPath}.`);
+  }
+  serviceWorker = serviceWorker.replace(
+    /const\s+PRECACHE_BUILD_URLS\s*=\s*\[[\s\S]*?\];/,
+    `const PRECACHE_BUILD_URLS = ${JSON.stringify(precacheBuildUrls, null, 2)};`
+  );
   fs.writeFileSync(serviceWorkerPath, serviceWorker, 'utf8');
 }
 
@@ -108,6 +116,43 @@ function assertFile(filePath, description) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Missing ${description} at ${filePath}. Run the production build first.`);
   }
+}
+
+function collectPrecacheBuildAssetUrls() {
+  const urls = [];
+  visitOutputDir(outputDir, '');
+  return urls.sort();
+
+  function visitOutputDir(directory, relativeDirectory) {
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const relativePath = relativeDirectory
+        ? `${relativeDirectory}/${entry.name}`
+        : entry.name;
+      const absolutePath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        if (relativePath === 'assets' || relativePath === 'keys') {
+          continue;
+        }
+        visitOutputDir(absolutePath, relativePath);
+        continue;
+      }
+      if (shouldPrecacheBuildAsset(relativePath)) {
+        urls.push(`./${relativePath}`);
+      }
+    }
+  }
+}
+
+function shouldPrecacheBuildAsset(relativePath) {
+  if (
+    relativePath === 'app-sw.js' ||
+    relativePath === 'index.html' ||
+    relativePath === 'app-version.json' ||
+    relativePath.endsWith('.map')
+  ) {
+    return false;
+  }
+  return /\.(?:js|css|woff2?|ttf)$/i.test(relativePath);
 }
 
 function runOptional(command, args) {
