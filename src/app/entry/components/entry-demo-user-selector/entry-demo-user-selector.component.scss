@@ -1,3 +1,7 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-close-button();
+
 :host {
   display: block;
   font-family: var(--entry-font-family, 'Nunito Sans', 'Segoe UI', sans-serif);
@@ -57,44 +61,6 @@
 .demo-login-panel p {
   margin: 0.3rem 0 0;
   color: var(--entry-text-muted, rgba(34, 50, 74, 0.72));
-}
-
-.popup-close {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(44, 74, 121, 0.2);
-  color: rgba(31, 58, 90, 0.9);
-  cursor: pointer;
-  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
-  flex: 0 0 auto;
-}
-
-.popup-close:hover {
-  background: rgba(255, 255, 255, 0.96);
-  border-color: rgba(33, 66, 113, 0.36);
-  color: rgba(22, 47, 83, 0.98);
-  transform: translateY(-1px);
-}
-
-.popup-close:active {
-  transform: translateY(0);
-}
-
-.popup-close:focus-visible {
-  outline: 2px solid rgba(61, 108, 186, 0.35);
-  outline-offset: 1px;
-}
-
-.popup-close:disabled {
-  opacity: 0.56;
-  cursor: default;
-  transform: none;
 }
 
 .popup-close-glyph {

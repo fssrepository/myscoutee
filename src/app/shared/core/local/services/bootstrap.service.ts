@@ -82,6 +82,12 @@ export class LocalBootstrapService {
     }
   }
 
+  async ensureStaticContentReady(): Promise<void> {
+    await this.memoryDb.resetStorageOnce();
+    await this.helpCenterService.init();
+    await this.ideaPostsService.init();
+  }
+
   async ensureUserReady(userId: string, onProgress?: BootstrapProcessListener): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

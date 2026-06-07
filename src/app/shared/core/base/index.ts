@@ -19,16 +19,32 @@ export { EventsService } from './services/events.service';
 export { EventEditorDataService } from './services/event-editor-data.service';
 export { GameService } from './services/game.service';
 export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help-center.service';
+export { PrivacyPolicyService, type PrivacyPolicyOpenOptions } from './services/privacy-policy.service';
+export { TermsPolicyService, type TermsPolicyOpenOptions } from './services/terms-policy.service';
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
-export { AdminDemoDataService } from './services/admin-demo-data.service';
+export {
+  AdminBootstrapService,
+  type AdminBootstrapMenuSeedState,
+  type AdminBootstrapStoresSeed
+} from './services/admin-bootstrap.service';
 export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
 export {
-  AdminModerationDataService,
+  AdminParamsService,
+  type AdminParamsDelayOptions
+} from './services/admin-params.service';
+export { AdminMonitoringService } from './services/admin-monitoring.service';
+export { AdminStatsService } from './services/admin-stats.service';
+export {
+  AdminNotificationsService,
+  type AdminNotificationDelayOptions
+} from './services/admin-notifications.service';
+export {
+  AdminModerationService,
   type AdminModerationActionResult,
   type AdminModerationUserPatch
-} from './services/admin-moderation-data.service';
+} from './services/admin-moderation.service';
 export {
   AdminAffinityGraphService,
   type AdminAffinityGraphRangeParams,

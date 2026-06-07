@@ -2,7 +2,7 @@
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
-import { HelpCenterService } from '../../../shared/core';
+import { HelpCenterService, PrivacyPolicyService, TermsPolicyService } from '../../../shared/core';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 
 @Component({
@@ -15,22 +15,21 @@ import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.s
 export class NavigatorSettingsMenuComponent {
   private readonly navigatorService = inject(NavigatorService);
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly termsPolicy = inject(TermsPolicyService);
   private readonly router = inject(Router);
   protected readonly helpVersionLabel = this.helpCenter.activeVersionLabel;
   protected readonly hasActiveHelpRevision = this.helpCenter.hasActiveRevision;
-  protected readonly privacyVersionLabel = this.helpCenter.activePrivacyVersionLabel;
-  protected readonly hasActivePrivacyRevision = this.helpCenter.hasActivePrivacyRevision;
+  protected readonly privacyVersionLabel = this.privacyPolicy.activeVersionLabel;
+  protected readonly termsVersionLabel = this.termsPolicy.activeVersionLabel;
 
   constructor() {
-    void this.helpCenter.preloadAll();
+    void this.helpCenter.preload('help');
   }
 
   protected openPopup(popup: NavigatorSettingsPopup, event: Event): void {
     event.stopPropagation();
     if (popup === 'help' && !this.hasActiveHelpRevision()) {
-      return;
-    }
-    if (popup === 'privacy' && !this.hasActivePrivacyRevision()) {
       return;
     }
     this.navigatorService.openSettingsPopup(popup);

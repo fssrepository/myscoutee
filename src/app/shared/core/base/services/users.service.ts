@@ -51,8 +51,8 @@ export class UsersService extends BaseRouteModeService {
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
 
-  get demoModeEnabled(): boolean {
-    return this.isDemoModeEnabled('/auth/me');
+  get localModeEnabled(): boolean {
+    return this.isLocalRouteEnabled('/auth/me');
   }
 
   peekCachedUsers(): UserDto[] {
@@ -156,7 +156,7 @@ export class UsersService extends BaseRouteModeService {
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
 
-    if (this.isDemoModeEnabled('/auth/me') && !normalizedUserId) {
+    if (this.isLocalRouteEnabled('/auth/me') && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }

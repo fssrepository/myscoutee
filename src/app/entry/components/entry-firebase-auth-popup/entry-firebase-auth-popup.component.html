@@ -3,14 +3,14 @@
     <div class="firebase-auth-backdrop" (click)="requestClose()"></div>
     <div class="firebase-auth-panel" [class.mobile-fullscreen]="isMobileView" (click)="$event.stopPropagation()">
       <div class="firebase-auth-header">
-        <h2>Bejelentkezés</h2>
+        <h2>{{ 'login' | i18n }}</h2>
         <button
           type="button"
           class="popup-close"
           matRipple
           [matRippleColor]="'rgba(41, 78, 128, 0.12)'"
           (click)="requestClose()"
-          aria-label="Bejelentkezés bezárása"
+          [attr.aria-label]="'close.login.popup' | i18n"
           >
           <span class="popup-close-glyph" aria-hidden="true">×</span>
         </button>
@@ -28,18 +28,18 @@
             <span class="firebase-auth-brand-mark google-mark" aria-hidden="true">
               <span class="google-mark-letter">G</span>
             </span>
-            <span>{{ busy ? 'Kapcsolódás...' : 'Folytatás Google-lel' }}</span>
+            <span>{{ (busy ? 'connecting' : 'continue.with.google') | i18n }}</span>
           </button>
           <button
             type="button"
             class="firebase-auth-provider-btn facebook coming-soon"
             disabled
             aria-disabled="true"
-            title="Facebook belépés hamarosan"
+            [attr.title]="'facebook.login.coming.soon' | i18n"
             >
             <span class="firebase-auth-brand-mark facebook-mark" aria-hidden="true">f</span>
-            <span>Folytatás Facebookkal</span>
-            <span class="firebase-auth-provider-badge">Hamarosan</span>
+            <span>{{ 'continue.with.facebook' | i18n }}</span>
+            <span class="firebase-auth-provider-badge">{{ 'coming.soon' | i18n }}</span>
           </button>
           <button
             type="button"
@@ -52,8 +52,15 @@
             <span class="firebase-auth-brand-mark email-mark" aria-hidden="true">
               <mat-icon>mail</mat-icon>
             </span>
-            <span>Folytatás emaillel</span>
+            <span>{{ 'continue.with.email' | i18n }}</span>
           </button>
+          <p class="firebase-auth-provider-terms">
+            {{ 'firebase.auth.provider.terms.prefix' | i18n }}
+            <a [href]="googleTermsUrl" target="_blank" rel="noopener noreferrer">Google</a>
+            {{ 'and' | i18n }}
+            <a [href]="facebookTermsUrl" target="_blank" rel="noopener noreferrer">Meta/Facebook</a>
+            {{ 'firebase.auth.provider.terms.suffix' | i18n }}
+          </p>
         </div>
       } @else {
         <button
@@ -64,13 +71,13 @@
           (click)="backToProviders()"
           >
           <mat-icon>arrow_back</mat-icon>
-          <span>Minden belépési mód</span>
+          <span>{{ 'all.login.methods' | i18n }}</span>
         </button>
         <form class="firebase-auth-email-form" (submit)="$event.preventDefault(); requestEmail()">
           @if (statusMessage) {
-            <p class="firebase-auth-status">{{ statusMessage }}</p>
+            <p class="firebase-auth-status">{{ statusMessage | i18n }}</p>
           }
-          <div class="firebase-auth-email-tabs" role="tablist" aria-label="Email belépési mód">
+          <div class="firebase-auth-email-tabs" role="tablist" [attr.aria-label]="'email.login.mode' | i18n">
             <button
               type="button"
               role="tab"
@@ -80,7 +87,7 @@
               data-motion="none"
               (click)="setEmailMode('sign-in')"
               >
-              Belépés
+              {{ 'login' | i18n }}
             </button>
             <button
               type="button"
@@ -91,11 +98,11 @@
               data-motion="none"
               (click)="setEmailMode('create')"
               >
-              Létrehozás
+              {{ 'create' | i18n }}
             </button>
           </div>
           <label>
-            <span>Email</span>
+            <span>{{ 'email' | i18n }}</span>
             <input
               type="email"
               name="email"
@@ -105,13 +112,13 @@
               >
           </label>
           <label>
-            <span>Jelszó</span>
+            <span>{{ 'password' | i18n }}</span>
             <span class="firebase-auth-password-control">
               <input
                 [type]="passwordInputType()"
                 name="password"
                 [autocomplete]="emailPasswordAutocomplete()"
-                [placeholder]="passwordPlaceholder()"
+                [placeholder]="passwordPlaceholder() | i18n"
                 [disabled]="busy"
                 [(ngModel)]="password"
                 >
@@ -120,7 +127,7 @@
                 class="firebase-auth-password-toggle"
                 [disabled]="busy"
                 data-motion="none"
-                [attr.aria-label]="passwordVisible ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'"
+                [attr.aria-label]="(passwordVisible ? 'hide.password' : 'show.password') | i18n"
                 (click)="togglePasswordVisibility()"
                 >
                 <mat-icon>{{ passwordVisible ? 'visibility_off' : 'visibility' }}</mat-icon>
@@ -133,42 +140,42 @@
             [class.level-2]="passwordStrengthLevel() === 2"
             [class.level-3]="passwordStrengthLevel() === 3"
             [class.level-4]="passwordStrengthLevel() === 4"
-            [attr.aria-label]="passwordStrengthText()"
+            [attr.aria-label]="passwordStrengthText() | i18n"
             >
             <div class="firebase-password-strength-lines" aria-hidden="true">
               @for (segment of passwordStrengthSegments(); track segment) {
                 <span [class.active]="segment <= passwordStrengthLevel()"></span>
               }
             </div>
-            <span>{{ passwordStrengthText() }}</span>
+            <span>{{ passwordStrengthText() | i18n }}</span>
           </div>
           @if (emailMode === 'create') {
-            <ul class="firebase-password-rules" aria-label="Jelszó feltételek">
+            <ul class="firebase-password-rules" [attr.aria-label]="'password.rules' | i18n">
               <li [class.met]="passwordHasMinimumLength()">
                 <mat-icon>{{ passwordHasMinimumLength() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                <span>Legalább 8 karakter</span>
+                <span>{{ 'password.minimum.8' | i18n }}</span>
               </li>
               <li [class.met]="passwordHasLetter()">
                 <mat-icon>{{ passwordHasLetter() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                <span>Betű</span>
+                <span>{{ 'password.letter' | i18n }}</span>
               </li>
               <li [class.met]="passwordHasNumber()">
                 <mat-icon>{{ passwordHasNumber() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                <span>Szám</span>
+                <span>{{ 'password.number' | i18n }}</span>
               </li>
               <li [class.met]="passwordHasOptionalSymbol()">
                 <mat-icon>{{ passwordHasOptionalSymbol() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                <span>Jel opcionális</span>
+                <span>{{ 'password.symbol.optional' | i18n }}</span>
               </li>
               <li [class.met]="passwordConfirmationMatches()">
                 <mat-icon>{{ passwordConfirmationMatches() ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-                <span>Jelszavak egyeznek</span>
+                <span>{{ 'passwords.match' | i18n }}</span>
               </li>
             </ul>
           }
           @if (emailMode === 'create') {
             <label>
-              <span>Jelszó megerősítése</span>
+              <span>{{ 'confirm.password' | i18n }}</span>
               <span class="firebase-auth-password-control">
                 <input
                   [type]="passwordConfirmationInputType()"
@@ -182,7 +189,7 @@
                   class="firebase-auth-password-toggle"
                   [disabled]="busy"
                   data-motion="none"
-                  [attr.aria-label]="passwordConfirmationVisible ? 'Jelszó elrejtése' : 'Jelszó megjelenítése'"
+                  [attr.aria-label]="(passwordConfirmationVisible ? 'hide.password' : 'show.password') | i18n"
                   (click)="togglePasswordConfirmationVisibility()"
                   >
                   <mat-icon>{{ passwordConfirmationVisible ? 'visibility_off' : 'visibility' }}</mat-icon>
@@ -191,7 +198,7 @@
             </label>
           }
           @if (emailError) {
-            <p class="firebase-auth-error">{{ emailError }}</p>
+            <p class="firebase-auth-error">{{ emailError | i18n }}</p>
           }
           <button
             type="submit"
@@ -201,7 +208,7 @@
             [matRippleColor]="'rgba(255, 255, 255, 0.22)'"
             >
             <mat-icon>mail</mat-icon>
-            <span>{{ emailSubmitLabel() }}</span>
+            <span>{{ emailSubmitLabel() | i18n }}</span>
           </button>
         </form>
       }

@@ -12,17 +12,29 @@
   (demoRequested)="openEntryDemo()"
   (firebaseAuthRequested)="openEntryFirebaseAuth()"
   (consentRequested)="openEntryConsentPopup(true)"
+  (termsRequested)="openEntryTermsPopup()"
 ></app-entry-landing>
 
-<app-entry-consent-popup
+<app-privacy-policy-popup
   [open]="showEntryConsentPopup"
+  [lazy]="false"
+  shell="popup"
   [viewOnly]="entryConsentViewOnly"
   [loading]="entryPrivacyLoading"
   [approvalRequired]="!hasEntryConsent"
+  [source]="'entry'"
   (closeRequested)="closeEntryConsentPopup()"
   (acceptRequested)="acceptEntryConsent()"
   (rejectRequested)="rejectEntryConsent()"
-></app-entry-consent-popup>
+></app-privacy-policy-popup>
+
+<app-terms-policy
+  [open]="showEntryTermsPopup"
+  [lazy]="false"
+  [loading]="landingArticlesLoading"
+  shell="popup"
+  (closeRequested)="closeEntryTermsPopup()"
+></app-terms-policy>
 
 <app-entry-demo-user-selector
   [open]="showUserSelector"

@@ -5,8 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
+import { AppContext, IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
@@ -23,7 +22,6 @@ import {
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
@@ -67,9 +65,8 @@ export class AdminIdeaEditorPopupComponent {
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
   protected readonly admin = inject(AdminShellService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
   private readonly ideaPosts = inject(IdeaPostsService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -276,16 +273,11 @@ export class AdminIdeaEditorPopupComponent {
   protected async startNew(event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetLang = this.selectedContentLang;
-    const generation = this.beginArticlePanelLoad('editor');
     this.draftContentLang = targetLang;
     this.editing = false;
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
-      return;
-    }
     this.beginEditing({
       id: null,
       contentKey: '',
@@ -298,22 +290,15 @@ export class AdminIdeaEditorPopupComponent {
       submittedAtLocal: this.toDateTimeLocal(new Date().toISOString()),
       mode: 'html'
     });
-    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected async openViewer(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
-    const generation = this.beginArticlePanelLoad('viewer');
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
-      return;
-    }
     this.viewerPostId = targetPost.id;
     this.viewerPost = targetPost;
-    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected closeViewer(event?: Event): void {
@@ -329,18 +314,12 @@ export class AdminIdeaEditorPopupComponent {
   protected async startEditing(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
-    const generation = this.beginArticlePanelLoad('editor');
     this.viewerPostId = '';
     this.viewerPost = null;
     this.editing = false;
     this.draft = null;
     this.draftContentLang = this.normalizeContentLang(targetPost.lang);
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
-      return;
-    }
     this.beginEditing(this.draftFromPost(targetPost));
-    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected closeEditor(event?: Event): void {
@@ -362,11 +341,6 @@ export class AdminIdeaEditorPopupComponent {
     const submittedAtIso = this.fromDateTimeLocal(activeDraft.submittedAtLocal);
     const contentHtml = activeDraft.contentHtml.trim() || '<p></p>';
     const imageUrls = this.draftImageUrls(activeDraft);
-    const generation = this.beginArticlePanelLoad('viewer');
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
-      return;
-    }
     this.viewerPostId = activeDraft.id || 'draft-preview';
     this.viewerPost = {
       id: activeDraft.id || 'draft-preview',
@@ -389,7 +363,6 @@ export class AdminIdeaEditorPopupComponent {
       updatedAtIso: submittedAtIso,
       updatedByUserId: this.actorUserId()
     };
-    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected async saveDraft(event?: Event): Promise<IdeaPost | null> {
@@ -883,10 +856,7 @@ export class AdminIdeaEditorPopupComponent {
     const currentDraft = this.draft;
     this.formLanguageMenuOpen = false;
     const generation = this.beginArticlePanelLoad('editor');
-    const [translation] = await Promise.all([
-      this.findArticleTranslation(currentDraft.contentKey, normalized),
-      this.waitForArticlePanelLoad()
-    ]);
+    const translation = await this.findArticleTranslation(currentDraft.contentKey, normalized);
     if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
       return;
     }
@@ -997,7 +967,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
+    return this.appCtx.activeUserId().trim() || 'admin';
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {
@@ -1029,14 +999,6 @@ export class AdminIdeaEditorPopupComponent {
       && this.articlePanelLoadGeneration === generation
       && this.articlePanelLoading
       && this.articlePanelLoadingMode === mode;
-  }
-
-  private async waitForArticlePanelLoad(): Promise<void> {
-    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 450);
-  }
-
-  protected articlePanelLoadProgressDurationMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs('/admin/ideas');
   }
 
   private beginEditing(draft: IdeaPostDraft): void {

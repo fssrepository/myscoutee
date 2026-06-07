@@ -270,6 +270,12 @@
             [attr.aria-disabled]="networkUnavailable ? 'true' : null"
             (click)="requestConsent($event)"
             >Data privacy</a>
+          <a
+            href="/terms"
+            [class.entry-footer-link-disabled]="networkUnavailable"
+            [attr.aria-disabled]="networkUnavailable ? 'true' : null"
+            (click)="requestTerms($event)"
+            >Terms</a>
         </section>
 
         <section class="entry-footer-contact">

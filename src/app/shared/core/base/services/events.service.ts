@@ -33,8 +33,8 @@ export class EventsService extends BaseRouteModeService {
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
 
-  get demoModeEnabled(): boolean {
-    return this.isDemoModeEnabled('/activities/events');
+  get localModeEnabled(): boolean {
+    return this.isLocalRouteEnabled('/activities/events');
   }
 
   private get eventsService(): LocalEventsService | HttpEventsService {
@@ -69,7 +69,7 @@ export class EventsService extends BaseRouteModeService {
     query: ActivityEventActivitiesQuery,
     signal?: AbortSignal
   ): Promise<ActivityEventActivitiesListQueryResult> {
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localEventsService.queryActivitiesEventListPage(query, signal);
     }
     return this.httpEventsService.queryActivitiesEventListPage(query, signal);
@@ -84,14 +84,14 @@ export class EventsService extends BaseRouteModeService {
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localEventsService.queryEventExplorePage(query);
     }
     return this.httpEventsService.queryEventExplorePage(query);
   }
 
   peekEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localEventsService.peekEventExplorePage(query);
     }
     return this.httpEventsService.peekEventExplorePage(query);

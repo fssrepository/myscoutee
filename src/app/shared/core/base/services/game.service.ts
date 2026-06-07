@@ -71,7 +71,7 @@ export class GameService extends BaseRouteModeService {
     ) {
       return false;
     }
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
     }
     return false;
@@ -82,7 +82,7 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localGameService.queryMetUserIds(normalizedUserId);
     }
     return [];
@@ -96,7 +96,7 @@ export class GameService extends BaseRouteModeService {
     if (mode !== 'single' && mode !== 'friends-in-common') {
       return [];
     }
-    if (this.isDemoModeEnabled('/activities/rates')) {
+    if (this.isLocalRouteEnabled('/activities/rates')) {
       return this.localUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
     }
     return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
@@ -107,7 +107,7 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    if (this.isDemoModeEnabled('/activities/rates')) {
+    if (this.isLocalRouteEnabled('/activities/rates')) {
       return this.localUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
     }
     return this.httpUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
@@ -159,7 +159,7 @@ export class GameService extends BaseRouteModeService {
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
-    if (this.isDemoModeEnabled('/game-cards/query')) {
+    if (this.isLocalRouteEnabled('/game-cards/query')) {
       await this.localGameService.whenReady();
     }
     const normalizedUserId = request.userId.trim();
@@ -480,7 +480,7 @@ export class GameService extends BaseRouteModeService {
     excludedUserIds: ReadonlySet<string>,
     excludedPairKeys: ReadonlySet<string>
   ): string | null {
-    if (!cursor || !this.isDemoModeEnabled('/game-cards/query')) {
+    if (!cursor || !this.isLocalRouteEnabled('/game-cards/query')) {
       return cursor;
     }
     const parsedCursor = Number.parseInt(cursor, 10);

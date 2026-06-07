@@ -1,0 +1,59 @@
+import { Injectable, inject } from '@angular/core';
+
+import { LocalMemoryDb } from '../../base/db';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
+
+export interface LocalAdminStoresSeed<
+  TModeration = unknown,
+  TNotification = unknown,
+  TMonitoring = unknown,
+  TStats = unknown,
+  TParams = unknown
+> {
+  moderation: TModeration;
+  notificationCenter: TNotification;
+  monitoring: TMonitoring;
+  stats: TStats;
+  params: TParams;
+}
+
+export interface LocalAdminMenuCounterSeedState<TNotification = unknown, TMonitoring = unknown> {
+  notificationCenter: TNotification;
+  monitoring: TMonitoring;
+}
+
+@Injectable({
+  providedIn: 'root'
+})
+export class LocalAdminStoreSeedService {
+  private readonly memoryDb = inject(LocalMemoryDb);
+
+  async resetAndSeedAdminStores<
+    TModeration,
+    TNotification,
+    TMonitoring,
+    TStats,
+    TParams
+  >(
+    stores: LocalAdminStoresSeed<TModeration, TNotification, TMonitoring, TStats, TParams>
+  ): Promise<LocalAdminMenuCounterSeedState<TNotification, TMonitoring>> {
+    await Promise.all([
+      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules),
+      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminMonitoring),
+      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminStats),
+      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminParams),
+      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration)
+    ]);
+    await Promise.all([
+      this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration, stores.moderation),
+      this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules, stores.notificationCenter),
+      this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminMonitoring, stores.monitoring),
+      this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminStats, stores.stats),
+      this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminParams, stores.params)
+    ]);
+    return {
+      notificationCenter: stores.notificationCenter,
+      monitoring: stores.monitoring
+    };
+  }
+}

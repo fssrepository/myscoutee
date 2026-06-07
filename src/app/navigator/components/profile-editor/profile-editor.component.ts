@@ -23,7 +23,6 @@ import { I18nPipe } from '../../../shared/ui';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
-import { AdminProfileService } from '../../../admin/services/admin-profile.service';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
 
@@ -81,7 +80,6 @@ export class ProfileEditorComponent {
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
-  private readonly adminProfileService = inject(AdminProfileService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly i18n = inject(I18nService);
   private readonly navigatorService = inject(NavigatorService);
@@ -2266,11 +2264,6 @@ export class ProfileEditorComponent {
     user.completion = 100;
     user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
     this.pushProfileUserToContextAndLegacyMirror(user);
-    this.adminProfileService.updateAdminProfile({
-      name: user.name,
-      headline: user.headline,
-      about: user.about
-    });
     await this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {

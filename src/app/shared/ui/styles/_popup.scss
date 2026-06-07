@@ -1,3 +1,58 @@
+@mixin popup-close-button($selector: '.popup-close') {
+  #{$selector} {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    border: 1px solid rgba(47, 86, 139, 0.2);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: rgba(38, 67, 105, 0.92);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    line-height: 0;
+    box-sizing: border-box;
+    box-shadow: 0 8px 18px rgba(37, 62, 95, 0.12);
+    --mdc-icon-button-state-layer-size: 34px;
+  }
+
+  #{$selector} .mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 21px;
+    height: 21px;
+    font-size: 21px;
+    line-height: 21px;
+    margin: 0;
+  }
+
+  #{$selector}:not(:disabled):not([aria-disabled='true']):hover {
+    border-color: rgba(47, 86, 139, 0.32);
+    background: #fff;
+    color: rgba(24, 50, 84, 0.98);
+  }
+
+  #{$selector}:not(:disabled):not([aria-disabled='true']):active {
+    background: rgba(239, 245, 252, 0.96);
+  }
+
+  #{$selector}:focus-visible {
+    outline: 2px solid rgba(61, 108, 186, 0.35);
+    outline-offset: 1px;
+  }
+
+  #{$selector}:disabled,
+  #{$selector}[aria-disabled='true'] {
+    opacity: 0.56;
+    cursor: default;
+  }
+}
+
 @mixin popup-shell() {
   :host {
     display: contents;
@@ -118,36 +173,7 @@
     padding-bottom: 0.74rem;
   }
 
-  .popup-close {
-    flex: 0 0 auto;
-    width: 34px;
-    height: 34px;
-    border: 0;
-    border-radius: 50%;
-    background: transparent;
-    color: rgba(42, 57, 77, 0.88);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    padding: 0;
-  }
-
-  .popup-close .mat-icon {
-    width: 21px;
-    height: 21px;
-    font-size: 21px;
-    line-height: 21px;
-  }
-
-  .popup-close:not(:disabled):not([aria-disabled='true']):hover {
-    background: rgba(110, 124, 145, 0.18);
-    color: rgba(28, 40, 57, 0.94);
-  }
-
-  .popup-close:not(:disabled):not([aria-disabled='true']):active {
-    background: rgba(96, 111, 134, 0.24);
-  }
+  @include popup-close-button();
 
   .popup-header-with-progress,
   .popup-header-with-activities-progress {

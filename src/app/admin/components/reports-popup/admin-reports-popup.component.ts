@@ -1,11 +1,17 @@
 import { CommonModule } from '@angular/common';
 import { Location } from '@angular/common';
-import { Component, TemplateRef, ViewChild, inject } from '@angular/core';
+import { Component, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
 
+import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
+import {
+  AppContext,
+  AdminModerationService,
+  type AdminModerationActionResult
+} from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -20,7 +26,6 @@ import { toActivityChatRow } from '../../../shared/core/base/converters/activiti
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import type { AdminReportedUserDto, AdminReportDto } from '../../models/admin-moderation.model';
-import { AdminModerationService } from '../../services/admin-moderation.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
@@ -56,10 +61,13 @@ interface AdminBlockedUserListFilters {
 })
 export class AdminReportsPopupComponent {
   protected readonly admin = inject(AdminShellService);
+  private readonly appCtx = inject(AppContext);
   private readonly workspace = inject(AdminWorkspaceService);
-  private readonly moderation = inject(AdminModerationService);
+  private readonly moderationData = inject(AdminModerationService);
+  private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly location = inject(Location);
+  private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
   protected reportDetail: AdminReportListItem | null = null;
   protected reportDetailMenuOpen = false;
   protected blockedUsersOpen = false;
@@ -196,7 +204,7 @@ export class AdminReportsPopupComponent {
       confirmLabel: 'Block',
       busyConfirmLabel: 'Blocking...',
       confirmTone: 'danger',
-      onConfirm: () => this.moderation.blockUser(
+      onConfirm: () => this.blockModerationUser(
         user.userId,
         'Your account has been blocked after moderation review. You can reply here to contact MyScoutee support and ask for a review.'
       )
@@ -240,7 +248,7 @@ export class AdminReportsPopupComponent {
     this.blockedUserMenuId = '';
     this.closeBlockedUsers();
     this.closeReportDetails();
-    this.moderation.openBlockedUserChat(user);
+    this.openBlockedUserChat(user);
   }
 
   protected unblockUser(user: AdminReportedUserDto, event?: Event): void {
@@ -252,20 +260,25 @@ export class AdminReportsPopupComponent {
       confirmLabel: 'Unblock',
       busyConfirmLabel: 'Unblocking...',
       confirmTone: 'accent',
-      onConfirm: () => this.moderation.unblockUser(user.userId)
+      onConfirm: () => this.unblockModerationUser(user.userId)
     });
   }
 
   protected isUserBlocked(user: AdminReportedUserDto): boolean {
-    return this.moderation.isUserBlocked(user);
+    const resolved = user?.userId ? this.resolveDashboardReportedUser(user.userId) : null;
+    return `${resolved?.profileStatus ?? user?.profileStatus ?? ''}`.trim() === 'blocked';
   }
 
   protected hasSupportChat(user: AdminReportedUserDto): boolean {
-    return this.moderation.hasSupportChat(user);
+    const userId = `${user.userId ?? ''}`.trim();
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    return Boolean(resolved.hasSupportChat) || this.warnedUserIdsRef().has(userId);
   }
 
   protected supportChatUnread(user: AdminReportedUserDto): number {
-    return this.moderation.supportChatUnread(user);
+    const userId = `${user.userId ?? ''}`.trim();
+    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
+    return Math.max(0, Math.trunc(Number(resolved.supportChatUnread) || 0));
   }
 
   protected isSelectedUser(user: AdminReportedUserDto): boolean {
@@ -481,6 +494,114 @@ export class AdminReportsPopupComponent {
       hour: 'numeric',
       minute: '2-digit'
     });
+  }
+
+  private async blockModerationUser(userId: string, message: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const result = await this.moderationData.blockUser(
+      normalizedUserId,
+      this.appCtx.activeAdminUser(),
+      message
+    );
+    this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
+  }
+
+  private async unblockModerationUser(userId: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const result = await this.moderationData.unblockUser(
+      normalizedUserId,
+      this.appCtx.activeAdminUser()
+    );
+    this.applyModerationActionResult(normalizedUserId, result);
+  }
+
+  private applyModerationActionResult(
+    userId: string,
+    result: AdminModerationActionResult | null | undefined,
+    options: { markWarned?: boolean } = {}
+  ): void {
+    if (!result) {
+      return;
+    }
+    if (result.dashboard) {
+      this.workspace.applyDashboard(result.dashboard);
+    }
+    if (result.userPatch) {
+      this.workspace.patchModerationUser(result.userPatch);
+    }
+    if (options.markWarned === true) {
+      this.markUserWarned(userId);
+    }
+    this.refreshSelectedReportedUser(userId);
+  }
+
+  private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
+    const dashboard = this.workspace.dashboard();
+    if (!dashboard) {
+      return null;
+    }
+    const normalizedUserId = userId.trim();
+    return [
+      ...(dashboard.reportedUsers ?? []),
+      ...(dashboard.blockedUsers ?? [])
+    ].find(user => user.userId === normalizedUserId) ?? null;
+  }
+
+  private markUserWarned(userId: string): void {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this.warnedUserIdsRef.update(current => {
+      const next = new Set(current);
+      next.add(normalizedUserId);
+      return next;
+    });
+  }
+
+  private refreshSelectedReportedUser(userId: string): void {
+    const selected = this.admin.selectedReportedUser();
+    if (!selected || selected.userId !== userId) {
+      return;
+    }
+    this.admin.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private openBlockedUserChat(user: AdminReportedUserDto): void {
+    const chat = this.buildAdminSupportChat(user);
+    if (!chat) {
+      return;
+    }
+    this.admin.closePopup();
+    this.activitiesContext.openEventChat(chat);
+  }
+
+  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatRecord & { ownerUserId?: string }) | null {
+    const admin = this.appCtx.activeAdminUser();
+    if (!admin) {
+      return null;
+    }
+    return {
+      id: `c-support-admin-${user.userId}`,
+      avatar: user.initials || 'U',
+      title: `MyScoutee Support · ${user.name}`,
+      lastMessage: user.profileStatus === 'blocked'
+        ? 'Your account has been blocked after moderation review.'
+        : 'MyScoutee support conversation.',
+      lastSenderId: admin.id,
+      memberIds: [user.userId, admin.id],
+      unread: this.supportChatUnread(user),
+      dateIso: user.lastReportedAtIso || new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: 'notification',
+      ownerUserId: admin.id
+    };
   }
 
   private loadReportsPage(query: ListQuery<AdminReportListFilters>): PageResult<AdminReportListItem> {

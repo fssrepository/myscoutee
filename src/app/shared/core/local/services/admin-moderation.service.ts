@@ -4,10 +4,10 @@ import type { AdminUserDto } from '../../../../admin/models/admin-profile.model'
 import type {
   AdminModerationActionResult,
   AdminModerationUserPatch
-} from '../../base/services/admin-moderation-data.service';
+} from '../../base/services/admin-moderation.service';
 import type { ChatPopupMessage } from '../../base/models/chat.model';
 import type { ChatThreadRecord } from '../../base/models/chats.model';
-import { LocalAdminDemoDataService } from './admin-demo-data.service';
+import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
 
 const ADMIN_MODERATION_WARN_ROUTE = '/admin/reports/warn';
@@ -18,7 +18,7 @@ const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
   providedIn: 'root'
 })
 export class LocalAdminModerationService extends LocalRouteDelayService {
-  private readonly demoData = inject(LocalAdminDemoDataService);
+  private readonly supportSession = inject(LocalAdminSupportSessionService);
 
   async warnUser(
     userId: string,
@@ -29,8 +29,12 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!normalizedUserId) {
       return null;
     }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return null;
+    }
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, this.resolveAdmin(admin), message);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message);
     return { userPatch: supportPatch };
   }
 
@@ -43,16 +47,20 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!normalizedUserId) {
       return null;
     }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return null;
+    }
     await this.waitForRouteDelay(ADMIN_MODERATION_BLOCK_ROUTE);
-    const user = this.demoData.queryUserById(normalizedUserId);
+    const user = this.supportSession.findUser(normalizedUserId);
     if (user) {
-      await this.demoData.upsertUser({
+      await this.supportSession.saveUser({
         ...user,
         previousProfileStatus: user.profileStatus,
         profileStatus: 'blocked'
       });
     }
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, this.resolveAdmin(admin), message);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message);
     return {
       userPatch: {
         ...supportPatch,
@@ -70,13 +78,17 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!normalizedUserId) {
       return null;
     }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return null;
+    }
     await this.waitForRouteDelay(ADMIN_MODERATION_UNBLOCK_ROUTE);
-    const user = this.demoData.queryUserById(normalizedUserId);
+    const user = this.supportSession.findUser(normalizedUserId);
     const nextStatus = user?.previousProfileStatus && user.previousProfileStatus !== 'blocked'
       ? user.previousProfileStatus
       : 'public';
     if (user) {
-      await this.demoData.upsertUser({
+      await this.supportSession.saveUser({
         ...user,
         previousProfileStatus: undefined,
         profileStatus: nextStatus
@@ -87,8 +99,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         userId: normalizedUserId,
         profileStatus: nextStatus,
         blockedAtIso: null,
-        hasSupportChat: this.supportChatExists(this.resolveAdmin(admin).id, normalizedUserId),
-        supportChatUnread: this.supportChatUnread(this.resolveAdmin(admin).id, normalizedUserId)
+        hasSupportChat: this.supportChatExists(resolvedAdmin.id, normalizedUserId),
+        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId)
       }
     };
   }
@@ -98,7 +110,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     admin: AdminUserDto,
     text: string
   ): Promise<AdminModerationUserPatch> {
-    const reportedUser = this.demoData.queryUserById(userId);
+    const reportedUser = this.supportSession.findUser(userId);
     const now = new Date();
     const nowIso = now.toISOString();
     const chatId = `c-support-admin-${userId}`;
@@ -151,8 +163,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       mine: true,
       readBy: []
     };
-    await this.demoData.upsertSupportChatMessage(userChat, userMessage, true);
-    await this.demoData.upsertSupportChatMessage(adminChat, adminMessage, false);
+    await this.supportSession.upsertSupportChatMessage(userChat, userMessage, true);
+    await this.supportSession.upsertSupportChatMessage(adminChat, adminMessage, false);
     return {
       userId,
       hasSupportChat: true,
@@ -161,33 +173,26 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
   }
 
   private supportChatExists(adminId: string, userId: string): boolean {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    const normalizedAdminId = `${adminId ?? ''}`.trim();
-    if (!normalizedUserId || !normalizedAdminId) {
-      return false;
-    }
-    return this.demoData.queryChatItemsByUser(normalizedAdminId)
-      .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
+    return this.supportSession.supportChatExists(adminId, userId);
   }
 
   private supportChatUnread(adminId: string, userId: string): number {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    const normalizedAdminId = `${adminId ?? ''}`.trim();
-    if (!normalizedUserId || !normalizedAdminId) {
-      return 0;
-    }
-    const chat = this.demoData.queryChatItemsByUser(normalizedAdminId)
-      .find(item => item.id === `c-support-admin-${normalizedUserId}`);
-    return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
+    return this.supportSession.supportChatUnread(adminId, userId);
   }
 
-  private resolveAdmin(admin: AdminUserDto | null | undefined): AdminUserDto {
-    return admin ?? {
-      id: 'admin-demo-ava',
-      name: 'Ava',
-      initials: 'AM',
-      email: 'ava.admin@myscoutee.local',
-      images: []
+  private resolveAdmin(admin: AdminUserDto | null | undefined): AdminUserDto | null {
+    const id = `${admin?.id ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    return {
+      id,
+      name: `${admin?.name ?? ''}`.trim() || 'Admin',
+      initials: `${admin?.initials ?? ''}`.trim() || 'AD',
+      email: `${admin?.email ?? ''}`.trim() || `${id}@myscoutee.local`,
+      headline: admin?.headline ?? null,
+      about: admin?.about ?? null,
+      images: [...(admin?.images ?? [])]
     };
   }
 }

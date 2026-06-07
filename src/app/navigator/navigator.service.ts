@@ -3,8 +3,10 @@ import { Router } from '@angular/router';
 import {
   AppContext,
   HelpCenterService,
+  PrivacyPolicyService,
   RouteIntervalSchedulerService,
   SessionService,
+  TermsPolicyService,
   UsersService,
   type ActivityMemberOwnerType,
   type ActivityCounters,
@@ -24,7 +26,7 @@ export interface NavigatorMenuUiState {
   settingsOpen: boolean;
 }
 
-export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-user';
+export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
 
 export interface NavigatorReportUserContext {
   targetUserId: string;
@@ -72,6 +74,8 @@ export class NavigatorService {
 
   private readonly usersService = inject(UsersService);
   private readonly helpCenterService = inject(HelpCenterService);
+  private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly termsPolicy = inject(TermsPolicyService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
@@ -185,7 +189,7 @@ export class NavigatorService {
     effect(() => {
       const session = this.sessionService.session();
       const activeUserId = this.appCtx.activeUserId().trim();
-      const revision = this.helpCenterService.activePrivacyRevision();
+      const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
         && (Boolean(session) || this.isAdminWorkspaceRoute());
 
@@ -195,7 +199,7 @@ export class NavigatorService {
         return;
       }
       if (!revision) {
-        void this.helpCenterService.preload('privacy');
+        void this.privacyPolicy.prepareOpen();
         return;
       }
 
@@ -243,7 +247,7 @@ export class NavigatorService {
     }
 
     this.syncHydratedUser(loadedUser);
-    void this.helpCenterService.preloadAll();
+    void this.helpCenterService.preload('help');
     return loadedUser;
   }
 
@@ -306,7 +310,7 @@ export class NavigatorService {
   private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevision, checkKey: string): Promise<void> {
     const requestToken = ++this.privacyConsentCheckToken;
     try {
-      const existingConsent = await this.helpCenterService.loadPrivacyConsent(userId, revision.id, revision.version);
+      const existingConsent = await this.privacyPolicy.loadConsent(userId, revision.id, revision.version);
       if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
         return;
       }
@@ -339,7 +343,7 @@ export class NavigatorService {
     if (!entryConsent) {
       return false;
     }
-    await this.helpCenterService.savePrivacyConsent({
+    await this.privacyPolicy.saveConsent({
       userId,
       revisionId: revision.id,
       revisionVersion: revision.version,
@@ -430,7 +434,7 @@ export class NavigatorService {
   private isActivePrivacyConsentRequired(): boolean {
     const requiredKey = this.privacyConsentRequiredKeyRef();
     const activeUserId = this.appCtx.activeUserId().trim();
-    const revision = this.helpCenterService.activePrivacyRevision();
+    const revision = this.privacyPolicy.activeRevision();
     if (!requiredKey || !activeUserId || !revision) {
       return false;
     }
@@ -536,6 +540,12 @@ export class NavigatorService {
   openSettingsPopup(popup: NavigatorSettingsPopup): void {
     if (popup !== 'report-user') {
       this.reportUserContextRef.set(null);
+    }
+    if (popup === 'privacy') {
+      void this.privacyPolicy.prepareOpen();
+    }
+    if (popup === 'terms') {
+      void this.termsPolicy.prepareOpen();
     }
     this.settingsPopupRef.set(popup);
     this.closeSettingsMenu();
@@ -770,7 +780,7 @@ export class NavigatorService {
   }
 
   private resolveUserRealtimeLongPollIntervalMs(): number {
-    return this.usersService.demoModeEnabled
+    return this.usersService.localModeEnabled
       ? NavigatorService.DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS
       : NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
   }

@@ -282,7 +282,7 @@ export class HttpHelpCenterService {
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
-    if (kind === 'privacy' || kind === 'explanation') {
+    if (kind === 'privacy' || kind === 'terms' || kind === 'explanation') {
       return kind;
     }
     return 'help';
@@ -309,6 +309,8 @@ export class HttpHelpCenterService {
     switch (kind) {
       case 'privacy':
         return 'Privacy';
+      case 'terms':
+        return 'Terms';
       case 'explanation':
         return 'Explanation';
       default:
@@ -320,6 +322,8 @@ export class HttpHelpCenterService {
     switch (kind) {
       case 'privacy':
         return APP_STATIC_DATA.defaultPrivacyCenterDescription;
+      case 'terms':
+        return APP_STATIC_DATA.defaultTermsCenterDescription;
       case 'explanation':
         return APP_STATIC_DATA.defaultExplanationHomeRevision.description;
       default:
