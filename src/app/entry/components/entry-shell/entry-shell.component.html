@@ -14,15 +14,18 @@
   (consentRequested)="openEntryConsentPopup(true)"
 ></app-entry-landing>
 
-<app-entry-consent-popup
+<app-privacy-policy-popup
   [open]="showEntryConsentPopup"
+  [lazy]="false"
+  shell="popup"
   [viewOnly]="entryConsentViewOnly"
   [loading]="entryPrivacyLoading"
   [approvalRequired]="!hasEntryConsent"
+  [source]="'entry'"
   (closeRequested)="closeEntryConsentPopup()"
   (acceptRequested)="acceptEntryConsent()"
   (rejectRequested)="rejectEntryConsent()"
-></app-entry-consent-popup>
+></app-privacy-policy-popup>
 
 <app-entry-demo-user-selector
   [open]="showUserSelector"

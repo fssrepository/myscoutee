@@ -1,14 +1,14 @@
-
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
-import { HelpCenterService } from '../../../shared/core';
+
+import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision } from '../../../shared/core/base/models';
+import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
+import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorHelpPopupComponent } from '../navigator-help-popup/navigator-help-popup.component';
-import { NavigatorPrivacyPopupComponent } from '../navigator-privacy-popup/navigator-privacy-popup.component';
 import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
 
 @Component({
@@ -20,17 +20,20 @@ import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popu
     MatIconModule,
     NavigatorHelpPopupComponent,
     NavigatorFeedbackPopupComponent,
-    NavigatorPrivacyPopupComponent,
+    PrivacyPolicyPopupComponent,
     NavigatorReportUserPopupComponent
-],
+  ],
   templateUrl: './navigator-settings-popups.component.html',
   styleUrl: './navigator-settings-popups.component.scss'
 })
 export class NavigatorSettingsPopupsComponent {
   private readonly navigatorService = inject(NavigatorService);
   private readonly helpCenter = inject(HelpCenterService);
+  private readonly appCtx = inject(AppContext);
 
   protected readonly activePopup = this.navigatorService.settingsPopup;
+  protected readonly activeUserId = this.appCtx.activeUserId;
+  protected readonly privacyConsentRequired = this.navigatorService.privacyConsentRequired;
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onWindowEscape(event: Event): void {
@@ -47,8 +50,6 @@ export class NavigatorSettingsPopupsComponent {
         return 'Help';
       case 'feedback':
         return 'Send Feedback';
-      case 'privacy':
-        return 'Privacy';
       case 'report-user':
         return 'Report User';
       default:
@@ -59,9 +60,6 @@ export class NavigatorSettingsPopupsComponent {
   protected popupVersionLabel(popup: NavigatorSettingsPopup): string {
     if (popup === 'help') {
       return this.helpCenter.activeVersionLabel();
-    }
-    if (popup === 'privacy') {
-      return this.helpCenter.activePrivacyVersionLabel();
     }
     return '';
   }
@@ -77,17 +75,23 @@ export class NavigatorSettingsPopupsComponent {
 
   protected popupHeaderClass(popup: NavigatorSettingsPopup): string {
     const color = this.normalizeHeaderColor(this.popupRevision(popup)?.headerColor);
-    return popup === 'help' || popup === 'privacy'
+    return popup === 'help'
       ? `navigator-settings-content-header navigator-settings-header-${color}`
       : '';
+  }
+
+  protected closePopup(): void {
+    this.navigatorService.closeSettingsPopup();
+  }
+
+  protected completePrivacyPopup(): void {
+    this.navigatorService.markActivePrivacyConsentApproved();
+    this.navigatorService.closeSettingsPopup();
   }
 
   private popupRevision(popup: NavigatorSettingsPopup): HelpCenterRevision | null {
     if (popup === 'help') {
       return this.helpCenter.activeRevision();
-    }
-    if (popup === 'privacy') {
-      return this.helpCenter.activePrivacyRevision();
     }
     return null;
   }
@@ -104,9 +108,5 @@ export class NavigatorSettingsPopupsComponent {
       default:
         return 'amber';
     }
-  }
-
-  protected closePopup(): void {
-    this.navigatorService.closeSettingsPopup();
   }
 }

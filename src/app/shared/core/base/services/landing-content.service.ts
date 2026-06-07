@@ -5,8 +5,8 @@ import { HttpLandingContentService } from '../../http/services/landing-content.s
 import type { LandingContentState } from '../models';
 import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { HelpCenterService } from './help-center.service';
 import { IdeaPostsService } from './idea-posts.service';
+import { PrivacyPolicyService } from './privacy-policy.service';
 
 export interface LandingContentDisplayState {
   state: LandingContentState;
@@ -20,8 +20,8 @@ export class LandingContentService extends BaseRouteModeService {
   private static readonly LANDING_CONTENT_ROUTE = '/landing/content';
   private readonly localLandingContentService = inject(LocalLandingContentService);
   private readonly httpLandingContentService = inject(HttpLandingContentService);
-  private readonly helpCenter = inject(HelpCenterService);
   private readonly ideaPosts = inject(IdeaPostsService);
+  private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly stateRef = signal<LandingContentState | null>(null);
   private loadPromise: Promise<LandingContentState> | null = null;
   private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
@@ -38,7 +38,7 @@ export class LandingContentService extends BaseRouteModeService {
         .then(state => {
           const cloned = this.cloneState(state);
           this.stateRef.set(cloned);
-          this.helpCenter.applyState('privacy', cloned.privacy);
+          this.privacyPolicy.applyState(cloned.privacy);
           this.ideaPosts.applyPublishedPosts(cloned.ideas);
           return this.cloneState(cloned);
         })

@@ -988,6 +988,13 @@ const PRIVACY_CENTER_SECTIONS: HelpCenterSection[] = [
     contentHtml: htmlList(GDPR_CONTENT.retention)
   },
   {
+    id: 'account-data-deletion',
+    icon: 'manage_accounts',
+    title: 'Account and data deletion',
+    blurb: 'How account deletion, reactivation, and Meta/Facebook deletion requests are handled.',
+    contentHtml: htmlList(GDPR_CONTENT.accountControls)
+  },
+  {
     id: 'sharing',
     icon: 'share',
     title: 'Third-party sharing',
@@ -1083,6 +1090,13 @@ const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
     title: 'Megőrzés',
     blurb: 'Mennyi ideig őrizzük meg az adatokat.',
     contentHtml: '<ul><li>Fiókprofil-adatok: amíg a fiók aktív.</li><li>Pontos helykoordináták: csak az aktív helyalapú funkciókhoz szükséges ideig.</li><li>Biztonsági és auditnaplók: jogi vagy megfelelőségi igény szerint.</li><li>Törölt fiókok: az adatok a megőrzési idő után törlődnek vagy anonimizálódnak.</li></ul>'
+  },
+  {
+    id: 'account-data-deletion',
+    icon: 'manage_accounts',
+    title: 'Fiók és adatok törlése',
+    blurb: 'Hogyan működik a fióktörlés, az újraaktiválás és a Meta/Facebook törlési kérés.',
+    contentHtml: '<ul><li>A fiók törlése a felhasználói beállítások menüben érhető el. A megerősítés után a fiók törlésre kerül ütemezésre, és a felhasználó kijelentkezik.</li><li>Ha a fiók törölt állapotban van, de még nem lett véglegesen törölve, az ismételt bejelentkezés újraaktiválási megerősítést jeleníthet meg a 30 napos törlési időszak lejárta előtt.</li><li>Ha a törlést Facebook-belépés után a Meta/Facebook fiókbeállításokból kérik, a Meta a MyScoutee backend callbacket hívja meg, és az egyező fiókok ugyanazt a törlési ütemezést követik.</li><li>Törlési kérés küldhető a myscoutee1@gmail.com címre is a MyScoutee fiókhoz kapcsolódó email címről.</li></ul>'
   },
   {
     id: 'sharing',

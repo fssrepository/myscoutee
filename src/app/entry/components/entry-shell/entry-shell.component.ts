@@ -2,8 +2,8 @@ import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Inp
 
 import {
   AppContext,
-  HelpCenterService,
   LandingContentService,
+  PrivacyPolicyService,
   USERS_LOAD_CONTEXT_KEY,
   UsersService,
   type BootstrapProcessStage,
@@ -17,7 +17,7 @@ import { ConfirmationDialogComponent } from '../../../shared/ui/components/confi
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { I18nService } from '../../../shared/core';
 import type { InfoCardData } from '../../../shared/ui';
-import { EntryConsentPopupComponent } from '../entry-consent-popup/entry-consent-popup.component';
+import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
@@ -33,7 +33,7 @@ export interface EntryDemoUserSelectionEvent {
   standalone: true,
   imports: [
     EntryLandingComponent,
-    EntryConsentPopupComponent,
+    PrivacyPolicyPopupComponent,
     EntryDemoUserSelectorComponent,
     EntryFirebaseAuthPopupComponent,
     ConfirmationDialogComponent
@@ -52,7 +52,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly appCtx = inject(AppContext);
-  private readonly helpCenter = inject(HelpCenterService);
+  private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly landingContent = inject(LandingContentService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly i18n = inject(I18nService);
@@ -255,7 +255,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     if (this.entryNetworkUnavailable) {
       return;
     }
-    if (this.helpCenter.privacyState() === null) {
+    if (this.privacyPolicy.state() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
     }
@@ -300,7 +300,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   private initializeEntryFlow(): void {
     this.entryConsentViewOnly = false;
-    this.entryPrivacyLoading = this.helpCenter.privacyState() === null;
+    this.entryPrivacyLoading = this.privacyPolicy.state() === null;
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
     this.syncLandingLoginAvailability(null, 'reset');
@@ -332,7 +332,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }
     this.entryConsentViewOnly = false;
     this.showEntryConsentPopup = true;
-    if (this.helpCenter.privacyState() === null) {
+    if (this.privacyPolicy.state() === null) {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
       return false;
@@ -799,7 +799,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   private entryConsentVersion(): string {
-    const revision = this.helpCenter.activePrivacyRevision();
+    const revision = this.privacyPolicy.activeRevision();
     if (!revision) {
       return '';
     }

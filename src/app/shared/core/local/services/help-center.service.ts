@@ -66,16 +66,6 @@ export class LocalHelpCenterService {
     return this.stateFromTable(table, documentKind, language, context);
   }
 
-  async ensureEntryPrivacySeeded(lang?: string | null): Promise<boolean> {
-    await this.helpCenterRepository.whenReady();
-    const language = this.requestContentLang(lang);
-    const changed = this.ensureSeeded('privacy', language);
-    if (changed) {
-      await this.helpCenterRepository.flushToIndexedDb();
-    }
-    return changed;
-  }
-
   private ensureStaticDefaultsSeeded(): boolean {
     let changed = false;
     for (const option of this.availableLanguages()) {

@@ -15,13 +15,7 @@ export const routes: Routes = [
   },
   {
     path: 'privacy-policy',
-    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
-    data: { legalPage: 'privacy' }
-  },
-  {
-    path: 'data-deletion',
-    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
-    data: { legalPage: 'deletion' }
+    loadComponent: () => import('./shared/ui/components/privacy-policy-popup/privacy-policy-popup.component').then(m => m.PrivacyPolicyPopupComponent)
   },
   {
     path: 'admin/help/:token',

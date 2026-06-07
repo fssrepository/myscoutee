@@ -25,7 +25,7 @@
     <span>Report Bugs</span>
   </a>
 
-  <button type="button" class="user-settings-item" [disabled]="!hasActivePrivacyRevision()" (click)="openPopup('privacy', $event)">
+  <button type="button" class="user-settings-item" (click)="openPopup('privacy', $event)">
     <mat-icon>policy</mat-icon>
     <span>Privacy</span>
     @if (privacyVersionLabel()) {

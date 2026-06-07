@@ -27,7 +27,6 @@ export class LocalLandingContentService {
 
   async loadContent(): Promise<LandingContentState> {
     await this.memoryDb.resetStorageOnce();
-    await this.helpCenter.ensureEntryPrivacySeeded();
     const [privacy, ideas] = await Promise.all([
       this.helpCenter.loadState('privacy'),
       this.ideaPosts.loadPublishedPosts(),

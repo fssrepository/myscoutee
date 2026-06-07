@@ -7,6 +7,7 @@ export * from './topic-picker-popup';
 export * from './pricing-editor';
 export * from './pricing-slot-panel';
 export * from './event-checkout-popup';
+export * from './privacy-policy-popup';
 
 export * from './basket';
 export * from './confirmation-dialog';

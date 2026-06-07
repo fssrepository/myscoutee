@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
+import type { HelpCenterRevision, HelpCenterState } from '../models';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey =
@@ -127,6 +128,7 @@ export class AppContext {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
+  private readonly _privacyState = signal<HelpCenterState | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
@@ -138,9 +140,14 @@ export class AppContext {
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly privacyState = this._privacyState.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
   readonly isOnline = computed(() => this._connectivityState() === 'online');
+  readonly activePrivacyRevision = computed(() => {
+    const revision = this._privacyState()?.activeRevision ?? null;
+    return revision ? this.cloneHelpCenterRevision(revision) : null;
+  });
   readonly activeUserProfile = computed(() => {
     const normalizedUserId = this._activeUserId().trim();
     if (!normalizedUserId) {
@@ -195,6 +202,10 @@ export class AppContext {
 
   setOnlineState(isOnline: boolean): void {
     this._connectivityState.set(isOnline ? 'online' : 'offline');
+  }
+
+  setPrivacyState(state: HelpCenterState | null): void {
+    this._privacyState.set(state ? this.cloneHelpCenterState(state) : null);
   }
 
   getUserProfile(userId: string): UserDto | null {
@@ -783,5 +794,26 @@ export class AppContext {
         options: [...(row.options ?? [])]
       }))
     }));
+  }
+
+  private cloneHelpCenterState(state: HelpCenterState): HelpCenterState {
+    return {
+      activeRevision: state.activeRevision ? this.cloneHelpCenterRevision(state.activeRevision) : null,
+      revisions: state.revisions.map(revision => this.cloneHelpCenterRevision(revision)),
+      auditTrail: state.auditTrail.map(entry => ({ ...entry })),
+      availableLanguages: state.availableLanguages.map(language => ({ ...language }))
+    };
+  }
+
+  private cloneHelpCenterRevision(revision: HelpCenterRevision): HelpCenterRevision {
+    return {
+      ...revision,
+      sections: revision.sections.map(section => ({
+        ...section,
+        imageUrls: [...(section.imageUrls ?? [])],
+        details: [...(section.details ?? [])],
+        points: [...(section.points ?? [])]
+      }))
+    };
   }
 }

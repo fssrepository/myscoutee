@@ -9,6 +9,7 @@ import type {
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
 } from '../models';
+import { AppContext } from '../context/app.context';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
@@ -19,6 +20,7 @@ export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 export class HelpCenterService extends BaseRouteModeService {
   private readonly localHelpCenterService = inject(LocalHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
+  private readonly appCtx = inject(AppContext);
   private readonly helpStateRef = signal<HelpCenterState | null>(null);
   private readonly privacyStateRef = signal<HelpCenterState | null>(null);
   private readonly explanationStateRef = signal<HelpCenterState | null>(null);
@@ -126,6 +128,7 @@ export class HelpCenterService extends BaseRouteModeService {
     const cloned = this.cloneState(state);
     if (kind === 'privacy') {
       this.privacyStateRef.set(cloned);
+      this.appCtx.setPrivacyState(cloned);
       return;
     }
     if (kind === 'explanation') {

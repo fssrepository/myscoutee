@@ -1,4 +1,15 @@
-@if (activePopup(); as popup) {
+@if (activePopup() === 'privacy') {
+  <app-privacy-policy-popup
+    [open]="true"
+    shell="popup"
+    [viewOnly]="true"
+    [source]="'settings'"
+    [activeUserId]="activeUserId()"
+    [approvalRequired]="privacyConsentRequired()"
+    (closeRequested)="closePopup()"
+    (acceptRequested)="completePrivacyPopup()"
+  ></app-privacy-policy-popup>
+} @else if (activePopup(); as popup) {
   <section
     class="app-popup navigator-settings-popup-shell"
     [class.navigator-settings-popup-shell-report-user]="popup === 'report-user'"
@@ -27,9 +38,6 @@
         }
         @if (popup === 'feedback') {
           <app-navigator-feedback-popup></app-navigator-feedback-popup>
-        }
-        @if (popup === 'privacy') {
-          <app-navigator-privacy-popup></app-navigator-privacy-popup>
         }
         @if (popup === 'report-user') {
           <app-navigator-report-user-popup></app-navigator-report-user-popup>
