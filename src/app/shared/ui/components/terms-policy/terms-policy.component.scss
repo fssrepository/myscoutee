@@ -8,7 +8,10 @@
 }
 
 .terms-policy-page {
-  min-height: 100vh;
+  box-sizing: border-box;
+  min-height: 0;
+  height: 100vh;
+  overflow: hidden;
   padding: 36px 16px 64px;
   background:
     radial-gradient(circle at top left, rgba(80, 96, 125, 0.12), transparent 34rem),
@@ -34,6 +37,7 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   width: min(1040px, calc(100vw - 48px));
+  height: min(760px, calc(100vh - 48px));
   max-height: min(760px, calc(100vh - 48px));
   border-radius: 14px;
   box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32);
@@ -43,6 +47,8 @@
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   width: min(920px, 100%);
+  height: 100%;
+  min-height: 0;
   margin: 0 auto;
   border: 1px solid rgba(35, 45, 72, 0.1);
   border-radius: 14px;
@@ -164,11 +170,22 @@
   justify-content: center;
   width: 36px;
   height: 36px;
+  margin: -3px -10px 0 0;
   border: 1px solid rgba(41, 78, 128, 0.14);
   border-radius: 50%;
   background: #fff;
   color: #36547d;
   cursor: pointer;
+}
+
+.terms-policy-close .mat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
 }
 
 .terms-policy-content {
@@ -193,28 +210,6 @@
 
 .terms-policy-item.is-open {
   border-color: rgba(70, 129, 209, 0.34);
-}
-
-.terms-policy-item.is-mandatory .terms-policy-item-head {
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.94) 0%, rgba(246, 250, 255, 0.92) 100%);
-}
-
-.terms-policy-item.is-mandatory .terms-policy-item-title,
-.terms-policy-item.is-mandatory .terms-policy-item-title .mat-icon {
-  color: #36547d;
-}
-
-.terms-policy-item.is-optional {
-  border-color: rgba(67, 155, 106, 0.24);
-}
-
-.terms-policy-item.is-optional .terms-policy-item-head {
-  background: linear-gradient(180deg, rgba(240, 251, 244, 0.94) 0%, rgba(248, 255, 251, 0.92) 100%);
-}
-
-.terms-policy-item.is-optional .terms-policy-item-title,
-.terms-policy-item.is-optional .terms-policy-item-title .mat-icon {
-  color: #247448;
 }
 
 .terms-policy-item-head {
@@ -339,8 +334,9 @@
   .terms-policy-panel,
   .terms-policy-page-panel {
     width: 100%;
+    height: 100vh;
     max-height: none;
-    min-height: 100vh;
+    min-height: 0;
     border-radius: 0;
   }
 

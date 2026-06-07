@@ -18,7 +18,7 @@
             <span>MyScoutee</span>
           </a>
         }
-        <div class="privacy-policy-popup-head-row" [class.has-close]="viewOnly">
+        <div class="privacy-policy-popup-head-row" [class.has-close]="isPopupShell()">
           <div class="privacy-policy-popup-title-wrap">
             <h2>
               <span data-i18n-ignore>{{ activeSummaryLabel() }}</span>
@@ -28,7 +28,7 @@
           @if (versionLabel()) {
             <span class="privacy-policy-popup-version">{{ versionLabel() }}</span>
           }
-          @if (viewOnly && isPopupShell()) {
+          @if (isPopupShell()) {
             <button
               type="button"
               class="privacy-policy-popup-close"

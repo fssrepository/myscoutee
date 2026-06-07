@@ -267,7 +267,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   protected closeEntryConsentPopup(): void {
-    if (this.entryPrivacyLoading || !this.hasEntryConsent) {
+    if (this.entryPrivacyLoading) {
       return;
     }
     this.showEntryConsentPopup = false;

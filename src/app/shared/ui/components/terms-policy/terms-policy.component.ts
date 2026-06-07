@@ -69,10 +69,6 @@ export class TermsPolicyComponent implements OnInit, OnChanges {
     this.openSectionId = this.openSectionId === sectionId ? '' : sectionId;
   }
 
-  protected isSectionOptional(section: HelpCenterSection): boolean {
-    return section.optional === true;
-  }
-
   protected onSectionKeydown(sectionId: string, event: KeyboardEvent): void {
     if (event.key !== 'Enter' && event.key !== ' ') {
       return;

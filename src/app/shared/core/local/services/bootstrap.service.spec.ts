@@ -88,6 +88,8 @@ describe('Demo bootstrap seeding', () => {
     expect(table.ids).not.toContain('stale');
     expect(content.ideas.some(post => post.id === 'stale')).toBe(false);
     expect(content.ideas.length).toBeGreaterThan(0);
+    expect(content.privacy.activeRevision?.documentKind).toBe('privacy');
+    expect(content.terms.activeRevision?.documentKind).toBe('terms');
   });
 
   it('builds the admin affinity graph from bootstrap ratings with two demo clusters', async () => {
