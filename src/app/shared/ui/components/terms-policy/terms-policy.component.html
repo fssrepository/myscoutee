@@ -58,6 +58,8 @@
               <article
                 class="terms-policy-item"
                 [class.is-open]="openSectionId === section.id"
+                [class.is-mandatory]="!isSectionOptional(section)"
+                [class.is-optional]="isSectionOptional(section)"
                 >
                 <div class="terms-policy-item-head">
                   <button
@@ -94,6 +96,20 @@
                       data-i18n-ignore
                       [innerHTML]="section.contentHtml"
                     ></div>
+                    @if (section.points?.length) {
+                      <ul class="terms-policy-list">
+                        @for (point of section.points; track point) {
+                          <li>{{ point }}</li>
+                        }
+                      </ul>
+                    }
+                    @if (section.details?.length) {
+                      <ul class="terms-policy-list">
+                        @for (detail of section.details; track detail) {
+                          <li>{{ detail }}</li>
+                        }
+                      </ul>
+                    }
                   </div>
                 }
               </article>

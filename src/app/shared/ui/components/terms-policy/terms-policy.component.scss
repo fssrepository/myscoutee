@@ -124,7 +124,7 @@
 }
 
 .terms-policy-head-row.has-close {
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) max-content max-content;
 }
 
 .terms-policy-title-wrap {
@@ -193,6 +193,28 @@
 
 .terms-policy-item.is-open {
   border-color: rgba(70, 129, 209, 0.34);
+}
+
+.terms-policy-item.is-mandatory .terms-policy-item-head {
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.94) 0%, rgba(246, 250, 255, 0.92) 100%);
+}
+
+.terms-policy-item.is-mandatory .terms-policy-item-title,
+.terms-policy-item.is-mandatory .terms-policy-item-title .mat-icon {
+  color: #36547d;
+}
+
+.terms-policy-item.is-optional {
+  border-color: rgba(67, 155, 106, 0.24);
+}
+
+.terms-policy-item.is-optional .terms-policy-item-head {
+  background: linear-gradient(180deg, rgba(240, 251, 244, 0.94) 0%, rgba(248, 255, 251, 0.92) 100%);
+}
+
+.terms-policy-item.is-optional .terms-policy-item-title,
+.terms-policy-item.is-optional .terms-policy-item-title .mat-icon {
+  color: #247448;
 }
 
 .terms-policy-item-head {
@@ -274,6 +296,14 @@
   padding-left: 1.2rem;
 }
 
+.terms-policy-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.2rem;
+  color: #26374f;
+}
+
 .terms-policy-status {
   display: grid;
   place-items: center;
@@ -316,12 +346,8 @@
 
   .terms-policy-head-row,
   .terms-policy-head-row.has-close {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .terms-policy-version {
-    grid-column: 1 / -1;
-    width: fit-content;
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    gap: 10px;
   }
 
   .terms-policy-content {
