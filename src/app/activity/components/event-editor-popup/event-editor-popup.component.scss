@@ -1,3 +1,5 @@
+@use '../../../shared/ui/styles' as ui;
+
 :host {
   --interactive-motion-duration: 0.16s;
   --interactive-motion-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
@@ -213,25 +215,7 @@
   color: rgba(21, 39, 62, 0.72);
 }
 
-.popup-close {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(38, 67, 105, 0.92);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.popup-close .mat-icon {
-  width: 21px;
-  height: 21px;
-  font-size: 21px;
-  line-height: 21px;
-}
+@include ui.popup-close-button();
 
 .popup-header-add-btn {
   width: 30px;

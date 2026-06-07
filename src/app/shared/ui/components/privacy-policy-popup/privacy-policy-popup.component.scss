@@ -1,3 +1,7 @@
+@use '../../styles' as ui;
+
+@include ui.popup-close-button('.privacy-policy-popup-close');
+
 .privacy-policy-popup-overlay {
   position: fixed;
   inset: 0;
@@ -163,27 +167,7 @@
 }
 
 .privacy-policy-popup-close {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
   margin: -3px -10px 0 0;
-  border: 1px solid rgba(41, 78, 128, 0.14);
-  border-radius: 50%;
-  background: #fff;
-  color: #36547d;
-  cursor: pointer;
-}
-
-.privacy-policy-popup-close .mat-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-  line-height: 20px;
 }
 
 .privacy-policy-popup-content {

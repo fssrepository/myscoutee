@@ -81,26 +81,6 @@
   white-space: nowrap;
 }
 
-.asset-member-picker-popup-shell .popup-close {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(38, 67, 105, 0.92);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.asset-member-picker-popup-shell .popup-close .mat-icon {
-  width: 21px;
-  height: 21px;
-  font-size: 21px;
-  line-height: 21px;
-}
-
 .asset-member-picker-popup-shell .popup-title p {
   margin: 0.14rem 0 0;
   color: rgba(32, 54, 84, 0.72);

@@ -1,3 +1,5 @@
+@use '../../../shared/ui/styles' as ui;
+
 :host {
   --text-main: #22324a;
   --line: rgba(23, 33, 54, 0.12);
@@ -544,25 +546,7 @@
   }
 }
 
-.popup-close {
-  width: 34px;
-  height: 34px;
-  border: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: rgba(38, 67, 105, 0.92);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.popup-close .mat-icon {
-  width: 21px;
-  height: 21px;
-  font-size: 21px;
-  line-height: 21px;
-}
+@include ui.popup-close-button();
 
 .popup-header-chat .popup-close {
   margin-left: 0;
