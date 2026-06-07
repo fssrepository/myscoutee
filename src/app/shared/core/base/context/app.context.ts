@@ -220,6 +220,23 @@ export class AppContext {
     }));
   }
 
+  patchActiveUserProfile(
+    patch: Partial<Omit<UserDto, 'id'>> | ((current: UserDto) => Partial<Omit<UserDto, 'id'>>)
+  ): UserDto | null {
+    const current = this.activeUserProfile();
+    if (!current) {
+      return null;
+    }
+    const resolvedPatch = typeof patch === 'function' ? patch(current) : patch;
+    const nextUser: UserDto = {
+      ...current,
+      ...resolvedPatch,
+      id: current.id
+    };
+    this.setUserProfile(nextUser);
+    return this.getUserProfile(current.id);
+  }
+
   clearUserProfile(userId: string): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
