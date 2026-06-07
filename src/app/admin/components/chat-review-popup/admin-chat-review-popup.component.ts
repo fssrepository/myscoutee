@@ -3,10 +3,15 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import {
+  AppContext,
+  AdminModerationService as CoreAdminModerationService,
+  type AdminModerationActionResult
+} from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import type { AdminChatMessageDto } from '../../models/admin-moderation.model';
-import { AdminModerationService } from '../../services/admin-moderation.service';
+import type { AdminChatMessageDto, AdminReportedUserDto } from '../../models/admin-moderation.model';
 import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 @Component({
   selector: 'app-admin-chat-review-popup',
@@ -17,7 +22,9 @@ import { AdminShellService } from '../../services/admin-shell.service';
 })
 export class AdminChatReviewPopupComponent {
   protected readonly admin = inject(AdminShellService);
-  private readonly moderation = inject(AdminModerationService);
+  private readonly appCtx = inject(AppContext);
+  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly moderationData = inject(CoreAdminModerationService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
   protected sending = false;
   protected sendState: 'idle' | 'sending' | 'success' | 'error' = 'idle';
@@ -41,7 +48,7 @@ export class AdminChatReviewPopupComponent {
     this.sendState = 'sending';
     this.sendStatus = '';
     try {
-      await this.moderation.warnUser(user.userId, message);
+      await this.warnUser(user.userId, message);
       this.sendState = 'success';
       this.sendStatus = 'Warning message was sent to the user.';
       this.warnMessage = '';
@@ -51,5 +58,54 @@ export class AdminChatReviewPopupComponent {
     } finally {
       this.sending = false;
     }
+  }
+
+  private async warnUser(userId: string, message: string): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const result = await this.moderationData.warnUser(
+      normalizedUserId,
+      this.appCtx.activeAdminUser(),
+      message
+    );
+    this.applyModerationActionResult(normalizedUserId, result);
+  }
+
+  private applyModerationActionResult(
+    userId: string,
+    result: AdminModerationActionResult | null | undefined
+  ): void {
+    if (!result) {
+      return;
+    }
+    if (result.dashboard) {
+      this.workspace.applyDashboard(result.dashboard);
+    }
+    if (result.userPatch) {
+      this.workspace.patchModerationUser(result.userPatch);
+    }
+    this.refreshSelectedReportedUser(userId);
+  }
+
+  private refreshSelectedReportedUser(userId: string): void {
+    const selected = this.admin.selectedReportedUser();
+    if (!selected || selected.userId !== userId) {
+      return;
+    }
+    this.admin.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {
+    const dashboard = this.workspace.dashboard();
+    if (!dashboard) {
+      return null;
+    }
+    const normalizedUserId = userId.trim();
+    return [
+      ...(dashboard.reportedUsers ?? []),
+      ...(dashboard.blockedUsers ?? [])
+    ].find(user => user.userId === normalizedUserId) ?? null;
   }
 }
