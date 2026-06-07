@@ -3,6 +3,7 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AdminParamsService, AppContext } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
@@ -13,7 +14,6 @@ import {
   type AdminParamsSectionDto,
   type AdminParamsStateDto
 } from '../../models/admin-params.model';
-import { AdminParamsService } from '../../services/admin-params.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
@@ -28,6 +28,7 @@ type AdminParamOption = Readonly<AdminParamOptionDto>;
 export class AdminParamsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminShellService);
   protected readonly paramsService = inject(AdminParamsService);
+  private readonly appCtx = inject(AppContext);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly reverting = signal(false);
@@ -62,7 +63,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.loading.set(true);
     this.error.set('');
     try {
-      const state = await this.paramsService.loadParamsState();
+      const state = await this.paramsService.loadParamsState(this.activeAdminId());
       this.state.set(state);
       if (!this.openSectionKey() && state.sections.length) {
         this.openSectionKey.set(state.sections[0].key);
@@ -114,7 +115,8 @@ export class AdminParamsPopupComponent implements OnDestroy {
       const state = await this.paramsService.saveParamsSection(
         draft.section.key,
         draft.fields,
-        `Updated ${draft.section.label} parameters.`
+        `Updated ${draft.section.label} parameters.`,
+        this.activeAdminId()
       );
       this.state.set(state);
       this.openSectionKey.set(draft.section.key);
@@ -143,7 +145,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     });
     this.historyLoading.set(true);
     try {
-      const history = await this.paramsService.loadParamsHistory(section.key);
+      const history = await this.paramsService.loadParamsHistory(section.key, this.activeAdminId());
       if (this.historyLoadGeneration !== loadGeneration) {
         return;
       }
@@ -186,12 +188,12 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.error.set('');
     let loadGeneration = 0;
     try {
-      const state = await this.paramsService.revertParamsSection(history.sectionKey, item.version);
+      const state = await this.paramsService.revertParamsSection(history.sectionKey, item.version, this.activeAdminId());
       this.state.set(state);
       this.openSectionKey.set(history.sectionKey);
       loadGeneration = ++this.historyLoadGeneration;
       this.historyLoading.set(true);
-      const refreshedHistory = await this.paramsService.loadParamsHistory(history.sectionKey);
+      const refreshedHistory = await this.paramsService.loadParamsHistory(history.sectionKey, this.activeAdminId());
       if (this.historyLoadGeneration !== loadGeneration) {
         return;
       }
@@ -298,5 +300,9 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   private messageFromError(error: unknown, fallback: string): string {
     return error instanceof Error && error.message ? error.message : fallback;
+  }
+
+  private activeAdminId(): string {
+    return this.appCtx.activeUserId().trim();
   }
 }

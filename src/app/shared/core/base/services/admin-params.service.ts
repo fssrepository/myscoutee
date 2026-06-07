@@ -13,11 +13,8 @@ import type {
 import { HttpAdminParamsService } from '../../http/services/admin-params.service';
 import { LocalAdminParamsService } from '../../local/services/admin-params.service';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { RouteDelayService } from './route-delay.service';
 
 const ADMIN_PARAMS_ROUTE = '/admin/params';
-const ADMIN_PARAMS_LOAD_ROUTE = '/admin/params';
-const ADMIN_PARAMS_HISTORY_ROUTE = '/admin/params/history';
 
 export interface AdminParamsDelayOptions {
   skipDemoDelay?: boolean;
@@ -29,18 +26,9 @@ export interface AdminParamsDelayOptions {
 export class AdminParamsService extends BaseRouteModeService {
   private readonly localService = inject(LocalAdminParamsService);
   private readonly httpService = inject(HttpAdminParamsService);
-  private readonly routeDelay = inject(RouteDelayService);
 
   private get paramsService(): LocalAdminParamsService | HttpAdminParamsService {
     return this.resolveRouteService(ADMIN_PARAMS_ROUTE, this.localService, this.httpService);
-  }
-
-  paramsLoadProgressWindowMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_PARAMS_LOAD_ROUTE);
-  }
-
-  paramsHistoryProgressWindowMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_PARAMS_HISTORY_ROUTE);
   }
 
   async loadParamsState(adminUserId?: string | null, options?: AdminParamsDelayOptions): Promise<AdminParamsStateDto> {

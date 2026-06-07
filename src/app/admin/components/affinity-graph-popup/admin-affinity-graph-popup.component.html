@@ -48,13 +48,20 @@
       }
       @if (graphProgressVisible()) {
         <div class="affinity-graph-progress-shell">
-          @let progressConfig = graphProgressConfig();
-          <app-progress-indicator
-            kind="bar"
-            [placement]="progressConfig.placement ?? 'inline'"
-            [state]="progressConfig.state ?? 'scrolling'"
-            [position]="progressConfig.position ?? 0"
-          ></app-progress-indicator>
+          @if (graphDataLoading()) {
+            <app-progress-indicator
+              kind="bar"
+              placement="inline"
+              state="loading"
+            ></app-progress-indicator>
+          } @else {
+            <app-progress-indicator
+              kind="bar"
+              placement="inline"
+              state="scrolling"
+              [position]="graphZoomProgress()"
+            ></app-progress-indicator>
+          }
         </div>
       }
       <button type="button" class="popup-close affinity-graph-close" (click)="close()" aria-label="Close">

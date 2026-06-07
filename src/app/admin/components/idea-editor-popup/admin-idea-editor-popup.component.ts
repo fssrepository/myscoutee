@@ -92,7 +92,6 @@ export class AdminIdeaEditorPopupComponent {
   private adminPostsLoadGeneration = 0;
   private articlePanelLoadGeneration = 0;
   private listRevision = 0;
-  protected readonly articlePanelLoadProgressDurationMs = this.ideaPosts.adminArticlePanelLoadProgressDurationMs();
   private readonly postsByLang = new Map<string, IdeaPostLangCache>();
   private adminPostList: IdeaPost[] = [];
   private adminPostIndex = new Map<string, IdeaPost>();
@@ -274,16 +273,11 @@ export class AdminIdeaEditorPopupComponent {
   protected async startNew(event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetLang = this.selectedContentLang;
-    const generation = this.beginArticlePanelLoad('editor');
     this.draftContentLang = targetLang;
     this.editing = false;
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.ideaPosts.prepareAdminArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
-      return;
-    }
     this.beginEditing({
       id: null,
       contentKey: '',
@@ -296,22 +290,15 @@ export class AdminIdeaEditorPopupComponent {
       submittedAtLocal: this.toDateTimeLocal(new Date().toISOString()),
       mode: 'html'
     });
-    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected async openViewer(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
-    const generation = this.beginArticlePanelLoad('viewer');
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.ideaPosts.prepareAdminArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
-      return;
-    }
     this.viewerPostId = targetPost.id;
     this.viewerPost = targetPost;
-    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected closeViewer(event?: Event): void {
@@ -327,18 +314,12 @@ export class AdminIdeaEditorPopupComponent {
   protected async startEditing(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
-    const generation = this.beginArticlePanelLoad('editor');
     this.viewerPostId = '';
     this.viewerPost = null;
     this.editing = false;
     this.draft = null;
     this.draftContentLang = this.normalizeContentLang(targetPost.lang);
-    await this.ideaPosts.prepareAdminArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
-      return;
-    }
     this.beginEditing(this.draftFromPost(targetPost));
-    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected closeEditor(event?: Event): void {
@@ -360,11 +341,6 @@ export class AdminIdeaEditorPopupComponent {
     const submittedAtIso = this.fromDateTimeLocal(activeDraft.submittedAtLocal);
     const contentHtml = activeDraft.contentHtml.trim() || '<p></p>';
     const imageUrls = this.draftImageUrls(activeDraft);
-    const generation = this.beginArticlePanelLoad('viewer');
-    await this.ideaPosts.prepareAdminArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
-      return;
-    }
     this.viewerPostId = activeDraft.id || 'draft-preview';
     this.viewerPost = {
       id: activeDraft.id || 'draft-preview',
@@ -387,7 +363,6 @@ export class AdminIdeaEditorPopupComponent {
       updatedAtIso: submittedAtIso,
       updatedByUserId: this.actorUserId()
     };
-    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected async saveDraft(event?: Event): Promise<IdeaPost | null> {
@@ -881,10 +856,7 @@ export class AdminIdeaEditorPopupComponent {
     const currentDraft = this.draft;
     this.formLanguageMenuOpen = false;
     const generation = this.beginArticlePanelLoad('editor');
-    const [translation] = await Promise.all([
-      this.findArticleTranslation(currentDraft.contentKey, normalized),
-      this.ideaPosts.prepareAdminArticlePanelLoad()
-    ]);
+    const translation = await this.findArticleTranslation(currentDraft.contentKey, normalized);
     if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
       return;
     }

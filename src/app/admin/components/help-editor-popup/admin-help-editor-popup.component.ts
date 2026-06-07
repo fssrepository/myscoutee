@@ -1002,10 +1002,6 @@ export class AdminHelpEditorPopupComponent {
     return this.uiText(`Loading ${this.documentLabelLower()} revisions`);
   }
 
-  protected loadingProgressDurationMs(): number {
-    return this.helpCenter.adminRevisionsProgressDurationMs(this.documentKind);
-  }
-
   protected revisionsAriaLabel(): string {
     return this.uiText(`${this.documentLabel()} revisions`);
   }

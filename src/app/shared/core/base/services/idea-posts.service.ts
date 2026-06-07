@@ -47,14 +47,6 @@ export class IdeaPostsService extends BaseRouteModeService {
     return this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
-  async prepareAdminArticlePanelLoad(): Promise<void> {
-    await this.ideaService().prepareAdminArticlePanelLoad();
-  }
-
-  adminArticlePanelLoadProgressDurationMs(): number {
-    return this.ideaService().adminArticlePanelLoadProgressDurationMs();
-  }
-
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     const post = await this.ideaService().savePost(request);
     this.mergeAdminPost(post);

@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type {
+import {
+  AdminMonitoringService,
+  AppContext,
+  type AdminMonitoringStateDto,
   AdminMonitoringCategoryDto,
   AdminMonitoringEdgeDto,
   AdminMonitoringHealth,
@@ -10,7 +13,6 @@ import type {
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminMonitoringService } from '../../services/admin-monitoring.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 const MONITORING_POPUP_KEY = 'monitoring';
@@ -50,11 +52,12 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 export class AdminMonitoringPopupComponent implements OnInit {
   protected readonly admin = inject(AdminShellService);
   protected readonly monitoringService = inject(AdminMonitoringService);
+  private readonly appCtx = inject(AppContext);
   protected readonly popupKey = MONITORING_POPUP_KEY;
   protected readonly filterOptions = MONITORING_FILTER_OPTIONS;
   protected readonly loading = signal(false);
   protected readonly error = signal('');
-  protected readonly state = signal<Awaited<ReturnType<AdminMonitoringService['loadMonitoringState']>> | null>(null);
+  protected readonly state = signal<AdminMonitoringStateDto | null>(null);
   protected readonly filter = signal<MonitoringFilter>(MONITORING_FILTER.all);
   protected readonly filterMenuOpen = signal(false);
 
@@ -134,7 +137,7 @@ export class AdminMonitoringPopupComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     try {
-      const state = await this.monitoringService.loadMonitoringState();
+      const state = await this.monitoringService.loadMonitoringState(this.appCtx.activeUserId().trim());
       this.state.set(state);
     } catch {
       this.error.set('admin.monitoring.error.load');

@@ -36,14 +36,6 @@ export class LocalIdeaPostsService {
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
   }
 
-  async prepareAdminArticlePanelLoad(): Promise<void> {
-    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE, undefined, undefined, 450);
-  }
-
-  adminArticlePanelLoadProgressDurationMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
-  }
-
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     await this.ideaPostsRepository.whenReady();
     this.ideaPostsRepository.assertSeeded();

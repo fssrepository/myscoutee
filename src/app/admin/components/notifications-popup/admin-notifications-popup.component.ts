@@ -3,7 +3,7 @@ import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppContext } from '../../../shared/core';
+import { AdminNotificationsService, AppContext } from '../../../shared/core';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
@@ -16,7 +16,6 @@ import type {
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminNotificationsService } from '../../services/admin-notifications.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 const PROCESS_LIST_FILTER = {
@@ -372,7 +371,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.error.set('');
     try {
-      const state = await this.notificationsService.loadNotificationCenter({ skipDemoDelay: silent });
+      const state = await this.notificationsService.loadNotificationCenter(this.activeAdminId(), { skipDemoDelay: silent });
       if (silent) {
         this.mergeRuntimeState(state);
       } else {
@@ -405,7 +404,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.saving.set(true);
     this.error.set('');
     try {
-      const savedState = await this.notificationsService.saveNotificationCenter(rulesToSave);
+      const savedState = await this.notificationsService.saveNotificationCenter(rulesToSave, this.activeAdminId());
       const normalizedState = this.ensureProcessRules(savedState);
       this.state.set(normalizedState);
       this.captureTimingBaselines(normalizedState.rules);
@@ -495,7 +494,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       }
     }));
     try {
-      const result = await this.notificationsService.runNotificationRule(rule.ruleKey);
+      const result = await this.notificationsService.runNotificationRule(rule.ruleKey, this.activeAdminId());
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
       this.patchRule(rule.ruleKey, current => {
         const isRunningResponse = this.isRuntimeStatus(result.status, PROCESS_RUNTIME_STATUS.running);
@@ -1113,7 +1112,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     if (this.unsubscribeRuntimeUpdates) {
       return;
     }
-    this.unsubscribeRuntimeUpdates = this.notificationsService.subscribeNotificationRuleUpdates(event => this.applyRuntimeEvent(event));
+    this.unsubscribeRuntimeUpdates = this.notificationsService.subscribeNotificationRuleUpdates(
+      this.activeAdminId(),
+      event => this.applyRuntimeEvent(event)
+    );
   }
 
   private stopRuntimeUpdates(): void {

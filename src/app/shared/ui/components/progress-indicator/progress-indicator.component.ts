@@ -190,7 +190,10 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
     if (this.isOfflineState) {
       return 'scaleX(1)';
     }
-    return `scaleX(${this.clampUnit(this.position)})`;
+    const position = this.usesTimedLoadProgress()
+      ? this.timedLoadPosition()
+      : this.position;
+    return `scaleX(${this.clampUnit(position)})`;
   }
 
   protected loadRingDashOffset(): number {
@@ -289,7 +292,10 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   }
 
   private usesTimedLoadProgress(): boolean {
-    return this.autoProgress && !this.manualPositionInput && this.isLoadRingKind && this.isLoadingState;
+    return this.autoProgress
+      && !this.manualPositionInput
+      && this.isLoadingState
+      && (this.isLoadRingKind || this.isBarKind);
   }
 
   private nowMs(): number {

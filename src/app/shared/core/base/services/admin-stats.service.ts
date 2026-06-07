@@ -14,7 +14,6 @@ import type {
 import { HttpAdminStatsService } from '../../http/services/admin-stats.service';
 import { LocalAdminStatsService } from '../../local/services/admin-stats.service';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { RouteDelayService } from './route-delay.service';
 
 const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
 
@@ -24,14 +23,9 @@ const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
 export class AdminStatsService extends BaseRouteModeService {
   private readonly localService = inject(LocalAdminStatsService);
   private readonly httpService = inject(HttpAdminStatsService);
-  private readonly routeDelay = inject(RouteDelayService);
 
   private get statsService(): LocalAdminStatsService | HttpAdminStatsService {
     return this.resolveRouteService(ADMIN_STATS_LOAD_ROUTE, this.localService, this.httpService);
-  }
-
-  statsLoadProgressWindowMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs(ADMIN_STATS_LOAD_ROUTE);
   }
 
   async loadStatsDashboard(adminUserId?: string | null): Promise<AdminStatsDashboardDto> {

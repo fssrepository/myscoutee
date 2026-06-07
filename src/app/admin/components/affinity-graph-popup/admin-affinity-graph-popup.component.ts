@@ -3,11 +3,10 @@ import { Component, OnDestroy, computed, effect, inject, signal } from '@angular
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-import { AdminAffinityGraphPopupStateService } from '../../services/admin-affinity-graph-popup-state.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AppContext } from '../../../shared/core';
+import { AdminAffinityGraphService, AppContext } from '../../../shared/core';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { ProgressIndicatorComponent, type ProgressIndicatorBarConfig } from '../../../shared/ui/components';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components';
 
 @Component({
   selector: 'app-admin-affinity-graph-popup',
@@ -22,35 +21,22 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);
   protected readonly popupKey = 'affinity-graph';
   private readonly document = inject(DOCUMENT);
-  private readonly affinityGraph = inject(AdminAffinityGraphPopupStateService);
+  private readonly affinityGraph = inject(AdminAffinityGraphService);
   private readonly sanitizer = inject(DomSanitizer);
   private readonly originalBodyOverflow = this.document.body.style.overflow;
   private readonly originalHtmlOverflow = this.document.documentElement.style.overflow;
   private readonly graphMessageHandler = (event: MessageEvent) => this.handleGraphMessage(event);
-  private readonly graphZoomProgress = signal(0);
+  protected readonly graphZoomProgress = signal(0);
   protected readonly graphFrameLoaded = signal(false);
   private readonly graphStaticShellVisible = signal(false);
   protected readonly graphStaticChromeVisible = computed(() =>
     this.admin.activePopup() === this.popupKey && this.graphStaticShellVisible()
   );
   protected readonly graphProgressVisible = computed(() => this.admin.activePopup() === this.popupKey);
-  protected readonly graphProgressConfig = computed<ProgressIndicatorBarConfig>(() => {
-    const loadingState = this.affinityGraph.loadingState();
-    if (!loadingState.active) {
-      return {
-        position: this.graphZoomProgress(),
-        state: 'scrolling',
-        placement: 'inline'
-      };
-    }
-    return {
-      position: loadingState.progress,
-      state: loadingState.overdue ? 'loading-overdue' : 'loading',
-      placement: 'inline'
-    };
-  });
+  protected readonly graphDataLoading = signal(false);
   private graphStaticShellHideTimer: ReturnType<typeof setTimeout> | null = null;
   private graphOpenRequestId = 0;
+  private graphLoadingCounter = 0;
 
   constructor() {
     this.document.defaultView?.addEventListener('message', this.graphMessageHandler);
@@ -156,27 +142,27 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     const adminUserId = this.appCtx.activeUserId().trim();
     switch (method) {
       case 'initialGraph':
-        return this.affinityGraph.loadInitialGraph(adminUserId);
+        return this.withGraphDataLoading(() => this.affinityGraph.loadInitialGraph(adminUserId));
       case 'meta':
-        return this.affinityGraph.loadMeta(adminUserId, this.rangeParams(params));
+        return this.withGraphDataLoading(() => this.affinityGraph.loadMeta(adminUserId, this.rangeParams(params)));
       case 'forests':
-        return this.affinityGraph.loadForests(adminUserId, this.forestParams(params));
+        return this.withGraphDataLoading(() => this.affinityGraph.loadForests(adminUserId, this.forestParams(params)));
       case 'tile':
-        return this.affinityGraph.loadTile(adminUserId, {
+        return this.withGraphDataLoading(() => this.affinityGraph.loadTile(adminUserId, {
           ...this.rangeParams(params),
           layoutVersion: this.optionalString(params['layoutVersion']),
           componentId: this.optionalString(params['componentId']),
           z: this.optionalNumber(params['z']),
           x: this.optionalNumber(params['x']),
           y: this.optionalNumber(params['y'])
-        });
+        }));
       case 'neighborhood':
-        return this.affinityGraph.loadNeighborhood(
+        return this.withGraphDataLoading(() => this.affinityGraph.loadNeighborhood(
           this.optionalString(params['userId']) ?? '',
           this.optionalNumber(params['depth']),
           adminUserId,
           this.rangeParams(params)
-        );
+        ));
       case 'lazyImage':
         return this.loadLazyImage(params);
       default:
@@ -190,6 +176,27 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
       imageUrl,
       loaded: await LazyBgImageDirective.preloadImageUrl(imageUrl)
     };
+  }
+
+  private async withGraphDataLoading<T>(work: () => Promise<T>): Promise<T> {
+    this.beginGraphDataLoading();
+    try {
+      return await work();
+    } finally {
+      this.endGraphDataLoading();
+    }
+  }
+
+  private beginGraphDataLoading(): void {
+    this.graphLoadingCounter += 1;
+    this.graphDataLoading.set(true);
+  }
+
+  private endGraphDataLoading(): void {
+    this.graphLoadingCounter = Math.max(0, this.graphLoadingCounter - 1);
+    if (this.graphLoadingCounter === 0) {
+      this.graphDataLoading.set(false);
+    }
   }
 
   private rangeParams(params: Record<string, unknown>): { minWeight?: number; maxWeight?: number } {

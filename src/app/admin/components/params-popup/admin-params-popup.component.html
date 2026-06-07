@@ -20,7 +20,6 @@
             <app-progress-indicator
               kind="load-ring"
               state="loading"
-              [durationMs]="paramsService.paramsLoadProgressWindowMs()"
             ></app-progress-indicator>
             <span>{{ 'admin.params.loading' | i18n }}</span>
           </div>
@@ -199,7 +198,6 @@
             <app-progress-indicator
               kind="load-ring"
               state="loading"
-              [durationMs]="paramsService.paramsHistoryProgressWindowMs()"
             ></app-progress-indicator>
             <span>{{ 'admin.params.history.loading' | i18n }}</span>
           </div>

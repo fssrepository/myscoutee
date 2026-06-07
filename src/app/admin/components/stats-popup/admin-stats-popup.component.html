@@ -30,7 +30,6 @@
               <app-progress-indicator
                 kind="load-ring"
                 state="loading"
-                [durationMs]="statsService.statsLoadProgressWindowMs()"
               ></app-progress-indicator>
               <span>{{ 'loading.stats' | i18n }}</span>
             </div>
@@ -42,7 +41,6 @@
             <app-progress-indicator
               kind="load-ring"
               state="loading"
-              [durationMs]="statsService.statsLoadProgressWindowMs()"
             ></app-progress-indicator>
             <span>{{ 'loading.stats' | i18n }}</span>
           </div>
