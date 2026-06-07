@@ -770,7 +770,7 @@ export class NavigatorService {
   }
 
   private resolveUserRealtimeLongPollIntervalMs(): number {
-    return this.usersService.demoModeEnabled
+    return this.usersService.localModeEnabled
       ? NavigatorService.DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS
       : NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
   }

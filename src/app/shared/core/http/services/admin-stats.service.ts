@@ -1,26 +1,25 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
-import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import type { AdminStatsDashboardDto } from '../models/admin-stats.model';
-import { ADMIN_STATS_LOAD_ROUTE } from './admin-stats.constants';
-import { AdminWorkspaceService } from './admin-workspace.service';
+import { environment } from '../../../../../environments/environment';
+import type { AdminStatsDashboardDto } from '../../../../admin/models/admin-stats.model';
+import { RouteDelayService } from '../../base/services/route-delay.service';
+
+const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AdminStatsHttpService {
+export class HttpAdminStatsService {
   readonly source = 'http' as const;
   private readonly http = inject(HttpClient);
-  private readonly workspace = inject(AdminWorkspaceService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
+  async loadStatsDashboard(adminUserId?: string | null): Promise<AdminStatsDashboardDto> {
     const state = await this.routeDelay.withRequestTimeout(ADMIN_STATS_LOAD_ROUTE, this.http
       .get<AdminStatsDashboardDto>(`${this.apiBaseUrl}/admin/stats`, {
-        params: { adminUserId: this.workspace.activeAdmin()?.id ?? '' }
+        params: { adminUserId: `${adminUserId ?? ''}`.trim() }
       })
       .toPromise(), 'Stats request timed out.');
     if (!state) {

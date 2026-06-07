@@ -1,12 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../shared/core/base/db';
-import { APP_INDEXED_DB_KEYS } from '../../shared/core/base/storage-scope';
+import { AppMemoryDb } from '../../base/db';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AdminParamsRepository {
+export class LocalAdminParamsRepository {
   private readonly memoryDb = inject(AppMemoryDb);
 
   async whenReady(): Promise<void> {

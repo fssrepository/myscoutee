@@ -4,7 +4,7 @@ import type { AdminUserDto } from '../../../../admin/models/admin-profile.model'
 import type {
   AdminModerationActionResult,
   AdminModerationUserPatch
-} from '../../base/services/admin-moderation-data.service';
+} from '../../base/services/admin-moderation.service';
 import type { ChatPopupMessage } from '../../base/models/chat.model';
 import type { ChatThreadRecord } from '../../base/models/chats.model';
 import { LocalAdminDemoDataService } from './admin-demo-data.service';

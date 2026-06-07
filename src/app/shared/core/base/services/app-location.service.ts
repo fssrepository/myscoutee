@@ -311,7 +311,7 @@ export class AppLocationService {
     coordinates: LocationCoordinates
   ): void {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
-    if (this.usersService.demoModeEnabled || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
+    if (this.usersService.localModeEnabled || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
       return;
     }
 
@@ -327,7 +327,7 @@ export class AppLocationService {
     userId: string,
     fallbackUser: UserDto
   ): Promise<void> {
-    if (this.usersService.demoModeEnabled || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
+    if (this.usersService.localModeEnabled || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
       return;
     }
 

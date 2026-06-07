@@ -7,7 +7,7 @@ import { SessionService } from './session.service';
 export abstract class BaseRouteModeService {
   protected readonly sessionService = inject(SessionService);
 
-  protected isDemoModeEnabled(route: string): boolean {
+  protected isLocalRouteEnabled(route: string): boolean {
     const routeConfig = resolveRouteConfig(route);
     if (routeConfig.http) {
       return false;
@@ -16,7 +16,7 @@ export abstract class BaseRouteModeService {
       && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
   }
 
-  protected resolveRouteService<TDemo, THttp>(route: string, localService: TDemo, httpService: THttp): TDemo | THttp {
-    return this.isDemoModeEnabled(route) ? localService : httpService;
+  protected resolveRouteService<TLocal, THttp>(route: string, localService: TLocal, httpService: THttp): TLocal | THttp {
+    return this.isLocalRouteEnabled(route) ? localService : httpService;
   }
 }

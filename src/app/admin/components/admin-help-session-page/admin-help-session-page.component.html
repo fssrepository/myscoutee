@@ -1,0 +1,17 @@
+<section class="admin-help-session"></section>
+
+<app-entry-demo-user-selector
+  [open]="selectorOpen"
+  [title]="'Opening shared user'"
+  [subtitle]="'Support selected the user from the service chat. Preparing the same app view now.'"
+  [loading]="selectorLoading"
+  [loadingProgress]="selectorLoadingProgress"
+  [loadingLabel]="selectorLoadingLabel"
+  [loadingStage]="selectorLoadingStage"
+  [errorMessage]="error"
+  [submitting]="selectorSubmitting"
+  [users]="selectorUsers"
+  [selectedUserId]="selectorSelectedUserId"
+  (closeRequested)="goAdmin()"
+  (retryRequested)="retry()"
+></app-entry-demo-user-selector>

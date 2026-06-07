@@ -22,7 +22,7 @@ export interface AdminModerationActionResult {
 @Injectable({
   providedIn: 'root'
 })
-export class AdminModerationDataService extends BaseRouteModeService {
+export class AdminModerationService extends BaseRouteModeService {
   private readonly localService = inject(LocalAdminModerationService);
   private readonly httpService = inject(HttpAdminModerationService);
 

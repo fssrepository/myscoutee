@@ -30,7 +30,8 @@ export const routes: Routes = [
   },
   {
     path: 'admin/help/:token',
-    loadComponent: () => import('./admin/admin-help-session-page.component').then(m => m.AdminHelpSessionPageComponent)
+    loadComponent: () => import('./admin/components/admin-help-session-page/admin-help-session-page.component')
+      .then(m => m.AdminHelpSessionPageComponent)
   },
   {
     path: 'admin/workspace',

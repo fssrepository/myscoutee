@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { ActivitiesPopupStateService } from '../../activity/services/activities-popup-state.service';
 import {
-  AdminModerationDataService,
+  AdminModerationService as CoreAdminModerationService,
   type AdminModerationActionResult
 } from '../../shared/core';
 import type { ChatRecord } from '../../shared/core/base/models/chat.model';
@@ -17,7 +17,7 @@ import { AdminWorkspaceService } from './admin-workspace.service';
 export class AdminModerationService {
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly shell = inject(AdminShellService);
-  private readonly moderationData = inject(AdminModerationDataService);
+  private readonly moderationData = inject(CoreAdminModerationService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
 

@@ -1458,7 +1458,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
     this.eventForm.id = eventId;
     const uploadedImageUrl = await this.resolvePersistedEventImageUrl(activeUserId, eventId);
-    if (!this.demoModeEnabled && this.pendingEventImageFile && !uploadedImageUrl) {
+    if (!this.localModeEnabled && this.pendingEventImageFile && !uploadedImageUrl) {
       return false;
     }
     if (uploadedImageUrl) {
@@ -1516,7 +1516,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
-  private get demoModeEnabled(): boolean {
+  private get localModeEnabled(): boolean {
     return environment.activitiesDataSource === 'local';
   }
 

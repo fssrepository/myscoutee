@@ -36,10 +36,20 @@ export { MediaService } from './base/services/media.service';
 export { AdminDemoDataService } from './base/services/admin-demo-data.service';
 export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
 export {
-  AdminModerationDataService,
+  AdminParamsService,
+  type AdminParamsDelayOptions
+} from './base/services/admin-params.service';
+export { AdminMonitoringService } from './base/services/admin-monitoring.service';
+export { AdminStatsService } from './base/services/admin-stats.service';
+export {
+  AdminNotificationsService,
+  type AdminNotificationDelayOptions
+} from './base/services/admin-notifications.service';
+export {
+  AdminModerationService,
   type AdminModerationActionResult,
   type AdminModerationUserPatch
-} from './base/services/admin-moderation-data.service';
+} from './base/services/admin-moderation.service';
 export {
   AdminAffinityGraphService,
   type AdminAffinityGraphRangeParams,

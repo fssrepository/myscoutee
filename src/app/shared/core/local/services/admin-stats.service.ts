@@ -1,21 +1,21 @@
 import { Injectable, inject } from '@angular/core';
 
-import { RouteDelayService } from '../../shared/core/base/services/route-delay.service';
-import type { AdminStatsDashboardDto } from '../models/admin-stats.model';
-import { AdminStatsRepository } from '../repositories/admin-stats.repository';
-import { ADMIN_STATS_LOAD_ROUTE } from './admin-stats.constants';
+import type { AdminStatsDashboardDto } from '../../../../admin/models/admin-stats.model';
+import { LocalAdminStatsRepository } from '../repositories/admin-stats.repository';
+import { LocalRouteDelayService } from './route-delay.service';
+
+const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';
 
 @Injectable({
   providedIn: 'root'
 })
-export class AdminStatsDemoService {
+export class LocalAdminStatsService extends LocalRouteDelayService {
   readonly source = 'demo' as const;
-  private readonly repository = inject(AdminStatsRepository);
-  private readonly routeDelay = inject(RouteDelayService);
+  private readonly repository = inject(LocalAdminStatsRepository);
 
   async loadStatsDashboard(): Promise<AdminStatsDashboardDto> {
     const load = this.readStatsSnapshot();
-    const delay = this.routeDelay.waitForRouteDelay(ADMIN_STATS_LOAD_ROUTE);
+    const delay = this.waitForRouteDelay(ADMIN_STATS_LOAD_ROUTE);
     try {
       const [dashboard] = await Promise.all([load, delay]);
       return dashboard;

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { environment } from '../../environments/environment';
+import { environment } from '../../../../environments/environment';
 import {
   AppPopupContext,
   ActivitiesService,
@@ -15,45 +15,16 @@ import {
   type BootstrapProcessState,
   type UserSelectorListItemDto,
   type ShareTokenResolvedItem
-} from '../shared/core';
-import type { AssetCard } from '../shared/core/base/models';
-import { EntryDemoUserSelectorComponent } from '../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
+} from '../../../shared/core';
+import type { AssetCard } from '../../../shared/core/base/models';
+import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
   imports: [CommonModule, EntryDemoUserSelectorComponent],
-  template: `
-    <section class="admin-help-session"></section>
-    <app-entry-demo-user-selector
-      [open]="selectorOpen"
-      [title]="'Opening shared user'"
-      [subtitle]="'Support selected the user from the service chat. Preparing the same app view now.'"
-      [loading]="selectorLoading"
-      [loadingProgress]="selectorLoadingProgress"
-      [loadingLabel]="selectorLoadingLabel"
-      [loadingStage]="selectorLoadingStage"
-      [errorMessage]="error"
-      [submitting]="selectorSubmitting"
-      [users]="selectorUsers"
-      [selectedUserId]="selectorSelectedUserId"
-      (closeRequested)="goAdmin()"
-      (retryRequested)="retry()"
-    ></app-entry-demo-user-selector>
-  `,
-  styles: [`
-    :host {
-      display: block;
-      min-height: 100vh;
-      background: #eef3fb;
-      color: #132642;
-      font-family: Arial, sans-serif;
-    }
-
-    .admin-help-session {
-      min-height: 100vh;
-    }
-  `]
+  templateUrl: './admin-help-session-page.component.html',
+  styleUrl: './admin-help-session-page.component.scss'
 })
 export class AdminHelpSessionPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
