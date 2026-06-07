@@ -12,6 +12,7 @@
   (demoRequested)="openEntryDemo()"
   (firebaseAuthRequested)="openEntryFirebaseAuth()"
   (consentRequested)="openEntryConsentPopup(true)"
+  (termsRequested)="openEntryTermsPopup()"
 ></app-entry-landing>
 
 <app-privacy-policy-popup
@@ -26,6 +27,14 @@
   (acceptRequested)="acceptEntryConsent()"
   (rejectRequested)="rejectEntryConsent()"
 ></app-privacy-policy-popup>
+
+<app-terms-policy
+  [open]="showEntryTermsPopup"
+  [lazy]="false"
+  [loading]="landingArticlesLoading"
+  shell="popup"
+  (closeRequested)="closeEntryTermsPopup()"
+></app-terms-policy>
 
 <app-entry-demo-user-selector
   [open]="showUserSelector"

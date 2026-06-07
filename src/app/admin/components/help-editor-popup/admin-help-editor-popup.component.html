@@ -58,6 +58,18 @@
                   </button>
                   <button
                     type="button"
+                    role="menuitemradio"
+                    [class.is-active]="documentKind === 'terms'"
+                    [attr.aria-checked]="documentKind === 'terms'"
+                    [disabled]="loading() || isAnyActionPending()"
+                    data-motion="none"
+                    (click)="selectDocumentKind('terms', $event)"
+                    >
+                    <mat-icon>rule</mat-icon>
+                    <span>{{ uiText('Terms') }}</span>
+                  </button>
+                  <button
+                    type="button"
                     role="menuitem"
                     class="help-editor-document-menu-branch"
                     [class.is-active]="documentKind === 'explanation'"

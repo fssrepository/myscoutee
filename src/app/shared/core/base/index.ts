@@ -20,6 +20,7 @@ export { EventEditorDataService } from './services/event-editor-data.service';
 export { GameService } from './services/game.service';
 export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help-center.service';
 export { PrivacyPolicyService, type PrivacyPolicyOpenOptions } from './services/privacy-policy.service';
+export { TermsPolicyService, type TermsPolicyOpenOptions } from './services/terms-policy.service';
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';

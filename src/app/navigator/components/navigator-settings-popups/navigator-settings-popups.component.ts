@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppContext, HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision } from '../../../shared/core/base/models';
 import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
+import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorHelpPopupComponent } from '../navigator-help-popup/navigator-help-popup.component';
@@ -21,6 +22,7 @@ import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popu
     NavigatorHelpPopupComponent,
     NavigatorFeedbackPopupComponent,
     PrivacyPolicyPopupComponent,
+    TermsPolicyComponent,
     NavigatorReportUserPopupComponent
   ],
   templateUrl: './navigator-settings-popups.component.html',

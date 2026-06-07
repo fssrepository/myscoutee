@@ -23,20 +23,25 @@ export class HelpCenterService extends BaseRouteModeService {
   private readonly appCtx = inject(AppContext);
   private readonly helpStateRef = signal<HelpCenterState | null>(null);
   private readonly privacyStateRef = signal<HelpCenterState | null>(null);
+  private readonly termsStateRef = signal<HelpCenterState | null>(null);
   private readonly explanationStateRef = signal<HelpCenterState | null>(null);
   private preloadPromises: Partial<Record<HelpCenterDocumentKind, Promise<HelpCenterState>>> = {};
 
   readonly state = this.helpStateRef.asReadonly();
   readonly privacyState = this.privacyStateRef.asReadonly();
+  readonly termsState = this.termsStateRef.asReadonly();
   readonly explanationState = this.explanationStateRef.asReadonly();
   readonly activeRevision = computed(() => this.helpStateRef()?.activeRevision ?? null);
   readonly activePrivacyRevision = computed(() => this.privacyStateRef()?.activeRevision ?? null);
+  readonly activeTermsRevision = computed(() => this.termsStateRef()?.activeRevision ?? null);
   readonly activeExplanationRevision = computed(() => this.explanationStateRef()?.activeRevision ?? null);
   readonly hasActiveRevision = computed(() => Boolean(this.activeRevision()));
   readonly hasActivePrivacyRevision = computed(() => Boolean(this.activePrivacyRevision()));
+  readonly hasActiveTermsRevision = computed(() => Boolean(this.activeTermsRevision()));
   readonly hasActiveExplanationRevision = computed(() => Boolean(this.activeExplanationRevision()));
   readonly activeVersionLabel = computed(() => this.versionLabel(this.activeRevision()?.version));
   readonly activePrivacyVersionLabel = computed(() => this.versionLabel(this.activePrivacyRevision()?.version));
+  readonly activeTermsVersionLabel = computed(() => this.versionLabel(this.activeTermsRevision()?.version));
   readonly activeExplanationVersionLabel = computed(() => this.versionLabel(this.activeExplanationRevision()?.version));
 
   async preload(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
@@ -131,6 +136,10 @@ export class HelpCenterService extends BaseRouteModeService {
       this.appCtx.setPrivacyState(cloned);
       return;
     }
+    if (kind === 'terms') {
+      this.termsStateRef.set(cloned);
+      return;
+    }
     if (kind === 'explanation') {
       this.explanationStateRef.set(cloned);
       return;
@@ -139,7 +148,7 @@ export class HelpCenterService extends BaseRouteModeService {
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
-    if (kind === 'privacy' || kind === 'explanation') {
+    if (kind === 'privacy' || kind === 'terms' || kind === 'explanation') {
       return kind;
     }
     return 'help';

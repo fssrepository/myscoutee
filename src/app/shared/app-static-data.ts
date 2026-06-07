@@ -930,6 +930,54 @@ const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
 ];
 
 const htmlList = (items: readonly string[]): string => `<ul>${items.map(item => `<li>${item}</li>`).join('')}</ul>`;
+
+const DEFAULT_TERMS_CENTER_DESCRIPTION = 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.';
+
+const TERMS_CENTER_SECTIONS: HelpCenterSection[] = [
+  {
+    id: 'terms',
+    icon: 'rule',
+    title: 'Terms of service',
+    blurb: 'The baseline rules for using MyScoutee.',
+    contentHtml: '<p>These terms describe the rules for using MyScoutee accounts, profiles, events, chats, moderation tools, and related services.</p><p><strong>Last updated:</strong> February 1, 2026</p>'
+  },
+  {
+    id: 'account-access',
+    icon: 'manage_accounts',
+    title: 'Account access',
+    blurb: 'You are responsible for the account and sign-in method you use.',
+    contentHtml: '<ul><li>Use accurate account information and keep your sign-in method secure.</li><li>Do not impersonate another person or create accounts intended to mislead other members.</li><li>OAuth sign-in is also subject to the relevant provider terms.</li></ul>'
+  },
+  {
+    id: 'community-conduct',
+    icon: 'groups',
+    title: 'Community conduct',
+    blurb: 'Respectful behavior keeps events and chats usable for everyone.',
+    contentHtml: '<ul><li>Do not harass, threaten, spam, scam, or intentionally mislead other members.</li><li>Do not post illegal, hateful, exploitative, or unsafe content.</li><li>Hosts and admins may moderate, limit, or remove content and accounts that violate these terms.</li></ul>'
+  },
+  {
+    id: 'events-and-content',
+    icon: 'event_note',
+    title: 'Events and content',
+    blurb: 'Hosts and members are responsible for the events and content they create.',
+    contentHtml: '<ul><li>Only create events, invitations, chats, resources, and posts that you are allowed to share.</li><li>Respect other people&apos;s privacy, images, and intellectual property.</li><li>Event details, availability, and attendee behavior are managed by the relevant hosts and participants.</li></ul>'
+  },
+  {
+    id: 'safety-and-moderation',
+    icon: 'verified_user',
+    title: 'Safety and moderation',
+    blurb: 'MyScoutee may act when platform safety or policy compliance requires it.',
+    contentHtml: '<ul><li>Reports, support cases, and automated signals may be reviewed for safety and abuse prevention.</li><li>Accounts may be warned, restricted, blocked, reactivated, or deleted according to platform policy and applicable law.</li><li>Critical operational and security actions may be logged for audit purposes.</li></ul>'
+  },
+  {
+    id: 'changes',
+    icon: 'history',
+    title: 'Changes to terms',
+    blurb: 'Published revisions define the active terms.',
+    contentHtml: '<ul><li>MyScoutee may update these terms as features, legal requirements, or safety needs change.</li><li>The active published version is shown with the terms page and can be reviewed before continuing where required.</li></ul>'
+  }
+];
+
 const PRIVACY_CENTER_SECTIONS: HelpCenterSection[] = [
   {
     id: 'privacy',
@@ -1114,6 +1162,51 @@ const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
+const TERMS_CENTER_SECTIONS_HU: HelpCenterSection[] = [
+  {
+    id: 'terms',
+    icon: 'rule',
+    title: 'Felhasználási feltételek',
+    blurb: 'A MyScoutee használatának alapvető szabályai.',
+    contentHtml: '<p>Ezek a feltételek írják le a MyScoutee fiókok, profilok, események, csevegések, moderációs eszközök és kapcsolódó szolgáltatások használatának szabályait.</p><p><strong>Utolsó frissítés:</strong> 2026. február 1.</p>'
+  },
+  {
+    id: 'account-access',
+    icon: 'manage_accounts',
+    title: 'Fiókhozzáférés',
+    blurb: 'Te felelsz a használt fiókért és belépési módért.',
+    contentHtml: '<ul><li>Használj pontos fiókadatokat, és tartsd biztonságban a belépési módodat.</li><li>Ne add ki magad más személynek, és ne hozz létre megtévesztő fiókot.</li><li>Az OAuth-belépésre az adott szolgáltató feltételei is vonatkoznak.</li></ul>'
+  },
+  {
+    id: 'community-conduct',
+    icon: 'groups',
+    title: 'Közösségi viselkedés',
+    blurb: 'A tiszteletteljes működés tartja használhatóan az eseményeket és csevegéseket.',
+    contentHtml: '<ul><li>Ne zaklass, fenyegetőzz, spammelj, csalj, és ne vezesd félre szándékosan a tagokat.</li><li>Ne tegyél közzé jogellenes, gyűlöletkeltő, kizsákmányoló vagy veszélyes tartalmat.</li><li>A szervezők és adminok moderálhatják, korlátozhatják vagy eltávolíthatják a feltételeket sértő tartalmakat és fiókokat.</li></ul>'
+  },
+  {
+    id: 'events-and-content',
+    icon: 'event_note',
+    title: 'Események és tartalom',
+    blurb: 'A szervezők és tagok felelnek az általuk létrehozott eseményekért és tartalmakért.',
+    contentHtml: '<ul><li>Csak olyan eseményt, meghívást, csevegést, erőforrást és bejegyzést hozz létre, amelyet jogosult vagy megosztani.</li><li>Tartsd tiszteletben mások magánszféráját, képeit és szellemi tulajdonát.</li><li>Az eseményrészleteket, elérhetőséget és résztvevői viselkedést az érintett szervezők és résztvevők kezelik.</li></ul>'
+  },
+  {
+    id: 'safety-and-moderation',
+    icon: 'verified_user',
+    title: 'Biztonság és moderáció',
+    blurb: 'A MyScoutee léphet, ha a platform biztonsága vagy a szabályok betartása ezt igényli.',
+    contentHtml: '<ul><li>A jelentéseket, support ügyeket és automatikus jelzéseket biztonsági és visszaélés-megelőzési célból át lehet tekinteni.</li><li>A fiókok figyelmeztethetők, korlátozhatók, blokkolhatók, újraaktiválhatók vagy törölhetők a platformszabályok és az alkalmazandó jog szerint.</li><li>A kritikus működési és biztonsági műveletek audit célból naplózhatók.</li></ul>'
+  },
+  {
+    id: 'changes',
+    icon: 'history',
+    title: 'A feltételek változása',
+    blurb: 'A közzétett verziók határozzák meg az aktív feltételeket.',
+    contentHtml: '<ul><li>A MyScoutee frissítheti ezeket a feltételeket, ha a funkciók, jogi követelmények vagy biztonsági igények változnak.</li><li>Az aktív közzétett verzió megjelenik a feltételek oldalon, és szükség esetén folytatás előtt áttekinthető.</li></ul>'
+  }
+];
+
 const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevision = {
   id: 'help-default-v1',
   documentKind: 'help',
@@ -1170,6 +1263,35 @@ const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevision = {
   summary: 'Adatvédelem elsőként',
   description: 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.',
   sections: PRIVACY_CENTER_SECTIONS_HU
+};
+
+const DEFAULT_TERMS_CENTER_REVISION: HelpCenterRevision = {
+  id: 'terms-default-v1',
+  documentKind: 'terms',
+  lang: 'en',
+  languageLabel: 'English',
+  version: 1,
+  title: 'Terms of service',
+  summary: 'Usage terms',
+  description: DEFAULT_TERMS_CENTER_DESCRIPTION,
+  headerColor: 'slate',
+  sections: TERMS_CENTER_SECTIONS,
+  active: true,
+  createdAtIso: '2026-02-01T00:00:00.000Z',
+  createdByUserId: 'system',
+  updatedAtIso: '2026-02-01T00:00:00.000Z',
+  updatedByUserId: 'system'
+};
+
+const DEFAULT_TERMS_CENTER_REVISION_HU: HelpCenterRevision = {
+  ...DEFAULT_TERMS_CENTER_REVISION,
+  id: 'terms-default-hu-v1',
+  lang: 'hu',
+  languageLabel: 'Magyar',
+  title: 'Felhasználási feltételek',
+  summary: 'Használati feltételek',
+  description: 'Tekintsd át a MyScoutee funkcióira, fiókjaira, eseményeire, csevegéseire és közösségi eszközeire vonatkozó feltételeket.',
+  sections: TERMS_CENTER_SECTIONS_HU
 };
 
 const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
@@ -2429,8 +2551,14 @@ export const APP_STATIC_DATA = {
     en: PRIVACY_CENTER_SECTIONS,
     hu: PRIVACY_CENTER_SECTIONS_HU
   },
+  termsCenterSections: TERMS_CENTER_SECTIONS,
+  termsCenterSectionsByLang: {
+    en: TERMS_CENTER_SECTIONS,
+    hu: TERMS_CENTER_SECTIONS_HU
+  },
   defaultHelpCenterDescription: DEFAULT_HELP_CENTER_DESCRIPTION,
   defaultPrivacyCenterDescription: DEFAULT_PRIVACY_CENTER_DESCRIPTION,
+  defaultTermsCenterDescription: DEFAULT_TERMS_CENTER_DESCRIPTION,
   defaultHelpCenterRevision: DEFAULT_HELP_CENTER_REVISION,
   defaultHelpCenterRevisionsByLang: {
     en: DEFAULT_HELP_CENTER_REVISION,
@@ -2440,6 +2568,11 @@ export const APP_STATIC_DATA = {
   defaultPrivacyCenterRevisionsByLang: {
     en: DEFAULT_PRIVACY_CENTER_REVISION,
     hu: DEFAULT_PRIVACY_CENTER_REVISION_HU
+  },
+  defaultTermsCenterRevision: DEFAULT_TERMS_CENTER_REVISION,
+  defaultTermsCenterRevisionsByLang: {
+    en: DEFAULT_TERMS_CENTER_REVISION,
+    hu: DEFAULT_TERMS_CENTER_REVISION_HU
   },
   defaultExplanationHomeRevision: DEFAULT_EXPLANATION_HOME_REVISION,
   defaultExplanationHomeRevisionsByLang: {

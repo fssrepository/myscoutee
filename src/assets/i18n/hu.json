@@ -1,7 +1,7 @@
 {
   "lang": "hu",
-  "version": "2026.06.04.hu.2",
-    "messages": {
+  "version": "2026.06.07.hu.1",
+  "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
     "accept": "Elfogadás",
@@ -1548,6 +1548,34 @@
     "skip": "Kihagyás",
     "required": "Kötelező",
     "optional": "Opcionális",
-    "missing": "Hiányzik"
+    "missing": "Hiányzik",
+    "active.terms.version": "Aktív feltételek v{version}",
+    "add.terms.section": "Feltételek szakasz hozzáadása",
+    "close.terms.popup": "Feltételek ablak bezárása",
+    "collapse.terms.section": "Feltételek szakasz összecsukása",
+    "create.revision.to.enable.terms.popup": "Hozz létre egy verziót a feltételek ablak engedélyezéséhez.",
+    "expand.terms.section": "Feltételek szakasz kibontása",
+    "loading.terms.content": "Feltételek betöltése",
+    "loading.terms.revisions": "Feltételek verzióinak betöltése",
+    "no.active.terms.revision": "Nincs aktív feltételek verzió",
+    "no.terms.revisions": "Nincsenek feltételek verziók",
+    "remove.terms.section": "Feltételek szakasz eltávolítása",
+    "terms": "Feltételek",
+    "terms.are.not.available": "A feltételek nem érhetők el",
+    "terms.content.is.not.available.right.now.": "A feltételek tartalma jelenleg nem érhető el.",
+    "terms.description": "Feltételek leírása",
+    "terms.editor": "Feltételek szerkesztő",
+    "terms.of.service": "Felhasználási feltételek",
+    "terms.popup.header": "Feltételek ablak fejléce",
+    "terms.revisions": "Feltételek verziók",
+    "terms.section.title": "Feltételek szakasz címe",
+    "terms.sections": "Feltételek szakaszai",
+    "toggle.terms.section": "Feltételek szakasz kapcsolása",
+    "unable.to.activate.terms.revisions": "Nem sikerült aktiválni a feltételek verzióját.",
+    "unable.to.delete.terms.revisions": "Nem sikerült törölni a feltételek verzióját.",
+    "unable.to.load.terms.revisions": "Nem sikerült betölteni a feltételek verzióit.",
+    "unable.to.save.terms.revisions": "Nem sikerült menteni a feltételek verzióját.",
+    "usage.terms": "Használati feltételek",
+    "review.the.terms.that.apply.when.you.use.myscoutee.features.accounts.events.chats.and.community.tools.": "Tekintsd át a MyScoutee funkcióira, fiókjaira, eseményeire, csevegéseire és közösségi eszközeire vonatkozó feltételeket."
   }
 }

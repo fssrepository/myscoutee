@@ -66,7 +66,7 @@ export interface HelpCenterSection {
 
 export type HelpCenterSectionPanelSpan = 'span-1' | 'span-2' | 'span-3';
 
-export type HelpCenterDocumentKind = 'help' | 'privacy' | 'explanation';
+export type HelpCenterDocumentKind = 'help' | 'privacy' | 'terms' | 'explanation';
 export type HelpCenterHeaderColor = 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate';
 
 export type HelpCenterAuditAction = 'seed' | 'create' | 'update' | 'activate' | 'delete';

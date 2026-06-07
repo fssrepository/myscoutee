@@ -33,6 +33,14 @@
     }
   </button>
 
+  <button type="button" class="user-settings-item" (click)="openPopup('terms', $event)">
+    <mat-icon>rule</mat-icon>
+    <span>Terms</span>
+    @if (termsVersionLabel()) {
+      <span class="user-settings-version">{{ termsVersionLabel() }}</span>
+    }
+  </button>
+
   @if (!isAdminMode()) {
     <button type="button" class="user-settings-item danger" (click)="openDeleteAccountConfirm($event)">
       <mat-icon>delete_forever</mat-icon>

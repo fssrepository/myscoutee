@@ -9,6 +9,12 @@
     (closeRequested)="closePopup()"
     (acceptRequested)="completePrivacyPopup()"
   ></app-privacy-policy-popup>
+} @else if (activePopup() === 'terms') {
+  <app-terms-policy
+    [open]="true"
+    shell="popup"
+    (closeRequested)="closePopup()"
+  ></app-terms-policy>
 } @else if (activePopup(); as popup) {
   <section
     class="app-popup navigator-settings-popup-shell"

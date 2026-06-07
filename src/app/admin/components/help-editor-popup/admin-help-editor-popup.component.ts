@@ -137,6 +137,7 @@ export class AdminHelpEditorPopupComponent {
   ];
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
+  protected readonly defaultTermsDescription = APP_STATIC_DATA.defaultTermsCenterDescription;
   protected readonly headerColorOptions: Array<{ id: HelpCenterHeaderColor; label: string }> = [
     { id: 'amber', label: 'Amber' },
     { id: 'blue', label: 'Blue' },
@@ -522,6 +523,9 @@ export class AdminHelpEditorPopupComponent {
   protected currentState(): HelpCenterState | null {
     if (this.documentKind === 'privacy') {
       return this.helpCenter.privacyState();
+    }
+    if (this.documentKind === 'terms') {
+      return this.helpCenter.termsState();
     }
     if (this.documentKind === 'explanation') {
       return this.helpCenter.explanationState();
@@ -959,6 +963,8 @@ export class AdminHelpEditorPopupComponent {
     switch (this.documentKind) {
       case 'privacy':
         return 'Privacy';
+      case 'terms':
+        return 'Terms';
       case 'explanation':
         return 'Explanation';
       default:
@@ -970,6 +976,8 @@ export class AdminHelpEditorPopupComponent {
     switch (kind) {
       case 'privacy':
         return 'policy';
+      case 'terms':
+        return 'rule';
       case 'explanation':
         return 'tips_and_updates';
       default:
@@ -1070,6 +1078,8 @@ export class AdminHelpEditorPopupComponent {
     switch (this.documentKind) {
       case 'privacy':
         return this.defaultPrivacyDescription;
+      case 'terms':
+        return this.defaultTermsDescription;
       case 'explanation':
         return APP_STATIC_DATA.defaultExplanationHomeRevision.description;
       default:
@@ -1081,6 +1091,8 @@ export class AdminHelpEditorPopupComponent {
     switch (this.documentKind) {
       case 'privacy':
         return 'policy';
+      case 'terms':
+        return 'rule';
       case 'explanation':
         return 'tips_and_updates';
       default:
@@ -1252,7 +1264,11 @@ export class AdminHelpEditorPopupComponent {
       return this.nextGeneratedExplanationTitle();
     }
     if (this.selectedContentLanguageIsHungarian()) {
-      return this.documentKind === 'privacy' ? 'Új adatvédelmi verzió' : 'Új súgóverzió';
+      return this.documentKind === 'privacy'
+        ? 'Új adatvédelmi verzió'
+        : this.documentKind === 'terms'
+          ? 'Új feltételek verzió'
+          : 'Új súgóverzió';
     }
     return `New ${this.documentLabelLower()} revision`;
   }
@@ -1262,7 +1278,11 @@ export class AdminHelpEditorPopupComponent {
       return this.selectedContentLanguageIsHungarian() ? 'Új magyarázat szakasz' : 'New explanation section';
     }
     if (this.selectedContentLanguageIsHungarian()) {
-      return this.documentKind === 'privacy' ? 'Új adatvédelmi szakasz' : 'Új súgó szakasz';
+      return this.documentKind === 'privacy'
+        ? 'Új adatvédelmi szakasz'
+        : this.documentKind === 'terms'
+          ? 'Új feltételek szakasz'
+          : 'Új súgó szakasz';
     }
     return `New ${this.documentLabelLower()} section`;
   }
@@ -1272,7 +1292,11 @@ export class AdminHelpEditorPopupComponent {
       return this.selectedContentLanguageIsHungarian() ? 'Névtelen magyarázat szakasz' : 'Untitled explanation section';
     }
     if (this.selectedContentLanguageIsHungarian()) {
-      return this.documentKind === 'privacy' ? 'Névtelen adatvédelmi szakasz' : 'Névtelen súgó szakasz';
+      return this.documentKind === 'privacy'
+        ? 'Névtelen adatvédelmi szakasz'
+        : this.documentKind === 'terms'
+          ? 'Névtelen feltételek szakasz'
+          : 'Névtelen súgó szakasz';
     }
     return `Untitled ${this.documentLabelLower()} section`;
   }
@@ -1282,7 +1306,11 @@ export class AdminHelpEditorPopupComponent {
       return this.selectedContentLanguageIsHungarian() ? `Magyarázat szakasz ${index}` : `Explanation section ${index}`;
     }
     if (this.selectedContentLanguageIsHungarian()) {
-      return this.documentKind === 'privacy' ? `Adatvédelmi szakasz ${index}` : `Súgó szakasz ${index}`;
+      return this.documentKind === 'privacy'
+        ? `Adatvédelmi szakasz ${index}`
+        : this.documentKind === 'terms'
+          ? `Feltételek szakasz ${index}`
+          : `Súgó szakasz ${index}`;
     }
     return `${this.documentLabel()} section ${index}`;
   }
@@ -1296,6 +1324,8 @@ export class AdminHelpEditorPopupComponent {
     if (this.selectedContentLanguageIsHungarian()) {
       return this.documentKind === 'privacy'
         ? '<p>Írd le ezt az adatvédelmi szakaszt.</p>'
+        : this.documentKind === 'terms'
+          ? '<p>Írd le ezt a feltételek szakaszt.</p>'
         : '<p>Írd le ezt a súgó szakaszt.</p>';
     }
     return `<p>Describe this ${this.documentLabelLower()} section.</p>`;

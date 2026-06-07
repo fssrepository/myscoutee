@@ -7,6 +7,7 @@ import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { IdeaPostsService } from './idea-posts.service';
 import { PrivacyPolicyService } from './privacy-policy.service';
+import { TermsPolicyService } from './terms-policy.service';
 
 export interface LandingContentDisplayState {
   state: LandingContentState;
@@ -22,6 +23,7 @@ export class LandingContentService extends BaseRouteModeService {
   private readonly httpLandingContentService = inject(HttpLandingContentService);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly termsPolicy = inject(TermsPolicyService);
   private readonly stateRef = signal<LandingContentState | null>(null);
   private loadPromise: Promise<LandingContentState> | null = null;
   private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
@@ -39,6 +41,7 @@ export class LandingContentService extends BaseRouteModeService {
           const cloned = this.cloneState(state);
           this.stateRef.set(cloned);
           this.privacyPolicy.applyState(cloned.privacy);
+          this.termsPolicy.applyState(cloned.terms);
           this.ideaPosts.applyPublishedPosts(cloned.ideas);
           return this.cloneState(cloned);
         })
@@ -98,6 +101,20 @@ export class LandingContentService extends BaseRouteModeService {
         })),
         auditTrail: state.privacy.auditTrail.map(entry => ({ ...entry })),
         availableLanguages: state.privacy.availableLanguages.map(language => ({ ...language }))
+      },
+      terms: {
+        activeRevision: state.terms.activeRevision
+          ? {
+              ...state.terms.activeRevision,
+              sections: state.terms.activeRevision.sections.map(section => ({ ...section }))
+            }
+          : null,
+        revisions: state.terms.revisions.map(revision => ({
+          ...revision,
+          sections: revision.sections.map(section => ({ ...section }))
+        })),
+        auditTrail: state.terms.auditTrail.map(entry => ({ ...entry })),
+        availableLanguages: state.terms.availableLanguages.map(language => ({ ...language }))
       },
       ideas: state.ideas.map(post => ({ ...post, imageUrls: [...post.imageUrls] })),
       loginAvailability: state.loginAvailability

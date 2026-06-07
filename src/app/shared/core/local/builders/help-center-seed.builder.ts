@@ -19,6 +19,8 @@ export class LocalHelpCenterSeedBuilder {
     if (this.normalizeLang(lang) === 'hu') {
       return kind === 'privacy'
         ? `Adatvédelmi verzió v${version}`
+        : kind === 'terms'
+          ? `Feltételek verzió v${version}`
         : kind === 'explanation'
           ? `Magyarázat verzió v${version}`
           : `Súgó verzió v${version}`;
@@ -30,12 +32,16 @@ export class LocalHelpCenterSeedBuilder {
     if (this.normalizeLang(lang) === 'hu') {
       return kind === 'privacy'
         ? 'Adatvédelem elsőként'
+        : kind === 'terms'
+          ? 'Használati feltételek'
         : kind === 'explanation'
           ? 'Rövid képernyőmagyarázat'
           : 'Mit tehetsz a MyScoutee-ban';
     }
     return kind === 'privacy'
       ? 'Privacy first'
+      : kind === 'terms'
+        ? 'Usage terms'
       : kind === 'explanation'
         ? 'Short screen guidance'
         : 'What you can do in MyScoutee';
@@ -45,12 +51,16 @@ export class LocalHelpCenterSeedBuilder {
     if (this.normalizeLang(lang) === 'hu') {
       return kind === 'privacy'
         ? 'Folytatás előtt nézd át és fogadd el, hogyan használja a MyScoutee az adataidat.'
+        : kind === 'terms'
+          ? APP_STATIC_DATA.defaultTermsCenterRevisionsByLang.hu.description
         : kind === 'explanation'
           ? APP_STATIC_DATA.defaultExplanationHomeRevisionsByLang.hu.description
           : 'A MyScoutee segít az eseményeket elejétől végéig megtervezni: meghívások, szakaszok és csoportok, erőforrások, valamint kontextushoz kötött csevegések.';
     }
     return kind === 'privacy'
       ? APP_STATIC_DATA.defaultPrivacyCenterDescription
+      : kind === 'terms'
+        ? APP_STATIC_DATA.defaultTermsCenterDescription
       : kind === 'explanation'
         ? ''
         : APP_STATIC_DATA.defaultHelpCenterDescription;
@@ -60,6 +70,8 @@ export class LocalHelpCenterSeedBuilder {
     switch (kind) {
       case 'privacy':
         return 'Privacy';
+      case 'terms':
+        return 'Terms';
       case 'explanation':
         return 'Explanation';
       default:
@@ -71,6 +83,8 @@ export class LocalHelpCenterSeedBuilder {
     switch (kind) {
       case 'privacy':
         return 'policy';
+      case 'terms':
+        return 'rule';
       case 'explanation':
         return 'tips_and_updates';
       default:
@@ -84,6 +98,9 @@ export class LocalHelpCenterSeedBuilder {
   ): { en: HelpCenterRevision; hu: HelpCenterRevision } {
     if (kind === 'privacy') {
       return APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang;
+    }
+    if (kind === 'terms') {
+      return APP_STATIC_DATA.defaultTermsCenterRevisionsByLang;
     }
     if (kind === 'explanation') {
       const context = this.normalizeContextKey(kind, contextKey, false) ?? 'home.game';

@@ -1,0 +1,330 @@
+.terms-policy-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2400;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.terms-policy-page {
+  min-height: 100vh;
+  padding: 36px 16px 64px;
+  background:
+    radial-gradient(circle at top left, rgba(80, 96, 125, 0.12), transparent 34rem),
+    linear-gradient(180deg, #f8fbff 0%, #ffffff 46%, #f7f8fc 100%);
+  color: #172033;
+}
+
+.terms-policy-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 30, 45, 0.62);
+}
+
+.terms-policy-panel,
+.terms-policy-page-panel {
+  overflow: hidden;
+  background: #fff;
+}
+
+.terms-policy-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(1040px, calc(100vw - 48px));
+  max-height: min(760px, calc(100vh - 48px));
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32);
+}
+
+.terms-policy-page-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  width: min(920px, 100%);
+  margin: 0 auto;
+  border: 1px solid rgba(35, 45, 72, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 18px 58px rgba(45, 57, 86, 0.14);
+}
+
+.terms-policy-head {
+  --terms-policy-header-bg: linear-gradient(180deg, #eef3f8 0%, #f8fafc 100%);
+  --terms-policy-header-border: rgba(72, 92, 118, 0.24);
+  --terms-policy-header-title: #304157;
+  --terms-policy-header-text: rgba(48, 65, 87, 0.78);
+  --terms-policy-header-pill-bg: #40566f;
+  border-bottom: 1px solid var(--terms-policy-header-border);
+  background: var(--terms-policy-header-bg);
+}
+
+.terms-policy-header-amber {
+  --terms-policy-header-bg: linear-gradient(180deg, #fbf4e8 0%, #fffaf0 100%);
+  --terms-policy-header-border: rgba(157, 118, 41, 0.24);
+  --terms-policy-header-title: #7c5618;
+  --terms-policy-header-text: rgba(108, 74, 19, 0.84);
+  --terms-policy-header-pill-bg: #b66a15;
+}
+
+.terms-policy-header-blue {
+  --terms-policy-header-bg: linear-gradient(180deg, #eef6ff 0%, #f8fbff 100%);
+  --terms-policy-header-border: rgba(53, 96, 162, 0.24);
+  --terms-policy-header-title: #1f3f6f;
+  --terms-policy-header-text: rgba(46, 78, 119, 0.84);
+  --terms-policy-header-pill-bg: #2f6fae;
+}
+
+.terms-policy-header-green {
+  --terms-policy-header-bg: linear-gradient(180deg, #f0fbf3 0%, #e4f7ea 100%);
+  --terms-policy-header-border: rgba(58, 143, 91, 0.3);
+  --terms-policy-header-title: #246b42;
+  --terms-policy-header-text: rgba(35, 94, 58, 0.84);
+  --terms-policy-header-pill-bg: #1f7a49;
+}
+
+.terms-policy-header-rose {
+  --terms-policy-header-bg: linear-gradient(180deg, #fff1f4 0%, #fff8fa 100%);
+  --terms-policy-header-border: rgba(178, 69, 98, 0.26);
+  --terms-policy-header-title: #8c2e49;
+  --terms-policy-header-text: rgba(122, 45, 70, 0.84);
+  --terms-policy-header-pill-bg: #b94462;
+}
+
+.terms-policy-header-violet {
+  --terms-policy-header-bg: linear-gradient(180deg, #f5f0ff 0%, #fbf8ff 100%);
+  --terms-policy-header-border: rgba(107, 80, 175, 0.26);
+  --terms-policy-header-title: #50398e;
+  --terms-policy-header-text: rgba(75, 52, 128, 0.84);
+  --terms-policy-header-pill-bg: #6b50af;
+}
+
+.terms-policy-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  margin: 18px 20px 0;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.terms-policy-brand img {
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(71, 68, 158, 0.18);
+}
+
+.terms-policy-head-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  padding: 18px 20px;
+}
+
+.terms-policy-head-row.has-close {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.terms-policy-title-wrap {
+  min-width: 0;
+}
+
+.terms-policy-title-wrap h2,
+.terms-policy-title-wrap p {
+  margin: 0;
+}
+
+.terms-policy-title-wrap h2 {
+  color: var(--terms-policy-header-title);
+  font-size: 1.45rem;
+  line-height: 1.12;
+}
+
+.terms-policy-title-wrap p {
+  margin-top: 6px;
+  color: var(--terms-policy-header-text);
+  line-height: 1.45;
+}
+
+.terms-policy-version {
+  align-self: start;
+  border-radius: 999px;
+  background: var(--terms-policy-header-pill-bg);
+  color: #fff;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.terms-policy-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(41, 78, 128, 0.14);
+  border-radius: 50%;
+  background: #fff;
+  color: #36547d;
+  cursor: pointer;
+}
+
+.terms-policy-content {
+  min-height: 0;
+  overflow: auto;
+  padding: 18px;
+  background: #f8fbff;
+}
+
+.terms-policy-accordion {
+  display: grid;
+  gap: 10px;
+}
+
+.terms-policy-item {
+  overflow: hidden;
+  border: 1px solid rgba(71, 95, 130, 0.18);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(38, 52, 82, 0.08);
+}
+
+.terms-policy-item.is-open {
+  border-color: rgba(70, 129, 209, 0.34);
+}
+
+.terms-policy-item-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  min-height: 58px;
+  background: rgba(244, 248, 253, 0.88);
+}
+
+.terms-policy-item.is-open .terms-policy-item-head {
+  border-bottom: 1px solid rgba(71, 95, 130, 0.14);
+}
+
+.terms-policy-toggle,
+.terms-policy-caret-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.terms-policy-toggle {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding: 0 16px;
+  text-align: left;
+}
+
+.terms-policy-item-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: #36547d;
+  font-weight: 800;
+}
+
+.terms-policy-item-title .mat-icon {
+  color: #4b6892;
+}
+
+.terms-policy-caret-btn {
+  width: 52px;
+  color: #496484;
+}
+
+.terms-policy-caret {
+  transition: transform 0.18s ease;
+}
+
+.terms-policy-item.is-open .terms-policy-caret {
+  transform: rotate(180deg);
+}
+
+.terms-policy-item-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.terms-policy-lead {
+  margin: 0;
+  color: #55708f;
+  line-height: 1.45;
+}
+
+.terms-policy-html {
+  color: #26374f;
+  line-height: 1.55;
+}
+
+.terms-policy-html :where(p, ul, ol, h4) {
+  margin-top: 0;
+}
+
+.terms-policy-html :where(ul, ol) {
+  padding-left: 1.2rem;
+}
+
+.terms-policy-status {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  gap: 12px;
+  color: #536982;
+  text-align: center;
+}
+
+.terms-policy-status .mat-icon {
+  color: #58769a;
+}
+
+.terms-policy-status h4,
+.terms-policy-status p {
+  margin: 0;
+}
+
+.terms-policy-status--loading {
+  color: #455d78;
+  font-weight: 800;
+}
+
+@media (max-width: 640px) {
+  .terms-policy-overlay {
+    padding: 0;
+  }
+
+  .terms-policy-page {
+    padding: 0;
+  }
+
+  .terms-policy-panel,
+  .terms-policy-page-panel {
+    width: 100%;
+    max-height: none;
+    min-height: 100vh;
+    border-radius: 0;
+  }
+
+  .terms-policy-head-row,
+  .terms-policy-head-row.has-close {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .terms-policy-version {
+    grid-column: 1 / -1;
+    width: fit-content;
+  }
+
+  .terms-policy-content {
+    padding: 12px;
+  }
+}

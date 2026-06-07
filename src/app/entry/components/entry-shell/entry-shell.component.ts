@@ -18,6 +18,7 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { I18nService } from '../../../shared/core';
 import type { InfoCardData } from '../../../shared/ui';
 import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
+import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';
 import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
@@ -34,6 +35,7 @@ export interface EntryDemoUserSelectionEvent {
   imports: [
     EntryLandingComponent,
     PrivacyPolicyPopupComponent,
+    TermsPolicyComponent,
     EntryDemoUserSelectorComponent,
     EntryFirebaseAuthPopupComponent,
     ConfirmationDialogComponent
@@ -72,6 +74,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
 
   protected showEntryConsentPopup = false;
+  protected showEntryTermsPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
   protected landingArticlesLoading = true;
@@ -269,6 +272,14 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+  }
+
+  protected openEntryTermsPopup(): void {
+    this.showEntryTermsPopup = true;
+  }
+
+  protected closeEntryTermsPopup(): void {
+    this.showEntryTermsPopup = false;
   }
 
   protected acceptEntryConsent(): void {

@@ -72,11 +72,13 @@ export class LocalHelpCenterService {
       const language = option.lang;
       const helpSeeded = this.ensureSeeded('help', language);
       const privacySeeded = this.ensureSeeded('privacy', language);
+      const termsSeeded = this.ensureSeeded('terms', language);
       const explanationsSeeded = LocalHelpCenterSeedBuilder.explanationBootstrapContextKeys()
         .map(contextKey => this.ensureSeeded('explanation', language, contextKey))
         .some(Boolean);
       changed = helpSeeded
         || privacySeeded
+        || termsSeeded
         || explanationsSeeded
         || changed;
     }
@@ -824,7 +826,7 @@ export class LocalHelpCenterService {
   }
 
   private normalizeKind(kind: string | null | undefined): HelpCenterDocumentKind {
-    if (kind === 'privacy' || kind === 'explanation') {
+    if (kind === 'privacy' || kind === 'terms' || kind === 'explanation') {
       return kind;
     }
     return 'help';

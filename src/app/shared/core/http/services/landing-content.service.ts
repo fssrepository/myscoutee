@@ -19,6 +19,7 @@ export class HttpLandingContentService {
   async loadContent(): Promise<LandingContentState> {
     type LandingContentResponse = {
       privacy?: Partial<HelpCenterState> | null;
+      terms?: Partial<HelpCenterState> | null;
       ideas?: unknown;
       loginAvailability?: Partial<UserLocationEligibilityResponseDto> | null;
     };
@@ -30,6 +31,7 @@ export class HttpLandingContentService {
       .toPromise();
     return {
       privacy: this.helpCenter.normalizeExternalState(response?.privacy, 'privacy'),
+      terms: this.helpCenter.normalizeExternalState(response?.terms, 'terms'),
       ideas: this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response?.ideas : []),
       loginAvailability: this.normalizeLoginAvailability(response?.loginAvailability)
     };

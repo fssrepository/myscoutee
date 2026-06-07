@@ -1,0 +1,112 @@
+@if (open) {
+  <section
+    [class.terms-policy-overlay]="isPopupShell()"
+    [class.terms-policy-page]="!isPopupShell()"
+    [attr.aria-label]="uiText('Terms of service')"
+    >
+    @if (isPopupShell()) {
+      <div class="terms-policy-backdrop" (click)="requestClose()"></div>
+    }
+    <article
+      [class.terms-policy-panel]="isPopupShell()"
+      [class.terms-policy-page-panel]="!isPopupShell()"
+      >
+      <header class="terms-policy-head" [ngClass]="headerColorClass()">
+        @if (!isPopupShell()) {
+          <a class="terms-policy-brand" href="/">
+            <img src="assets/icon/android-chrome-192x192.png" alt="" width="40" height="40" />
+            <span>MyScoutee</span>
+          </a>
+        }
+        <div class="terms-policy-head-row" [class.has-close]="isPopupShell()">
+          <div class="terms-policy-title-wrap">
+            <h2>
+              <span data-i18n-ignore>{{ activeSummaryLabel() }}</span>
+            </h2>
+            <p data-i18n-ignore>{{ activeDescriptionLabel() }}</p>
+          </div>
+          @if (versionLabel()) {
+            <span class="terms-policy-version">{{ versionLabel() }}</span>
+          }
+          @if (isPopupShell()) {
+            <button
+              type="button"
+              class="terms-policy-close"
+              matRipple
+              [matRippleColor]="'rgba(41, 78, 128, 0.12)'"
+              (click)="requestClose()"
+              [attr.aria-label]="uiText('Close terms popup')"
+              >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+      </header>
+
+      <div class="terms-policy-content">
+        @if (effectiveLoading()) {
+          <article class="terms-policy-status terms-policy-status--loading">
+            <app-progress-indicator
+              kind="load-ring"
+              state="loading"
+            ></app-progress-indicator>
+            <span>{{ uiText('Loading terms content') }}</span>
+          </article>
+        } @else if (activeRevision() && sections().length > 0) {
+          <div class="terms-policy-accordion" [attr.aria-label]="uiText('Terms sections')">
+            @for (section of sections(); track section.id) {
+              <article
+                class="terms-policy-item"
+                [class.is-open]="openSectionId === section.id"
+                >
+                <div class="terms-policy-item-head">
+                  <button
+                    type="button"
+                    class="terms-policy-toggle"
+                    [attr.aria-expanded]="openSectionId === section.id"
+                    (click)="toggleSection(section.id, $event)"
+                    (keydown)="onSectionKeydown(section.id, $event)"
+                    >
+                    <span class="terms-policy-item-title">
+                      <mat-icon>{{ section.icon }}</mat-icon>
+                      <span data-i18n-ignore>{{ section.title }}</span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    class="terms-policy-caret-btn"
+                    [attr.aria-expanded]="openSectionId === section.id"
+                    [attr.aria-label]="uiText(openSectionId === section.id ? 'Collapse terms section' : 'Expand terms section')"
+                    (click)="toggleSection(section.id, $event)"
+                    >
+                    <mat-icon class="terms-policy-caret">expand_more</mat-icon>
+                  </button>
+                </div>
+                @if (openSectionId === section.id) {
+                  <div class="terms-policy-item-body">
+                    @if (section.blurb) {
+                      <p class="terms-policy-lead" data-i18n-ignore>{{ section.blurb }}</p>
+                    }
+                    <div
+                      class="terms-policy-html"
+                      appLazyBgImage
+                      [appLazyHtmlImages]="true"
+                      data-i18n-ignore
+                      [innerHTML]="section.contentHtml"
+                    ></div>
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <article class="terms-policy-status">
+            <mat-icon>rule</mat-icon>
+            <h4>{{ uiText('Terms are not available') }}</h4>
+            <p>{{ uiText('Terms content is not available right now.') }}</p>
+          </article>
+        }
+      </div>
+    </article>
+  </section>
+}

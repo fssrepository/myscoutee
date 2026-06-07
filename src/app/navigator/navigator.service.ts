@@ -6,6 +6,7 @@ import {
   PrivacyPolicyService,
   RouteIntervalSchedulerService,
   SessionService,
+  TermsPolicyService,
   UsersService,
   type ActivityMemberOwnerType,
   type ActivityCounters,
@@ -25,7 +26,7 @@ export interface NavigatorMenuUiState {
   settingsOpen: boolean;
 }
 
-export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'report-user';
+export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
 
 export interface NavigatorReportUserContext {
   targetUserId: string;
@@ -74,6 +75,7 @@ export class NavigatorService {
   private readonly usersService = inject(UsersService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly termsPolicy = inject(TermsPolicyService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
@@ -541,6 +543,9 @@ export class NavigatorService {
     }
     if (popup === 'privacy') {
       void this.privacyPolicy.prepareOpen();
+    }
+    if (popup === 'terms') {
+      void this.termsPolicy.prepareOpen();
     }
     this.settingsPopupRef.set(popup);
     this.closeSettingsMenu();

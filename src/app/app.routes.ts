@@ -18,6 +18,10 @@ export const routes: Routes = [
     loadComponent: () => import('./shared/ui/components/privacy-policy-popup/privacy-policy-popup.component').then(m => m.PrivacyPolicyPopupComponent)
   },
   {
+    path: 'terms',
+    loadComponent: () => import('./shared/ui/components/terms-policy/terms-policy.component').then(m => m.TermsPolicyComponent)
+  },
+  {
     path: 'admin/help/:token',
     loadComponent: () => import('./admin/components/admin-help-session-page/admin-help-session-page.component')
       .then(m => m.AdminHelpSessionPageComponent)

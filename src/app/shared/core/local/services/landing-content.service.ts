@@ -27,12 +27,13 @@ export class LocalLandingContentService {
 
   async loadContent(): Promise<LandingContentState> {
     await this.memoryDb.resetStorageOnce();
-    const [privacy, ideas] = await Promise.all([
+    const [privacy, terms, ideas] = await Promise.all([
       this.helpCenter.loadState('privacy'),
+      this.helpCenter.loadState('terms'),
       this.ideaPosts.loadPublishedPosts(),
       this.routeDelay.waitForRouteDelay(LocalLandingContentService.LANDING_CONTENT_ROUTE)
     ]);
-    return { privacy, ideas, loginAvailability: LocalLandingContentService.DEMO_LOGIN_AVAILABILITY };
+    return { privacy, terms, ideas, loginAvailability: LocalLandingContentService.DEMO_LOGIN_AVAILABILITY };
   }
 
 }
