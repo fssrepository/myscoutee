@@ -4,6 +4,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import { I18nPipe } from '../../../shared/ui';
 
 @Component({
   selector: 'app-entry-firebase-auth-popup',
@@ -11,7 +12,8 @@ import type * as AppTypes from '../../../shared/core/base/models';
   imports: [
     FormsModule,
     MatRippleModule,
-    MatIconModule
+    MatIconModule,
+    I18nPipe
   ],
   templateUrl: './entry-firebase-auth-popup.component.html',
   styleUrl: './entry-firebase-auth-popup.component.scss'
@@ -33,6 +35,8 @@ export class EntryFirebaseAuthPopupComponent {
   protected passwordVisible = false;
   protected passwordConfirmationVisible = false;
   protected emailError = '';
+  protected readonly googleTermsUrl = 'https://policies.google.com/terms';
+  protected readonly facebookTermsUrl = 'https://www.facebook.com/legal/terms';
 
   protected requestClose(): void {
     this.closeRequested.emit();
@@ -85,19 +89,19 @@ export class EntryFirebaseAuthPopupComponent {
     }
     const normalizedEmail = this.email.trim();
     if (!this.isValidEmail(normalizedEmail)) {
-      this.emailError = 'Adj meg érvényes email címet.';
+      this.emailError = 'firebase.auth.error.email.invalid';
       return;
     }
     if (this.emailMode === 'sign-in' && this.password.length < 6) {
-      this.emailError = 'Adj meg legalább 6 karakteres jelszót.';
+      this.emailError = 'firebase.auth.error.password.minimum';
       return;
     }
     if (this.emailMode === 'create' && !this.isCreatePasswordValid()) {
-      this.emailError = 'A fiók létrehozásához teljesítsd a jelszó feltételeit.';
+      this.emailError = 'firebase.auth.error.password.rules';
       return;
     }
     if (this.emailMode === 'create' && this.password !== this.passwordConfirmation) {
-      this.emailError = 'A két jelszó nem egyezik.';
+      this.emailError = 'firebase.auth.error.password.mismatch';
       return;
     }
     this.emailError = '';
@@ -111,9 +115,9 @@ export class EntryFirebaseAuthPopupComponent {
 
   protected emailSubmitLabel(): string {
     if (this.busy) {
-      return 'Kapcsolódás...';
+      return 'connecting';
     }
-    return this.emailMode === 'create' ? 'Fiók létrehozása' : 'Belépés';
+    return this.emailMode === 'create' ? 'create.account' : 'login';
   }
 
   protected emailPasswordAutocomplete(): string {
@@ -121,7 +125,7 @@ export class EntryFirebaseAuthPopupComponent {
   }
 
   protected passwordPlaceholder(): string {
-    return this.emailMode === 'create' ? 'Min. 8 karakter, betű és szám' : 'Jelszó';
+    return this.emailMode === 'create' ? 'firebase.auth.password.create.placeholder' : 'password';
   }
 
   protected passwordInputType(): string {
@@ -154,15 +158,15 @@ export class EntryFirebaseAuthPopupComponent {
   protected passwordStrengthText(): string {
     switch (this.passwordStrengthLevel()) {
       case 1:
-        return 'Gyenge';
+        return 'password.strength.weak';
       case 2:
-        return 'Alap';
+        return 'password.strength.basic';
       case 3:
-        return 'Jó';
+        return 'good';
       case 4:
-        return 'Erős';
+        return 'password.strength.strong';
       default:
-        return 'Jelszó erőssége';
+        return 'password.strength';
     }
   }
 

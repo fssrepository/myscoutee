@@ -177,6 +177,24 @@
   white-space: nowrap;
 }
 
+.firebase-auth-provider-terms {
+  margin: 0.12rem 0 0;
+  color: rgba(54, 67, 90, 0.68);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.firebase-auth-provider-terms a {
+  color: rgba(28, 86, 168, 0.96);
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.firebase-auth-provider-terms a:hover {
+  text-decoration: underline;
+}
+
 .firebase-auth-divider {
   min-height: 1px;
   display: flex;

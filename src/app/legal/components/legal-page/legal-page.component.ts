@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 
 import { GDPR_CONTENT } from '../../../shared/gdpr-data';
 
-type LegalPageKind = 'privacy' | 'deletion' | 'terms';
+type LegalPageKind = 'privacy' | 'deletion';
 
 interface LegalSection {
   title: string;
@@ -32,8 +32,8 @@ export class LegalPageComponent {
 
   private resolveKind(): LegalPageKind {
     const value = `${this.route.snapshot.data['legalPage'] ?? ''}`.trim();
-    if (value === 'deletion' || value === 'terms') {
-      return value;
+    if (value === 'deletion') {
+      return 'deletion';
     }
     return 'privacy';
   }
@@ -41,9 +41,6 @@ export class LegalPageComponent {
   private resolveContent(kind: LegalPageKind): LegalPageContent {
     if (kind === 'deletion') {
       return this.deletionContent();
-    }
-    if (kind === 'terms') {
-      return this.termsContent();
     }
     return this.privacyContent();
   }
@@ -143,40 +140,4 @@ export class LegalPageComponent {
     };
   }
 
-  private termsContent(): LegalPageContent {
-    return {
-      eyebrow: 'MyScoutee terms',
-      title: 'Terms of Service',
-      summary: 'Basic terms for using MyScoutee social, event, chat, and profile features.',
-      updatedAt: GDPR_CONTENT.updatedAt,
-      sections: [
-        {
-          title: 'Use of the service',
-          items: [
-            'Use MyScoutee lawfully and respectfully.',
-            'Provide accurate profile and account information.',
-            'Do not harass, spam, impersonate others, or misuse event and chat features.'
-          ]
-        },
-        {
-          title: 'Accounts and safety',
-          items: [
-            'You are responsible for activity under your account.',
-            'MyScoutee may restrict, suspend, or remove accounts that create safety, abuse, or platform integrity risks.'
-          ]
-        },
-        {
-          title: 'Content and events',
-          items: [
-            'You are responsible for content, messages, events, and listings you create.',
-            'Events, assets, and conversations should follow applicable laws and community safety expectations.'
-          ]
-        },
-        {
-          title: 'Contact',
-          items: [`Questions about these terms can be sent to ${this.supportEmail}.`]
-        }
-      ]
-    };
-  }
 }

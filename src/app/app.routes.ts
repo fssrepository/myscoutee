@@ -24,11 +24,6 @@ export const routes: Routes = [
     data: { legalPage: 'deletion' }
   },
   {
-    path: 'terms',
-    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
-    data: { legalPage: 'terms' }
-  },
-  {
     path: 'admin/help/:token',
     loadComponent: () => import('./admin/components/admin-help-session-page/admin-help-session-page.component')
       .then(m => m.AdminHelpSessionPageComponent)
