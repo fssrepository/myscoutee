@@ -10,6 +10,7 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
   providedIn: 'root'
 })
 export class LocalIdeaPostsService {
+  private static readonly ADMIN_IDEAS_ROUTE = '/admin/ideas';
   private static readonly MAX_IMAGE_URLS = 24;
   private readonly ideaPostsRepository = inject(LocalIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
@@ -30,9 +31,17 @@ export class LocalIdeaPostsService {
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
     this.ideaPostsRepository.assertSeeded();
-    await this.routeDelay.waitForRouteDelay('/admin/ideas');
+    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
+  }
+
+  async prepareAdminArticlePanelLoad(): Promise<void> {
+    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE, undefined, undefined, 450);
+  }
+
+  adminArticlePanelLoadProgressDurationMs(): number {
+    return this.routeDelay.resolveRequestTimeoutMs(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
   }
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
@@ -80,7 +89,7 @@ export class LocalIdeaPostsService {
         },
         ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
       })),
-      this.routeDelay.waitForRouteDelay('/admin/ideas')
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE)
     ]);
     return this.clonePost(post);
   }
@@ -116,7 +125,7 @@ export class LocalIdeaPostsService {
           }
         };
       }),
-      this.routeDelay.waitForRouteDelay('/admin/ideas')
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE)
     ]);
     return this.sortedPosts(this.table());
   }
@@ -151,7 +160,7 @@ export class LocalIdeaPostsService {
           }
         };
       }),
-      this.routeDelay.waitForRouteDelay('/admin/ideas')
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE)
     ]);
     if (!restored) {
       throw new Error('Article could not be restored.');

@@ -32,13 +32,13 @@ export { LocalProfileExperiencesRepository } from './repositories/profile-experi
 export { LocalUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { LocalUsersRepository as LocalUsersRepository } from './repositories/users.repository';
 export { LocalAssetsService } from './services/assets.service';
-export { LocalAdminDemoDataService } from './services/admin-demo-data.service';
 export { LocalAdminAffinityGraphService } from './services/admin-affinity-graph.service';
 export { LocalAdminModerationService } from './services/admin-moderation.service';
 export { LocalAdminParamsService } from './services/admin-params.service';
 export { LocalAdminMonitoringService } from './services/admin-monitoring.service';
 export { LocalAdminStatsService } from './services/admin-stats.service';
 export { LocalAdminNotificationsService } from './services/admin-notifications.service';
+export { LocalAdminWorkspaceService } from './services/admin-workspace.service';
 export { LocalAssetTicketsService } from './services/asset-tickets.service';
 export { LocalActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { LocalActivityMembersService } from './services/activity-members.service';

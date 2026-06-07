@@ -230,9 +230,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.selectorLoadingProgress = 0;
     this.selectorLoadingStage = 'selector';
     this.selectorLoadingLabel = 'Preparing admin bootstrap';
-    if (this.workspace.usesHttpAdminApi && !this.workspace.isFirebaseAdminMode) {
-      this.sessionService.startDemoSession(adminUserId);
-    }
+    this.workspace.prepareSelectedAdminSession(adminUserId);
     const dashboard = await this.workspace.bootstrapAdmin(adminUserId, state => this.applyProgress(state));
     if (dashboard) {
       this.selectorOpen = false;

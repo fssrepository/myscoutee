@@ -101,6 +101,10 @@ export class HttpHelpCenterService {
     return this.normalizeState(response, documentKind);
   }
 
+  adminRevisionsProgressDurationMs(kind: HelpCenterDocumentKind = 'help'): number {
+    return this.routeDelay.resolveRequestTimeoutMs(`/admin/${this.normalizeKind(kind)}/revisions`);
+  }
+
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const route = `/admin/${documentKind}/revisions`;

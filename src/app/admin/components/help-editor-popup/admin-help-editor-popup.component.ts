@@ -4,8 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { HelpCenterService } from '../../../shared/core';
-import { I18nService } from '../../../shared/core';
+import { AppContext, HelpCenterService, I18nService } from '../../../shared/core';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
@@ -15,13 +14,11 @@ import type {
   HelpCenterSection,
   HelpCenterState
 } from '../../../shared/core/base/models';
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type EditorTab = 'html' | 'preview';
 
@@ -103,9 +100,8 @@ export class AdminHelpEditorPopupComponent {
     'wbr'
   ]);
   protected readonly admin = inject(AdminShellService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly i18n = inject(I18nService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -956,7 +952,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
+    return this.appCtx.activeUserId().trim() || 'admin';
   }
 
   protected documentLabel(): string {
@@ -1007,7 +1003,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected loadingProgressDurationMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs(`/admin/${this.documentKind}/revisions`);
+    return this.helpCenter.adminRevisionsProgressDurationMs(this.documentKind);
   }
 
   protected revisionsAriaLabel(): string {

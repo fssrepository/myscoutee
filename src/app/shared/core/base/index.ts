@@ -22,7 +22,11 @@ export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
-export { AdminDemoDataService } from './services/admin-demo-data.service';
+export {
+  AdminBootstrapService,
+  type AdminBootstrapMenuSeedState,
+  type AdminBootstrapStoresSeed
+} from './services/admin-bootstrap.service';
 export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
 export {
   AdminParamsService,

@@ -34,6 +34,14 @@ export class HttpIdeaPostsService {
     return this.normalizePosts(response);
   }
 
+  async prepareAdminArticlePanelLoad(): Promise<void> {
+    return;
+  }
+
+  adminArticlePanelLoadProgressDurationMs(): number {
+    return 0;
+  }
+
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     const response = await this.http
       .post<Partial<IdeaPost> | null>(`${this.apiBaseUrl}/admin/ideas`, request)

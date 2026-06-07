@@ -87,6 +87,11 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.cloneState(state);
   }
 
+  adminRevisionsProgressDurationMs(kind: HelpCenterDocumentKind = 'help'): number {
+    const documentKind = this.normalizeKind(kind);
+    return this.helpService(documentKind).adminRevisionsProgressDurationMs(documentKind);
+  }
+
   async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).saveRevision(request, documentKind);

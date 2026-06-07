@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import {
+  AppContext,
   AdminNotificationsService as CoreAdminNotificationsService,
   type AdminNotificationCenterState,
   type AdminNotificationDelayOptions,
@@ -8,14 +9,13 @@ import {
   type AdminNotificationRuleLiveEvent,
   type AdminNotificationRunResult
 } from '../../shared/core';
-import { AdminWorkspaceService } from './admin-workspace.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdminNotificationsService {
   private readonly coreNotifications = inject(CoreAdminNotificationsService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
 
   notificationCenterLoadProgressWindowMs(): number {
     return this.coreNotifications.notificationCenterLoadProgressWindowMs();
@@ -45,6 +45,6 @@ export class AdminNotificationsService {
   }
 
   private activeAdminId(): string {
-    return this.workspace.activeAdmin()?.id ?? '';
+    return this.appCtx.activeUserId().trim();
   }
 }

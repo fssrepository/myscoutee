@@ -1,34 +1,31 @@
 import { Location } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
 
-import {
-  AdminDemoDataService,
-  AdminWorkspaceDataService,
-  BootstrapProcessService,
-  type AdminMonitoringStateDto,
-  type AdminNotificationCenterState,
-  type UserDto,
-  type UserSelectorListItemDto
-} from '../../shared/core';
-import type { ChatPopupMessage, ChatRecord } from '../../shared/core/base/models/chat.model';
-import type { AdminDashboardDto } from '../models/admin-dashboard.model';
-import type { AdminHelpTarget } from '../models/admin-help.model';
+import type { UserDto, UserSelectorListItemDto } from '../../base/interfaces';
+import type { AdminBootstrapMenuSeedState } from '../../base/services/admin-bootstrap.service';
+import { BootstrapProcessService } from '../../base/services/bootstrap.service';
+import type { AdminMonitoringStateDto } from '../../base/models/admin-monitoring.model';
+import type { AdminNotificationCenterState } from '../../base/models/admin-notification.model';
+import type { ChatPopupMessage, ChatRecord } from '../../base/models/chat.model';
+import { LocalAdminBootstrapService } from './admin-bootstrap.service';
+import type { AdminDashboardDto } from '../../../../admin/models/admin-dashboard.model';
+import type { AdminHelpTarget } from '../../../../admin/models/admin-help.model';
 import type {
   AdminChatMessageDto,
   AdminFeedbackDto,
   AdminModerationStore,
   AdminReportDto,
   AdminReportedUserDto
-} from '../models/admin-moderation.model';
-import type { AdminUserDto } from '../models/admin-profile.model';
-import type { AdminBootstrapProcessState } from '../models/admin-shell.model';
-import { AdminHelpSeedBuilder } from '../builders/admin-help-seed.builder';
-import { AdminModerationSeedBuilder } from '../builders/admin-moderation-seed.builder';
-import { AdminMonitoringSeedBuilder } from '../builders/admin-monitoring-seed.builder';
-import { AdminNotificationsSeedBuilder } from '../builders/admin-notifications-seed.builder';
-import { AdminParamsSeedBuilder } from '../builders/admin-params-seed.builder';
-import { AdminProfileSeedBuilder } from '../builders/admin-profile-seed.builder';
-import { AdminStatsSeedBuilder } from '../builders/admin-stats-seed.builder';
+} from '../../../../admin/models/admin-moderation.model';
+import type { AdminUserDto } from '../../../../admin/models/admin-profile.model';
+import type { AdminBootstrapProcessState } from '../../../../admin/models/admin-shell.model';
+import { AdminHelpSeedBuilder } from '../../../../admin/builders/admin-help-seed.builder';
+import { AdminModerationSeedBuilder } from '../../../../admin/builders/admin-moderation-seed.builder';
+import { AdminMonitoringSeedBuilder } from '../../../../admin/builders/admin-monitoring-seed.builder';
+import { AdminNotificationsSeedBuilder } from '../../../../admin/builders/admin-notifications-seed.builder';
+import { AdminParamsSeedBuilder } from '../../../../admin/builders/admin-params-seed.builder';
+import { AdminProfileSeedBuilder } from '../../../../admin/builders/admin-profile-seed.builder';
+import { AdminStatsSeedBuilder } from '../../../../admin/builders/admin-stats-seed.builder';
 
 const ADMIN_DEMO_SELECTOR_PROCESS_STEPS: readonly AdminBootstrapProcessState[] = [
   { stage: 'records', percent: 24, label: 'Preparing admin graph members' },
@@ -40,10 +37,9 @@ const ADMIN_DEMO_SELECTOR_PROCESS_STEPS: readonly AdminBootstrapProcessState[] =
 @Injectable({
   providedIn: 'root'
 })
-export class AdminBootstrapService {
+export class LocalAdminWorkspaceService {
   private readonly location = inject(Location);
-  private readonly demoData = inject(AdminDemoDataService);
-  private readonly workspaceData = inject(AdminWorkspaceDataService);
+  private readonly bootstrapData = inject(LocalAdminBootstrapService);
   private readonly bootstrapProcess = inject(BootstrapProcessService);
   private demoAdminSelectorPromise: Promise<void> | null = null;
   private demoAdminSelectorReady = false;
@@ -68,10 +64,9 @@ export class AdminBootstrapService {
   ]).asReadonly();
 
   async prepareAdminSelector(
-    useHttpAdminApi: boolean,
     onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<UserSelectorListItemDto[]> {
-    if (useHttpAdminApi || this.demoAdminSelectorReady) {
+    if (this.demoAdminSelectorReady) {
       onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
       return this.adminUsers();
     }
@@ -86,14 +81,10 @@ export class AdminBootstrapService {
     return this.adminUsers();
   }
 
-  async bootstrapDashboard(
-    useHttpAdminApi: boolean,
+  async loadDashboard(
     adminUserId?: string,
     onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<AdminDashboardDto> {
-    if (useHttpAdminApi) {
-      return await this.workspaceData.loadDashboard(adminUserId);
-    }
     return await this.bootstrapDemoDashboardData(adminUserId, onProgress);
   }
 
@@ -102,24 +93,20 @@ export class AdminBootstrapService {
     onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<AdminDashboardDto> {
     const admin = this.resolveDemoAdmin(adminUserId);
-    await this.prepareAdminSelector(false);
+    await this.prepareAdminSelector();
     onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
-    await this.demoData.whenUsersReady();
+    await this.bootstrapData.whenUsersReady();
     await this.initOptionalDemoHelpCenter();
-    await this.demoData.initIdeaPosts();
-    this.demoData.initUsers();
-    this.demoData.initUserRatings();
+    await this.bootstrapData.initIdeaPosts();
+    this.bootstrapData.initUsers();
+    this.bootstrapData.initUserRatings();
     await this.ensureDemoAdminProfiles();
     onProgress?.({ percent: 36, label: 'Preparing admin records', stage: 'records' });
-    this.demoData.initChats();
-    await this.clearDemoAdminStores();
-    await this.seedDemoNotificationCenter();
-    await this.seedDemoMonitoring();
-    await this.seedDemoStats();
-    await this.seedDemoParams();
-    await this.seedDemoAdminMenuCounters();
+    this.bootstrapData.initChats();
     onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
-    const store = await this.seedDemoModerationStore();
+    const store = this.buildSeedDemoModerationStore();
+    const menuSeedState = await this.resetAndSeedDemoAdminStores(store);
+    await this.seedDemoAdminMenuCounters(menuSeedState);
     await this.ensureDemoAdminSupportSeed(admin);
     onProgress?.({ percent: 74, label: 'Resolving reported users', stage: 'records' });
     const dashboard = this.buildDemoDashboard(admin, store);
@@ -130,7 +117,7 @@ export class AdminBootstrapService {
 
   private async initOptionalDemoHelpCenter(): Promise<void> {
     try {
-      await this.demoData.initHelpCenter();
+      await this.bootstrapData.initHelpCenter();
     } catch {
       // Help, privacy, and explanation content should never block admin demo bootstrap.
     }
@@ -141,13 +128,13 @@ export class AdminBootstrapService {
   ): Promise<void> {
     this.demoAdminSelectorReady = false;
     const seededUsers = await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[0], () =>
-      this.demoData.initUsers()
+      this.bootstrapData.initUsers()
     );
     await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[1], () => {
-      this.demoData.initUserRatings(seededUsers);
+      this.bootstrapData.initUserRatings(seededUsers);
     });
     await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[2], () =>
-      this.demoData.buildAndWriteAffinityGraphSnapshot()
+      this.bootstrapData.buildAndWriteAffinityGraphSnapshot()
     );
     this.demoAdminSelectorReady = true;
     onProgress?.(ADMIN_DEMO_SELECTOR_PROCESS_STEPS[3]);
@@ -161,41 +148,27 @@ export class AdminBootstrapService {
     return await this.bootstrapProcess.runStep(step, onProgress, work);
   }
 
-  private async clearDemoAdminStores(): Promise<void> {
-    await this.demoData.clearAdminStores();
+  private async resetAndSeedDemoAdminStores(
+    moderation: AdminModerationStore
+  ): Promise<AdminBootstrapMenuSeedState<AdminNotificationCenterState, AdminMonitoringStateDto>> {
+    return await this.bootstrapData.resetAndSeedAdminStores({
+      moderation,
+      notificationCenter: AdminNotificationsSeedBuilder.buildDefaultNotificationCenter(),
+      monitoring: AdminMonitoringSeedBuilder.buildDefaultMonitoringState(),
+      stats: AdminStatsSeedBuilder.buildSeedDemoStatsSnapshot(),
+      params: AdminParamsSeedBuilder.buildDefaultParamsStore()
+    });
   }
 
-  private async seedDemoModerationStore(): Promise<AdminModerationStore> {
-    const seeded = this.buildSeedDemoModerationStore();
-    await this.demoData.writeAdminModerationStore(seeded);
-    return seeded;
-  }
-
-  private async seedDemoNotificationCenter(): Promise<void> {
-    await this.demoData.writeAdminNotificationCenter(AdminNotificationsSeedBuilder.buildDefaultNotificationCenter());
-  }
-
-  private async seedDemoMonitoring(): Promise<void> {
-    await this.demoData.writeAdminMonitoring(AdminMonitoringSeedBuilder.buildDefaultMonitoringState());
-  }
-
-  private async seedDemoStats(): Promise<void> {
-    await this.demoData.writeAdminStats(AdminStatsSeedBuilder.buildSeedDemoStatsSnapshot());
-  }
-
-  private async seedDemoParams(): Promise<void> {
-    await this.demoData.writeAdminParams(AdminParamsSeedBuilder.buildDefaultParamsStore());
-  }
-
-  private async seedDemoAdminMenuCounters(): Promise<void> {
-    const [notificationCenter, monitoringState] = await Promise.all([
-      this.demoData.readAdminNotificationCenter<AdminNotificationCenterState>(),
-      this.demoData.readAdminMonitoring<AdminMonitoringStateDto>()
-    ]);
+  private async seedDemoAdminMenuCounters(
+    seedState: AdminBootstrapMenuSeedState<AdminNotificationCenterState, AdminMonitoringStateDto>
+  ): Promise<void> {
+    const notificationCenter = seedState.notificationCenter;
+    const monitoringState = seedState.monitoring;
     const adminJobs = this.countFailedNotificationRules(notificationCenter);
     const adminMetrics = this.countAlertMonitoringMetrics(monitoringState);
     for (const admin of this.adminUsers()) {
-      const user = this.demoData.queryUserById(admin.id);
+      const user = this.bootstrapData.findUser(admin.id);
       if (!user) {
         continue;
       }
@@ -216,7 +189,7 @@ export class AdminBootstrapService {
       ) {
         continue;
       }
-      await this.demoData.upsertUser({
+      await this.bootstrapData.saveUser({
         ...user,
         activities: nextActivities
       });
@@ -251,7 +224,7 @@ export class AdminBootstrapService {
 
   private buildSeedDemoModerationStore(): AdminModerationStore {
     return AdminModerationSeedBuilder.buildSeedDemoModerationStore({
-      userImageUrl: userId => this.firstUserImage(this.demoData.queryUserById(userId)),
+      userImageUrl: userId => this.firstUserImage(this.bootstrapData.findUser(userId)),
       chatMessages: (ownerUserId, chatId) => this.demoChatMessages(ownerUserId, chatId)
     });
   }
@@ -267,7 +240,7 @@ export class AdminBootstrapService {
       reportsByUser.set(key, [...(reportsByUser.get(key) ?? []), this.enrichDemoReport(report)]);
     }
     const reportedUsers = [...reportsByUser.entries()].map(([userId, reports]) => {
-      const user = this.demoData.queryUserById(userId);
+      const user = this.bootstrapData.findUser(userId);
       const sortedReports = [...reports].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
       );
@@ -291,7 +264,7 @@ export class AdminBootstrapService {
     );
     return {
       activeAdmin,
-      activeAdminProfile: this.demoData.queryUserById(activeAdmin.id),
+      activeAdminProfile: this.bootstrapData.findUser(activeAdmin.id),
       reportedUsers,
       blockedUsers: this.demoBlockedUsers(store, reportsByUser, activeAdmin.id),
       feedback: [...store.feedback].sort((first, second) =>
@@ -306,7 +279,7 @@ export class AdminBootstrapService {
     adminId: string
   ): AdminReportedUserDto[] {
     const reportedBlocked = [...reportsByUser.keys()]
-      .map(userId => this.demoData.queryUserById(userId))
+      .map(userId => this.bootstrapData.findUser(userId))
       .filter((user): user is UserDto => user?.profileStatus === 'blocked');
     return reportedBlocked.map(user => {
       const reports = [...(reportsByUser.get(user.id) ?? [])].sort((first, second) =>
@@ -338,7 +311,7 @@ export class AdminBootstrapService {
       this.resolveDemoAdmin('admin-demo-noel')
     ];
     for (const admin of admins) {
-      const existing = this.demoData.queryUserById(admin.id);
+      const existing = this.bootstrapData.findUser(admin.id);
       if (existing) {
         const seededImages = this.demoAdminImages(admin.id);
         const existingImages = existing.images ?? [];
@@ -346,19 +319,19 @@ export class AdminBootstrapService {
           seededImages.length > 0
           && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)))
         ) {
-          await this.demoData.upsertUser({
+          await this.bootstrapData.saveUser({
             ...existing,
             images: seededImages
           });
         }
         continue;
       }
-      await this.demoData.upsertUser(AdminProfileSeedBuilder.buildDemoAdminUser(admin));
+      await this.bootstrapData.saveUser(AdminProfileSeedBuilder.buildDemoAdminUser(admin));
     }
   }
 
   private enrichDemoFeedback(feedback: AdminFeedbackDto): AdminFeedbackDto {
-    const user = this.demoData.queryUserById(feedback.userId);
+    const user = this.bootstrapData.findUser(feedback.userId);
     return {
       ...feedback,
       userName: user?.name ?? feedback.userName,
@@ -371,7 +344,7 @@ export class AdminBootstrapService {
   }
 
   private enrichDemoReport(report: AdminReportDto): AdminReportDto {
-    const reporter = this.demoData.queryUserById(report.reporterUserId);
+    const reporter = this.bootstrapData.findUser(report.reporterUserId);
     if (report.chatId && (!report.chatMessages || report.chatMessages.length === 0)) {
       return {
         ...report,
@@ -387,7 +360,7 @@ export class AdminBootstrapService {
   }
 
   private async ensureDemoAdminSupportSeed(admin: AdminUserDto): Promise<void> {
-    const helpUser = this.demoData.queryUserById('u1');
+    const helpUser = this.bootstrapData.findUser('u1');
     if (!helpUser) {
       return;
     }
@@ -405,10 +378,10 @@ export class AdminBootstrapService {
       serviceContext: 'notification',
       ownerUserId: admin.id
     };
-    const existingChat = this.demoData.queryChatItemsByUser(admin.id)
+    const existingChat = this.bootstrapData.findChatsByUser(admin.id)
       .find(item => item.id === chat.id);
     const existingMessageIds = new Set(
-      existingChat ? this.demoData.queryChatMessages(existingChat).map(message => message.id) : []
+      existingChat ? this.bootstrapData.readChatMessages(existingChat).map(message => message.id) : []
     );
     let changed = false;
     const targets = this.demoAdminHelpTargets();
@@ -417,7 +390,7 @@ export class AdminBootstrapService {
       if (!target) {
         continue;
       }
-      const token = this.demoData.ensureAdminHelpToken({
+      const token = this.bootstrapData.ensureAdminHelpToken({
         adminId: admin.id,
         userId: helpUser.id,
         targetKey: target.key,
@@ -453,13 +426,13 @@ export class AdminBootstrapService {
         }]
       };
       if (existingMessageIds.has(target.messageId) && existingChat) {
-        await this.demoData.updateChatMessage(existingChat, target.messageId, {
+        await this.bootstrapData.updateChatMessage(existingChat, target.messageId, {
           attachments: message.attachments ?? []
         });
         changed = true;
         continue;
       }
-      await this.demoData.appendChatMessage(chat, message);
+      await this.bootstrapData.appendChatMessage(chat, message);
       changed = true;
     }
     if (changed) {
@@ -472,12 +445,12 @@ export class AdminBootstrapService {
   }
 
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
-    const chat = this.demoData.queryChatItemsByUser(ownerUserId)
+    const chat = this.bootstrapData.findChatsByUser(ownerUserId)
       .find(item => item.id === chatId);
     if (!chat) {
       return [];
     }
-    return this.demoData.queryChatMessages(chat).map(message => ({
+    return this.bootstrapData.readChatMessages(chat).map(message => ({
       id: message.id,
       sender: message.sender,
       senderUserId: message.senderAvatar.id,
@@ -495,7 +468,7 @@ export class AdminBootstrapService {
     if (!normalizedUserId || !normalizedAdminId) {
       return false;
     }
-    return this.demoData.queryChatItemsByUser(normalizedAdminId)
+    return this.bootstrapData.findChatsByUser(normalizedAdminId)
       .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
   }
 
@@ -505,7 +478,7 @@ export class AdminBootstrapService {
     if (!normalizedUserId || !normalizedAdminId) {
       return 0;
     }
-    const chat = this.demoData.queryChatItemsByUser(normalizedAdminId)
+    const chat = this.bootstrapData.findChatsByUser(normalizedAdminId)
       .find(item => item.id === `c-support-admin-${normalizedUserId}`);
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
   }
@@ -539,7 +512,7 @@ export class AdminBootstrapService {
   }
 
   private mergeStoredAdminProfile(admin: AdminUserDto): AdminUserDto {
-    const stored = this.demoData.queryUserById(admin.id);
+    const stored = this.bootstrapData.findUser(admin.id);
     if (!stored) {
       return admin;
     }

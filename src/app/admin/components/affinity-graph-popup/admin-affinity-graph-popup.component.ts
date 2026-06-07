@@ -5,7 +5,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { AdminAffinityGraphPopupStateService } from '../../services/admin-affinity-graph-popup-state.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
+import { AppContext } from '../../../shared/core';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ProgressIndicatorComponent, type ProgressIndicatorBarConfig } from '../../../shared/ui/components';
 
@@ -18,7 +18,7 @@ import { ProgressIndicatorComponent, type ProgressIndicatorBarConfig } from '../
 })
 export class AdminAffinityGraphPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminShellService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);
   protected readonly popupKey = 'affinity-graph';
   private readonly document = inject(DOCUMENT);
@@ -153,7 +153,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   private resolveGraphRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
-    const adminUserId = this.workspace.activeAdmin()?.id;
+    const adminUserId = this.appCtx.activeUserId().trim();
     switch (method) {
       case 'initialGraph':
         return this.affinityGraph.loadInitialGraph(adminUserId);

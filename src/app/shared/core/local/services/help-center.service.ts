@@ -66,6 +66,10 @@ export class LocalHelpCenterService {
     return this.stateFromTable(table, documentKind, language, context);
   }
 
+  adminRevisionsProgressDurationMs(kind: HelpCenterDocumentKind = 'help'): number {
+    return this.routeDelay.resolveRequestTimeoutMs(`/admin/${this.normalizeKind(kind)}/revisions`);
+  }
+
   async ensureEntryPrivacySeeded(lang?: string | null): Promise<boolean> {
     await this.helpCenterRepository.whenReady();
     const language = this.requestContentLang(lang);

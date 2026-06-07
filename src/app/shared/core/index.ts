@@ -33,7 +33,11 @@ export { ExplanationGuideService } from './base/services/explanation-guide.servi
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { MediaService } from './base/services/media.service';
-export { AdminDemoDataService } from './base/services/admin-demo-data.service';
+export {
+  AdminBootstrapService,
+  type AdminBootstrapMenuSeedState,
+  type AdminBootstrapStoresSeed
+} from './base/services/admin-bootstrap.service';
 export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
 export {
   AdminParamsService,

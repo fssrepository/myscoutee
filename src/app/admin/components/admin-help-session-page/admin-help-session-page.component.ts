@@ -2,14 +2,13 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { environment } from '../../../../environments/environment';
 import {
   AppPopupContext,
   ActivitiesService,
+  AdminWorkspaceDataService,
   AssetDefaultsBuilder,
   EventsService,
   SessionService,
-  ShareTokensService,
   UsersService,
   type BootstrapProcessStage,
   type BootstrapProcessState,
@@ -30,7 +29,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
-  private readonly shareTokens = inject(ShareTokensService);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly usersService = inject(UsersService);
   private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
@@ -74,7 +73,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
       this.fail('This support link is missing its token.');
       return;
     }
-    const demoUsersPromise = environment.activitiesDataSource !== 'http' || !environment.firebaseLoginEnabled
+    const useEmbeddedSelector = this.workspaceData.shouldUseEmbeddedAdminHelpSelector;
+    const demoUsersPromise = useEmbeddedSelector
       ? this.prepareDemoSelectorUsers()
       : Promise.resolve<UserSelectorListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
@@ -84,7 +84,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
-    if (environment.activitiesDataSource !== 'http' || !environment.firebaseLoginEnabled) {
+    if (useEmbeddedSelector) {
       this.selectorSelectedUserId = userId;
       const users = await demoUsersPromise;
       const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
@@ -119,14 +119,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
-    if (!environment.firebaseLoginEnabled) {
-      return this.resolveDemoAdminHelpToken(token);
-    }
-    try {
-      return await this.shareTokens.resolveToken(token, '');
-    } catch {
-      return null;
-    }
+    return await this.workspaceData.resolveAdminHelpToken(token, value => this.resolveDemoAdminHelpToken(value));
   }
 
   private applyProgress(state: BootstrapProcessState): void {

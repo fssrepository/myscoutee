@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
 import {
   type AdminAffinityGraphDto,
   type AdminAffinityGraphEdgeDto,
@@ -11,8 +10,8 @@ import {
   type AdminAffinityGraphNodeDto,
   type AdminAffinityGraphTileDto
 } from '../interfaces/admin-affinity-graph.interface';
+import { BaseRouteModeService } from './base-route-mode.service';
 import { I18nService } from './i18n.service';
-import { SessionService } from './session.service';
 import { LocalAdminAffinityGraphService } from '../../local/services/admin-affinity-graph.service';
 import {
   HttpAdminAffinityGraphService,
@@ -22,6 +21,7 @@ import {
 
 export type { AdminAffinityGraphRangeParams, AdminAffinityGraphTileParams };
 
+const ADMIN_AFFINITY_GRAPH_ROUTE = '/admin/affinity-graph';
 const AFFINITY_GRAPH_FOREST_BASE_BUDGET = 16;
 const AFFINITY_GRAPH_LABEL_KEYS = {
   graphView: 'admin.affinity.graph.view',
@@ -38,28 +38,26 @@ const AFFINITY_GRAPH_LABEL_KEYS = {
 @Injectable({
   providedIn: 'root'
 })
-export class AdminAffinityGraphService {
+export class AdminAffinityGraphService extends BaseRouteModeService {
   private readonly localService = inject(LocalAdminAffinityGraphService);
   private readonly httpService = inject(HttpAdminAffinityGraphService);
-  private readonly sessionService = inject(SessionService);
   private readonly i18n = inject(I18nService);
 
   async loadInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
-    const snapshot = this.usesHttpAdminApi
-      ? await this.loadHttpInitialGraph(adminUserId)
-      : await this.readLocalGraphSnapshot(true);
-    return this.normalizeSnapshot(snapshot, this.usesHttpAdminApi ? 'http' : 'demo');
+    if (this.isLocalAffinityGraph()) {
+      return this.normalizeSnapshot(await this.readLocalGraphSnapshot(true), 'demo');
+    }
+    return this.normalizeSnapshot(await this.loadHttpInitialGraph(adminUserId), 'http');
   }
 
   async loadMeta(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphMetaDto> {
-    if (this.usesHttpAdminApi) {
-      return await this.httpService.loadMeta(adminUserId, range);
-    }
-    return this.metaFromSnapshot(await this.demoSnapshot(range));
+    return this.isLocalAffinityGraph()
+      ? this.metaFromSnapshot(await this.demoSnapshot(range))
+      : await this.httpService.loadMeta(adminUserId, range);
   }
 
   async loadForests(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphForestsDto> {
-    if (this.usesHttpAdminApi) {
+    if (!this.isLocalAffinityGraph()) {
       return await this.httpService.loadForests(adminUserId, range);
     }
     const snapshot = await this.demoSnapshot(range, true);
@@ -80,7 +78,7 @@ export class AdminAffinityGraphService {
   }
 
   async loadTile(adminUserId?: string | null, tile?: AdminAffinityGraphTileParams): Promise<AdminAffinityGraphTileDto> {
-    if (this.usesHttpAdminApi) {
+    if (!this.isLocalAffinityGraph()) {
       return await this.httpService.loadTile(adminUserId, tile);
     }
     const snapshot = await this.demoSnapshot(tile, true);
@@ -105,7 +103,7 @@ export class AdminAffinityGraphService {
     adminUserId?: string | null,
     range?: AdminAffinityGraphRangeParams
   ): Promise<AdminAffinityGraphNeighborhoodDto> {
-    if (this.usesHttpAdminApi) {
+    if (!this.isLocalAffinityGraph()) {
       return await this.httpService.loadNeighborhood(userId, depth, adminUserId, range);
     }
     const snapshot = await this.demoSnapshot(range, true);
@@ -126,17 +124,13 @@ export class AdminAffinityGraphService {
   }
 
   async rebuildLayout(adminUserId?: string | null): Promise<AdminAffinityGraphMetaDto> {
-    if (this.usesHttpAdminApi) {
-      return await this.httpService.rebuildLayout(adminUserId);
-    }
-    return this.metaFromSnapshot(await this.demoSnapshot());
+    return this.isLocalAffinityGraph()
+      ? this.metaFromSnapshot(await this.demoSnapshot())
+      : await this.httpService.rebuildLayout(adminUserId);
   }
 
-  private get usesHttpAdminApi(): boolean {
-    if (this.sessionService.currentSession()?.kind === 'demo') {
-      return false;
-    }
-    return environment.activitiesDataSource === 'http' || environment.firebaseLoginEnabled === true;
+  private isLocalAffinityGraph(): boolean {
+    return this.isLocalRouteEnabled(ADMIN_AFFINITY_GRAPH_ROUTE);
   }
 
   private async loadHttpInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {

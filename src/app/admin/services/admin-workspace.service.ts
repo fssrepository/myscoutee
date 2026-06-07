@@ -1,12 +1,11 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
 import {
   AppContext,
+  AdminWorkspaceDataService,
   HelpCenterService,
   SessionService,
-  UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type AdminModerationUserPatch,
   type UserDto,
@@ -17,7 +16,6 @@ import type { AdminDashboardDto } from '../models/admin-dashboard.model';
 import type { AdminReportedUserDto } from '../models/admin-moderation.model';
 import type { AdminUserDto } from '../models/admin-profile.model';
 import type { AdminBootstrapProcessState } from '../models/admin-shell.model';
-import { AdminBootstrapService } from './admin-bootstrap.service';
 import { AdminShellService } from './admin-shell.service';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
@@ -27,9 +25,8 @@ const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 })
 export class AdminWorkspaceService {
   private readonly appCtx = inject(AppContext);
-  private readonly bootstrap = inject(AdminBootstrapService);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly shell = inject(AdminShellService);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
@@ -41,18 +38,14 @@ export class AdminWorkspaceService {
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
-  readonly activeAdmin = computed(() => this.dashboardRef()?.activeAdmin ?? null);
-  readonly adminUsers = this.bootstrap.adminUsers;
+  readonly adminUsers = this.workspaceData.adminUsers;
 
   get isFirebaseAdminMode(): boolean {
-    return environment.firebaseLoginEnabled === true;
+    return this.workspaceData.isFirebaseAdminMode;
   }
 
-  get usesHttpAdminApi(): boolean {
-    if (this.sessionService.currentSession()?.kind === 'demo') {
-      return false;
-    }
-    return environment.activitiesDataSource === 'http' || this.isFirebaseAdminMode;
+  prepareSelectedAdminSession(adminUserId: string): void {
+    this.workspaceData.prepareSelectedAdminSession(adminUserId);
   }
 
   applyDashboard(dashboard: AdminDashboardDto): void {
@@ -64,7 +57,7 @@ export class AdminWorkspaceService {
   async prepareDemoAdminSelector(
     onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<UserSelectorListItemDto[]> {
-    return await this.bootstrap.prepareAdminSelector(this.usesHttpAdminApi, onProgress);
+    return await this.workspaceData.prepareAdminSelector(onProgress);
   }
 
   patchModerationUser(patch: AdminModerationUserPatch | null | undefined): AdminReportedUserDto | null {
@@ -113,18 +106,6 @@ export class AdminWorkspaceService {
     return patchedUser;
   }
 
-  updateActiveAdmin(nextAdmin: AdminUserDto): void {
-    const dashboard = this.dashboardRef();
-    if (!dashboard) {
-      return;
-    }
-    this.dashboardRef.set({
-      ...dashboard,
-      activeAdmin: nextAdmin
-    });
-    this.persistAdminSession(nextAdmin.id);
-  }
-
   async restoreAdminSession(): Promise<boolean> {
     const adminId = this.readStoredAdminId();
     if (!adminId) {
@@ -138,9 +119,7 @@ export class AdminWorkspaceService {
           return false;
         }
       }
-      if (this.usesHttpAdminApi && !this.isFirebaseAdminMode) {
-        this.sessionService.startDemoSession(adminId);
-      }
+      this.prepareSelectedAdminSession(adminId);
       return Boolean(await this.bootstrapAdmin(adminId));
     } catch {
       this.clearAdminSession();
@@ -167,16 +146,10 @@ export class AdminWorkspaceService {
     this.errorRef.set('');
     this.accessDeniedRef.set(false);
     try {
-      const dashboard = this.normalizeDashboard(await this.bootstrap.bootstrapDashboard(
-        this.usesHttpAdminApi,
-        adminUserId,
-        onProgress
-      ));
+      const dashboard = this.normalizeDashboard(await this.workspaceData.loadDashboard(adminUserId, onProgress));
       this.dashboardRef.set(dashboard);
       this.activateAdminProfile(dashboard);
-      if (this.usesHttpAdminApi) {
-        await this.refreshAdminMenuCountersFromUserRecord(dashboard.activeAdmin.id);
-      }
+      await this.refreshAdminMenuCountersFromUserRecord(dashboard.activeAdmin.id);
       void this.helpCenter.preloadAll();
       this.persistAdminSession(dashboard.activeAdmin.id);
       return dashboard;
@@ -299,15 +272,13 @@ export class AdminWorkspaceService {
   }
 
   private async refreshAdminMenuCountersFromUserRecord(adminUserId: string): Promise<void> {
-    const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
-    if (!normalizedAdminUserId) {
-      return;
-    }
     try {
-      const snapshot = await this.usersService.pollUserRealtimeSnapshot(normalizedAdminUserId, null);
-      const adminJobs = Math.max(0, Math.trunc(Number(snapshot?.counters?.adminJobs) || 0));
-      const adminMetrics = Math.max(0, Math.trunc(Number(snapshot?.counters?.adminMetrics) || 0));
-      this.appCtx.patchUserCounterOverrides(normalizedAdminUserId, { adminJobs, adminMetrics });
+      const counters = await this.workspaceData.loadDashboardMenuCounters(adminUserId);
+      if (!counters) {
+        return;
+      }
+      const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
+      this.appCtx.patchUserCounterOverrides(normalizedAdminUserId, counters);
       const currentUser = this.appCtx.getUserProfile(normalizedAdminUserId);
       if (!currentUser) {
         return;
@@ -316,8 +287,8 @@ export class AdminWorkspaceService {
         ...currentUser,
         activities: {
           ...currentUser.activities,
-          adminJobs,
-          adminMetrics
+          adminJobs: counters.adminJobs,
+          adminMetrics: counters.adminMetrics
         }
       });
     } catch {

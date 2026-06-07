@@ -5,8 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
+import { AppContext, IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
@@ -23,7 +22,6 @@ import {
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
@@ -67,9 +65,8 @@ export class AdminIdeaEditorPopupComponent {
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
   protected readonly admin = inject(AdminShellService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
   private readonly ideaPosts = inject(IdeaPostsService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -95,6 +92,7 @@ export class AdminIdeaEditorPopupComponent {
   private adminPostsLoadGeneration = 0;
   private articlePanelLoadGeneration = 0;
   private listRevision = 0;
+  protected readonly articlePanelLoadProgressDurationMs = this.ideaPosts.adminArticlePanelLoadProgressDurationMs();
   private readonly postsByLang = new Map<string, IdeaPostLangCache>();
   private adminPostList: IdeaPost[] = [];
   private adminPostIndex = new Map<string, IdeaPost>();
@@ -282,7 +280,7 @@ export class AdminIdeaEditorPopupComponent {
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.waitForArticlePanelLoad();
+    await this.ideaPosts.prepareAdminArticlePanelLoad();
     if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
       return;
     }
@@ -307,7 +305,7 @@ export class AdminIdeaEditorPopupComponent {
     const generation = this.beginArticlePanelLoad('viewer');
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.waitForArticlePanelLoad();
+    await this.ideaPosts.prepareAdminArticlePanelLoad();
     if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
       return;
     }
@@ -335,7 +333,7 @@ export class AdminIdeaEditorPopupComponent {
     this.editing = false;
     this.draft = null;
     this.draftContentLang = this.normalizeContentLang(targetPost.lang);
-    await this.waitForArticlePanelLoad();
+    await this.ideaPosts.prepareAdminArticlePanelLoad();
     if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
       return;
     }
@@ -363,7 +361,7 @@ export class AdminIdeaEditorPopupComponent {
     const contentHtml = activeDraft.contentHtml.trim() || '<p></p>';
     const imageUrls = this.draftImageUrls(activeDraft);
     const generation = this.beginArticlePanelLoad('viewer');
-    await this.waitForArticlePanelLoad();
+    await this.ideaPosts.prepareAdminArticlePanelLoad();
     if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
       return;
     }
@@ -885,7 +883,7 @@ export class AdminIdeaEditorPopupComponent {
     const generation = this.beginArticlePanelLoad('editor');
     const [translation] = await Promise.all([
       this.findArticleTranslation(currentDraft.contentKey, normalized),
-      this.waitForArticlePanelLoad()
+      this.ideaPosts.prepareAdminArticlePanelLoad()
     ]);
     if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
       return;
@@ -997,7 +995,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
+    return this.appCtx.activeUserId().trim() || 'admin';
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {
@@ -1029,14 +1027,6 @@ export class AdminIdeaEditorPopupComponent {
       && this.articlePanelLoadGeneration === generation
       && this.articlePanelLoading
       && this.articlePanelLoadingMode === mode;
-  }
-
-  private async waitForArticlePanelLoad(): Promise<void> {
-    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 450);
-  }
-
-  protected articlePanelLoadProgressDurationMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs('/admin/ideas');
   }
 
   private beginEditing(draft: IdeaPostDraft): void {

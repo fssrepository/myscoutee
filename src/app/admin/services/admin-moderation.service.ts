@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { ActivitiesPopupStateService } from '../../activity/services/activities-popup-state.service';
 import {
+  AppContext,
   AdminModerationService as CoreAdminModerationService,
   type AdminModerationActionResult
 } from '../../shared/core';
@@ -15,6 +16,7 @@ import { AdminWorkspaceService } from './admin-workspace.service';
   providedIn: 'root'
 })
 export class AdminModerationService {
+  private readonly appCtx = inject(AppContext);
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly shell = inject(AdminShellService);
   private readonly moderationData = inject(CoreAdminModerationService);
@@ -56,7 +58,7 @@ export class AdminModerationService {
     }
     const result = await this.moderationData.warnUser(
       normalizedUserId,
-      this.workspace.activeAdmin() ?? this.fallbackAdmin(),
+      this.currentAdmin(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -73,7 +75,7 @@ export class AdminModerationService {
     }
     const result = await this.moderationData.blockUser(
       normalizedUserId,
-      this.workspace.activeAdmin() ?? this.fallbackAdmin(),
+      this.currentAdmin(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -90,7 +92,7 @@ export class AdminModerationService {
     }
     const result = await this.moderationData.unblockUser(
       normalizedUserId,
-      this.workspace.activeAdmin() ?? this.fallbackAdmin()
+      this.currentAdmin()
     );
     this.applyModerationActionResult(normalizedUserId, result);
   }
@@ -148,7 +150,7 @@ export class AdminModerationService {
   }
 
   private buildAdminSupportChat(user: AdminReportedUserDto): ChatRecord & { ownerUserId?: string } {
-    const admin = this.workspace.activeAdmin() ?? this.fallbackAdmin();
+    const admin = this.currentAdmin();
     return {
       id: `c-support-admin-${user.userId}`,
       avatar: user.initials || 'U',
@@ -173,6 +175,22 @@ export class AdminModerationService {
       initials: 'AM',
       email: 'ava.admin@myscoutee.local',
       images: []
+    };
+  }
+
+  private currentAdmin(): AdminUserDto {
+    const profile = this.appCtx.activeUserProfile();
+    if (!profile?.id?.trim()) {
+      return this.fallbackAdmin();
+    }
+    return {
+      id: profile.id.trim(),
+      name: profile.name.trim() || 'Admin',
+      initials: profile.initials.trim() || 'AD',
+      email: `${profile.id.trim()}@myscoutee.local`,
+      headline: profile.headline ?? null,
+      about: profile.about ?? null,
+      images: [...(profile.images ?? [])]
     };
   }
 }

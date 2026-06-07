@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import {
+  AppContext,
   AdminParamsService as CoreAdminParamsService,
   type AdminParamsDelayOptions
 } from '../../shared/core';
@@ -9,14 +10,13 @@ import type {
   AdminParamsHistoryDto,
   AdminParamsStateDto
 } from '../models/admin-params.model';
-import { AdminWorkspaceService } from './admin-workspace.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AdminParamsService {
   private readonly coreParams = inject(CoreAdminParamsService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
 
   paramsLoadProgressWindowMs(): number {
     return this.coreParams.paramsLoadProgressWindowMs();
@@ -48,6 +48,6 @@ export class AdminParamsService {
   }
 
   private activeAdminId(): string {
-    return this.workspace.activeAdmin()?.id ?? '';
+    return this.appCtx.activeUserId().trim();
   }
 }

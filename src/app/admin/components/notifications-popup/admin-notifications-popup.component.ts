@@ -3,6 +3,7 @@ import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppContext } from '../../../shared/core';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
@@ -17,7 +18,6 @@ import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminNotificationsService } from '../../services/admin-notifications.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 const PROCESS_LIST_FILTER = {
   all: 'all',
@@ -306,7 +306,7 @@ const STATUS_CLASS_PREFIX = 'is-';
 export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminShellService);
   protected readonly notificationsService = inject(AdminNotificationsService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
   protected readonly processRowAction = PROCESS_ROW_ACTION;
@@ -451,7 +451,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
             progressDetail: nextToggleState.progressDetailKey
           },
           updatedDate: new Date().toISOString(),
-          updatedUser: this.workspace.activeAdmin()?.id ?? current.updatedUser
+          updatedUser: this.activeAdminId(current.updatedUser)
         }
         : current);
       const saved = await this.save(rulesToSave);
@@ -510,7 +510,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         const entry: AdminNotificationRunHistoryEntry | null = isRunningResponse ? null : {
           id: `run-${Date.now()}`,
           trigger: PROCESS_RUN_TRIGGER.manual,
-          runnerUser: this.workspace.activeAdmin()?.id ?? current.runState.lastRunUser,
+          runnerUser: this.activeAdminId(current.runState.lastRunUser),
           startedAtIso,
           finishedAtIso,
           durationMillis,
@@ -532,11 +532,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
             lastRunStatus: isRunningResponse ? current.runState.lastRunStatus : result.status,
             lastRunDetail: isRunningResponse ? current.runState.lastRunDetail : result.detail,
             lastRunCount: isRunningResponse ? current.runState.lastRunCount : result.affectedCount,
-            lastRunUser: this.workspace.activeAdmin()?.id ?? current.runState.lastRunUser
+            lastRunUser: this.activeAdminId(current.runState.lastRunUser)
           },
           runHistory: entry ? [entry, ...(current.runHistory ?? [])].slice(0, 12) : current.runHistory,
           updatedDate: finishedAtIso,
-          updatedUser: this.workspace.activeAdmin()?.id ?? current.updatedUser
+          updatedUser: this.activeAdminId(current.updatedUser)
         };
       });
     } catch {
@@ -925,7 +925,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         ...rule,
         parameters: nextFields,
         updatedDate: new Date().toISOString(),
-        updatedUser: this.workspace.activeAdmin()?.id ?? rule.updatedUser
+        updatedUser: this.activeAdminId(rule.updatedUser)
       }));
     }
     this.refreshParameterDirty(draft.ruleKey, nextSignature);
@@ -1368,6 +1368,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       && Number.isFinite(requestStartedAt)
       && lastRunAt >= requestStartedAt
       && status !== PROCESS_RUNTIME_STATUS.running;
+  }
+
+  private activeAdminId(fallback?: string | null): string {
+    return this.appCtx.activeUserId().trim() || `${fallback ?? ''}`.trim();
   }
 
   private hasFinishedCurrentRun(rule: AdminNotificationRule): boolean {
