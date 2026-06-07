@@ -29,8 +29,12 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!normalizedUserId) {
       return null;
     }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return null;
+    }
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, this.resolveAdmin(admin), message);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message);
     return { userPatch: supportPatch };
   }
 
@@ -43,6 +47,10 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     if (!normalizedUserId) {
       return null;
     }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return null;
+    }
     await this.waitForRouteDelay(ADMIN_MODERATION_BLOCK_ROUTE);
     const user = this.supportSession.findUser(normalizedUserId);
     if (user) {
@@ -52,7 +60,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         profileStatus: 'blocked'
       });
     }
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, this.resolveAdmin(admin), message);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message);
     return {
       userPatch: {
         ...supportPatch,
@@ -68,6 +76,10 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
   ): Promise<AdminModerationActionResult | null> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
+      return null;
+    }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
       return null;
     }
     await this.waitForRouteDelay(ADMIN_MODERATION_UNBLOCK_ROUTE);
@@ -87,8 +99,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         userId: normalizedUserId,
         profileStatus: nextStatus,
         blockedAtIso: null,
-        hasSupportChat: this.supportChatExists(this.resolveAdmin(admin).id, normalizedUserId),
-        supportChatUnread: this.supportChatUnread(this.resolveAdmin(admin).id, normalizedUserId)
+        hasSupportChat: this.supportChatExists(resolvedAdmin.id, normalizedUserId),
+        supportChatUnread: this.supportChatUnread(resolvedAdmin.id, normalizedUserId)
       }
     };
   }
@@ -168,13 +180,19 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     return this.supportSession.supportChatUnread(adminId, userId);
   }
 
-  private resolveAdmin(admin: AdminUserDto | null | undefined): AdminUserDto {
-    return admin ?? {
-      id: 'admin-demo-ava',
-      name: 'Ava',
-      initials: 'AM',
-      email: 'ava.admin@myscoutee.local',
-      images: []
+  private resolveAdmin(admin: AdminUserDto | null | undefined): AdminUserDto | null {
+    const id = `${admin?.id ?? ''}`.trim();
+    if (!id) {
+      return null;
+    }
+    return {
+      id,
+      name: `${admin?.name ?? ''}`.trim() || 'Admin',
+      initials: `${admin?.initials ?? ''}`.trim() || 'AD',
+      email: `${admin?.email ?? ''}`.trim() || `${id}@myscoutee.local`,
+      headline: admin?.headline ?? null,
+      about: admin?.about ?? null,
+      images: [...(admin?.images ?? [])]
     };
   }
 }

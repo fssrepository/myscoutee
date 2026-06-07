@@ -82,6 +82,16 @@ export interface ActivityMembersSyncState {
   capacityTotal: number;
 }
 
+export interface AppContextAdminUserDto {
+  id: string;
+  name: string;
+  initials: string;
+  email: string;
+  headline?: string | null;
+  about?: string | null;
+  images?: string[] | null;
+}
+
 export const DEFAULT_LOAD_STATE: LoadState = {
   status: 'idle',
   error: null,
@@ -156,6 +166,7 @@ export class AppContext {
     const user = this._userProfilesByUserId()[normalizedUserId];
     return user ? this.cloneUserProfile(user) : null;
   });
+  readonly activeAdminUser = computed(() => this.adminUserFromProfile(this.activeUserProfile()));
 
   selectLoadingState(contextKey: string) {
     return computed(() => this._loadingState()[contextKey] ?? DEFAULT_LOAD_STATE);
@@ -246,6 +257,10 @@ export class AppContext {
     };
     this.setUserProfile(nextUser);
     return this.getUserProfile(current.id);
+  }
+
+  getActiveAdminUser(): AppContextAdminUserDto | null {
+    return this.activeAdminUser();
   }
 
   clearUserProfile(userId: string): void {
@@ -746,6 +761,23 @@ export class AppContext {
         adminMetrics: user.activities?.adminMetrics ?? 0
       },
       impressions: user.impressions ? this.cloneImpressions(user.impressions) : undefined
+    };
+  }
+
+  private adminUserFromProfile(profile: UserDto | null): AppContextAdminUserDto | null {
+    const id = `${profile?.id ?? ''}`.trim();
+    if (!id || !profile) {
+      return null;
+    }
+    const name = `${profile.name ?? ''}`.trim() || 'Admin';
+    return {
+      id,
+      name,
+      initials: `${profile.initials ?? ''}`.trim() || 'AD',
+      email: `${id}@myscoutee.local`,
+      headline: profile.headline ?? null,
+      about: profile.about ?? null,
+      images: [...(profile.images ?? [])]
     };
   }
 

@@ -8,7 +8,6 @@ import {
 } from '../../shared/core';
 import type { ChatRecord } from '../../shared/core/base/models/chat.model';
 import type { AdminReportedUserDto } from '../models/admin-moderation.model';
-import type { AdminUserDto } from '../models/admin-profile.model';
 import { AdminShellService } from './admin-shell.service';
 import { AdminWorkspaceService } from './admin-workspace.service';
 
@@ -43,8 +42,12 @@ export class AdminModerationService {
   }
 
   openBlockedUserChat(user: AdminReportedUserDto): void {
+    const chat = this.buildAdminSupportChat(user);
+    if (!chat) {
+      return;
+    }
     this.shell.closePopup();
-    this.activitiesContext.openEventChat(this.buildAdminSupportChat(user));
+    this.activitiesContext.openEventChat(chat);
   }
 
   async warnUser(userId: string, message: string): Promise<void> {
@@ -58,7 +61,7 @@ export class AdminModerationService {
     }
     const result = await this.moderationData.warnUser(
       normalizedUserId,
-      this.currentAdmin(),
+      this.appCtx.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -75,7 +78,7 @@ export class AdminModerationService {
     }
     const result = await this.moderationData.blockUser(
       normalizedUserId,
-      this.currentAdmin(),
+      this.appCtx.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -92,7 +95,7 @@ export class AdminModerationService {
     }
     const result = await this.moderationData.unblockUser(
       normalizedUserId,
-      this.currentAdmin()
+      this.appCtx.activeAdminUser()
     );
     this.applyModerationActionResult(normalizedUserId, result);
   }
@@ -149,8 +152,11 @@ export class AdminModerationService {
     this.shell.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
   }
 
-  private buildAdminSupportChat(user: AdminReportedUserDto): ChatRecord & { ownerUserId?: string } {
-    const admin = this.currentAdmin();
+  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatRecord & { ownerUserId?: string }) | null {
+    const admin = this.appCtx.activeAdminUser();
+    if (!admin) {
+      return null;
+    }
     return {
       id: `c-support-admin-${user.userId}`,
       avatar: user.initials || 'U',
@@ -165,32 +171,6 @@ export class AdminModerationService {
       channelType: 'serviceEvent',
       serviceContext: 'notification',
       ownerUserId: admin.id
-    };
-  }
-
-  private fallbackAdmin(): AdminUserDto {
-    return {
-      id: 'admin-demo-ava',
-      name: 'Ava',
-      initials: 'AM',
-      email: 'ava.admin@myscoutee.local',
-      images: []
-    };
-  }
-
-  private currentAdmin(): AdminUserDto {
-    const profile = this.appCtx.activeUserProfile();
-    if (!profile?.id?.trim()) {
-      return this.fallbackAdmin();
-    }
-    return {
-      id: profile.id.trim(),
-      name: profile.name.trim() || 'Admin',
-      initials: profile.initials.trim() || 'AD',
-      email: `${profile.id.trim()}@myscoutee.local`,
-      headline: profile.headline ?? null,
-      about: profile.about ?? null,
-      images: [...(profile.images ?? [])]
     };
   }
 }

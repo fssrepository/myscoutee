@@ -1,4 +1,4 @@
-import type { UserDto } from '../../shared/core';
+import type { UserDto } from '../../../base/interfaces/user.interface';
 import type { AdminSeedUserDto } from './admin-seed.models';
 
 export class AdminProfileSeedBuilder {

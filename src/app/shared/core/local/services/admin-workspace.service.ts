@@ -19,13 +19,15 @@ import type {
 } from '../../../../admin/models/admin-moderation.model';
 import type { AdminUserDto } from '../../../../admin/models/admin-profile.model';
 import type { AdminBootstrapProcessState } from '../../../../admin/models/admin-shell.model';
-import { AdminHelpSeedBuilder } from '../../../../admin/builders/admin-help-seed.builder';
-import { AdminModerationSeedBuilder } from '../../../../admin/builders/admin-moderation-seed.builder';
-import { AdminMonitoringSeedBuilder } from '../../../../admin/builders/admin-monitoring-seed.builder';
-import { AdminNotificationsSeedBuilder } from '../../../../admin/builders/admin-notifications-seed.builder';
-import { AdminParamsSeedBuilder } from '../../../../admin/builders/admin-params-seed.builder';
-import { AdminProfileSeedBuilder } from '../../../../admin/builders/admin-profile-seed.builder';
-import { AdminStatsSeedBuilder } from '../../../../admin/builders/admin-stats-seed.builder';
+import {
+  AdminHelpSeedBuilder,
+  AdminModerationSeedBuilder,
+  AdminMonitoringSeedBuilder,
+  AdminNotificationsSeedBuilder,
+  AdminParamsSeedBuilder,
+  AdminProfileSeedBuilder,
+  AdminStatsSeedBuilder
+} from '../builders/admin';
 
 const ADMIN_DEMO_SELECTOR_PROCESS_STEPS: readonly AdminBootstrapProcessState[] = [
   { stage: 'records', percent: 24, label: 'Preparing admin graph members' },

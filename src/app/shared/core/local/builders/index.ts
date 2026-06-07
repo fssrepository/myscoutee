@@ -1,4 +1,5 @@
 export { LocalAssetBuilder } from './asset.builder';
+export * from './admin';
 export { LocalChatsRepositoryBuilder } from './chats-repository.builder';
 export { LocalEventFeedbackBuilder } from './event-feedback.builder';
 export { LocalEventsRepositoryBuilder } from './events-repository.builder';
