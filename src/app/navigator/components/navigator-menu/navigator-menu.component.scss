@@ -47,9 +47,6 @@
 }
 
 :where(
-  .user-menu-share-btn,
-  .user-menu-explanation-btn,
-  .user-menu-settings-btn,
   .user-menu-close-btn,
   .header-open-cue,
   .menu-shortcut-btn,
@@ -83,9 +80,6 @@
   background-color: var(--navigator-menu-ripple-color);
 }
 
-.user-menu-share-btn,
-.user-menu-explanation-btn,
-.user-menu-settings-btn,
 .user-menu-close-btn,
 .header-open-cue {
   --navigator-menu-ripple-color: rgba(36, 84, 138, 0.18);
@@ -95,9 +89,6 @@
   --navigator-menu-ripple-color: rgba(164, 60, 69, 0.16);
 }
 
-.user-menu-share-btn .mat-icon,
-.user-menu-explanation-btn .mat-icon,
-.user-menu-settings-btn .mat-icon,
 .user-menu-close-btn .mat-icon,
 .header-open-cue .mat-icon,
 .menu-shortcut-btn .mat-icon,
@@ -115,9 +106,6 @@
 }
 
 :where(
-  .user-menu-share-btn,
-  .user-menu-explanation-btn,
-  .user-menu-settings-btn,
   .user-menu-close-btn,
   .header-open-cue,
   .menu-shortcut-btn,
@@ -132,9 +120,6 @@
 
 @media (hover: hover) and (pointer: fine) {
   :where(
-    .user-menu-share-btn,
-    .user-menu-explanation-btn,
-    .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
     .menu-shortcut-btn,
@@ -148,9 +133,6 @@
   }
 
   :where(
-    .user-menu-share-btn,
-    .user-menu-explanation-btn,
-    .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
     .menu-shortcut-btn,
@@ -174,9 +156,6 @@
 
 @media (hover: none), (pointer: coarse) {
   :where(
-    .user-menu-share-btn,
-    .user-menu-explanation-btn,
-    .user-menu-settings-btn,
     .user-menu-close-btn,
     .header-open-cue,
     .menu-shortcut-btn,
@@ -389,9 +368,6 @@
   border-bottom-color: rgba(179, 52, 66, 0.38);
 }
 
-.user-menu-share-btn,
-.user-menu-explanation-btn,
-.user-menu-settings-btn,
 .user-menu-close-btn {
   position: absolute;
   top: 0.48rem;
@@ -408,43 +384,22 @@
   transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
 }
 
-.user-menu-explanation-btn {
-  right: 6.82rem;
-}
-
-.user-menu-share-btn {
-  right: 4.74rem;
-}
-
-.user-menu-settings-btn {
+.navigator-header-actions {
+  position: absolute;
+  top: 0.48rem;
   right: 2.66rem;
+  z-index: 7;
 }
 
 .user-menu-close-btn {
   right: 0.58rem;
 }
 
-.user-menu-share-btn .mat-icon,
-.user-menu-explanation-btn .mat-icon,
-.user-menu-settings-btn .mat-icon,
 .user-menu-close-btn .mat-icon {
   width: 18px;
   height: 18px;
   font-size: 18px;
   line-height: 18px;
-}
-
-.user-menu-settings-btn.is-open {
-  background: rgba(255, 255, 255, 0.94);
-  color: rgba(22, 56, 98, 0.96);
-  transform: translateY(-1px) scale(1.03);
-}
-
-.user-menu-explanation-btn.is-enabled {
-  border: 1px solid rgba(31, 63, 105, 0.18);
-  background: rgba(28, 43, 68, 0.9);
-  color: #fff;
-  box-shadow: 0 5px 14px rgba(12, 24, 40, 0.16);
 }
 
 .user-header-main {
@@ -1473,17 +1428,7 @@
   color: rgba(26, 63, 105, 0.96);
 }
 
-.user-menu-settings-btn:hover {
-  transform: translateY(-1px) scale(1.04);
-  background: rgba(255, 255, 255, 0.92);
-  color: rgba(26, 63, 105, 0.96);
-}
-
 .user-menu-close-btn:active {
-  transform: scale(0.92);
-}
-
-.user-menu-settings-btn:active {
   transform: scale(0.92);
 }
 

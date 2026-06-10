@@ -16,6 +16,12 @@ import type {
 } from '../../../shared/core/base/models';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel
+} from '../../../shared/ui/components/menu';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
@@ -65,10 +71,40 @@ interface HelpEditorRevisionRow {
   revision: HelpCenterRevision | null;
 }
 
+type HelpEditorDocumentMenuItemId =
+  | 'document-menu'
+  | 'help'
+  | 'privacy'
+  | 'terms'
+  | 'explanations'
+  | 'create-explanation'
+  | `explanation:${string}`;
+
+interface HelpEditorDocumentMenuContext {
+  action: 'select-document' | 'select-explanation' | 'create-explanation';
+  documentKind?: HelpCenterDocumentKind;
+  surface?: ExplainableSurface;
+}
+
+type HelpEditorLanguageMenuItemId = 'language-menu' | `language:${string}`;
+
+interface HelpEditorLanguageMenuContext {
+  action: 'select-language';
+  lang: string;
+}
+
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, EditableImageCarouselComponent, ProgressIndicatorComponent, LazyBgImageDirective],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    AppMenuComponent,
+    EditableImageCarouselComponent,
+    ProgressIndicatorComponent,
+    LazyBgImageDirective
+  ],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
 })
@@ -120,15 +156,86 @@ export class AdminHelpEditorPopupComponent {
   protected draftAccordionOpen = true;
   protected openDraftSectionId = '';
   protected iconPickerSectionId = '';
-  protected documentMenuOpen = false;
-  protected languageMenuOpen = false;
   protected contextPickerOpen = false;
   protected colorPickerOpen = false;
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
-  protected explanationMenuOpen = false;
   protected selectedExplanationContextKey = 'home.game';
   protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
+  protected documentMenuModel(): AppMenuModel<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
+    const disabled = this.loading() || this.isAnyActionPending();
+    return {
+      nodes: [
+        {
+          id: 'document-menu-root',
+          children: [
+            {
+              id: 'document-menu',
+              kind: 'select-trigger',
+              label: this.uiDocumentLabel(),
+              icon: this.documentIcon(this.documentKind),
+              disabled,
+              ariaLabel: this.uiText('Select content type'),
+              children: [
+                this.documentMenuKindItem('help', disabled),
+                this.documentMenuKindItem('privacy', disabled),
+                this.documentMenuKindItem('terms', disabled),
+                {
+                  id: 'explanations',
+                  kind: 'branch',
+                  label: this.uiText('Explanations'),
+                  icon: 'tips_and_updates',
+                  active: this.documentKind === 'explanation',
+                  disabled,
+                  children: this.explainableSurfaces().map(surface => this.explanationMenuSurfaceItem(surface, disabled)),
+                  headerActions: [
+                    {
+                      id: 'create-explanation',
+                      icon: 'add',
+                      palette: 'success',
+                      ariaLabel: this.uiText('Create explanation popup'),
+                      context: { action: 'create-explanation' }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    };
+  }
+  protected languageMenuModel(): AppMenuModel<HelpEditorLanguageMenuItemId, HelpEditorLanguageMenuContext> {
+    const disabled = this.loading() || this.isAnyActionPending();
+    return {
+      nodes: [
+        {
+          id: 'language-menu-root',
+          children: [
+            {
+              id: 'language-menu',
+              kind: 'select-trigger',
+              label: this.languageMenuItemLabel(this.selectedContentLang),
+              palette: 'success',
+              disabled,
+              ariaLabel: 'Content language',
+              children: this.contentLanguages().map(language => ({
+                id: `language:${this.normalizeContentLang(language.lang)}`,
+                kind: 'radio',
+                label: this.languageMenuItemLabel(language.lang),
+                checked: this.normalizeContentLang(language.lang) === this.selectedContentLang,
+                disabled,
+                context: {
+                  action: 'select-language',
+                  lang: language.lang
+                }
+              }))
+            }
+          ]
+        }
+      ]
+    };
+  }
   private stateLoadedForPopup = false;
   protected readonly panelSpanOptions: readonly HelpPanelSpanOption[] = [
     { value: 'span-1', icon: 'looks_one', label: 'span-1', title: 'One grid column' },
@@ -232,8 +339,6 @@ export class AdminHelpEditorPopupComponent {
         this.editing = false;
         this.draft = null;
         this.loading.set(false);
-        this.closeDocumentMenu();
-        this.closeLanguageMenu();
         this.closeContextPicker();
         this.closeIconPicker();
         this.closeColorPicker();
@@ -248,13 +353,11 @@ export class AdminHelpEditorPopupComponent {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId && !this.documentMenuOpen && !this.languageMenuOpen && !this.contextPickerOpen && !this.colorPickerOpen) {
+    if (!this.iconPickerSectionId && !this.contextPickerOpen && !this.colorPickerOpen) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
-    this.closeDocumentMenu();
-    this.closeLanguageMenu();
     this.closeContextPicker();
     this.closeIconPicker();
     this.closeColorPicker();
@@ -288,12 +391,76 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
+  protected async onDocumentMenuSelect(
+    event: AppMenuItemSelectEvent<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext>
+  ): Promise<void> {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+    if (context.action === 'select-document' && context.documentKind) {
+      await this.selectDocumentKind(context.documentKind, event.sourceEvent);
+      return;
+    }
+    if (context.action === 'select-explanation' && context.surface) {
+      await this.selectExplanationSurface(context.surface, event.sourceEvent);
+      return;
+    }
+    if (context.action === 'create-explanation') {
+      await this.createExplanationItem(event.sourceEvent);
+    }
+  }
+
+  protected async onLanguageMenuSelect(
+    event: AppMenuItemSelectEvent<HelpEditorLanguageMenuItemId, HelpEditorLanguageMenuContext>
+  ): Promise<void> {
+    const context = event.context;
+    if (context?.action !== 'select-language') {
+      return;
+    }
+    await this.selectContentLanguage(context.lang, event.sourceEvent);
+  }
+
+  private documentMenuKindItem(
+    kind: Extract<HelpCenterDocumentKind, 'help' | 'privacy' | 'terms'>,
+    disabled: boolean
+  ): AppMenuItem<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
+    return {
+      id: kind,
+      kind: 'radio',
+      label: this.uiText(this.documentMenuKindLabel(kind)),
+      icon: this.documentIcon(kind),
+      checked: this.documentKind === kind,
+      disabled,
+      context: {
+        action: 'select-document',
+        documentKind: kind
+      }
+    };
+  }
+
+  private explanationMenuSurfaceItem(
+    surface: ExplainableSurface,
+    disabled: boolean
+  ): AppMenuItem<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
+    return {
+      id: `explanation:${surface.key}`,
+      kind: 'radio',
+      label: this.explanationMenuItemLabel(surface),
+      description: `${surface.label} · ${this.explanationMenuItemMeta(surface)}`,
+      icon: surface.icon,
+      checked: this.documentKind === 'explanation' && this.selectedExplanationContextKey === surface.key,
+      disabled,
+      context: {
+        action: 'select-explanation',
+        surface
+      }
+    };
+  }
+
   protected async selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): Promise<void> {
     event?.stopPropagation();
-    this.closeDocumentMenu();
-    this.closeLanguageMenu();
     this.closeContextPicker();
-    this.explanationMenuOpen = false;
     if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
     }
@@ -370,8 +537,6 @@ export class AdminHelpEditorPopupComponent {
     if (this.loading() || this.saving || this.isAnyActionPending()) {
       return;
     }
-    this.closeDocumentMenu();
-    this.closeLanguageMenu();
     this.closeIconPicker();
     this.closeColorPicker();
     this.contextPickerOpen = true;
@@ -400,28 +565,20 @@ export class AdminHelpEditorPopupComponent {
     return flags[this.normalizeContentLang(lang)] ?? '🌐';
   }
 
-  protected toggleLanguageMenu(event?: Event): void {
-    event?.stopPropagation();
-    if (this.loading() || this.isAnyActionPending()) {
-      return;
-    }
-    this.closeDocumentMenu();
-    this.closeIconPicker();
-    this.closeContextPicker();
-    this.closeColorPicker();
-    this.languageMenuOpen = !this.languageMenuOpen;
+  protected languageMenuItemLabel(lang: string): string {
+    const normalized = this.normalizeContentLang(lang);
+    const label = this.contentLanguages().find(language => this.normalizeContentLang(language.lang) === normalized)?.label ?? normalized.toUpperCase();
+    return `${this.contentLanguageFlag(normalized)} ${label}`;
   }
 
   protected async selectContentLanguage(lang: string, event?: Event): Promise<void> {
     event?.stopPropagation();
     const normalized = this.normalizeContentLang(lang);
     if (normalized === this.selectedContentLang || this.loading() || this.isAnyActionPending()) {
-      this.closeLanguageMenu();
       return;
     }
     const reopenEditor = this.editing;
     this.selectedContentLang = normalized;
-    this.closeLanguageMenu();
     this.editing = false;
     this.draft = null;
     this.draftAccordionOpen = true;
@@ -441,45 +598,10 @@ export class AdminHelpEditorPopupComponent {
     this.editing = false;
     this.draft = null;
     this.draftAccordionOpen = true;
-    this.closeDocumentMenu();
-    this.closeLanguageMenu();
     this.closeContextPicker();
     this.closeIconPicker();
     this.closeColorPicker();
     this.admin.closePopup();
-  }
-
-  protected toggleDocumentMenu(event?: Event): void {
-    event?.stopPropagation();
-    if (this.loading() || this.isAnyActionPending()) {
-      return;
-    }
-    this.closeLanguageMenu();
-    this.closeContextPicker();
-    this.documentMenuOpen = !this.documentMenuOpen;
-    this.explanationMenuOpen = false;
-    this.closeIconPicker();
-    this.closeContextPicker();
-    this.closeColorPicker();
-  }
-
-  protected closeDocumentMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.documentMenuOpen = false;
-    this.explanationMenuOpen = false;
-  }
-
-  protected openExplanationMenu(event?: Event): void {
-    event?.stopPropagation();
-    if (this.loading() || this.isAnyActionPending()) {
-      return;
-    }
-    this.explanationMenuOpen = true;
-  }
-
-  protected closeExplanationMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.explanationMenuOpen = false;
   }
 
   protected async selectExplanationSurface(surface: ExplainableSurface, event?: Event): Promise<void> {
@@ -489,7 +611,6 @@ export class AdminHelpEditorPopupComponent {
     }
     const wasExplanation = this.documentKind === 'explanation';
     this.selectedExplanationContextKey = surface.key;
-    this.explanationMenuOpen = false;
     await this.selectDocumentKind('explanation', event);
     if (wasExplanation && this.documentKind === 'explanation') {
       await this.load();
@@ -505,19 +626,12 @@ export class AdminHelpEditorPopupComponent {
     this.selectedRevisionId = '';
     this.openRevisionId = '';
     this.openPreviewSectionId = '';
-    this.explanationMenuOpen = false;
     if (this.documentKind !== 'explanation') {
       await this.selectDocumentKind('explanation', event);
     } else {
-      this.closeDocumentMenu();
       await this.load();
     }
     this.beginEditingDraft(this.emptyDraft(null));
-  }
-
-  protected closeLanguageMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.languageMenuOpen = false;
   }
 
   protected currentState(): HelpCenterState | null {
@@ -967,6 +1081,17 @@ export class AdminHelpEditorPopupComponent {
         return 'Terms';
       case 'explanation':
         return 'Explanation';
+      default:
+        return 'Help';
+    }
+  }
+
+  private documentMenuKindLabel(kind: Extract<HelpCenterDocumentKind, 'help' | 'privacy' | 'terms'>): string {
+    switch (kind) {
+      case 'privacy':
+        return 'Privacy';
+      case 'terms':
+        return 'Terms';
       default:
         return 'Help';
     }

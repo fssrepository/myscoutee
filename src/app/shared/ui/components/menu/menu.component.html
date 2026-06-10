@@ -1,0 +1,311 @@
+<div class="app-menu" [class.app-menu--open]="panelVisible">
+  @if (hasTrigger) {
+    <button
+      type="button"
+      class="app-menu__trigger"
+      [ngClass]="triggerPaletteClass()"
+      [class.app-menu__trigger--open]="open"
+      [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
+      [disabled]="triggerDisabled()"
+      [attr.aria-expanded]="open"
+      aria-haspopup="menu"
+      [attr.aria-label]="triggerAriaLabel()"
+      (click)="toggleMenu($event)"
+      >
+      @if (triggerIcon()) {
+        <mat-icon>{{ triggerIcon() }}</mat-icon>
+      }
+      @if (!trigger?.hideLabel && triggerLabel()) {
+        <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
+      }
+      @if (hasTriggerCounter()) {
+        <span
+          class="app-menu__counter app-menu__counter--trigger"
+          [class.app-menu__counter--pulse]="isCounterPulsing(triggerCounterKey())"
+          >
+          {{ triggerCounterLabel() }}
+        </span>
+      }
+    </button>
+  }
+
+  @if (isButtonRowKind) {
+    <div class="app-menu__button-row" role="toolbar">
+      @for (item of actionRowItems; track trackByItemId($index, item)) {
+        @if (!isDivider(item) && !isSection(item)) {
+          <button
+            type="button"
+            class="app-menu__button-row-item"
+            [ngClass]="itemPaletteClass(item)"
+            [class.app-menu__button-row-item--active]="isItemActive(item)"
+            [class.app-menu__button-row-item--open]="isActionRowItemOpen(item)"
+            [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
+            [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
+            [disabled]="isItemDisabled(item)"
+            [attr.aria-expanded]="hasItemChildren(item) ? isActionRowItemOpen(item) : null"
+            [attr.aria-haspopup]="hasItemChildren(item) ? 'menu' : null"
+            [attr.aria-pressed]="isToggleItem(item) ? isItemActive(item) : null"
+            [attr.aria-label]="actionRowItemAriaLabel(item)"
+            [title]="actionRowItemAriaLabel(item) || actionRowItemLabel(item)"
+            (click)="selectActionRowItem(item, $event)"
+            >
+            @if (actionRowItemIcon(item)) {
+              <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
+            }
+            @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
+              <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+            }
+            @if (isLabeledActionRowItem(item) && hasItemChildren(item)) {
+              <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
+            }
+            @if (hasItemCounter(item)) {
+              <span
+                class="app-menu__counter app-menu__counter--trigger"
+                [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                >
+                {{ itemCounterLabel(item) }}
+              </span>
+            }
+          </button>
+        }
+      }
+    </div>
+  }
+
+  @if (panelVisible) {
+    @if (showMobileBackdrop) {
+      <button
+        type="button"
+        class="app-menu__backdrop"
+        (click)="closeFromBackdrop($event)"
+        aria-label="Close menu"
+      ></button>
+    }
+
+    <div
+      class="app-menu__panel"
+      [class.app-menu__panel--inline]="isInlineKind"
+      [class.app-menu__panel--dropdown-list]="isDropdownListKind || isButtonRowKind"
+      [class.app-menu__panel--has-branch-header]="showBranchBack"
+      [class.app-menu__panel--open-up]="openUp"
+      role="menu"
+      (click)="$event.stopPropagation()"
+      >
+      @if (resolvedTitle) {
+        <div class="app-menu__title">{{ resolvedTitle | i18n }}</div>
+      }
+
+      @if (isShortcutGridKind && hasMenuNodes) {
+        <div class="app-menu__groups">
+          @for (branch of menuNodes; track trackByBranchId($index, branch)) {
+            <section class="app-menu__group" role="group" [attr.aria-label]="branchAriaLabel(branch)">
+              @if (branchLabel(branch) || branchIcon(branch)) {
+                <div class="app-menu__group-header" [ngClass]="branchPaletteClass(branch)">
+                  <span class="app-menu__group-badge">
+                    @if (branchIcon(branch)) {
+                      <mat-icon>{{ branchIcon(branch) }}</mat-icon>
+                    }
+                    @if (branchLabel(branch)) {
+                      <span>{{ branchLabel(branch) | i18n }}</span>
+                    }
+                  </span>
+                  <span class="app-menu__group-line"></span>
+                </div>
+              }
+              <div class="app-menu__shortcut-grid">
+                @for (item of branchChildren(branch); track trackByItemId($index, item)) {
+                  @if (isDivider(item)) {
+                    <div class="app-menu__divider app-menu__shortcut-divider" role="separator"></div>
+                  } @else if (isSection(item)) {
+                    <div class="app-menu__section-label app-menu__shortcut-section">{{ itemLabel(item) | i18n }}</div>
+                  } @else {
+                    <button
+                      type="button"
+                      class="app-menu__shortcut-item"
+                      [ngClass]="itemPaletteClass(item)"
+                      [class.app-menu__shortcut-item--active]="isItemActive(item)"
+                      [class.app-menu__shortcut-item--disabled]="isItemDisabled(item)"
+                      [class.app-menu__shortcut-item--segmented]="hasItemSegments(item)"
+                      [style.grid-column]="itemGridColumn(item)"
+                      [disabled]="isItemDisabled(item)"
+                      [attr.role]="itemRole(item)"
+                      [attr.aria-checked]="isItemChecked(item)"
+                      [attr.aria-label]="itemAriaLabel(item)"
+                      [title]="itemAriaLabel(item) || itemLabel(item)"
+                      (click)="selectItem(item, $event)"
+                      >
+                      @if (hasItemSegments(item)) {
+                        <span class="app-menu__segments" aria-hidden="true">
+                          @for (segment of itemSegments(item); track trackBySegmentId($index, segment)) {
+                            <span class="app-menu__segment" [ngClass]="segmentPaletteClass(segment)">
+                              @if (segmentIcon(segment)) {
+                                <mat-icon>{{ segmentIcon(segment) }}</mat-icon>
+                              }
+                              <span class="app-menu__segment-text">
+                                @if (segmentLabel(segment)) {
+                                  <span class="app-menu__segment-label">{{ segmentLabel(segment) | i18n }}</span>
+                                }
+                                @if (segmentDescription(segment)) {
+                                  <span class="app-menu__segment-description">{{ segmentDescription(segment) | i18n }}</span>
+                                }
+                              </span>
+                            </span>
+                          }
+                        </span>
+                      } @else {
+                        @if (itemIcon(item)) {
+                          <mat-icon class="app-menu__shortcut-icon">{{ itemIcon(item) }}</mat-icon>
+                        }
+                        <span class="app-menu__shortcut-label">{{ itemLabel(item) | i18n }}</span>
+                        @if (itemDescription(item)) {
+                          <span class="app-menu__shortcut-description">{{ itemDescription(item) | i18n }}</span>
+                        }
+                      }
+                      @if (hasItemCounter(item)) {
+                        <span
+                          class="app-menu__counter app-menu__counter--shortcut"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, branch))"
+                          >
+                          {{ itemCounterLabel(item) }}
+                        </span>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            </section>
+          }
+        </div>
+      } @else {
+        @if (activeBranch; as branch) {
+          @if (showBranchBack) {
+            <div class="app-menu__branch-header">
+              <button
+                type="button"
+                class="app-menu__branch-back"
+                aria-label="Back to menu"
+                title="Back to menu"
+                (click)="closeActiveBranch($event)"
+                >
+                <mat-icon>arrow_back</mat-icon>
+              </button>
+              <span class="app-menu__branch-title">{{ itemLabel(branch) | i18n }}</span>
+              @for (action of branchHeaderActions(branch); track trackByItemId($index, action)) {
+                <button
+                  type="button"
+                  class="app-menu__branch-action"
+                  [class.app-menu__branch-action--icon-only]="!itemLabel(action)"
+                  [ngClass]="itemPaletteClass(action)"
+                  [disabled]="isItemDisabled(action)"
+                  [attr.aria-label]="itemAriaLabel(action)"
+                  [title]="itemAriaLabel(action) || itemLabel(action)"
+                  (click)="selectBranchHeaderAction(action, $event)"
+                  >
+                  @if (itemIcon(action)) {
+                    <mat-icon>{{ itemIcon(action) }}</mat-icon>
+                  }
+                  @if (itemLabel(action)) {
+                    <span>{{ itemLabel(action) | i18n }}</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        }
+        <div class="app-menu__items">
+          @for (item of visibleListItems; track trackByItemId($index, item)) {
+            @if (isDivider(item)) {
+              <div class="app-menu__divider" role="separator"></div>
+            } @else if (isSection(item)) {
+              <div class="app-menu__section-label">{{ itemLabel(item) | i18n }}</div>
+            } @else if (itemHref(item)) {
+              <a
+                class="app-menu__item"
+                [ngClass]="itemPaletteClass(item)"
+                [class.app-menu__item--active]="isItemActive(item)"
+                [class.app-menu__item--disabled]="isItemDisabled(item)"
+                [class.app-menu__item--with-description]="itemDescription(item)"
+                [attr.href]="isItemDisabled(item) ? null : itemHref(item)"
+                [attr.target]="itemTarget(item)"
+                [attr.rel]="itemRel(item)"
+                [attr.role]="itemRole(item)"
+                [attr.aria-disabled]="isItemDisabled(item) ? 'true' : null"
+                [attr.aria-checked]="isItemChecked(item)"
+                [attr.aria-label]="itemAriaLabel(item)"
+                (click)="selectLinkItem(item, $event)"
+                >
+                @if (itemIcon(item)) {
+                  <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                }
+                <span class="app-menu__item-main">
+                  <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                  @if (itemDescription(item)) {
+                    <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                  }
+                </span>
+                @if (hasItemCounter(item)) {
+                  <span
+                    class="app-menu__counter"
+                    [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                    >
+                    {{ itemCounterLabel(item) }}
+                  </span>
+                }
+                @if (itemDetail(item)) {
+                  <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                }
+                @if (isItemActive(item) && !hasItemChildren(item)) {
+                  <mat-icon class="app-menu__item-check">done</mat-icon>
+                }
+                @if (hasItemChildren(item)) {
+                  <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                }
+              </a>
+            } @else {
+              <button
+                type="button"
+                class="app-menu__item"
+                [ngClass]="itemPaletteClass(item)"
+                [class.app-menu__item--active]="isItemActive(item)"
+                [class.app-menu__item--disabled]="isItemDisabled(item)"
+                [class.app-menu__item--with-description]="itemDescription(item)"
+                [disabled]="isItemDisabled(item)"
+                [attr.role]="itemRole(item)"
+                [attr.aria-checked]="isItemChecked(item)"
+                [attr.aria-label]="itemAriaLabel(item)"
+                (click)="selectItem(item, $event)"
+                >
+                @if (itemIcon(item)) {
+                  <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                }
+                <span class="app-menu__item-main">
+                  <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                  @if (itemDescription(item)) {
+                    <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                  }
+                </span>
+                @if (itemDetail(item)) {
+                  <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                }
+                @if (hasItemCounter(item)) {
+                  <span
+                    class="app-menu__counter"
+                    [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                    >
+                    {{ itemCounterLabel(item) }}
+                  </span>
+                }
+                @if (isItemActive(item) && !hasItemChildren(item)) {
+                  <mat-icon class="app-menu__item-check">done</mat-icon>
+                }
+                @if (hasItemChildren(item)) {
+                  <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                }
+              </button>
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

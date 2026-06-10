@@ -57,7 +57,8 @@ export class HelpCenterService extends BaseRouteModeService {
   async preloadAll(): Promise<void> {
     await Promise.all([
       this.preload('help'),
-      this.preload('privacy')
+      this.preload('privacy'),
+      this.preload('terms')
     ]);
   }
 

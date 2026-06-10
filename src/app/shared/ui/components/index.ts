@@ -2,6 +2,7 @@ export * from './card';
 export * from './rating-star-bar';
 export * from './editable-image-carousel';
 export * from './progress-indicator';
+export * from './menu';
 export * from './smart-list';
 export * from './topic-picker-popup';
 export * from './pricing-editor';
