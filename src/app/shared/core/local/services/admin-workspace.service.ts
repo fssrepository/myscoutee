@@ -8,17 +8,17 @@ import type { AdminMonitoringStateDto } from '../../base/models/admin-monitoring
 import type { AdminNotificationCenterState } from '../../base/models/admin-notification.model';
 import type { ChatPopupMessage, ChatRecord } from '../../base/models/chat.model';
 import { LocalAdminBootstrapService } from './admin-bootstrap.service';
-import type { AdminDashboardDto } from '../../../../admin/models/admin-dashboard.model';
-import type { AdminHelpTarget } from '../../../../admin/models/admin-help.model';
 import type {
+  AdminBootstrapProcessState,
   AdminChatMessageDto,
+  AdminDashboardDto,
   AdminFeedbackDto,
+  AdminHelpTarget,
   AdminModerationStore,
   AdminReportDto,
-  AdminReportedUserDto
-} from '../../../../admin/models/admin-moderation.model';
-import type { AdminUserDto } from '../../../../admin/models/admin-profile.model';
-import type { AdminBootstrapProcessState } from '../../../../admin/models/admin-shell.model';
+  AdminReportedUserDto,
+  AdminUserDto
+} from '../../base/models';
 import {
   AdminHelpSeedBuilder,
   AdminModerationSeedBuilder,

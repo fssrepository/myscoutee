@@ -10,7 +10,9 @@ import { AppUtils } from '../../../shared/app-utils';
 import {
   AppContext,
   AdminModerationService,
-  type AdminModerationActionResult
+  type AdminModerationActionResult,
+  type AdminReportedUserDto,
+  type AdminReportDto
 } from '../../../shared/core';
 import {
   SmartListComponent,
@@ -30,7 +32,6 @@ import type { UserDto } from '../../../shared/core/base/interfaces/user.interfac
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import type { AdminReportedUserDto, AdminReportDto } from '../../models/admin-moderation.model';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';

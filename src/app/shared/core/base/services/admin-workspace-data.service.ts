@@ -1,12 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { AdminDashboardDto } from '../../../../admin/models/admin-dashboard.model';
-import type { AdminBootstrapProcessState } from '../../../../admin/models/admin-shell.model';
 import { HttpAdminWorkspaceService } from '../../http/services/admin-workspace.service';
 import { LocalAdminWorkspaceService } from '../../local/services/admin-workspace.service';
 import type { UserSelectorListItemDto } from '../interfaces';
-import type { ShareTokenResolvedItem } from '../models';
+import type { AdminBootstrapProcessState, AdminDashboardDto, ShareTokenResolvedItem } from '../models';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ShareTokensService } from './share-tokens.service';
 import { UsersService } from './users.service';

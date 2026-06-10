@@ -2,10 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminStatsService, AppContext } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
+  AdminStatsService,
+  AppContext,
   type AdminStatsBreakdownItemDto,
   type AdminStatsDashboardDto,
   type AdminStatsGraphDto,
@@ -15,7 +14,9 @@ import {
   type AdminStatsRevenueTimelinePointDto,
   type AdminStatsSegmentDto,
   type AdminStatsTimelinePointDto
-} from '../../models/admin-stats.model';
+} from '../../../shared/core';
+import { I18nPipe } from '../../../shared/ui';
+import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 type AdminStatsTimelineMetric = 'activeUsers' | 'registrations' | 'ratings' | 'activity' | 'messages' | 'moderation';

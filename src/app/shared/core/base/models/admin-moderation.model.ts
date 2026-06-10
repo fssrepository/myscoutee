@@ -1,4 +1,4 @@
-import type { UserDto } from '../../shared/core';
+import type { UserDto } from '../interfaces/user.interface';
 
 export interface AdminChatMessageDto {
   id: string;

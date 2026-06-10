@@ -6,10 +6,11 @@ import { MatIconModule } from '@angular/material/icon';
 import {
   AppContext,
   AdminModerationService as CoreAdminModerationService,
-  type AdminModerationActionResult
+  type AdminChatMessageDto,
+  type AdminModerationActionResult,
+  type AdminReportedUserDto
 } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import type { AdminChatMessageDto, AdminReportedUserDto } from '../../models/admin-moderation.model';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 

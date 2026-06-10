@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
+import type { AdminFeedbackDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -17,7 +18,6 @@ import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
-import type { AdminFeedbackDto } from '../../models/admin-moderation.model';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 

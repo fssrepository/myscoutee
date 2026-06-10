@@ -3,7 +3,16 @@ import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminParamsService, AppContext } from '../../../shared/core';
+import {
+  AdminParamsService,
+  AppContext,
+  type AdminParamFieldDto,
+  type AdminParamOptionDto,
+  type AdminParamsHistoryDto,
+  type AdminParamsHistoryItemDto,
+  type AdminParamsSectionDto,
+  type AdminParamsStateDto
+} from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import {
   AppMenuComponent,
@@ -12,14 +21,6 @@ import {
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import {
-  type AdminParamFieldDto,
-  type AdminParamOptionDto,
-  type AdminParamsHistoryDto,
-  type AdminParamsHistoryItemDto,
-  type AdminParamsSectionDto,
-  type AdminParamsStateDto
-} from '../../models/admin-params.model';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;

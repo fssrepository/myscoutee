@@ -6,12 +6,16 @@ import { MatRippleModule } from '@angular/material/core';
 
 import { NavigatorComponent } from '../../../navigator';
 import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
-import { SessionService, AppPopupContext, type BootstrapProcessStage } from '../../../shared/core';
+import {
+  SessionService,
+  AppPopupContext,
+  type AdminBootstrapProcessState,
+  type BootstrapProcessStage
+} from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
-import type { AdminBootstrapProcessState } from '../../models/admin-shell.model';
 
 @Component({
   selector: 'app-admin-page',
