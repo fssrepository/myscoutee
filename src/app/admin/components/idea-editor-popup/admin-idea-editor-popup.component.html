@@ -7,39 +7,12 @@
           <h2>Article editor</h2>
         </div>
         <div class="idea-editor-header-actions">
-          <div class="idea-editor-filter-wrap">
-            <button
-              type="button"
-              class="idea-editor-filter-btn"
-              [class.is-open]="filterMenuOpen"
-              (click)="toggleFilterMenu($event)"
-              [attr.aria-expanded]="filterMenuOpen"
-              aria-label="Filter articles"
-              >
-              <mat-icon>{{ filterIcon() }}</mat-icon>
-              <span>{{ filterLabel() }}</span>
-              <strong>{{ filterCount() }}</strong>
-              <mat-icon class="idea-editor-filter-caret">expand_more</mat-icon>
-            </button>
-            @if (filterMenuOpen) {
-              <div class="idea-editor-filter-menu" role="menu" (click)="$event.stopPropagation()">
-                @for (option of filterOptions; track option.id) {
-                  <button
-                    type="button"
-                    class="idea-editor-filter-option"
-                    [class.is-active]="ideaFilter === option.id"
-                    (click)="setIdeaFilter(option.id, $event)"
-                    role="menuitemradio"
-                    [attr.aria-checked]="ideaFilter === option.id"
-                    >
-                    <mat-icon>{{ option.icon }}</mat-icon>
-                    <span>{{ option.label }}</span>
-                    <strong>{{ filterCount(option.id) }}</strong>
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="idea-editor-filter-wrap"
+            kind="button-row"
+            [model]="ideaFilterMenuModel()"
+            (itemSelect)="onIdeaFilterMenuSelect($event)"
+          ></app-menu>
 
           <button
             type="button"
@@ -56,42 +29,12 @@
           </button>
         </div>
         <div class="idea-editor-language-row" aria-label="Content language" data-i18n-ignore>
-          <div class="idea-editor-language-menu-wrap">
-            <button
-              type="button"
-              class="idea-editor-language-menu-btn"
-              [class.is-open]="languageMenuOpen"
-              [disabled]="loading || saving"
-              [attr.aria-expanded]="languageMenuOpen"
-              (click)="toggleLanguageMenu($event)"
-              >
-              <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(selectedContentLang) }}</span>
-              <span>{{ selectedContentLanguageLabel() }}</span>
-              <mat-icon class="idea-editor-language-caret">expand_more</mat-icon>
-            </button>
-            @if (languageMenuOpen) {
-              <div class="idea-editor-language-menu" role="menu" (click)="$event.stopPropagation()">
-                @for (language of contentLanguages(); track language.lang) {
-                  <button
-                    type="button"
-                    class="idea-editor-language-option"
-                    [class.is-active]="selectedContentLang === language.lang"
-                    (click)="selectListContentLanguage(language.lang, $event)"
-                    role="menuitemradio"
-                    [attr.aria-checked]="selectedContentLang === language.lang"
-                    >
-                    <span class="idea-editor-language-option-label">
-                      <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(language.lang) }}</span>
-                      <span>{{ language.label }}</span>
-                    </span>
-                    @if (selectedContentLang === language.lang) {
-                      <mat-icon>check</mat-icon>
-                    }
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="idea-editor-language-menu-wrap"
+            kind="button-row"
+            [model]="listLanguageMenuModel()"
+            (itemSelect)="onContentLanguageMenuSelect($event)"
+          ></app-menu>
         </div>
       </div>
 
@@ -226,42 +169,12 @@
             </button>
           </div>
           <div class="idea-editor-language-row idea-editor-form-language-row" aria-label="Content language" data-i18n-ignore>
-            <div class="idea-editor-language-menu-wrap">
-              <button
-                type="button"
-                class="idea-editor-language-menu-btn"
-                [class.is-open]="formLanguageMenuOpen"
-                [disabled]="saving"
-                [attr.aria-expanded]="formLanguageMenuOpen"
-                (click)="toggleFormLanguageMenu($event)"
-                >
-                <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(draftContentLang) }}</span>
-                <span>{{ draftContentLanguageLabel() }}</span>
-                <mat-icon class="idea-editor-language-caret">expand_more</mat-icon>
-              </button>
-              @if (formLanguageMenuOpen) {
-                <div class="idea-editor-language-menu" role="menu" (click)="$event.stopPropagation()">
-                  @for (language of contentLanguages(); track language.lang) {
-                    <button
-                      type="button"
-                      class="idea-editor-language-option"
-                      [class.is-active]="draftContentLang === language.lang"
-                      (click)="selectDraftContentLanguage(language.lang, $event)"
-                      role="menuitemradio"
-                      [attr.aria-checked]="draftContentLang === language.lang"
-                      >
-                      <span class="idea-editor-language-option-label">
-                        <span class="idea-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(language.lang) }}</span>
-                        <span>{{ language.label }}</span>
-                      </span>
-                      @if (draftContentLang === language.lang) {
-                        <mat-icon>check</mat-icon>
-                      }
-                    </button>
-                  }
-                </div>
-              }
-            </div>
+            <app-menu
+              class="idea-editor-language-menu-wrap"
+              kind="button-row"
+              [model]="formLanguageMenuModel()"
+              (itemSelect)="onContentLanguageMenuSelect($event)"
+            ></app-menu>
           </div>
         </header>
         @if (articlePanelLoading && articlePanelLoadingMode === 'editor') {

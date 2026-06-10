@@ -196,8 +196,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.kind === 'shortcut-grid';
   }
 
+  protected get isSelectKind(): boolean {
+    return this.kind === 'select';
+  }
+
   protected get isDropdownListKind(): boolean {
-    return this.kind === 'dropdown-list';
+    return this.kind === 'dropdown-list' || this.isSelectKind;
   }
 
   protected get isAnchoredOverlayKind(): boolean {
@@ -262,6 +266,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     const configuredIcon = this.resolveLiveValue(this.open
       ? this.trigger?.closeIcon ?? this.trigger?.openIcon ?? this.trigger?.icon
       : this.trigger?.icon);
+    if (!configuredIcon && this.isSelectKind) {
+      return '';
+    }
     return `${configuredIcon ?? (this.open ? 'close' : 'more_vert')}`.trim();
   }
 
@@ -503,6 +510,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected isItemActive(item: AppMenuItem<TId, TContext>): boolean {
     return this.resolveBoolean(item.active) || this.resolveBoolean(item.checked);
+  }
+
+  protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
+    if ((this.isDropdownListKind || this.isButtonRowKind) && item.kind === 'radio') {
+      return false;
+    }
+    return this.isItemActive(item) && !this.hasItemChildren(item);
   }
 
   protected isItemChecked(item: AppMenuItem<TId, TContext>): boolean | null {

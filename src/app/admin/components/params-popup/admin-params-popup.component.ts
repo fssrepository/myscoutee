@@ -5,6 +5,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AdminParamsService, AppContext } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger
+} from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   type AdminParamFieldDto,
@@ -17,11 +23,17 @@ import {
 import { AdminShellService } from '../../services/admin-shell.service';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
+type AdminParamSelectMenuItemId = `param-option:${string}:${string}`;
+
+interface AdminParamSelectMenuContext {
+  field: AdminParamFieldDto;
+  option: AdminParamOption;
+}
 
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })
@@ -40,7 +52,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
   protected readonly history = signal<AdminParamsHistoryDto | null>(null);
   protected readonly historyLoading = signal(false);
   protected readonly inspectedVersion = signal<AdminParamsHistoryItemDto | null>(null);
-  protected readonly openTextSelectKey = signal('');
   protected readonly selectedSection = computed(() => {
     const key = this.openSectionKey();
     return this.state()?.sections.find(section => section.key === key) ?? this.state()?.sections[0] ?? null;
@@ -56,7 +67,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
     this.editDraft.set(null);
     this.history.set(null);
     this.historyLoading.set(false);
-    this.openTextSelectKey.set('');
   }
 
   protected async load(): Promise<void> {
@@ -93,7 +103,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
       section: selected,
       fields: selected.fields.map(field => ({ ...field }))
     });
-    this.openTextSelectKey.set('');
   }
 
   protected cancelEdit(): void {
@@ -101,7 +110,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
       return;
     }
     this.editDraft.set(null);
-    this.openTextSelectKey.set('');
   }
 
   protected async saveEdit(): Promise<void> {
@@ -121,7 +129,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
       this.state.set(state);
       this.openSectionKey.set(draft.section.key);
       this.editDraft.set(null);
-      this.openTextSelectKey.set('');
     } catch (error) {
       this.error.set(this.messageFromError(error, 'Unable to save parameters.'));
     } finally {
@@ -260,30 +267,51 @@ export class AdminParamsPopupComponent implements OnDestroy {
     return this.textFieldOptions(field).find(option => option.value === value)?.label ?? value;
   }
 
-  protected textFieldSelectOpen(field: AdminParamFieldDto): boolean {
-    return this.openTextSelectKey() === field.key;
+  protected textFieldSelectTitle(field: AdminParamFieldDto): string {
+    return field.labelKey || field.label || 'Options';
   }
 
-  protected toggleTextFieldSelect(field: AdminParamFieldDto, event?: Event): void {
-    event?.stopPropagation();
-    if (this.saving() || !this.textFieldOptions(field).length) {
+  protected textFieldSelectTrigger(field: AdminParamFieldDto): AppMenuTrigger {
+    return {
+      label: this.textFieldOptionLabel(field),
+      ariaLabel: this.textFieldSelectTitle(field),
+      disabled: this.saving() || field.readOnly === true
+    };
+  }
+
+  protected textFieldSelectItems(
+    field: AdminParamFieldDto
+  ): readonly AppMenuItem<AdminParamSelectMenuItemId, AdminParamSelectMenuContext>[] {
+    return this.textFieldOptions(field).map(option => {
+      const selected = this.textFieldOptionSelected(field, option);
+      return {
+        id: `param-option:${field.key}:${option.value}` as AdminParamSelectMenuItemId,
+        kind: 'radio',
+        label: option.labelKey || option.label,
+        active: selected,
+        checked: selected,
+        context: { field, option }
+      };
+    });
+  }
+
+  protected onTextFieldSelect(
+    event: AppMenuItemSelectEvent<AdminParamSelectMenuItemId, AdminParamSelectMenuContext>
+  ): void {
+    const context = event.context;
+    if (!context) {
       return;
     }
-    this.openTextSelectKey.set(this.textFieldSelectOpen(field) ? '' : field.key);
-  }
-
-  protected closeTextFieldSelect(event?: Event): void {
-    event?.stopPropagation();
-    this.openTextSelectKey.set('');
+    this.selectTextFieldOption(context.field, context.option, event.sourceEvent);
   }
 
   protected selectTextFieldOption(field: AdminParamFieldDto, option: AdminParamOption, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
     if (this.saving()) {
       return;
     }
     this.updateTextField(field, option.value);
-    this.openTextSelectKey.set('');
   }
 
   protected textFieldOptionSelected(field: AdminParamFieldDto, option: AdminParamOption): boolean {

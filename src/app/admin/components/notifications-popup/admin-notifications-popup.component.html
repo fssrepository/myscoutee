@@ -20,39 +20,12 @@
         </div>
         <div class="notification-header-actions">
           @if (!loading() && !detailOpen()) {
-            <div class="process-filter-wrap">
-              <button
-                type="button"
-                class="process-filter-btn"
-                [class.is-open]="processFilterMenuOpen()"
-                (click)="toggleProcessFilterMenu($event)"
-                [attr.aria-expanded]="processFilterMenuOpen()"
-                [attr.aria-label]="'admin.jobs.filter.aria' | i18n"
-              >
-                <mat-icon>{{ processFilterIcon() }}</mat-icon>
-                <span>{{ processFilterLabel() | i18n }}</span>
-                <strong>{{ processFilterCount() }}</strong>
-                <mat-icon class="process-filter-caret">expand_more</mat-icon>
-              </button>
-              @if (processFilterMenuOpen()) {
-                <div class="process-filter-menu" role="menu" (click)="$event.stopPropagation()">
-                  @for (option of processFilterOptions; track option.key) {
-                    <button
-                      type="button"
-                      class="process-filter-option"
-                      [class.is-active]="processFilter() === option.key"
-                      (click)="selectProcessFilter(option.key, $event)"
-                      role="menuitemradio"
-                      [attr.aria-checked]="processFilter() === option.key"
-                    >
-                      <mat-icon>{{ option.icon }}</mat-icon>
-                      <span>{{ option.labelKey | i18n }}</span>
-                      <strong>{{ processFilterCount(option.key) }}</strong>
-                    </button>
-                  }
-                </div>
-              }
-            </div>
+            <app-menu
+              class="process-filter-wrap"
+              kind="button-row"
+              [model]="processFilterMenuModel()"
+              (itemSelect)="onProcessFilterMenuSelect($event)"
+            ></app-menu>
           }
           <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
             <mat-icon>close</mat-icon>

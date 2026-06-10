@@ -32,6 +32,10 @@
   width: max-content;
 }
 
+:host(.app-menu-host--kind-select) {
+  width: 100%;
+}
+
 :host(.app-menu-host--kind-button-row),
 :host(.app-menu-host--kind-quick-actions) {
   width: max-content;
@@ -56,6 +60,11 @@
 
 :host(.app-menu-host--kind-dropdown-list) .app-menu {
   display: inline-flex;
+}
+
+:host(.app-menu-host--kind-select) .app-menu {
+  display: block;
+  width: 100%;
 }
 
 :host(.app-menu-host--kind-button-row) .app-menu,
@@ -357,6 +366,56 @@
   white-space: nowrap;
 }
 
+.app-menu__trigger-caret {
+  transition: transform 0.16s ease;
+}
+
+.app-menu__trigger--open .app-menu__trigger-caret {
+  transform: rotate(180deg);
+}
+
+:host(.app-menu-host--kind-select) .app-menu__trigger {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  border: 1px solid rgba(29, 47, 72, 0.16);
+  border-radius: 8px;
+  padding: 0 0.52rem;
+  background: #fff;
+  color: #213652;
+  box-shadow: none;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+:host(.app-menu-host--kind-select) .app-menu__trigger:hover,
+:host(.app-menu-host--kind-select) .app-menu__trigger--open {
+  border-color: rgba(34, 97, 155, 0.28);
+  background: #f9fcff;
+  box-shadow: none;
+  filter: none;
+}
+
+:host(.app-menu-host--kind-select) .app-menu__trigger:active {
+  transform: none;
+  box-shadow: none;
+}
+
+:host(.app-menu-host--kind-select) .app-menu__trigger-label {
+  flex: 1 1 auto;
+  text-align: left;
+}
+
+:host(.app-menu-host--kind-select) .app-menu__trigger-caret {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  color: #426a98;
+}
+
 .app-menu__button-row {
   display: inline-flex;
   align-items: center;
@@ -475,6 +534,18 @@
   transform: rotate(180deg);
 }
 
+.app-menu__button-row-item--labelled .app-menu__counter--trigger {
+  position: static;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  padding: 0 5px;
+  background: #e7f1ff;
+  color: #2e5f98;
+  font-size: 0.72rem;
+  box-shadow: none;
+}
+
 .app-menu__button-row-item--toggle.app-menu__button-row-item--active:not(:disabled):hover {
   background: rgba(28, 43, 68, 0.9);
   color: #fff;
@@ -527,6 +598,15 @@
   padding: 0.35rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(244, 249, 255, 0.99) 100%);
   box-shadow: 0 10px 26px rgba(16, 32, 58, 0.2);
+}
+
+:host(.app-menu-host--kind-select) .app-menu__panel--dropdown-list {
+  left: 0;
+  right: 0;
+  width: 100%;
+  min-width: 100%;
+  max-width: none;
+  border-radius: 8px;
 }
 
 :host(.app-menu-host--kind-shortcut-grid) .app-menu__panel {
@@ -1086,11 +1166,11 @@ a.app-menu__item {
   grid-column: 1 / -1;
 }
 
-:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu {
+:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-select):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu {
   position: static;
 }
 
-:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu__backdrop {
+:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-select):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu__backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
@@ -1100,7 +1180,7 @@ a.app-menu__item {
   cursor: default;
 }
 
-:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu__panel {
+:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-select):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu__panel {
   position: fixed;
   left: 0.6rem;
   right: 0.6rem;
@@ -1117,7 +1197,7 @@ a.app-menu__item {
   animation: app-menu-sheet-in 0.18s ease-out;
 }
 
-:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu__panel::before {
+:host(.app-menu-host--layout-mobile):not(.app-menu-host--kind-shortcut-grid):not(.app-menu-host--kind-dropdown-list):not(.app-menu-host--kind-select):not(.app-menu-host--kind-button-row):not(.app-menu-host--kind-quick-actions) .app-menu__panel::before {
   content: '';
   justify-self: center;
   width: 2.25rem;
@@ -1128,6 +1208,7 @@ a.app-menu__item {
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-dropdown-list) .app-menu__panel--dropdown-list,
+:host(.app-menu-host--layout-mobile.app-menu-host--kind-select) .app-menu__panel--dropdown-list,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-button-row) .app-menu__panel--dropdown-list,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-quick-actions) .app-menu__panel--dropdown-list {
   position: fixed;
@@ -1147,6 +1228,7 @@ a.app-menu__item {
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-dropdown-list) .app-menu__panel--dropdown-list .app-menu__items,
+:host(.app-menu-host--layout-mobile.app-menu-host--kind-select) .app-menu__panel--dropdown-list .app-menu__items,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-button-row) .app-menu__panel--dropdown-list .app-menu__items,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-quick-actions) .app-menu__panel--dropdown-list .app-menu__items {
   min-height: 0;
@@ -1158,6 +1240,7 @@ a.app-menu__item {
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-dropdown-list) .app-menu__panel--dropdown-list.app-menu__panel--has-branch-header .app-menu__items,
+:host(.app-menu-host--layout-mobile.app-menu-host--kind-select) .app-menu__panel--dropdown-list.app-menu__panel--has-branch-header .app-menu__items,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-button-row) .app-menu__panel--dropdown-list.app-menu__panel--has-branch-header .app-menu__items,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-quick-actions) .app-menu__panel--dropdown-list.app-menu__panel--has-branch-header .app-menu__items {
   max-height: calc(var(--app-menu-mobile-dropdown-max-height) - 2.7rem);

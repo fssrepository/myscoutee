@@ -20,6 +20,11 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel
+} from '../../../shared/ui/components/menu';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
@@ -52,10 +57,29 @@ interface AdminBlockedUserListFilters {
   revision?: number;
 }
 
+type AdminReportMenuAction = 'warn' | 'block' | 'unblock' | 'view-chat';
+type AdminReportMenuSource = 'report-detail' | 'blocked-user';
+type AdminReportActionsMenuItemId =
+  | `report-detail:${string}`
+  | `blocked-user:${string}`;
+
+interface AdminReportActionsMenuContext {
+  action: AdminReportMenuAction;
+  source: AdminReportMenuSource;
+  user: AdminReportedUserDto;
+}
+
 @Component({
   selector: 'app-admin-reports-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent, AdminChatReviewPopupComponent, AdminItemPreviewPopupComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    AppMenuComponent,
+    SmartListComponent,
+    AdminChatReviewPopupComponent,
+    AdminItemPreviewPopupComponent
+  ],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: '../admin-popups.scss'
 })
@@ -69,9 +93,7 @@ export class AdminReportsPopupComponent {
   private readonly location = inject(Location);
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
   protected reportDetail: AdminReportListItem | null = null;
-  protected reportDetailMenuOpen = false;
   protected blockedUsersOpen = false;
-  protected blockedUserMenuId = '';
 
   protected reportItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AdminReportListItem, AdminReportListFilters>
@@ -163,24 +185,20 @@ export class AdminReportsPopupComponent {
 
   protected openReportDetails(item: AdminReportListItem): void {
     this.reportDetail = item;
-    this.reportDetailMenuOpen = false;
     this.admin.openReportDetail(item.user, item.report);
   }
 
   protected closeReportDetails(): void {
     this.reportDetail = null;
-    this.reportDetailMenuOpen = false;
   }
 
   protected openBlockedUsers(event?: Event): void {
     event?.stopPropagation();
     this.blockedUsersOpen = true;
-    this.blockedUserMenuId = '';
   }
 
   protected closeBlockedUsers(): void {
     this.blockedUsersOpen = false;
-    this.blockedUserMenuId = '';
   }
 
   protected reviewReport(report: AdminReportDto): void {
@@ -192,12 +210,10 @@ export class AdminReportsPopupComponent {
   }
 
   protected warnUser(user: AdminReportedUserDto): void {
-    this.reportDetailMenuOpen = false;
     this.admin.openWarnChat(user);
   }
 
   protected blockUser(user: AdminReportedUserDto): void {
-    this.reportDetailMenuOpen = false;
     this.confirmationDialog.open({
       title: `Block ${user.name}?`,
       message: 'The user will be blocked and a support chat message will be sent.',
@@ -211,13 +227,41 @@ export class AdminReportsPopupComponent {
     });
   }
 
-  protected toggleReportDetailMenu(event: Event): void {
-    event.stopPropagation();
-    this.reportDetailMenuOpen = !this.reportDetailMenuOpen;
+  protected reportDetailActionsMenuModel(
+    user: AdminReportedUserDto
+  ): AppMenuModel<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
+    return this.reportActionsMenuModel(user, 'report-detail');
   }
 
-  protected closeReportDetailMenu(): void {
-    this.reportDetailMenuOpen = false;
+  protected blockedUserActionsMenuModel(
+    user: AdminReportedUserDto
+  ): AppMenuModel<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
+    return this.reportActionsMenuModel(user, 'blocked-user');
+  }
+
+  protected onReportActionsMenuSelect(
+    event: AppMenuItemSelectEvent<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>
+  ): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+    switch (context.action) {
+      case 'warn':
+        this.warnBlockedUser(context.user, event.sourceEvent);
+        break;
+      case 'block':
+        event.sourceEvent.preventDefault();
+        event.sourceEvent.stopPropagation();
+        this.blockUser(context.user);
+        break;
+      case 'unblock':
+        this.unblockUser(context.user, event.sourceEvent);
+        break;
+      case 'view-chat':
+        this.viewBlockedUserChat(context.user, event.sourceEvent);
+        break;
+    }
   }
 
   protected blockedUsers(): AdminReportedUserDto[] {
@@ -228,32 +272,23 @@ export class AdminReportsPopupComponent {
     return this.blockedUsers().length;
   }
 
-  protected toggleBlockedUserMenu(user: AdminReportedUserDto, event: Event): void {
-    event.stopPropagation();
-    this.blockedUserMenuId = this.blockedUserMenuId === user.userId ? '' : user.userId;
-  }
-
-  protected isBlockedUserMenuOpen(user: AdminReportedUserDto): boolean {
-    return this.blockedUserMenuId === user.userId;
-  }
-
   protected warnBlockedUser(user: AdminReportedUserDto, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
-    this.blockedUserMenuId = '';
     this.warnUser(user);
   }
 
   protected viewBlockedUserChat(user: AdminReportedUserDto, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
-    this.blockedUserMenuId = '';
     this.closeBlockedUsers();
     this.closeReportDetails();
     this.openBlockedUserChat(user);
   }
 
   protected unblockUser(user: AdminReportedUserDto, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
-    this.blockedUserMenuId = '';
     this.confirmationDialog.open({
       title: `Unblock ${user.name}?`,
       message: 'The user profile status will be restored and they can use MyScoutee again.',
@@ -262,6 +297,90 @@ export class AdminReportsPopupComponent {
       confirmTone: 'accent',
       onConfirm: () => this.unblockModerationUser(user.userId)
     });
+  }
+
+  private reportActionsMenuModel(
+    user: AdminReportedUserDto,
+    source: AdminReportMenuSource
+  ): AppMenuModel<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
+    const menuId = `${source}:${user.userId || 'member'}:menu` as AdminReportActionsMenuItemId;
+    const actions = this.reportActionItems(user, source);
+    return {
+      nodes: [
+        {
+          id: `${source}-actions-root`,
+          children: [
+            {
+              id: menuId,
+              icon: 'more_horiz',
+              ariaLabel: source === 'blocked-user' ? 'Blocked user actions' : 'Member moderation actions',
+              counter: source === 'blocked-user' ? this.visibleSupportChatUnread(user) : null,
+              children: actions
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private reportActionItems(
+    user: AdminReportedUserDto,
+    source: AdminReportMenuSource
+  ): Array<{
+    id: AdminReportActionsMenuItemId;
+    label: string;
+    icon: string;
+    palette?: 'danger';
+    counter?: number | null;
+    context: AdminReportActionsMenuContext;
+  }> {
+    if (source === 'blocked-user' || this.isUserBlocked(user)) {
+      return [
+        this.reportActionItem(user, source, 'unblock', 'Unblock user', 'lock_open'),
+        this.reportActionItem(user, source, 'view-chat', 'View chat', 'forum', undefined, this.visibleSupportChatUnread(user))
+      ];
+    }
+    if (this.hasSupportChat(user)) {
+      return [
+        this.reportActionItem(user, source, 'view-chat', 'View chat', 'forum', undefined, this.visibleSupportChatUnread(user)),
+        this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
+      ];
+    }
+    return [
+      this.reportActionItem(user, source, 'warn', 'Warn in chat', 'chat'),
+      this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
+    ];
+  }
+
+  private reportActionItem(
+    user: AdminReportedUserDto,
+    source: AdminReportMenuSource,
+    action: AdminReportMenuAction,
+    label: string,
+    icon: string,
+    palette?: 'danger',
+    counter?: number | null
+  ): {
+    id: AdminReportActionsMenuItemId;
+    label: string;
+    icon: string;
+    palette?: 'danger';
+    counter?: number | null;
+    context: AdminReportActionsMenuContext;
+  } {
+    return {
+      id: `${source}:${user.userId || 'member'}:${action}` as AdminReportActionsMenuItemId,
+      label,
+      icon,
+      palette,
+      counter,
+      context: { action, source, user }
+    };
+  }
+
+  private visibleSupportChatUnread(user: AdminReportedUserDto): number | null {
+    const unread = this.supportChatUnread(user);
+    return unread > 0 ? unread : null;
   }
 
   protected isUserBlocked(user: AdminReportedUserDto): boolean {

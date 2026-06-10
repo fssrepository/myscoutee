@@ -12,6 +12,11 @@ import {
   AdminMonitoringMetricDto
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel
+} from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminShellService } from '../../services/admin-shell.service';
 
@@ -25,6 +30,11 @@ const MONITORING_FILTER = {
   workers: 'workers'
 } as const;
 type MonitoringFilter = typeof MONITORING_FILTER[keyof typeof MONITORING_FILTER];
+type MonitoringFilterMenuItemId = 'filter-menu' | `filter:${MonitoringFilter}`;
+
+interface MonitoringFilterMenuContext {
+  filter: MonitoringFilter;
+}
 
 const MONITORING_FILTER_OPTIONS: Array<{ key: MonitoringFilter; labelKey: string; icon: string }> = [
   { key: MONITORING_FILTER.all, labelKey: 'admin.monitoring.filter.all', icon: 'schema' },
@@ -45,7 +55,7 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 @Component({
   selector: 'app-admin-monitoring-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, AppMenuComponent, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-monitoring-popup.component.html',
   styleUrl: './admin-monitoring-popup.component.scss'
 })
@@ -59,7 +69,6 @@ export class AdminMonitoringPopupComponent implements OnInit {
   protected readonly error = signal('');
   protected readonly state = signal<AdminMonitoringStateDto | null>(null);
   protected readonly filter = signal<MonitoringFilter>(MONITORING_FILTER.all);
-  protected readonly filterMenuOpen = signal(false);
 
   protected readonly filteredCategories = computed(() => {
     const categories = this.state()?.categories ?? [];
@@ -82,15 +91,46 @@ export class AdminMonitoringPopupComponent implements OnInit {
     this.admin.closePopup();
   }
 
-  protected toggleFilterMenu(event: Event): void {
-    event.stopPropagation();
-    this.filterMenuOpen.update(open => !open);
+  protected filterMenuModel(): AppMenuModel<MonitoringFilterMenuItemId, MonitoringFilterMenuContext> {
+    return {
+      nodes: [
+        {
+          id: 'monitoring-filter-root',
+          children: [
+            {
+              id: 'filter-menu',
+              kind: 'select-trigger',
+              label: this.filterLabelKey(),
+              icon: this.filterIcon(),
+              counter: this.filterCount(),
+              ariaLabel: 'admin.monitoring.filter.aria',
+              children: this.filterOptions.map(option => ({
+                id: `filter:${option.key}`,
+                kind: 'radio',
+                label: option.labelKey,
+                icon: option.icon,
+                checked: this.filter() === option.key,
+                counter: this.filterCount(option.key),
+                context: { filter: option.key }
+              }))
+            }
+          ]
+        }
+      ]
+    };
   }
 
-  protected selectFilter(filter: MonitoringFilter, event: Event): void {
-    event.stopPropagation();
+  protected onFilterMenuSelect(event: AppMenuItemSelectEvent<MonitoringFilterMenuItemId, MonitoringFilterMenuContext>): void {
+    const nextFilter = event.context?.filter;
+    if (!nextFilter) {
+      return;
+    }
+    this.selectFilter(nextFilter, event.sourceEvent);
+  }
+
+  protected selectFilter(filter: MonitoringFilter, event?: Event): void {
+    event?.stopPropagation();
     this.filter.set(filter);
-    this.filterMenuOpen.set(false);
   }
 
   protected filterCount(filter: MonitoringFilter = this.filter()): number {

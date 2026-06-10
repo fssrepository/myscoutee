@@ -92,9 +92,7 @@ app-smart-list.admin-smart-list {
   line-height: 17px;
 }
 
-.admin-blocked-users-badge,
-.admin-blocked-user-menu-badge,
-.admin-blocked-menu-item-badge {
+.admin-blocked-users-badge {
   min-width: 20px;
   height: 20px;
   border-radius: 999px;
@@ -822,21 +820,11 @@ app-smart-list.admin-smart-list {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.36);
 }
 
-.admin-report-member-menu-btn {
+.admin-report-member-menu-wrap {
   position: absolute;
   top: 0.42rem;
   right: 0.42rem;
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 50%;
-  background: rgba(19, 38, 66, 0.08);
-  color: #1f3658;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 2;
+  z-index: 4;
 }
 
 .admin-member-card-status {
@@ -959,31 +947,10 @@ app-smart-list.admin-smart-list {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.36);
 }
 
-.admin-blocked-user-menu-btn {
+.admin-blocked-user-menu-wrap {
   top: 0.52rem;
   right: 0.52rem;
   bottom: auto;
-  background: rgba(255, 255, 255, 0.88);
-}
-
-.admin-blocked-user-menu-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  padding: 0;
-}
-
-.admin-blocked-user-menu {
-  top: 2.72rem;
-  bottom: auto;
-}
-
-.admin-blocked-menu-item-badge {
-  margin-left: auto;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  font-size: 0.64rem;
 }
 
 .admin-blocked-users-empty {
@@ -993,59 +960,6 @@ app-smart-list.admin-smart-list {
   font-weight: 800;
 }
 
-.admin-report-member-menu-btn .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-}
-
-.admin-report-member-menu {
-  position: absolute;
-  top: 2.38rem;
-  right: 0.42rem;
-  z-index: 4;
-  width: 156px;
-  border: 1px solid rgba(36, 67, 107, 0.2);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 12px 24px rgba(16, 32, 58, 0.18);
-  padding: 0.28rem;
-  display: grid;
-  gap: 0.12rem;
-}
-
-.admin-report-member-menu button {
-  min-height: 32px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: #1f3658;
-  font: inherit;
-  font-size: 0.74rem;
-  font-weight: 900;
-  text-align: left;
-  display: flex;
-  align-items: center;
-  gap: 0.34rem;
-  padding: 0 0.42rem;
-  cursor: pointer;
-}
-
-.admin-report-member-menu button:hover {
-  background: #eef5ff;
-}
-
-.admin-report-member-menu button.danger {
-  color: #aa2e2e;
-}
-
-.admin-report-member-menu .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-}
 
 .admin-report-context-ids {
   margin: 0.52rem 0 0;

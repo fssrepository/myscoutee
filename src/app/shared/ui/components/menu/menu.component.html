@@ -18,6 +18,9 @@
       @if (!trigger?.hideLabel && triggerLabel()) {
         <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
       }
+      @if (isSelectKind) {
+        <mat-icon class="app-menu__trigger-caret">expand_more</mat-icon>
+      }
       @if (hasTriggerCounter()) {
         <span
           class="app-menu__counter app-menu__counter--trigger"
@@ -55,9 +58,6 @@
             @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
               <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
             }
-            @if (isLabeledActionRowItem(item) && hasItemChildren(item)) {
-              <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
-            }
             @if (hasItemCounter(item)) {
               <span
                 class="app-menu__counter app-menu__counter--trigger"
@@ -65,6 +65,9 @@
                 >
                 {{ itemCounterLabel(item) }}
               </span>
+            }
+            @if (isLabeledActionRowItem(item) && hasItemChildren(item)) {
+              <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
             }
           </button>
         }
@@ -254,7 +257,7 @@
                 @if (itemDetail(item)) {
                   <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                 }
-                @if (isItemActive(item) && !hasItemChildren(item)) {
+                @if (showItemCheck(item)) {
                   <mat-icon class="app-menu__item-check">done</mat-icon>
                 }
                 @if (hasItemChildren(item)) {
@@ -295,7 +298,7 @@
                     {{ itemCounterLabel(item) }}
                   </span>
                 }
-                @if (isItemActive(item) && !hasItemChildren(item)) {
+                @if (showItemCheck(item)) {
                   <mat-icon class="app-menu__item-check">done</mat-icon>
                 }
                 @if (hasItemChildren(item)) {
