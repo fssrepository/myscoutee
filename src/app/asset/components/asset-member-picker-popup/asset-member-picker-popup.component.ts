@@ -16,10 +16,14 @@ import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
+  AppMenuComponent,
   BasketComponent,
   LazyBgImageDirective,
   ProgressIndicatorComponent,
   SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
   type BasketChip,
   type ListQuery,
   type PageResult,
@@ -43,12 +47,18 @@ interface ActivityInviteFilters {
   fallbackTitle?: string;
 }
 
+type AssetMemberPickerMenuContext = {
+  menu: 'invite-sort';
+  sort: AppTypes.ActivityInviteSort;
+};
+
 @Component({
   selector: 'app-asset-member-picker-popup',
   standalone: true,
   imports: [
     MatButtonModule,
     MatIconModule,
+    AppMenuComponent,
     BasketComponent,
     SmartListComponent,
     LazyBgImageDirective,
@@ -72,7 +82,6 @@ export class AssetMemberPickerPopupComponent {
   protected ownerId = '';
   protected ownerType: AppTypes.ActivityMemberOwnerType = 'event';
   protected inviteSort: AppTypes.ActivityInviteSort = 'recent';
-  protected showInviteSortPicker = false;
   protected selectedUserIds: string[] = [];
   protected inviteSmartListQuery: Partial<ListQuery<ActivityInviteFilters>> = {};
   protected confirmErrorMessage = '';
@@ -133,7 +142,6 @@ export class AssetMemberPickerPopupComponent {
       this.ownerType = context.ownerType ?? 'event';
       this.title = context.title?.trim() || 'Invite members';
       this.inviteSort = 'recent';
-      this.showInviteSortPicker = false;
       this.selectedUserIds = [];
       this.persistedSelectedUserIds = new Set<string>();
       this.confirmErrorMessage = '';
@@ -161,27 +169,7 @@ export class AssetMemberPickerPopupComponent {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
-    if (this.showInviteSortPicker) {
-      this.showInviteSortPicker = false;
-      this.cdr.markForCheck();
-      return;
-    }
     this.closeInvitePopup();
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen || !this.showInviteSortPicker) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (!target.closest('.friends-picker-sort')) {
-      this.showInviteSortPicker = false;
-      this.cdr.markForCheck();
-    }
   }
 
   protected onInviteSmartListStateChange(
@@ -206,27 +194,57 @@ export class AssetMemberPickerPopupComponent {
     }
   }
 
-  protected toggleInviteSortPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.isConfirmPending) {
-      return;
-    }
-    this.showInviteSortPicker = !this.showInviteSortPicker;
-    this.cdr.markForCheck();
+  protected inviteSortMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.inviteSort === 'recent' ? 'Recent' : 'Relevant',
+      icon: this.inviteSort === 'recent' ? 'schedule' : 'auto_awesome',
+      palette: this.inviteSort === 'recent' ? 'blue' : 'violet',
+      disabled: () => this.isConfirmPending,
+      shape: 'pill',
+      ariaLabel: 'Open invite sort'
+    };
   }
 
-  protected selectInviteSort(sort: AppTypes.ActivityInviteSort, event?: Event): void {
-    event?.stopPropagation();
+  protected inviteSortMenuItems(): readonly AppMenuItem<string, AssetMemberPickerMenuContext>[] {
+    return [
+      {
+        id: 'invite-sort-recent',
+        label: 'Recent',
+        icon: 'schedule',
+        kind: 'radio',
+        active: this.inviteSort === 'recent',
+        palette: 'blue',
+        context: { menu: 'invite-sort', sort: 'recent' }
+      },
+      {
+        id: 'invite-sort-relevant',
+        label: 'Relevant',
+        icon: 'auto_awesome',
+        kind: 'radio',
+        active: this.inviteSort === 'relevant',
+        palette: 'violet',
+        context: { menu: 'invite-sort', sort: 'relevant' }
+      }
+    ];
+  }
+
+  protected onInviteSortMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as AssetMemberPickerMenuContext | undefined;
+    if (!context || context.menu !== 'invite-sort') {
+      return;
+    }
+    this.selectInviteSort(context.sort);
+  }
+
+  private selectInviteSort(sort: AppTypes.ActivityInviteSort): void {
     if (this.isConfirmPending) {
       return;
     }
     if (this.inviteSort === sort) {
-      this.showInviteSortPicker = false;
       this.cdr.markForCheck();
       return;
     }
     this.inviteSort = sort;
-    this.showInviteSortPicker = false;
     this.currentCandidates = [];
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
@@ -336,7 +354,6 @@ export class AssetMemberPickerPopupComponent {
     this.ownerId = '';
     this.ownerType = 'event';
     this.inviteSort = 'recent';
-    this.showInviteSortPicker = false;
     this.selectedUserIds = [];
     this.inviteSmartListQuery = {};
     this.confirmErrorMessage = '';

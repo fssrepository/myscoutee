@@ -255,25 +255,6 @@
   min-width: 0;
 }
 
-.event-explore-order-trigger,
-.event-explore-view-trigger {
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.event-explore-order-trigger span,
-.event-explore-view-trigger span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.event-explore-order-trigger .mat-icon,
-.event-explore-view-trigger .mat-icon {
-  flex: 0 0 16px;
-}
-
 .event-explore-filter-bar {
   height: 2.2rem;
   display: flex;
@@ -305,28 +286,8 @@
   font-size: 16px;
 }
 
-.event-explore-filter-topic {
-  min-width: 104px;
-  max-width: 156px;
-  justify-content: space-between;
-  gap: 0.2rem;
-}
-
-.event-explore-filter-topic span {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-align: left;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.event-explore-topic-filter-arrow {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  line-height: 15px;
-  opacity: 0.88;
+.event-explore-topic-menu {
+  flex: 0 0 auto;
 }
 
 .event-explore-filter-btn.is-active {
@@ -340,14 +301,6 @@
 
 .event-explore-filter-rooms.is-active {
   background: linear-gradient(180deg, #4a91bf 0%, #3574a4 100%);
-}
-
-.event-explore-filter-topic.is-active {
-  background: linear-gradient(180deg, #7f68bf 0%, #6650a5 100%);
-}
-
-.event-explore-topic-filter {
-  position: relative;
 }
 
 .event-explore-slot-picker-backdrop {
@@ -424,93 +377,6 @@
   white-space: nowrap;
 }
 
-.event-explore-order-trigger {
-  flex-wrap: nowrap;
-}
-
-.event-explore-order-panel .activities-view-option {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  column-gap: 0.42rem;
-  justify-content: flex-start;
-  text-align: left;
-}
-
-.event-explore-order-panel .activities-view-option .mat-icon {
-  flex: 0 0 16px;
-}
-
-.event-explore-order-panel .activities-view-option span {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-align: left;
-  line-height: 1.12;
-}
-
-.event-explore-order-upcoming {
-  color: #2c6fb8;
-}
-
-.event-explore-order-past-events {
-  color: #5f697c;
-}
-
-.event-explore-order-nearby {
-  color: #2f7e56;
-}
-
-.event-explore-order-most-relevant {
-  color: #5d4ea2;
-}
-
-.event-explore-order-top-rated {
-  color: #b7761f;
-}
-
-.event-explore-view-day {
-  color: #38649d;
-}
-
-.event-explore-view-distance {
-  color: #2e7b57;
-}
-
-.event-explore-order-trigger.event-explore-order-upcoming,
-.event-explore-order-panel .activities-view-option.event-explore-order-upcoming {
-  background: linear-gradient(0deg, #ffffff, #edf7ff);
-}
-
-.event-explore-order-trigger.event-explore-order-past-events,
-.event-explore-order-panel .activities-view-option.event-explore-order-past-events {
-  background: linear-gradient(0deg, #ffffff, #f4f5f8);
-}
-
-.event-explore-order-trigger.event-explore-order-nearby,
-.event-explore-order-panel .activities-view-option.event-explore-order-nearby {
-  background: linear-gradient(0deg, #ffffff, #eef9f3);
-}
-
-.event-explore-order-trigger.event-explore-order-most-relevant,
-.event-explore-order-panel .activities-view-option.event-explore-order-most-relevant {
-  background: linear-gradient(0deg, #ffffff, #f3f1ff);
-}
-
-.event-explore-order-trigger.event-explore-order-top-rated,
-.event-explore-order-panel .activities-view-option.event-explore-order-top-rated {
-  background: linear-gradient(0deg, #ffffff, #fff8e8);
-}
-
-.event-explore-view-trigger.event-explore-view-day,
-.event-explore-order-panel .activities-view-option.event-explore-view-day {
-  background: linear-gradient(0deg, #ffffff, #edf7ff);
-}
-
-.event-explore-view-trigger.event-explore-view-distance,
-.event-explore-order-panel .activities-view-option.event-explore-view-distance {
-  background: linear-gradient(0deg, #ffffff, #eef9f3);
-}
-
 .event-explore-sticky-header {
   z-index: 26;
   margin-bottom: 0;
@@ -524,31 +390,12 @@
     min-width: 0;
   }
 
-  .event-explore-order-trigger,
-  .event-explore-view-trigger {
-    padding: 0 0.52rem;
-    justify-content: flex-start;
-    gap: 0.24rem;
-  }
-
-  .event-explore-order-trigger span {
-    max-width: 6.4rem;
-  }
-
-  .event-explore-view-trigger span {
-    max-width: 4.8rem;
-  }
-
   .event-explore-popup-shell .popup-panel-event-explore {
     width: min(100vw, calc(100vw - 0.6rem));
   }
 
   .event-explore-filter-bar {
     padding-right: 0.08rem;
-  }
-
-  .event-explore-topic-filter-panel {
-    width: min(340px, calc(100vw - 1.6rem));
   }
 
   .event-explore-basket {

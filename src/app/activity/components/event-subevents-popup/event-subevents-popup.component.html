@@ -33,37 +33,13 @@
             >
             <mat-icon>add</mat-icon>
           </button>
-          <div class="subevents-mode-picker">
-            <button
-              type="button"
-              class="popup-view-fab subevents-mode-trigger"
-              [class.subevents-mode-tournament]="displayMode === 'Tournament'"
-              [class.subevents-mode-casual]="displayMode === 'Casual'"
-              [disabled]="subEventStructureReadOnly()"
-              [class.is-disabled]="subEventStructureReadOnly()"
-              (click)="toggleDisplayModePicker($event)"
-              aria-label="Change sub events mode"
-              >
-              <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon() }}</mat-icon>
-              <span>{{ displayMode }}</span>
-            </button>
-            @if (showDisplayModePicker) {
-              <div class="activities-view-picker-panel subevents-mode-panel">
-                @for (mode of displayModeOptions; track mode) {
-                  <button
-                    type="button"
-                    class="activities-view-option subevents-mode-option"
-                    [class.subevents-mode-tournament]="mode === 'Tournament'"
-                    [class.subevents-mode-casual]="mode === 'Casual'"
-                    (click)="selectDisplayMode(mode, $event)"
-                    >
-                    <mat-icon class="subevents-mode-icon">{{ currentDisplayModeIcon(mode) }}</mat-icon>
-                    <span>{{ mode }}</span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="subevents-mode-picker"
+            kind="select"
+            [trigger]="displayModeMenuTrigger()"
+            [items]="displayModeMenuItems()"
+            (itemSelect)="onSubeventMenuSelect($event)"
+          ></app-menu>
         </div>
         @if (showHeaderTimeBadge()) {
           <span class="subevents-slot-preview-chip">{{ headerTimeBadgeLabel() }}</span>
@@ -153,98 +129,15 @@
                         <span class="subevents-stage-groups">{{ stage.groupsLabel }}</span>
                       </div>
                       <div class="experience-item-actions subevents-stage-actions">
-                        <button
-                          type="button"
-                          class="experience-action-btn experience-action-menu-trigger subevents-stage-menu-btn"
-                          [class.is-open]="openStageMenuKey === stage.key"
-                          (click)="toggleStageActionMenu(stage, $event)"
-                          [attr.aria-label]="openStageMenuKey === stage.key ? 'Close stage actions' : 'Open stage actions'"
-                          >
-                          <span class="subevents-menu-icon-stack" [class.is-open]="openStageMenuKey === stage.key">
-                            <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
-                            <mat-icon class="subevents-menu-icon-close">close</mat-icon>
-                          </span>
-                        </button>
-                        @if (openStageMenuKey === stage.key) {
-                          <div
-                            class="item-action-menu subevents-stage-menu"
-                            [class.is-open]="openStageMenuKey === stage.key"
-                            [class.item-action-menu-mobile]="isMobileViewport"
-                            [class.item-action-menu-desktop]="!isMobileViewport"
-                            (click)="$event.stopPropagation()"
-                            >
-                            <div class="item-action-menu-title">{{ stage.title }}</div>
-                            @if (!readOnly) {
-                              @if (canStartTournament(stage)) {
-                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('start-tournament', stage, $event)">
-                                  <mat-icon>play_circle</mat-icon>
-                                  <span>Start Tournament</span>
-                                </button>
-                              }
-                              @if (canCloseStage(stage)) {
-                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('close-stage', stage, $event)">
-                                  <mat-icon>rate_review</mat-icon>
-                                  <span>Close Stage</span>
-                                </button>
-                              }
-                              @if (canFinalizeStage(stage)) {
-                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('finalize-stage', stage, $event)">
-                                  <mat-icon>verified</mat-icon>
-                                  <span>Finalize Stage</span>
-                                </button>
-                              }
-                              @if (canReopenScores(stage)) {
-                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('reopen-scores', stage, $event)">
-                                  <mat-icon>edit_note</mat-icon>
-                                  <span>Reopen Scores</span>
-                                </button>
-                              }
-                              @if (canSuspendStage(stage)) {
-                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('suspend-tournament', stage, $event)">
-                                  <mat-icon>pause_circle</mat-icon>
-                                  <span>Suspend Tournament</span>
-                                </button>
-                              }
-                              @if (canResumeStage(stage)) {
-                                <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('resume-tournament', stage, $event)">
-                                  <mat-icon>play_circle</mat-icon>
-                                  <span>Resume Tournament</span>
-                                </button>
-                              }
-                              @if (!subEventStructureReadOnly()) {
-                                <div class="item-action-menu-divider"></div>
-                              }
-                            }
-                            @if (!subEventStructureReadOnly()) {
-                              <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('add-group', stage, $event)">
-                                <mat-icon>group_add</mat-icon>
-                                <span>Add Group</span>
-                              </button>
-                            }
-                            <button type="button" class="item-action-menu-btn" (click)="openStageLeaderboard(stage, $event)">
-                              <mat-icon>public</mat-icon>
-                              <span>Leaderboard</span>
-                            </button>
-                            @if (canOpenStageLocation(stage)) {
-                              <button type="button" class="item-action-menu-btn" (click)="openStageLocation(stage, $event)">
-                                <mat-icon>location_on</mat-icon>
-                                <span>Show on Map</span>
-                              </button>
-                            }
-                            @if (!subEventStructureReadOnly()) {
-                              <button type="button" class="item-action-menu-btn" (click)="runStageMenuAction('edit-stage', stage, $event)">
-                                <mat-icon>edit</mat-icon>
-                                <span>Edit Stage Event</span>
-                              </button>
-                            }
-                            @if (!subEventStructureReadOnly()) {
-                              <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runStageMenuAction('delete-stage', stage, $event)">
-                                <mat-icon>delete</mat-icon>
-                                <span>Delete Stage</span>
-                              </button>
-                            }
-                          </div>
-                        }
+                        <app-menu-trigger
+                          class="subevents-shared-action-menu-trigger"
+                          [menuId]="'subevent-stage-' + stage.key"
+                          kind="select"
+                          [title]="stage.title"
+                          [trigger]="stageActionMenuTrigger(stage)"
+                          [model]="stageActionMenuModel(stage)"
+                          panelAlign="auto"
+                        ></app-menu-trigger>
                       </div>
                     </header>
                     <div class="subevents-stage-body">
@@ -252,108 +145,15 @@
                         <article class="subevents-group-row" [attr.data-tone]="row.toneClass">
                           <span class="subevents-group-title">{{ row.label }}</span>
                           <div class="experience-item-actions subevents-group-actions">
-                            <button
-                              type="button"
-                              class="experience-action-btn experience-action-menu-trigger subevents-group-menu-btn"
-                              [class.is-open]="openGroupMenuKey === row.key"
-                              (click)="toggleGroupActionMenu(row, $event)"
-                              aria-label="Group actions"
-                              >
-                              <span class="subevents-menu-icon-stack" [class.is-open]="openGroupMenuKey === row.key">
-                                <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
-                                <mat-icon class="subevents-menu-icon-close">close</mat-icon>
-                              </span>
-                            </button>
-                            @if (openGroupMenuKey === row.key) {
-                              <div
-                                class="item-action-menu subevents-group-menu"
-                                [class.is-open]="openGroupMenuKey === row.key"
-                                [class.item-action-menu-mobile]="isMobileViewport"
-                                [class.item-action-menu-desktop]="!isMobileViewport"
-                                (click)="$event.stopPropagation()"
-                                >
-                                <div class="item-action-menu-title">{{ row.groupName }}</div>
-                                @if (!subEventStructureReadOnly()) {
-                                  <button type="button" class="item-action-menu-btn" (click)="runGroupMenuAction('edit-group', row, $event)">
-                                    <mat-icon>edit</mat-icon>
-                                    <span>Edit</span>
-                                  </button>
-                                }
-                                @if (!subEventStructureReadOnly()) {
-                                  <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runGroupMenuAction('delete-group', row, $event)">
-                                    <mat-icon>delete</mat-icon>
-                                    <span>Delete</span>
-                                  </button>
-                                }
-                                <div class="item-action-menu-divider"></div>
-                                <button
-                                  type="button"
-                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
-                                  (click)="openSubEventResourcePopup('Members', row.stageItem, $event, row)"
-                                  >
-                                  <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
-                                  <span class="subevent-resource-menu-item-main">
-                                    <span class="subevent-resource-menu-item-title">Members</span>
-                                    <span class="subevent-resource-menu-item-value">{{ row.membersLabel }}</span>
-                                  </span>
-                                  @if (row.membersPendingCount > 0) {
-                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                                      {{ row.membersPendingCount | counterBadge }}
-                                    </span>
-                                  }
-                                </button>
-                                <div class="item-action-menu-divider"></div>
-                                <div class="item-action-menu-section-label">Assets</div>
-                                <button
-                                  type="button"
-                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
-                                  (click)="openSubEventResourcePopup('Car', row.stageItem, $event, row)"
-                                  >
-                                  <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
-                                  <span class="subevent-resource-menu-item-main">
-                                    <span class="subevent-resource-menu-item-title">Car</span>
-                                    <span class="subevent-resource-menu-item-value">{{ row.carLabel }}</span>
-                                  </span>
-                                  @if (row.carPendingCount > 0) {
-                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                                      {{ row.carPendingCount | counterBadge }}
-                                    </span>
-                                  }
-                                </button>
-                                <button
-                                  type="button"
-                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
-                                  (click)="openSubEventResourcePopup('Accommodation', row.stageItem, $event, row)"
-                                  >
-                                  <span class="subevent-resource-menu-item-icon"><mat-icon>apartment</mat-icon></span>
-                                  <span class="subevent-resource-menu-item-main">
-                                    <span class="subevent-resource-menu-item-title">{{ assetResourceTypeLabel('Accommodation') }}</span>
-                                    <span class="subevent-resource-menu-item-value">{{ row.accommodationLabel }}</span>
-                                  </span>
-                                  @if (row.accommodationPendingCount > 0) {
-                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                                      {{ row.accommodationPendingCount | counterBadge }}
-                                    </span>
-                                  }
-                                </button>
-                                <button
-                                  type="button"
-                                  class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
-                                  (click)="openSubEventResourcePopup('Supplies', row.stageItem, $event, row)"
-                                  >
-                                  <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
-                                  <span class="subevent-resource-menu-item-main">
-                                    <span class="subevent-resource-menu-item-title">Supplies</span>
-                                    <span class="subevent-resource-menu-item-value">{{ row.suppliesLabel }}</span>
-                                  </span>
-                                  @if (row.suppliesPendingCount > 0) {
-                                    <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                                      {{ row.suppliesPendingCount | counterBadge }}
-                                    </span>
-                                  }
-                                </button>
-                              </div>
-                            }
+                            <app-menu-trigger
+                              class="subevents-shared-action-menu-trigger"
+                              [menuId]="'subevent-group-' + row.key"
+                              kind="select"
+                              [title]="row.groupName"
+                              [trigger]="groupActionMenuTrigger(row)"
+                              [model]="groupActionMenuModel(row)"
+                              panelAlign="auto"
+                            ></app-menu-trigger>
                           </div>
                           @if (row.totalPendingCount > 0) {
                             <span class="subevents-group-badge">
@@ -383,119 +183,15 @@
                   <strong>{{ casualCardTitle(subEvent, index) }}</strong>
                   <div class="subevents-casual-actions">
                     <span class="subevents-casual-range">{{ casualCardRange(subEvent) }}</span>
-                    <button
-                      type="button"
-                      class="experience-action-btn experience-action-menu-trigger subevents-casual-menu-btn"
-                      [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
-                      (click)="toggleCasualActionMenu(subEvent, index, $event)"
-                      [attr.aria-label]="isCasualActionMenuOpen(subEvent, index) ? 'Close sub event actions' : 'Open sub event actions'"
-                      >
-                      <span class="subevents-menu-icon-stack" [class.is-open]="isCasualActionMenuOpen(subEvent, index)">
-                        <mat-icon class="subevents-menu-icon-dots">more_vert</mat-icon>
-                        <mat-icon class="subevents-menu-icon-close">close</mat-icon>
-                      </span>
-                      @if (casualMenuPendingCount(subEvent) > 0) {
-                        <span class="subevents-group-badge">{{ casualMenuPendingCount(subEvent) | counterBadge }}</span>
-                      }
-                    </button>
-                    <div
-                      class="item-action-menu subevents-casual-menu"
-                      [class.is-open]="isCasualActionMenuOpen(subEvent, index)"
-                      [class.item-action-menu-mobile]="isMobileViewport"
-                      [class.item-action-menu-desktop]="!isMobileViewport"
-                      (click)="$event.stopPropagation()"
-                      >
-                      <div class="item-action-menu-title">{{ casualCardTitle(subEvent, index) }}</div>
-                      @if (!subEventStructureReadOnly()) {
-                        <button type="button" class="item-action-menu-btn" (click)="runCasualMenuAction('edit', subEvent, index, $event)">
-                          <mat-icon>edit</mat-icon>
-                          <span>Edit</span>
-                        </button>
-                      }
-                      @if (!subEventStructureReadOnly()) {
-                        <button type="button" class="item-action-menu-btn item-action-menu-btn-destructive" (click)="runCasualMenuAction('delete', subEvent, index, $event)">
-                          <mat-icon>delete</mat-icon>
-                          <span>Delete</span>
-                        </button>
-                      }
-                      @if (canOpenSubEventLocation(subEvent)) {
-                        <button type="button" class="item-action-menu-btn" (click)="openSubEventLocation(subEvent, $event)">
-                          <mat-icon>location_on</mat-icon>
-                          <span>Show on Map</span>
-                        </button>
-                      }
-                      <div class="item-action-menu-divider"></div>
-                      @if (subEvent.optional) {
-                        <button
-                          type="button"
-                          class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-members"
-                          (click)="openSubEventResourcePopup('Members', subEvent, $event)"
-                          >
-                          <span class="subevent-resource-menu-item-icon"><mat-icon>groups</mat-icon></span>
-                          <span class="subevent-resource-menu-item-main">
-                            <span class="subevent-resource-menu-item-title">Members</span>
-                            <span class="subevent-resource-menu-item-value">{{ subEventMembersResourceLabel(subEvent) }}</span>
-                          </span>
-                          @if (resourcePendingCount(subEvent, 'Members') > 0) {
-                            <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                              {{ resourcePendingCount(subEvent, 'Members') | counterBadge }}
-                            </span>
-                          }
-                        </button>
-                      }
-                      @if (subEvent.optional) {
-                        <div class="item-action-menu-divider"></div>
-                      }
-                      <div class="item-action-menu-section-label">Assets</div>
-                      <button
-                        type="button"
-                        class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-car"
-                        (click)="openSubEventResourcePopup('Car', subEvent, $event)"
-                        >
-                        <span class="subevent-resource-menu-item-icon"><mat-icon>directions_car</mat-icon></span>
-                        <span class="subevent-resource-menu-item-main">
-                          <span class="subevent-resource-menu-item-title">Car</span>
-                          <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Car') }}</span>
-                        </span>
-                        @if (resourcePendingCount(subEvent, 'Car') > 0) {
-                          <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                            {{ resourcePendingCount(subEvent, 'Car') | counterBadge }}
-                          </span>
-                        }
-                      </button>
-                      <button
-                        type="button"
-                        class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-accommodation"
-                        (click)="openSubEventResourcePopup('Accommodation', subEvent, $event)"
-                        >
-                        <span class="subevent-resource-menu-item-icon"><mat-icon>apartment</mat-icon></span>
-                        <span class="subevent-resource-menu-item-main">
-                          <span class="subevent-resource-menu-item-title">{{ assetResourceTypeLabel('Accommodation') }}</span>
-                          <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Accommodation') }}</span>
-                        </span>
-                        @if (resourcePendingCount(subEvent, 'Accommodation') > 0) {
-                          <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                            {{ resourcePendingCount(subEvent, 'Accommodation') | counterBadge }}
-                          </span>
-                        }
-                      </button>
-                      <button
-                        type="button"
-                        class="item-action-menu-btn subevent-resource-menu-item event-subevent-badge-supplies"
-                        (click)="openSubEventResourcePopup('Supplies', subEvent, $event)"
-                        >
-                        <span class="subevent-resource-menu-item-icon"><mat-icon>inventory_2</mat-icon></span>
-                        <span class="subevent-resource-menu-item-main">
-                          <span class="subevent-resource-menu-item-title">Supplies</span>
-                          <span class="subevent-resource-menu-item-value">{{ subEventAssetResourceLabel(subEvent, 'Supplies') }}</span>
-                        </span>
-                        @if (resourcePendingCount(subEvent, 'Supplies') > 0) {
-                          <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                            {{ resourcePendingCount(subEvent, 'Supplies') | counterBadge }}
-                          </span>
-                        }
-                      </button>
-                    </div>
+                    <app-menu-trigger
+                      class="subevents-shared-action-menu-trigger"
+                      [menuId]="'subevent-casual-' + casualCardMenuKey(subEvent, index)"
+                      kind="select"
+                      [title]="casualCardTitle(subEvent, index)"
+                      [trigger]="casualActionMenuTrigger(subEvent, index)"
+                      [model]="casualActionMenuModel(subEvent, index)"
+                      panelAlign="auto"
+                    ></app-menu-trigger>
                   </div>
                 </header>
                 <p class="subevents-casual-location">{{ subEvent.location || 'Location pending' }}</p>
@@ -511,12 +207,12 @@
         }
       </div>
     </article>
+    <app-menu-outlet (itemSelect)="onSubeventMenuSelect($event)"></app-menu-outlet>
     <app-event-subevent-stage-form-popup
       [view]="subEventFormPopupView()"
       [model]="subEventForm"
       (save)="saveSubEventForm($event)"
       (cancel)="closeSubEventForm($event)"
-      (toggleOptionalPicker)="toggleSubEventOptionalPicker($event)"
       (selectOptional)="selectSubEventOptional($event)"
       (capacityMinChange)="onSubEventCapacityMinChange($event)"
       (capacityMaxChange)="onSubEventCapacityMaxChange($event)"

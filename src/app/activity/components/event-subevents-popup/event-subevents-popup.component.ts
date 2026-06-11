@@ -23,6 +23,14 @@ import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsSe
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
+  AppMenuComponent,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
@@ -34,6 +42,8 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 type SubEventsDisplayMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage' | 'start-tournament' | 'close-stage' | 'finalize-stage' | 'reopen-scores' | 'suspend-tournament' | 'resume-tournament';
 type GroupMenuAction = 'edit-group' | 'delete-group';
+type DisplayModeMenuItemId = 'display-casual' | 'display-tournament';
+type SubeventActionMenuItemId = DisplayModeMenuItemId | StageMenuAction | GroupMenuAction | 'stage-location' | 'members' | 'car' | 'accommodation' | 'supplies' | 'edit-casual' | 'delete-casual' | 'show-map';
 type StageInsertPlacement = 'before' | 'after';
 type TournamentLeaderboardType = 'Score' | 'Fifa';
 type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
@@ -145,6 +155,14 @@ interface EventSubeventsPreparedItem extends EventSubeventsItem {
   casualMenuPendingCount: number;
 }
 
+type SubeventActionMenuContext =
+  | { scope: 'display-mode'; mode: SubEventsDisplayMode }
+  | { scope: 'stage-action'; stage: EventSubeventsStageCard; action: StageMenuAction | 'stage-location' }
+  | { scope: 'group-action'; row: EventSubeventsStageRow; action: GroupMenuAction }
+  | { scope: 'group-resource'; row: EventSubeventsStageRow; resourceType: EventEditorSubEventResourceType }
+  | { scope: 'casual-action'; item: EventSubeventsItem; index: number; action: 'edit' | 'delete' | 'show-map' }
+  | { scope: 'casual-resource'; item: EventSubeventsItem; index: number; resourceType: EventEditorSubEventResourceType };
+
 interface EventSubeventsSortedEntry {
   item: EventSubeventsPreparedItem;
   sourceIndex: number;
@@ -226,6 +244,9 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
+    AppMenuComponent,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     EventSubeventStageFormPopupComponent,
     EventSubeventGroupFormPopupComponent,
     EventSubeventLeaderboardPopupComponent,
@@ -262,19 +283,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
   @ViewChild('stageViewport') private stageViewportRef?: ElementRef<HTMLDivElement>;
 
   protected readonly displayModeOptions: readonly SubEventsDisplayMode[] = ['Casual', 'Tournament'];
-  protected showDisplayModePicker = false;
   protected stagePageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= 920;
-
-  protected openStageMenuKey: string | null = null;
-  protected openGroupMenuKey: string | null = null;
-  protected openCasualMenuKey: string | null = null;
 
   protected showSubEventForm = false;
   protected subEventFormMode: 'create' | 'edit' = 'create';
   protected subEventFormSourceIndex: number | null = null;
   protected subEventForm: SubEventFormModel = this.createEmptySubEventForm();
-  protected showSubEventOptionalPicker = false;
   protected subEventStageInsertPlacement: StageInsertPlacement = 'after';
   protected subEventStageInsertTargetId: string | null = null;
   protected readonly tournamentLeaderboardTypeOptions: readonly TournamentLeaderboardType[] = ['Score', 'Fifa'];
@@ -382,26 +397,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.alignPageToCurrentStage();
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    const target = event.target as HTMLElement | null;
-    if (!target?.closest('.subevents-mode-picker')) {
-      this.showDisplayModePicker = false;
-    }
-    if (!target?.closest('.subevents-stage-actions')) {
-      this.openStageMenuKey = null;
-    }
-    if (!target?.closest('.subevents-group-actions')) {
-      this.openGroupMenuKey = null;
-    }
-    if (!target?.closest('.subevents-casual-actions')) {
-      this.openCasualMenuKey = null;
-    }
-    if (!target?.closest('.subevent-optional-field')) {
-      this.showSubEventOptionalPicker = false;
-    }
-  }
-
   protected requestClose(): void {
     this.resetTransientUi();
     this.close.emit();
@@ -422,9 +417,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
     this.showGroupForm = false;
-    this.openStageMenuKey = null;
-    this.openGroupMenuKey = null;
-    this.openCasualMenuKey = null;
     this.subEventFormMode = 'create';
     this.subEventFormSourceIndex = null;
 
@@ -462,17 +454,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       slotDurationMinutes: undefined
     };
 
-    this.showSubEventOptionalPicker = false;
     this.applySubEventInsertTargetDateRangeToForm();
     this.showSubEventForm = true;
-  }
-
-  protected toggleDisplayModePicker(event: Event): void {
-    event.stopPropagation();
-    if (this.subEventStructureReadOnly()) {
-      return;
-    }
-    this.showDisplayModePicker = !this.showDisplayModePicker;
   }
 
   protected selectDisplayMode(mode: SubEventsDisplayMode, event: Event): void {
@@ -480,7 +463,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.subEventStructureReadOnly()) {
       return;
     }
-    this.showDisplayModePicker = false;
     if (this.displayMode === mode) {
       return;
     }
@@ -716,9 +698,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     row?: EventSubeventsStageRow | null
   ): void {
     event.stopPropagation();
-    this.openStageMenuKey = null;
-    this.openGroupMenuKey = null;
-    this.openCasualMenuKey = null;
 
     const group = row
       ? (() => {
@@ -745,29 +724,385 @@ export class EventSubeventsPopupComponent implements OnChanges {
     });
   }
 
-  protected casualCardMenuKey(item: EventSubeventsItem, index: number): string {
-    return item.id ?? `casual-${index}`;
+  protected displayModeMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.displayMode,
+      icon: this.currentDisplayModeIcon(),
+      ariaLabel: 'Change sub events mode',
+      palette: this.displayModePalette(this.displayMode),
+      disabled: this.subEventStructureReadOnly(),
+      shape: 'pill'
+    };
   }
 
-  protected isCasualActionMenuOpen(item: EventSubeventsItem, index: number): boolean {
-    return this.openCasualMenuKey === this.casualCardMenuKey(item, index);
+  protected displayModeMenuItems(): readonly AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] {
+    return this.displayModeOptions.map(mode => ({
+      id: this.displayModeMenuItemId(mode),
+      label: mode,
+      icon: this.currentDisplayModeIcon(mode),
+      kind: 'radio',
+      active: this.displayMode === mode,
+      checked: this.displayMode === mode,
+      palette: this.displayModePalette(mode),
+      surface: 'tinted',
+      context: { scope: 'display-mode', mode }
+    }));
+  }
+
+  protected stageActionMenuTrigger(stage: EventSubeventsStageCard): AppMenuTrigger {
+    return this.actionMenuTrigger(`Open actions for ${stage.title}`);
+  }
+
+  protected stageActionMenuModel(stage: EventSubeventsStageCard): AppMenuModel<SubeventActionMenuItemId, SubeventActionMenuContext> {
+    const statusItems: AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] = [];
+    if (!this.readOnly) {
+      if (this.canStartTournament(stage)) {
+        statusItems.push(this.stageActionMenuItem(stage, 'start-tournament', 'Start Tournament', 'play_circle', 'success'));
+      }
+      if (this.canCloseStage(stage)) {
+        statusItems.push(this.stageActionMenuItem(stage, 'close-stage', 'Close Stage', 'rate_review', 'blue'));
+      }
+      if (this.canFinalizeStage(stage)) {
+        statusItems.push(this.stageActionMenuItem(stage, 'finalize-stage', 'Finalize Stage', 'verified', 'success'));
+      }
+      if (this.canReopenScores(stage)) {
+        statusItems.push(this.stageActionMenuItem(stage, 'reopen-scores', 'Reopen Scores', 'edit_note', 'amber'));
+      }
+      if (this.canSuspendStage(stage)) {
+        statusItems.push(this.stageActionMenuItem(stage, 'suspend-tournament', 'Suspend Tournament', 'pause_circle', 'warning'));
+      }
+      if (this.canResumeStage(stage)) {
+        statusItems.push(this.stageActionMenuItem(stage, 'resume-tournament', 'Resume Tournament', 'play_circle', 'success'));
+      }
+    }
+
+    const actionItems: AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] = [];
+    if (!this.subEventStructureReadOnly()) {
+      actionItems.push(this.stageActionMenuItem(stage, 'add-group', 'Add Group', 'group_add', 'green'));
+    }
+    actionItems.push(this.stageActionMenuItem(stage, 'leaderboard', 'Leaderboard', 'public', 'blue'));
+    if (this.canOpenStageLocation(stage)) {
+      actionItems.push({
+        id: 'stage-location',
+        label: 'Show on Map',
+        icon: 'location_on',
+        palette: 'sky',
+        context: { scope: 'stage-action', stage, action: 'stage-location' }
+      });
+    }
+    if (!this.subEventStructureReadOnly()) {
+      actionItems.push(
+        this.stageActionMenuItem(stage, 'edit-stage', 'Edit Stage Event', 'edit', 'default'),
+        this.stageActionMenuItem(stage, 'delete-stage', 'Delete Stage', 'delete', 'danger')
+      );
+    }
+
+    return {
+      nodes: [
+        ...(statusItems.length > 0 ? [{ id: 'status', items: statusItems }] : []),
+        { id: 'actions', items: actionItems }
+      ]
+    };
+  }
+
+  protected groupActionMenuTrigger(row: EventSubeventsStageRow): AppMenuTrigger {
+    return this.actionMenuTrigger(`Open actions for ${row.groupName}`);
+  }
+
+  protected casualActionMenuTrigger(item: EventSubeventsItem, index: number): AppMenuTrigger {
+    return this.actionMenuTrigger(
+      `Open actions for ${this.casualCardTitle(item, index)}`,
+      this.casualMenuPendingCount(item)
+    );
+  }
+
+  protected groupActionMenuModel(row: EventSubeventsStageRow): AppMenuModel<SubeventActionMenuItemId, SubeventActionMenuContext> {
+    const actionItems: AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] = [];
+    if (!this.subEventStructureReadOnly()) {
+      actionItems.push(
+        {
+          id: 'edit-group',
+          label: 'Edit',
+          icon: 'edit',
+          context: { scope: 'group-action', row, action: 'edit-group' }
+        },
+        {
+          id: 'delete-group',
+          label: 'Delete',
+          icon: 'delete',
+          palette: 'danger',
+          context: { scope: 'group-action', row, action: 'delete-group' }
+        }
+      );
+    }
+
+    return {
+      nodes: [
+        ...(actionItems.length > 0 ? [{ id: 'actions', items: actionItems }] : []),
+        {
+          id: 'members',
+          items: [
+            this.resourceSummaryMenuItem({
+              id: 'members',
+              type: 'Members',
+              label: 'Members',
+              description: row.membersLabel,
+              pending: row.membersPendingCount,
+              context: { scope: 'group-resource', row, resourceType: 'Members' }
+            })
+          ]
+        },
+        {
+          id: 'assets',
+          label: 'Assets',
+          items: [
+            this.resourceSummaryMenuItem({
+              id: 'car',
+              type: 'Car',
+              label: 'Car',
+              description: row.carLabel,
+              pending: row.carPendingCount,
+              context: { scope: 'group-resource', row, resourceType: 'Car' }
+            }),
+            this.resourceSummaryMenuItem({
+              id: 'accommodation',
+              type: 'Accommodation',
+              label: this.assetResourceTypeLabel('Accommodation'),
+              description: row.accommodationLabel,
+              pending: row.accommodationPendingCount,
+              context: { scope: 'group-resource', row, resourceType: 'Accommodation' }
+            }),
+            this.resourceSummaryMenuItem({
+              id: 'supplies',
+              type: 'Supplies',
+              label: 'Supplies',
+              description: row.suppliesLabel,
+              pending: row.suppliesPendingCount,
+              context: { scope: 'group-resource', row, resourceType: 'Supplies' }
+            })
+          ]
+        }
+      ]
+    };
+  }
+
+  protected casualActionMenuModel(
+    item: EventSubeventsItem,
+    index: number
+  ): AppMenuModel<SubeventActionMenuItemId, SubeventActionMenuContext> {
+    const actionItems: AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] = [];
+    if (!this.subEventStructureReadOnly()) {
+      actionItems.push(
+        {
+          id: 'edit-casual',
+          label: 'Edit',
+          icon: 'edit',
+          context: { scope: 'casual-action', item, index, action: 'edit' }
+        },
+        {
+          id: 'delete-casual',
+          label: 'Delete',
+          icon: 'delete',
+          palette: 'danger',
+          context: { scope: 'casual-action', item, index, action: 'delete' }
+        }
+      );
+    }
+    if (this.canOpenSubEventLocation(item)) {
+      actionItems.push({
+        id: 'show-map',
+        label: 'Show on Map',
+        icon: 'location_on',
+        context: { scope: 'casual-action', item, index, action: 'show-map' }
+      });
+    }
+
+    return {
+      nodes: [
+        ...(actionItems.length > 0 ? [{ id: 'actions', items: actionItems }] : []),
+        ...(item.optional ? [{
+          id: 'members',
+          items: [
+            this.resourceSummaryMenuItem({
+              id: 'members',
+              type: 'Members',
+              label: 'Members',
+              description: this.subEventMembersResourceLabel(item),
+              pending: this.resourcePendingCount(item, 'Members'),
+              context: { scope: 'casual-resource', item, index, resourceType: 'Members' }
+            })
+          ]
+        }] : []),
+        {
+          id: 'assets',
+          label: 'Assets',
+          items: [
+            this.resourceSummaryMenuItem({
+              id: 'car',
+              type: 'Car',
+              label: 'Car',
+              description: this.subEventAssetResourceLabel(item, 'Car'),
+              pending: this.resourcePendingCount(item, 'Car'),
+              context: { scope: 'casual-resource', item, index, resourceType: 'Car' }
+            }),
+            this.resourceSummaryMenuItem({
+              id: 'accommodation',
+              type: 'Accommodation',
+              label: this.assetResourceTypeLabel('Accommodation'),
+              description: this.subEventAssetResourceLabel(item, 'Accommodation'),
+              pending: this.resourcePendingCount(item, 'Accommodation'),
+              context: { scope: 'casual-resource', item, index, resourceType: 'Accommodation' }
+            }),
+            this.resourceSummaryMenuItem({
+              id: 'supplies',
+              type: 'Supplies',
+              label: 'Supplies',
+              description: this.subEventAssetResourceLabel(item, 'Supplies'),
+              pending: this.resourcePendingCount(item, 'Supplies'),
+              context: { scope: 'casual-resource', item, index, resourceType: 'Supplies' }
+            })
+          ]
+        }
+      ]
+    };
+  }
+
+  protected onSubeventMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const menuEvent = event as AppMenuItemSelectEvent<SubeventActionMenuItemId, SubeventActionMenuContext>;
+    const context = menuEvent.context;
+    if (!context) {
+      return;
+    }
+    switch (context.scope) {
+      case 'display-mode':
+        this.selectDisplayMode(context.mode, menuEvent.sourceEvent);
+        return;
+      case 'stage-action':
+        if (context.action === 'stage-location') {
+          this.openStageLocation(context.stage, menuEvent.sourceEvent);
+          return;
+        }
+        this.runStageMenuAction(context.action, context.stage, menuEvent.sourceEvent);
+        return;
+      case 'group-action':
+        this.runGroupMenuAction(context.action, context.row, menuEvent.sourceEvent);
+        return;
+      case 'group-resource':
+        this.openSubEventResourcePopup(context.resourceType, context.row.stageItem, menuEvent.sourceEvent, context.row);
+        return;
+      case 'casual-action':
+        if (context.action === 'show-map') {
+          this.openSubEventLocation(context.item, menuEvent.sourceEvent);
+          return;
+        }
+        this.runCasualMenuAction(context.action, context.item, context.index, menuEvent.sourceEvent);
+        return;
+      case 'casual-resource':
+        this.openSubEventResourcePopup(context.resourceType, context.item, menuEvent.sourceEvent);
+        return;
+      default:
+        return;
+    }
+  }
+
+  private displayModeMenuItemId(mode: SubEventsDisplayMode): DisplayModeMenuItemId {
+    return mode === 'Tournament' ? 'display-tournament' : 'display-casual';
+  }
+
+  private displayModePalette(mode: SubEventsDisplayMode): AppMenuPalette {
+    return mode === 'Tournament' ? 'amber' : 'green';
+  }
+
+  private stageActionMenuItem(
+    stage: EventSubeventsStageCard,
+    action: StageMenuAction,
+    label: string,
+    icon: string,
+    palette: AppMenuPalette
+  ): AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext> {
+    return {
+      id: action,
+      label,
+      icon,
+      palette,
+      context: { scope: 'stage-action', stage, action }
+    };
+  }
+
+  private actionMenuTrigger(ariaLabel: string, counter = 0): AppMenuTrigger {
+    const count = Math.max(0, Math.trunc(Number(counter) || 0));
+    return {
+      icon: 'more_vert',
+      closeIcon: 'close',
+      ariaLabel,
+      hideLabel: true,
+      shape: 'icon',
+      counter: count > 0 ? { value: count, max: 99 } : null
+    };
+  }
+
+  private resourceSummaryMenuItem(options: {
+    id: SubeventActionMenuItemId;
+    type: EventEditorSubEventResourceType;
+    label: string;
+    description: string;
+    pending: number;
+    context: SubeventActionMenuContext;
+  }): AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext> {
+    const pending = Math.max(0, Math.trunc(Number(options.pending) || 0));
+    return {
+      id: options.id,
+      label: options.label,
+      description: options.description,
+      icon: this.resourceSummaryIcon(options.type),
+      palette: this.resourceSummaryPalette(options.type),
+      surface: 'tinted',
+      layout: 'summary',
+      counter: pending > 0 ? { value: pending, max: 99 } : null,
+      context: options.context
+    };
+  }
+
+  private resourceSummaryIcon(type: EventEditorSubEventResourceType): string {
+    switch (type) {
+      case 'Members':
+        return 'groups';
+      case 'Car':
+        return 'directions_car';
+      case 'Accommodation':
+        return 'apartment';
+      case 'Supplies':
+        return 'inventory_2';
+      default:
+        return 'category';
+    }
+  }
+
+  private resourceSummaryPalette(type: EventEditorSubEventResourceType): AppMenuPalette {
+    switch (type) {
+      case 'Members':
+        return 'blue';
+      case 'Car':
+        return 'sky';
+      case 'Accommodation':
+        return 'green';
+      case 'Supplies':
+        return 'brown';
+      default:
+        return 'default';
+    }
+  }
+
+  protected casualCardMenuKey(item: EventSubeventsItem, index: number): string {
+    return item.id ?? `casual-${index}`;
   }
 
   protected casualMenuPendingCount(item: EventSubeventsItem): number {
     return (item as EventSubeventsPreparedItem).casualMenuPendingCount ?? this.buildCasualMenuPendingCount(item);
   }
 
-  protected toggleCasualActionMenu(item: EventSubeventsItem, index: number, event: Event): void {
-    event.stopPropagation();
-    this.openStageMenuKey = null;
-    this.openGroupMenuKey = null;
-    const key = this.casualCardMenuKey(item, index);
-    this.openCasualMenuKey = this.openCasualMenuKey === key ? null : key;
-  }
-
   protected runCasualMenuAction(action: 'edit' | 'delete', item: EventSubeventsItem, index: number, event: Event): void {
     event.stopPropagation();
-    this.openCasualMenuKey = null;
     if (this.subEventStructureReadOnly()) {
       return;
     }
@@ -790,16 +1125,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
   }
 
-  protected toggleStageActionMenu(stage: EventSubeventsStageCard, event: Event): void {
-    event.stopPropagation();
-    this.openGroupMenuKey = null;
-    this.openCasualMenuKey = null;
-    this.openStageMenuKey = this.openStageMenuKey === stage.key ? null : stage.key;
-  }
-
   protected runStageMenuAction(action: StageMenuAction, stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
-    this.openStageMenuKey = null;
     if (this.readOnly && action !== 'leaderboard') {
       return;
     }
@@ -926,7 +1253,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected openStageLeaderboard(stage: EventSubeventsStageCard, event: Event): void {
     event.stopPropagation();
-    this.openStageMenuKey = null;
     this.openLeaderboardPopup(stage, event);
   }
 
@@ -943,16 +1269,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.openSubEventLocation(source, event);
   }
 
-  protected toggleGroupActionMenu(row: EventSubeventsStageRow, event: Event): void {
-    event.stopPropagation();
-    this.openStageMenuKey = null;
-    this.openCasualMenuKey = null;
-    this.openGroupMenuKey = this.openGroupMenuKey === row.key ? null : row.key;
-  }
-
   protected runGroupMenuAction(action: GroupMenuAction, row: EventSubeventsStageRow, event: Event): void {
     event.stopPropagation();
-    this.openGroupMenuKey = null;
     if (this.subEventStructureReadOnly()) {
       return;
     }
@@ -973,26 +1291,15 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return optional ? 'toggle_on' : 'block';
   }
 
-  protected toggleSubEventOptionalPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.displayMode === 'Tournament') {
-      this.showSubEventOptionalPicker = false;
-      return;
-    }
-    this.showSubEventOptionalPicker = !this.showSubEventOptionalPicker;
-  }
-
   protected selectSubEventOptional(optional: boolean): void {
     if (this.displayMode === 'Tournament') {
       this.subEventForm.optional = false;
-      this.showSubEventOptionalPicker = false;
       return;
     }
     this.subEventForm.optional = optional;
     if (optional) {
       this.normalizeSubEventCapacityRange();
     }
-    this.showSubEventOptionalPicker = false;
   }
 
   protected onSubEventCapacityMinChange(value: number | string): void {
@@ -1146,7 +1453,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       invalidName ? '1' : '0',
       invalidDescription ? '1' : '0',
       showOptionalToggle ? '1' : '0',
-      this.showSubEventOptionalPicker ? '1' : '0',
       this.subEventForm.optional ? '1' : '0',
       modeClass,
       modeIcon,
@@ -1183,7 +1489,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       invalidName,
       invalidDescription,
       showOptionalToggle,
-      showOptionalPicker: this.showSubEventOptionalPicker,
       modeClass,
       modeIcon,
       slotBoundTiming,
@@ -1241,9 +1546,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (!query || typeof window === 'undefined') {
       return;
     }
-    this.openStageMenuKey = null;
-    this.openGroupMenuKey = null;
-    this.openCasualMenuKey = null;
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
   }
 
@@ -1374,7 +1676,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
   protected closeSubEventForm(event?: Event): void {
     event?.stopPropagation();
     this.showSubEventForm = false;
-    this.showSubEventOptionalPicker = false;
     this.resetSubEventStageInsertControls();
     this.subEventFormMode = 'create';
     this.subEventFormSourceIndex = null;
@@ -2161,16 +2462,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (this.subEventStructureReadOnly()) {
       return;
     }
-    this.openStageMenuKey = null;
-    this.openGroupMenuKey = null;
-    this.openCasualMenuKey = null;
     this.showLeaderboardPopup = false;
     this.leaderboardPopupStageKey = null;
     this.leaderboardPopupStageTitle = '';
     this.leaderboardPopupGroups = [];
     this.leaderboardPopupMode = 'Score';
     this.showGroupForm = false;
-    this.showSubEventOptionalPicker = false;
     const sourceItem = this.workingSubEvents[sourceIndex];
     if (!sourceItem) {
       return;
@@ -2281,7 +2578,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private openLeaderboardPopup(stage: EventSubeventsStageCard, event: Event, resultsMode = false): void {
     event.stopPropagation();
     this.showSubEventForm = false;
-    this.showSubEventOptionalPicker = false;
     this.showGroupForm = false;
     this.groupFormSourceIndex = null;
     this.groupFormGroupId = null;
@@ -3633,12 +3929,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private resetTransientUi(): void {
     this.clearMobileStageScrollLock();
-    this.showDisplayModePicker = false;
-    this.openStageMenuKey = null;
-    this.openGroupMenuKey = null;
-    this.openCasualMenuKey = null;
     this.showSubEventForm = false;
-    this.showSubEventOptionalPicker = false;
     this.resetSubEventStageInsertControls();
     this.subEventFormMode = 'create';
     this.subEventFormSourceIndex = null;

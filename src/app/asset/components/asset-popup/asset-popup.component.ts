@@ -1,9 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, DoCheck, HostListener, OnDestroy, ViewChild, effect, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ChangeDetectorRef, Component, DoCheck, HostListener, OnDestroy, ViewChild, effect, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
 import { AssetFacadeService } from '../../asset-facade.service';
@@ -16,7 +14,29 @@ import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.co
 import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
 import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 import {
-  BasketComponent, CounterBadgePipe, InfoCardComponent, ProgressIndicatorComponent, SmartListComponent, type BasketChip, type InfoCardMenuActionEvent, type ListQuery, type SingleRowData, type SmartListConfig, type SmartListStateChange, ConfirmationDialogComponent
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent,
+  BasketComponent,
+  InfoCardComponent,
+  ProgressIndicatorComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type BasketChip,
+  type InfoCardData,
+  type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent,
+  type InfoCardResolvedMenuAction,
+  INFO_CARD_AVAILABLE_ACTIONS,
+  type ListQuery,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListStateChange,
+  ConfirmationDialogComponent
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { I18nService } from '../../../shared/core';
@@ -34,26 +54,40 @@ interface OwnedAssetListFilters {
 }
 
 type AssetSupplyRequestFilter = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
+type AssetSupplyRequestRowAction = Extract<AppTypes.AssetRequestAction, 'accept' | 'remove' | 'makeManager'>;
 
 interface AssetSupplyRequestRow extends SingleRowData {
   status: AppTypes.AssetRequestStatus | 'assigned';
+  menuActions?: readonly AssetSupplyRequestRowAction[];
 }
+
+type AssetPopupMenuContext =
+  | { menu: 'ticket-order'; order: AppTypes.AssetTicketOrder }
+  | { menu: 'asset-filter'; filter: AppTypes.AssetFilterType }
+  | { menu: 'supply-request-filter'; filter: AssetSupplyRequestFilter }
+  | { menu: 'supply-request-action'; row: AssetSupplyRequestRow; action: AssetSupplyRequestRowAction }
+  | {
+      menu: 'asset-info-card';
+      assetCard: AppTypes.AssetCard;
+      card: InfoCardData;
+      action: InfoCardResolvedMenuAction;
+    };
 
 @Component({
   selector: 'app-asset-popup',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     MatButtonModule,
     MatIconModule,
-    MatSelectModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     BasketComponent,
     InfoCardComponent,
     ProgressIndicatorComponent,
     SmartListComponent,
     ConfirmationDialogComponent,
-    CounterBadgePipe,
     I18nPipe,
     AssetFormPopupComponent,
     AssetTicketCodePopupComponent,
@@ -68,12 +102,11 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly assetPopup = inject(AssetPopupStateService);
   protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  protected readonly assetFilterOpen = signal(false);
-  protected showMobileAssetFilterPicker = false;
   private lastAssetListContextKey = '';
   private lastAssetCardsSignature = '';
   private lastAssetCardCount = 0;
@@ -82,8 +115,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected showSupplyRequestList = false;
   protected selectedSupplyAssetId: string | null = null;
   protected supplyRequestFilter: AssetSupplyRequestFilter = 'all';
-  protected showSupplyRequestFilterMenu = false;
-  protected supplyRequestActionMenu: { id: string; openUp: boolean } | null = null;
   protected supplyRequestBusyKey = '';
   protected readonly retryTicketScanner = (event?: Event): void => this.assetPopup.retryTicketScanner(event);
   protected readonly closeOwnedAssetForm = (): void => this.ownedAssets.closeAssetForm();
@@ -268,6 +299,301 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
+  protected openOwnedAssetInfoCardMenu(
+    card: AppTypes.AssetCard,
+    event: InfoCardMenuRequestEvent
+  ): void {
+    const menuId = `asset-info-card:${event.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      kind: 'select',
+      title: this.infoCardMenuTitle(event.card),
+      items: this.assetInfoCardMenuItems(card, event),
+      triggerRect: event.triggerRect,
+      openUp: event.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: event.closeTrigger
+    }, null);
+  }
+
+  protected ticketOrderMenuTrigger(): AppMenuTrigger {
+    return {
+      label: () => this.assetPopup.ticketDateOrderLabel(),
+      icon: () => this.assetPopup.ticketDateOrderIcon(),
+      palette: 'blue',
+      shape: 'pill',
+      ariaLabel: 'Open ticket date ordering'
+    };
+  }
+
+  protected ticketOrderMenuItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    const selectedOrder = this.assetPopup.ticketDateOrder();
+    return [
+      {
+        id: 'ticket-order-upcoming',
+        label: 'Upcoming',
+        icon: 'schedule',
+        kind: 'radio',
+        active: selectedOrder === 'upcoming',
+        palette: 'blue',
+        context: { menu: 'ticket-order', order: 'upcoming' }
+      },
+      {
+        id: 'ticket-order-past',
+        label: 'Past',
+        icon: 'history',
+        kind: 'radio',
+        active: selectedOrder === 'past',
+        palette: 'slate',
+        context: { menu: 'ticket-order', order: 'past' }
+      }
+    ];
+  }
+
+  protected assetFilterMenuTrigger(): AppMenuTrigger {
+    const filter = this.ownedAssets.assetFilter;
+    const count = this.ownedAssets.assetFilterCount(filter);
+    return {
+      label: this.ownedAssets.assetTypeLabel(filter),
+      icon: this.ownedAssets.assetTypeIcon(filter),
+      palette: this.assetFilterPalette(filter),
+      counter: count > 0 ? count : null,
+      ariaLabel: 'Open asset filter'
+    };
+  }
+
+  protected assetFilterMenuItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    return this.ownedAssets.assetFilterOptions.map(option => {
+      const count = this.ownedAssets.assetFilterCount(option);
+      return {
+        id: `asset-filter-${option}`,
+        label: this.ownedAssets.assetTypeLabel(option),
+        icon: this.ownedAssets.assetTypeIcon(option),
+        kind: 'radio',
+        active: option === this.ownedAssets.assetFilter,
+        palette: this.assetFilterPalette(option),
+        counter: count > 0 ? count : null,
+        context: { menu: 'asset-filter', filter: option }
+      };
+    });
+  }
+
+  protected supplyRequestFilterMenuTrigger(): AppMenuTrigger {
+    return {
+      label: () => this.supplyRequestFilterLabel(),
+      icon: () => this.supplyRequestFilterIcon(),
+      palette: this.supplyRequestFilterPalette(this.supplyRequestFilter),
+      counter: () => this.supplyRequestFilterCount(),
+      shape: 'pill',
+      ariaLabel: 'asset.requests.filter.open'
+    };
+  }
+
+  protected supplyRequestFilterMenuItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    return this.supplyRequestFilters.map(option => ({
+      id: `supply-request-filter-${option.key}`,
+      label: option.labelKey,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.key === this.supplyRequestFilter,
+      palette: this.supplyRequestFilterPalette(option.key),
+      counter: () => this.supplyRequestFilterCount(option.key),
+      context: { menu: 'supply-request-filter', filter: option.key }
+    }));
+  }
+
+  protected supplyRequestRowActionMenuId(row: AssetSupplyRequestRow): string {
+    return `asset-supply-request:${row.id}`;
+  }
+
+  protected supplyRequestRowActionMenuTrigger(row: AssetSupplyRequestRow): AppMenuTrigger {
+    return {
+      icon: 'more_vert',
+      closeIcon: 'close',
+      shape: 'icon',
+      palette: 'slate',
+      disabled: () => this.isSupplyRequestRowBusy(row, 'accept')
+        || this.isSupplyRequestRowBusy(row, 'remove')
+        || this.isSupplyRequestRowBusy(row, 'makeManager'),
+      ariaLabel: 'asset.requests.actions.open'
+    };
+  }
+
+  protected supplyRequestRowActionMenuItems(row: AssetSupplyRequestRow): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    const items: AppMenuItem<string, AssetPopupMenuContext>[] = [];
+    if ((row.menuActions ?? []).includes('accept')) {
+      items.push({
+        id: `${row.id}:accept`,
+        label: () => this.isSupplyRequestRowBusy(row, 'accept') ? 'accepting' : 'accept',
+        icon: 'check_circle',
+        palette: 'green',
+        disabled: () => this.isSupplyRequestRowBusy(row, 'accept'),
+        context: { menu: 'supply-request-action', row, action: 'accept' }
+      });
+    }
+    if (this.canPromoteSupplyRequestRowToManager(row)) {
+      items.push({
+        id: `${row.id}:makeManager`,
+        label: () => this.isSupplyRequestRowBusy(row, 'makeManager')
+          ? 'asset.requests.promoting'
+          : 'asset.requests.promote.to.manager',
+        icon: 'manage_accounts',
+        palette: 'blue',
+        disabled: () => this.isSupplyRequestRowBusy(row, 'makeManager'),
+        context: { menu: 'supply-request-action', row, action: 'makeManager' }
+      });
+    }
+    if ((row.menuActions ?? []).includes('remove')) {
+      items.push({
+        id: `${row.id}:remove`,
+        label: () => this.isSupplyRequestRowBusy(row, 'remove') ? 'asset.requests.rejecting' : 'reject',
+        icon: 'delete',
+        palette: 'danger',
+        disabled: () => this.isSupplyRequestRowBusy(row, 'remove'),
+        context: { menu: 'supply-request-action', row, action: 'remove' }
+      });
+    }
+    return items;
+  }
+
+  protected onAssetPopupMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as AssetPopupMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    switch (context.menu) {
+      case 'ticket-order':
+        this.assetPopup.selectTicketDateOrder(context.order, event.sourceEvent);
+        return;
+      case 'asset-filter':
+        this.onAssetFilterChange(context.filter);
+        return;
+      case 'supply-request-filter':
+        this.selectSupplyRequestFilter(context.filter, event.sourceEvent);
+        return;
+      default:
+        return;
+    }
+  }
+
+  protected onAssetDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as AssetPopupMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'supply-request-action') {
+      void this.runSupplyRequestRowAction(context.row, context.action, event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'asset-info-card') {
+      this.onOwnedAssetInfoCardMenuAction(context.assetCard, {
+        id: context.card.id,
+        actionId: context.action.id,
+        action: context.action,
+        card: context.card
+      });
+    }
+  }
+
+  private async runSupplyRequestRowAction(
+    row: AssetSupplyRequestRow,
+    action: AssetSupplyRequestRowAction,
+    event: Event
+  ): Promise<void> {
+    if (action === 'accept') {
+      await this.approveSupplyRequestRow(row, event);
+      return;
+    }
+    if (action === 'remove') {
+      await this.rejectSupplyRequestRow(row, event);
+      return;
+    }
+    await this.promoteSupplyRequestRowToManager(row, event);
+  }
+
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private assetInfoCardMenuItems(
+    assetCard: AppTypes.AssetCard,
+    request: InfoCardMenuRequestEvent
+  ): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    return request.actions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        context: {
+          menu: 'asset-info-card',
+          assetCard,
+          card: request.card,
+          action
+        }
+      }];
+    });
+  }
+
+  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'amber';
+      case 'destructive':
+        return 'danger';
+      case 'default':
+      default:
+        return 'default';
+    }
+  }
+
+  private assetFilterPalette(filter: AppTypes.AssetFilterType): AppMenuPalette {
+    if (filter === 'Accommodation') {
+      return 'green';
+    }
+    if (filter === 'Supplies') {
+      return 'brown';
+    }
+    if (filter === 'Ticket') {
+      return 'sky';
+    }
+    return 'blue';
+  }
+
+  private supplyRequestFilterPalette(filter: AssetSupplyRequestFilter): AppMenuPalette {
+    switch (filter) {
+      case 'pending-requests':
+        return 'amber';
+      case 'borrowed-items':
+        return 'violet';
+      case 'active-items':
+        return 'green';
+      case 'all':
+      default:
+        return 'blue';
+    }
+  }
+
   private openOwnedAssetShareDialog(card: AppTypes.AssetCard): void {
     void this.shareTokensService.createToken({
       kind: 'asset',
@@ -304,18 +630,16 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.selectedSupplyAssetId = card.id;
     this.showSupplyRequestList = true;
     this.supplyRequestFilter = 'all';
-    this.showSupplyRequestFilterMenu = false;
-    this.supplyRequestActionMenu = null;
     this.supplyRequestBusyKey = '';
+    this.appMenuDispatcher.close();
   }
 
   protected closeSupplyRequestList(event?: Event): void {
     event?.stopPropagation();
     this.showSupplyRequestList = false;
     this.selectedSupplyAssetId = null;
-    this.showSupplyRequestFilterMenu = false;
-    this.supplyRequestActionMenu = null;
     this.supplyRequestBusyKey = '';
+    this.appMenuDispatcher.close();
   }
 
   protected selectedSupplyAsset(): AppTypes.AssetCard | null {
@@ -335,17 +659,14 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return asset ? AssetCardBuilder.quantityValue(asset) : 0;
   }
 
-  protected toggleSupplyRequestFilterMenu(event: Event): void {
-    event.stopPropagation();
-    this.showSupplyRequestFilterMenu = !this.showSupplyRequestFilterMenu;
-    this.supplyRequestActionMenu = null;
-  }
-
   protected selectSupplyRequestFilter(filter: AssetSupplyRequestFilter, event?: Event): void {
     event?.stopPropagation();
     this.supplyRequestFilter = filter;
-    this.showSupplyRequestFilterMenu = false;
-    this.supplyRequestActionMenu = null;
+    this.appMenuDispatcher.close();
+  }
+
+  protected supplyRequestFilterCount(filter = this.supplyRequestFilter): number {
+    return this.supplyRequestsForFilter(filter).length;
   }
 
   protected supplyRequestFilterLabel(): string {
@@ -354,10 +675,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   protected supplyRequestFilterIcon(): string {
     return this.supplyRequestFilters.find(option => option.key === this.supplyRequestFilter)?.icon ?? 'view_list';
-  }
-
-  protected supplyRequestFilterCount(filter = this.supplyRequestFilter): number {
-    return this.supplyRequestsForFilter(filter).length;
   }
 
   protected supplyRequestRows(): AssetSupplyRequestRow[] {
@@ -374,14 +691,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return request ? this.supplyRequestInventoryLabel(request) : '';
   }
 
-  protected isSupplyRequestRowActionMenuOpen(row: AssetSupplyRequestRow): boolean {
-    return this.supplyRequestActionMenu?.id === row.id;
-  }
-
-  protected isSupplyRequestRowActionMenuOpenUp(row: AssetSupplyRequestRow): boolean {
-    return this.supplyRequestActionMenu?.id === row.id && this.supplyRequestActionMenu.openUp;
-  }
-
   protected isSupplyRequestRowBusy(row: AssetSupplyRequestRow, action: AppTypes.AssetRequestAction): boolean {
     return this.supplyRequestBusyKey === `${row.id}:${action}`;
   }
@@ -394,13 +703,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected canPromoteSupplyRequestRowToManager(row: AssetSupplyRequestRow): boolean {
     const request = this.supplyRequestForRow(row);
     return request ? this.canPromoteSupplyRequestToManager(request) : false;
-  }
-
-  protected toggleSupplyRequestRowActionMenu(row: AssetSupplyRequestRow, event: Event): void {
-    const request = this.supplyRequestForRow(row);
-    if (request) {
-      this.toggleSupplyRequestActionMenu(request, event);
-    }
   }
 
   protected async approveSupplyRequestRow(row: AssetSupplyRequestRow, event: Event): Promise<void> {
@@ -545,29 +847,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return row.status === 'accepted' ? 'asset.requests.status.borrowed' : 'asset.requests.status.pending';
   }
 
-  protected toggleSupplyRequestActionMenu(request: AppTypes.AssetMemberRequest, event: Event): void {
-    event.stopPropagation();
-    if (!this.hasSupplyRequestActions(request)) {
-      return;
-    }
-    if (this.supplyRequestActionMenu?.id === request.id) {
-      this.supplyRequestActionMenu = null;
-      return;
-    }
-    this.supplyRequestActionMenu = {
-      id: request.id,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-  }
-
-  protected isSupplyRequestActionMenuOpen(request: AppTypes.AssetMemberRequest): boolean {
-    return this.supplyRequestActionMenu?.id === request.id;
-  }
-
-  protected isSupplyRequestActionMenuOpenUp(request: AppTypes.AssetMemberRequest): boolean {
-    return this.supplyRequestActionMenu?.id === request.id && this.supplyRequestActionMenu.openUp;
-  }
-
   protected isSupplyRequestBusy(request: AppTypes.AssetMemberRequest, action: AppTypes.AssetRequestAction): boolean {
     return this.supplyRequestBusyKey === `${request.id}:${action}`;
   }
@@ -587,7 +866,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (!asset || request.status !== 'pending') {
       return;
     }
-    this.supplyRequestActionMenu = null;
+    this.appMenuDispatcher.close();
     this.supplyRequestBusyKey = `${request.id}:accept`;
     try {
       await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'accept');
@@ -602,7 +881,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (!asset) {
       return;
     }
-    this.supplyRequestActionMenu = null;
+    this.appMenuDispatcher.close();
     this.supplyRequestBusyKey = `${request.id}:remove`;
     try {
       await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'remove');
@@ -617,7 +896,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (!asset || !this.canPromoteSupplyRequestToManager(request)) {
       return;
     }
-    this.supplyRequestActionMenu = null;
+    this.appMenuDispatcher.close();
     this.supplyRequestBusyKey = `${request.id}:makeManager`;
     try {
       await this.ownedAssets.promoteAssetRequestToManager(asset.id, request.id);
@@ -676,7 +955,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     };
   }
 
-  private supplyRequestMenuActions(request: AppTypes.AssetMemberRequest): readonly string[] {
+  private supplyRequestMenuActions(request: AppTypes.AssetMemberRequest): readonly AssetSupplyRequestRowAction[] {
     if (request.status === 'pending' && !this.isAssignedSupplyRequest(request)) {
       return this.canPromoteSupplyRequestToManager(request)
         ? ['accept', 'makeManager', 'remove']
@@ -823,7 +1102,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (this.isBasketMode()) {
       return;
     }
-    this.showMobileAssetFilterPicker = false;
     this.ownedAssets.selectAssetFilter(filter);
     this.assetSmartListQuery = {
       filters: {
@@ -861,24 +1139,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
-  protected onAssetFilterMenuOpenChange(isOpen: boolean): void {
-    this.assetFilterOpen.set(isOpen);
-  }
-
-  protected openMobileAssetFilterSelector(event: Event): void {
-    if (!this.isMobileAssetFilterSheetViewport() || this.isBasketMode()) {
-      return;
-    }
-    event.stopPropagation();
-    this.assetFilterOpen.set(false);
-    this.showMobileAssetFilterPicker = !this.showMobileAssetFilterPicker;
-  }
-
-  protected selectMobileAssetFilter(filter: AppTypes.AssetFilterType, event?: Event): void {
-    event?.stopPropagation();
-    this.onAssetFilterChange(filter);
-  }
-
   protected closeAssetPopup(event?: Event): void {
     event?.stopPropagation();
     if (this.showSupplyRequestList) {
@@ -890,7 +1150,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       host.closeSubEventAssetAssignPopup(false);
       return;
     }
-    this.showMobileAssetFilterPicker = false;
+    this.appMenuDispatcher.close();
     this.ownedAssets.closePopup();
   }
 
@@ -922,19 +1182,15 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       this.assetPopup.closeTicketOverlay();
       return;
     }
-    if (this.showMobileAssetFilterPicker) {
+    if (this.appMenuDispatcher.activeMenu()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
-      this.showMobileAssetFilterPicker = false;
+      this.appMenuDispatcher.close();
       return;
     }
     if (this.showSupplyRequestList) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
-      if (this.supplyRequestActionMenu) {
-        this.supplyRequestActionMenu = null;
-        return;
-      }
       this.closeSupplyRequestList();
       return;
     }
@@ -946,24 +1202,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       keyboardEvent.stopPropagation();
       this.closeAssetPopup();
     }
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (!target.closest('.popup-mobile-filter-picker')) {
-      this.showMobileAssetFilterPicker = false;
-    }
-    if (!target.closest('.asset-supply-request-menu-anchor')) {
-      this.supplyRequestActionMenu = null;
-    }
-    if (target.closest('.item-action-menu') || target.closest('.experience-action-menu-trigger')) {
-      return;
-    }
-    this.ownedAssets.closeAssetItemActionMenu();
   }
 
   ngOnDestroy(): void {
@@ -1010,13 +1248,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private currentAssetSmartListType(): AppTypes.AssetType {
     const currentFilter = this.ownedAssets.assetFilter;
     return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
-  }
-
-  protected isMobileAssetFilterSheetViewport(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return window.matchMedia('(max-width: 900px)').matches;
   }
 
   private syncVisibleOwnedAssets(): void {
@@ -1178,22 +1409,5 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
           : null
       }))
     };
-  }
-
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    if (this.isMobileAssetFilterSheetViewport() || typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = (trigger?.closest('.asset-supply-request-menu-anchor') as HTMLElement | null) ?? trigger;
-    if (!actionWrap) {
-      return false;
-    }
-    const rect = actionWrap.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 220;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 }

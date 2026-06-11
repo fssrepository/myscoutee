@@ -7,60 +7,20 @@
           <h2>{{ eventExploreHeaderTitle() }}</h2>
         </div>
         <div class="event-explore-header-controls">
-          <div class="event-explore-order-picker">
-            <button
-              type="button"
-              class="popup-view-fab event-explore-order-trigger"
-              [ngClass]="eventExploreOrderClass()"
-              (click)="toggleEventExploreOrderPicker($event)"
-              aria-label="Open event explore order"
-              >
-              <mat-icon [class]="eventExploreOrderClass()">{{ eventExploreOrderIcon() }}</mat-icon>
-              <span>{{ eventExploreOrderLabel() }}</span>
-            </button>
-            @if (showOrderPicker) {
-              <div class="activities-view-picker-panel event-explore-order-panel">
-                @for (option of eventExploreOrderOptions; track option) {
-                  <button
-                    type="button"
-                    class="activities-view-option"
-                    [ngClass]="eventExploreOrderClass(option.key)"
-                    (click)="selectEventExploreOrder(option.key, $event)"
-                    >
-                    <mat-icon [class]="eventExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
-                    <span>{{ option.label }}</span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
-          <div class="event-explore-view-picker">
-            <button
-              type="button"
-              class="popup-view-fab event-explore-view-trigger"
-              [ngClass]="eventExploreCurrentViewClass()"
-              (click)="toggleEventExploreViewPicker($event)"
-              aria-label="Open event explore view"
-              >
-              <mat-icon [class]="eventExploreCurrentViewClass()">{{ eventExploreCurrentViewIcon() }}</mat-icon>
-              <span>{{ eventExploreCurrentViewLabel() }}</span>
-            </button>
-            @if (showViewPicker) {
-              <div class="activities-view-picker-panel event-explore-order-panel">
-                @for (option of eventExploreViewOptions; track option) {
-                  <button
-                    type="button"
-                    class="activities-view-option"
-                    [ngClass]="eventExploreCurrentViewClass(option.key)"
-                    (click)="selectEventExploreView(option.key, $event)"
-                    >
-                    <mat-icon [class]="eventExploreCurrentViewClass(option.key)">{{ option.icon }}</mat-icon>
-                    <span>{{ option.label }}</span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="event-explore-order-picker"
+            kind="select"
+            [trigger]="eventExploreOrderMenuTrigger()"
+            [items]="eventExploreOrderMenuItems()"
+            (itemSelect)="onEventExploreMenuSelect($event)"
+          ></app-menu>
+          <app-menu
+            class="event-explore-view-picker"
+            kind="select"
+            [trigger]="eventExploreViewMenuTrigger()"
+            [items]="eventExploreViewMenuItems()"
+            (itemSelect)="onEventExploreMenuSelect($event)"
+          ></app-menu>
         </div>
         <button type="button" class="popup-close" (click)="closeEventExplore()" aria-label="Close">
           <mat-icon>close</mat-icon>
@@ -87,18 +47,13 @@
               <mat-icon>hotel</mat-icon>
               <span>Open spots</span>
             </button>
-            <div class="event-explore-topic-filter">
-              <button
-                type="button"
-                class="popup-view-fab event-explore-filter-btn event-explore-filter-topic"
-                [class.is-active]="!!eventExploreFilterTopic"
-                (click)="toggleEventExploreTopicPicker($event)"
-                >
-                <mat-icon>sell</mat-icon>
-                <span>{{ eventExploreTopicFilterLabel() }}</span>
-                <mat-icon class="event-explore-topic-filter-arrow">{{ showTopicPicker ? 'expand_less' : 'chevron_right' }}</mat-icon>
-              </button>
-            </div>
+            <app-menu
+              class="event-explore-topic-menu"
+              kind="select"
+              [trigger]="eventExploreTopicMenuTrigger()"
+              [groups]="eventExploreTopicMenuGroups()"
+              (itemSelect)="onEventExploreMenuSelect($event)"
+            ></app-menu>
           </div>
           <app-smart-list
             #eventExploreSmartList
@@ -190,14 +145,20 @@
           <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
             <app-info-card
               [card]="eventExploreInfoCard(record, groupLabel)"
+              [useSharedMenu]="true"
               (mediaStartClick)="openHostImpressions(record)"
               (mediaEndClick)="openEventExploreMembers(record)"
               (menuAction)="onEventExploreInfoCardMenuAction(record, $event)"
+              (menuRequest)="openEventExploreInfoCardMenu(record, $event)"
             ></app-info-card>
           </ng-template>
         </div>
       </div>
     </div>
+    <app-menu-outlet
+      scope="event-explore"
+      (itemSelect)="onEventExploreMenuSelect($event)"
+    ></app-menu-outlet>
     @if (slotPickerRecord) {
       <div class="event-explore-slot-picker-backdrop" (click)="closeEventExploreSlotPicker()"></div>
     }
@@ -226,15 +187,5 @@
         </div>
       </section>
     }
-    <app-topic-picker-popup
-      [open]="showTopicPicker"
-      [title]="'Topic Filter'"
-      [groups]="topicFilterGroups"
-      [selected]="eventExploreFilterTopic ? [eventExploreFilterTopic] : []"
-      [multiple]="false"
-      [closeOnSelect]="true"
-      (selectedChange)="updateEventExploreTopicSelection($event)"
-      (close)="closeEventExploreTopicPicker()"
-    ></app-topic-picker-popup>
   </section>
 }

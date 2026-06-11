@@ -32,13 +32,23 @@ import {
 } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
+  AppMenuDispatcher,
+  AppMenuComponent,
+  AppMenuOutletComponent,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  INFO_CARD_AVAILABLE_ACTIONS,
   InfoCardComponent,
   ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
-  TopicPickerPopupComponent,
   type InfoCardData,
   type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent,
+  type InfoCardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -56,16 +66,28 @@ type CheckoutDraftEntry = {
   record: ActivityEventRecord | null;
 };
 
+type EventExploreMenuContext =
+  | { menu: 'order'; order: AppTypes.EventExploreOrder }
+  | { menu: 'view'; view: AppTypes.EventExploreView }
+  | { menu: 'topic'; topic: string }
+  | {
+      menu: 'info-card';
+      record: ActivityEventRecord;
+      card: InfoCardData;
+      action: InfoCardResolvedMenuAction;
+    };
+
 @Component({
   selector: 'app-event-explore-popup',
   standalone: true,
   imports: [
     CommonModule,
     MatIconModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
     InfoCardComponent,
     ProgressIndicatorComponent,
-    SmartListComponent,
-    TopicPickerPopupComponent
+    SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -81,6 +103,7 @@ export class EventExplorePopupComponent {
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   private readonly appCtx = inject(AppContext);
@@ -98,9 +121,6 @@ export class EventExplorePopupComponent {
   private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
-  protected showOrderPicker = false;
-  protected showViewPicker = false;
-  protected showTopicPicker = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
   protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
@@ -268,21 +288,6 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    if (this.showTopicPicker) {
-      this.showTopicPicker = false;
-      this.cdr.markForCheck();
-      return;
-    }
-    if (this.showViewPicker) {
-      this.showViewPicker = false;
-      this.cdr.markForCheck();
-      return;
-    }
-    if (this.showOrderPicker) {
-      this.showOrderPicker = false;
-      this.cdr.markForCheck();
-      return;
-    }
     this.closeEventExplore();
   }
 
@@ -294,12 +299,6 @@ export class EventExplorePopupComponent {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
-    }
-    if (this.showOrderPicker && !target.closest('.event-explore-order-picker')) {
-      this.showOrderPicker = false;
-    }
-    if (this.showViewPicker && !target.closest('.event-explore-view-picker')) {
-      this.showViewPicker = false;
     }
     if (this.showCheckoutDraftBasket && !target.closest('.event-explore-basket')) {
       this.showCheckoutDraftBasket = false;
@@ -318,9 +317,6 @@ export class EventExplorePopupComponent {
 
   protected closeEventExplore(): void {
     this.isOpen = false;
-    this.showOrderPicker = false;
-    this.showViewPicker = false;
-    this.showTopicPicker = false;
     this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
@@ -328,42 +324,24 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected toggleEventExploreOrderPicker(event: Event): void {
-    event.stopPropagation();
-    this.showTopicPicker = false;
-    this.showViewPicker = false;
-    this.showOrderPicker = !this.showOrderPicker;
-  }
-
   protected selectEventExploreOrder(order: AppTypes.EventExploreOrder, event?: Event): void {
     event?.stopPropagation();
     if (this.eventExploreOrder === order) {
-      this.showOrderPicker = false;
       this.cdr.markForCheck();
       return;
     }
     this.eventExploreOrder = order;
-    this.showOrderPicker = false;
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
-  }
-
-  protected toggleEventExploreViewPicker(event: Event): void {
-    event.stopPropagation();
-    this.showTopicPicker = false;
-    this.showOrderPicker = false;
-    this.showViewPicker = !this.showViewPicker;
   }
 
   protected selectEventExploreView(view: AppTypes.EventExploreView, event?: Event): void {
     event?.stopPropagation();
     if (this.eventExploreView === view) {
-      this.showViewPicker = false;
       this.cdr.markForCheck();
       return;
     }
     this.eventExploreView = view;
-    this.showViewPicker = false;
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
   }
@@ -382,35 +360,10 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected toggleEventExploreTopicPicker(event: Event): void {
-    event.stopPropagation();
-    this.showOrderPicker = false;
-    this.showViewPicker = false;
-    this.showTopicPicker = !this.showTopicPicker;
-    this.cdr.markForCheck();
-  }
-
-  protected closeEventExploreTopicPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTopicPicker = false;
-    this.cdr.markForCheck();
-  }
-
   protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
     event?.stopPropagation();
     const normalizedTopic = this.normalizeTopic(topic);
     this.eventExploreFilterTopic = normalizedTopic === this.normalizeTopic(this.eventExploreFilterTopic) ? '' : topic;
-    this.showTopicPicker = false;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected updateEventExploreTopicSelection(selected: readonly string[]): void {
-    const nextTopic = selected[0] ?? '';
-    if (this.normalizeTopic(nextTopic) === this.normalizeTopic(this.eventExploreFilterTopic)) {
-      return;
-    }
-    this.eventExploreFilterTopic = nextTopic;
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
   }
@@ -426,28 +379,214 @@ export class EventExplorePopupComponent {
     return topic.replace(/^#+\s*/, '');
   }
 
+  protected eventExploreTopicMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.eventExploreTopicFilterLabel(),
+      icon: 'sell',
+      ariaLabel: 'Open topic filter',
+      palette: this.eventExploreFilterTopic ? 'gold' : 'neutral',
+      shape: 'pill'
+    };
+  }
+
+  protected eventExploreTopicMenuGroups(): readonly AppMenuGroup<string, EventExploreMenuContext>[] {
+    const activeTopic = this.normalizeTopic(this.eventExploreFilterTopic);
+    return [
+      {
+        id: 'topic-filter-all',
+        label: 'Topic',
+        icon: 'sell',
+        palette: 'gold',
+        children: [
+          {
+            id: 'topic-filter-clear',
+            label: 'All topics',
+            icon: 'clear_all',
+            kind: 'radio',
+            active: !activeTopic,
+            checked: !activeTopic,
+            palette: 'neutral',
+            surface: 'tinted',
+            context: { menu: 'topic', topic: '' }
+          }
+        ]
+      },
+      ...this.topicFilterGroups.map((group, groupIndex) => {
+        const palette = this.topicGroupPalette(group.toneClass);
+        return {
+          id: `topic-filter-${groupIndex}-${group.title}`,
+          label: group.shortTitle || group.title,
+          icon: group.icon || this.topicGroupIcon(group.toneClass),
+          palette,
+          children: group.options.map(option => ({
+            id: `topic-filter-${groupIndex}-${option}`,
+            label: this.eventExploreTopicLabel(option),
+            icon: 'tag',
+            kind: 'radio' as const,
+            active: this.normalizeTopic(option) === activeTopic,
+            checked: this.normalizeTopic(option) === activeTopic,
+            palette,
+            surface: 'tinted' as const,
+            context: { menu: 'topic' as const, topic: option }
+          }))
+        };
+      })
+    ];
+  }
+
+  protected eventExploreOrderMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.eventExploreOrderLabel(),
+      icon: this.eventExploreOrderIcon(),
+      ariaLabel: 'Open event explore order',
+      palette: this.eventExploreOrderPalette(this.eventExploreOrder),
+      shape: 'pill'
+    };
+  }
+
+  protected eventExploreOrderMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return this.eventExploreOrderOptions.map(option => ({
+      id: `order-${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.key === this.eventExploreOrder,
+      checked: option.key === this.eventExploreOrder,
+      palette: this.eventExploreOrderPalette(option.key),
+      surface: 'tinted',
+      context: { menu: 'order', order: option.key }
+    }));
+  }
+
+  protected eventExploreViewMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.eventExploreCurrentViewLabel(),
+      icon: this.eventExploreCurrentViewIcon(),
+      ariaLabel: 'Open event explore view',
+      palette: this.eventExploreViewPalette(this.eventExploreView),
+      shape: 'pill'
+    };
+  }
+
+  protected eventExploreViewMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return this.eventExploreViewOptions.map(option => ({
+      id: `view-${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.key === this.eventExploreView,
+      checked: option.key === this.eventExploreView,
+      palette: this.eventExploreViewPalette(option.key),
+      surface: 'tinted',
+      context: { menu: 'view', view: option.key }
+    }));
+  }
+
+  protected onEventExploreMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as EventExploreMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'info-card') {
+      this.onEventExploreInfoCardMenuAction(context.record, {
+        id: context.card.id,
+        actionId: context.action.id,
+        action: context.action,
+        card: context.card
+      });
+      return;
+    }
+    if (context.menu === 'order') {
+      this.selectEventExploreOrder(context.order, event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'view') {
+      this.selectEventExploreView(context.view, event.sourceEvent);
+      return;
+    }
+    this.selectEventExploreTopicFilter(context.topic, event.sourceEvent);
+  }
+
+  protected openEventExploreInfoCardMenu(
+    record: ActivityEventRecord,
+    request: InfoCardMenuRequestEvent
+  ): void {
+    const menuId = `event-explore-card:${request.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      scope: 'event-explore',
+      kind: 'select',
+      title: this.infoCardMenuTitle(request.card),
+      items: this.infoCardMenuItems(record, request),
+      triggerRect: request.triggerRect,
+      openUp: request.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger
+    }, null);
+  }
+
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private infoCardMenuItems(
+    record: ActivityEventRecord,
+    request: InfoCardMenuRequestEvent
+  ): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return request.actions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        surface: 'tinted',
+        context: {
+          menu: 'info-card',
+          record,
+          card: request.card,
+          action
+        }
+      }];
+    });
+  }
+
+  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'warning';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
+  }
+
   protected eventExploreOrderLabel(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
   }
 
   protected eventExploreOrderIcon(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
-  }
-
-  protected eventExploreOrderClass(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
-    if (order === 'upcoming') {
-      return 'event-explore-order-upcoming';
-    }
-    if (order === 'past-events') {
-      return 'event-explore-order-past-events';
-    }
-    if (order === 'nearby') {
-      return 'event-explore-order-nearby';
-    }
-    if (order === 'top-rated') {
-      return 'event-explore-order-top-rated';
-    }
-    return 'event-explore-order-most-relevant';
   }
 
   protected eventExploreCurrentViewLabel(view: AppTypes.EventExploreView = this.eventExploreView): string {
@@ -458,10 +597,75 @@ export class EventExplorePopupComponent {
     return this.eventExploreViewOptions.find(option => option.key === view)?.icon ?? 'today';
   }
 
-  protected eventExploreCurrentViewClass(view: AppTypes.EventExploreView = this.eventExploreView): string {
-    return view === 'distance'
-      ? 'event-explore-view-distance'
-      : 'event-explore-view-day';
+  private eventExploreOrderPalette(order: AppTypes.EventExploreOrder): AppMenuPalette {
+    switch (order) {
+      case 'upcoming':
+        return 'blue';
+      case 'past-events':
+        return 'slate';
+      case 'nearby':
+        return 'green';
+      case 'top-rated':
+        return 'gold';
+      default:
+        return 'violet';
+    }
+  }
+
+  private eventExploreViewPalette(view: AppTypes.EventExploreView): AppMenuPalette {
+    return view === 'distance' ? 'teal' : 'blue';
+  }
+
+  private topicGroupIcon(toneClass: string): string {
+    switch (toneClass) {
+      case 'section-family':
+        return 'family_restroom';
+      case 'section-ambition':
+        return 'rocket_launch';
+      case 'section-lifestyle':
+        return 'eco';
+      case 'section-beliefs':
+      case 'section-identity':
+        return 'auto_awesome';
+      case 'section-social':
+        return 'celebration';
+      case 'section-arts':
+        return 'palette';
+      case 'section-food':
+        return 'restaurant';
+      case 'section-active':
+        return 'hiking';
+      case 'section-mind':
+        return 'self_improvement';
+      default:
+        return 'label';
+    }
+  }
+
+  private topicGroupPalette(toneClass: string): AppMenuPalette {
+    switch (toneClass) {
+      case 'section-family':
+        return 'pink';
+      case 'section-ambition':
+        return 'violet';
+      case 'section-lifestyle':
+        return 'green';
+      case 'section-beliefs':
+      case 'section-identity':
+        return 'gold';
+      case 'section-social':
+        return 'orange';
+      case 'section-arts':
+        return 'purple';
+      case 'section-food':
+        return 'brown';
+      case 'section-active':
+        return 'blue';
+      case 'section-mind':
+        return 'mint';
+      default:
+        return 'neutral';
+    }
   }
 
   protected eventExploreHeaderTitle(): string {
@@ -929,9 +1133,6 @@ export class EventExplorePopupComponent {
     this.isOpen = true;
     this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
-    this.showOrderPicker = false;
-    this.showViewPicker = false;
-    this.showTopicPicker = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.syncEventExploreQuery();
@@ -1304,9 +1505,6 @@ export class EventExplorePopupComponent {
 
   private openEventExploreSlotPicker(record: ActivityEventRecord): void {
     this.slotPickerRecord = record;
-    this.showOrderPicker = false;
-    this.showViewPicker = false;
-    this.showTopicPicker = false;
     this.cdr.markForCheck();
   }
 

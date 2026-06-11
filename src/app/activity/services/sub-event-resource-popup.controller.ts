@@ -1,6 +1,5 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
-import type { MatSelect } from '@angular/material/select';
 
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
@@ -200,7 +199,6 @@ export class SubEventResourcePopupController {
 
   private readonly popupContextRef = signal<ResourcePopupContext | null>(null);
   private readonly resourceFilterRef = signal<AppTypes.AssetType>('Car');
-  private readonly inlineItemActionMenuRef = signal<{ id: string; openUp: boolean } | null>(null);
   private readonly resourceAssetViewIdRef = signal<string | null>(null);
   private readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
   private readonly resourceAssetViewReturnToChatRef = signal(false);
@@ -260,7 +258,6 @@ export class SubEventResourcePopupController {
     isMobilePopupSheetViewport: () => false,
     resourceFilter: () => this.resourceFilterRef(),
     resourceFilterOptions: () => ['Car', 'Accommodation', 'Supplies'],
-    resourceFilterPanelWidth: () => this.ownedAssets.assetFilterPanelWidth(),
     resourceFilterCount: type => this.resourceFilterCount(type),
     resourceTypeClass: type => this.ownedAssets.assetTypeClass(type === 'Members' ? 'Car' : type),
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
@@ -278,8 +275,6 @@ export class SubEventResourcePopupController {
     assetExploreBorrowDrafts: () => this.assetExploreBorrowDraftsViewState(),
     close: () => this.closeResourcePopup(),
     selectResourceFilter: filter => this.selectResourceFilter(filter),
-    onResourceFilterOpened: (isOpen, select) => this.onResourceFilterOpened(isOpen, select),
-    openMobileResourceFilterSelector: () => undefined,
     openAssignPopup: event => this.openAssignPopup(event),
     openExplorePopup: event => this.openExplorePopup(event),
     closeExplorePopup: event => this.closeExplorePopup(event),
@@ -333,9 +328,6 @@ export class SubEventResourcePopupController {
     openResourceAssetView: (card, mode, event) => this.openResourceAssetView(card, mode, event),
     closeResourceAssetView: event => this.closeResourceAssetView(event),
     openAssetViewRouteEditor: (view, event, mode) => this.openAssetViewRouteEditor(view, event, mode),
-    isItemActionMenuOpen: card => this.inlineItemActionMenuRef()?.id === card.id,
-    isItemActionMenuOpenUp: card => this.inlineItemActionMenuRef()?.id === card.id && this.inlineItemActionMenuRef()?.openUp === true,
-    toggleItemActionMenu: (card, event) => this.toggleItemActionMenu(card, event),
     canJoin: card => this.canJoin(card),
     join: (card, event) => this.join(card, event),
     canLeave: card => this.canLeave(card),
@@ -589,7 +581,6 @@ export class SubEventResourcePopupController {
   ): void {
     this.popupContextRef.set(context);
     this.resourceFilterRef.set(type);
-    this.inlineItemActionMenuRef.set(null);
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
     this.resourceAssetViewReturnToChatRef.set(false);
@@ -727,7 +718,6 @@ export class SubEventResourcePopupController {
     this.abortPendingCapacitySaveRequest();
     this.abortPendingRouteSaveRequest();
     this.popupContextRef.set(null);
-    this.inlineItemActionMenuRef.set(null);
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
     this.resourceAssetViewReturnToChatRef.set(false);
@@ -890,7 +880,6 @@ export class SubEventResourcePopupController {
     this.resourceAssetViewIdRef.set(assetId);
     this.resourceAssetViewModeRef.set(mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view');
     this.resourceAssetViewReturnToChatRef.set(false);
-    this.inlineItemActionMenuRef.set(null);
     this.pendingResourceDeleteRef.set(null);
     this.assetExplorePopupRef.set(null);
   }
@@ -1270,7 +1259,6 @@ export class SubEventResourcePopupController {
       return;
     }
     this.resourceFilterRef.set(filter);
-    this.inlineItemActionMenuRef.set(null);
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
     this.capacityEditorRef.set(null);
@@ -1278,25 +1266,6 @@ export class SubEventResourcePopupController {
     this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);
-  }
-
-  private onResourceFilterOpened(isOpen: boolean, select: MatSelect): void {
-    if (!isOpen || typeof window === 'undefined') {
-      return;
-    }
-    const overlayRef = (
-      select as unknown as { _overlayDir?: { overlayRef?: { updatePosition: () => void } } }
-    )._overlayDir?.overlayRef;
-    const reposition = (): void => {
-      if (select.panelOpen) {
-        overlayRef?.updatePosition();
-      }
-    };
-    window.requestAnimationFrame(() => {
-      reposition();
-      window.setTimeout(reposition, 0);
-      window.setTimeout(reposition, 40);
-    });
   }
 
   private resourceCards(): AppTypes.SubEventResourceCard[] {
@@ -1557,18 +1526,6 @@ export class SubEventResourcePopupController {
     this.openGoogleMapsDirections(routes);
   }
 
-  private toggleItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void {
-    event.stopPropagation();
-    if (this.inlineItemActionMenuRef()?.id === card.id) {
-      this.inlineItemActionMenuRef.set(null);
-      return;
-    }
-    this.inlineItemActionMenuRef.set({
-      id: card.id,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    });
-  }
-
   private canJoin(card: AppTypes.SubEventResourceCard): boolean {
     const context = this.popupContextRef();
     if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
@@ -1610,7 +1567,6 @@ export class SubEventResourcePopupController {
       busy: false,
       error: null
     });
-    this.inlineItemActionMenuRef.set(null);
   }
 
   private canLeave(card: AppTypes.SubEventResourceCard): boolean {
@@ -1656,7 +1612,6 @@ export class SubEventResourcePopupController {
             }
           : null
       }));
-    this.inlineItemActionMenuRef.set(null);
     if (this.assignedAssetJoinDialogRef()?.sourceAssetId === sourceCard.id) {
       this.assignedAssetJoinDialogRef.set(null);
     }
@@ -1886,7 +1841,6 @@ export class SubEventResourcePopupController {
     this.abortPendingRouteSaveRequest();
     this.routeEditorRef.set(null);
     this.pendingResourceDeleteRef.set(null);
-    this.inlineItemActionMenuRef.set(null);
   }
 
   private closeCapacityEditor(event?: Event): void {
@@ -2050,7 +2004,6 @@ export class SubEventResourcePopupController {
     this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
     this.pendingResourceDeleteRef.set(null);
-    this.inlineItemActionMenuRef.set(null);
   }
 
   private openAssetViewRouteEditor(
@@ -2094,7 +2047,6 @@ export class SubEventResourcePopupController {
     this.abortPendingCapacitySaveRequest();
     this.capacityEditorRef.set(null);
     this.pendingResourceDeleteRef.set(null);
-    this.inlineItemActionMenuRef.set(null);
   }
 
   private resolveViewableCarRoutes(
@@ -2137,7 +2089,6 @@ export class SubEventResourcePopupController {
       lastSenderId: managerUserId || activeUserId,
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
-    this.inlineItemActionMenuRef.set(null);
     this.activitiesContext.openEventChat(chat);
   }
 
@@ -2178,7 +2129,6 @@ export class SubEventResourcePopupController {
     if (!context || !target || target.userId === this.activeUser().id.trim()) {
       return;
     }
-    this.inlineItemActionMenuRef.set(null);
     this.navigatorService.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
@@ -2425,7 +2375,6 @@ export class SubEventResourcePopupController {
       busy: false,
       error: null
     });
-    this.inlineItemActionMenuRef.set(null);
   }
 
   private confirmDeleteResourceCard(): void {
@@ -4900,15 +4849,6 @@ export class SubEventResourcePopupController {
   private subEventStageLabel(subEvent: AppTypes.SubEventFormItem | null | undefined): string {
     const name = this.subEventDisplayName(subEvent);
     return name || 'Sub Event';
-  }
-
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    const target = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-    if (!target || typeof window === 'undefined') {
-      return false;
-    }
-    const rect = target.getBoundingClientRect();
-    return rect.bottom > window.innerHeight - 180;
   }
 
   private isMobileView(): boolean {

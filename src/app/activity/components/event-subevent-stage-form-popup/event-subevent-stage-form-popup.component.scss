@@ -2,7 +2,7 @@
 
 @include shared.host-motion-vars();
 @include shared.interactive-feedback(
-  '.popup-header-add-btn, .experience-form-close-btn, .experience-action-btn, .subevent-optional-toggle, .subevent-stage-insert-mode-btn, .subevent-stage-insert-target-select, .subevent-tournament-select, .mat-datepicker-toggle .mat-mdc-icon-button, .mat-timepicker-toggle .mat-mdc-icon-button'
+  '.popup-header-add-btn, .experience-form-close-btn, .experience-action-btn, .subevent-optional-toggle, .subevent-stage-insert-mode-btn, .mat-datepicker-toggle .mat-mdc-icon-button, .mat-timepicker-toggle .mat-mdc-icon-button'
 );
 
 .experience-form-overlay {
@@ -417,6 +417,16 @@
   cursor: default;
 }
 
+.subevent-optional-menu {
+  width: max-content;
+}
+
+:host ::ng-deep .subevent-optional-menu .app-menu__trigger {
+  min-height: 38px;
+  padding-inline: 0.72rem;
+  font-size: 0.82rem;
+}
+
 .subevent-stage-insert-field {
   width: 100%;
 }
@@ -463,38 +473,21 @@
 .subevent-stage-insert-target-select {
   min-width: 0;
   width: 100%;
-  border: 1px solid rgba(67, 102, 147, 0.28);
-  border-radius: 8px;
-  background: #fff;
-  min-height: 32px;
-  padding: 0 0.48rem;
-  display: flex;
-  align-items: center;
   box-sizing: border-box;
 }
 
-.subevent-stage-insert-target-select .mat-mdc-select {
+.subevent-stage-insert-target-menu,
+.subevent-tournament-type-menu {
+  display: block;
   width: 100%;
-  color: #1f3c62;
+  min-width: 0;
+}
+
+:host ::ng-deep .subevent-stage-insert-target-menu .app-menu__trigger,
+:host ::ng-deep .subevent-tournament-type-menu .app-menu__trigger {
+  min-height: 32px;
   font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.subevent-stage-insert-target-select .mat-mdc-select-trigger {
-  min-height: 30px;
-}
-
-.subevent-stage-insert-target-select .mat-mdc-select-value,
-.subevent-stage-insert-target-select .mat-mdc-select-value-text,
-.subevent-stage-insert-option-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.subevent-stage-insert-target-select .mat-mdc-select-arrow-wrapper {
-  margin-left: auto;
-  padding-left: 0.3rem;
+  font-weight: 700;
 }
 
 .subevent-tournament-fieldset {
@@ -567,82 +560,6 @@
   gap: 0.44rem 0.52rem;
 }
 
-.subevent-tournament-select {
-  min-width: 0;
-  width: 100%;
-  border: 1px solid rgba(61, 98, 143, 0.3);
-  border-radius: 8px;
-  background: #fff;
-  min-height: 30px;
-  padding: 0 0.46rem;
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.subevent-tournament-select .mat-mdc-select {
-  width: 100%;
-  font-size: 0.74rem;
-  font-weight: 700;
-}
-
-.subevent-tournament-select .mat-mdc-select-trigger {
-  min-height: 28px;
-}
-
-.subevent-tournament-select .mat-mdc-select-arrow-wrapper {
-  margin-left: auto;
-  padding-left: 0.3rem;
-}
-
-.subevent-tournament-select-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.26rem;
-}
-
-.subevent-tournament-select-trigger .mat-icon {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
-  line-height: 14px;
-}
-
-.subevent-tournament-select.tournament-leaderboard-score {
-  background: linear-gradient(180deg, #f2f8ff 0%, #e8f1ff 100%);
-  border-color: rgba(56, 102, 170, 0.36);
-  color: #2e5ea8;
-}
-
-.subevent-tournament-select.tournament-leaderboard-fifa {
-  background: linear-gradient(180deg, #fff4e9 0%, #ffe9d4 100%);
-  border-color: rgba(181, 110, 40, 0.4);
-  color: #a35f1d;
-}
-
-.subevent-tournament-leaderboard-option-content {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.34rem;
-}
-
-.subevent-tournament-leaderboard-option-content .mat-icon {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  line-height: 15px;
-}
-
-.subevent-tournament-leaderboard-option.tournament-leaderboard-score {
-  background: linear-gradient(180deg, #f5f9ff 0%, #edf3ff 100%);
-  color: #2e5ea8;
-}
-
-.subevent-tournament-leaderboard-option.tournament-leaderboard-fifa {
-  background: linear-gradient(180deg, #fff8ef 0%, #fff0df 100%);
-  color: #a35f1d;
-}
-
 .subevent-tournament-hint {
   margin: 0;
   color: rgba(35, 62, 97, 0.76);
@@ -668,68 +585,6 @@
   text-align: center;
 }
 
-.subevent-optional-picker-panel {
-  position: absolute;
-  left: auto;
-  right: 0;
-  top: calc(100% + 0.32rem);
-  z-index: 24;
-  min-width: 178px;
-  display: grid;
-  gap: 0.16rem;
-  padding: 0.24rem;
-  border: 1px solid rgba(39, 62, 94, 0.22);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 12px 28px rgba(17, 29, 48, 0.24);
-}
-
-.subevent-optional-picker-panel .activities-view-option {
-  appearance: none;
-  width: 100%;
-  min-height: 34px;
-  border: 0;
-  border-radius: 8px;
-  padding: 0.36rem 0.5rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.38rem;
-  background: #fff;
-  color: #1e3658;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 800;
-  line-height: 1.1;
-  text-align: left;
-  cursor: pointer;
-}
-
-.subevent-optional-picker-panel .activities-view-option .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-  flex: 0 0 auto;
-}
-
-.subevent-optional-picker-panel .activities-view-option span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.subevent-optional-picker-panel .activities-view-option.subevent-mode-mandatory {
-  background: linear-gradient(0deg, #ffffff, #fff0f0);
-  color: #a23d3d;
-}
-
-.subevent-optional-picker-panel .activities-view-option.subevent-mode-optional {
-  background: linear-gradient(0deg, #ffffff, #eef6ff);
-  color: #2d5ea8;
-}
-
 :host ::ng-deep .event-date-field,
 :host ::ng-deep .event-time-field {
   width: 100%;
@@ -745,13 +600,6 @@
   --mdc-outlined-text-field-hover-outline-color: transparent;
   padding-left: 0 !important;
   margin: 0 !important;
-}
-
-::ng-deep .subevent-stage-insert-options-panel .mat-mdc-option,
-::ng-deep .subevent-tournament-leaderboard-options-panel .mat-mdc-option,
-::ng-deep .subevent-stage-insert-options-panel .mat-mdc-option .mdc-list-item__primary-text,
-::ng-deep .subevent-tournament-leaderboard-options-panel .mat-mdc-option .mdc-list-item__primary-text {
-  font-family: 'Nunito Sans', 'Segoe UI', sans-serif !important;
 }
 
 :host ::ng-deep .event-date-field .mdc-text-field--filled,

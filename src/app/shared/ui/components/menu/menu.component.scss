@@ -843,6 +843,40 @@ a.app-menu__item {
   margin-top: 0.08rem;
 }
 
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  width: 100%;
+  min-width: min(220px, calc(100vw - 1.2rem));
+  min-height: 40px;
+  align-items: center;
+  column-gap: 0.38rem;
+  row-gap: 0;
+  border: 1px solid var(--app-menu-border);
+  border-radius: 10px;
+  padding: 0.36rem 0.42rem;
+  background: var(--app-menu-bg);
+  color: var(--app-menu-fg);
+  box-shadow: none;
+}
+
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary:not(:disabled):not(.app-menu__item--disabled):hover,
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary.app-menu__item--active {
+  background: var(--app-menu-bg-hover);
+  color: var(--app-menu-fg);
+  filter: none;
+  transform: translateY(-1px);
+}
+
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary .app-menu__item-icon {
+  width: 20px;
+  height: 20px;
+  margin-top: 0;
+  font-size: 20px;
+  line-height: 20px;
+  color: var(--app-menu-icon);
+}
+
 .app-menu__panel--dropdown-list .app-menu__item.app-menu__palette--danger,
 .app-menu__panel--dropdown-list .app-menu__item.app-menu__palette--red {
   color: #aa2e2e;
@@ -1039,6 +1073,24 @@ a.app-menu__item {
   font-weight: 800;
 }
 
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary .app-menu__item-main {
+  gap: 0.08rem;
+}
+
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary .app-menu__item-label {
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1;
+  text-decoration: underline;
+}
+
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary .app-menu__item-description {
+  color: currentColor;
+  font-size: 0.64rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
 .app-menu__shortcut-label {
   display: flex;
   align-items: center;
@@ -1199,6 +1251,17 @@ a.app-menu__item {
   box-shadow: none;
 }
 
+.app-menu__panel--dropdown-list .app-menu__item--layout-summary .app-menu__counter {
+  min-width: 20px;
+  height: 20px;
+  margin-left: 0.16rem;
+  border: 1px solid #fff;
+  background: linear-gradient(180deg, #e24955 0%, #c93240 100%);
+  color: #fff;
+  font-size: 0.7rem;
+  box-shadow: 0 4px 9px rgba(163, 36, 48, 0.22);
+}
+
 .app-menu__divider {
   height: 1px;
   margin: 0.18rem 0.2rem;
@@ -1212,6 +1275,17 @@ a.app-menu__item {
   font-weight: 900;
   letter-spacing: 0;
   text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+.app-menu__section-label .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+  color: var(--app-menu-icon);
 }
 
 .app-menu__shortcut-divider,

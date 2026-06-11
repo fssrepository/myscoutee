@@ -71,29 +71,13 @@
             </div>
           } @else {
             @if (ownedAssets.isTicketPopup()) {
-              <div class="ticket-order-picker">
-                <button
-                  type="button"
-                  class="popup-view-fab ticket-order-trigger"
-                  (click)="assetPopup.toggleTicketOrderPicker($event)"
-                  aria-label="Open ticket date ordering"
-                  >
-                  <mat-icon>{{ assetPopup.ticketDateOrderIcon() }}</mat-icon>
-                  <span>{{ assetPopup.ticketDateOrderLabel() }}</span>
-                </button>
-                @if (assetPopup.showTicketOrderPicker()) {
-                  <div class="activities-view-picker-panel event-explore-order-panel">
-                    <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('upcoming', $event)">
-                      <mat-icon>schedule</mat-icon>
-                      <span>Upcoming</span>
-                    </button>
-                    <button type="button" class="activities-view-option" (click)="assetPopup.selectTicketDateOrder('past', $event)">
-                      <mat-icon>history</mat-icon>
-                      <span>Past</span>
-                    </button>
-                  </div>
-                }
-              </div>
+              <app-menu
+                class="ticket-order-picker"
+                kind="select"
+                [trigger]="ticketOrderMenuTrigger()"
+                [items]="ticketOrderMenuItems()"
+                (itemSelect)="onAssetPopupMenuSelect($event)"
+              ></app-menu>
             }
             <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
               <mat-icon>close</mat-icon>
@@ -123,86 +107,14 @@
               }
             } @else {
               <div class="experience-toolbar assets-toolbar">
-                @if (!isMobileAssetFilterSheetViewport()) {
-                  <div
-                    class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select assets-primary-filter-select"
-                    [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
-                    [class.asset-filter-open]="assetFilterOpen()"
-                    [class.popup-filter-no-badge]="ownedAssets.assetFilterCount(ownedAssets.assetFilter) === 0"
-                    >
-                    <mat-select
-                      [ngModel]="ownedAssets.assetFilter"
-                      (ngModelChange)="onAssetFilterChange($event)"
-                      (openedChange)="onAssetFilterMenuOpenChange($event)"
-                      [panelWidth]="ownedAssets.assetFilterPanelWidth()"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel"
-                      >
-                      <mat-select-trigger>
-                        <span class="status-option-content">
-                          <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
-                          <span>{{ ownedAssets.assetTypeLabel(ownedAssets.assetFilter) }}</span>
-                        </span>
-                      </mat-select-trigger>
-                      @for (option of ownedAssets.assetFilterOptions; track option) {
-                        <mat-option [value]="option" class="status-option" [ngClass]="ownedAssets.assetTypeClass(option)">
-                          <span class="status-option-content">
-                            <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
-                            <span>{{ ownedAssets.assetTypeLabel(option) }}</span>
-                            @if (ownedAssets.assetFilterCount(option) > 0) {
-                              <span class="rate-filter-count-badge">{{ ownedAssets.assetFilterCount(option) | counterBadge }}</span>
-                            }
-                          </span>
-                        </mat-option>
-                      }
-                    </mat-select>
-                    @if (ownedAssets.assetFilterCount(ownedAssets.assetFilter) > 0) {
-                      <span class="rate-filter-count-badge rate-filter-trigger-badge">
-                        {{ ownedAssets.assetFilterCount(ownedAssets.assetFilter) | counterBadge }}
-                      </span>
-                    }
-                  </div>
-                } @else {
-                  <div class="popup-mobile-filter-picker assets-mobile-filter-picker">
-                    <button
-                      type="button"
-                      class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select assets-primary-filter-select"
-                      [ngClass]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)"
-                      [class.popup-filter-no-badge]="ownedAssets.assetFilterCount(ownedAssets.assetFilter) === 0"
-                      (click)="openMobileAssetFilterSelector($event)"
-                      aria-label="Open asset filter"
-                      >
-                      <span class="status-option-content">
-                        <mat-icon [class]="ownedAssets.assetTypeClass(ownedAssets.assetFilter)">{{ ownedAssets.assetTypeIcon(ownedAssets.assetFilter) }}</mat-icon>
-                        <span>{{ ownedAssets.assetTypeLabel(ownedAssets.assetFilter) }}</span>
-                      </span>
-                      <mat-icon>expand_more</mat-icon>
-                      @if (ownedAssets.assetFilterCount(ownedAssets.assetFilter) > 0) {
-                        <span class="rate-filter-count-badge rate-filter-trigger-badge">
-                          {{ ownedAssets.assetFilterCount(ownedAssets.assetFilter) | counterBadge }}
-                        </span>
-                      }
-                    </button>
-                    @if (showMobileAssetFilterPicker) {
-                      <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel assets-mobile-filter-panel">
-                        @for (option of ownedAssets.assetFilterOptions; track option) {
-                          <button
-                            type="button"
-                            class="popup-filter-option activities-view-option"
-                            [ngClass]="[ownedAssets.assetTypeClass(option), option === ownedAssets.assetFilter ? 'active' : '']"
-                            (click)="selectMobileAssetFilter(option, $event)"
-                            >
-                            <mat-icon [class]="ownedAssets.assetTypeClass(option)">{{ ownedAssets.assetTypeIcon(option) }}</mat-icon>
-                            <span>{{ ownedAssets.assetTypeLabel(option) }}</span>
-                            @if (ownedAssets.assetFilterCount(option) > 0) {
-                              <span class="rate-filter-count-badge">{{ ownedAssets.assetFilterCount(option) | counterBadge }}</span>
-                            }
-                          </button>
-                        }
-                      </div>
-                    }
-                  </div>
-                }
+                <app-menu
+                  class="assets-primary-filter-select"
+                  kind="select"
+                  [trigger]="assetFilterMenuTrigger()"
+                  [items]="assetFilterMenuItems()"
+                  [mobileBreakpointPx]="900"
+                  (itemSelect)="onAssetPopupMenuSelect($event)"
+                ></app-menu>
                 @if (!ownedAssets.isTicketPopup()) {
                   <button
                     type="button"
@@ -308,35 +220,14 @@
                 </div>
               </div>
               <div class="popup-filter-picker asset-supply-request-filter-picker">
-                <button
-                  type="button"
-                  class="popup-view-fab asset-supply-request-filter-btn"
-                  [class.is-open]="showSupplyRequestFilterMenu"
-                  [ngClass]="'asset-supply-request-filter-tone--' + supplyRequestFilter"
-                  (click)="toggleSupplyRequestFilterMenu($event)"
-                  [attr.aria-label]="('asset.requests.filter.open' | i18n) + ': ' + (supplyRequestFilterLabel() | i18n)"
-                  >
-                  <mat-icon>{{ supplyRequestFilterIcon() }}</mat-icon>
-                  <span>{{ supplyRequestFilterLabel() | i18n }}</span>
-                  <strong>{{ supplyRequestFilterCount() }}</strong>
-                </button>
-                @if (showSupplyRequestFilterMenu) {
-                  <div class="popup-filter-panel activities-view-picker-panel asset-supply-request-filter-menu" (click)="$event.stopPropagation()">
-                    @for (option of supplyRequestFilters; track option.key) {
-                      <button
-                        type="button"
-                        class="popup-filter-option activities-view-option"
-                        [class.active]="option.key === supplyRequestFilter"
-                        [ngClass]="'asset-supply-request-filter-tone--' + option.key"
-                        (click)="selectSupplyRequestFilter(option.key, $event)"
-                        >
-                        <mat-icon>{{ option.icon }}</mat-icon>
-                        <span>{{ option.labelKey | i18n }}</span>
-                        <strong>{{ supplyRequestFilterCount(option.key) }}</strong>
-                      </button>
-                    }
-                  </div>
-                }
+                <app-menu
+                  class="asset-supply-request-filter-menu"
+                  kind="select"
+                  [trigger]="supplyRequestFilterMenuTrigger()"
+                  [items]="supplyRequestFilterMenuItems()"
+                  [mobileBreakpointPx]="900"
+                  (itemSelect)="onAssetPopupMenuSelect($event)"
+                ></app-menu>
               </div>
               <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" [attr.aria-label]="'asset.requests.close' | i18n">
                 <mat-icon>close</mat-icon>
@@ -388,59 +279,16 @@
                           }
                           @if (hasSupplyRequestRowActions(row)) {
                             <div class="asset-supply-request-menu-anchor">
-                              <button
-                                type="button"
-                                class="experience-action-btn experience-action-menu-trigger"
-                                [class.is-open]="isSupplyRequestRowActionMenuOpen(row)"
-                                [disabled]="isSupplyRequestRowBusy(row, 'accept') || isSupplyRequestRowBusy(row, 'remove') || isSupplyRequestRowBusy(row, 'makeManager')"
-                                (click)="toggleSupplyRequestRowActionMenu(row, $event)"
-                                [attr.aria-label]="'asset.requests.actions.open' | i18n"
-                                >
-                                <mat-icon>{{ isSupplyRequestRowActionMenuOpen(row) ? 'close' : 'more_vert' }}</mat-icon>
-                              </button>
-                              <div
-                                class="item-action-menu"
-                                [class.is-open]="isSupplyRequestRowActionMenuOpen(row)"
-                                [class.item-action-menu-mobile]="isMobileAssetFilterSheetViewport()"
-                                [class.item-action-menu-desktop]="!isMobileAssetFilterSheetViewport()"
-                                [class.is-open-up]="isSupplyRequestRowActionMenuOpenUp(row)"
-                                (click)="$event.stopPropagation()"
-                                >
-                                <div class="item-action-menu-title">{{ row.title }}</div>
-                                @if ((row.menuActions ?? []).includes('accept')) {
-                                  <button
-                                    type="button"
-                                    class="item-action-menu-btn item-action-menu-btn-publish"
-                                    [disabled]="isSupplyRequestRowBusy(row, 'accept')"
-                                    (click)="approveSupplyRequestRow(row, $event)"
-                                    >
-                                    <mat-icon>check_circle</mat-icon>
-                                    <span>{{ (isSupplyRequestRowBusy(row, 'accept') ? 'accepting' : 'accept') | i18n }}</span>
-                                  </button>
-                                }
-                                @if (canPromoteSupplyRequestRowToManager(row)) {
-                                  <button
-                                    type="button"
-                                    class="item-action-menu-btn"
-                                    [disabled]="isSupplyRequestRowBusy(row, 'makeManager')"
-                                    (click)="promoteSupplyRequestRowToManager(row, $event)"
-                                    >
-                                    <mat-icon>manage_accounts</mat-icon>
-                                    <span>{{ (isSupplyRequestRowBusy(row, 'makeManager') ? 'asset.requests.promoting' : 'asset.requests.promote.to.manager') | i18n }}</span>
-                                  </button>
-                                }
-                                @if ((row.menuActions ?? []).includes('remove')) {
-                                  <button
-                                    type="button"
-                                    class="item-action-menu-btn item-action-menu-btn-destructive"
-                                    [disabled]="isSupplyRequestRowBusy(row, 'remove')"
-                                    (click)="rejectSupplyRequestRow(row, $event)"
-                                    >
-                                    <mat-icon>delete</mat-icon>
-                                    <span>{{ (isSupplyRequestRowBusy(row, 'remove') ? 'asset.requests.rejecting' : 'reject') | i18n }}</span>
-                                  </button>
-                                }
-                              </div>
+                              <app-menu-trigger
+                                class="asset-supply-request-row-menu-trigger"
+                                [menuId]="supplyRequestRowActionMenuId(row)"
+                                kind="select"
+                                [title]="row.title"
+                                [trigger]="supplyRequestRowActionMenuTrigger(row)"
+                                [items]="supplyRequestRowActionMenuItems(row)"
+                                [panelAlign]="'auto'"
+                                [mobileBreakpointPx]="900"
+                              ></app-menu-trigger>
                             </div>
                           }
                         </div>
@@ -471,11 +319,15 @@
   <ng-template #assetItemTemplate let-card let-groupLabel="groupLabel" let-selectMode="selectMode">
     <app-info-card
       [card]="ownedAssetInfoCard(card, { groupLabel: groupLabel, selectMode: selectMode, selected: isAssetAssignCardSelected(card.id), selectDisabled: isBasketSavePending() })"
+      [useSharedMenu]="true"
       (mediaStartClick)="openOwnedAssetMap(card)"
       (mediaEndClick)="onOwnedAssetMediaEndClick(card, selectMode)"
       (menuAction)="onOwnedAssetInfoCardMenuAction(card, $event)"
+      (menuRequest)="openOwnedAssetInfoCardMenu(card, $event)"
     ></app-info-card>
   </ng-template>
+
+  <app-menu-outlet (itemSelect)="onAssetDispatchedMenuSelect($event)"></app-menu-outlet>
 
   @if (assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') {
     <section class="app-popup app-popup-stacked">

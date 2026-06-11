@@ -59,9 +59,15 @@
             class="idea-info-card"
             [class.is-feature-toggle-pending]="isFeatureTogglePending(ideaCardPostId(card))"
             [card]="card"
+            [useSharedMenu]="true"
             (menuAction)="onIdeaCardMenuAction(card, $event)"
+            (menuRequest)="openIdeaInfoCardMenu(card, $event)"
           ></app-info-card>
         </ng-template>
+        <app-menu-outlet
+          scope="admin-idea-editor"
+          (itemSelect)="onIdeaDispatchedMenuSelect($event)"
+        ></app-menu-outlet>
       </div>
     </div>
   </section>

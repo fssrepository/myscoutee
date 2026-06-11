@@ -20,9 +20,16 @@ import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent,
   CounterBadgePipe,
   LazyBgImageDirective,
   SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -38,9 +45,12 @@ interface MembersSmartListFilters {
   pendingOnly?: boolean;
 }
 
-type InlineMemberActionMenu = {
-  id: string;
-  openUp: boolean;
+type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report';
+
+type MemberMenuContext = {
+  menu: 'member-action';
+  member: AppTypes.ActivityMemberEntry;
+  action: MemberMenuAction;
 };
 
 type MembersSummaryState = {
@@ -56,6 +66,8 @@ type MembersSummaryState = {
     CommonModule,
     MatButtonModule,
     MatIconModule,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     SmartListComponent,
     LazyBgImageDirective,
     CounterBadgePipe
@@ -74,6 +86,7 @@ export class EventMembersPopupComponent {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -95,7 +108,6 @@ export class EventMembersPopupComponent {
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
   private canManageMembers = false;
-  private inlineItemActionMenu: InlineMemberActionMenu | null = null;
   private selectedMembersVisible: ReadonlyArray<AppTypes.ActivityMemberEntry> = [];
   private membersListReady = false;
   private pendingSummaryState: MembersSummaryState = {
@@ -206,27 +218,12 @@ export class EventMembersPopupComponent {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
-    if (this.inlineItemActionMenu) {
-      this.inlineItemActionMenu = null;
+    if (this.appMenuDispatcher.activeMenu()) {
+      this.appMenuDispatcher.close();
       this.cdr.markForCheck();
       return;
     }
     this.closeMembersPopup();
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen || this.isSuspendedForAssetInvite() || !this.inlineItemActionMenu) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (!target.closest('.subevent-member-menu-anchor')) {
-      this.inlineItemActionMenu = null;
-      this.cdr.markForCheck();
-    }
   }
 
   protected onMembersSmartListStateChange(
@@ -246,7 +243,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.pendingOnly = !this.pendingOnly;
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.syncMembersSmartListQuery();
     this.cdr.markForCheck();
   }
@@ -265,7 +262,7 @@ export class EventMembersPopupComponent {
     this.ownerRef = null;
     this.lookupRef = null;
     this.ownerRecord = null;
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.pendingOnly = false;
     this.canManageMembers = false;
     this.canShowInviteButton = false;
@@ -308,46 +305,110 @@ export class EventMembersPopupComponent {
       || this.canReportMember(entry);
   }
 
-  protected toggleMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
-    event.stopPropagation();
-    if (!this.canShowActionMenu(entry)) {
-      return;
-    }
-    if (this.inlineItemActionMenu?.id === entry.id) {
-      this.inlineItemActionMenu = null;
-      this.cdr.markForCheck();
-      return;
-    }
-    this.inlineItemActionMenu = {
-      id: entry.id,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-    this.cdr.markForCheck();
-  }
-
   protected isActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.inlineItemActionMenu?.id === entry.id;
+    return this.appMenuDispatcher.isOpen(this.memberActionMenuId(entry));
   }
 
-  protected isActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.inlineItemActionMenu?.id === entry.id && this.inlineItemActionMenu.openUp;
+  protected memberActionMenuId(entry: AppTypes.ActivityMemberEntry): string {
+    return `activity-member:${entry.id}`;
   }
 
-  protected selectedActionMenuMember(): AppTypes.ActivityMemberEntry | null {
-    const selectedId = `${this.inlineItemActionMenu?.id ?? ''}`.trim();
-    if (!selectedId) {
-      return null;
+  protected memberActionMenuTrigger(entry: AppTypes.ActivityMemberEntry): AppMenuTrigger {
+    return {
+      icon: 'more_vert',
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: this.memberActionMenuPalette(entry),
+      ariaLabel: `Open actions for ${entry.name}`
+    };
+  }
+
+  protected memberActionMenuPalette(entry: AppTypes.ActivityMemberEntry): AppMenuPalette {
+    if (entry.status === 'disqualified') {
+      return 'danger';
     }
-    return this.selectedMembersVisible.find(entry => entry.id === selectedId) ?? null;
+    if (this.canApproveMember(entry)) {
+      return 'warning';
+    }
+    if (this.canReinstateMember(entry)) {
+      return 'success';
+    }
+    return 'blue';
   }
 
-  protected closeMemberActionMenu(event?: Event): void {
-    event?.stopPropagation();
-    if (!this.inlineItemActionMenu) {
+  protected memberActionMenuItems(entry: AppTypes.ActivityMemberEntry): readonly AppMenuItem<string, MemberMenuContext>[] {
+    const items: AppMenuItem<string, MemberMenuContext>[] = [];
+    if (this.canApproveMember(entry)) {
+      items.push({
+        id: `member-action-approve-${entry.id}`,
+        label: 'Approve',
+        icon: 'check_circle',
+        palette: 'success',
+        context: { menu: 'member-action', member: entry, action: 'approve' }
+      });
+    }
+    if (this.canDeleteMember(entry)) {
+      items.push({
+        id: `member-action-remove-${entry.id}`,
+        label: this.deleteLabel(entry),
+        icon: 'delete',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'remove' }
+      });
+    }
+    if (this.canDisqualifyMember(entry)) {
+      items.push({
+        id: `member-action-disqualify-${entry.id}`,
+        label: 'Disqualify',
+        icon: 'gavel',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'disqualify' }
+      });
+    }
+    if (this.canReinstateMember(entry)) {
+      items.push({
+        id: `member-action-reinstate-${entry.id}`,
+        label: 'Reinstate',
+        icon: 'undo',
+        palette: 'success',
+        context: { menu: 'member-action', member: entry, action: 'reinstate' }
+      });
+    }
+    if (this.canReportMember(entry)) {
+      items.push({
+        id: `member-action-report-${entry.id}`,
+        label: 'Report user',
+        icon: 'flag',
+        palette: 'default',
+        context: { menu: 'member-action', member: entry, action: 'report' }
+      });
+    }
+    return items;
+  }
+
+  protected onMemberActionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as MemberMenuContext | undefined;
+    if (context?.menu !== 'member-action') {
       return;
     }
-    this.inlineItemActionMenu = null;
-    this.cdr.markForCheck();
+    switch (context.action) {
+      case 'approve':
+        this.approveMember(context.member, event.sourceEvent);
+        break;
+      case 'remove':
+        this.requestRemoveMember(context.member, event.sourceEvent);
+        break;
+      case 'disqualify':
+        this.requestDisqualifyMember(context.member, event.sourceEvent);
+        break;
+      case 'reinstate':
+        this.requestReinstateMember(context.member, event.sourceEvent);
+        break;
+      case 'report':
+        this.reportMember(context.member, event.sourceEvent);
+        break;
+    }
   }
 
   protected approveMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
@@ -355,7 +416,7 @@ export class EventMembersPopupComponent {
     if (!this.canApproveMember(entry)) {
       return;
     }
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.cdr.markForCheck();
     this.confirmationDialogService.open({
       title: 'Approve request?',
@@ -374,7 +435,7 @@ export class EventMembersPopupComponent {
     if (!this.canDeleteMember(entry)) {
       return;
     }
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.cdr.markForCheck();
     this.confirmationDialogService.open({
       title: this.memberRemovalTitle(entry),
@@ -393,7 +454,7 @@ export class EventMembersPopupComponent {
     if (!this.canDisqualifyMember(entry)) {
       return;
     }
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.cdr.markForCheck();
     this.confirmationDialogService.open({
       title: 'Disqualify member?',
@@ -412,7 +473,7 @@ export class EventMembersPopupComponent {
     if (!this.canReinstateMember(entry)) {
       return;
     }
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.cdr.markForCheck();
     this.confirmationDialogService.open({
       title: 'Reinstate member?',
@@ -431,7 +492,7 @@ export class EventMembersPopupComponent {
     if (!this.canReportMember(entry)) {
       return;
     }
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.navigatorService.openReportUserPopup({
       targetUserId: entry.userId,
       targetName: entry.name,
@@ -455,7 +516,7 @@ export class EventMembersPopupComponent {
     if (!userId) {
       return;
     }
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.navigatorService.openProfileView({
       userId,
       label: entry.name
@@ -737,7 +798,7 @@ export class EventMembersPopupComponent {
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
     this.pendingOnly = false;
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.selectedMembersVisible = [];
     this.membersCacheByOwnerId.delete(normalizedOwnerId);
     this.resetSummaryState();
@@ -916,7 +977,7 @@ export class EventMembersPopupComponent {
     this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
     this.syncCanManageMembers(normalizedMembers);
     this.applySummaryFromMembers(normalizedMembers);
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.syncVisibleMembers(previousMembers, normalizedMembers);
     if (this.membersChangeHandler) {
       this.membersChangeHandler(normalizedMembers);
@@ -1116,23 +1177,6 @@ export class EventMembersPopupComponent {
     );
   }
 
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    if (this.isMobileView || typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = (trigger?.closest('.subevent-member-menu-anchor') as HTMLElement | null) ?? trigger;
-    if (!actionWrap) {
-      return false;
-    }
-    const rect = actionWrap.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 248;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
-  }
-
   private syncMobileViewFromViewport(): void {
     if (typeof window === 'undefined') {
       this.isMobileView = false;
@@ -1172,7 +1216,7 @@ export class EventMembersPopupComponent {
     this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
     this.syncCanManageMembers(normalizedMembers);
     this.applySummaryFromMembers(normalizedMembers);
-    this.inlineItemActionMenu = null;
+    this.appMenuDispatcher.close();
     this.syncVisibleMembers(previousMembers, normalizedMembers);
     if (this.membersChangeHandler) {
       this.membersChangeHandler(normalizedMembers);

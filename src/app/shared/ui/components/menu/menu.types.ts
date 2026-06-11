@@ -39,6 +39,7 @@ export type AppMenuPalette =
 
 export type AppMenuTriggerShape = 'default' | 'field' | 'pill' | 'icon';
 export type AppMenuItemSurface = 'plain' | 'tinted';
+export type AppMenuItemLayout = 'default' | 'summary';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
@@ -84,6 +85,7 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   kind?: AppMenuItemKind;
   palette?: AppMenuPalette;
   surface?: AppMenuItemSurface;
+  layout?: AppMenuItemLayout;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   active?: AppMenuLiveValue<boolean | null | undefined>;
@@ -134,6 +136,7 @@ export interface AppMenuAnchorRect {
 
 export interface AppMenuDispatchConfig<TId extends string = string, TContext = unknown> {
   id: string;
+  scope?: string;
   kind?: AppMenuKind;
   title?: AppMenuLiveValue<string | null | undefined>;
   items?: readonly AppMenuItem<TId, TContext>[];
@@ -146,10 +149,13 @@ export interface AppMenuDispatchConfig<TId extends string = string, TContext = u
   panelAlign?: AppMenuPanelAlign;
   mobileBreakpointPx?: number;
   closeOnSelect?: boolean;
+  triggerRect?: AppMenuAnchorRect | null;
+  onClose?: (() => void) | null;
 }
 
 export interface AppMenuDispatchState<TId extends string = string, TContext = unknown>
   extends AppMenuDispatchConfig<TId, TContext> {
+  scope: string;
   kind: AppMenuKind;
   items: readonly AppMenuItem<TId, TContext>[];
   model: AppMenuModel<TId, TContext> | null;
@@ -162,4 +168,5 @@ export interface AppMenuDispatchState<TId extends string = string, TContext = un
   closeOnSelect: boolean;
   triggerElement: HTMLElement | null;
   triggerRect: AppMenuAnchorRect | null;
+  onClose: (() => void) | null;
 }

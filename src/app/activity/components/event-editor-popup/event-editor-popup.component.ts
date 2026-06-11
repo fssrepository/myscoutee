@@ -3,13 +3,11 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MatOptionModule } from '@angular/material/core';
 import { Subscription } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
@@ -29,9 +27,24 @@ import {
   RouteIntervalSchedulerService
 } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
-import { CounterBadgePipe, PricingEditorComponent, ProgressIndicatorComponent, TopicPickerPopupComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  CounterBadgePipe,
+  PricingEditorComponent,
+  ProgressIndicatorComponent
+} from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
+
+type EventEditorMenuContext =
+  | { menu: 'visibility'; visibility: AppTypes.EventVisibility }
+  | { menu: 'frequency'; frequency: string }
+  | { menu: 'topic'; topic: string };
 
 @Component({
   selector: 'app-event-editor-popup',
@@ -41,14 +54,12 @@ import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subev
     FormsModule,
     MatButtonModule,
     MatIconModule,
-    MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
     MatTimepickerModule,
     MatNativeDateModule,
-    MatOptionModule,
-    TopicPickerPopupComponent,
+    AppMenuComponent,
     EventSubeventsPopupComponent,
     PricingEditorComponent,
     ProgressIndicatorComponent,
@@ -118,10 +129,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.showSlotsPopup = false;
         this.showPoliciesPopup = false;
         this.showPolicyEditorPopup = false;
-        this.showEventVisibilityPicker = false;
         this.showSubEventsPopup = false;
-        this.showTopicPicker = false;
-        this.showMobileFrequencyPicker = false;
         this.resetDraftAutosaveTracking();
         return;
       }
@@ -145,12 +153,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
       this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
-      this.showEventVisibilityPicker = false;
       this.showSlotsPopup = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
-      this.showTopicPicker = false;
-      this.showMobileFrequencyPicker = false;
       this.showSubEventsPopup = true;
     });
 
@@ -192,21 +197,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
-      this.showEventVisibilityPicker = false;
       this.showSubEventsPopup = false;
-      this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
-      this.showMobileFrequencyPicker = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
-      this.showEventVisibilityPicker = false;
       this.showSubEventsPopup = false;
-      this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
-      this.showMobileFrequencyPicker = false;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
@@ -257,10 +256,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showSlotsPopup = false;
   showPoliciesPopup = false;
   showPolicyEditorPopup = false;
-  showEventVisibilityPicker = false;
   showSubEventsPopup = false;
-  showTopicPicker = false;
-  showMobileFrequencyPicker = false;
   isSavePending = false;
   workingPolicies: AppTypes.EventPolicyItem[] = [];
   workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
@@ -273,10 +269,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showSlotsPopup = false;
     this.showPoliciesPopup = false;
     this.showPolicyEditorPopup = false;
-    this.showEventVisibilityPicker = false;
     this.showSubEventsPopup = false;
-    this.showTopicPicker = false;
-    this.showMobileFrequencyPicker = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
     this.clearEventEditorExplanationContext();
@@ -324,9 +317,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   requestOpenMembers(): void {
-    this.showEventVisibilityPicker = false;
-    this.showTopicPicker = false;
-    this.showMobileFrequencyPicker = false;
     const eventId = this.currentEventIdentity() || 'draft-event';
     const canManageMembers = !this.eventEditorService.readOnly();
     const row: AppTypes.ActivityListRow = {
@@ -352,10 +342,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   requestOpenSubEvents(): void {
-    this.showEventVisibilityPicker = false;
     this.showSlotsPopup = false;
-    this.showTopicPicker = false;
-    this.showMobileFrequencyPicker = false;
     this.showSubEventsPopup = true;
   }
 
@@ -554,31 +541,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.eventForm.policies.filter(item => item.required !== false).length;
   }
 
-  requestOpenTopics(): void {
-    this.showEventVisibilityPicker = false;
-    this.showSlotsPopup = false;
-    this.showSubEventsPopup = false;
-    this.showMobileFrequencyPicker = false;
-    this.showTopicPicker = true;
-  }
-
   requestOpenLocationMap(): void {
-    this.showEventVisibilityPicker = false;
-    this.showMobileFrequencyPicker = false;
     const routeStops = this.eventLocationRouteStops();
     if (routeStops.length <= 1) {
       this.openGoogleMapsSearch(routeStops[0] ?? this.eventForm.location);
       return;
     }
     this.openGoogleMapsDirections(routeStops);
-  }
-
-  closeTopicPicker(): void {
-    this.showTopicPicker = false;
-  }
-
-  updateTopicSelection(selected: readonly string[]): void {
-    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics(selected);
   }
 
   eventEditorHeaderPendingMemberCount(): number {
@@ -638,22 +607,37 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     void this.runImmediateSave();
   }
 
-  toggleEventVisibilityPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    this.showEventVisibilityPicker = !this.showEventVisibilityPicker;
-    this.showMobileFrequencyPicker = false;
-  }
-
   selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
     event?.stopPropagation();
     if (this.eventStructureReadOnly()) {
       return;
     }
     this.eventForm.visibility = EventEditorConverter.normalizeEventEditorVisibility(option);
-    this.showEventVisibilityPicker = false;
+  }
+
+  protected eventVisibilityMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.eventForm.visibility,
+      icon: this.getVisibilityIcon(this.eventForm.visibility),
+      ariaLabel: 'Open visibility selector',
+      palette: this.eventVisibilityPalette(this.eventForm.visibility),
+      disabled: this.eventStructureReadOnly(),
+      shape: 'pill'
+    };
+  }
+
+  protected eventVisibilityMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    return this.visibilityOptions.map(option => ({
+      id: `visibility-${option}`,
+      label: option,
+      icon: this.getVisibilityIcon(option),
+      kind: 'radio',
+      active: EventEditorConverter.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
+      checked: EventEditorConverter.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
+      palette: this.eventVisibilityPalette(option),
+      surface: 'tinted',
+      context: { menu: 'visibility', visibility: option }
+    }));
   }
 
   getVisibilityIcon(visibility: string): string {
@@ -678,6 +662,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
+  private eventVisibilityPalette(visibility: string): AppMenuPalette {
+    switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
+      case 'Friends only':
+        return 'blue';
+      case 'Invitation only':
+        return 'amber';
+      default:
+        return 'green';
+    }
+  }
+
   eventBlindModeClass(mode: string): string {
     return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
   }
@@ -698,6 +693,49 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventTopicsPanelIcon(): string {
     return 'sell';
+  }
+
+  protected eventTopicsMenuTrigger(): AppMenuTrigger {
+    const count = this.eventForm.topics.length;
+    return {
+      label: count === 0 ? 'Select topics' : `${count} ${count === 1 ? 'topic' : 'topics'}`,
+      icon: this.eventTopicsPanelIcon(),
+      ariaLabel: 'Open event topics',
+      palette: count > 0 ? 'gold' : 'neutral',
+      disabled: this.eventEditorService.readOnly(),
+      shape: 'field'
+    };
+  }
+
+  protected eventTopicsMenuGroups(): readonly AppMenuGroup<string, EventEditorMenuContext>[] {
+    const selected = new Set(this.eventForm.topics.map(topic => EventEditorConverter.normalizeEventEditorTopicToken(topic)));
+    const maxReached = selected.size >= 5;
+    return this.interestOptionGroups.map((group, groupIndex) => {
+      const palette = this.eventTopicGroupPalette(group.toneClass);
+      return {
+        id: `event-topic-${groupIndex}-${group.title}`,
+        label: group.shortTitle || group.title,
+        icon: group.icon || this.eventTopicGroupIcon(group.toneClass),
+        palette,
+        children: group.options.map(option => {
+          const normalized = EventEditorConverter.normalizeEventEditorTopicToken(option);
+          const active = selected.has(normalized);
+          return {
+            id: `event-topic-${groupIndex}-${option}`,
+            label: this.eventTopicLabel(option),
+            icon: 'tag',
+            kind: 'checkbox' as const,
+            active,
+            checked: active,
+            closeOnSelect: false,
+            disabled: !active && maxReached,
+            palette,
+            surface: 'tinted' as const,
+            context: { menu: 'topic' as const, topic: option }
+          };
+        })
+      };
+    });
   }
 
   eventAutoInviterClass(enabled: boolean): string {
@@ -736,23 +774,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : 'No QR check-in scanning.';
   }
 
-  eventFrequencyClass(frequency: string): string {
-    switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
-      case 'Daily':
-        return 'event-frequency-daily';
-      case 'Weekly':
-        return 'event-frequency-weekly';
-      case 'Bi-weekly':
-        return 'event-frequency-bi-weekly';
-      case 'Monthly':
-        return 'event-frequency-monthly';
-      case 'Yearly':
-        return 'event-frequency-yearly';
-      default:
-        return 'event-frequency-one-time';
-    }
-  }
-
   eventFrequencyIcon(frequency: string): string {
     switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
@@ -767,6 +788,122 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return 'calendar_today';
       default:
         return 'event';
+    }
+  }
+
+  protected eventFrequencyMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.eventForm.frequency,
+      icon: this.eventFrequencyIcon(this.eventForm.frequency),
+      ariaLabel: 'Open event frequency',
+      palette: this.eventFrequencyPalette(this.eventForm.frequency),
+      disabled: this.eventStructureReadOnly(),
+      shape: 'field'
+    };
+  }
+
+  protected eventFrequencyMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    const current = EventEditorConverter.normalizeEventEditorFrequency(this.eventForm.frequency);
+    return this.eventFrequencyOptions.map(option => {
+      const normalized = EventEditorConverter.normalizeEventEditorFrequency(option);
+      return {
+        id: `frequency-${normalized}`,
+        label: normalized,
+        icon: this.eventFrequencyIcon(normalized),
+        kind: 'radio',
+        active: current === normalized,
+        checked: current === normalized,
+        palette: this.eventFrequencyPalette(normalized),
+        surface: 'tinted',
+        context: { menu: 'frequency', frequency: normalized }
+      };
+    });
+  }
+
+  protected onEventEditorMenuSelect(event: AppMenuItemSelectEvent<string, EventEditorMenuContext>): void {
+    if (!event.context) {
+      return;
+    }
+    if (event.context.menu === 'visibility') {
+      this.selectVisibility(event.context.visibility, event.sourceEvent);
+      return;
+    }
+    if (event.context.menu === 'topic') {
+      this.toggleEventTopic(event.context.topic);
+      return;
+    }
+    event.sourceEvent.stopPropagation();
+    this.onEventFrequencyChange(event.context.frequency);
+  }
+
+  private eventFrequencyPalette(frequency: string): AppMenuPalette {
+    switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
+      case 'Daily':
+        return 'sky';
+      case 'Weekly':
+        return 'blue';
+      case 'Bi-weekly':
+        return 'teal';
+      case 'Monthly':
+        return 'violet';
+      case 'Yearly':
+        return 'gold';
+      default:
+        return 'slate';
+    }
+  }
+
+  private toggleEventTopic(topic: string): void {
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+    const normalized = EventEditorConverter.normalizeEventEditorTopicToken(topic);
+    if (!normalized) {
+      return;
+    }
+    const current = EventEditorConverter.normalizeEventEditorTopics(this.eventForm.topics);
+    const currentNormalized = new Set(current.map(item => EventEditorConverter.normalizeEventEditorTopicToken(item)));
+    const next = currentNormalized.has(normalized)
+      ? current.filter(item => EventEditorConverter.normalizeEventEditorTopicToken(item) !== normalized)
+      : [...current, topic].slice(0, 5);
+    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics(next);
+  }
+
+  private eventTopicGroupIcon(toneClass: string): string {
+    switch (toneClass) {
+      case 'section-social':
+        return 'celebration';
+      case 'section-arts':
+        return 'palette';
+      case 'section-food':
+        return 'restaurant';
+      case 'section-active':
+        return 'hiking';
+      case 'section-mind':
+        return 'self_improvement';
+      case 'section-identity':
+        return 'auto_awesome';
+      default:
+        return 'label';
+    }
+  }
+
+  private eventTopicGroupPalette(toneClass: string): AppMenuPalette {
+    switch (toneClass) {
+      case 'section-social':
+        return 'orange';
+      case 'section-arts':
+        return 'purple';
+      case 'section-food':
+        return 'brown';
+      case 'section-active':
+        return 'blue';
+      case 'section-mind':
+        return 'mint';
+      case 'section-identity':
+        return 'gold';
+      default:
+        return 'neutral';
     }
   }
 
@@ -1320,60 +1457,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.closePoliciesPopup();
       return;
     }
-    if (this.showTopicPicker) {
-      this.showTopicPicker = false;
-      return;
-    }
     if (this.showSubEventsPopup) {
       this.showSubEventsPopup = false;
       return;
     }
-    if (this.showEventVisibilityPicker) {
-      this.showEventVisibilityPicker = false;
-      return;
-    }
     this.close();
-  }
-
-  protected isMobileFrequencySheetViewport(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    return window.matchMedia('(max-width: 760px)').matches;
-  }
-
-  protected openMobileFrequencySelector(event: Event): void {
-    if (!this.isMobileFrequencySheetViewport() || this.eventStructureReadOnly()) {
-      return;
-    }
-    event.stopPropagation();
-    this.showEventVisibilityPicker = false;
-    this.showMobileFrequencyPicker = !this.showMobileFrequencyPicker;
-  }
-
-  protected selectMobileFrequency(option: string, event?: Event): void {
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    event?.stopPropagation();
-    this.onEventFrequencyChange(option);
-    this.showMobileFrequencyPicker = false;
-  }
-
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      this.showEventVisibilityPicker = false;
-      this.showMobileFrequencyPicker = false;
-      return;
-    }
-    if (!target.closest('.event-visibility-picker')) {
-      this.showEventVisibilityPicker = false;
-    }
-    if (!target.closest('.event-frequency-mobile-picker')) {
-      this.showMobileFrequencyPicker = false;
-    }
   }
 
   private openCreateRequest(target: AppTypes.EventEditorTarget): void {
@@ -2130,7 +2218,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.subEventsDisplayMode = 'Casual';
     this.showSlotsPopup = false;
-    this.showEventVisibilityPicker = false;
     this.syncDateTimeControlsFromForm();
     this.slotEditorMode = 'base';
     this.slotsPanelExpanded = false;

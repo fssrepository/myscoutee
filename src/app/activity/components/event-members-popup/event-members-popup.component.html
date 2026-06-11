@@ -52,59 +52,6 @@
       </div>
       <div class="popup-body popup-body-members">
         <div class="activity-members-popup-wrap">
-          <ng-template #memberActionMenuContent let-member>
-            <div class="item-action-menu-title">{{ member.name }}</div>
-            @if (canApproveMember(member)) {
-              <button
-                type="button"
-                class="item-action-menu-btn item-action-menu-btn-publish"
-                (click)="approveMember(member, $event)"
-                >
-                <mat-icon>check_circle</mat-icon>
-                <span>Approve</span>
-              </button>
-            }
-            @if (canDeleteMember(member)) {
-              <button
-                type="button"
-                class="item-action-menu-btn item-action-menu-btn-destructive"
-                (click)="requestRemoveMember(member, $event)"
-                >
-                <mat-icon>delete</mat-icon>
-                <span>{{ deleteLabel(member) }}</span>
-              </button>
-            }
-            @if (canDisqualifyMember(member)) {
-              <button
-                type="button"
-                class="item-action-menu-btn item-action-menu-btn-destructive"
-                (click)="requestDisqualifyMember(member, $event)"
-                >
-                <mat-icon>gavel</mat-icon>
-                <span>Disqualify</span>
-              </button>
-            }
-            @if (canReinstateMember(member)) {
-              <button
-                type="button"
-                class="item-action-menu-btn item-action-menu-btn-publish"
-                (click)="requestReinstateMember(member, $event)"
-                >
-                <mat-icon>undo</mat-icon>
-                <span>Reinstate</span>
-              </button>
-            }
-            @if (canReportMember(member)) {
-              <button
-                type="button"
-                class="item-action-menu-btn"
-                (click)="reportMember(member, $event)"
-                >
-                <mat-icon>flag</mat-icon>
-                <span>Report user</span>
-              </button>
-            }
-          </ng-template>
           <app-smart-list
             #membersSmartList
             class="activity-members-smart-list"
@@ -142,29 +89,15 @@
               }
               @if (canShowActionMenu(member)) {
                 <div class="subevent-member-menu-anchor" [class.has-profile-view]="canViewMemberProfile(member)">
-                  <button
-                    type="button"
-                    class="friends-picker-card-add-btn subevent-member-menu-trigger experience-action-menu-trigger"
-                    [class.active]="isActionMenuOpen(member)"
-                    (click)="toggleMemberActionMenu(member, $event)"
-                    aria-label="Open member actions"
-                    >
-                    <mat-icon>{{ isActionMenuOpen(member) ? 'close' : 'more_vert' }}</mat-icon>
-                  </button>
-                  @if (!isMobileView) {
-                    <div
-                      class="item-action-menu subevent-member-action-menu"
-                      [class.is-open]="isActionMenuOpen(member)"
-                      [class.item-action-menu-desktop]="true"
-                      [class.is-open-up]="isActionMenuOpenUp(member)"
-                      (click)="$event.stopPropagation()"
-                      >
-                      <ng-container
-                        [ngTemplateOutlet]="memberActionMenuContent"
-                        [ngTemplateOutletContext]="{ $implicit: member }"
-                      ></ng-container>
-                    </div>
-                  }
+                  <app-menu-trigger
+                    class="subevent-member-menu-trigger experience-action-menu-trigger"
+                    [menuId]="memberActionMenuId(member)"
+                    kind="select"
+                    [title]="member.name"
+                    [trigger]="memberActionMenuTrigger(member)"
+                    [items]="memberActionMenuItems(member)"
+                    panelAlign="auto"
+                  ></app-menu-trigger>
                 </div>
               }
               <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
@@ -176,23 +109,7 @@
               </div>
             </article>
           </ng-template>
-          @if (isMobileView && selectedActionMenuMember(); as member) {
-            <button
-              type="button"
-              class="subevent-member-action-sheet-backdrop"
-              (click)="closeMemberActionMenu($event)"
-              aria-label="Close member actions"
-            ></button>
-            <div
-              class="item-action-menu subevent-member-action-menu subevent-member-action-sheet item-action-menu-mobile is-open"
-              (click)="$event.stopPropagation()"
-              >
-              <ng-container
-                [ngTemplateOutlet]="memberActionMenuContent"
-                [ngTemplateOutletContext]="{ $implicit: member }"
-              ></ng-container>
-            </div>
-          }
+          <app-menu-outlet (itemSelect)="onMemberActionMenuSelect($event)"></app-menu-outlet>
         </div>
       </div>
     </div>

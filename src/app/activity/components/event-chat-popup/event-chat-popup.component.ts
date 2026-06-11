@@ -23,8 +23,17 @@ import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, A
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent,
   CounterBadgePipe,
   SmartListComponent,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -67,6 +76,11 @@ type SelectedChatActionTone =
 
 type SelectedChatResourceType = 'Members' | AppTypes.AssetType;
 
+type ChatMenuContext =
+  | { menu: 'chat-context'; control: AppTypes.PopupHeaderControl }
+  | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
+  | { menu: 'message-action'; message: AppTypes.ChatPopupMessage; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
+
 interface SelectedChatGroupState {
   id: string;
   label: string;
@@ -84,7 +98,17 @@ interface SelectedChatNavigationState {
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatButtonModule, MatIconModule, SmartListComponent, CounterBadgePipe],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatButtonModule,
+    MatIconModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
+    SmartListComponent,
+    CounterBadgePipe
+  ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -105,13 +129,12 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly mediaService = inject(MediaService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly location = inject(Location);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
   protected allMessages: AppTypes.ChatPopupMessage[] = [];
   protected draftMessage = '';
-  protected showContextMenu = false;
-  protected contextMenuOpenUp = false;
   protected chatComposeDetachedSpace = 108;
   protected chatHeaderContext: AppTypes.PopupHeaderContext | null = null;
   protected chatHeaderControlsHydrated = false;
@@ -121,7 +144,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolvedChatResourceState: AppTypes.ActivitySubEventResourceState | null = null;
   private resolvedChatResourceStateKey = '';
   protected typingIndicators: AppTypes.ChatTypingIndicator[] = [];
-  protected composerMenuOpen = false;
   protected voiceComposerOpen = false;
   protected voiceRecordingState: 'idle' | 'recording' | 'recorded' | 'saving' = 'idle';
   protected voiceRecorderSeconds = 0;
@@ -143,8 +165,6 @@ export class EventChatPopupComponent implements OnDestroy {
   protected emojiPickerMessageId = '';
   protected emojiPickerQuery = '';
   protected emojiPickerCategory = 'smileys';
-  protected messageActionMenuId = '';
-  protected messageActionMenuOpenUp = false;
   protected reactionDetailsMessageId = '';
   protected reactionDetailsFilter = 'all';
   protected pinnedDialogOpen = false;
@@ -257,7 +277,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private chatThreadScrollDismissElement: HTMLElement | null = null;
   private suppressTouchContextMenuUntilMs = 0;
   private readonly dismissMessageUiOnChatScroll = () => {
-    if (!this.selectedMessageId && !this.quickReactionMessageId && !this.messageActionMenuId && !this.emojiPickerMessageId) {
+    if (!this.selectedMessageId && !this.quickReactionMessageId && !this.emojiPickerMessageId && !this.appMenuDispatcher.activeMenu()) {
       return;
     }
     this.closeTransientMessageUi();
@@ -285,8 +305,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.closeTransientMessageUi();
       this.replyTarget = null;
       this.editingMessageId = '';
-      this.showContextMenu = false;
-      this.contextMenuOpenUp = false;
+      this.appMenuDispatcher.close();
       this.allMessages = [];
       this.typingIndicators = [];
       this.localTypingActive = false;
@@ -324,8 +343,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected close(): void {
-    this.showContextMenu = false;
-    this.contextMenuOpenUp = false;
+    this.appMenuDispatcher.close();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
@@ -444,6 +462,171 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.selectedChatContextControl()?.menu?.title ?? this.session()?.item.title ?? 'Chat';
   }
 
+  protected selectedChatContextMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.selectedChatHeaderActionLabel(),
+      icon: this.selectedChatHeaderActionIcon(),
+      palette: this.selectedChatHeaderActionPalette(),
+      counter: this.selectedChatHeaderActionBadgeCount(),
+      ariaLabel: 'Open chat context menu',
+      shape: 'pill'
+    };
+  }
+
+  protected selectedChatContextMenuGroupsModel(): readonly AppMenuGroup<string, ChatMenuContext>[] {
+    return this.selectedChatContextMenuGroups()
+      .map(group => ({
+        id: group.id,
+        label: group.label,
+        children: group.controls.map(control => this.chatContextControlMenuItem(control))
+      }))
+      .filter(group => group.children.length > 0);
+  }
+
+  protected composerMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'add',
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'blue',
+      ariaLabel: 'Open chat tools'
+    };
+  }
+
+  protected composerMenuItems(): readonly AppMenuItem<string, ChatMenuContext>[] {
+    return [
+      { id: 'chat-composer-image', label: 'Upload image', icon: 'image', palette: 'sky', context: { menu: 'composer', action: 'image' } },
+      { id: 'chat-composer-voice', label: 'Send a voice clip', icon: 'mic', palette: 'violet', context: { menu: 'composer', action: 'voice' } },
+      { id: 'chat-composer-poll', label: 'Create a poll', icon: 'poll', palette: 'green', context: { menu: 'composer', action: 'poll' } },
+      { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'amber', context: { menu: 'composer', action: 'event' } },
+      { id: 'chat-composer-asset', label: 'Share asset', icon: 'inventory_2', palette: 'brown', context: { menu: 'composer', action: 'asset' } }
+    ];
+  }
+
+  protected onInlineChatMenuSelect(event: AppMenuItemSelectEvent<string, ChatMenuContext>): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'chat-context') {
+      this.openSelectedChatMenuControl(context.control, event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'composer') {
+      switch (context.action) {
+        case 'image':
+          this.openImageAttachmentPicker(event.sourceEvent);
+          break;
+        case 'voice':
+          this.openVoiceComposer(event.sourceEvent);
+          break;
+        case 'poll':
+          this.openPollComposer(event.sourceEvent);
+          break;
+        case 'event':
+          this.shareCurrentEvent(event.sourceEvent);
+          break;
+        case 'asset':
+          this.shareFirstAvailableAsset(event.sourceEvent);
+          break;
+      }
+    }
+  }
+
+  protected messageActionMenuIdFor(message: AppTypes.ChatPopupMessage): string {
+    return `chat-message-action:${message.id}`;
+  }
+
+  protected messageActionMenuTrigger(message: AppTypes.ChatPopupMessage): AppMenuTrigger {
+    return {
+      icon: 'more_vert',
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: message.mine ? 'blue' : 'default',
+      ariaLabel: 'More message actions'
+    };
+  }
+
+  protected messageActionMenuItems(message: AppTypes.ChatPopupMessage): readonly AppMenuItem<string, ChatMenuContext>[] {
+    const items: AppMenuItem<string, ChatMenuContext>[] = [];
+    if (this.messageHasViewableAttachment(message)) {
+      items.push({
+        id: `chat-message-view-${message.id}`,
+        label: 'View',
+        icon: 'visibility',
+        context: { menu: 'message-action', message, action: 'view' }
+      });
+    }
+    items.push({
+      id: `chat-message-reply-${message.id}`,
+      label: 'Reply',
+      icon: 'reply',
+      context: { menu: 'message-action', message, action: 'reply' }
+    });
+    if (message.mine && !message.deletedAtIso) {
+      items.push({
+        id: `chat-message-edit-${message.id}`,
+        label: 'Edit',
+        icon: 'edit',
+        palette: 'blue',
+        context: { menu: 'message-action', message, action: 'edit' }
+      });
+      items.push({
+        id: `chat-message-unsend-${message.id}`,
+        label: 'Unsend',
+        icon: 'delete',
+        palette: 'danger',
+        context: { menu: 'message-action', message, action: 'unsend' }
+      });
+    }
+    items.push({
+      id: `chat-message-pin-${message.id}`,
+      label: message.pinnedAtIso ? 'Unpin' : 'Pin',
+      icon: message.pinnedAtIso ? 'push_pin' : 'push_pin',
+      palette: message.pinnedAtIso ? 'muted' : 'amber',
+      context: { menu: 'message-action', message, action: 'pin' }
+    });
+    if (this.canReportMessage(message)) {
+      items.push({
+        id: `chat-message-report-${message.id}`,
+        label: 'Report',
+        icon: 'flag',
+        palette: 'danger',
+        context: { menu: 'message-action', message, action: 'report' }
+      });
+    }
+    return items;
+  }
+
+  protected onDispatchedChatMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as ChatMenuContext | undefined;
+    if (context?.menu !== 'message-action') {
+      return;
+    }
+    switch (context.action) {
+      case 'view':
+        this.viewSharedMessage(context.message, event.sourceEvent);
+        break;
+      case 'reply':
+        this.setReplyTarget(context.message, event.sourceEvent);
+        break;
+      case 'edit':
+        this.beginEditMessage(context.message, event.sourceEvent);
+        break;
+      case 'unsend':
+        this.unsendMessage(context.message, event.sourceEvent);
+        break;
+      case 'pin':
+        this.togglePinMessage(context.message, event.sourceEvent);
+        break;
+      case 'report':
+        this.reportMessage(context.message, event.sourceEvent);
+        break;
+    }
+  }
+
   protected isMobileView(): boolean {
     if (typeof window === 'undefined') {
       return false;
@@ -453,7 +636,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatEvent(event?: Event): void {
     event?.stopPropagation();
-    this.showContextMenu = false;
+    this.appMenuDispatcher.close();
     const row = this.selectedChatNavigationState?.eventRow ?? this.chatEventRow();
     if (!row) {
       return;
@@ -505,7 +688,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || !state?.subEvent) {
       return;
     }
-    this.showContextMenu = false;
+    this.appMenuDispatcher.close();
     this.popupCtx.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: state.eventRow?.id ?? session.item.eventId,
@@ -542,13 +725,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.chatHeaderControlBadgeValue(control);
   }
 
-  protected selectedChatMenuControlClasses(control: AppTypes.PopupHeaderControl): string[] {
-    const resourceType = this.popupControlResourceType(control);
-    return resourceType
-      ? ['subevent-resource-menu-item', this.resourceTypeClass(resourceType)]
-      : [];
-  }
-
   protected openSelectedChatMenuControl(control: AppTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
     const resourceType = this.popupControlResourceType(control);
@@ -557,34 +733,6 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.openSelectedChatPrimaryContext(event);
-  }
-
-  protected isSelectedChatContextMenuOpen(): boolean {
-    return this.showContextMenu;
-  }
-
-  protected isSelectedChatContextMenuOpenUp(): boolean {
-    return this.showContextMenu && this.contextMenuOpenUp;
-  }
-
-  protected toggleSelectedChatContextMenu(event: Event): void {
-    event.stopPropagation();
-    if (!this.selectedChatHasSubEventMenu()) {
-      return;
-    }
-    if (this.showContextMenu) {
-      this.showContextMenu = false;
-      this.contextMenuOpenUp = false;
-      return;
-    }
-    this.contextMenuOpenUp = this.shouldOpenContextMenuUp(event);
-    this.showContextMenu = true;
-  }
-
-  protected closeContextMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.showContextMenu = false;
-    this.contextMenuOpenUp = false;
   }
 
   protected onDraftMessageChange(value: string): void {
@@ -645,20 +793,13 @@ export class EventChatPopupComponent implements OnDestroy {
     textarea.style.height = `${Math.min(textarea.scrollHeight, Math.round(lineHeight * 6))}px`;
   }
 
-  protected toggleComposerMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.composerMenuOpen = !this.composerMenuOpen;
-  }
-
   protected openImageAttachmentPicker(event?: Event): void {
     event?.stopPropagation();
-    this.composerMenuOpen = false;
     this.imageAttachmentInput?.nativeElement.click();
   }
 
   protected openVoiceComposer(event?: Event): void {
     event?.stopPropagation();
-    this.composerMenuOpen = false;
     this.pollComposerOpen = false;
     this.voiceComposerOpen = true;
     this.voiceRecorderError = '';
@@ -666,7 +807,6 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openPollComposer(event?: Event): void {
     event?.stopPropagation();
-    this.composerMenuOpen = false;
     this.resetVoiceRecorder();
     this.pollComposerOpen = true;
     if (this.pollOptionDrafts.length < 2) {
@@ -1016,13 +1156,11 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareCurrentEvent(event?: Event): void {
     event?.stopPropagation();
-    this.composerMenuOpen = false;
     this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
   }
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
-    this.composerMenuOpen = false;
     const resourceType = this.firstAvailableAssetType();
     this.popupCtx.requestActivitiesNavigation({
       type: 'assetExplore',
@@ -1122,7 +1260,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.selectedMessageId = this.selectedMessageId === messageId ? '' : messageId;
     this.selectedMessageToolsDown = this.selectedMessageId ? this.shouldOpenMessageToolsDown(event) : false;
-    this.messageActionMenuId = '';
+    this.appMenuDispatcher.close();
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
     this.emojiPickerMessageId = '';
@@ -1141,7 +1279,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.quickReactionMessageId = '';
       this.quickReactionOpenDown = false;
       this.emojiPickerMessageId = '';
-      this.messageActionMenuId = '';
+      this.appMenuDispatcher.close();
       this.cdr.markForCheck();
     }, 420);
   }
@@ -1164,7 +1302,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.bindChatThreadScrollDismissListener();
     const wasOpen = this.quickReactionMessageId === messageId;
     this.selectedMessageId = messageId;
-    this.messageActionMenuId = '';
+    this.appMenuDispatcher.close();
     this.emojiPickerMessageId = '';
     this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown(event);
     this.quickReactionMessageId = wasOpen ? '' : messageId;
@@ -1183,7 +1321,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.selectedMessageId = messageId;
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
-    this.messageActionMenuId = '';
+    this.appMenuDispatcher.close();
     this.emojiPickerMessageId = messageId;
     this.emojiPickerQuery = '';
     this.emojiPickerCategory = 'smileys';
@@ -1335,30 +1473,6 @@ export class EventChatPopupComponent implements OnDestroy {
       : (message.reactions ?? []).filter(reaction => reaction.emoji === this.reactionDetailsFilter);
   }
 
-  protected openMessageActionMenu(message: AppTypes.ChatPopupMessage, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (event?.type === 'contextmenu') {
-      return;
-    }
-    const messageId = `${message.id ?? ''}`.trim();
-    if (!messageId || message.deletedAtIso) {
-      this.closeTransientMessageUi();
-      return;
-    }
-    this.bindChatThreadScrollDismissListener();
-    this.selectedMessageId = messageId;
-    this.selectedMessageToolsDown = this.shouldOpenMessageToolsDown(event);
-    this.quickReactionMessageId = '';
-    this.emojiPickerMessageId = '';
-    this.messageActionMenuOpenUp = this.shouldOpenMessageActionMenuUp(event);
-    const wasOpen = this.messageActionMenuId === messageId;
-    this.messageActionMenuId = wasOpen ? '' : messageId;
-    if (wasOpen) {
-      this.blurEventTarget(event);
-    }
-  }
-
   protected setReplyTarget(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
     if (message.deletedAtIso) {
@@ -1405,7 +1519,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.selectedMessageId = '';
     this.highlightedMessageId = targetId;
-    this.messageActionMenuId = '';
+    this.appMenuDispatcher.close();
     this.quickReactionMessageId = '';
     this.emojiPickerMessageId = '';
     this.cdr.markForCheck();
@@ -1541,7 +1655,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
-    this.messageActionMenuId = '';
+    this.appMenuDispatcher.close();
     if (!this.canReportMessage(message)) {
       return;
     }
@@ -3271,7 +3385,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private closeTransientMessageUi(options: { keepEditing?: boolean } = {}): void {
-    this.composerMenuOpen = false;
+    this.appMenuDispatcher.close();
     if (this.voiceComposerOpen) {
       this.resetVoiceRecorder();
     }
@@ -3284,7 +3398,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.quickReactionOpenDown = false;
     this.emojiPickerMessageId = '';
     this.emojiPickerQuery = '';
-    this.messageActionMenuId = '';
     this.reactionDetailsMessageId = '';
     this.closePollVoteDialog();
     if (!options.keepEditing) {
@@ -3797,6 +3910,34 @@ export class EventChatPopupComponent implements OnDestroy {
     return 'popup-chat-context-btn-tone-main-event';
   }
 
+  private selectedChatHeaderActionPalette(): AppMenuPalette {
+    const tone = this.selectedChatActionToneClass();
+    if (tone === 'popup-chat-context-btn-tone-group') {
+      return 'green';
+    }
+    if (tone === 'popup-chat-context-btn-tone-optional') {
+      return 'violet';
+    }
+    return 'blue';
+  }
+
+  private chatContextControlMenuItem(control: AppTypes.PopupHeaderControl): AppMenuItem<string, ChatMenuContext> {
+    const resourceType = this.popupControlResourceType(control);
+    const counter = this.selectedChatMenuControlBadgeCount(control);
+    return {
+      id: `chat-context-${control.id}`,
+      label: control.label,
+      description: control.summary || undefined,
+      icon: this.selectedChatMenuControlIcon(control),
+      kind: 'action',
+      layout: control.summary ? 'summary' : 'default',
+      palette: resourceType ? this.resourceTypePalette(resourceType) : 'default',
+      surface: resourceType ? 'tinted' : 'plain',
+      counter: counter > 0 ? counter : null,
+      context: { menu: 'chat-context', control }
+    };
+  }
+
   private selectedChatActionBadgeCount(
     chat: ChatRecord,
     state: SelectedChatNavigationState | null
@@ -3891,8 +4032,17 @@ export class EventChatPopupComponent implements OnDestroy {
       : null;
   }
 
-  private resourceTypeClass(type: SelectedChatResourceType): string {
-    return `event-subevent-badge-${type.toLowerCase()}`;
+  private resourceTypePalette(type: SelectedChatResourceType): AppMenuPalette {
+    if (type === 'Members') {
+      return 'violet';
+    }
+    if (type === 'Car') {
+      return 'blue';
+    }
+    if (type === 'Accommodation') {
+      return 'green';
+    }
+    return 'brown';
   }
 
   private resourceTypeIcon(type: SelectedChatResourceType): string {
@@ -3947,33 +4097,6 @@ export class EventChatPopupComponent implements OnDestroy {
       metricScore: activity,
       avatarInitials: AppUtils.initialsFromText(title)
     };
-  }
-
-  private shouldOpenContextMenuUp(event: Event): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    if (!trigger) {
-      return false;
-    }
-    const rect = trigger.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 248;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
-  }
-
-  private shouldOpenMessageActionMenuUp(event?: Event): boolean {
-    const target = this.messagePlacementTarget(event);
-    const scrollElement = this.chatThreadSmartList?.scrollElement();
-    if (!target || !scrollElement) {
-      return false;
-    }
-    const targetRect = target.getBoundingClientRect();
-    const scrollRect = scrollElement.getBoundingClientRect();
-    return (scrollRect.bottom - targetRect.bottom) < 180 && (targetRect.top - scrollRect.top) > 160;
   }
 
   private shouldOpenMessageToolsDown(event?: Event): boolean {

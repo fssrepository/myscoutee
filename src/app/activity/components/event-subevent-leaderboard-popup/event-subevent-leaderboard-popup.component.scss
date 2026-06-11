@@ -668,37 +668,20 @@
 .subevent-leaderboard-select {
   min-width: 0;
   width: 100%;
-  border: 1px solid rgba(67, 102, 147, 0.28);
-  border-radius: 10px;
-  background: #fff;
-  min-height: 36px;
-  padding: 0 0.58rem;
-  display: flex;
-  align-items: center;
   box-sizing: border-box;
 }
 
-.subevent-leaderboard-select .mat-mdc-select {
+.subevent-leaderboard-member-menu {
+  display: block;
   width: 100%;
-  color: #1f3c62;
+  min-width: 0;
+}
+
+:host ::ng-deep .subevent-leaderboard-member-menu .app-menu__trigger {
+  min-height: 36px;
+  border-radius: 10px;
   font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.subevent-leaderboard-select .mat-mdc-select-trigger {
-  min-height: 34px;
-  align-items: center;
-}
-
-.subevent-leaderboard-select .mat-mdc-select-arrow-wrapper {
-  margin-left: auto;
-  padding-left: 0.3rem;
-}
-
-.subevent-leaderboard-option-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-weight: 700;
 }
 
 .subevent-leaderboard-score-field input {

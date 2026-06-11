@@ -13,14 +13,12 @@
 :where(.popup-header-add-btn,
   .popup-close,
   .popup-view-fab,
-  .activities-view-option,
   .event-editor-members-trigger,
   .asset-image-dropzone,
   .event-topics-panel,
   .event-blind-mode-card,
   .event-auto-inviter-card,
   .event-ticketing-card,
-  .profile-status-select-wrap,
   .experience-action-btn,
   .event-subevents-panel-trigger) {
   -webkit-tap-highlight-color: transparent;
@@ -37,14 +35,12 @@
 :where(.popup-header-add-btn,
   .popup-close,
   .popup-view-fab,
-  .activities-view-option,
   .event-editor-members-trigger,
   .asset-image-dropzone,
   .event-topics-panel,
   .event-blind-mode-card,
   .event-auto-inviter-card,
   .event-ticketing-card,
-  .profile-status-select-wrap,
   .experience-action-btn,
   .event-subevents-panel-trigger):focus-visible {
   outline: 2px solid rgba(66, 110, 182, 0.44);
@@ -56,14 +52,12 @@
   :where(.popup-header-add-btn,
     .popup-close,
     .popup-view-fab,
-    .activities-view-option,
     .event-editor-members-trigger,
     .asset-image-dropzone,
     .event-topics-panel,
     .event-blind-mode-card,
     .event-auto-inviter-card,
     .event-ticketing-card,
-    .profile-status-select-wrap,
     .experience-action-btn,
     .event-subevents-panel-trigger):not(:disabled):not([aria-disabled='true']):hover {
     transform: translateY(var(--interactive-hover-lift)) scale(var(--interactive-hover-scale));
@@ -73,14 +67,12 @@
   :where(.popup-header-add-btn,
     .popup-close,
     .popup-view-fab,
-    .activities-view-option,
     .event-editor-members-trigger,
     .asset-image-dropzone,
     .event-topics-panel,
     .event-blind-mode-card,
     .event-auto-inviter-card,
     .event-ticketing-card,
-    .profile-status-select-wrap,
     .experience-action-btn,
     .event-subevents-panel-trigger):not(:disabled):not([aria-disabled='true']):active {
     transform: scale(var(--interactive-press-scale));
@@ -111,14 +103,12 @@
   :where(.popup-header-add-btn,
     .popup-close,
     .popup-view-fab,
-    .activities-view-option,
     .event-editor-members-trigger,
     .asset-image-dropzone,
     .event-topics-panel,
     .event-blind-mode-card,
     .event-auto-inviter-card,
     .event-ticketing-card,
-    .profile-status-select-wrap,
     .experience-action-btn,
     .event-subevents-panel-trigger):not(:disabled):not([aria-disabled='true']):active {
     animation: mobile-touch-feedback 0.2s ease;
@@ -460,25 +450,6 @@
   flex: 0 0 auto;
 }
 
-.event-visibility-trigger {
-  flex-wrap: nowrap;
-}
-
-.event-visibility-trigger.event-visibility-public {
-  background: linear-gradient(180deg, #eef7ff 0%, #e5f2ff 100%);
-  border-color: rgba(46, 111, 178, 0.34);
-}
-
-.event-visibility-trigger.event-visibility-friends {
-  background: linear-gradient(180deg, #f1f8ef 0%, #e9f3e6 100%);
-  border-color: rgba(54, 129, 72, 0.34);
-}
-
-.event-visibility-trigger.event-visibility-invitation {
-  background: linear-gradient(180deg, #fff5ea 0%, #ffe9d9 100%);
-  border-color: rgba(185, 113, 45, 0.36);
-}
-
 .event-visibility-public {
   color: #2f6cae;
 }
@@ -491,86 +462,8 @@
   color: #b9712d;
 }
 
-.activities-view-picker-panel {
-  position: absolute;
-  top: calc(100% + 0.32rem);
-  right: 0;
-  border: 1px solid rgba(39, 62, 94, 0.22);
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 10px 24px rgba(17, 29, 48, 0.22);
-  padding: 0.24rem;
-  min-width: 128px;
-  z-index: 40;
-  display: grid;
-  gap: 0.16rem;
-}
-
-.activities-view-option {
-  border: 1px solid transparent;
-  background: #fff;
-  border-radius: 8px;
-  min-height: 32px;
-  padding: 0.34rem 0.44rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.34rem;
-  color: #1e3658;
-  cursor: pointer;
-  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
-}
-
-.activities-view-option:hover {
-  transform: translateY(-1px);
-}
-
-.activities-view-option .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-}
-
-.activities-view-option span {
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-.activities-view-picker-panel .activities-view-option.event-visibility-public {
-  background: linear-gradient(180deg, #f7fbff 0%, #e8f3ff 100%);
-  border-color: rgba(47, 108, 174, 0.18);
-  color: #2f6cae;
-}
-
-.activities-view-picker-panel .activities-view-option.event-visibility-friends {
-  background: linear-gradient(180deg, #f8fcf6 0%, #eaf6e7 100%);
-  border-color: rgba(54, 129, 72, 0.18);
-  color: #368148;
-}
-
-.activities-view-picker-panel .activities-view-option.event-visibility-invitation {
-  background: linear-gradient(180deg, #fffaf4 0%, #ffeddf 100%);
-  border-color: rgba(185, 113, 45, 0.2);
-  color: #b9712d;
-}
-
-.activities-view-picker-panel .activities-view-option.event-visibility-public:hover {
-  background: linear-gradient(180deg, #eef7ff 0%, #dcebff 100%);
-  border-color: rgba(47, 108, 174, 0.3);
-}
-
-.activities-view-picker-panel .activities-view-option.event-visibility-friends:hover {
-  background: linear-gradient(180deg, #f0f9ed 0%, #deefda 100%);
-  border-color: rgba(54, 129, 72, 0.3);
-}
-
-.activities-view-picker-panel .activities-view-option.event-visibility-invitation:hover {
-  background: linear-gradient(180deg, #fff3e6 0%, #ffe2cb 100%);
-  border-color: rgba(185, 113, 45, 0.32);
-}
-
-.event-visibility-trigger.event-editor-readonly-control,
 .event-topics-panel.event-editor-readonly-control,
-.subevents-mode-trigger.event-editor-readonly-control {
+.event-subevents-panel-trigger.event-editor-readonly-control {
   cursor: not-allowed;
   opacity: 0.64;
   filter: saturate(0.55);
@@ -767,6 +660,11 @@
 .event-intel-row .event-ticketing-field {
   grid-column: auto;
   width: 100%;
+}
+
+.event-topics-menu {
+  width: 100%;
+  min-width: 0;
 }
 
 .event-topics-panel {
@@ -1791,154 +1689,6 @@ button.event-slots-enable-btn:disabled {
   align-self: center;
 }
 
-.profile-status-select-wrap {
-  min-width: 174px;
-  min-height: 40px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.38rem;
-  border: 1px solid #c8d3e2;
-  border-radius: 999px;
-  box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
-  padding: 0.12rem 0.5rem 0.12rem 0.84rem;
-  background: #f8f9fb;
-  box-sizing: border-box;
-}
-
-button.profile-status-select-wrap {
-  font: inherit;
-}
-
-.status-option-content {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 0.2rem;
-  text-transform: lowercase;
-  width: 100%;
-  min-width: 0;
-}
-
-.status-option-content span:last-child {
-  white-space: nowrap;
-}
-
-.status-option-content .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-  flex: 0 0 16px;
-}
-
-.event-frequency-select.event-frequency-one-time {
-  background: linear-gradient(180deg, #fff3e6 0%, #ffe8d4 100%);
-  border-color: rgba(196, 114, 34, 0.42);
-}
-
-.event-frequency-select.event-frequency-daily {
-  background: linear-gradient(180deg, #fff4cf 0%, #ffe7b2 100%);
-  border-color: rgba(188, 138, 21, 0.44);
-}
-
-.event-frequency-select.event-frequency-weekly {
-  background: linear-gradient(180deg, #eaf8fb 0%, #dff2f6 100%);
-  border-color: rgba(39, 134, 150, 0.42);
-}
-
-.event-frequency-select.event-frequency-bi-weekly {
-  background: linear-gradient(180deg, #f3efff 0%, #ebe3fd 100%);
-  border-color: rgba(105, 78, 168, 0.42);
-}
-
-.event-frequency-select.event-frequency-monthly {
-  background: linear-gradient(180deg, #e8f2ff 0%, #dceaff 100%);
-  border-color: rgba(36, 103, 168, 0.42);
-}
-
-.event-frequency-select.event-frequency-yearly {
-  background: linear-gradient(180deg, #edf8ef 0%, #dff1e4 100%);
-  border-color: rgba(55, 132, 82, 0.42);
-}
-
-.event-frequency-one-time {
-  color: #d07d33;
-}
-
-.event-frequency-daily {
-  color: #c8921e;
-}
-
-.event-frequency-weekly {
-  color: #2f8e9d;
-}
-
-.event-frequency-bi-weekly {
-  color: #7358b0;
-}
-
-.event-frequency-monthly {
-  color: #295d96;
-}
-
-.event-frequency-yearly {
-  color: #2f8651;
-}
-
-:host ::ng-deep .mat-mdc-option.status-option.event-frequency-one-time {
-  background: linear-gradient(0deg, #ffffff, #fff3e8);
-}
-
-:host ::ng-deep .mat-mdc-option.status-option.event-frequency-daily {
-  background: linear-gradient(0deg, #ffffff, #fff5de);
-}
-
-:host ::ng-deep .mat-mdc-option.status-option.event-frequency-weekly {
-  background: linear-gradient(0deg, #ffffff, #eef9f8);
-}
-
-:host ::ng-deep .mat-mdc-option.status-option.event-frequency-bi-weekly {
-  background: linear-gradient(0deg, #ffffff, #f4f0ff);
-}
-
-:host ::ng-deep .mat-mdc-option.status-option.event-frequency-monthly {
-  background: linear-gradient(0deg, #ffffff, #eef6ff);
-}
-
-:host ::ng-deep .mat-mdc-option.status-option.event-frequency-yearly {
-  background: linear-gradient(0deg, #ffffff, #eef8f1);
-}
-
-.event-frequency-select .status-option-content {
-  font-weight: 700;
-}
-
-.event-frequency-select {
-  width: fit-content;
-  min-width: 0;
-  max-width: 100%;
-  justify-self: start;
-  position: relative;
-  overflow: visible;
-}
-
-.event-frequency-select .mat-mdc-select {
-  width: auto !important;
-  min-width: 0 !important;
-}
-
-.event-frequency-select .mat-mdc-select-trigger,
-.event-frequency-select .status-option-content {
-  width: auto !important;
-  min-width: 0;
-}
-
-:host ::ng-deep .event-schedule-panel-actions .event-frequency-select .mat-mdc-select-trigger {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-}
-
 .event-location-field {
   grid-column: 1 / -1;
 }
@@ -2233,23 +1983,6 @@ button.profile-status-select-wrap {
   right: -8px;
 }
 
-:host ::ng-deep .profile-status-select-wrap .mat-mdc-select {
-  min-width: 80px;
-  width: 100%;
-  font-size: 0.8rem;
-  font-weight: 700;
-  text-transform: lowercase;
-}
-
-:host ::ng-deep .profile-status-select-wrap .mat-mdc-select-trigger {
-  width: 100%;
-  justify-content: flex-start;
-}
-
-:host ::ng-deep .profile-status-select-wrap .mat-mdc-select-arrow-wrapper {
-  margin-left: auto;
-}
-
 :host ::ng-deep .event-date-field,
 :host ::ng-deep .event-time-field {
   width: 100%;
@@ -2441,27 +2174,6 @@ button.profile-status-select-wrap {
   color: rgba(95, 116, 145, 0.8);
 }
 
-:host ::ng-deep .event-frequency-options-panel .mat-mdc-option .mat-pseudo-checkbox,
-:host ::ng-deep .event-frequency-options-panel .mat-mdc-option .mat-pseudo-checkbox-minimal,
-:host ::ng-deep .event-frequency-options-panel .mat-mdc-option .mat-mdc-option-pseudo-checkbox,
-:host ::ng-deep .event-frequency-options-panel .mat-mdc-option .mdc-list-item__end {
-  display: none;
-}
-
-:host ::ng-deep .event-frequency-options-panel .mat-mdc-option.status-option .status-option-content {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  width: 100%;
-  min-width: 0;
-  column-gap: 0.34rem;
-}
-
-:host ::ng-deep .mat-mdc-select-panel.event-frequency-options-panel {
-  min-width: 190px;
-}
-
-
 @media (max-width: 760px) {
   .experience-form-grid {
     grid-template-columns: 1fr;
@@ -2506,124 +2218,6 @@ button.profile-status-select-wrap {
     align-items: center;
   }
 
-
-  .event-frequency-mobile-picker {
-    position: relative;
-    width: 100%;
-  }
-
-  button.event-frequency-mobile-trigger {
-    position: relative;
-    justify-content: flex-start;
-    gap: 0.38rem;
-    padding-right: 1.6rem;
-    width: 100%;
-  }
-
-  button.event-frequency-mobile-trigger>.mat-icon:last-child {
-    position: absolute;
-    right: 0.56rem;
-    top: 50%;
-    transform: translateY(-50%);
-    flex: 0 0 auto;
-    margin-left: 0;
-  }
-
-  .event-frequency-mobile-panel {
-    position: fixed;
-    left: 0.65rem !important;
-    right: 0.65rem !important;
-    top: auto !important;
-    bottom: 0;
-    width: auto;
-    max-width: calc(100vw - 1.3rem);
-    max-height: min(54vh, 420px);
-    min-width: 0;
-    border-radius: 16px 16px 0 0;
-    border: 1px solid #d6deea;
-    border-bottom: 0;
-    box-shadow: 0 -14px 28px rgba(15, 29, 52, 0.24);
-    padding: 0.84rem 0.6rem max(0.62rem, env(safe-area-inset-bottom));
-    gap: 0.32rem;
-    overflow-x: hidden;
-    overflow-y: auto;
-    z-index: 4250;
-  }
-
-  .event-frequency-mobile-panel::before {
-    content: '';
-    position: sticky;
-    top: 0;
-    display: block;
-    width: 42px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(44, 67, 100, 0.24);
-    margin: 0 auto 0.52rem;
-    z-index: 1;
-  }
-
-  .event-frequency-mobile-panel .popup-filter-option,
-  .event-frequency-mobile-panel .activities-view-option {
-    width: 100%;
-    min-width: 0;
-    box-sizing: border-box;
-    border: 1px solid rgba(58, 81, 114, 0.24);
-    border-radius: 12px;
-    min-height: 42px;
-    padding: 0.46rem 0.62rem;
-    justify-content: flex-start;
-    gap: 0.36rem;
-    background: #fff;
-  }
-
-  .event-frequency-mobile-panel .popup-filter-option .mat-icon,
-  .event-frequency-mobile-panel .activities-view-option .mat-icon {
-    width: 16px;
-    height: 16px;
-    font-size: 16px;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.event-frequency-one-time {
-    background: linear-gradient(180deg, #fff3e6 0%, #ffe8d4 100%);
-    border-color: rgba(196, 114, 34, 0.32);
-    color: #d07d33;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.event-frequency-daily {
-    background: linear-gradient(180deg, #fff4cf 0%, #ffe7b2 100%);
-    border-color: rgba(188, 138, 21, 0.34);
-    color: #c8921e;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.event-frequency-weekly {
-    background: linear-gradient(180deg, #eaf8fb 0%, #dff2f6 100%);
-    border-color: rgba(39, 134, 150, 0.32);
-    color: #2f8e9d;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.event-frequency-bi-weekly {
-    background: linear-gradient(180deg, #f3efff 0%, #ebe3fd 100%);
-    border-color: rgba(105, 78, 168, 0.32);
-    color: #7358b0;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.event-frequency-monthly {
-    background: linear-gradient(180deg, #e8f2ff 0%, #dceaff 100%);
-    border-color: rgba(36, 103, 168, 0.32);
-    color: #295d96;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.event-frequency-yearly {
-    background: linear-gradient(180deg, #edf8ef 0%, #dff1e4 100%);
-    border-color: rgba(55, 132, 82, 0.32);
-    color: #2f8651;
-  }
-
-  .event-frequency-mobile-panel .activities-view-option.active {
-    box-shadow: inset 0 0 0 1px rgba(24, 46, 76, 0.24);
-    filter: brightness(0.95);
-  }
 
   .popup-header {
     padding: 0.75rem 0.62rem !important;

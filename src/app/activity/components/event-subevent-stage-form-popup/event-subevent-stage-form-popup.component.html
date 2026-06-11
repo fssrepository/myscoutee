@@ -12,23 +12,14 @@
         <div class="experience-form-header-controls">
           @if (view.showOptionalToggle) {
             <label class="subevent-optional-field subevent-optional-field-header">
-              <button type="button" class="subevent-optional-toggle" [ngClass]="view.modeClass" (click)="toggleOptionalPicker.emit($event)">
-                <mat-icon>{{ view.modeIcon }}</mat-icon>
-                <span>{{ model.optional ? 'Optional' : 'Mandatory' }}</span>
-                <mat-icon>expand_more</mat-icon>
-              </button>
-              @if (view.showOptionalPicker) {
-                <div class="activities-view-picker-panel subevent-optional-picker-panel">
-                  <button type="button" class="activities-view-option subevent-mode-mandatory" (click)="selectOptional.emit(false); $event.stopPropagation()">
-                    <mat-icon>block</mat-icon>
-                    <span>Mandatory</span>
-                  </button>
-                  <button type="button" class="activities-view-option subevent-mode-optional" (click)="selectOptional.emit(true); $event.stopPropagation()">
-                    <mat-icon>toggle_on</mat-icon>
-                    <span>Optional</span>
-                  </button>
-                </div>
-              }
+              <app-menu
+                class="subevent-optional-menu"
+                kind="select"
+                [trigger]="optionalMenuTrigger()"
+                [items]="optionalMenuItems()"
+                panelAlign="end"
+                (itemSelect)="onStageFormMenuSelect($event)"
+              ></app-menu>
             </label>
           } @else {
             <span class="subevent-optional-toggle subevent-mode-mandatory subevent-optional-toggle-static">
@@ -112,22 +103,14 @@
                   </button>
                 </span>
                 <div class="subevent-stage-insert-target-select">
-                  <mat-select
-                    [ngModel]="view.insertTargetId"
-                    (ngModelChange)="insertTargetChange.emit($event)"
-                    [panelWidth]="null"
-                    disableOptionCentering
-                    panelClass="selector-options-panel profile-bottom-sheet-panel subevent-stage-insert-options-panel"
-                    >
-                    @for (option of view.insertOptions; track trackByInsertOption($index, option)) {
-                      <mat-option
-                        [value]="option.id"
-                        class="status-option"
-                        >
-                        <span class="subevent-stage-insert-option-label">{{ option.label }}</span>
-                      </mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="subevent-stage-insert-target-menu"
+                    kind="select"
+                    [trigger]="insertTargetMenuTrigger()"
+                    [items]="insertTargetMenuItems()"
+                    panelAlign="start"
+                    (itemSelect)="onStageFormMenuSelect($event)"
+                  ></app-menu>
                 </div>
               </div>
             </label>
@@ -233,34 +216,14 @@
                 <div class="subevent-tournament-rule-row">
                   <label class="subevent-tournament-field">
                     <span>Leaderboard Type</span>
-                    <div class="subevent-tournament-select" [ngClass]="view.tournamentLeaderboardTypeClass">
-                      <mat-select
-                        [ngModel]="view.tournamentLeaderboardTypeValue"
-                        (ngModelChange)="tournamentLeaderboardTypeChange.emit($event)"
-                        [panelWidth]="null"
-                        disableOptionCentering
-                        panelClass="selector-options-panel profile-bottom-sheet-panel subevent-tournament-leaderboard-options-panel"
-                        >
-                        <mat-select-trigger>
-                          <span class="subevent-tournament-select-trigger">
-                            <mat-icon>{{ view.tournamentLeaderboardTypeIcon }}</mat-icon>
-                            <span>{{ view.tournamentLeaderboardTypeValue }}</span>
-                          </span>
-                        </mat-select-trigger>
-                        @for (option of view.tournamentLeaderboardTypeOptions; track option) {
-                          <mat-option
-                            [value]="option"
-                            class="status-option subevent-tournament-leaderboard-option"
-                            [ngClass]="option === 'Fifa' ? 'tournament-leaderboard-fifa' : 'tournament-leaderboard-score'"
-                            >
-                            <span class="subevent-tournament-leaderboard-option-content">
-                              <mat-icon>{{ option === 'Fifa' ? 'sports_soccer' : 'leaderboard' }}</mat-icon>
-                              <span>{{ option }}</span>
-                            </span>
-                          </mat-option>
-                        }
-                      </mat-select>
-                    </div>
+                    <app-menu
+                      class="subevent-tournament-type-menu"
+                      kind="select"
+                      [trigger]="tournamentLeaderboardMenuTrigger()"
+                      [items]="tournamentLeaderboardMenuItems()"
+                      panelAlign="start"
+                      (itemSelect)="onStageFormMenuSelect($event)"
+                    ></app-menu>
                   </label>
                   <label class="subevent-tournament-field">
                     <span>Advance Per Group</span>

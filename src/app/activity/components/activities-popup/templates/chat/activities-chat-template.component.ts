@@ -7,7 +7,14 @@ import type { ChatRecord } from '../../../../../shared/core/base/models/chat.mod
 import type { UserDto } from '../../../../../shared/core/base/interfaces/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { ActivityEventRecord } from '../../../../../shared/core/base/models/events.model';
-import { CounterBadgePipe } from '../../../../../shared/ui';
+import {
+  AppMenuComponent,
+  CounterBadgePipe,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger
+} from '../../../../../shared/ui';
 import { I18nPipe } from '../../../../../shared/ui';
 import { ActivityResourceBuilder } from '../../../../../shared/core';
 import {
@@ -18,7 +25,7 @@ import {
 @Component({
   selector: 'app-activities-chat-template',
   standalone: true,
-  imports: [CommonModule, MatIconModule, CounterBadgePipe, I18nPipe],
+  imports: [CommonModule, MatIconModule, AppMenuComponent, CounterBadgePipe, I18nPipe],
   templateUrl: './activities-chat-template.component.html',
   styleUrl: './activities-chat-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -33,13 +40,9 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
   @Output() readonly supportCaseAction = new EventEmitter<AppTypes.SupportCaseAction>();
 
   protected data: ActivitiesChatTemplateData | null = null;
-  protected supportMenuOpen = false;
-  protected supportControlActive = false;
-  private supportMenuPointerToggleAt = 0;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['row'] || changes['groupLabel'] || changes['activeUserInitials'] || changes['adminServiceMode']) {
-      this.supportMenuOpen = false;
       this.data = this.buildTemplateData();
     }
   }
@@ -68,43 +71,33 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
     this.rowClick.emit(event);
   }
 
-  protected onSupportMenuButtonPointerDown(event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.supportMenuOpen = !this.supportMenuOpen;
-    this.supportControlActive = true;
-    this.supportMenuPointerToggleAt = Date.now();
+  protected supportCaseMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'more_horiz',
+      closeIcon: 'close',
+      ariaLabel: 'activities.support.case.actions',
+      hideLabel: true,
+      palette: 'blue',
+      shape: 'icon'
+    };
   }
 
-  protected onSupportMenuButtonClick(event: MouseEvent): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.detail > 0 && Date.now() - this.supportMenuPointerToggleAt < 700) {
+  protected supportCaseMenuItems(): readonly AppMenuItem<string, { action: AppTypes.SupportCaseAction }>[] {
+    return this.supportCaseActions().map(item => ({
+      id: `support-case-action:${item.action}`,
+      label: item.labelKey,
+      icon: item.icon,
+      palette: this.supportCaseMenuPalette(item.tone),
+      surface: 'tinted',
+      context: { action: item.action }
+    }));
+  }
+
+  protected onSupportCaseMenuSelect(event: AppMenuItemSelectEvent<string, { action: AppTypes.SupportCaseAction }>): void {
+    const action = event.context?.action;
+    if (!action) {
       return;
     }
-    this.supportMenuOpen = !this.supportMenuOpen;
-  }
-
-  protected onSupportControlPointerDown(event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.supportControlActive = true;
-  }
-
-  protected onSupportControlPointerEnd(event: Event): void {
-    event.stopPropagation();
-    this.supportControlActive = false;
-  }
-
-  protected onSupportMenuItemPointerDown(event: Event): void {
-    event.stopPropagation();
-  }
-
-  protected runSupportCaseAction(action: AppTypes.SupportCaseAction, event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.supportMenuOpen = false;
-    this.supportControlActive = false;
     this.supportCaseAction.emit(action);
   }
 
@@ -127,6 +120,17 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
       { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
       { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
     ];
+  }
+
+  private supportCaseMenuPalette(tone: string): AppMenuPalette {
+    switch (tone) {
+      case 'danger':
+        return 'danger';
+      case 'accent':
+        return 'green';
+      default:
+        return 'neutral';
+    }
   }
 }
 

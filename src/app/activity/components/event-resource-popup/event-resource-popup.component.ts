@@ -8,17 +8,26 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule, MatSelect } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { of } from 'rxjs';
 
 import {
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   CounterBadgePipe,
+  INFO_CARD_AVAILABLE_ACTIONS,
   InfoCardComponent,
   ProgressIndicatorComponent,
   SmartListComponent,
   type InfoCardData,
   type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent,
+  type InfoCardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListLoadPage,
@@ -78,6 +87,24 @@ type AssetExploreOrderOption = {
   label: string;
   icon: string;
 };
+
+type EventResourceMenuContext =
+  | { menu: 'resource-filter'; filter: AppTypes.AssetType }
+  | { menu: 'quick-action'; action: 'assign' | 'explore' }
+  | { menu: 'asset-explore-order'; order: AssetExploreOrder }
+  | { menu: 'asset-explore-category'; category: AppTypes.AssetCategory }
+  | {
+      menu: 'resource-card';
+      card: AppTypes.SubEventResourceCard;
+      infoCard: InfoCardData;
+      action: InfoCardResolvedMenuAction;
+    }
+  | {
+      menu: 'asset-explore-card';
+      card: AppTypes.AssetCard;
+      infoCard: InfoCardData;
+      action: InfoCardResolvedMenuAction;
+    };
 
 const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
   { key: 'availability', label: 'Available first', icon: 'inventory_2' },
@@ -165,7 +192,6 @@ export interface EventResourcePopupHost {
   isMobilePopupSheetViewport(): boolean;
   resourceFilter(): AppTypes.AssetType;
   resourceFilterOptions(): readonly AppTypes.AssetType[];
-  resourceFilterPanelWidth(): string;
   resourceFilterCount(type: AppTypes.AssetType): number;
   resourceTypeClass(type: AppTypes.SubEventResourceFilter): string;
   resourceTypeIcon(type: AppTypes.SubEventResourceFilter): string;
@@ -183,8 +209,6 @@ export interface EventResourcePopupHost {
   assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[];
   close(): void;
   selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
-  onResourceFilterOpened(isOpen: boolean, select: MatSelect): void;
-  openMobileResourceFilterSelector(event?: Event): void;
   openAssignPopup(event?: Event): void;
   openExplorePopup(event?: Event): void;
   closeExplorePopup(event?: Event): void;
@@ -223,9 +247,6 @@ export interface EventResourcePopupHost {
   openResourceAssetView(card: AppTypes.SubEventResourceCard, mode: 'view' | 'edit', event?: Event): void;
   closeResourceAssetView(event?: Event): void;
   openAssetViewRouteEditor(view: ResourceAssetViewState, event: Event, mode?: 'view' | 'edit'): void;
-  isItemActionMenuOpen(card: AppTypes.SubEventResourceCard): boolean;
-  isItemActionMenuOpenUp(card: AppTypes.SubEventResourceCard): boolean;
-  toggleItemActionMenu(card: AppTypes.SubEventResourceCard, event: Event): void;
   canJoin(card: AppTypes.SubEventResourceCard): boolean;
   join(card: AppTypes.SubEventResourceCard, event: Event): void;
   canLeave(card: AppTypes.SubEventResourceCard): boolean;
@@ -283,7 +304,8 @@ export interface EventResourcePopupHost {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatSelectModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
     MatTimepickerModule,
     SmartListComponent,
     InfoCardComponent,
@@ -296,6 +318,7 @@ export interface EventResourcePopupHost {
 export class EventResourcePopupComponent implements DoCheck {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly shareTokensService = inject(ShareTokensService);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   private lastCardsSignature = '';
   private lastContextKey = '';
@@ -315,11 +338,6 @@ export class EventResourcePopupComponent implements DoCheck {
 
   @Input({ required: true }) host!: EventResourcePopupHost;
 
-  protected resourceFilterOpen = false;
-  protected showMobileResourceFilterPicker = false;
-  protected showQuickActionsMenu = false;
-  protected showAssetExploreCategoryPicker = false;
-  protected showAssetExploreOrderPicker = false;
   protected showAssetExploreBorrowBasket = false;
   protected showAssetViewPoliciesPopup = false;
   protected assetExploreOrder: AssetExploreOrder = 'availability';
@@ -478,8 +496,6 @@ export class EventResourcePopupComponent implements DoCheck {
 
     const explore = this.host?.assetExplorePopup?.() ?? null;
     if (!explore) {
-      this.showAssetExploreCategoryPicker = false;
-      this.showAssetExploreOrderPicker = false;
       this.showAssetExploreBorrowBasket = false;
     }
     const assetExploreCards = explore?.cards ?? [];
@@ -786,57 +802,269 @@ export class EventResourcePopupComponent implements DoCheck {
     window.open(`https://www.google.com/maps/search/?${params.toString()}`, '_blank', 'noopener,noreferrer');
   }
 
-  protected onResourceFilterOpenedChange(isOpen: boolean, select: MatSelect): void {
-    this.resourceFilterOpen = isOpen;
-    this.host.onResourceFilterOpened(isOpen, select);
+  protected resourceFilterMenuTrigger(): AppMenuTrigger {
+    const filter = this.host.resourceFilter();
+    const count = this.host.resourceFilterCount(filter);
+    return {
+      label: this.host.resourceTypeLabel(filter).toLowerCase(),
+      icon: this.host.resourceTypeIcon(filter),
+      ariaLabel: 'Open asset filter',
+      palette: this.resourceTypePalette(filter),
+      counter: count > 0 ? { value: count, max: 99 } : null,
+      shape: 'field'
+    };
   }
 
-  protected openMobileResourceFilterSelector(event: Event): void {
-    if (!this.isMobileResourceFilterSheetViewport()) {
+  protected resourceFilterMenuItems(): readonly AppMenuItem<string, EventResourceMenuContext>[] {
+    const active = this.host.resourceFilter();
+    return this.host.resourceFilterOptions().map(option => {
+      const count = this.host.resourceFilterCount(option);
+      return {
+        id: `resource-filter-${option}`,
+        label: this.host.resourceTypeLabel(option).toLowerCase(),
+        icon: this.host.resourceTypeIcon(option),
+        kind: 'radio',
+        active: option === active,
+        checked: option === active,
+        palette: this.resourceTypePalette(option),
+        surface: 'tinted',
+        counter: count > 0 ? { value: count, max: 99 } : null,
+        context: { menu: 'resource-filter', filter: option }
+      };
+    });
+  }
+
+  protected quickActionsMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'add',
+      closeIcon: 'close',
+      ariaLabel: 'Open sub-event asset actions',
+      hideLabel: true,
+      palette: 'green',
+      shape: 'icon'
+    };
+  }
+
+  protected quickActionsMenuItems(): readonly AppMenuItem<string, EventResourceMenuContext>[] {
+    return [
+      {
+        id: 'quick-assign',
+        label: 'Assign',
+        icon: 'assignment_ind',
+        palette: 'blue',
+        surface: 'tinted',
+        context: { menu: 'quick-action', action: 'assign' }
+      },
+      {
+        id: 'quick-explore',
+        label: 'Explore',
+        icon: 'explore',
+        palette: 'green',
+        surface: 'tinted',
+        context: { menu: 'quick-action', action: 'explore' }
+      }
+    ];
+  }
+
+  protected assetExploreOrderMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.assetExploreOrderLabel(),
+      icon: this.assetExploreOrderIcon(),
+      ariaLabel: 'Open asset explore order',
+      palette: this.assetExploreOrderPalette(this.assetExploreOrder),
+      shape: 'pill'
+    };
+  }
+
+  protected assetExploreOrderMenuItems(): readonly AppMenuItem<string, EventResourceMenuContext>[] {
+    return this.assetExploreOrderOptions.map(option => ({
+      id: `asset-explore-order-${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.key === this.assetExploreOrder,
+      checked: option.key === this.assetExploreOrder,
+      palette: this.assetExploreOrderPalette(option.key),
+      surface: 'tinted',
+      context: { menu: 'asset-explore-order', order: option.key }
+    }));
+  }
+
+  protected assetExploreCategoryMenuTrigger(explore: AssetExplorePopupViewState): AppMenuTrigger {
+    return {
+      label: this.assetExploreCategoryLabel(explore.categoryDisplay),
+      icon: this.assetExploreCategoryIcon(explore.category),
+      ariaLabel: 'Open asset explore category',
+      palette: this.assetCategoryPalette(explore.category),
+      shape: 'field'
+    };
+  }
+
+  protected assetExploreCategoryMenuItems(
+    explore: AssetExplorePopupViewState
+  ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
+    return explore.categoryOptions.map(option => ({
+      id: `asset-explore-category-${option}`,
+      label: this.assetExploreCategoryLabel(option),
+      icon: this.assetExploreCategoryIcon(option),
+      kind: 'radio',
+      active: option === explore.category,
+      checked: option === explore.category,
+      palette: this.assetCategoryPalette(option),
+      surface: 'tinted',
+      context: { menu: 'asset-explore-category', category: option }
+    }));
+  }
+
+  protected onEventResourceMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as EventResourceMenuContext | undefined;
+    if (!context) {
       return;
     }
-    event.stopPropagation();
-    this.resourceFilterOpen = false;
-    this.showMobileResourceFilterPicker = !this.showMobileResourceFilterPicker;
+    switch (context.menu) {
+      case 'resource-filter':
+        event.sourceEvent.stopPropagation();
+        this.host.selectResourceFilter(context.filter);
+        return;
+      case 'quick-action':
+        if (context.action === 'assign') {
+          this.host.openAssignPopup(event.sourceEvent);
+          return;
+        }
+        this.host.openExplorePopup(event.sourceEvent);
+        return;
+      case 'asset-explore-order':
+        this.selectAssetExploreOrder(context.order, event.sourceEvent);
+        return;
+      case 'asset-explore-category':
+        event.sourceEvent.stopPropagation();
+        this.host.selectAssetExploreCategory(context.category, event.sourceEvent);
+        return;
+      case 'resource-card':
+        this.onResourceCardMenuAction(context.card, {
+          id: context.infoCard.id,
+          actionId: context.action.id,
+          action: context.action,
+          card: context.infoCard
+        });
+        return;
+      case 'asset-explore-card':
+        this.onAssetExploreInfoCardMenuAction(context.card, {
+          id: context.infoCard.id,
+          actionId: context.action.id,
+          action: context.action,
+          card: context.infoCard
+        });
+        return;
+      default:
+        return;
+    }
   }
 
-  protected toggleQuickActionsMenu(event: Event): void {
-    event.stopPropagation();
-    this.showQuickActionsMenu = !this.showQuickActionsMenu;
-  }
-
-  protected toggleAssetExploreCategoryPicker(event: Event): void {
-    if (!this.isMobileResourceFilterSheetViewport()) {
+  protected openResourceInfoCardMenu(
+    card: AppTypes.SubEventResourceCard,
+    request: InfoCardMenuRequestEvent
+  ): void {
+    const menuId = `event-resource-card:${request.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
       return;
     }
-    event.stopPropagation();
-    this.showAssetExploreOrderPicker = false;
-    this.showAssetExploreBorrowBasket = false;
-    this.showAssetExploreCategoryPicker = !this.showAssetExploreCategoryPicker;
+    this.appMenuDispatcher.open({
+      id: menuId,
+      scope: 'event-resource',
+      kind: 'select',
+      title: this.infoCardMenuTitle(request.card),
+      items: this.infoCardMenuItems(card, request, 'resource-card'),
+      triggerRect: request.triggerRect,
+      openUp: request.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger
+    }, null);
   }
 
-  protected openAssignQuickAction(event: Event): void {
-    event.stopPropagation();
-    this.showQuickActionsMenu = false;
-    this.host.openAssignPopup(event);
+  protected openAssetExploreInfoCardMenu(
+    card: AppTypes.AssetCard,
+    request: InfoCardMenuRequestEvent
+  ): void {
+    const menuId = `asset-explore-card:${request.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      scope: 'event-resource',
+      kind: 'select',
+      title: this.infoCardMenuTitle(request.card),
+      items: this.infoCardMenuItems(card, request, 'asset-explore-card'),
+      triggerRect: request.triggerRect,
+      openUp: request.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger
+    }, null);
   }
 
-  protected openExploreQuickAction(event: Event): void {
-    event.stopPropagation();
-    this.showQuickActionsMenu = false;
-    this.host.openExplorePopup(event);
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
   }
 
-  protected selectMobileResourceFilter(filter: AppTypes.AssetType, event?: Event): void {
-    event?.stopPropagation();
-    this.showMobileResourceFilterPicker = false;
-    this.host.selectResourceFilter(filter);
+  private infoCardMenuItems(
+    card: AppTypes.SubEventResourceCard | AppTypes.AssetCard,
+    request: InfoCardMenuRequestEvent,
+    menu: 'resource-card' | 'asset-explore-card'
+  ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
+    return request.actions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      const context: EventResourceMenuContext = menu === 'resource-card'
+        ? {
+            menu,
+            card: card as AppTypes.SubEventResourceCard,
+            infoCard: request.card,
+            action
+          }
+        : {
+            menu,
+            card: card as AppTypes.AssetCard,
+            infoCard: request.card,
+            action
+          };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        surface: 'tinted',
+        context
+      }];
+    });
   }
 
-  protected selectMobileAssetExploreCategory(category: AppTypes.AssetCategory, event?: Event): void {
-    event?.stopPropagation();
-    this.showAssetExploreCategoryPicker = false;
-    this.host.selectAssetExploreCategory(category);
+  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'warning';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
   }
 
   protected assetExploreInfoCard(
@@ -1048,8 +1276,6 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected toggleAssetExploreBorrowBasket(event?: Event): void {
     event?.stopPropagation();
-    this.showAssetExploreCategoryPicker = false;
-    this.showAssetExploreOrderPicker = false;
     if (this.assetExploreBorrowDraftCount() <= 0) {
       this.showAssetExploreBorrowBasket = false;
       return;
@@ -1082,6 +1308,25 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected assetExploreCategoryLabel(option: AppTypes.AssetCategory): string {
     return AssetDefaultsBuilder.assetCategoryLabel(option);
+  }
+
+  private resourceTypePalette(type: AppTypes.SubEventResourceFilter): AppMenuPalette {
+    switch (type) {
+      case 'Members':
+        return 'blue';
+      case 'Car':
+        return 'sky';
+      case 'Accommodation':
+        return 'green';
+      case 'Supplies':
+        return 'brown';
+      default:
+        return 'default';
+    }
+  }
+
+  private assetCategoryPalette(category: AppTypes.AssetCategory): AppMenuPalette {
+    return this.resourceTypePalette(AssetDefaultsBuilder.assetCategoryType(category));
   }
 
   protected readonly assetExploreDateFilter = (date: Date | null): boolean => {
@@ -1177,49 +1422,17 @@ export class EventResourcePopupComponent implements DoCheck {
       this.showAssetExploreBorrowBasket = false;
       return;
     }
-    if (this.showAssetExploreCategoryPicker) {
-      keyboardEvent.preventDefault();
-      keyboardEvent.stopPropagation();
-      this.showAssetExploreCategoryPicker = false;
-      return;
-    }
-    if (this.showAssetExploreOrderPicker) {
-      keyboardEvent.preventDefault();
-      keyboardEvent.stopPropagation();
-      this.showAssetExploreOrderPicker = false;
-      return;
-    }
     if (this.host.assetExplorePopup()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
       this.host.closeExplorePopup();
       return;
     }
-    if (this.showQuickActionsMenu) {
-      keyboardEvent.preventDefault();
-      keyboardEvent.stopPropagation();
-      this.showQuickActionsMenu = false;
-      return;
-    }
-    if (!this.showMobileResourceFilterPicker) {
-      return;
-    }
-    keyboardEvent.preventDefault();
-    keyboardEvent.stopPropagation();
-    this.showMobileResourceFilterPicker = false;
-  }
-
-  protected toggleAssetExploreOrderPicker(event: Event): void {
-    event.stopPropagation();
-    this.showAssetExploreCategoryPicker = false;
-    this.showAssetExploreBorrowBasket = false;
-    this.showAssetExploreOrderPicker = !this.showAssetExploreOrderPicker;
   }
 
   protected selectAssetExploreOrder(order: AssetExploreOrder, event: Event): void {
     event.stopPropagation();
     this.assetExploreOrder = order;
-    this.showAssetExploreOrderPicker = false;
   }
 
   protected assetExploreOrderLabel(order: AssetExploreOrder = this.assetExploreOrder): string {
@@ -1230,14 +1443,14 @@ export class EventResourcePopupComponent implements DoCheck {
     return this.assetExploreOrderOptions.find(option => option.key === order)?.icon ?? 'inventory_2';
   }
 
-  protected assetExploreOrderClass(order: AssetExploreOrder = this.assetExploreOrder): string {
+  private assetExploreOrderPalette(order: AssetExploreOrder): AppMenuPalette {
     if (order === 'lowest-price') {
-      return 'asset-explore-order-lowest-price';
+      return 'gold';
     }
     if (order === 'fewest-policies') {
-      return 'asset-explore-order-fewest-policies';
+      return 'violet';
     }
-    return 'asset-explore-order-availability';
+    return 'green';
   }
 
   @HostListener('document:click', ['$event'])
@@ -1246,18 +1459,8 @@ export class EventResourcePopupComponent implements DoCheck {
     if (!(target instanceof Element)) {
       return;
     }
-    if (this.showAssetExploreOrderPicker && !target.closest('.asset-explore-order-picker')) {
-      this.showAssetExploreOrderPicker = false;
-    }
     if (this.showAssetExploreBorrowBasket && !target.closest('.asset-explore-basket')) {
       this.showAssetExploreBorrowBasket = false;
-    }
-    if (!target.closest('.popup-mobile-filter-picker')) {
-      this.showMobileResourceFilterPicker = false;
-      this.showAssetExploreCategoryPicker = false;
-    }
-    if (!target.closest('.subevent-assets-quick-actions')) {
-      this.showQuickActionsMenu = false;
     }
   }
 

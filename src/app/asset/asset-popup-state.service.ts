@@ -23,7 +23,6 @@ export class AssetPopupStateService {
   private readonly ticketRowsRef = signal<AppTypes.ActivityListRow[]>([]);
   private readonly ticketTotalCountRef = signal(0);
   private readonly ticketDateOrderRef = signal<'upcoming' | 'past'>('upcoming');
-  private readonly showTicketOrderPickerRef = signal(false);
   private readonly selectedTicketRowRef = signal<AppTypes.ActivityListRow | null>(null);
   private readonly selectedTicketCodeValueRef = signal('');
   private readonly ticketScannerStateRef = signal<'idle' | 'reading' | 'success'>('idle');
@@ -71,7 +70,6 @@ export class AssetPopupStateService {
   prepareTicketPopupOpen(): void {
     this.ticketRowsRef.set([]);
     this.ticketTotalCountRef.set(this.assetTicketsService.peekTicketCountByUser(this.activeUserId()));
-    this.showTicketOrderPickerRef.set(false);
     this.selectedTicketRowRef.set(null);
     this.selectedTicketCodeValueRef.set('');
     this.ticketScannerStateRef.set('idle');
@@ -84,7 +82,6 @@ export class AssetPopupStateService {
   resetTicketState(): void {
     this.ticketRowsRef.set([]);
     this.ticketTotalCountRef.set(0);
-    this.showTicketOrderPickerRef.set(false);
     this.selectedTicketRowRef.set(null);
     this.selectedTicketCodeValueRef.set('');
     this.ticketScannerStateRef.set('idle');
@@ -107,14 +104,6 @@ export class AssetPopupStateService {
     return count === 1 ? '1 ticketed event' : `${count} ticketed events`;
   }
 
-  showTicketOrderPicker(): boolean {
-    return this.showTicketOrderPickerRef();
-  }
-
-  closeTicketOrderPicker(): void {
-    this.showTicketOrderPickerRef.set(false);
-  }
-
   ticketDateOrder(): 'upcoming' | 'past' {
     return this.ticketDateOrderRef();
   }
@@ -127,19 +116,12 @@ export class AssetPopupStateService {
     return this.ticketDateOrderRef() === 'upcoming' ? 'schedule' : 'history';
   }
 
-  toggleTicketOrderPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTicketOrderPickerRef.update(value => !value);
-  }
-
   selectTicketDateOrder(order: 'upcoming' | 'past', event?: Event): void {
     event?.stopPropagation();
     if (this.ticketDateOrderRef() === order) {
-      this.showTicketOrderPickerRef.set(false);
       return;
     }
     this.ticketDateOrderRef.set(order);
-    this.showTicketOrderPickerRef.set(false);
     this.ticketRowsRef.set([]);
     this.ticketTotalCountRef.set(this.assetTicketsService.peekTicketCountByUser(this.activeUserId()));
   }

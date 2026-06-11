@@ -7,13 +7,19 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { I18nPipe } from '../../../shared/ui';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  I18nPipe,
+  ProgressIndicatorComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger
+} from '../../../shared/ui';
 import {
   MediaService, ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
@@ -31,6 +37,26 @@ interface OnboardingStep {
 
 type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
 
+type OnboardingMenuField =
+  | 'physique'
+  | 'profileStatus'
+  | 'genderDetail'
+  | 'drinking'
+  | 'smoking'
+  | 'workout'
+  | 'pets'
+  | 'familyPlans'
+  | 'children'
+  | 'loveStyle'
+  | 'communicationStyle'
+  | 'sexualOrientation'
+  | 'religion';
+
+type OnboardingMenuContext =
+  | { menu: 'field'; field: OnboardingMenuField; value: string }
+  | { menu: 'language'; value: string }
+  | { menu: 'experience-type'; value: string };
+
 @Component({
   selector: 'app-profile-onboarding-popup',
   standalone: true,
@@ -43,7 +69,7 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatSelectModule,
+    AppMenuComponent,
     ProgressIndicatorComponent,
     I18nPipe
   ],
@@ -57,11 +83,8 @@ type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
 export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private static readonly MAX_IMAGE_SLOTS = 8;
   private static readonly MIN_REQUIRED_IMAGES = 3;
-  private static readonly LANGUAGE_PANEL_GAP_PX = 8;
-  private static readonly LANGUAGE_PANEL_MAX_HEIGHT_PX = 260;
 
   @ViewChild('onboardingImageInput') private onboardingImageInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('languageSelectRoot', { read: ElementRef }) private languageSelectRoot?: ElementRef<HTMLElement>;
   @Input() open = false;
   @Input() user: UserDto | null = null;
   @Input() mobile = false;
@@ -102,7 +125,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   ];
   protected readonly physiqueOptions = APP_STATIC_DATA.physiqueOptions;
   protected readonly languageSuggestions = APP_STATIC_DATA.languageSuggestions;
-  protected languagePanelWidth = '320px';
   protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
   protected readonly profileDetailValueOptions = APP_STATIC_DATA.profileDetailValueOptions;
   protected readonly beliefsValuesOptionGroups = APP_STATIC_DATA.beliefsValuesOptionGroups;
@@ -135,7 +157,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.open || !this.user) {
       this.stopDraftAutosaveLoop();
       this.resetDraftAutosaveTracking();
-      this.clearLanguagePanelPosition();
       this.draft = null;
       this.assessment = null;
       this.birthdayDate = null;
@@ -158,14 +179,12 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.draft = this.onboarding.loadDraft(this.user);
     this.syncBirthdayDateFromDraft();
     this.syncImageSlotsFromDraft();
-    this.scheduleLanguagePanelWidthSync();
     this.seedDraftAutosaveSignature();
     this.startDraftAutosaveLoop();
   }
 
   ngOnDestroy(): void {
     this.stopDraftAutosaveLoop();
-    this.clearLanguagePanelPosition();
     this.unlockDocumentScroll();
   }
 
@@ -303,17 +322,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.draft.form.languages = this.normalizeSelectedLanguages(values);
     this.persistDraft();
-    this.syncLanguagePanelPosition();
     this.cdr.detectChanges();
-  }
-
-  protected onLanguageSelectOpened(opened: boolean): void {
-    if (opened) {
-      this.syncLanguagePanelPosition();
-      this.scheduleLanguagePanelWidthSync();
-      return;
-    }
-    this.clearLanguagePanelPosition();
   }
 
   protected removeLanguage(value: string): void {
@@ -323,6 +332,111 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.draft.form.languages = this.draft.form.languages.filter(language => language !== value);
     this.persistDraft();
     this.cdr.detectChanges();
+  }
+
+  protected fieldMenuTrigger(value: string | null | undefined, icon = 'tune', palette: AppMenuPalette = 'neutral'): AppMenuTrigger {
+    const label = `${value ?? ''}`.trim();
+    return {
+      label: label || 'Select',
+      icon,
+      palette,
+      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      ariaLabel: 'Open selector'
+    };
+  }
+
+  protected fieldMenuItems(
+    field: OnboardingMenuField,
+    options: readonly string[],
+    activeValue: string | null | undefined,
+    icon = 'radio_button_checked',
+    palette: AppMenuPalette = 'neutral'
+  ): readonly AppMenuItem<string, OnboardingMenuContext>[] {
+    return options.map(option => ({
+      id: `${field}-${option}`,
+      label: option,
+      icon,
+      kind: 'radio',
+      active: option === activeValue,
+      palette,
+      surface: 'tinted',
+      context: { menu: 'field', field, value: option }
+    }));
+  }
+
+  protected profileStatusMenuTrigger(status: ProfileStatus): AppMenuTrigger {
+    return this.fieldMenuTrigger(status, this.statusIcon(status), this.profileStatusPalette(status));
+  }
+
+  protected profileStatusMenuItems(status: ProfileStatus): readonly AppMenuItem<string, OnboardingMenuContext>[] {
+    return this.profileStatusOptions.map(option => ({
+      id: `profile-status-${option.value}`,
+      label: option.value,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.value === status,
+      palette: this.profileStatusPalette(option.value),
+      surface: 'tinted',
+      context: { menu: 'field', field: 'profileStatus', value: option.value }
+    }));
+  }
+
+  protected languagesMenuTrigger(languages: readonly string[]): AppMenuTrigger {
+    return {
+      label: languages.length > 0 ? languages.join(', ') : 'Select languages',
+      icon: 'translate',
+      palette: languages.length > 0 ? 'sky' : 'neutral',
+      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      ariaLabel: 'Open language selector'
+    };
+  }
+
+  protected languageMenuItems(languages: readonly string[]): readonly AppMenuItem<string, OnboardingMenuContext>[] {
+    return this.languageSuggestions.map(language => ({
+      id: `language-${language}`,
+      label: language,
+      icon: 'translate',
+      kind: 'checkbox',
+      active: languages.includes(language),
+      checked: languages.includes(language),
+      closeOnSelect: false,
+      palette: languages.includes(language) ? 'sky' : 'neutral',
+      surface: 'tinted',
+      context: { menu: 'language', value: language }
+    }));
+  }
+
+  protected experienceTypeMenuTrigger(type: string): AppMenuTrigger {
+    return this.fieldMenuTrigger(type, this.experienceTypeIcon(type), this.experienceTypePalette(type));
+  }
+
+  protected experienceTypeMenuItems(type: string): readonly AppMenuItem<string, OnboardingMenuContext>[] {
+    return this.experienceTypeOptions.map(option => ({
+      id: `experience-type-${option}`,
+      label: option,
+      icon: this.experienceTypeIcon(option),
+      kind: 'radio',
+      active: option === type,
+      palette: this.experienceTypePalette(option),
+      surface: 'tinted',
+      context: { menu: 'experience-type', value: option }
+    }));
+  }
+
+  protected onProfileOnboardingMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as OnboardingMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'language') {
+      this.toggleLanguage(context.value);
+      return;
+    }
+    if (context.menu === 'experience-type') {
+      this.experienceForm.type = context.value as ExperienceEntry['type'];
+      return;
+    }
+    this.updateOnboardingField(context.field, context.value);
   }
 
   protected onBirthdayDateChange(value: Date | string | null): void {
@@ -407,78 +521,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   private hasLanguageReady(): boolean {
     return Boolean(this.draft?.form.languages.length);
-  }
-
-  private scheduleLanguagePanelWidthSync(): void {
-    if (typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => this.syncLanguagePanelPosition());
-      return;
-    }
-    setTimeout(() => this.syncLanguagePanelPosition(), 0);
-  }
-
-  protected syncLanguagePanelWidth(): void {
-    this.syncLanguagePanelPosition();
-  }
-
-  protected syncLanguagePanelPosition(): void {
-    const host = this.languageSelectRoot?.nativeElement;
-    if (!host) {
-      return;
-    }
-    const hostRect = host.getBoundingClientRect();
-    const panelRect = host.closest('.profile-onboarding-panel')?.getBoundingClientRect();
-    const viewportWidth = this.document.defaultView?.innerWidth ?? this.document.documentElement.clientWidth;
-    const viewportHeight = this.document.defaultView?.innerHeight ?? this.document.documentElement.clientHeight;
-    const horizontalInset = this.mobile ? 12 : 16;
-    const panelLeft = panelRect?.left ?? horizontalInset;
-    const panelTop = panelRect?.top ?? horizontalInset;
-    const panelWidth = panelRect?.width ?? Math.max(0, viewportWidth - (horizontalInset * 2));
-    const viewportInset = this.mobile ? 10 : 12;
-    const maxPanelWidth = Math.max(180, Math.min(panelWidth - (horizontalInset * 2), viewportWidth - (viewportInset * 2)));
-    const minWidth = Math.min(this.mobile ? 260 : 320, maxPanelWidth);
-    const width = Math.floor(Math.max(minWidth, Math.min(hostRect.width, maxPanelWidth)));
-    if (!Number.isFinite(width) || width <= 0) {
-      return;
-    }
-    const minTop = Math.max(8, panelTop + 8);
-    const availableAboveInput = hostRect.top - minTop - ProfileOnboardingPopupComponent.LANGUAGE_PANEL_GAP_PX;
-    const maxHeightLimit = Math.min(
-      ProfileOnboardingPopupComponent.LANGUAGE_PANEL_MAX_HEIGHT_PX,
-      Math.max(120, viewportHeight * 0.42)
-    );
-    const maxHeight = Math.floor(Math.min(maxHeightLimit, Math.max(120, availableAboveInput)));
-    const centeredLeft = panelLeft + ((panelWidth - width) / 2);
-    const left = Math.round(this.clamp(centeredLeft, viewportInset, viewportWidth - width - viewportInset));
-    const preferredTop = hostRect.top - maxHeight - ProfileOnboardingPopupComponent.LANGUAGE_PANEL_GAP_PX;
-    const top = Math.round(
-      this.clamp(preferredTop, minTop, Math.max(minTop, viewportHeight - maxHeight - 8))
-    );
-    const rootStyle = this.document.documentElement.style;
-    rootStyle.setProperty('--profile-onboarding-language-panel-left', `${left}px`);
-    rootStyle.setProperty('--profile-onboarding-language-panel-top', `${top}px`);
-    rootStyle.setProperty('--profile-onboarding-language-panel-width', `${width}px`);
-    rootStyle.setProperty('--profile-onboarding-language-panel-max-height', `${maxHeight}px`);
-    const nextWidth = `${width}px`;
-    if (this.languagePanelWidth !== nextWidth) {
-      this.languagePanelWidth = nextWidth;
-      this.cdr.detectChanges();
-    }
-  }
-
-  private clamp(value: number, min: number, max: number): number {
-    if (max < min) {
-      return min;
-    }
-    return Math.min(max, Math.max(min, value));
-  }
-
-  private clearLanguagePanelPosition(): void {
-    const rootStyle = this.document.documentElement.style;
-    rootStyle.removeProperty('--profile-onboarding-language-panel-left');
-    rootStyle.removeProperty('--profile-onboarding-language-panel-top');
-    rootStyle.removeProperty('--profile-onboarding-language-panel-width');
-    rootStyle.removeProperty('--profile-onboarding-language-panel-max-height');
   }
 
   private syncBirthdayDateFromDraft(): void {
@@ -614,6 +656,74 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   protected statusIcon(status: ProfileStatus): string {
     return this.profileStatusOptions.find(option => option.value === status)?.icon ?? 'public';
+  }
+
+  private profileStatusPalette(status: string): AppMenuPalette {
+    switch (status) {
+      case 'Public':
+        return 'green';
+      case 'Friends':
+        return 'blue';
+      case 'Hosts':
+        return 'orange';
+      case 'Private':
+        return 'slate';
+      default:
+        return 'neutral';
+    }
+  }
+
+  private experienceTypeIcon(type: string): string {
+    switch (type) {
+      case 'School':
+        return 'school';
+      case 'Online session':
+        return 'videocam';
+      case 'Additional project':
+        return 'rocket_launch';
+      case 'Workspace':
+      default:
+        return 'apartment';
+    }
+  }
+
+  private experienceTypePalette(type: string): AppMenuPalette {
+    switch (type) {
+      case 'School':
+        return 'blue';
+      case 'Online session':
+        return 'green';
+      case 'Additional project':
+        return 'violet';
+      case 'Workspace':
+      default:
+        return 'pink';
+    }
+  }
+
+  private toggleLanguage(language: string): void {
+    if (!this.draft) {
+      return;
+    }
+    const normalized = language.trim();
+    if (!normalized || !this.languageSuggestions.includes(normalized)) {
+      return;
+    }
+    const current = this.draft.form.languages;
+    this.draft.form.languages = current.includes(normalized)
+      ? current.filter(item => item !== normalized)
+      : [...current, normalized];
+    this.persistDraft();
+    this.cdr.detectChanges();
+  }
+
+  private updateOnboardingField(field: OnboardingMenuField, value: string): void {
+    if (!this.draft) {
+      return;
+    }
+    const form = this.draft.form as unknown as Record<OnboardingMenuField, string>;
+    form[field] = value;
+    this.persistDraft();
   }
 
   protected stepDone(stepId: ProfileOnboardingStepId): boolean {

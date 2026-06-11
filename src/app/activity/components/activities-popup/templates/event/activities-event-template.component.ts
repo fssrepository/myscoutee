@@ -117,8 +117,6 @@ export class ActivitiesEventsController {
   private get hostingItems() { return this.host.hostingItems as ActivityEventRecordLike[]; }
   private set hostingItems(value: ActivityEventRecordLike[]) { this.host.hostingItems = value; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as AppTypes.HostingPublicationFilter; }
-  private get inlineItemActionMenu() { return this.host.inlineItemActionMenu; }
-  private set inlineItemActionMenu(value: any) { this.host.inlineItemActionMenu = value; }
   private get invitationItems() { return this.host.invitationItems as ActivityEventRecordLike[]; }
   private set invitationItems(value: ActivityEventRecordLike[]) { this.host.invitationItems = value; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
@@ -257,13 +255,11 @@ export class ActivitiesEventsController {
 
   public runActivityItemPrimaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     this.openActivityRowInEventModule(row, false);
   }
 
   public runActivityItemViewAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
       row,
@@ -277,7 +273,6 @@ export class ActivitiesEventsController {
     event?: Event
   ): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     const chat = this.resolveActivityServiceChat(row, card);
     if (!chat) {
       return;
@@ -291,7 +286,6 @@ export class ActivitiesEventsController {
     event?: Event
   ): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     const entityId = this.resolveActivityShareEntityId(row, card);
     if (!entityId) {
       return;
@@ -327,7 +321,6 @@ export class ActivitiesEventsController {
     event?: Event
   ): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     const target = this.resolveActivityReportTarget(row, card ?? this.activityInfoCardForRow(row));
     if (!target || target.userId === this.activeUser.id.trim()) {
       return;
@@ -460,7 +453,6 @@ export class ActivitiesEventsController {
 
   public runActivityItemApproveAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     if (row.type !== 'invitations') {
       this.openActivityRowInEventModule(row, true);
       return;
@@ -509,13 +501,11 @@ export class ActivitiesEventsController {
 
   public runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     void this.restoreActivityRow(row);
   }
 
   public runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     this.confirmationDialogService.open({
       title: this.activitySecondaryConfirmTitle(row),
       message: row.title,
@@ -530,7 +520,6 @@ export class ActivitiesEventsController {
 
   public runActivityItemPublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     this.confirmationDialogService.open({
       title: 'Publish event?',
       message: row.title,
@@ -545,7 +534,6 @@ export class ActivitiesEventsController {
 
   public runActivityItemUnpublishAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     this.confirmationDialogService.open({
       title: 'Unpublish event?',
       message: row.title,
@@ -560,7 +548,6 @@ export class ActivitiesEventsController {
 
   public runActivityItemTakeOverAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     this.confirmationDialogService.open({
       title: 'Take over event?',
       message: row.title,
@@ -1234,7 +1221,6 @@ export class ActivitiesEventsController {
 
   public onActivityRowClick(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    this.inlineItemActionMenu = null;
     if (row.type === 'chats') {
       this.host.openActivityChatForRow(row);
       return;
@@ -1255,37 +1241,6 @@ export class ActivitiesEventsController {
       subtitle: row.title,
       canManage: row.isAdmin === true
     });
-  }
-
-  public canShowActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.canApproveActivityMember(entry) || this.canDeleteActivityMember(entry);
-  }
-
-  public toggleActivityMemberActionMenu(entry: AppTypes.ActivityMemberEntry, event: Event): void {
-    event.stopPropagation();
-    if (!this.canShowActivityMemberActionMenu(entry)) {
-      return;
-    }
-    if (this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId) {
-      this.inlineItemActionMenu = null;
-      return;
-    }
-    this.inlineItemActionMenu = {
-      scope: 'activityMember',
-      id: entry.userId,
-      title: entry.name,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-  }
-
-  public isActivityMemberActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.inlineItemActionMenu?.scope === 'activityMember' && this.inlineItemActionMenu.id === entry.userId;
-  }
-
-  public isActivityMemberActionMenuOpenUp(entry: AppTypes.ActivityMemberEntry): boolean {
-    return this.inlineItemActionMenu?.scope === 'activityMember'
-      && this.inlineItemActionMenu.id === entry.userId
-      && this.inlineItemActionMenu.openUp;
   }
 
   public canApproveActivityMember(entry: AppTypes.ActivityMemberEntry): boolean {
@@ -1406,7 +1361,6 @@ export class ActivitiesEventsController {
     ));
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     this.persistSelectedActivityMembers();
-    this.inlineItemActionMenu = null;
   }
 
   public removeActivityMember(entry: AppTypes.ActivityMemberEntry, event?: Event): void {
@@ -1415,24 +1369,6 @@ export class ActivitiesEventsController {
       return;
     }
     this.pendingActivityMemberDelete = entry;
-    this.inlineItemActionMenu = null;
-  }
-
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    if (this.isMobileView || typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = (trigger?.closest('.experience-item-actions') as HTMLElement | null) ?? trigger;
-    if (!actionWrap) {
-      return false;
-    }
-    const rect = actionWrap.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 248;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
   public openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void {

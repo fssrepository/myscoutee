@@ -29,6 +29,7 @@ export class AppMenuDispatcher {
     if (!activeMenu || (id && activeMenu.id !== id)) {
       return;
     }
+    activeMenu.onClose?.();
     this.activeMenuRef.set(null);
   }
 
@@ -43,13 +44,16 @@ export class AppMenuDispatcher {
     }
     this.activeMenuRef.set({
       ...activeMenu,
-      triggerRect: this.triggerRect(activeMenu.triggerElement)
+      triggerRect: activeMenu.triggerElement
+        ? this.triggerRect(activeMenu.triggerElement)
+        : activeMenu.triggerRect
     });
   }
 
   private createState(config: AppMenuDispatchConfig, triggerElement: HTMLElement | null): AppMenuDispatchState {
     return {
       ...config,
+      scope: `${config.scope ?? 'default'}`.trim() || 'default',
       kind: config.kind ?? 'select',
       items: config.items ?? [],
       model: config.model ?? null,
@@ -61,7 +65,8 @@ export class AppMenuDispatcher {
       mobileBreakpointPx: Math.max(1, Number(config.mobileBreakpointPx) || 760),
       closeOnSelect: config.closeOnSelect !== false,
       triggerElement,
-      triggerRect: this.triggerRect(triggerElement)
+      triggerRect: config.triggerRect ?? this.triggerRect(triggerElement),
+      onClose: config.onClose ?? null
     };
   }
 

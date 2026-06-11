@@ -11,9 +11,7 @@ import {
   ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -33,12 +31,23 @@ import type {
 } from '../../../shared/core/base/models';
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
-  CounterBadgePipe,
+  AppMenuComponent,
+  AppMenuDispatcher,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  AppMenuOutletComponent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   EventCheckoutPopupComponent,
+  I18nPipe,
   type CardProfileViewData,
   SmartListComponent,
+  type InfoCardData,
   type InfoCardMenuActionEvent,
   type InfoCardMenuRequestEvent,
+  type InfoCardResolvedMenuAction,
+  INFO_CARD_AVAILABLE_ACTIONS,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -54,10 +63,6 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { NavigatorService } from '../../../navigator';
 import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
-import {
-  ActivitiesEventActionMenuComponent,
-  type ActivitiesEventActionMenuSelectedEvent
-} from './activities-event-action-menu.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
   ActivitiesChatTemplateComponent,
@@ -96,7 +101,6 @@ import type {
   ActivityEventRepositoryItemType
 } from '../../../shared/core/base/models/events.model';
 import { I18nService } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
 
 // ---------------------------------------------------------------------------
 
@@ -110,23 +114,39 @@ interface ActivitiesEventScopeOption {
   icon: string;
 }
 
+type ActivitiesToolbarMenuContext =
+  | { menu: 'primary'; value: AppTypes.ActivitiesPrimaryFilter }
+  | { menu: 'event-scope'; value: AppTypes.ActivitiesEventScope }
+  | { menu: 'chat-context'; value: AppTypes.ActivitiesChatContextFilter }
+  | { menu: 'rate'; value: AppTypes.RateFilterKey }
+  | { menu: 'rate-social'; value: string }
+  | { menu: 'secondary'; value: AppTypes.ActivitiesSecondaryFilter }
+  | { menu: 'view'; value: AppTypes.ActivitiesView }
+  | { menu: 'support-case'; value: AppTypes.SupportCaseFilter }
+  | { menu: 'quick-action'; value: 'explore' | 'create' };
+
+interface ActivitiesInfoCardMenuContext {
+  menu: 'activity-event-card';
+  row: AppTypes.ActivityListRow;
+  card: InfoCardData;
+  action: InfoCardResolvedMenuAction;
+}
+
 @Component({
   selector: 'app-activities-popup',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     MatIconModule,
-    MatSelectModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
     SmartListComponent,
     ActivitiesEventTemplateComponent,
-    ActivitiesEventActionMenuComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
     EventChatPopupComponent,
     EventCheckoutPopupComponent,
     EventExplorePopupComponent,
-    CounterBadgePipe,
     I18nPipe
   ],
   templateUrl: './activities-popup.component.html',
@@ -161,6 +181,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -302,9 +323,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   @ViewChild('activitiesSmartList')
   protected activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
-  @ViewChild(ActivitiesEventActionMenuComponent)
-  private activityEventActionMenu?: ActivitiesEventActionMenuComponent;
-
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
   protected readonly activitiesPrimaryFilters: Array<{ key: AppTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
@@ -362,7 +380,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected showActivitiesPrimaryPicker = false;
   protected showActivitiesEventScopePicker = false;
   protected showActivitiesChatContextPicker = false;
-  protected showActivitiesSupportCasePicker = false;
   protected showActivitiesRatePicker      = false;
   protected showActivitiesQuickActionsMenu = false;
   protected activitiesSmartListQuery: Partial<ListQuery<ActivitiesSmartListFilters>> = {};
@@ -443,14 +460,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<AppTypes.ActivityListRow, ActivitiesSmartListFilters>
     = (query, context) => from(this.loadActivitiesSmartListPage(query, context));
-  // ── Inline action menu ────────────────────────────────────────────────────
-  protected inlineItemActionMenu: {
-    scope: 'activityMember';
-    id: string;
-    title: string;
-    openUp: boolean;
-  } | null = null;
-
   // ── Scroll / sticky ───────────────────────────────────────────────────────
   protected activitiesListScrollable  = true;
   protected activitiesStickyValue     = '';
@@ -578,20 +587,90 @@ export class ActivitiesPopupComponent implements OnDestroy {
     row: AppTypes.ActivityListRow,
     event: InfoCardMenuRequestEvent
   ): void {
-    this.activityEventActionMenu?.open(row, event, this.isMobileView);
+    const menuId = `activity-event-card:${event.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      kind: 'select',
+      title: this.infoCardMenuTitle(event.card),
+      items: this.infoCardMenuItems(row, event),
+      triggerRect: event.triggerRect,
+      openUp: event.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: event.closeTrigger
+    }, null);
   }
 
   protected closeActivityEventMobileActionMenu(): void {
-    this.activityEventActionMenu?.close();
+    this.appMenuDispatcher.close();
   }
 
-  protected onActivityEventActionMenuSelected(event: ActivitiesEventActionMenuSelectedEvent): void {
-    this.onActivityEventInfoCardMenuAction(event.row, {
-      id: event.card.id,
-      actionId: event.action.id,
-      action: event.action,
-      card: event.card
+  protected onActivityEventDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as ActivitiesInfoCardMenuContext | undefined;
+    if (context?.menu !== 'activity-event-card') {
+      return;
+    }
+    this.onActivityEventInfoCardMenuAction(context.row, {
+      id: context.card.id,
+      actionId: context.action.id,
+      action: context.action,
+      card: context.card
     });
+  }
+
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private infoCardMenuItems(
+    row: AppTypes.ActivityListRow,
+    request: InfoCardMenuRequestEvent
+  ): readonly AppMenuItem<string, ActivitiesInfoCardMenuContext>[] {
+    return request.actions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        context: {
+          menu: 'activity-event-card',
+          row,
+          card: request.card,
+          action
+        }
+      }];
+    });
+  }
+
+  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'amber';
+      case 'destructive':
+        return 'danger';
+      case 'default':
+      default:
+        return 'default';
+    }
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
@@ -780,8 +859,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resetActivitiesStateForOpen(): void {
-    this.inlineItemActionMenu = null;
-    this.activityEventActionMenu?.close();
+    this.appMenuDispatcher.close();
     this.visibleActivityRows = [];
     this.visibleActivityRowsSource = null;
     this.activitiesStickyValue = '';
@@ -789,7 +867,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
-    this.showActivitiesSupportCasePicker = false;
     this.showActivitiesRatePicker = false;
     this.showActivitiesQuickActionsMenu = false;
   }
@@ -1004,19 +1081,379 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return `support-case-filter-${filter === 'all' ? 'all' : filter}`;
   }
 
-  protected toggleActivitiesSupportCaseFilterMenu(event: Event): void {
-    if (!this.isAdminServiceChatMode()) {
+  protected activitiesSupportCaseMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.supportCaseFilterLabelKey(),
+      icon: this.supportCaseFilterIcon(),
+      palette: this.supportCasePalette(this.activitiesSupportCaseFilter),
+      counter: this.supportCaseFilterCount(),
+      shape: 'pill'
+    });
+  }
+
+  protected activitiesSupportCaseMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return this.activitiesSupportCaseFilters.map(option => this.activitiesMenuItem({
+      id: `support-case:${option.key}`,
+      label: option.labelKey,
+      icon: option.icon,
+      palette: this.supportCasePalette(option.key),
+      counter: this.supportCaseFilterCount(option.key),
+      active: option.key === this.activitiesSupportCaseFilter,
+      context: { menu: 'support-case', value: option.key }
+    }));
+  }
+
+  protected activitiesPrimaryMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesToolbar.activitiesPrimaryFilterLabel(),
+      icon: this.activitiesToolbar.activitiesPrimaryFilterIcon(),
+      palette: this.activitiesPrimaryPalette(this.activitiesPrimaryFilter),
+      counter: this.activitiesToolbar.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
+    });
+  }
+
+  protected activitiesPrimaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return this.activitiesPrimaryFilters.map(option => this.activitiesMenuItem({
+      id: `primary:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesPrimaryPalette(option.key),
+      counter: this.activitiesToolbar.activitiesPrimaryFilterCount(option.key),
+      active: option.key === this.activitiesPrimaryFilter,
+      context: { menu: 'primary', value: option.key }
+    }));
+  }
+
+  protected activitiesEventScopeMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesEventScopeLabel(),
+      icon: this.activitiesToolbar.activitiesEventScopeIcon(),
+      palette: this.activitiesEventScopePalette(this.activitiesEventScope),
+      counter: this.activitiesToolbar.activitiesEventScopeCount()
+    });
+  }
+
+  protected activitiesEventScopeMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return this.activitiesEventScopeFilters.map(option => this.activitiesMenuItem({
+      id: `event-scope:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesEventScopePalette(option.key),
+      counter: this.activitiesToolbar.activitiesEventScopeCount(option.key),
+      active: option.key === this.activitiesEventScope,
+      context: { menu: 'event-scope', value: option.key }
+    }));
+  }
+
+  protected activitiesChatContextMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesToolbar.activitiesChatContextFilterLabel(),
+      icon: this.activitiesToolbar.activitiesChatContextFilterIcon(),
+      palette: this.activitiesChatContextPalette(this.activitiesChatContextFilter),
+      counter: this.activitiesToolbar.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
+    });
+  }
+
+  protected activitiesChatContextMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return this.activitiesChatContextFilters.map(option => this.activitiesMenuItem({
+      id: `chat-context:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesChatContextPalette(option.key),
+      counter: this.activitiesToolbar.activitiesChatContextFilterCount(option.key),
+      active: option.key === this.activitiesChatContextFilter,
+      context: { menu: 'chat-context', value: option.key }
+    }));
+  }
+
+  protected activitiesRateMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesToolbar.activitiesRateFilterLabel(),
+      icon: this.activitiesToolbar.activitiesRateFilterIcon(this.activitiesRateFilter),
+      palette: 'gold',
+      counter: this.activitiesToolbar.selectedRateFilterCount()
+    });
+  }
+
+  protected activitiesRateMenuModel(): AppMenuModel<string, ActivitiesToolbarMenuContext> {
+    const nodes: Array<{
+      id: string;
+      label: string;
+      icon: string;
+      palette: AppMenuPalette;
+      items: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
+    }> = [];
+    let currentNode: typeof nodes[number] | null = null;
+    for (const option of this.rateFilterEntries) {
+      if (option.kind === 'group') {
+        const groupLabel = option.label;
+        currentNode = {
+          id: `rate-group:${groupLabel}`,
+          label: this.activitiesToolbar.rateGroupOptionLabelKey(groupLabel),
+          icon: this.activitiesToolbar.rateSocialBadgeGroupIconForGroup(groupLabel),
+          palette: this.activitiesRateGroupPalette(groupLabel),
+          items: []
+        };
+        if (this.activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(groupLabel)) {
+          currentNode.items.push({
+            id: `rate-social:${groupLabel}`,
+            label: this.activitiesToolbar.rateSocialBadgeButtonLabelForGroup(groupLabel),
+            icon: this.activitiesToolbar.rateSocialBadgeToggleIconForGroup(groupLabel),
+            kind: 'toggle',
+            active: this.activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(groupLabel),
+            closeOnSelect: false,
+            palette: this.activitiesRateGroupPalette(groupLabel),
+            context: { menu: 'rate-social', value: groupLabel }
+          });
+        }
+        nodes.push(currentNode);
+        continue;
+      }
+      if (!currentNode) {
+        currentNode = {
+          id: 'rate-group:default',
+          label: 'rate.type',
+          icon: 'list',
+          palette: 'gold',
+          items: []
+        };
+        nodes.push(currentNode);
+      }
+      currentNode.items.push(this.activitiesMenuItem({
+        id: `rate:${option.key}`,
+        label: this.activitiesToolbar.rateFilterOptionLabel(option.key),
+        icon: this.activitiesToolbar.activitiesRateFilterIcon(option.key),
+        palette: 'gold',
+        counter: this.activitiesToolbar.rateFilterCount(option.key),
+        active: option.key === this.activitiesRateFilter,
+        context: { menu: 'rate', value: option.key }
+      }));
+    }
+    return { nodes };
+  }
+
+  protected activitiesSecondaryMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesToolbar.activitiesSecondaryFilterLabel(),
+      icon: this.activitiesToolbar.activitiesSecondaryFilterIcon(),
+      palette: 'neutral',
+      shape: 'pill'
+    });
+  }
+
+  protected activitiesSecondaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return this.activitiesToolbar.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
+      id: `secondary:${option.key}`,
+      label: this.activitiesToolbar.activitiesSecondaryFilterOptionLabel(option.key),
+      icon: option.icon,
+      palette: 'neutral',
+      active: option.key === this.effectiveActivitiesSecondaryFilter(),
+      context: { menu: 'secondary', value: option.key }
+    }));
+  }
+
+  protected activitiesViewMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesToolbar.activityViewLabel(),
+      icon: 'view_agenda',
+      palette: 'blue',
+      shape: 'pill'
+    });
+  }
+
+  protected activitiesViewMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return this.activitiesViewOptions.map(option => this.activitiesMenuItem({
+      id: `view:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: 'blue',
+      active: option.key === this.activitiesView,
+      context: { menu: 'view', value: option.key }
+    }));
+  }
+
+  protected activitiesQuickActionsMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'add',
+      closeIcon: 'close',
+      ariaLabel: 'Open event actions',
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'green'
+    };
+  }
+
+  protected activitiesQuickActionsMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+    return [
+      {
+        id: 'quick-action:explore',
+        label: 'Explore',
+        icon: 'explore',
+        palette: 'blue',
+        context: { menu: 'quick-action', value: 'explore' }
+      },
+      {
+        id: 'quick-action:create',
+        label: 'Create Event',
+        icon: 'add_circle',
+        palette: 'green',
+        context: { menu: 'quick-action', value: 'create' }
+      }
+    ];
+  }
+
+  protected onActivitiesToolbarMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as ActivitiesToolbarMenuContext | undefined;
+    if (!context) {
       return;
     }
-    event.stopPropagation();
-    this.showActivitiesPrimaryPicker = false;
-    this.showActivitiesEventScopePicker = false;
-    this.showActivitiesChatContextPicker = false;
-    this.showActivitiesRatePicker = false;
-    this.showActivitiesViewPicker = false;
-    this.showActivitiesSecondaryPicker = false;
-    this.showActivitiesQuickActionsMenu = false;
-    this.showActivitiesSupportCasePicker = !this.showActivitiesSupportCasePicker;
+    switch (context.menu) {
+      case 'primary':
+        this.activitiesToolbar.selectActivitiesPrimaryFilter(context.value);
+        return;
+      case 'event-scope':
+        this.activitiesToolbar.selectActivitiesEventScope(context.value);
+        return;
+      case 'chat-context':
+        this.activitiesToolbar.selectActivitiesChatContextFilter(context.value);
+        return;
+      case 'rate':
+        this.activitiesToolbar.selectActivitiesRateFilter(context.value);
+        return;
+      case 'rate-social':
+        this.activitiesToolbar.toggleRateSocialBadgeForGroup(context.value);
+        return;
+      case 'secondary':
+        this.activitiesToolbar.selectActivitiesSecondaryFilter(context.value);
+        return;
+      case 'view':
+        this.activitiesToolbar.setActivitiesView(context.value, event.sourceEvent);
+        return;
+      case 'support-case':
+        this.selectActivitiesSupportCaseFilter(context.value);
+        return;
+      case 'quick-action':
+        if (context.value === 'explore') {
+          this.activitiesToolbar.requestOpenEventExplore();
+          return;
+        }
+        this.activitiesToolbar.requestOpenEventEditor();
+        return;
+      default:
+        return;
+    }
+  }
+
+  private activitiesSelectTrigger(options: {
+    label: string;
+    icon: string;
+    palette: AppMenuPalette;
+    counter?: number;
+    shape?: AppMenuTrigger['shape'];
+  }): AppMenuTrigger {
+    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
+    return {
+      label: options.label,
+      icon: options.icon,
+      palette: options.palette,
+      shape: options.shape ?? 'field',
+      counter: counter > 0 ? { value: counter, max: 99 } : null
+    };
+  }
+
+  private activitiesMenuItem(options: {
+    id: string;
+    label: string;
+    icon: string;
+    palette: AppMenuPalette;
+    counter?: number;
+    active: boolean;
+    context: ActivitiesToolbarMenuContext;
+  }): AppMenuItem<string, ActivitiesToolbarMenuContext> {
+    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
+    return {
+      id: options.id,
+      label: options.label,
+      icon: options.icon,
+      kind: 'radio',
+      active: options.active,
+      palette: options.palette,
+      surface: 'tinted',
+      counter: counter > 0 ? { value: counter, max: 99 } : null,
+      context: options.context
+    };
+  }
+
+  private activitiesPrimaryPalette(filter: AppTypes.ActivitiesPrimaryFilter): AppMenuPalette {
+    switch (filter) {
+      case 'rates':
+        return 'gold';
+      case 'events':
+        return 'orange';
+      case 'hosting':
+        return 'green';
+      case 'invitations':
+        return 'violet';
+      case 'chats':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesEventScopePalette(scope: AppTypes.ActivitiesEventScope): AppMenuPalette {
+    switch (scope) {
+      case 'trash':
+        return 'danger';
+      case 'drafts':
+        return 'slate';
+      case 'invitations':
+        return 'violet';
+      case 'my-events':
+        return 'green';
+      case 'pending':
+        return 'amber';
+      case 'all':
+        return 'blue';
+      case 'active-events':
+      default:
+        return 'orange';
+    }
+  }
+
+  private activitiesChatContextPalette(filter: AppTypes.ActivitiesChatContextFilter): AppMenuPalette {
+    switch (filter) {
+      case 'event':
+        return 'orange';
+      case 'subEvent':
+        return 'violet';
+      case 'group':
+        return 'green';
+      case 'service':
+        return 'slate';
+      case 'all':
+      default:
+        return 'blue';
+    }
+  }
+
+  private supportCasePalette(filter: AppTypes.SupportCaseFilter): AppMenuPalette {
+    switch (filter) {
+      case 'pending':
+        return 'amber';
+      case 'picked':
+        return 'blue';
+      case 'solved':
+        return 'green';
+      case 'blocked':
+        return 'danger';
+      case 'all':
+      default:
+        return 'neutral';
+    }
+  }
+
+  private activitiesRateGroupPalette(label: string): AppMenuPalette {
+    return this.activitiesToolbar.isRateGroupSeparator(label) ? 'violet' : 'blue';
   }
 
   protected selectActivitiesSupportCaseFilter(filter: AppTypes.SupportCaseFilter): void {
@@ -1024,7 +1461,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     this.activitiesContext.setActivitiesSupportCaseFilter(filter);
-    this.showActivitiesSupportCasePicker = false;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -2403,7 +2839,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || this.showActivitiesPrimaryPicker
       || this.showActivitiesEventScopePicker
       || this.showActivitiesChatContextPicker
-      || this.showActivitiesSupportCasePicker
       || this.showActivitiesRatePicker
       || this.showActivitiesQuickActionsMenu
     ) {
@@ -2412,16 +2847,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.showActivitiesPrimaryPicker = false;
       this.showActivitiesEventScopePicker = false;
       this.showActivitiesChatContextPicker = false;
-      this.showActivitiesSupportCasePicker = false;
       this.showActivitiesRatePicker = false;
       this.showActivitiesQuickActionsMenu = false;
       this.cdr.markForCheck();
     }
-    if (this.inlineItemActionMenu) {
-      this.inlineItemActionMenu = null;
-      this.cdr.markForCheck();
-    }
-    this.activityEventActionMenu?.close();
+    this.appMenuDispatcher.close();
     if (!(target instanceof Element)) {
       return;
     }

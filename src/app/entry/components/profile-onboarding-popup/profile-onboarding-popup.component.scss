@@ -246,8 +246,7 @@
 .profile-onboarding-grid input,
 .profile-onboarding-about textarea,
 .profile-onboarding-experience-form input,
-.profile-onboarding-experience-form textarea,
-.profile-onboarding-select {
+.profile-onboarding-experience-form textarea {
   width: 100%;
   min-height: 40px;
   border: 1px solid rgba(55, 82, 118, 0.22);
@@ -260,9 +259,9 @@
   box-sizing: border-box;
 }
 
-.profile-onboarding-select {
-  display: flex;
-  align-items: center;
+.profile-onboarding-menu {
+  width: 100%;
+  min-width: 0;
 }
 
 .profile-onboarding-date-input-wrap {
@@ -316,27 +315,6 @@
   cursor: wait;
 }
 
-.profile-onboarding-language-select {
-  height: 40px;
-  min-height: 40px;
-  max-height: 40px;
-  cursor: pointer;
-  transition: none;
-}
-
-.profile-onboarding-language-summary,
-.profile-onboarding-language-placeholder {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-onboarding-language-placeholder {
-  color: #718198;
-}
-
 .profile-onboarding-chip-list,
 .profile-onboarding-chip-grid {
   display: flex;
@@ -365,85 +343,6 @@
   height: 14px;
   font-size: 14px;
   line-height: 14px;
-}
-
-::ng-deep .profile-onboarding-language-panel {
-  width: 100% !important;
-  max-height: var(--profile-onboarding-language-panel-max-height, min(260px, 42vh)) !important;
-  min-width: 0 !important;
-  max-width: 100% !important;
-  pointer-events: auto;
-}
-
-::ng-deep .profile-onboarding-language-panel.profile-onboarding-language-panel--above {
-  transform-origin: bottom center !important;
-  animation: profile-onboarding-language-panel-up 140ms cubic-bezier(0.2, 0, 0, 1) both !important;
-}
-
-::ng-deep .profile-onboarding-language-panel .mat-mdc-option {
-  min-height: 38px;
-}
-
-::ng-deep .profile-onboarding-language-panel .mat-ripple-element,
-:host ::ng-deep .profile-onboarding-language-select .mat-ripple-element {
-  display: none !important;
-}
-
-:host ::ng-deep .profile-onboarding-language-select,
-:host ::ng-deep .profile-onboarding-language-select .mat-mdc-select-trigger,
-:host ::ng-deep .profile-onboarding-language-select .mat-mdc-select-value,
-:host ::ng-deep .profile-onboarding-language-select .mat-mdc-select-value-text {
-  animation: none !important;
-  transition: none !important;
-}
-
-:host ::ng-deep .profile-onboarding-language-select,
-:host ::ng-deep .profile-onboarding-language-select.mat-mdc-select-open,
-:host ::ng-deep .profile-onboarding-language-select.cdk-focused,
-:host ::ng-deep .profile-onboarding-language-select.cdk-mouse-focused {
-  background: #ffffff !important;
-  border-color: rgba(55, 82, 118, 0.22) !important;
-  box-shadow: none !important;
-  transform: none !important;
-}
-
-:host ::ng-deep .profile-onboarding-language-select .mat-mdc-select-trigger {
-  height: 100%;
-  align-items: center;
-}
-
-:host ::ng-deep .profile-onboarding-language-select .mat-mdc-select-value {
-  min-width: 0;
-}
-
-::ng-deep .cdk-overlay-container:has(.profile-onboarding-language-panel) {
-  z-index: 3305;
-}
-
-::ng-deep .cdk-overlay-pane:has(.profile-onboarding-language-panel) {
-  position: fixed !important;
-  top: var(--profile-onboarding-language-panel-top, 20vh) !important;
-  right: auto !important;
-  bottom: auto !important;
-  left: var(--profile-onboarding-language-panel-left, 50vw) !important;
-  width: var(--profile-onboarding-language-panel-width, min(340px, calc(100vw - 24px))) !important;
-  min-width: 0 !important;
-  max-width: var(--profile-onboarding-language-panel-width, min(340px, calc(100vw - 24px))) !important;
-  transform: none !important;
-  pointer-events: auto;
-  z-index: 3306;
-}
-
-@keyframes profile-onboarding-language-panel-up {
-  from {
-    opacity: 0.88;
-    transform: scaleY(0.72);
-  }
-
-  to {
-    opacity: 1;
-    transform: scaleY(1);
-  }
 }
 
 .profile-onboarding-chip-grid button.active {
@@ -584,26 +483,6 @@
 .profile-onboarding-about small {
   justify-self: end;
   color: #65758a;
-}
-
-.profile-onboarding-option {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.34rem;
-}
-
-.profile-onboarding-status-trigger {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-onboarding-option .mat-icon {
-  width: 17px;
-  height: 17px;
-  font-size: 17px;
-  line-height: 17px;
 }
 
 .profile-onboarding-selector-page {

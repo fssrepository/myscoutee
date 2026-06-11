@@ -225,12 +225,18 @@
             @if (isDivider(item)) {
               <div class="app-menu__divider" role="separator"></div>
             } @else if (isSection(item)) {
-              <div class="app-menu__section-label">{{ itemLabel(item) | i18n }}</div>
+              <div class="app-menu__section-label" [ngClass]="itemPaletteClass(item)">
+                @if (itemIcon(item)) {
+                  <mat-icon>{{ itemIcon(item) }}</mat-icon>
+                }
+                <span>{{ itemLabel(item) | i18n }}</span>
+              </div>
             } @else if (itemHref(item)) {
               <a
                 class="app-menu__item"
                 [ngClass]="itemPaletteClass(item)"
                 [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
                 [class.app-menu__item--active]="isItemActive(item)"
                 [class.app-menu__item--disabled]="isItemDisabled(item)"
                 [class.app-menu__item--with-description]="itemDescription(item)"
@@ -276,6 +282,7 @@
                 class="app-menu__item"
                 [ngClass]="itemPaletteClass(item)"
                 [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
                 [class.app-menu__item--active]="isItemActive(item)"
                 [class.app-menu__item--disabled]="isItemDisabled(item)"
                 [class.app-menu__item--with-description]="itemDescription(item)"

@@ -7,15 +7,22 @@ import { Observable, from } from 'rxjs';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext, IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
 import {
+  INFO_CARD_AVAILABLE_ACTIONS,
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent
+  type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent,
+  type InfoCardResolvedMenuAction
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import {
+  AppMenuDispatcher,
   AppMenuComponent,
+  AppMenuOutletComponent,
+  type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuModel
+  type AppMenuModel,
+  type AppMenuPalette
 } from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
@@ -43,6 +50,11 @@ interface IdeaFilterMenuContext {
 interface IdeaLanguageMenuContext {
   scope: IdeaLanguageMenuScope;
   language: string;
+}
+
+interface IdeaCardMenuContext {
+  card: IdeaInfoCard;
+  action: InfoCardResolvedMenuAction;
 }
 
 interface IdeaPostDraft {
@@ -78,6 +90,7 @@ interface IdeaPostLangCache {
     FormsModule,
     MatIconModule,
     AppMenuComponent,
+    AppMenuOutletComponent,
     SmartListComponent,
     InfoCardComponent,
     EditableImageCarouselComponent,
@@ -95,6 +108,7 @@ export class AdminIdeaEditorPopupComponent {
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   protected loading = false;
   protected saving = false;
@@ -818,6 +832,88 @@ export class AdminIdeaEditorPopupComponent {
       case 'delete':
         this.deletePost(post);
         break;
+    }
+  }
+
+  protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: InfoCardMenuRequestEvent): void {
+    const menuId = `admin-idea-card:${request.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      scope: 'admin-idea-editor',
+      kind: 'select',
+      title: this.infoCardMenuTitle(request.card),
+      items: this.infoCardMenuItems(card, request),
+      triggerRect: request.triggerRect,
+      openUp: request.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger
+    }, null);
+  }
+
+  protected onIdeaDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as IdeaCardMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    this.onIdeaCardMenuAction(context.card, {
+      id: context.card.id,
+      actionId: context.action.id,
+      action: context.action,
+      card: context.card
+    });
+  }
+
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private infoCardMenuItems(
+    card: IdeaInfoCard,
+    request: InfoCardMenuRequestEvent
+  ): readonly AppMenuItem<string, IdeaCardMenuContext>[] {
+    return request.actions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        surface: 'tinted',
+        context: {
+          card,
+          action
+        }
+      }];
+    });
+  }
+
+  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'warning';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'neutral';
     }
   }
 

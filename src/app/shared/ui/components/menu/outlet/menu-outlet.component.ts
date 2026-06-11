@@ -5,7 +5,9 @@ import {
   EventEmitter,
   HostBinding,
   HostListener,
+  Input,
   Output,
+  computed,
   inject
 } from '@angular/core';
 
@@ -50,7 +52,13 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
 
   private readonly dispatcher = inject(AppMenuDispatcher);
-  protected readonly activeMenu = this.dispatcher.activeMenu;
+  @Input() scope = 'default';
+
+  protected readonly activeMenu = computed(() => {
+    const activeMenu = this.dispatcher.activeMenu();
+    const scope = `${this.scope ?? 'default'}`.trim() || 'default';
+    return activeMenu?.scope === scope ? activeMenu : null;
+  });
 
   @Output() readonly itemSelect = new EventEmitter<AppMenuItemSelectEvent<TId, TContext>>();
 

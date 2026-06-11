@@ -1,12 +1,24 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
+import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
-import { PricingEditorComponent, ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  PricingEditorComponent,
+  ProgressIndicatorComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger
+} from '../../../shared/ui';
+
+type AssetFormMenuContext =
+  | { menu: 'visibility'; visibility: AppTypes.EventVisibility }
+  | { menu: 'type'; type: AppTypes.AssetType }
+  | { menu: 'category'; category: AppTypes.AssetCategory };
 
 @Component({
   selector: 'app-asset-form-popup',
@@ -15,14 +27,14 @@ import { PricingEditorComponent, ProgressIndicatorComponent } from '../../../sha
     CommonModule,
     FormsModule,
     MatIconModule,
-    MatSelectModule,
+    AppMenuComponent,
     PricingEditorComponent,
     ProgressIndicatorComponent
   ],
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'
 })
-export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
+export class AssetFormPopupComponent implements OnChanges {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
@@ -47,38 +59,15 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
   @Input({ required: true }) openAssetFormRouteStopMap!: (index: number, event?: Event) => void;
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
-  protected showMobileAssetTypePicker = false;
-  protected showMobileAssetCategoryPicker = false;
-  protected showVisibilityPicker = false;
   protected showPoliciesPopup = false;
   protected showPolicyEditorPopup = false;
   protected workingPolicies: AppTypes.EventPolicyItem[] = [];
   protected workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
 
-  // Add to your class properties:
-  protected isMobileViewport = false;
-  private mediaQueryList: MediaQueryList | null = null;
-  private mediaListener = () => { this.isMobileViewport = this.mediaQueryList?.matches ?? false; };
-
-  // Implement OnInit and OnDestroy:
-  ngOnInit(): void {
-    if (typeof window !== 'undefined') {
-      this.mediaQueryList = window.matchMedia('(max-width: 900px)');
-      this.isMobileViewport = this.mediaQueryList.matches;
-      this.mediaQueryList.addEventListener('change', this.mediaListener);
-    }
-  }
-
-  ngOnDestroy(): void {
-    this.mediaQueryList?.removeEventListener('change', this.mediaListener);
-  }
-
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && changes['visible'].currentValue === true) {
-      this.showMobileAssetTypePicker = false;
-      this.showMobileAssetCategoryPicker = false;
-      this.showVisibilityPicker = false;
+      this.showPolicyEditorPopup = false;
     }
   }
 
@@ -96,23 +85,93 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
     void this.save();
   }
 
-  protected toggleVisibilityPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.isLoading || this.isSavePending) {
-      return;
-    }
-    this.showMobileAssetTypePicker = false;
-    this.showMobileAssetCategoryPicker = false;
-    this.showVisibilityPicker = !this.showVisibilityPicker;
+  protected visibilityMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.assetFormVisibility,
+      icon: this.visibilityIcon(this.assetFormVisibility),
+      palette: this.visibilityPalette(this.assetFormVisibility),
+      disabled: () => this.isSavePending || this.isLoading,
+      shape: 'pill',
+      ariaLabel: 'Open asset visibility selector'
+    };
   }
 
-  protected selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
-    event?.stopPropagation();
+  protected visibilityMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+    return this.assetVisibilityOptions.map(option => ({
+      id: `visibility-${option}`,
+      label: option,
+      icon: this.visibilityIcon(option),
+      kind: 'radio',
+      active: option === this.assetFormVisibility,
+      palette: this.visibilityPalette(option),
+      disabled: () => this.isSavePending || this.isLoading,
+      context: { menu: 'visibility', visibility: option }
+    }));
+  }
+
+  protected assetTypeMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.assetTypeLabel(this.assetForm.type),
+      icon: this.assetTypeIcon(this.assetForm.type),
+      palette: this.assetTypePalette(this.assetForm.type),
+      disabled: () => this.isSavePending || this.isLoading,
+      ariaLabel: 'Open asset type'
+    };
+  }
+
+  protected assetTypeMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+    return this.assetTypeOptions.map(option => ({
+      id: `asset-type-${option}`,
+      label: this.assetTypeLabel(option),
+      icon: this.assetTypeIcon(option),
+      kind: 'radio',
+      active: option === this.assetForm.type,
+      palette: this.assetTypePalette(option),
+      disabled: () => this.isSavePending || this.isLoading,
+      context: { menu: 'type', type: option }
+    }));
+  }
+
+  protected assetCategoryMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.assetCategoryLabel(this.assetForm.category),
+      icon: this.assetCategoryIcon(this.assetForm.category),
+      palette: this.assetCategoryPalette(this.assetForm.category),
+      disabled: () => this.isSavePending || this.isLoading,
+      ariaLabel: 'Open asset category'
+    };
+  }
+
+  protected assetCategoryMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+    return this.assetCategoryOptions().map(option => ({
+      id: `asset-category-${option}`,
+      label: this.assetCategoryLabel(option),
+      icon: this.assetCategoryIcon(option),
+      kind: 'radio',
+      active: option === this.assetForm.category,
+      palette: this.assetCategoryPalette(option),
+      disabled: () => this.isSavePending || this.isLoading,
+      context: { menu: 'category', category: option }
+    }));
+  }
+
+  protected onAssetFormMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     if (this.isLoading || this.isSavePending) {
       return;
     }
-    this.setAssetFormVisibility(option);
-    this.showVisibilityPicker = false;
+    const context = event.context as AssetFormMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'visibility') {
+      this.setAssetFormVisibility(context.visibility);
+      return;
+    }
+    if (context.menu === 'type') {
+      this.onAssetTypeChange(context.type);
+      return;
+    }
+    this.assetForm.category = context.category;
   }
 
   protected assetCategoryOptions(): AppTypes.AssetCategory[] {
@@ -252,78 +311,41 @@ export class AssetFormPopupComponent implements OnChanges, OnInit, OnDestroy {
     return this.assetForm?.type === 'Accommodation';
   }
 
-  protected openMobileAssetTypeSelector(event: Event): void {
-    if (!this.isMobileAssetTypeSheetViewport() || this.isLoading || this.isSavePending) {
-      return;
+  private visibilityPalette(option: AppTypes.EventVisibility): AppMenuPalette {
+    if (option === 'Public') {
+      return 'blue';
     }
-    event.stopPropagation();
-    this.showMobileAssetCategoryPicker = false;
-    this.showVisibilityPicker = false;
-    this.showMobileAssetTypePicker = !this.showMobileAssetTypePicker;
+    if (option === 'Friends only') {
+      return 'green';
+    }
+    return 'orange';
   }
 
-  protected selectMobileAssetType(type: AppTypes.AssetType, event?: Event): void {
-    if (this.isLoading || this.isSavePending) {
-      return;
+  private assetTypePalette(type: AppTypes.AssetFilterType): AppMenuPalette {
+    if (type === 'Accommodation') {
+      return 'green';
     }
-    event?.stopPropagation();
-    this.onAssetTypeChange(type);
-    this.showMobileAssetTypePicker = false;
+    if (type === 'Supplies') {
+      return 'brown';
+    }
+    if (type === 'Ticket') {
+      return 'sky';
+    }
+    return 'blue';
   }
 
-  protected openMobileAssetCategorySelector(event: Event): void {
-    if (!this.isMobileAssetTypeSheetViewport() || this.isLoading || this.isSavePending) {
-      return;
+  private assetCategoryPalette(category: AppTypes.AssetCategory | null | undefined): AppMenuPalette {
+    const className = this.assetCategoryClass(category);
+    if (className.includes('accommodation') || className.includes('property')) {
+      return 'green';
     }
-    event.stopPropagation();
-    this.showMobileAssetTypePicker = false;
-    this.showVisibilityPicker = false;
-    this.showMobileAssetCategoryPicker = !this.showMobileAssetCategoryPicker;
-  }
-
-  protected selectMobileAssetCategory(category: AppTypes.AssetCategory, event?: Event): void {
-    if (this.isLoading || this.isSavePending) {
-      return;
+    if (className.includes('supply') || className.includes('supplies')) {
+      return 'brown';
     }
-    event?.stopPropagation();
-    this.assetForm.category = category;
-    this.showMobileAssetCategoryPicker = false;
-  }
-
-  protected isMobileAssetTypeSheetViewport(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
+    if (className.includes('vehicle') || className.includes('car')) {
+      return 'blue';
     }
-    return window.matchMedia('(max-width: 900px)').matches;
-  }
-
-  @HostListener('window:keydown.escape', ['$event'])
-  protected onEscapePressed(event: Event): void {
-    if (!this.showMobileAssetTypePicker && !this.showMobileAssetCategoryPicker) {
-      return;
-    }
-    const keyboardEvent = event as KeyboardEvent;
-    keyboardEvent.preventDefault();
-    keyboardEvent.stopPropagation();
-    this.showMobileAssetTypePicker = false;
-    this.showMobileAssetCategoryPicker = false;
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (!target.closest('.asset-form-mobile-type-picker')) {
-      this.showMobileAssetTypePicker = false;
-    }
-    if (!target.closest('.asset-form-mobile-category-picker')) {
-      this.showMobileAssetCategoryPicker = false;
-    }
-    if (!target.closest('.asset-form-visibility-picker')) {
-      this.showVisibilityPicker = false;
-    }
+    return this.assetTypePalette(this.assetForm.type);
   }
 
   protected onImageFileChange(event: Event): void {

@@ -8,56 +8,19 @@
           <div class="popup-title">
             <h2>Event Feedback</h2>
           </div>
-          <div class="event-explore-order-picker event-feedback-filter-picker">
-            <button
-              type="button"
-              class="popup-view-fab event-explore-order-trigger event-feedback-filter-trigger"
-              [ngClass]="feedback.eventFeedbackFilterOptionClass(feedback.eventFeedbackListFilter())"
-              (click)="feedback.toggleEventFeedbackFilterPicker($event)"
-              aria-label="Open event feedback filter"
-              >
-              <mat-icon>{{ feedback.eventFeedbackFilterIcon() }}</mat-icon>
-              <span>{{ feedback.eventFeedbackFilterLabel() }}</span>
-              @if (feedback.eventFeedbackFilterCount(feedback.eventFeedbackListFilter()) > 0) {
-                <span
-                  class="rate-filter-count-badge rate-filter-trigger-badge event-feedback-filter-trigger-badge"
-                  [ngClass]="feedback.eventFeedbackFilterBadgeClass(feedback.eventFeedbackListFilter())"
-                  >
-                  {{ feedback.eventFeedbackFilterCount(feedback.eventFeedbackListFilter()) | counterBadge }}
-                </span>
-              }
-            </button>
-            @if (feedback.showEventFeedbackFilterPicker()) {
-              <div class="activities-view-picker-panel event-explore-order-panel">
-                @for (option of feedback.eventFeedbackListFilters; track option) {
-                  <button
-                    type="button"
-                    class="activities-view-option event-feedback-filter-option"
-                    [ngClass]="feedback.eventFeedbackFilterOptionClass(option.key)"
-                    [class.is-active]="option.key === feedback.eventFeedbackListFilter()"
-                    (click)="feedback.selectEventFeedbackListFilter(option.key, $event)"
-                    >
-                    <mat-icon>{{ option.icon }}</mat-icon>
-                    <span>{{ option.label }}</span>
-                    @if (feedback.eventFeedbackFilterCount(option.key) > 0) {
-                      <span
-                        class="rate-filter-count-badge event-feedback-filter-option-count"
-                        [ngClass]="feedback.eventFeedbackFilterBadgeClass(option.key)"
-                        >
-                        {{ feedback.eventFeedbackFilterCount(option.key) | counterBadge }}
-                      </span>
-                    }
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="event-explore-order-picker event-feedback-filter-picker"
+            kind="select"
+            [trigger]="eventFeedbackFilterMenuTrigger()"
+            [items]="eventFeedbackFilterMenuItems()"
+            (itemSelect)="onEventFeedbackMenuSelect($event)"
+          ></app-menu>
           <button mat-icon-button class="popup-close" (click)="feedback.closePopup()" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>
         </div>
         <div class="popup-body">
-          <div class="support-popup event-feedback-list-popup" (click)="feedback.closeEventFeedbackFilterPicker()">
+          <div class="support-popup event-feedback-list-popup">
             @if (feedback.eventFeedbackListSubmitMessage()) {
               <div class="support-submit-success">{{ feedback.eventFeedbackListSubmitMessage() }}</div>
             }
@@ -78,11 +41,17 @@
                 >
                 <app-info-card
                   [card]="eventFeedbackInfoCard(item)"
+                  [useSharedMenu]="true"
                   (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
                   (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
+                  (menuRequest)="openEventFeedbackInfoCardMenu(item, $event)"
                 ></app-info-card>
               </div>
             </ng-template>
+            <app-menu-outlet
+              scope="event-feedback"
+              (itemSelect)="onEventFeedbackDispatchedMenuSelect($event)"
+            ></app-menu-outlet>
           </div>
         </div>
       </div>

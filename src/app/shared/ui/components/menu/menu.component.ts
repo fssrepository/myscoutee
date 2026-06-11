@@ -21,6 +21,7 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuItemLayout,
   AppMenuItemSurface,
   AppMenuItem,
   AppMenuItemSelectEvent,
@@ -173,6 +174,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (!this.open) {
       return;
     }
+    event.preventDefault();
     event.stopPropagation();
     this.setOpen(false);
   }
@@ -253,7 +255,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
-    return this.activeBranch?.children ?? this.items;
+    if (this.activeBranch) {
+      return this.activeBranch.children ?? [];
+    }
+    if (this.items.length > 0) {
+      return this.items;
+    }
+    return this.groupedDropdownItems();
   }
 
   protected get showBranchBack(): boolean {
@@ -502,6 +510,37 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return branch.children ?? branch.items ?? [];
   }
 
+  private groupedDropdownItems(): readonly AppMenuItem<TId, TContext>[] {
+    if (this.isShortcutGridKind || !this.hasMenuNodes) {
+      return [];
+    }
+    const items: AppMenuItem<TId, TContext>[] = [];
+    for (const branch of this.menuNodes) {
+      const children = this.branchChildren(branch);
+      if (children.length === 0) {
+        continue;
+      }
+      if (items.length > 0) {
+        items.push({
+          id: `${branch.id}__divider` as TId,
+          kind: 'divider'
+        });
+      }
+      if (this.branchLabel(branch) || this.branchIcon(branch)) {
+        items.push({
+          id: `${branch.id}__section` as TId,
+          kind: 'section',
+          label: branch.label,
+          icon: branch.icon,
+          palette: branch.palette,
+          ariaLabel: branch.ariaLabel
+        });
+      }
+      items.push(...children);
+    }
+    return items;
+  }
+
   protected itemPalette(item: AppMenuItem<TId, TContext>): AppMenuPalette {
     return item.palette ?? 'default';
   }
@@ -512,6 +551,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected itemSurface(item: AppMenuItem<TId, TContext>): AppMenuItemSurface {
     return item.surface ?? 'plain';
+  }
+
+  protected itemLayout(item: AppMenuItem<TId, TContext>): AppMenuItemLayout {
+    return item.layout ?? 'default';
   }
 
   protected itemLabel(item: AppMenuItem<TId, TContext>): string {

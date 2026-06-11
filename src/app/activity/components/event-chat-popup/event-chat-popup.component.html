@@ -9,15 +9,7 @@
       [attr.data-chat-id]="chatSession.item.id"
       (click)="$event.stopPropagation()"
     >
-      @if (isSelectedChatContextMenuOpen()) {
-        <button
-          type="button"
-          class="item-action-menu-dismiss-layer"
-          (click)="closeContextMenu($event)"
-          aria-label="Close action menu"
-        ></button>
-      }
-      <div class="popup-header popup-header-chat popup-header-with-chat-progress" (click)="closeContextMenu()">
+      <div class="popup-header popup-header-chat popup-header-with-chat-progress">
         <div class="popup-title popup-title-chat">
           <div class="popup-chat-title-block">
             <h2>{{ chatHeaderTitle(chatSession) }}</h2>
@@ -82,69 +74,15 @@
         }
         @if (chatHeaderControlsHydrated && !isServiceChat() && !isBlockedSupportChat() && selectedChatHasSubEventMenu()) {
           <div class="popup-chat-context-menu-wrap">
-            <button
-              type="button"
-              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
-              [ngClass]="selectedChatHeaderActionToneClass()"
-              [class.is-open]="isSelectedChatContextMenuOpen()"
-              (click)="toggleSelectedChatContextMenu($event)"
-              aria-label="Open chat context menu"
-              >
-              <span class="event-editor-members-invite">
-                <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
-                <span>{{ selectedChatHeaderActionLabel() }}</span>
-                <mat-icon class="popup-chat-context-chevron">expand_more</mat-icon>
-              </span>
-              @if (selectedChatHeaderActionBadgeCount() > 0) {
-                <span
-                  class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
-                  >
-                  {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
-                </span>
-              }
-            </button>
-            <div
-              class="item-action-menu event-subevent-resource-menu popup-chat-context-menu"
-              [class.is-open]="isSelectedChatContextMenuOpen()"
-              [class.item-action-menu-mobile]="isMobileView()"
-              [class.item-action-menu-desktop]="!isMobileView()"
-              [class.is-open-up]="isSelectedChatContextMenuOpenUp()"
-              (click)="$event.stopPropagation()"
-              >
-              <div class="item-action-menu-title">{{ selectedChatContextMenuTitle() }}</div>
-              @for (group of selectedChatContextMenuGroups(); track group.id) {
-                @if ($index > 0) {
-                  <div class="item-action-menu-divider"></div>
-                }
-                @if (group.label) {
-                  <div class="item-action-menu-section-label">{{ group.label }}</div>
-                }
-                @for (control of group.controls; track control.id) {
-                  <button
-                    type="button"
-                    class="item-action-menu-btn"
-                    [ngClass]="selectedChatMenuControlClasses(control)"
-                    (click)="openSelectedChatMenuControl(control, $event)"
-                    >
-                    @if (control.summary) {
-                      <span class="subevent-resource-menu-item-icon"><mat-icon>{{ selectedChatMenuControlIcon(control) }}</mat-icon></span>
-                      <span class="subevent-resource-menu-item-main">
-                        <span class="subevent-resource-menu-item-title">{{ control.label }}</span>
-                        <span class="subevent-resource-menu-item-value">{{ control.summary }}</span>
-                      </span>
-                    } @else {
-                      <mat-icon>{{ selectedChatMenuControlIcon(control) }}</mat-icon>
-                      <span>{{ control.label }}</span>
-                    }
-                    @if (selectedChatMenuControlBadgeCount(control) > 0) {
-                      <span class="rate-filter-count-badge subevent-resource-menu-item-counter">
-                        {{ selectedChatMenuControlBadgeCount(control) | counterBadge }}
-                      </span>
-                    }
-                  </button>
-                }
-              }
-            </div>
+            <app-menu
+              class="popup-chat-context-app-menu"
+              kind="select"
+              [title]="selectedChatContextMenuTitle()"
+              [trigger]="selectedChatContextMenuTrigger()"
+              [groups]="selectedChatContextMenuGroupsModel()"
+              panelAlign="end"
+              (itemSelect)="onInlineChatMenuSelect($event)"
+            ></app-menu>
           </div>
         }
         <button mat-icon-button type="button" class="popup-close" (click)="close()" aria-label="Close chat popup">
@@ -195,33 +133,15 @@
                 </div>
               }
               <span class="chat-compose-plus-wrap">
-                @if (composerMenuOpen) {
-                  <div class="chat-composer-menu" (click)="$event.stopPropagation()">
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-media" (click)="openImageAttachmentPicker($event)">
-                      <mat-icon>image</mat-icon>
-                      <span>Upload image</span>
-                    </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-voice" (click)="openVoiceComposer($event)">
-                      <mat-icon>mic</mat-icon>
-                      <span>Send a voice clip</span>
-                    </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-poll" (click)="openPollComposer($event)">
-                      <mat-icon>poll</mat-icon>
-                      <span>Create a poll</span>
-                    </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-event" (click)="shareCurrentEvent($event)">
-                      <mat-icon>event</mat-icon>
-                      <span>Share event</span>
-                    </button>
-                    <button type="button" class="chat-composer-menu-item chat-composer-menu-item-asset" (click)="shareFirstAvailableAsset($event)">
-                      <mat-icon>inventory_2</mat-icon>
-                      <span>Share asset</span>
-                    </button>
-                  </div>
-                }
-                <button type="button" class="chat-compose-plus-btn" (click)="toggleComposerMenu($event)" aria-label="Open chat tools">
-                  <mat-icon>{{ composerMenuOpen ? 'close' : 'add' }}</mat-icon>
-                </button>
+                <app-menu
+                  class="chat-composer-app-menu"
+                  kind="select"
+                  [trigger]="composerMenuTrigger()"
+                  [items]="composerMenuItems()"
+                  panelAlign="start"
+                  [openUp]="true"
+                  (itemSelect)="onInlineChatMenuSelect($event)"
+                ></app-menu>
               </span>
               <input
                 #imageAttachmentInput
@@ -346,7 +266,6 @@
     [class.chat-message-highlighted]="highlightedMessageId && highlightedMessageId === message.id"
     [class.chat-message-deleted]="message.deletedAtIso"
     (click)="selectMessage(message, $event)"
-    (contextmenu)="openMessageActionMenu(message, $event)"
     (touchstart)="startMessageLongPress(message)"
     (touchend)="clearMessageLongPress()"
     (touchcancel)="clearMessageLongPress()"
@@ -534,14 +453,14 @@
             >
             <mat-icon>{{ (quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id) ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
-          <button
-            type="button"
-            [class.chat-tool-btn-open]="messageActionMenuId && messageActionMenuId === message.id"
-            (click)="openMessageActionMenu(message, $event)"
-            aria-label="More message actions"
-            >
-            <mat-icon>{{ messageActionMenuId && messageActionMenuId === message.id ? 'close' : 'more_vert' }}</mat-icon>
-          </button>
+          <app-menu-trigger
+            class="chat-message-action-trigger"
+            [menuId]="messageActionMenuIdFor(message)"
+            kind="select"
+            [trigger]="messageActionMenuTrigger(message)"
+            [items]="messageActionMenuItems(message)"
+            panelAlign="auto"
+          ></app-menu-trigger>
         </div>
       }
       @if (message.id && quickReactionMessageId === message.id) {
@@ -557,27 +476,6 @@
           <button type="button" class="chat-quick-reaction-add" (click)="openEmojiPicker(message, $event)">
             <mat-icon>add</mat-icon>
           </button>
-        </div>
-      }
-      @if (message.id && messageActionMenuId === message.id) {
-        <div
-          class="chat-message-action-menu"
-          [class.chat-message-action-menu-up]="messageActionMenuOpenUp"
-          [class.chat-message-action-menu-tools-down]="selectedMessageToolsDown"
-          (click)="$event.stopPropagation()"
-          >
-          @if (messageHasViewableAttachment(message)) {
-            <button type="button" (click)="viewSharedMessage(message, $event)">View</button>
-          }
-          <button type="button" (click)="setReplyTarget(message, $event)">Reply</button>
-          @if (message.mine && !message.deletedAtIso) {
-            <button type="button" (click)="beginEditMessage(message, $event)">Edit</button>
-            <button type="button" (click)="unsendMessage(message, $event)">Unsend</button>
-          }
-          <button type="button" (click)="togglePinMessage(message, $event)">{{ message.pinnedAtIso ? 'Unpin' : 'Pin' }}</button>
-          @if (canReportMessage(message)) {
-            <button type="button" (click)="reportMessage(message, $event)">Report</button>
-          }
         </div>
       }
       @if (message.id && !message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
@@ -602,6 +500,8 @@
     </div>
   </article>
 </ng-template>
+
+<app-menu-outlet (itemSelect)="onDispatchedChatMenuSelect($event)"></app-menu-outlet>
 
 @if (emojiPickerMessage(); as emojiMessage) {
   <section class="chat-modal chat-emoji-modal">

@@ -82,41 +82,24 @@
                 </label>
                 <label>
                   <span class="profile-onboarding-required-label">Physique</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.physique" (ngModelChange)="persistDraft()">
-                    @for (option of physiqueOptions; track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.physique, 'fitness_center', 'green')"
+                    [items]="fieldMenuItems('physique', physiqueOptions, f.physique, 'fitness_center', 'green')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <div class="profile-onboarding-language-field profile-onboarding-field">
                   <span class="profile-onboarding-required-label">Languages</span>
-                  <mat-select
-                    #languageSelectRoot
-                    class="profile-onboarding-select profile-onboarding-language-select"
-                    multiple
-                    [value]="f.languages"
-                    (selectionChange)="onLanguagesChange($event.value)"
-                    (openedChange)="onLanguageSelectOpened($event)"
-                    (click)="syncLanguagePanelWidth()"
-                    (focus)="syncLanguagePanelWidth()"
-                    [disableRipple]="true"
-                    [disableOptionCentering]="true"
-                    [panelWidth]="languagePanelWidth"
-                    panelClass="profile-onboarding-language-panel profile-onboarding-language-panel--above"
-                    aria-label="Languages"
-                    placeholder="Select languages"
-                    >
-                    <mat-select-trigger>
-                      @if (f.languages.length > 0) {
-                        <span class="profile-onboarding-language-summary">{{ f.languages.join(', ') }}</span>
-                      } @else {
-                        <span class="profile-onboarding-language-placeholder">Select languages</span>
-                      }
-                    </mat-select-trigger>
-                    @for (language of languageSuggestions; track language) {
-                      <mat-option [value]="language">{{ language }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu profile-onboarding-language-menu"
+                    kind="select"
+                    [trigger]="languagesMenuTrigger(f.languages)"
+                    [items]="languageMenuItems(f.languages)"
+                    [closeOnSelect]="false"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </div>
               </div>
             </section>
@@ -178,27 +161,23 @@
                 </label>
                 <label>
                   <span>Visibility</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.profileStatus" (ngModelChange)="persistDraft()">
-                    <mat-select-trigger>
-                      <span class="profile-onboarding-status-trigger">{{ f.profileStatus }}</span>
-                    </mat-select-trigger>
-                    @for (option of profileStatusOptions; track option.value) {
-                      <mat-option [value]="option.value">
-                        <span class="profile-onboarding-option">
-                          <mat-icon>{{ option.icon }}</mat-icon>
-                          <span>{{ option.value }}</span>
-                        </span>
-                      </mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="profileStatusMenuTrigger(f.profileStatus)"
+                    [items]="profileStatusMenuItems(f.profileStatus)"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Gender</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.genderDetail" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Gender'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.genderDetail, 'person', 'violet')"
+                    [items]="fieldMenuItems('genderDetail', detailOptions('Gender'), f.genderDetail, 'person', 'violet')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
               </div>
             </section>
@@ -219,83 +198,103 @@
               <div class="profile-onboarding-grid">
                 <label>
                   <span>Drinking</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.drinking" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Drinking'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.drinking, 'local_bar', 'orange')"
+                    [items]="fieldMenuItems('drinking', detailOptions('Drinking'), f.drinking, 'local_bar', 'orange')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Smoking</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.smoking" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Smoking'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.smoking, 'smoking_rooms', 'slate')"
+                    [items]="fieldMenuItems('smoking', detailOptions('Smoking'), f.smoking, 'smoking_rooms', 'slate')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Workout</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.workout" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Workout'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.workout, 'fitness_center', 'green')"
+                    [items]="fieldMenuItems('workout', detailOptions('Workout'), f.workout, 'fitness_center', 'green')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Pets</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.pets" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Pets'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.pets, 'pets', 'mint')"
+                    [items]="fieldMenuItems('pets', detailOptions('Pets'), f.pets, 'pets', 'mint')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Family plans</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.familyPlans" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Family plans'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.familyPlans, 'family_restroom', 'pink')"
+                    [items]="fieldMenuItems('familyPlans', detailOptions('Family plans'), f.familyPlans, 'family_restroom', 'pink')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Children</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.children" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Children'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.children, 'child_care', 'amber')"
+                    [items]="fieldMenuItems('children', detailOptions('Children'), f.children, 'child_care', 'amber')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Love style</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.loveStyle" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Love style'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.loveStyle, 'favorite', 'red')"
+                    [items]="fieldMenuItems('loveStyle', detailOptions('Love style'), f.loveStyle, 'favorite', 'red')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Communication</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.communicationStyle" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Communication style'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.communicationStyle, 'forum', 'sky')"
+                    [items]="fieldMenuItems('communicationStyle', detailOptions('Communication style'), f.communicationStyle, 'forum', 'sky')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Orientation</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.sexualOrientation" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Sexual orientation'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.sexualOrientation, 'diversity_1', 'violet')"
+                    [items]="fieldMenuItems('sexualOrientation', detailOptions('Sexual orientation'), f.sexualOrientation, 'diversity_1', 'violet')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
                 <label>
                   <span>Religion</span>
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="f.religion" (ngModelChange)="persistDraft()">
-                    @for (option of detailOptions('Religion'); track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="fieldMenuTrigger(f.religion, 'self_improvement', 'gold')"
+                    [items]="fieldMenuItems('religion', detailOptions('Religion'), f.religion, 'self_improvement', 'gold')"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                 </label>
               </div>
             </section>
@@ -411,11 +410,13 @@
               }
               @if (experienceFormVisible) {
                 <div class="profile-onboarding-experience-form">
-                  <mat-select class="profile-onboarding-select" [(ngModel)]="experienceForm.type">
-                    @for (option of experienceTypeOptions; track option) {
-                      <mat-option [value]="option">{{ option }}</mat-option>
-                    }
-                  </mat-select>
+                  <app-menu
+                    class="profile-onboarding-menu"
+                    kind="select"
+                    [trigger]="experienceTypeMenuTrigger(experienceForm.type)"
+                    [items]="experienceTypeMenuItems(experienceForm.type)"
+                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                  ></app-menu>
                   <input type="text" placeholder="Title" [(ngModel)]="experienceForm.title" />
                   <input type="text" placeholder="Organization" [(ngModel)]="experienceForm.org" />
                   <input type="text" placeholder="City" [(ngModel)]="experienceForm.city" />
