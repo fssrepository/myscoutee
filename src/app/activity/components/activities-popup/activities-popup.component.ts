@@ -33,22 +33,16 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import {
   AppMenuComponent,
   type AppMenuBranch,
-  AppMenuDispatcher,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
-  AppMenuOutletComponent,
   type AppMenuPalette,
   type AppMenuTrigger,
   EventCheckoutPopupComponent,
   I18nPipe,
   type CardProfileViewData,
   SmartListComponent,
-  type InfoCardData,
   type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction,
-  INFO_CARD_AVAILABLE_ACTIONS,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -126,13 +120,6 @@ type ActivitiesToolbarMenuContext =
   | { menu: 'support-case'; value: AppTypes.SupportCaseFilter }
   | { menu: 'quick-action'; value: 'explore' | 'create' };
 
-interface ActivitiesInfoCardMenuContext {
-  menu: 'activity-event-card';
-  row: AppTypes.ActivityListRow;
-  card: InfoCardData;
-  action: InfoCardResolvedMenuAction;
-}
-
 @Component({
   selector: 'app-activities-popup',
   standalone: true,
@@ -140,7 +127,6 @@ interface ActivitiesInfoCardMenuContext {
     CommonModule,
     MatIconModule,
     AppMenuComponent,
-    AppMenuOutletComponent,
     SmartListComponent,
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
@@ -182,7 +168,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   readonly activitiesRates = new ActivitiesRatesController({
     getUsers: () => this.users,
     getActiveUserGender: () => this.activeUser.gender,
@@ -584,96 +569,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
   }
 
-  protected openActivityEventMobileActionMenu(
-    row: AppTypes.ActivityListRow,
-    event: InfoCardMenuRequestEvent
-  ): void {
-    const menuId = `activity-event-card:${event.id}`;
-    if (this.appMenuDispatcher.isOpen(menuId)) {
-      this.appMenuDispatcher.close(menuId);
-      return;
-    }
-    this.appMenuDispatcher.open({
-      id: menuId,
-      kind: 'select',
-      title: this.infoCardMenuTitle(event.card),
-      items: this.infoCardMenuItems(row, event),
-      triggerRect: event.triggerRect,
-      openUp: event.openUp,
-      panelAlign: 'auto',
-      closeOnSelect: true,
-      onClose: event.closeTrigger
-    }, null);
-  }
-
-  protected closeActivityEventMobileActionMenu(): void {
-    this.appMenuDispatcher.close();
-  }
-
-  protected onActivityEventDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    const context = event.context as ActivitiesInfoCardMenuContext | undefined;
-    if (context?.menu !== 'activity-event-card') {
-      return;
-    }
-    this.onActivityEventInfoCardMenuAction(context.row, {
-      id: context.card.id,
-      actionId: context.action.id,
-      action: context.action,
-      card: context.card
-    });
-  }
-
-  private infoCardMenuTitle(card: InfoCardData): string | null {
-    if (card.menuTitle === null) {
-      return null;
-    }
-    return `${card.menuTitle ?? card.title ?? ''}`.trim();
-  }
-
-  private infoCardMenuItems(
-    row: AppTypes.ActivityListRow,
-    request: InfoCardMenuRequestEvent
-  ): readonly AppMenuItem<string, ActivitiesInfoCardMenuContext>[] {
-    return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
-      if (!config) {
-        return [];
-      }
-      const action: InfoCardResolvedMenuAction = {
-        id: actionId,
-        ...config
-      };
-      return [{
-        id: actionId,
-        label: config.label,
-        icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
-        context: {
-          menu: 'activity-event-card',
-          row,
-          card: request.card,
-          action
-        }
-      }];
-    });
-  }
-
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
-    switch (tone) {
-      case 'accent':
-        return 'green';
-      case 'review':
-        return 'violet';
-      case 'warning':
-        return 'amber';
-      case 'destructive':
-        return 'danger';
-      case 'default':
-      default:
-        return 'default';
-    }
-  }
-
   protected openProfileView(profileView: CardProfileViewData): void {
     this.navigatorService.openProfileView(profileView);
   }
@@ -860,7 +755,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resetActivitiesStateForOpen(): void {
-    this.appMenuDispatcher.close();
     this.visibleActivityRows = [];
     this.visibleActivityRowsSource = null;
     this.activitiesStickyValue = '';
@@ -2898,7 +2792,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.showActivitiesQuickActionsMenu = false;
       this.cdr.markForCheck();
     }
-    this.appMenuDispatcher.close();
     if (!(target instanceof Element)) {
       return;
     }

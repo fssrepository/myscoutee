@@ -1,9 +1,7 @@
 @if (card) {
   <app-info-card
     [card]="card"
-    [useSharedMenu]="true"
     (mediaEndClick)="onMediaEndClick()"
     (menuAction)="onMenuAction($event)"
-    (menuRequest)="onMenuRequest($event)"
   ></app-info-card>
 }

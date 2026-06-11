@@ -172,7 +172,6 @@
               [cardRevision]="activitiesEventCardRevisionForRow(row)"
               (mediaEndClick)="openActivityMembers(row)"
               (menuAction)="onActivityEventInfoCardMenuAction(row, $event)"
-              (menuRequest)="openActivityEventMobileActionMenu(row, $event)"
             ></app-activities-event-template>
           </ng-template>
           <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">
@@ -196,9 +195,6 @@
             ></app-activities-rate-template>
           </ng-template>
         </div><!-- /activities-popup -->
-        <app-menu-outlet
-          (itemSelect)="onActivityEventDispatchedMenuSelect($event)"
-        ></app-menu-outlet>
       </div><!-- /popup-body -->
     </div><!-- /app-popup-panel -->
     <app-event-chat-popup></app-event-chat-popup>

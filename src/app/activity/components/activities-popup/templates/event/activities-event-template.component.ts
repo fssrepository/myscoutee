@@ -12,8 +12,7 @@ import {
 import {
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent
+  type InfoCardMenuActionEvent
 } from '../../../../../shared/ui';
 
 @Component({
@@ -30,7 +29,6 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
-  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
 
   protected card: InfoCardData | null = null;
 
@@ -63,9 +61,6 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
     this.menuAction.emit(event);
   }
 
-  protected onMenuRequest(event: InfoCardMenuRequestEvent): void {
-    this.menuRequest.emit(event);
-  }
 }
 
 type ActivityInfoCardActionId =
