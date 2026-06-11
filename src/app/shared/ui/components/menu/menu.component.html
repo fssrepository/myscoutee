@@ -6,6 +6,9 @@
       [ngClass]="triggerPaletteClass()"
       [class.app-menu__trigger--open]="open"
       [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
+      [class.app-menu__trigger--shape-field]="triggerShape() === 'field'"
+      [class.app-menu__trigger--shape-pill]="triggerShape() === 'pill'"
+      [class.app-menu__trigger--shape-icon]="triggerShape() === 'icon'"
       [disabled]="triggerDisabled()"
       [attr.aria-expanded]="open"
       aria-haspopup="menu"
@@ -18,7 +21,7 @@
       @if (!trigger?.hideLabel && triggerLabel()) {
         <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
       }
-      @if (isSelectKind) {
+      @if (isSelectKind && triggerShape() !== 'icon') {
         <mat-icon class="app-menu__trigger-caret">expand_more</mat-icon>
       }
       @if (hasTriggerCounter()) {
@@ -91,6 +94,8 @@
       [class.app-menu__panel--dropdown-list]="isDropdownListKind || isButtonRowKind"
       [class.app-menu__panel--has-branch-header]="showBranchBack"
       [class.app-menu__panel--open-up]="openUp"
+      [class.app-menu__panel--align-start]="panelAlign === 'start'"
+      [class.app-menu__panel--dock-to-host]="panelDockToHost"
       role="menu"
       (click)="$event.stopPropagation()"
       >
@@ -225,6 +230,7 @@
               <a
                 class="app-menu__item"
                 [ngClass]="itemPaletteClass(item)"
+                [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
                 [class.app-menu__item--active]="isItemActive(item)"
                 [class.app-menu__item--disabled]="isItemDisabled(item)"
                 [class.app-menu__item--with-description]="itemDescription(item)"
@@ -269,6 +275,7 @@
                 type="button"
                 class="app-menu__item"
                 [ngClass]="itemPaletteClass(item)"
+                [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
                 [class.app-menu__item--active]="isItemActive(item)"
                 [class.app-menu__item--disabled]="isItemDisabled(item)"
                 [class.app-menu__item--with-description]="itemDescription(item)"

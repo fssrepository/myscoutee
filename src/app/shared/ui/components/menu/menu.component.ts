@@ -21,14 +21,17 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuItemSurface,
   AppMenuItem,
   AppMenuItemSelectEvent,
   AppMenuKind,
   AppMenuLiveValue,
   AppMenuModel,
+  AppMenuPanelAlign,
   AppMenuPalette,
   AppMenuSegment,
   AppMenuTrigger,
+  AppMenuTriggerShape,
   AppMenuValueMap
 } from './menu.types';
 
@@ -48,7 +51,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
-  @Input() kind: AppMenuKind = 'action';
+  @Input() kind: AppMenuKind = 'button-row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
   @Input() model: AppMenuModel<TId, TContext> | null = null;
@@ -56,6 +59,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @Input() value: AppMenuValueMap<TId> | null = null;
   @Input() trigger: AppMenuTrigger | null = null;
   @Input() openUp = false;
+  @Input() panelAlign: AppMenuPanelAlign = 'end';
+  @Input() panelGapPx: number | null = null;
+  @Input() panelDockToHost = false;
   @Input() mobileBreakpointPx = 760;
   @Input() closeOnSelect = true;
 
@@ -99,34 +105,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @HostBinding('class.app-menu-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.app-menu-host--kind-action')
-  protected get hostActionKindClass(): boolean {
-    return this.kind === 'action';
-  }
-
-  @HostBinding('class.app-menu-host--kind-context')
-  protected get hostContextKindClass(): boolean {
-    return this.kind === 'context';
-  }
-
   @HostBinding('class.app-menu-host--kind-button-row')
   protected get hostButtonRowKindClass(): boolean {
     return this.isButtonRowKind;
-  }
-
-  @HostBinding('class.app-menu-host--kind-dropdown-list')
-  protected get hostDropdownListKindClass(): boolean {
-    return this.kind === 'dropdown-list';
-  }
-
-  @HostBinding('class.app-menu-host--kind-filter')
-  protected get hostFilterKindClass(): boolean {
-    return this.kind === 'filter';
-  }
-
-  @HostBinding('class.app-menu-host--kind-quick-actions')
-  protected get hostQuickActionsKindClass(): boolean {
-    return this.kind === 'quick-actions';
   }
 
   @HostBinding('class.app-menu-host--kind-select')
@@ -152,6 +133,34 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @HostBinding('class.app-menu-host--open')
   protected get hostOpenClass(): boolean {
     return this.panelVisible;
+  }
+
+  @HostBinding('class.app-menu-host--panel-docked')
+  protected get hostPanelDockedClass(): boolean {
+    return this.panelDockToHost;
+  }
+
+  @HostBinding('style.--app-menu-panel-gap')
+  protected get hostPanelGapStyle(): string | null {
+    if (this.panelGapPx === null || this.panelGapPx === undefined) {
+      return null;
+    }
+    return `${Math.max(0, Number(this.panelGapPx) || 0)}px`;
+  }
+
+  @HostBinding('class.app-menu-host--trigger-field')
+  protected get hostTriggerFieldClass(): boolean {
+    return this.triggerShape() === 'field';
+  }
+
+  @HostBinding('class.app-menu-host--trigger-pill')
+  protected get hostTriggerPillClass(): boolean {
+    return this.triggerShape() === 'pill';
+  }
+
+  @HostBinding('class.app-menu-host--trigger-icon')
+  protected get hostTriggerIconClass(): boolean {
+    return this.triggerShape() === 'icon';
   }
 
   @HostListener('window:resize')
@@ -189,7 +198,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get isButtonRowKind(): boolean {
-    return this.kind === 'button-row' || this.kind === 'quick-actions';
+    return this.kind === 'button-row';
   }
 
   protected get isShortcutGridKind(): boolean {
@@ -201,7 +210,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get isDropdownListKind(): boolean {
-    return this.kind === 'dropdown-list' || this.isSelectKind;
+    return this.isSelectKind;
   }
 
   protected get isAnchoredOverlayKind(): boolean {
@@ -294,6 +303,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected triggerPaletteClass(): string {
     return this.paletteClass(this.triggerPalette());
+  }
+
+  protected triggerShape(): AppMenuTriggerShape {
+    if (this.trigger?.shape) {
+      return this.trigger.shape;
+    }
+    if (!this.hasTrigger) {
+      return 'default';
+    }
+    return this.isSelectKind ? 'field' : 'default';
   }
 
   protected hasTriggerCounter(): boolean {
@@ -422,6 +441,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
+    if (this.isActionRowItemOpen(item)) {
+      const openIcon = `${this.resolveLiveValue(item.closeIcon ?? item.openIcon) ?? ''}`.trim();
+      if (openIcon) {
+        return openIcon;
+      }
+      if (!this.isLabeledActionRowItem(item) && this.hasItemChildren(item)) {
+        return 'close';
+      }
+    }
     return this.itemIcon(item);
   }
 
@@ -480,6 +508,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected itemPaletteClass(item: AppMenuItem<TId, TContext>): string {
     return this.paletteClass(this.itemPalette(item));
+  }
+
+  protected itemSurface(item: AppMenuItem<TId, TContext>): AppMenuItemSurface {
+    return item.surface ?? 'plain';
   }
 
   protected itemLabel(item: AppMenuItem<TId, TContext>): string {

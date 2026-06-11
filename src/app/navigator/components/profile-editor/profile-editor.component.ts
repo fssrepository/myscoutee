@@ -7,7 +7,6 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type {
@@ -21,10 +20,31 @@ import { AppContext, MediaService, ProfileOnboardingService, UserExperiencesServ
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger
+} from '../../../shared/ui/components/menu';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
+type ProfileEditorMenuId = string;
+
+type ProfileEditorMenuContext =
+  | { kind: 'profileStatus'; value: AppTypes.ProfileStatus }
+  | { kind: 'physique'; value: string }
+  | { kind: 'detailValue'; groupIndex: number; rowIndex: number; value: string }
+  | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppTypes.DetailPrivacy }
+  | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppTypes.DetailPrivacy }
+  | { kind: 'experienceFilter'; value: AppTypes.ExperienceFilter }
+  | { kind: 'experienceType'; value: AppTypes.ExperienceEntry['type'] }
+  | { kind: 'experienceQuickAction'; action: 'create' | 'upload' };
 
 interface ProfileFormState {
   fullName: string;
@@ -62,12 +82,15 @@ interface ExperienceImportDialogState {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatSelectModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     ProgressIndicatorComponent,
     I18nPipe,
     CounterBadgePipe
   ],
   providers: [
+    AppMenuDispatcher,
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
     { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateOnly }
   ],
@@ -81,6 +104,7 @@ export class ProfileEditorComponent {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
@@ -108,7 +132,6 @@ export class ProfileEditorComponent {
   protected languageSuggestions = [...APP_STATIC_DATA.languageSuggestions];
 
   protected panel: ProfileEditorPanel = 'profile';
-  protected showProfileStatusHeaderPicker = false;
   protected profileUser: UserDto | null = null;
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
   protected profileDetailsForm: AppTypes.ProfileDetailFormGroup[] = [];
@@ -118,8 +141,6 @@ export class ProfileEditorComponent {
   protected uploadingImageSlotIndex: number | null = null;
   protected languageInput = '';
   protected mobileProfileSelectorSheet: AppTypes.MobileProfileSelectorSheet | null = null;
-  protected openPrivacyFab: { groupIndex: number; rowIndex: number } | null = null;
-  protected openExperiencePrivacyFab: 'workspace' | 'school' | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
   protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected valuesSelectorSelected: string[] = [];
@@ -131,7 +152,6 @@ export class ProfileEditorComponent {
   };
   protected experienceEntries: AppTypes.ExperienceEntry[] = [];
   protected experienceFilter: AppTypes.ExperienceFilter = 'All';
-  protected showExperienceQuickActionsMenu = false;
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
@@ -178,18 +198,6 @@ export class ProfileEditorComponent {
     const target = event.target;
     if (!(target instanceof Element)) {
       return;
-    }
-    if (this.showProfileStatusHeaderPicker && !target.closest('.profile-status-header-picker') && !target.closest('.popup-view-fab')) {
-      this.showProfileStatusHeaderPicker = false;
-    }
-    if (this.openPrivacyFab && !target.closest('.profile-details-privacy-fab')) {
-      this.openPrivacyFab = null;
-    }
-    if (this.openExperiencePrivacyFab && !target.closest('.profile-details-privacy-fab')) {
-      this.openExperiencePrivacyFab = null;
-    }
-    if (this.showExperienceQuickActionsMenu && !target.closest('.experience-quick-actions')) {
-      this.showExperienceQuickActionsMenu = false;
     }
   }
 
@@ -302,15 +310,8 @@ export class ProfileEditorComponent {
       this.closeExperienceForm();
       return;
     }
-    if (this.showExperienceQuickActionsMenu) {
-      this.showExperienceQuickActionsMenu = false;
-      return;
-    }
     if (this.panel !== 'profile') {
       this.panel = 'profile';
-      this.openPrivacyFab = null;
-      this.openExperiencePrivacyFab = null;
-      this.showExperienceQuickActionsMenu = false;
       return;
     }
     await this.commitProfileForm(false);
@@ -322,19 +323,7 @@ export class ProfileEditorComponent {
     void this.handleCloseAction();
   }
 
-  protected toggleProfileStatusHeaderPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showProfileStatusHeaderPicker = !this.showProfileStatusHeaderPicker;
-  }
-
-  protected selectProfileStatusFromHeader(option: AppTypes.ProfileStatus, event?: Event): void {
-    event?.stopPropagation();
-    this.profileForm.profileStatus = option;
-    this.showProfileStatusHeaderPicker = false;
-  }
-
   protected openImageEditor(): void {
-    this.showProfileStatusHeaderPicker = false;
     this.panel = 'image';
   }
 
@@ -350,7 +339,6 @@ export class ProfileEditorComponent {
     this.experienceFilter = filter;
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
-    this.showExperienceQuickActionsMenu = false;
     this.resetExperienceForm();
     this.panel = 'experience';
   }
@@ -438,26 +426,267 @@ export class ProfileEditorComponent {
     return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
-  protected toggleExperienceQuickActionsMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.showExperienceQuickActionsMenu = !this.showExperienceQuickActionsMenu;
-  }
-
   protected openExperienceCreateAction(event?: Event): void {
     event?.stopPropagation();
-    this.showExperienceQuickActionsMenu = false;
     this.openExperienceForm();
   }
 
   protected openExperienceUploadAction(event?: Event): void {
     event?.stopPropagation();
-    this.showExperienceQuickActionsMenu = false;
     const input = this.experienceImportInput?.nativeElement;
     if (!input) {
       return;
     }
     input.value = '';
     input.click();
+  }
+
+  protected experienceQuickActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return [
+      {
+        id: 'experience-actions',
+        icon: 'add',
+        closeIcon: 'close',
+        ariaLabel: 'Open experience actions',
+        palette: 'blue',
+        children: [
+          {
+            id: 'experience-action-create',
+            label: 'Create',
+            icon: 'add_circle',
+            palette: 'teal',
+            surface: 'tinted',
+            context: { kind: 'experienceQuickAction', action: 'create' }
+          },
+          {
+            id: 'experience-action-upload',
+            label: 'Upload',
+            icon: 'upload_file',
+            palette: 'orange',
+            surface: 'tinted',
+            context: { kind: 'experienceQuickAction', action: 'upload' }
+          }
+        ]
+      }
+    ];
+  }
+
+  protected profileStatusMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.profileForm.profileStatus,
+      icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
+      palette: this.profileStatusPalette(this.profileForm.profileStatus),
+      shape: 'pill',
+      ariaLabel: 'Open profile status selector'
+    };
+  }
+
+  protected profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return this.profileStatusOptions.map(option => ({
+      id: this.menuItemId('profile-status', option.value),
+      label: option.value,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.value === this.profileForm.profileStatus,
+      palette: this.profileStatusPalette(option.value),
+      surface: 'tinted',
+      context: { kind: 'profileStatus', value: option.value }
+    }));
+  }
+
+  protected physiqueMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.profileForm.physique,
+      icon: this.getPhysiqueIcon(this.profileForm.physique),
+      palette: this.paletteFromProfileTone(this.getPhysiqueClass(this.profileForm.physique)),
+      shape: 'field',
+      ariaLabel: 'Open physique selector'
+    };
+  }
+
+  protected physiqueMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return this.physiqueOptions.map(option => ({
+      id: this.menuItemId('physique', option),
+      label: option,
+      icon: this.getPhysiqueIcon(option),
+      kind: 'radio',
+      active: option === this.profileForm.physique,
+      palette: this.paletteFromProfileTone(this.getPhysiqueClass(option)),
+      surface: 'tinted',
+      context: { kind: 'physique', value: option }
+    }));
+  }
+
+  protected detailValueMenuTrigger(row: AppTypes.ProfileDetailFormRow): AppMenuTrigger {
+    return {
+      label: row.value,
+      icon: this.detailOptionIcon(row.labelKey, row.value),
+      palette: this.paletteFromProfileTone(this.detailSelectedClass(row.labelKey, row.value, row.options)),
+      shape: 'field',
+      ariaLabel: `Open ${this.i18n.translate(row.labelKey)} selector`
+    };
+  }
+
+  protected detailValueMenuItems(
+    groupIndex: number,
+    rowIndex: number,
+    row: AppTypes.ProfileDetailFormRow
+  ): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return row.options.map(option => ({
+      id: this.menuItemId(`detail-value-${groupIndex}-${rowIndex}`, option),
+      label: option,
+      icon: this.detailOptionIcon(row.labelKey, option),
+      kind: 'radio',
+      active: option === row.value,
+      palette: this.paletteFromProfileTone(this.detailOptionClass(row.labelKey, option, row.options)),
+      surface: 'tinted',
+      context: { kind: 'detailValue', groupIndex, rowIndex, value: option }
+    }));
+  }
+
+  protected detailPrivacyMenuTrigger(row: AppTypes.ProfileDetailFormRow): AppMenuTrigger {
+    return this.privacyMenuTrigger(row.privacy, 'Change visibility');
+  }
+
+  protected detailPrivacyMenuItems(
+    groupIndex: number,
+    rowIndex: number,
+    row: AppTypes.ProfileDetailFormRow
+  ): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return this.detailPrivacyOptions.map(option => ({
+      id: this.menuItemId(`detail-privacy-${groupIndex}-${rowIndex}`, option),
+      label: option,
+      icon: this.privacyStatusIcon(option),
+      kind: 'radio',
+      active: option === row.privacy,
+      palette: this.privacyPalette(option),
+      surface: 'tinted',
+      context: { kind: 'detailPrivacy', groupIndex, rowIndex, value: option }
+    }));
+  }
+
+  protected experiencePrivacyMenuTrigger(type: 'workspace' | 'school'): AppMenuTrigger {
+    const label = type === 'workspace' ? 'workspace' : 'school';
+    return this.privacyMenuTrigger(this.experienceVisibilityValue(type), `Change ${label} visibility`);
+  }
+
+  protected experiencePrivacyMenuItems(
+    type: 'workspace' | 'school'
+  ): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    const current = this.experienceVisibilityValue(type);
+    return this.detailPrivacyOptions.map(option => ({
+      id: this.menuItemId(`experience-privacy-${type}`, option),
+      label: option,
+      icon: this.privacyStatusIcon(option),
+      kind: 'radio',
+      active: option === current,
+      palette: this.privacyPalette(option),
+      surface: 'tinted',
+      context: { kind: 'experiencePrivacy', type, value: option }
+    }));
+  }
+
+  protected experienceFilterMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.experienceFilter,
+      icon: this.experienceFilterIcon(this.experienceFilter),
+      palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
+      shape: 'field',
+      ariaLabel: 'Open experience filter'
+    };
+  }
+
+  protected experienceFilterMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return this.experienceFilterOptions.map(option => ({
+      id: this.menuItemId('experience-filter', option),
+      label: option,
+      icon: this.experienceFilterIcon(option),
+      kind: 'radio',
+      active: option === this.experienceFilter,
+      palette: this.paletteFromProfileTone(this.experienceFilterClass(option)),
+      surface: 'tinted',
+      context: { kind: 'experienceFilter', value: option }
+    }));
+  }
+
+  protected experienceTypeMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.experienceForm.type,
+      icon: this.experienceTypeIcon(this.experienceForm.type),
+      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
+      shape: 'field',
+      ariaLabel: 'Open experience type selector'
+    };
+  }
+
+  protected experienceTypeMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    return this.experienceTypeOptions.map(option => ({
+      id: this.menuItemId('experience-type', option),
+      label: option,
+      icon: this.experienceTypeIcon(option),
+      kind: 'radio',
+      active: option === this.experienceForm.type,
+      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(option)),
+      surface: 'tinted',
+      context: { kind: 'experienceType', value: option }
+    }));
+  }
+
+  protected onProfileEditorMenuSelect(
+    event: AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>
+  ): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+
+    switch (context.kind) {
+      case 'profileStatus':
+        this.profileForm.profileStatus = context.value;
+        return;
+      case 'physique':
+        this.profileForm.physique = context.value;
+        return;
+      case 'detailValue': {
+        const row = this.profileDetailsForm[context.groupIndex]?.rows[context.rowIndex];
+        if (row && row.options.includes(context.value)) {
+          row.value = context.value;
+        }
+        return;
+      }
+      case 'detailPrivacy': {
+        const row = this.profileDetailsForm[context.groupIndex]?.rows[context.rowIndex];
+        if (!row) {
+          return;
+        }
+        row.privacy = context.value;
+        const key = this.detailPrivacyFabKey(context.groupIndex, context.rowIndex);
+        this.markPrivacyFabJustSelected(key);
+        return;
+      }
+      case 'experiencePrivacy':
+        this.experienceVisibility[context.type] = context.value;
+        return;
+      case 'experienceFilter':
+        this.experienceFilter = context.value;
+        return;
+      case 'experienceType':
+        this.experienceForm.type = context.value;
+        return;
+      case 'experienceQuickAction':
+        if (context.action === 'create') {
+          this.openExperienceCreateAction(event.sourceEvent);
+          return;
+        }
+        this.openExperienceUploadAction(event.sourceEvent);
+        return;
+    }
+  }
+
+  protected onProfileEditorDispatchedMenuSelect(
+    event: AppMenuItemSelectEvent<ProfileEditorMenuId, unknown>
+  ): void {
+    this.onProfileEditorMenuSelect(event as AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>);
   }
 
   protected onExperienceImportFileChange(event: Event): void {
@@ -634,30 +863,6 @@ export class ProfileEditorComponent {
     this.profileForm.horoscope = value ? AppUtils.horoscopeByDate(value) : '';
   }
 
-  protected get isMobileView(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    const isNarrowViewport = window.matchMedia('(max-width: 760px)').matches;
-    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
-    return isNarrowViewport && hasCoarsePointer;
-  }
-
-  protected openMobilePhysiqueSelector(event: Event): void {
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Physique',
-      selected: this.profileForm.physique,
-      options: this.physiqueOptions.map(option => ({
-        value: option,
-        label: option,
-        icon: this.getPhysiqueIcon(option),
-        toneClass: this.getPhysiqueClass(option)
-      })),
-      context: { kind: 'physique' }
-    };
-  }
-
   protected openMobileLanguageSelector(event: Event): void {
     event.stopPropagation();
     if (typeof document !== 'undefined' && typeof window !== 'undefined') {
@@ -674,40 +879,6 @@ export class ProfileEditorComponent {
         icon: 'language'
       })),
       context: { kind: 'language' }
-    };
-  }
-
-  protected openMobileDetailValueSelector(groupIndex: number, rowIndex: number, event: Event): void {
-    event.stopPropagation();
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    this.mobileProfileSelectorSheet = {
-      title: this.i18n.translate(row.labelKey),
-      selected: row.value,
-      options: row.options.map(option => ({
-        value: option,
-        label: option,
-        icon: this.detailOptionIcon(row.labelKey, option),
-        toneClass: this.detailOptionClass(row.labelKey, option, row.options)
-      })),
-      context: { kind: 'detailValue', groupIndex, rowIndex }
-    };
-  }
-
-  protected openMobileExperienceTypeSelector(event: Event): void {
-    event.stopPropagation();
-    this.mobileProfileSelectorSheet = {
-      title: 'Experience Type',
-      selected: this.experienceForm.type,
-      options: this.experienceTypeOptions.map(option => ({
-        value: option,
-        label: option,
-        icon: this.experienceTypeIcon(option),
-        toneClass: this.experienceTypeToneClass(option)
-      })),
-      context: { kind: 'experienceType' }
     };
   }
 
@@ -740,63 +911,20 @@ export class ProfileEditorComponent {
     if (!sheet) {
       return;
     }
-    if (sheet.context.kind === 'profileStatus') {
-      if (this.profileStatusOptions.some(option => option.value === value)) {
-        this.profileForm.profileStatus = value as AppTypes.ProfileStatus;
-      }
-      this.mobileProfileSelectorSheet = null;
+    if (sheet.context.kind !== 'language') {
       return;
     }
-    if (sheet.context.kind === 'physique') {
-      if (this.physiqueOptions.includes(value)) {
-        this.profileForm.physique = value;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
+    const exists = this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
+    if (exists) {
+      this.profileForm.languages = this.profileForm.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
+    } else {
+      this.profileForm.languages = [...this.profileForm.languages, value];
     }
-    if (sheet.context.kind === 'language') {
-      const exists = this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
-      if (exists) {
-        this.profileForm.languages = this.profileForm.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
-      } else {
-        this.profileForm.languages = [...this.profileForm.languages, value];
-      }
-      this.languageInput = '';
-      this.mobileProfileSelectorSheet = {
-        ...sheet,
-        selected: this.profileForm.languages.join(', ')
-      };
-      return;
-    }
-    if (sheet.context.kind === 'detailPrivacy') {
-      const row = this.profileDetailsForm[sheet.context.groupIndex]?.rows[sheet.context.rowIndex];
-      if (row && this.isDetailPrivacy(value)) {
-        row.privacy = value;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'experiencePrivacy') {
-      if (this.isDetailPrivacy(value)) {
-        this.experienceVisibility[sheet.context.type] = value;
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'experienceType') {
-      if (this.experienceTypeOptions.includes(value as AppTypes.ExperienceEntry['type'])) {
-        this.experienceForm.type = value as AppTypes.ExperienceEntry['type'];
-      }
-      this.mobileProfileSelectorSheet = null;
-      return;
-    }
-    if (sheet.context.kind === 'detailValue') {
-      const row = this.profileDetailsForm[sheet.context.groupIndex]?.rows[sheet.context.rowIndex];
-      if (row && row.options.includes(value)) {
-        row.value = value;
-      }
-    }
-    this.mobileProfileSelectorSheet = null;
+    this.languageInput = '';
+    this.mobileProfileSelectorSheet = {
+      ...sheet,
+      selected: this.profileForm.languages.join(', ')
+    };
   }
 
   protected addCustomLanguage(value = this.languageInput): void {
@@ -875,76 +1003,12 @@ export class ProfileEditorComponent {
     return this.availableLanguageSuggestions.slice(0, 20);
   }
 
-  protected openDetailPrivacySelector(groupIndex: number, rowIndex: number, event: Event): void {
-    event.stopPropagation();
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    if (!this.isMobileView) {
-      const isOpen =
-        this.openPrivacyFab?.groupIndex === groupIndex &&
-        this.openPrivacyFab?.rowIndex === rowIndex;
-      this.openPrivacyFab = isOpen ? null : { groupIndex, rowIndex };
-      this.openExperiencePrivacyFab = null;
-      return;
-    }
-    this.mobileProfileSelectorSheet = {
-      title: `${this.i18n.translate(row.labelKey)} visibility`,
-      selected: row.privacy,
-      options: this.privacySelectorOptions(),
-      context: { kind: 'detailPrivacy', groupIndex, rowIndex }
-    };
-  }
-
-  protected isDetailPrivacyFabOpen(groupIndex: number, rowIndex: number): boolean {
-    return this.openPrivacyFab?.groupIndex === groupIndex && this.openPrivacyFab?.rowIndex === rowIndex;
-  }
-
-  protected selectDetailPrivacy(groupIndex: number, rowIndex: number, privacy: AppTypes.DetailPrivacy, event: MouseEvent): void {
-    event.stopPropagation();
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    row.privacy = privacy;
-    this.openPrivacyFab = null;
-    const key = this.detailPrivacyFabKey(groupIndex, rowIndex);
-    this.privacyFabJustSelectedKey = key;
-    setTimeout(() => {
-      if (this.privacyFabJustSelectedKey === key) {
-        this.privacyFabJustSelectedKey = null;
-      }
-    }, 280);
-  }
-
   protected isDetailPrivacyJustSelected(groupIndex: number, rowIndex: number): boolean {
     return this.privacyFabJustSelectedKey === this.detailPrivacyFabKey(groupIndex, rowIndex);
   }
 
-  protected openExperiencePrivacySelector(type: 'workspace' | 'school', event: Event): void {
-    event.stopPropagation();
-    if (!this.isMobileView) {
-      this.openExperiencePrivacyFab = this.openExperiencePrivacyFab === type ? null : type;
-      this.openPrivacyFab = null;
-      return;
-    }
-    this.mobileProfileSelectorSheet = {
-      title: `${type === 'workspace' ? 'Workspace' : 'School'} visibility`,
-      selected: this.experienceVisibility[type],
-      options: this.privacySelectorOptions(),
-      context: { kind: 'experiencePrivacy', type }
-    };
-  }
-
-  protected isExperiencePrivacyFabOpen(type: 'workspace' | 'school'): boolean {
-    return this.openExperiencePrivacyFab === type;
-  }
-
-  protected selectExperiencePrivacy(type: 'workspace' | 'school', privacy: AppTypes.DetailPrivacy, event: MouseEvent): void {
-    event.stopPropagation();
-    this.experienceVisibility[type] = privacy;
-    this.openExperiencePrivacyFab = null;
+  protected detailPrivacyMenuId(groupIndex: number, rowIndex: number): string {
+    return `profile-detail-privacy-${groupIndex}-${rowIndex}`;
   }
 
   protected experienceVisibilityValue(type: 'workspace' | 'school'): AppTypes.DetailPrivacy {
@@ -1296,10 +1360,6 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected privacyTriggerIcon(value: AppTypes.DetailPrivacy, isOpen: boolean): string {
-    return isOpen ? 'close' : this.privacyStatusIcon(value);
-  }
-
   protected experienceTypeIcon(type: AppTypes.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
@@ -1371,7 +1431,6 @@ export class ProfileEditorComponent {
 
   protected openExperienceForm(entry?: AppTypes.ExperienceEntry): void {
     this.pendingExperienceDeleteId = null;
-    this.showExperienceQuickActionsMenu = false;
     this.showExperienceForm = true;
     if (entry) {
       this.editingExperienceId = entry.id;
@@ -1853,14 +1912,108 @@ export class ProfileEditorComponent {
     return bestTone;
   }
 
-  private privacySelectorOptions(): AppTypes.MobileProfileSelectorOption[] {
-    const order: AppTypes.DetailPrivacy[] = ['Public', 'Friends', 'Hosts', 'Private'];
-    return order.map(option => ({
-      value: option,
-      label: option,
-      icon: this.privacyStatusIcon(option),
-      toneClass: this.privacyStatusClass(option)
-    }));
+  private privacyMenuTrigger(value: AppTypes.DetailPrivacy, ariaLabel: string): AppMenuTrigger {
+    return {
+      icon: this.privacyStatusIcon(value),
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: this.privacyPalette(value),
+      ariaLabel
+    };
+  }
+
+  private profileStatusPalette(value: AppTypes.ProfileStatus): AppMenuPalette {
+    switch (value) {
+      case 'public':
+        return 'green';
+      case 'friends only':
+        return 'blue';
+      case 'host only':
+        return 'brown';
+      case 'blocked':
+      case 'deleted':
+        return 'red';
+      default:
+        return 'muted';
+    }
+  }
+
+  private privacyPalette(value: AppTypes.DetailPrivacy): AppMenuPalette {
+    switch (value) {
+      case 'Public':
+        return 'green';
+      case 'Friends':
+        return 'blue';
+      case 'Hosts':
+        return 'brown';
+      default:
+        return 'muted';
+    }
+  }
+
+  private paletteFromProfileTone(toneClass: string): AppMenuPalette {
+    switch (toneClass) {
+      case 'status-public':
+      case 'physique-lean':
+      case 'physique-fit':
+      case 'detail-tone-2':
+      case 'detail-tone-5':
+      case 'section-active':
+        return 'green';
+      case 'status-friends':
+      case 'physique-athletic':
+      case 'detail-tone-1':
+      case 'section-social':
+      case 'experience-filter-all':
+      case 'experience-filter-school':
+        return 'blue';
+      case 'status-host':
+      case 'detail-tone-8':
+        return 'brown';
+      case 'physique-slim':
+      case 'detail-tone-7':
+        return 'sky';
+      case 'physique-curvy':
+      case 'detail-tone-6':
+        return 'pink';
+      case 'physique-muscular':
+        return 'red';
+      case 'detail-tone-3':
+      case 'section-family':
+      case 'section-food':
+      case 'experience-filter-workspace':
+        return 'orange';
+      case 'section-ambition':
+        return 'amber';
+      case 'section-lifestyle':
+      case 'section-mind':
+      case 'experience-filter-online':
+        return 'teal';
+      case 'detail-tone-4':
+      case 'section-beliefs':
+      case 'section-arts':
+      case 'section-identity':
+      case 'experience-filter-project':
+        return 'violet';
+      case 'status-inactive':
+      default:
+        return 'muted';
+    }
+  }
+
+  private menuItemId(prefix: string, value: string): string {
+    const normalized = AppUtils.normalizeText(value).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return `${prefix}:${normalized || 'item'}`;
+  }
+
+  private markPrivacyFabJustSelected(key: string): void {
+    this.privacyFabJustSelectedKey = key;
+    setTimeout(() => {
+      if (this.privacyFabJustSelectedKey === key) {
+        this.privacyFabJustSelectedKey = null;
+      }
+    }, 280);
   }
 
   private isDetailPrivacy(value: string): value is AppTypes.DetailPrivacy {
@@ -2321,12 +2474,9 @@ export class ProfileEditorComponent {
   }
 
   private resetTransientUiState(): void {
+    this.menuDispatcher.close();
     this.panel = 'profile';
-    this.showProfileStatusHeaderPicker = false;
     this.closeMobileProfileSelectorSheet();
-    this.openPrivacyFab = null;
-    this.openExperiencePrivacyFab = null;
-    this.showExperienceQuickActionsMenu = false;
     this.privacyFabJustSelectedKey = null;
     this.valuesSelectorContext = null;
     this.valuesSelectorSelected = [];

@@ -1,12 +1,7 @@
 import type { Signal } from '@angular/core';
 
 export type AppMenuKind =
-  | 'action'
-  | 'context'
   | 'button-row'
-  | 'dropdown-list'
-  | 'filter'
-  | 'quick-actions'
   | 'select'
   | 'shortcut-grid';
 
@@ -42,6 +37,10 @@ export type AppMenuPalette =
   | 'warning'
   | 'success';
 
+export type AppMenuTriggerShape = 'default' | 'field' | 'pill' | 'icon';
+export type AppMenuItemSurface = 'plain' | 'tinted';
+export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
+
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
 export type AppMenuCounterValue = AppMenuLiveValue<number | string | null | undefined>;
 
@@ -63,6 +62,7 @@ export interface AppMenuTrigger {
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   hideLabel?: boolean;
+  shape?: AppMenuTriggerShape;
 }
 
 export interface AppMenuSegment {
@@ -79,8 +79,11 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   description?: AppMenuLiveValue<string | null | undefined>;
   detail?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
+  openIcon?: AppMenuLiveValue<string | null | undefined>;
+  closeIcon?: AppMenuLiveValue<string | null | undefined>;
   kind?: AppMenuItemKind;
   palette?: AppMenuPalette;
+  surface?: AppMenuItemSurface;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   active?: AppMenuLiveValue<boolean | null | undefined>;
@@ -118,4 +121,45 @@ export interface AppMenuItemSelectEvent<TId extends string = string, TContext = 
   item: AppMenuItem<TId, TContext>;
   context?: TContext;
   sourceEvent: Event;
+}
+
+export interface AppMenuAnchorRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  width: number;
+  height: number;
+}
+
+export interface AppMenuDispatchConfig<TId extends string = string, TContext = unknown> {
+  id: string;
+  kind?: AppMenuKind;
+  title?: AppMenuLiveValue<string | null | undefined>;
+  items?: readonly AppMenuItem<TId, TContext>[];
+  model?: AppMenuModel<TId, TContext> | null;
+  groups?: readonly AppMenuGroup<TId, TContext>[];
+  value?: AppMenuValueMap<TId> | null;
+  trigger?: AppMenuTrigger | null;
+  context?: TContext;
+  openUp?: boolean;
+  panelAlign?: AppMenuPanelAlign;
+  mobileBreakpointPx?: number;
+  closeOnSelect?: boolean;
+}
+
+export interface AppMenuDispatchState<TId extends string = string, TContext = unknown>
+  extends AppMenuDispatchConfig<TId, TContext> {
+  kind: AppMenuKind;
+  items: readonly AppMenuItem<TId, TContext>[];
+  model: AppMenuModel<TId, TContext> | null;
+  groups: readonly AppMenuGroup<TId, TContext>[];
+  value: AppMenuValueMap<TId> | null;
+  trigger: AppMenuTrigger | null;
+  openUp: boolean;
+  panelAlign: AppMenuPanelAlign;
+  mobileBreakpointPx: number;
+  closeOnSelect: boolean;
+  triggerElement: HTMLElement | null;
+  triggerRect: AppMenuAnchorRect | null;
 }
