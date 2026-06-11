@@ -93,8 +93,8 @@
       [class.app-menu__panel--inline]="isInlineKind"
       [class.app-menu__panel--dropdown-list]="isDropdownListKind || isButtonRowKind"
       [class.app-menu__panel--has-branch-header]="showBranchBack"
-      [class.app-menu__panel--open-up]="openUp"
-      [class.app-menu__panel--align-start]="panelAlign === 'start'"
+      [class.app-menu__panel--open-up]="resolvedOpenUp"
+      [class.app-menu__panel--align-start]="resolvedPanelAlign === 'start'"
       [class.app-menu__panel--dock-to-host]="panelDockToHost"
       role="menu"
       (click)="$event.stopPropagation()"
@@ -230,6 +230,26 @@
                   <mat-icon>{{ itemIcon(item) }}</mat-icon>
                 }
                 <span>{{ itemLabel(item) | i18n }}</span>
+                @for (action of itemHeaderActions(item); track trackByItemId($index, action)) {
+                  <button
+                    type="button"
+                    class="app-menu__section-action"
+                    [class.app-menu__section-action--active]="isItemActive(action)"
+                    [ngClass]="itemPaletteClass(action)"
+                    [disabled]="isItemDisabled(action)"
+                    [attr.aria-pressed]="isToggleItem(action) ? isItemActive(action) : null"
+                    [attr.aria-label]="itemAriaLabel(action)"
+                    [title]="itemAriaLabel(action) || itemLabel(action)"
+                    (click)="selectBranchHeaderAction(action, $event)"
+                    >
+                    @if (itemIcon(action)) {
+                      <mat-icon>{{ itemIcon(action) }}</mat-icon>
+                    }
+                    @if (itemLabel(action)) {
+                      <span>{{ itemLabel(action) | i18n }}</span>
+                    }
+                  </button>
+                }
               </div>
             } @else if (itemHref(item)) {
               <a

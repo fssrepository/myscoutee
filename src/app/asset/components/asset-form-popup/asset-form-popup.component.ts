@@ -104,6 +104,7 @@ export class AssetFormPopupComponent implements OnChanges {
       kind: 'radio',
       active: option === this.assetFormVisibility,
       palette: this.visibilityPalette(option),
+      surface: 'tinted',
       disabled: () => this.isSavePending || this.isLoading,
       context: { menu: 'visibility', visibility: option }
     }));
@@ -127,6 +128,7 @@ export class AssetFormPopupComponent implements OnChanges {
       kind: 'radio',
       active: option === this.assetForm.type,
       palette: this.assetTypePalette(option),
+      surface: 'tinted',
       disabled: () => this.isSavePending || this.isLoading,
       context: { menu: 'type', type: option }
     }));
@@ -150,6 +152,7 @@ export class AssetFormPopupComponent implements OnChanges {
       kind: 'radio',
       active: option === this.assetForm.category,
       palette: this.assetCategoryPalette(option),
+      surface: 'tinted',
       disabled: () => this.isSavePending || this.isLoading,
       context: { menu: 'category', category: option }
     }));

@@ -48,6 +48,8 @@ type AppMenuResolvedLayout = 'desktop' | 'mobile';
 })
 export class AppMenuComponent<TId extends string = string, TContext = unknown> implements DoCheck, OnDestroy {
   private static readonly COUNTER_PULSE_DURATION_MS = 1600;
+  private static readonly DESKTOP_MARGIN_PX = 8;
+  private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
 
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -60,7 +62,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @Input() value: AppMenuValueMap<TId> | null = null;
   @Input() trigger: AppMenuTrigger | null = null;
   @Input() openUp = false;
-  @Input() panelAlign: AppMenuPanelAlign = 'end';
+  @Input() panelAlign: AppMenuPanelAlign = 'auto';
   @Input() panelGapPx: number | null = null;
   @Input() panelDockToHost = false;
   @Input() mobileBreakpointPx = 760;
@@ -225,6 +227,45 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected get showMobileBackdrop(): boolean {
     return this.open && !this.isInlineKind && !this.isAnchoredOverlayKind && this.resolvedLayout === 'mobile';
+  }
+
+  protected get resolvedOpenUp(): boolean {
+    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.isInlineKind) {
+      return this.openUp;
+    }
+    if (this.openUp) {
+      return true;
+    }
+    const rect = this.hostRect();
+    if (!rect) {
+      return false;
+    }
+    const bounds = this.layoutBounds();
+    const spaceAbove = Math.max(0, rect.top - bounds.top - AppMenuComponent.DESKTOP_MARGIN_PX);
+    const spaceBelow = Math.max(0, bounds.bottom - rect.bottom - AppMenuComponent.DESKTOP_MARGIN_PX);
+    const estimatedHeight = this.estimatedPanelHeight();
+    return spaceBelow < estimatedHeight && spaceAbove > spaceBelow;
+  }
+
+  protected get resolvedPanelAlign(): 'start' | 'end' {
+    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.isInlineKind) {
+      return this.panelAlign === 'start' ? 'start' : 'end';
+    }
+    const rect = this.hostRect();
+    if (!rect) {
+      return 'end';
+    }
+    const bounds = this.layoutBounds();
+    const estimatedWidth = this.estimatedPanelWidth();
+    const spaceRight = Math.max(0, bounds.right - rect.left - AppMenuComponent.DESKTOP_MARGIN_PX);
+    const spaceLeft = Math.max(0, rect.right - bounds.left - AppMenuComponent.DESKTOP_MARGIN_PX);
+    if (spaceRight >= estimatedWidth) {
+      return 'start';
+    }
+    if (spaceLeft >= estimatedWidth) {
+      return 'end';
+    }
+    return spaceRight >= spaceLeft ? 'start' : 'end';
   }
 
   protected get menuNodes(): readonly AppMenuBranch<TId, TContext>[] {
@@ -473,6 +514,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return item.headerActions ?? [];
   }
 
+  protected itemHeaderActions(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return item.headerActions ?? [];
+  }
+
   protected itemRole(item: AppMenuItem<TId, TContext>): string {
     switch (item.kind ?? 'action') {
       case 'radio':
@@ -533,6 +578,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
           label: branch.label,
           icon: branch.icon,
           palette: branch.palette,
+          headerActions: branch.headerActions,
           ariaLabel: branch.ariaLabel
         });
       }
@@ -720,6 +766,84 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     this.isMobileViewport = window.innerWidth <= Math.max(1, Number(this.mobileBreakpointPx) || 760);
   }
 
+  private hostRect(): DOMRect | null {
+    if (typeof window === 'undefined' || typeof this.hostRef.nativeElement.getBoundingClientRect !== 'function') {
+      return null;
+    }
+    return this.hostRef.nativeElement.getBoundingClientRect();
+  }
+
+  private layoutBounds(): { left: number; top: number; right: number; bottom: number } {
+    const viewport = {
+      left: 0,
+      top: 0,
+      right: this.viewportWidth(),
+      bottom: this.viewportHeight()
+    };
+    if (typeof window === 'undefined') {
+      return viewport;
+    }
+    let parent = this.hostRef.nativeElement.parentElement;
+    while (parent && parent !== document.body && parent !== document.documentElement) {
+      const style = window.getComputedStyle(parent);
+      if (this.isMenuLayoutBoundary(parent, style)) {
+        const rect = parent.getBoundingClientRect();
+        return {
+          left: Math.max(viewport.left, rect.left),
+          top: Math.max(viewport.top, rect.top),
+          right: Math.min(viewport.right, rect.right),
+          bottom: Math.min(viewport.bottom, rect.bottom)
+        };
+      }
+      parent = parent.parentElement;
+    }
+    return viewport;
+  }
+
+  private isMenuLayoutBoundary(element: HTMLElement, style: CSSStyleDeclaration): boolean {
+    const overflow = `${style.overflow} ${style.overflowX} ${style.overflowY}`;
+    if (/(auto|scroll)/.test(overflow)) {
+      return true;
+    }
+    const className = element.className.toString();
+    if (/(popup-body|scroll-area|popup-panel|app-popup-panel)/.test(className)) {
+      return true;
+    }
+    if (/(hidden|clip)/.test(overflow)) {
+      return element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth;
+    }
+    return false;
+  }
+
+  private viewportWidth(): number {
+    if (typeof window === 'undefined') {
+      return AppMenuComponent.DESKTOP_MIN_PANEL_WIDTH_PX + AppMenuComponent.DESKTOP_MARGIN_PX * 2;
+    }
+    return window.innerWidth || document.documentElement.clientWidth;
+  }
+
+  private viewportHeight(): number {
+    if (typeof window === 'undefined') {
+      return 720;
+    }
+    return window.innerHeight || document.documentElement.clientHeight;
+  }
+
+  private estimatedPanelWidth(): number {
+    const labels = this.visibleListItems
+      .map(item => `${this.resolveLiveValue(item.label) ?? this.resolveLiveValue(item.description) ?? ''}`.trim());
+    const longestLabel = labels.reduce((longest, label) => Math.max(longest, label.length), 0);
+    const textWidth = longestLabel * 7.5 + 86;
+    return Math.min(448, Math.max(AppMenuComponent.DESKTOP_MIN_PANEL_WIDTH_PX, textWidth));
+  }
+
+  private estimatedPanelHeight(): number {
+    const titleHeight = this.resolvedTitle ? 34 : 0;
+    const itemCount = Math.max(1, this.visibleListItems.length);
+    const branchHeaderHeight = this.visibleListItems.some(item => (item.children?.length ?? 0) > 0) ? 38 : 0;
+    return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
+  }
+
   private syncCounterPulseState(): void {
     const visibleCounterKeys = new Set<string>();
     this.observeCounterPulse(
@@ -732,6 +856,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.observeItemCounterPulse(item, visibleCounterKeys);
     }
     for (const branch of this.menuNodes) {
+      for (const action of branch.headerActions ?? []) {
+        this.observeItemCounterPulse(action, visibleCounterKeys, branch);
+      }
       for (const item of this.branchChildren(branch)) {
         this.observeItemCounterPulse(item, visibleCounterKeys, branch);
       }
@@ -755,6 +882,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.hasValueCounter(item.id) || this.isLiveCounter(item.counter ?? null),
       visibleCounterKeys
     );
+    for (const action of item.headerActions ?? []) {
+      this.observeItemCounterPulse(action, visibleCounterKeys, branch);
+    }
     for (const child of item.children ?? []) {
       this.observeItemCounterPulse(child, visibleCounterKeys, branch);
     }

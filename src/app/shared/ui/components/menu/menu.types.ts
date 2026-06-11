@@ -109,6 +109,7 @@ export interface AppMenuBranch<TId extends string = string, TContext = unknown> 
   palette?: AppMenuPalette;
   children?: readonly AppMenuItem<TId, TContext>[];
   items?: readonly AppMenuItem<TId, TContext>[];
+  headerActions?: readonly AppMenuItem<TId, TContext>[];
   ariaLabel?: AppMenuLiveValue<string | null | undefined>;
 }
 

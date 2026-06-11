@@ -341,6 +341,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         kind: 'radio',
         active: selectedOrder === 'upcoming',
         palette: 'blue',
+        surface: 'tinted',
         context: { menu: 'ticket-order', order: 'upcoming' }
       },
       {
@@ -350,6 +351,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         kind: 'radio',
         active: selectedOrder === 'past',
         palette: 'slate',
+        surface: 'tinted',
         context: { menu: 'ticket-order', order: 'past' }
       }
     ];
@@ -377,6 +379,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         kind: 'radio',
         active: option === this.ownedAssets.assetFilter,
         palette: this.assetFilterPalette(option),
+        surface: 'tinted',
         counter: count > 0 ? count : null,
         context: { menu: 'asset-filter', filter: option }
       };
@@ -402,6 +405,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       kind: 'radio',
       active: option.key === this.supplyRequestFilter,
       palette: this.supplyRequestFilterPalette(option.key),
+      surface: 'tinted',
       counter: () => this.supplyRequestFilterCount(option.key),
       context: { menu: 'supply-request-filter', filter: option.key }
     }));
@@ -432,6 +436,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         label: () => this.isSupplyRequestRowBusy(row, 'accept') ? 'accepting' : 'accept',
         icon: 'check_circle',
         palette: 'green',
+        surface: 'tinted',
         disabled: () => this.isSupplyRequestRowBusy(row, 'accept'),
         context: { menu: 'supply-request-action', row, action: 'accept' }
       });
@@ -444,6 +449,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
           : 'asset.requests.promote.to.manager',
         icon: 'manage_accounts',
         palette: 'blue',
+        surface: 'tinted',
         disabled: () => this.isSupplyRequestRowBusy(row, 'makeManager'),
         context: { menu: 'supply-request-action', row, action: 'makeManager' }
       });
@@ -454,6 +460,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         label: () => this.isSupplyRequestRowBusy(row, 'remove') ? 'asset.requests.rejecting' : 'reject',
         icon: 'delete',
         palette: 'danger',
+        surface: 'tinted',
         disabled: () => this.isSupplyRequestRowBusy(row, 'remove'),
         context: { menu: 'supply-request-action', row, action: 'remove' }
       });

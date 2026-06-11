@@ -496,11 +496,11 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected composerMenuItems(): readonly AppMenuItem<string, ChatMenuContext>[] {
     return [
-      { id: 'chat-composer-image', label: 'Upload image', icon: 'image', palette: 'sky', context: { menu: 'composer', action: 'image' } },
-      { id: 'chat-composer-voice', label: 'Send a voice clip', icon: 'mic', palette: 'violet', context: { menu: 'composer', action: 'voice' } },
-      { id: 'chat-composer-poll', label: 'Create a poll', icon: 'poll', palette: 'green', context: { menu: 'composer', action: 'poll' } },
-      { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'amber', context: { menu: 'composer', action: 'event' } },
-      { id: 'chat-composer-asset', label: 'Share asset', icon: 'inventory_2', palette: 'brown', context: { menu: 'composer', action: 'asset' } }
+      { id: 'chat-composer-image', label: 'Upload image', icon: 'image', palette: 'sky', surface: 'tinted', context: { menu: 'composer', action: 'image' } },
+      { id: 'chat-composer-voice', label: 'Send a voice clip', icon: 'mic', palette: 'violet', surface: 'tinted', context: { menu: 'composer', action: 'voice' } },
+      { id: 'chat-composer-poll', label: 'Create a poll', icon: 'poll', palette: 'green', surface: 'tinted', context: { menu: 'composer', action: 'poll' } },
+      { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'amber', surface: 'tinted', context: { menu: 'composer', action: 'event' } },
+      { id: 'chat-composer-asset', label: 'Share asset', icon: 'inventory_2', palette: 'brown', surface: 'tinted', context: { menu: 'composer', action: 'asset' } }
     ];
   }
 
@@ -571,6 +571,7 @@ export class EventChatPopupComponent implements OnDestroy {
         label: 'Edit',
         icon: 'edit',
         palette: 'blue',
+        surface: 'tinted',
         context: { menu: 'message-action', message, action: 'edit' }
       });
       items.push({
@@ -578,6 +579,7 @@ export class EventChatPopupComponent implements OnDestroy {
         label: 'Unsend',
         icon: 'delete',
         palette: 'danger',
+        surface: 'tinted',
         context: { menu: 'message-action', message, action: 'unsend' }
       });
     }
@@ -586,6 +588,7 @@ export class EventChatPopupComponent implements OnDestroy {
       label: message.pinnedAtIso ? 'Unpin' : 'Pin',
       icon: message.pinnedAtIso ? 'push_pin' : 'push_pin',
       palette: message.pinnedAtIso ? 'muted' : 'amber',
+      surface: 'tinted',
       context: { menu: 'message-action', message, action: 'pin' }
     });
     if (this.canReportMessage(message)) {
@@ -594,6 +597,7 @@ export class EventChatPopupComponent implements OnDestroy {
         label: 'Report',
         icon: 'flag',
         palette: 'danger',
+        surface: 'tinted',
         context: { menu: 'message-action', message, action: 'report' }
       });
     }

@@ -214,6 +214,7 @@ export class AssetMemberPickerPopupComponent {
         kind: 'radio',
         active: this.inviteSort === 'recent',
         palette: 'blue',
+        surface: 'tinted',
         context: { menu: 'invite-sort', sort: 'recent' }
       },
       {
@@ -223,6 +224,7 @@ export class AssetMemberPickerPopupComponent {
         kind: 'radio',
         active: this.inviteSort === 'relevant',
         palette: 'violet',
+        surface: 'tinted',
         context: { menu: 'invite-sort', sort: 'relevant' }
       }
     ];

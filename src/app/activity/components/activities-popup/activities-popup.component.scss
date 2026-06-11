@@ -2342,6 +2342,63 @@ button.activities-rate-score-badge-between:not(.is-disabled):active .activities-
     max-height: 100dvh;
   }
 
+  .popup-panel-activities .popup-header-with-progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title close"
+      "filters filters";
+    align-items: start;
+    gap: 0.36rem 0.44rem;
+    padding: 0.52rem 0.48rem 0.44rem;
+  }
+
+  .popup-panel-activities .popup-header-with-progress > .popup-title {
+    grid-area: title;
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .popup-panel-activities .popup-header-with-progress > .popup-filter-picker {
+    grid-area: filters;
+    width: 100%;
+    min-width: 0;
+    margin-left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.34rem;
+  }
+
+  .popup-panel-activities .popup-header-with-progress > .popup-close {
+    grid-area: close;
+    justify-self: end;
+  }
+
+  .popup-panel-activities .popup-filter-picker app-menu {
+    max-width: 100%;
+  }
+
+  .popup-panel-activities .popup-filter-bar {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.36rem;
+    overflow: visible;
+  }
+
+  .popup-panel-activities .popup-filter-bar app-menu {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 2.8rem);
+  }
+
+  .popup-panel-activities .activities-action-stack {
+    flex: 0 0 auto;
+    min-width: 34px;
+    margin-left: auto;
+  }
+
   .activities-mobile-filter-panel,
   .activities-mobile-rate-filter-panel {
     position: fixed;

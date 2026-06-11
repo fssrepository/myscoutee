@@ -32,6 +32,7 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
   AppMenuComponent,
+  type AppMenuBranch,
   AppMenuDispatcher,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -1176,36 +1177,35 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesRateMenuModel(): AppMenuModel<string, ActivitiesToolbarMenuContext> {
-    const nodes: Array<{
-      id: string;
-      label: string;
-      icon: string;
-      palette: AppMenuPalette;
+    type RateMenuNode = Omit<AppMenuBranch<string, ActivitiesToolbarMenuContext>, 'items' | 'children' | 'headerActions'> & {
       items: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
-    }> = [];
+      headerActions?: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
+    };
+    const nodes: RateMenuNode[] = [];
     let currentNode: typeof nodes[number] | null = null;
     for (const option of this.rateFilterEntries) {
       if (option.kind === 'group') {
         const groupLabel = option.label;
+        const groupPalette = this.activitiesRateGroupPalette(groupLabel);
         currentNode = {
           id: `rate-group:${groupLabel}`,
           label: this.activitiesToolbar.rateGroupOptionLabelKey(groupLabel),
           icon: this.activitiesToolbar.rateSocialBadgeGroupIconForGroup(groupLabel),
-          palette: this.activitiesRateGroupPalette(groupLabel),
-          items: []
+          palette: groupPalette,
+          items: [],
+          headerActions: this.activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
+            ? [{
+              id: `rate-social:${groupLabel}`,
+              label: this.activitiesToolbar.rateSocialBadgeButtonLabelForGroup(groupLabel),
+              icon: this.activitiesToolbar.rateSocialBadgeToggleIconForGroup(groupLabel),
+              kind: 'toggle',
+              active: this.activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(groupLabel),
+              closeOnSelect: false,
+              palette: groupPalette,
+              context: { menu: 'rate-social', value: groupLabel }
+            }]
+            : []
         };
-        if (this.activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(groupLabel)) {
-          currentNode.items.push({
-            id: `rate-social:${groupLabel}`,
-            label: this.activitiesToolbar.rateSocialBadgeButtonLabelForGroup(groupLabel),
-            icon: this.activitiesToolbar.rateSocialBadgeToggleIconForGroup(groupLabel),
-            kind: 'toggle',
-            active: this.activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(groupLabel),
-            closeOnSelect: false,
-            palette: this.activitiesRateGroupPalette(groupLabel),
-            context: { menu: 'rate-social', value: groupLabel }
-          });
-        }
         nodes.push(currentNode);
         continue;
       }
@@ -1223,7 +1223,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         id: `rate:${option.key}`,
         label: this.activitiesToolbar.rateFilterOptionLabel(option.key),
         icon: this.activitiesToolbar.activitiesRateFilterIcon(option.key),
-        palette: 'gold',
+        palette: this.activitiesRatePalette(option.key),
         counter: this.activitiesToolbar.rateFilterCount(option.key),
         active: option.key === this.activitiesRateFilter,
         context: { menu: 'rate', value: option.key }
@@ -1233,10 +1233,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesSecondaryMenuTrigger(): AppMenuTrigger {
+    const filter = this.effectiveActivitiesSecondaryFilter();
     return this.activitiesSelectTrigger({
       label: this.activitiesToolbar.activitiesSecondaryFilterLabel(),
       icon: this.activitiesToolbar.activitiesSecondaryFilterIcon(),
-      palette: 'neutral',
+      palette: this.activitiesSecondaryPalette(filter),
       shape: 'pill'
     });
   }
@@ -1246,7 +1247,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       id: `secondary:${option.key}`,
       label: this.activitiesToolbar.activitiesSecondaryFilterOptionLabel(option.key),
       icon: option.icon,
-      palette: 'neutral',
+      palette: this.activitiesSecondaryPalette(option.key),
       active: option.key === this.effectiveActivitiesSecondaryFilter(),
       context: { menu: 'secondary', value: option.key }
     }));
@@ -1255,8 +1256,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesViewMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
       label: this.activitiesToolbar.activityViewLabel(),
-      icon: 'view_agenda',
-      palette: 'blue',
+      icon: this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
+      palette: this.activitiesViewPalette(this.activitiesView),
       shape: 'pill'
     });
   }
@@ -1266,7 +1267,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       id: `view:${option.key}`,
       label: option.label,
       icon: option.icon,
-      palette: 'blue',
+      palette: this.activitiesViewPalette(option.key),
       active: option.key === this.activitiesView,
       context: { menu: 'view', value: option.key }
     }));
@@ -1289,7 +1290,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         id: 'quick-action:explore',
         label: 'Explore',
         icon: 'explore',
-        palette: 'blue',
+        palette: 'violet',
+        surface: 'tinted',
         context: { menu: 'quick-action', value: 'explore' }
       },
       {
@@ -1297,6 +1299,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         label: 'Create Event',
         icon: 'add_circle',
         palette: 'green',
+        surface: 'tinted',
         context: { menu: 'quick-action', value: 'create' }
       }
     ];
@@ -1356,7 +1359,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: options.label,
       icon: options.icon,
       palette: options.palette,
-      shape: options.shape ?? 'field',
+      shape: options.shape ?? 'pill',
       counter: counter > 0 ? { value: counter, max: 99 } : null
     };
   }
@@ -1433,6 +1436,50 @@ export class ActivitiesPopupComponent implements OnDestroy {
       case 'all':
       default:
         return 'blue';
+    }
+  }
+
+  private activitiesViewPalette(view: AppTypes.ActivitiesView): AppMenuPalette {
+    switch (view) {
+      case 'distance':
+        return 'teal';
+      case 'month':
+        return 'gold';
+      case 'week':
+        return 'green';
+      case 'day':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesSecondaryPalette(filter: AppTypes.ActivitiesSecondaryFilter): AppMenuPalette {
+    switch (filter) {
+      case 'past':
+        return 'slate';
+      case 'relevant':
+        return 'violet';
+      case 'recent':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesRatePalette(filter: AppTypes.RateFilterKey): AppMenuPalette {
+    switch (filter) {
+      case 'individual-given':
+        return 'pink';
+      case 'individual-received':
+        return 'blue';
+      case 'individual-mutual':
+        return 'violet';
+      case 'individual-met':
+        return 'green';
+      case 'pair-given':
+        return 'brown';
+      case 'pair-received':
+      default:
+        return 'success';
     }
   }
 
