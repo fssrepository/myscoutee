@@ -44,7 +44,7 @@ import type {
         [class.app-menu__trigger--shape-icon]="triggerShape() === 'icon'"
         [disabled]="triggerDisabled()"
         [attr.aria-expanded]="isOpen()"
-        aria-haspopup="menu"
+        [attr.aria-haspopup]="triggerAriaHasPopup()"
         [attr.aria-label]="triggerAriaLabel()"
         (pointerdown)="onTriggerPointerDown($event)"
         (click)="toggleMenu($event)"
@@ -55,8 +55,13 @@ import type {
         @if (!trigger?.hideLabel && triggerLabel()) {
           <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
         }
-        @if (isSelectKind && triggerShape() !== 'icon') {
-          <mat-icon class="app-menu__trigger-caret">expand_more</mat-icon>
+        @if (triggerTrailingIcon()) {
+          <mat-icon
+            class="app-menu__trigger-caret"
+            [class.app-menu__trigger-caret--static]="!triggerCaretRotates()"
+            >
+            {{ triggerTrailingIcon() }}
+          </mat-icon>
         }
         @if (hasTriggerCounter()) {
           <span class="app-menu__counter app-menu__counter--trigger">
@@ -151,6 +156,10 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return this.kind === 'select';
   }
 
+  protected get isCustomTriggerAction(): boolean {
+    return this.trigger?.action === 'custom';
+  }
+
   protected isOpen(): boolean {
     return this.dispatcher.isOpen(this.resolvedMenuId());
   }
@@ -160,13 +169,58 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   }
 
   protected triggerIcon(): string {
-    const configuredIcon = this.resolveLiveValue(this.isOpen()
-      ? this.trigger?.closeIcon ?? this.trigger?.openIcon ?? this.trigger?.icon
-      : this.trigger?.icon);
+    if (this.isOpen()) {
+      const configuredOpenIcon = this.resolveLiveValue(this.trigger?.closeIcon ?? this.trigger?.openIcon);
+      if (configuredOpenIcon !== null && configuredOpenIcon !== undefined) {
+        return `${configuredOpenIcon}`.trim();
+      }
+      const baseIcon = `${this.resolveLiveValue(this.trigger?.icon) ?? ''}`.trim();
+      if (this.shouldResolveTriggerIconToClose(baseIcon)) {
+        return 'close';
+      }
+      if (!baseIcon && this.isSelectKind) {
+        return '';
+      }
+      return `${baseIcon || 'close'}`.trim();
+    }
+    const configuredIcon = this.resolveLiveValue(this.trigger?.icon);
     if (!configuredIcon && this.isSelectKind) {
       return '';
     }
-    return `${configuredIcon ?? (this.isOpen() ? 'close' : 'more_vert')}`.trim();
+    return `${configuredIcon ?? 'more_vert'}`.trim();
+  }
+
+  private shouldResolveTriggerIconToClose(icon: string): boolean {
+    if (this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true) {
+      return false;
+    }
+    switch (icon) {
+      case 'add':
+      case 'add_box':
+      case 'add_circle':
+      case 'more_horiz':
+      case 'more_vert':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  protected triggerTrailingIcon(): string {
+    const configuredIcon = this.resolveLiveValue(this.isOpen()
+      ? this.trigger?.closeTrailingIcon ?? this.trigger?.openTrailingIcon ?? this.trigger?.trailingIcon
+      : this.trigger?.trailingIcon);
+    if (configuredIcon !== null && configuredIcon !== undefined) {
+      return `${configuredIcon}`.trim();
+    }
+    if (this.isSelectKind && this.triggerShape() !== 'icon') {
+      return 'expand_more';
+    }
+    return '';
+  }
+
+  protected triggerCaretRotates(): boolean {
+    return !this.isCustomTriggerAction && this.isSelectKind;
   }
 
   protected triggerAriaLabel(): string {
@@ -179,6 +233,10 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
       return this.isOpen() ? `Close ${label}` : `Open ${label}`;
     }
     return this.isOpen() ? 'Close menu' : 'Open menu';
+  }
+
+  protected triggerAriaHasPopup(): string | null {
+    return this.isCustomTriggerAction ? 'dialog' : 'menu';
   }
 
   protected triggerDisabled(): boolean {

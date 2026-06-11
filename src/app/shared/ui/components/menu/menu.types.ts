@@ -38,6 +38,7 @@ export type AppMenuPalette =
   | 'success';
 
 export type AppMenuTriggerShape = 'default' | 'field' | 'pill' | 'icon';
+export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuItemLayout = 'default' | 'summary';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
@@ -54,16 +55,22 @@ export interface AppMenuCounter {
 export type AppMenuValueMap<TId extends string = string> = Partial<Record<TId, AppMenuCounter | AppMenuCounterValue | null | undefined>>;
 
 export interface AppMenuTrigger {
+  id?: string;
   label?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
   openIcon?: AppMenuLiveValue<string | null | undefined>;
   closeIcon?: AppMenuLiveValue<string | null | undefined>;
+  trailingIcon?: AppMenuLiveValue<string | null | undefined>;
+  openTrailingIcon?: AppMenuLiveValue<string | null | undefined>;
+  closeTrailingIcon?: AppMenuLiveValue<string | null | undefined>;
   ariaLabel?: AppMenuLiveValue<string | null | undefined>;
   palette?: AppMenuPalette;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   hideLabel?: boolean;
   shape?: AppMenuTriggerShape;
+  action?: AppMenuTriggerAction;
+  context?: unknown;
 }
 
 export interface AppMenuSegment {

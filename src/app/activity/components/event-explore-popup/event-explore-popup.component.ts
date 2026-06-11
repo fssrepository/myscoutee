@@ -35,7 +35,6 @@ import {
   AppMenuDispatcher,
   AppMenuComponent,
   AppMenuOutletComponent,
-  type AppMenuGroup,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -45,6 +44,7 @@ import {
   ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
+  TopicPickerPopupComponent,
   type InfoCardData,
   type InfoCardMenuActionEvent,
   type InfoCardMenuRequestEvent,
@@ -69,7 +69,7 @@ type CheckoutDraftEntry = {
 type EventExploreMenuContext =
   | { menu: 'order'; order: AppTypes.EventExploreOrder }
   | { menu: 'view'; view: AppTypes.EventExploreView }
-  | { menu: 'topic'; topic: string }
+  | { menu: 'topic-picker' }
   | {
       menu: 'info-card';
       record: ActivityEventRecord;
@@ -87,7 +87,8 @@ type EventExploreMenuContext =
     AppMenuOutletComponent,
     InfoCardComponent,
     ProgressIndicatorComponent,
-    SmartListComponent
+    SmartListComponent,
+    TopicPickerPopupComponent
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -121,6 +122,7 @@ export class EventExplorePopupComponent {
   private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
+  protected showTopicPicker = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
   protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
@@ -288,6 +290,11 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
+    if (this.showTopicPicker) {
+      this.showTopicPicker = false;
+      this.cdr.markForCheck();
+      return;
+    }
     this.closeEventExplore();
   }
 
@@ -317,6 +324,7 @@ export class EventExplorePopupComponent {
 
   protected closeEventExplore(): void {
     this.isOpen = false;
+    this.showTopicPicker = false;
     this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
@@ -360,10 +368,32 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
+  protected toggleEventExploreTopicPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showTopicPicker = !this.showTopicPicker;
+    this.cdr.markForCheck();
+  }
+
+  protected closeEventExploreTopicPicker(event?: Event): void {
+    event?.stopPropagation();
+    this.showTopicPicker = false;
+    this.cdr.markForCheck();
+  }
+
   protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
     event?.stopPropagation();
     const normalizedTopic = this.normalizeTopic(topic);
     this.eventExploreFilterTopic = normalizedTopic === this.normalizeTopic(this.eventExploreFilterTopic) ? '' : topic;
+    this.syncEventExploreQuery();
+    this.reloadEventExploreSmartList();
+  }
+
+  protected updateEventExploreTopicSelection(selected: readonly string[]): void {
+    const nextTopic = selected[0] ?? '';
+    if (this.normalizeTopic(nextTopic) === this.normalizeTopic(this.eventExploreFilterTopic)) {
+      return;
+    }
+    this.eventExploreFilterTopic = nextTopic;
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
   }
@@ -381,57 +411,17 @@ export class EventExplorePopupComponent {
 
   protected eventExploreTopicMenuTrigger(): AppMenuTrigger {
     return {
+      id: 'topic-picker',
       label: this.eventExploreTopicFilterLabel(),
       icon: 'sell',
+      trailingIcon: 'chevron_right',
+      openTrailingIcon: 'expand_less',
       ariaLabel: 'Open topic filter',
-      palette: this.eventExploreFilterTopic ? 'gold' : 'neutral',
-      shape: 'pill'
+      palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
+      shape: 'pill',
+      action: 'custom',
+      context: { menu: 'topic-picker' }
     };
-  }
-
-  protected eventExploreTopicMenuGroups(): readonly AppMenuGroup<string, EventExploreMenuContext>[] {
-    const activeTopic = this.normalizeTopic(this.eventExploreFilterTopic);
-    return [
-      {
-        id: 'topic-filter-all',
-        label: 'Topic',
-        icon: 'sell',
-        palette: 'gold',
-        children: [
-          {
-            id: 'topic-filter-clear',
-            label: 'All topics',
-            icon: 'clear_all',
-            kind: 'radio',
-            active: !activeTopic,
-            checked: !activeTopic,
-            palette: 'neutral',
-            surface: 'tinted',
-            context: { menu: 'topic', topic: '' }
-          }
-        ]
-      },
-      ...this.topicFilterGroups.map((group, groupIndex) => {
-        const palette = this.topicGroupPalette(group.toneClass);
-        return {
-          id: `topic-filter-${groupIndex}-${group.title}`,
-          label: group.shortTitle || group.title,
-          icon: group.icon || this.topicGroupIcon(group.toneClass),
-          palette,
-          children: group.options.map(option => ({
-            id: `topic-filter-${groupIndex}-${option}`,
-            label: this.eventExploreTopicLabel(option),
-            icon: 'tag',
-            kind: 'radio' as const,
-            active: this.normalizeTopic(option) === activeTopic,
-            checked: this.normalizeTopic(option) === activeTopic,
-            palette,
-            surface: 'tinted' as const,
-            context: { menu: 'topic' as const, topic: option }
-          }))
-        };
-      })
-    ];
   }
 
   protected eventExploreOrderMenuTrigger(): AppMenuTrigger {
@@ -504,7 +494,9 @@ export class EventExplorePopupComponent {
       this.selectEventExploreView(context.view, event.sourceEvent);
       return;
     }
-    this.selectEventExploreTopicFilter(context.topic, event.sourceEvent);
+    if (context.menu === 'topic-picker') {
+      this.toggleEventExploreTopicPicker(event.sourceEvent);
+    }
   }
 
   protected openEventExploreInfoCardMenu(
@@ -616,53 +608,27 @@ export class EventExplorePopupComponent {
     return view === 'distance' ? 'teal' : 'blue';
   }
 
-  private topicGroupIcon(toneClass: string): string {
-    switch (toneClass) {
-      case 'section-family':
-        return 'family_restroom';
-      case 'section-ambition':
-        return 'rocket_launch';
-      case 'section-lifestyle':
-        return 'eco';
-      case 'section-beliefs':
-      case 'section-identity':
-        return 'auto_awesome';
-      case 'section-social':
-        return 'celebration';
-      case 'section-arts':
-        return 'palette';
-      case 'section-food':
-        return 'restaurant';
-      case 'section-active':
-        return 'hiking';
-      case 'section-mind':
-        return 'self_improvement';
-      default:
-        return 'label';
+  private eventExploreTopicPalette(topic: string): AppMenuPalette {
+    const normalizedTopic = this.normalizeTopic(topic);
+    if (!normalizedTopic) {
+      return 'neutral';
     }
-  }
-
-  private topicGroupPalette(toneClass: string): AppMenuPalette {
-    switch (toneClass) {
-      case 'section-family':
-        return 'pink';
-      case 'section-ambition':
-        return 'violet';
-      case 'section-lifestyle':
-        return 'green';
-      case 'section-beliefs':
-      case 'section-identity':
-        return 'gold';
+    const group = this.topicFilterGroups.find(item =>
+      item.options.some(option => this.normalizeTopic(option) === normalizedTopic)
+    );
+    switch (group?.toneClass) {
       case 'section-social':
-        return 'orange';
-      case 'section-arts':
-        return 'purple';
-      case 'section-food':
-        return 'brown';
-      case 'section-active':
         return 'blue';
+      case 'section-arts':
+        return 'violet';
+      case 'section-food':
+        return 'orange';
+      case 'section-active':
+        return 'green';
       case 'section-mind':
-        return 'mint';
+        return 'teal';
+      case 'section-identity':
+        return 'purple';
       default:
         return 'neutral';
     }

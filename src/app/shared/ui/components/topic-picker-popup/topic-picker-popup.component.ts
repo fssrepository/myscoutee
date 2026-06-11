@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../core/base/models';
@@ -14,7 +14,7 @@ import type * as AppTypes from '../../../core/base/models';
   templateUrl: './topic-picker-popup.component.html',
   styleUrl: './topic-picker-popup.component.scss'
 })
-export class TopicPickerPopupComponent {
+export class TopicPickerPopupComponent implements OnChanges {
   @Input() open = false;
   @Input() title = 'Topics';
   @Input() groups: readonly AppTypes.InterestOptionGroup[] = [];
@@ -25,6 +25,22 @@ export class TopicPickerPopupComponent {
 
   @Output() readonly selectedChange = new EventEmitter<string[]>();
   @Output() readonly close = new EventEmitter<void>();
+
+  protected activeGroupIndex = 0;
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['groups']) {
+      this.activeGroupIndex = this.clampGroupIndex(this.activeGroupIndex);
+    }
+    if (changes['open']?.currentValue === true || changes['selected']) {
+      const selectedGroupIndex = this.selectedTopicGroupIndex();
+      if (selectedGroupIndex >= 0) {
+        this.activeGroupIndex = selectedGroupIndex;
+      } else {
+        this.activeGroupIndex = this.clampGroupIndex(this.activeGroupIndex);
+      }
+    }
+  }
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
@@ -62,6 +78,19 @@ export class TopicPickerPopupComponent {
 
   protected topicLabel(topic: string): string {
     return `#${topic.replace(/^#+/, '')}`;
+  }
+
+  protected activeGroup(): AppTypes.InterestOptionGroup | null {
+    return this.groups[this.clampGroupIndex(this.activeGroupIndex)] ?? null;
+  }
+
+  protected selectGroup(index: number, event?: Event): void {
+    event?.stopPropagation();
+    this.activeGroupIndex = this.clampGroupIndex(index);
+  }
+
+  protected isActiveGroup(index: number): boolean {
+    return this.clampGroupIndex(this.activeGroupIndex) === index;
   }
 
   protected toggleOption(option: string, event?: Event): void {
@@ -103,5 +132,28 @@ export class TopicPickerPopupComponent {
 
   private normalizeTopic(value: string): string {
     return value.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  private selectedTopicGroupIndex(): number {
+    for (const selectedTopic of this.selected) {
+      const normalizedSelected = this.normalizeTopic(selectedTopic);
+      if (!normalizedSelected) {
+        continue;
+      }
+      const groupIndex = this.groups.findIndex(group =>
+        group.options.some(option => this.normalizeTopic(option) === normalizedSelected)
+      );
+      if (groupIndex >= 0) {
+        return groupIndex;
+      }
+    }
+    return -1;
+  }
+
+  private clampGroupIndex(index: number): number {
+    if (this.groups.length === 0) {
+      return 0;
+    }
+    return Math.min(Math.max(0, Math.trunc(Number(index) || 0)), this.groups.length - 1);
   }
 }

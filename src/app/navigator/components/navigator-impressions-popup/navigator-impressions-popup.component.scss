@@ -390,6 +390,9 @@
 }
 
 .navigator-impressions-popup .personality-trait-pill {
+  --trait-accent: #6a45a3;
+  --trait-accent-soft: rgba(106, 69, 163, 0.18);
+  --trait-surface: linear-gradient(180deg, #fbf8ff 0%, #f2ebff 100%);
   position: relative;
   overflow: hidden;
   display: grid;
@@ -410,9 +413,14 @@
 }
 
 .navigator-impressions-popup .personality-trait-pill.is-active {
-  border-color: rgba(84, 112, 176, 0.4);
-  background: linear-gradient(180deg, #eef4ff 0%, #e4edff 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88), 0 8px 22px rgba(57, 84, 142, 0.12);
+  border-color: rgba(255, 255, 255, 0.96);
+  background: var(--trait-surface);
+  box-shadow: 0 0 0 1.5px var(--trait-accent-soft), inset 0 0 0 1px rgba(255, 255, 255, 0.92), 0 8px 22px color-mix(in srgb, var(--trait-accent) 14%, transparent);
+}
+
+.navigator-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-rank,
+.navigator-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-percent {
+  color: var(--trait-accent);
 }
 
 .navigator-impressions-popup .personality-trait-pill-rank {
@@ -545,49 +553,57 @@
   gap: 0.28rem;
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-social {
+.navigator-impressions-popup .personality-trait-card.trait-tone-social,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-social {
   --trait-accent: #dd5c82;
   --trait-accent-soft: rgba(221, 92, 130, 0.22);
   --trait-surface: linear-gradient(180deg, #fff7fb 0%, #fdebf3 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-deep {
+.navigator-impressions-popup .personality-trait-card.trait-tone-deep,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-deep {
   --trait-accent: #5a66b4;
   --trait-accent-soft: rgba(90, 102, 180, 0.2);
   --trait-surface: linear-gradient(180deg, #f7f8ff 0%, #ebedff 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-adventure {
+.navigator-impressions-popup .personality-trait-card.trait-tone-adventure,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-adventure {
   --trait-accent: #eb8b2d;
   --trait-accent-soft: rgba(235, 139, 45, 0.22);
   --trait-surface: linear-gradient(180deg, #fff8ef 0%, #ffefd9 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-reliable {
+.navigator-impressions-popup .personality-trait-card.trait-tone-reliable,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-reliable {
   --trait-accent: #2f8b7a;
   --trait-accent-soft: rgba(47, 139, 122, 0.22);
   --trait-surface: linear-gradient(180deg, #f3fffb 0%, #e2f7f0 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-creative {
+.navigator-impressions-popup .personality-trait-card.trait-tone-creative,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-creative {
   --trait-accent: #8b5fd1;
   --trait-accent-soft: rgba(139, 95, 209, 0.22);
   --trait-surface: linear-gradient(180deg, #fbf7ff 0%, #f0e7ff 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-empath {
+.navigator-impressions-popup .personality-trait-card.trait-tone-empath,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-empath {
   --trait-accent: #d15f77;
   --trait-accent-soft: rgba(209, 95, 119, 0.22);
   --trait-surface: linear-gradient(180deg, #fff8f8 0%, #fdebed 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-ambitious {
+.navigator-impressions-popup .personality-trait-card.trait-tone-ambitious,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-ambitious {
   --trait-accent: #406ecf;
   --trait-accent-soft: rgba(64, 110, 207, 0.22);
   --trait-surface: linear-gradient(180deg, #f7faff 0%, #e9f1ff 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-playful {
+.navigator-impressions-popup .personality-trait-card.trait-tone-playful,
+.navigator-impressions-popup .personality-trait-pill.trait-tone-playful {
   --trait-accent: #d77b2f;
   --trait-accent-soft: rgba(215, 123, 47, 0.22);
   --trait-surface: linear-gradient(180deg, #fffaf2 0%, #ffeedb 100%);

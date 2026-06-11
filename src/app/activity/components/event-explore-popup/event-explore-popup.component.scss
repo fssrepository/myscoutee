@@ -18,7 +18,7 @@
 }
 
 .event-explore-popup-shell .popup-body.popup-body-event-explore {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .event-explore-popup-shell .popup-header.popup-header-with-progress {
@@ -261,13 +261,7 @@
   align-items: center;
   gap: 0.28rem;
   flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-.event-explore-filter-bar::-webkit-scrollbar {
-  display: none;
+  overflow: visible;
 }
 
 .event-explore-filter-btn {
@@ -385,17 +379,53 @@
 
 
 @media (max-width: 760px) {
+  .event-explore-popup-shell .popup-header.popup-header-with-progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'title close'
+      'controls controls';
+    align-items: center;
+    gap: 0.34rem 0.4rem;
+    padding-block: 0.5rem 0.46rem;
+  }
+
+  .event-explore-popup-shell .popup-header.popup-header-with-progress > .popup-title {
+    grid-area: title;
+    min-width: 0;
+  }
+
+  .event-explore-popup-shell .popup-header.popup-header-with-progress > .popup-close {
+    grid-area: close;
+    justify-self: end;
+  }
+
   .event-explore-header-controls {
+    grid-area: controls;
+    justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 0.3rem;
     min-width: 0;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .event-explore-order-picker,
+  .event-explore-view-picker {
+    flex: 0 0 auto;
+    max-width: calc(50vw - 0.75rem);
+  }
+
+  .event-explore-filter-bar {
+    height: auto;
+    min-height: 2.2rem;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    row-gap: 0.3rem;
   }
 
   .event-explore-popup-shell .popup-panel-event-explore {
     width: min(100vw, calc(100vw - 0.6rem));
-  }
-
-  .event-explore-filter-bar {
-    padding-right: 0.08rem;
   }
 
   .event-explore-basket {

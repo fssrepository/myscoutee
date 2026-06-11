@@ -221,7 +221,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.isDropdownListKind || this.isButtonRowKind;
   }
 
+  protected get isCustomTriggerAction(): boolean {
+    return this.trigger?.action === 'custom';
+  }
+
   protected get panelVisible(): boolean {
+    if (this.isCustomTriggerAction) {
+      return false;
+    }
     return this.isInlineKind || this.open;
   }
 
@@ -321,13 +328,58 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected triggerIcon(): string {
-    const configuredIcon = this.resolveLiveValue(this.open
-      ? this.trigger?.closeIcon ?? this.trigger?.openIcon ?? this.trigger?.icon
-      : this.trigger?.icon);
+    if (this.open) {
+      const configuredOpenIcon = this.resolveLiveValue(this.trigger?.closeIcon ?? this.trigger?.openIcon);
+      if (configuredOpenIcon !== null && configuredOpenIcon !== undefined) {
+        return `${configuredOpenIcon}`.trim();
+      }
+      const baseIcon = `${this.resolveLiveValue(this.trigger?.icon) ?? ''}`.trim();
+      if (this.shouldResolveTriggerIconToClose(baseIcon)) {
+        return 'close';
+      }
+      if (!baseIcon && this.isSelectKind) {
+        return '';
+      }
+      return `${baseIcon || 'close'}`.trim();
+    }
+    const configuredIcon = this.resolveLiveValue(this.trigger?.icon);
     if (!configuredIcon && this.isSelectKind) {
       return '';
     }
-    return `${configuredIcon ?? (this.open ? 'close' : 'more_vert')}`.trim();
+    return `${configuredIcon ?? 'more_vert'}`.trim();
+  }
+
+  private shouldResolveTriggerIconToClose(icon: string): boolean {
+    if (this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true) {
+      return false;
+    }
+    switch (icon) {
+      case 'add':
+      case 'add_box':
+      case 'add_circle':
+      case 'more_horiz':
+      case 'more_vert':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  protected triggerTrailingIcon(): string {
+    const configuredIcon = this.resolveLiveValue(this.open
+      ? this.trigger?.closeTrailingIcon ?? this.trigger?.openTrailingIcon ?? this.trigger?.trailingIcon
+      : this.trigger?.trailingIcon);
+    if (configuredIcon !== null && configuredIcon !== undefined) {
+      return `${configuredIcon}`.trim();
+    }
+    if (this.isSelectKind && this.triggerShape() !== 'icon') {
+      return 'expand_more';
+    }
+    return '';
+  }
+
+  protected triggerCaretRotates(): boolean {
+    return !this.isCustomTriggerAction && this.isSelectKind;
   }
 
   protected triggerAriaLabel(): string {
@@ -340,6 +392,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       return this.open ? `Close ${label}` : `Open ${label}`;
     }
     return this.open ? 'Close menu' : 'Open menu';
+  }
+
+  protected triggerAriaHasPopup(): string | null {
+    return this.isCustomTriggerAction ? 'dialog' : 'menu';
   }
 
   protected triggerDisabled(): boolean {
@@ -380,6 +436,23 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     event.preventDefault();
     event.stopPropagation();
     if (this.triggerDisabled()) {
+      return;
+    }
+    if (this.isCustomTriggerAction) {
+      const item: AppMenuItem<TId, TContext> = {
+        id: `${this.trigger?.id ?? 'trigger'}` as TId,
+        label: this.trigger?.label,
+        icon: this.trigger?.icon,
+        kind: 'action',
+        palette: this.trigger?.palette,
+        context: this.trigger?.context as TContext
+      };
+      this.itemSelect.emit({
+        id: item.id,
+        item,
+        context: item.context,
+        sourceEvent: event
+      });
       return;
     }
     this.setOpen(!this.open);

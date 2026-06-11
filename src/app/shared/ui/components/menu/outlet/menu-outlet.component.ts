@@ -49,6 +49,7 @@ import type {
 })
 export class AppMenuOutletComponent<TId extends string = string, TContext = unknown> {
   private static readonly DESKTOP_MARGIN_PX = 8;
+  private static readonly DESKTOP_PANEL_GAP_PX = 4;
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
 
   private readonly dispatcher = inject(AppMenuDispatcher);
@@ -100,7 +101,9 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     if (!rect) {
       return AppMenuOutletComponent.DESKTOP_MARGIN_PX;
     }
-    return this.resolvedOpenUp(menu) ? rect.top : rect.bottom;
+    return this.resolvedOpenUp(menu)
+      ? rect.top - AppMenuOutletComponent.DESKTOP_PANEL_GAP_PX
+      : rect.bottom + AppMenuOutletComponent.DESKTOP_PANEL_GAP_PX;
   }
 
   @HostListener('window:resize')

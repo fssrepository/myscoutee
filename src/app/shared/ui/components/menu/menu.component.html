@@ -11,7 +11,7 @@
       [class.app-menu__trigger--shape-icon]="triggerShape() === 'icon'"
       [disabled]="triggerDisabled()"
       [attr.aria-expanded]="open"
-      aria-haspopup="menu"
+      [attr.aria-haspopup]="triggerAriaHasPopup()"
       [attr.aria-label]="triggerAriaLabel()"
       (click)="toggleMenu($event)"
       >
@@ -21,8 +21,13 @@
       @if (!trigger?.hideLabel && triggerLabel()) {
         <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
       }
-      @if (isSelectKind && triggerShape() !== 'icon') {
-        <mat-icon class="app-menu__trigger-caret">expand_more</mat-icon>
+      @if (triggerTrailingIcon()) {
+        <mat-icon
+          class="app-menu__trigger-caret"
+          [class.app-menu__trigger-caret--static]="!triggerCaretRotates()"
+          >
+          {{ triggerTrailingIcon() }}
+        </mat-icon>
       }
       @if (hasTriggerCounter()) {
         <span
