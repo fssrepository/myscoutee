@@ -1095,7 +1095,7 @@ const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
     icon: 'policy',
     title: 'Adatvédelem',
     blurb: 'Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.',
-    contentHtml: '<p>Hogyan kezeli a MyScoutee a profilhoz, eseményekhez és közösségi aktivitáshoz kapcsolódó személyes adatokat.</p><p><strong>Utolsó frissítés:</strong> 2026. február 1.</p>'
+    contentHtml: '<p><strong>Utolsó frissítés:</strong> 2026. február 1.</p>'
   },
   {
     id: 'contact-details',
