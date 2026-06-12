@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../../core/base/models';
 import type { ActivityEventRecord } from '../../base/models/events.model';
 import { HttpActivityMembersService } from './activity-members.service';
 import { HttpEventsService } from './events.service';
+import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'

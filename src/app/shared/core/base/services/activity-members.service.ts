@@ -1,15 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 
-import type {
-  ActivityMemberOwnerType,
-  ActivityMemberOwnerRef,
-  ActivityMembersSummary
-} from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
 import { LocalActivityMembersService } from '../../local/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
 import { BaseRouteModeService } from './base-route-mode.service';
+import type { ActivityMemberOwnerRef, ActivityMemberOwnerType, ActivityMembersSummary } from '../../contracts/activity.interface';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -25,11 +22,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.resolveRouteService('/activities/events/members', this.localActivityMembersService, this.httpActivityMembersService);
   }
 
-  peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
+  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberEntry[] {
     return this.presentMembers(this.activityMembersService.peekMembersByOwner(owner));
   }
 
-  peekMembersByOwnerId(ownerId: string): AppTypes.ActivityMemberEntry[] {
+  peekMembersByOwnerId(ownerId: string): ActivityContracts.ActivityMemberEntry[] {
     const owner = this.peekOwnerRefById(ownerId);
     if (!owner) {
       return [];
@@ -37,11 +34,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.peekMembersByOwner(owner);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberEntry[]> {
     return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner));
   }
 
-  async queryMembersByOwnerId(ownerId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryMembersByOwnerId(ownerId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return [];
@@ -82,7 +79,7 @@ export class ActivityMembersService extends BaseRouteModeService {
 
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
     const actorUserId = this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
@@ -97,7 +94,7 @@ export class ActivityMembersService extends BaseRouteModeService {
 
   async replaceMembersByOwnerId(
     ownerId: string,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
@@ -113,7 +110,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     targetUserId: string,
     action: 'disqualify' | 'reinstate',
     reason?: string | null
-  ): Promise<AppTypes.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
     if (!normalizedOwner.ownerId.trim()) {
       return [];
@@ -172,7 +169,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     };
   }
 
-  private presentMembers(entries: readonly AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+  private presentMembers(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
     const activeUserId = this.appCtx.activeUserId().trim();
     return entries.map(entry => {
       const invitedByUserId = `${entry.invitedByUserId ?? ''}`.trim() || null;
@@ -185,8 +182,8 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   private prepareMembersForPersistence(
-    entries: readonly AppTypes.ActivityMemberEntry[]
-  ): AppTypes.ActivityMemberEntry[] {
+    entries: readonly ActivityContracts.ActivityMemberEntry[]
+  ): ActivityContracts.ActivityMemberEntry[] {
     const activeUserId = this.appCtx.activeUserId().trim();
     return entries.map(entry => {
       const isPendingInvite = entry.status === 'pending'
@@ -203,7 +200,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   private isInviteOwnedByActiveUser(
-    entry: AppTypes.ActivityMemberEntry,
+    entry: ActivityContracts.ActivityMemberEntry,
     activeUserId: string,
     invitedByUserId: string | null
   ): boolean {

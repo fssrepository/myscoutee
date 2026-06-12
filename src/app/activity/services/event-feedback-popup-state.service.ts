@@ -1,5 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import type * as AppTypes from '../../shared/core/base/models';
+import type * as ActivityContracts from '../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { EventFeedbackBuilder } from '../../shared/core/base/builders';
@@ -66,7 +67,7 @@ interface EventFeedbackStateOverride {
   removedAtIso?: string | null;
   submittedAtIso?: string;
   organizerNote?: string;
-  answersByCardId?: Record<string, AppTypes.SubmittedEventFeedbackAnswer>;
+  answersByCardId?: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>;
 }
 
 @Injectable({
@@ -106,13 +107,13 @@ export class EventFeedbackPopupStateService {
   private eventFeedbackTouchStartY: number | null = null;
 
   private readonly submittedEventFeedbackByUser = signal<Record<string, Record<string, true>>>({});
-  private readonly submittedEventFeedbackAnswersByUser = signal<Record<string, Record<string, AppTypes.SubmittedEventFeedbackAnswer>>>({});
+  private readonly submittedEventFeedbackAnswersByUser = signal<Record<string, Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>>>({});
   private readonly submittedEventFeedbackEventsByUser = signal<Record<string, Record<string, string>>>({});
   private readonly removedEventFeedbackEventsByUser = signal<Record<string, Record<string, true>>>({});
   private readonly removedEventFeedbackEventDatesByUser = signal<Record<string, Record<string, string>>>({});
   private readonly organizerEventFeedbackNotesByUser = signal<Record<string, Record<string, string>>>({});
   private readonly eventFeedbackStateOverridesByUser = signal<Record<string, Record<string, EventFeedbackStateOverride>>>({});
-  private readonly receivedEventFeedbackByEventId = signal<Record<string, AppTypes.EventFeedbackReceivedEventDto>>({});
+  private readonly receivedEventFeedbackByEventId = signal<Record<string, ActivityContracts.EventFeedbackReceivedEventDto>>({});
 
   public readonly eventFeedbackEventOverallOptions = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
   public readonly eventFeedbackHostImproveOptions = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
@@ -440,8 +441,8 @@ export class EventFeedbackPopupStateService {
     const eventTitle = this.sourceRef()?.eventTitleById(eventId) ?? '';
     const cardsToSubmit = [...this.eventFeedbackCards()];
     const submittedAtIso = AppUtils.toIsoDateTime(new Date());
-    const submittedAnswersByCardId: Record<string, AppTypes.SubmittedEventFeedbackAnswer> = {};
-    const requestAnswers: AppTypes.EventFeedbackAnswerSubmitDto[] = [];
+    const submittedAnswersByCardId: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> = {};
+    const requestAnswers: ActivityContracts.EventFeedbackAnswerSubmitDto[] = [];
     for (const feedbackCard of cardsToSubmit) {
       const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
       const personalityTraitIds = [...(feedbackCard.selectedTraitIds ?? [])];
@@ -556,8 +557,8 @@ export class EventFeedbackPopupStateService {
     this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
   }
 
-  private applyReceivedEventFeedbackEvents(events: AppTypes.EventFeedbackReceivedEventDto[]): void {
-    const next: Record<string, AppTypes.EventFeedbackReceivedEventDto> = {};
+  private applyReceivedEventFeedbackEvents(events: ActivityContracts.EventFeedbackReceivedEventDto[]): void {
+    const next: Record<string, ActivityContracts.EventFeedbackReceivedEventDto> = {};
     for (const item of events) {
       const eventId = item.eventId?.trim() ?? '';
       if (!eventId) {
@@ -582,9 +583,9 @@ export class EventFeedbackPopupStateService {
     this.receivedEventFeedbackByEventId.set(next);
   }
 
-  private applyEventFeedbackStateDtos(userId: string, states: AppTypes.EventFeedbackStateDto[]): void {
+  private applyEventFeedbackStateDtos(userId: string, states: ActivityContracts.EventFeedbackStateDto[]): void {
     const submittedCards: Record<string, true> = {};
-    const submittedAnswers: Record<string, AppTypes.SubmittedEventFeedbackAnswer> = {};
+    const submittedAnswers: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> = {};
     const submittedEvents: Record<string, string> = {};
     const removedEvents: Record<string, true> = {};
     const removedEventDates: Record<string, string> = {};
@@ -676,7 +677,7 @@ export class EventFeedbackPopupStateService {
   private applyEventFeedbackStateOverrides(
     userId: string,
     submittedCards: Record<string, true>,
-    submittedAnswers: Record<string, AppTypes.SubmittedEventFeedbackAnswer>,
+    submittedAnswers: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>,
     submittedEvents: Record<string, string>,
     removedEvents: Record<string, true>,
     removedEventDates: Record<string, string>,
@@ -720,8 +721,8 @@ export class EventFeedbackPopupStateService {
   }
 
   private cloneSubmittedEventFeedbackAnswer(
-    answer: AppTypes.SubmittedEventFeedbackAnswer
-  ): AppTypes.SubmittedEventFeedbackAnswer {
+    answer: ActivityContracts.SubmittedEventFeedbackAnswer
+  ): ActivityContracts.SubmittedEventFeedbackAnswer {
     return {
       ...answer,
       cardId: answer.cardId?.trim() ?? '',
@@ -738,10 +739,10 @@ export class EventFeedbackPopupStateService {
   }
 
   private clonePersistedAnswersByCardId(
-    answersByCardId: AppTypes.EventFeedbackPersistedState['answersByCardId'] | AppTypes.EventFeedbackStateDto['answersByCardId']
+    answersByCardId: AppTypes.EventFeedbackPersistedState['answersByCardId'] | ActivityContracts.EventFeedbackStateDto['answersByCardId']
   ): AppTypes.EventFeedbackPersistedState['answersByCardId'] {
     const next: AppTypes.EventFeedbackPersistedState['answersByCardId'] = {};
-    const source = (answersByCardId ?? {}) as Record<string, AppTypes.SubmittedEventFeedbackAnswer>;
+    const source = (answersByCardId ?? {}) as Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>;
     for (const [cardId, answer] of Object.entries(source)) {
       const normalizedCardId = cardId.trim();
       if (!normalizedCardId || !answer) {
@@ -1037,7 +1038,7 @@ export class EventFeedbackPopupStateService {
 
   // --- Internal Data Helpers ---
 
-  private organizerEventFeedbackEntriesLatestAtMs(entries: readonly AppTypes.EventFeedbackReceivedEntryDto[]): number | null {
+  private organizerEventFeedbackEntriesLatestAtMs(entries: readonly ActivityContracts.EventFeedbackReceivedEntryDto[]): number | null {
     let latestAtMs: number | null = null;
     for (const entry of entries) {
       const candidateMs = this.organizerEventFeedbackEntryTimestampMs(entry);
@@ -1049,7 +1050,7 @@ export class EventFeedbackPopupStateService {
     return latestAtMs;
   }
 
-  private organizerEventFeedbackEntryTimestampIso(entry: AppTypes.EventFeedbackReceivedEntryDto): string {
+  private organizerEventFeedbackEntryTimestampIso(entry: ActivityContracts.EventFeedbackReceivedEntryDto): string {
     const updatedAtIso = entry.updatedAtIso?.trim() ?? '';
     if (updatedAtIso) {
       return updatedAtIso;
@@ -1067,7 +1068,7 @@ export class EventFeedbackPopupStateService {
     return '';
   }
 
-  private organizerEventFeedbackEntryTimestampMs(entry: AppTypes.EventFeedbackReceivedEntryDto): number {
+  private organizerEventFeedbackEntryTimestampMs(entry: ActivityContracts.EventFeedbackReceivedEntryDto): number {
     const timestampIso = this.organizerEventFeedbackEntryTimestampIso(entry);
     if (!timestampIso) {
       return 0;
@@ -1077,8 +1078,8 @@ export class EventFeedbackPopupStateService {
   }
 
   private organizerEventFeedbackEntryEventAnswer(
-    entry: AppTypes.EventFeedbackReceivedEntryDto
-  ): AppTypes.SubmittedEventFeedbackAnswer | null {
+    entry: ActivityContracts.EventFeedbackReceivedEntryDto
+  ): ActivityContracts.SubmittedEventFeedbackAnswer | null {
     return (entry.answers ?? []).find(answer => answer.kind === 'event') ?? null;
   }
 
@@ -1276,8 +1277,8 @@ export class EventFeedbackPopupStateService {
     tags: string[],
     personalityTraitIds: string[],
     submittedAtIso: string
-  ): AppTypes.SubmittedEventFeedbackAnswer {
-    const submittedAnswer: AppTypes.SubmittedEventFeedbackAnswer = {
+  ): ActivityContracts.SubmittedEventFeedbackAnswer {
+    const submittedAnswer: ActivityContracts.SubmittedEventFeedbackAnswer = {
       cardId: card.id,
       eventId: card.eventId,
       kind: card.kind,

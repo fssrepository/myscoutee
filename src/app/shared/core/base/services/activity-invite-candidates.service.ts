@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
 import type {
   IActivityInviteCandidatesService,
   ActivityInviteOwnerContext
@@ -12,13 +11,14 @@ import { AppContext } from '../context';
 import { EventsService } from './events.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivityInviteCandidatesService extends BaseRouteModeService {
+export class ActivityInviteCandidatesService extends BaseRouteModeService implements IActivityInviteCandidatesService {
   private readonly localActivityInviteCandidatesService = inject(LocalActivityInviteCandidatesService);
   private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -34,19 +34,25 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
     );
   }
 
+  async queryCandidates(
+    query: ActivityContracts.ActivityInviteCandidatesQuery
+  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
+    return this.inviteCandidatesService.queryCandidates(query);
+  }
+
   async queryCandidatesByOwner(
     ownerId: string,
-    sort: AppTypes.ActivityInviteSort,
+    sort: ActivityContracts.ActivityInviteSort,
     fallbackTitle = 'Event',
-    ownerType: AppTypes.ActivityMemberOwnerType = 'event',
+    ownerType: ActivityContracts.ActivityMemberOwnerType = 'event',
     existingMemberUserIds: readonly string[] = []
-  ): Promise<AppTypes.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const activeUserId = this.activeUserId();
     const normalizedOwnerId = ownerId.trim();
     if (!activeUserId || !normalizedOwnerId) {
       return [];
     }
-    const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+    const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
       ownerType,
       ownerId: normalizedOwnerId
     };
@@ -64,15 +70,15 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
 
   async applyInvites(
     ownerId: string,
-    selectedCandidates: readonly AppTypes.ActivityMemberEntry[],
-    ownerType: AppTypes.ActivityMemberOwnerType = 'event'
+    selectedCandidates: readonly ActivityContracts.ActivityMemberEntry[],
+    ownerType: ActivityContracts.ActivityMemberOwnerType = 'event'
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
     const activeUserId = this.activeUserId();
     if (!normalizedOwnerId || !activeUserId || selectedCandidates.length === 0) {
       return;
     }
-    const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+    const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
       ownerType,
       ownerId: normalizedOwnerId
     };
@@ -109,7 +115,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
 
   private resolveOwnerContext(
     activeUserId: string,
-    owner: AppTypes.ActivityMemberOwnerRef,
+    owner: ActivityContracts.ActivityMemberOwnerRef,
     fallbackTitle: string
   ): ActivityInviteOwnerContext {
     if (owner.ownerType !== 'event') {
@@ -152,7 +158,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
     };
   }
 
-  private ownerTypeLabel(ownerType: AppTypes.ActivityMemberOwnerType): string {
+  private ownerTypeLabel(ownerType: ActivityContracts.ActivityMemberOwnerType): string {
     if (ownerType === 'asset') {
       return 'Asset';
     }

@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalIdeaPostsService } from '../../local/services/idea-posts.service';
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
-import type { IdeaArticleDetail, IdeaPost, IdeaPostSaveRequest } from '../models';
+import type { IdeaArticleDetailDto, IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -14,26 +14,26 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   private readonly localIdeaPostsService = inject(LocalIdeaPostsService);
   private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
-  private readonly postsRef = signal<IdeaPost[]>([]);
-  private readonly adminPostsRef = signal<IdeaPost[]>([]);
+  private readonly postsRef = signal<IdeaPostDto[]>([]);
+  private readonly adminPostsRef = signal<IdeaPostDto[]>([]);
   private adminPostsLang = 'en';
 
   readonly posts = this.postsRef.asReadonly();
   readonly adminPosts = this.adminPostsRef.asReadonly();
 
-  applyPublishedPosts(posts: readonly IdeaPost[]): void {
+  applyPublishedPosts(posts: readonly IdeaPostDto[]): void {
     this.postsRef.set(this.clonePosts(posts)
       .filter(post => post.published && !post.trashed)
       .sort((left, right) => this.sortValue(right) - this.sortValue(left)));
   }
 
-  async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().loadPublishedPosts(lang);
     this.applyPublishedPosts(posts);
     return this.clonePosts(this.postsRef());
   }
 
-  async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPost[]> {
+  async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
     const cloned = this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
     this.adminPostsLang = this.normalizeLang(lang);
@@ -42,18 +42,18 @@ export class IdeaPostsService extends BaseRouteModeService {
     return this.clonePosts(cloned);
   }
 
-  async loadAdminPostsSnapshot(adminUserId: string, lang = 'en'): Promise<IdeaPost[]> {
+  async loadAdminPostsSnapshot(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
     return this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
-  async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
+  async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
     const post = await this.ideaService().savePost(request);
     this.mergeAdminPost(post);
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
-  async deletePost(postId: string, actorUserId: string): Promise<IdeaPost[]> {
+  async deletePost(postId: string, actorUserId: string): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().deletePost(postId, actorUserId);
     const cloned = this.clonePosts(posts)
       .filter(post => this.normalizeLang(post.lang) === this.adminPostsLang)
@@ -63,21 +63,21 @@ export class IdeaPostsService extends BaseRouteModeService {
     return this.clonePosts(cloned);
   }
 
-  async restorePost(postId: string, actorUserId: string): Promise<IdeaPost> {
+  async restorePost(postId: string, actorUserId: string): Promise<IdeaPostDto> {
     const post = await this.ideaService().restorePost(postId, actorUserId);
     this.mergeAdminPost(post);
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
-  publishedIdeaInfoCards(): InfoCardData<IdeaArticleDetail>[] {
+  publishedIdeaInfoCards(): InfoCardData<IdeaArticleDetailDto>[] {
     return this.postsRef().map(post => this.entryIdeaInfoCard(post));
   }
 
-  adminIdeaInfoCards(): InfoCardData<IdeaArticleDetail>[] {
+  adminIdeaInfoCards(): InfoCardData<IdeaArticleDetailDto>[] {
     return this.adminPostsRef().map(post => this.adminIdeaInfoCard(post));
   }
 
-  private entryIdeaInfoCard(post: IdeaPost): InfoCardData<IdeaArticleDetail> {
+  private entryIdeaInfoCard(post: IdeaPostDto): InfoCardData<IdeaArticleDetailDto> {
     return {
       id: `entry-idea:${post.id}`,
       status: post.published ? 'published' : 'draft',
@@ -115,7 +115,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     };
   }
 
-  private adminIdeaInfoCard(post: IdeaPost): InfoCardData<IdeaArticleDetail> {
+  private adminIdeaInfoCard(post: IdeaPostDto): InfoCardData<IdeaArticleDetailDto> {
     const statusLabel = this.adminPostStatusLabel(post);
     const publicationAction: InfoCardMenuAction = post.published ? 'unpublish' : 'publish';
     const featuredAction: InfoCardMenuAction = post.featured ? 'unfeature' : 'feature';
@@ -171,7 +171,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     };
   }
 
-  private mergeAdminPost(post: IdeaPost): void {
+  private mergeAdminPost(post: IdeaPostDto): void {
     if (this.normalizeLang(post.lang) !== this.adminPostsLang) {
       return;
     }
@@ -187,11 +187,11 @@ export class IdeaPostsService extends BaseRouteModeService {
     return this.resolveRouteService('/ideas', this.localIdeaPostsService, this.httpIdeaPostsService);
   }
 
-  private clonePosts(posts: readonly IdeaPost[]): IdeaPost[] {
+  private clonePosts(posts: readonly IdeaPostDto[]): IdeaPostDto[] {
     return posts.map(post => ({ ...post, imageUrls: [...post.imageUrls] }));
   }
 
-  private ideaArticleDetail(post: IdeaPost, fallbackDateLabel: string): IdeaArticleDetail {
+  private ideaArticleDetail(post: IdeaPostDto, fallbackDateLabel: string): IdeaArticleDetailDto {
     return {
       id: post.id,
       title: post.title,
@@ -204,7 +204,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     };
   }
 
-  private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
+  private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -214,7 +214,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     return normalized === 'hu' ? 'hu' : 'en';
   }
 
-  private ideaImageUrl(post: Pick<IdeaPost, 'imageUrl' | 'imageUrls'> | null): string {
+  private ideaImageUrl(post: Pick<IdeaPostDto, 'imageUrl' | 'imageUrls'> | null): string {
     const imageUrl = `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
     if (!imageUrl || this.isGenericArticleImage(imageUrl)) {
       return IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL;
@@ -222,7 +222,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     return imageUrl;
   }
 
-  private articleContentHtml(post: Pick<IdeaPost, 'contentHtml'>): string {
+  private articleContentHtml(post: Pick<IdeaPostDto, 'contentHtml'>): string {
     return `${post.contentHtml ?? ''}`
       .replaceAll('src="assets/logo/heart.webp"', `src="${IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL}"`)
       .replaceAll('src="/assets/logo/heart.webp"', `src="${IdeaPostsService.ARTICLE_FALLBACK_IMAGE_URL}"`)
@@ -239,7 +239,7 @@ export class IdeaPostsService extends BaseRouteModeService {
   }
 
   private ideaDateLabel(
-    post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null,
+    post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null,
     fallback: string
   ): string {
     const parsed = Date.parse(post?.submittedAtIso || post?.updatedAtIso || post?.createdAtIso || '');
@@ -253,7 +253,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     }).format(new Date(parsed));
   }
 
-  private adminPostStatusLabel(post: Pick<IdeaPost, 'published' | 'trashed'>): string {
+  private adminPostStatusLabel(post: Pick<IdeaPostDto, 'published' | 'trashed'>): string {
     if (post.trashed) {
       return 'Trashed';
     }

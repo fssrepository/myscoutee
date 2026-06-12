@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../base/db';
-import type { IdeaPost } from '../../base/models';
+import type { IdeaPostDto } from '../../contracts/content.interface';
 import { IDEA_POSTS_TABLE_NAME } from '../../base/models/idea-posts.model';
 import { SeedIdeaPostsBuilder } from '../builders';
 
@@ -38,7 +38,7 @@ export class SeedIdeaPostsRepository {
     return true;
   }
 
-  private clonePost(post: IdeaPost): IdeaPost {
+  private clonePost(post: IdeaPostDto): IdeaPostDto {
     return {
       ...post,
       imageUrls: [...post.imageUrls]

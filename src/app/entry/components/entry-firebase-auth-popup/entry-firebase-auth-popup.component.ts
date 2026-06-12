@@ -3,7 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import type * as AppTypes from '../../../shared/core/base/models';
+import type {
+  FirebaseAuthProvider,
+  FirebaseAuthRequestDto,
+  FirebaseEmailAuthMode
+} from '../../../shared/core/contracts/user.interface';
 import { I18nPipe } from '../../../shared/ui';
 
 @Component({
@@ -25,10 +29,10 @@ export class EntryFirebaseAuthPopupComponent {
   @Input() statusMessage = '';
 
   @Output() readonly closeRequested = new EventEmitter<void>();
-  @Output() readonly authRequested = new EventEmitter<AppTypes.FirebaseAuthRequest>();
+  @Output() readonly authRequested = new EventEmitter<FirebaseAuthRequestDto>();
 
   protected authStep: 'providers' | 'email' = 'providers';
-  protected emailMode: AppTypes.FirebaseEmailAuthMode = 'sign-in';
+  protected emailMode: FirebaseEmailAuthMode = 'sign-in';
   protected email = '';
   protected password = '';
   protected passwordConfirmation = '';
@@ -42,7 +46,7 @@ export class EntryFirebaseAuthPopupComponent {
     this.closeRequested.emit();
   }
 
-  protected requestProvider(provider: Exclude<AppTypes.FirebaseAuthProvider, 'email'>): void {
+  protected requestProvider(provider: Exclude<FirebaseAuthProvider, 'email'>): void {
     this.emailError = '';
     this.authRequested.emit({ provider });
   }
@@ -72,7 +76,7 @@ export class EntryFirebaseAuthPopupComponent {
     this.passwordConfirmationVisible = !this.passwordConfirmationVisible;
   }
 
-  protected setEmailMode(mode: AppTypes.FirebaseEmailAuthMode): void {
+  protected setEmailMode(mode: FirebaseEmailAuthMode): void {
     if (this.busy) {
       return;
     }

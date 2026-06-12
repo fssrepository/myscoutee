@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { LocalMemoryDb } from '../../base/db';
 import { appMemoryDbStorageKey, demoActiveUserStorageKey, scopedSessionStorageKey } from '../../base/storage-scope';
-import type { IdeaPost } from '../../base/models';
+import type { IdeaPostDto } from '../../contracts/content.interface';
 import { EVENTS_TABLE_NAME, type ActivityEventRecord } from '../../base/models/events.model';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../base/models/activity-members.model';
 import { IDEA_POSTS_TABLE_NAME } from '../../base/models/idea-posts.model';
@@ -191,7 +191,7 @@ function signatures(records: readonly ActivityEventRecord[]): string[] {
   ].join('|'));
 }
 
-function staleIdeaPost(id = 'stale'): IdeaPost {
+function staleIdeaPost(id = 'stale'): IdeaPostDto {
   return {
     id,
     contentKey: id,

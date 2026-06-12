@@ -4,7 +4,7 @@ import { environment } from '../../../../../environments/environment';
 import { HttpAdminWorkspaceService } from '../../http/services/admin-workspace.service';
 import { LocalAdminWorkspaceService } from '../../local/services/admin-workspace.service';
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../contracts/admin.interface';
-import type { ShareTokenResolvedItem } from '../models';
+import type { ShareTokenResolvedItem } from '../../contracts/share.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ShareTokensService } from './share-tokens.service';
 import { UsersService } from './users.service';

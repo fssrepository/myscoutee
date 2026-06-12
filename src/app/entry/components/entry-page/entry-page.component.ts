@@ -2,7 +2,7 @@ import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, 
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
-import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type FirebaseAuthRequest, type UserDto } from '../../../shared/core';
+import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type FirebaseAuthRequestDto, type UserDto } from '../../../shared/core';
 import { EntryShellComponent, type EntryDemoUserSelectionEvent } from '../entry-shell/entry-shell.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
 
@@ -98,7 +98,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected async onFirebaseAuthRequested(request: FirebaseAuthRequest): Promise<void> {
+  protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
     const session = await this.sessionService.startFirebaseSession(request);
     if (!session) {
       return;

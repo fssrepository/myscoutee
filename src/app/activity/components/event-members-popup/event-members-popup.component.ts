@@ -15,7 +15,6 @@ import { from } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/base/models';
 import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
@@ -37,6 +36,8 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
+import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -47,7 +48,7 @@ type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'rep
 
 type MemberMenuContext = {
   menu: 'member-action';
-  member: AppTypes.ActivityMemberEntry;
+  member: ActivityContracts.ActivityMemberEntry;
   action: MemberMenuAction;
 };
 
@@ -83,7 +84,7 @@ export class EventMembersPopupComponent {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly usersService = inject(UsersService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly membersCacheByOwnerId = new Map<string, AppTypes.ActivityMemberEntry[]>();
+  private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -104,7 +105,7 @@ export class EventMembersPopupComponent {
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
   private canManageMembers = false;
-  private selectedMembersVisible: ReadonlyArray<AppTypes.ActivityMemberEntry> = [];
+  private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberEntry> = [];
   private membersListReady = false;
   private pendingSummaryState: MembersSummaryState = {
     acceptedCount: 0,
@@ -112,7 +113,7 @@ export class EventMembersPopupComponent {
     capacityTotal: 0
   };
   private isLocalMembersSource = false;
-  private membersChangeHandler: ((members: readonly AppTypes.ActivityMemberEntry[]) => void) | null = null;
+  private membersChangeHandler: ((members: readonly ActivityContracts.ActivityMemberEntry[]) => void) | null = null;
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
   private viewOnlyMode = false;
@@ -120,19 +121,19 @@ export class EventMembersPopupComponent {
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
   @ViewChild('membersSmartList')
-  private membersSmartList?: SmartListComponent<AppTypes.ActivityMemberEntry, MembersSmartListFilters>;
+  private membersSmartList?: SmartListComponent<ActivityContracts.ActivityMemberEntry, MembersSmartListFilters>;
 
-  protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, MembersSmartListFilters>>;
+  protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberEntry, MembersSmartListFilters>>;
 
   @ViewChild('memberItemTemplate', { read: TemplateRef })
   private set membersItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, MembersSmartListFilters>> | undefined
+    value: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberEntry, MembersSmartListFilters>> | undefined
   ) {
     this.membersItemTemplateRef = value;
     this.cdr.markForCheck();
   }
 
-  protected readonly membersSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
+  protected readonly membersSmartListConfig: SmartListConfig<ActivityContracts.ActivityMemberEntry, MembersSmartListFilters> = {
     pageSize: 16,
     defaultView: 'list',
     headerProgress: {
@@ -153,7 +154,7 @@ export class EventMembersPopupComponent {
     trackBy: (_index, member) => member.id
   };
 
-  protected readonly membersSmartListLoaders: SmartListLoaders<AppTypes.ActivityMemberEntry, MembersSmartListFilters> = {
+  protected readonly membersSmartListLoaders: SmartListLoaders<ActivityContracts.ActivityMemberEntry, MembersSmartListFilters> = {
     list: query => from(this.loadMembersPage(query))
   };
 
@@ -223,7 +224,7 @@ export class EventMembersPopupComponent {
   }
 
   protected onMembersSmartListStateChange(
-    change: SmartListStateChange<AppTypes.ActivityMemberEntry, MembersSmartListFilters>
+    change: SmartListStateChange<ActivityContracts.ActivityMemberEntry, MembersSmartListFilters>
   ): void {
     this.selectedMembersVisible = [...change.items];
     if (!change.initialLoading) {
@@ -293,7 +294,7 @@ export class EventMembersPopupComponent {
     return !!invitePopup && invitePopup.ownerId === this.ownerId;
   }
 
-  protected canShowActionMenu(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canShowActionMenu(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return this.canApproveMember(entry)
       || this.canDeleteMember(entry)
       || this.canDisqualifyMember(entry)
@@ -301,15 +302,15 @@ export class EventMembersPopupComponent {
       || this.canReportMember(entry);
   }
 
-  protected isActionMenuOpen(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected isActionMenuOpen(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return this.membersSmartList?.isMenuOpen(this.memberActionMenuId(entry)) ?? false;
   }
 
-  protected memberActionMenuId(entry: AppTypes.ActivityMemberEntry): string {
+  protected memberActionMenuId(entry: ActivityContracts.ActivityMemberEntry): string {
     return `activity-member:${entry.id}`;
   }
 
-  protected memberActionMenuTrigger(entry: AppTypes.ActivityMemberEntry): AppMenuTrigger {
+  protected memberActionMenuTrigger(entry: ActivityContracts.ActivityMemberEntry): AppMenuTrigger {
     return {
       icon: 'more_vert',
       closeIcon: 'close',
@@ -320,7 +321,7 @@ export class EventMembersPopupComponent {
     };
   }
 
-  protected memberActionMenuPalette(entry: AppTypes.ActivityMemberEntry): AppMenuPalette {
+  protected memberActionMenuPalette(entry: ActivityContracts.ActivityMemberEntry): AppMenuPalette {
     if (entry.status === 'disqualified') {
       return 'danger';
     }
@@ -333,7 +334,7 @@ export class EventMembersPopupComponent {
     return 'blue';
   }
 
-  protected memberActionMenuItems(entry: AppTypes.ActivityMemberEntry): readonly AppMenuItem<string, MemberMenuContext>[] {
+  protected memberActionMenuItems(entry: ActivityContracts.ActivityMemberEntry): readonly AppMenuItem<string, MemberMenuContext>[] {
     const items: AppMenuItem<string, MemberMenuContext>[] = [];
     if (this.canApproveMember(entry)) {
       items.push({
@@ -407,7 +408,7 @@ export class EventMembersPopupComponent {
     }
   }
 
-  protected approveMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected approveMember(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canApproveMember(entry)) {
       return;
@@ -426,7 +427,7 @@ export class EventMembersPopupComponent {
     });
   }
 
-  protected requestRemoveMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected requestRemoveMember(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canDeleteMember(entry)) {
       return;
@@ -445,7 +446,7 @@ export class EventMembersPopupComponent {
     });
   }
 
-  protected requestDisqualifyMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected requestDisqualifyMember(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canDisqualifyMember(entry)) {
       return;
@@ -464,7 +465,7 @@ export class EventMembersPopupComponent {
     });
   }
 
-  protected requestReinstateMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected requestReinstateMember(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canReinstateMember(entry)) {
       return;
@@ -483,7 +484,7 @@ export class EventMembersPopupComponent {
     });
   }
 
-  protected reportMember(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected reportMember(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     if (!this.canReportMember(entry)) {
       return;
@@ -502,11 +503,11 @@ export class EventMembersPopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected canViewMemberProfile(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canViewMemberProfile(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return Boolean(`${entry.userId ?? ''}`.trim());
   }
 
-  protected viewMemberProfile(entry: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected viewMemberProfile(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     const userId = `${entry.userId ?? ''}`.trim();
     if (!userId) {
@@ -520,7 +521,7 @@ export class EventMembersPopupComponent {
     this.cdr.markForCheck();
   }
 
-  private async confirmApproveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
+  private async confirmApproveMember(entry: ActivityContracts.ActivityMemberEntry): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const nextMembers = previousMembers.map(member =>
       member.id === entry.id
@@ -537,7 +538,7 @@ export class EventMembersPopupComponent {
     await approvePromise;
   }
 
-  private async confirmRemoveMember(entry: AppTypes.ActivityMemberEntry): Promise<void> {
+  private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberEntry): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
     const deletePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
@@ -545,7 +546,7 @@ export class EventMembersPopupComponent {
   }
 
   private async confirmMemberAction(
-    entry: AppTypes.ActivityMemberEntry,
+    entry: ActivityContracts.ActivityMemberEntry,
     action: 'disqualify' | 'reinstate'
   ): Promise<void> {
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
@@ -557,7 +558,7 @@ export class EventMembersPopupComponent {
     await actionPromise;
   }
 
-  private memberRemovalTitle(entry: AppTypes.ActivityMemberEntry): string {
+  private memberRemovalTitle(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.requestKind === 'join') {
       return 'Reject request?';
     }
@@ -567,7 +568,7 @@ export class EventMembersPopupComponent {
     return 'Delete invitation?';
   }
 
-  private memberRemovalMessage(entry: AppTypes.ActivityMemberEntry): string {
+  private memberRemovalMessage(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.requestKind === 'join') {
       return `Reject ${entry.name}'s request to join this ${this.ownerScopeLabel()}?`;
     }
@@ -577,21 +578,21 @@ export class EventMembersPopupComponent {
     return `Delete ${entry.name}'s invitation to this ${this.ownerScopeLabel()}?`;
   }
 
-  private memberRemovalConfirmLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private memberRemovalConfirmLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.requestKind === 'join') {
       return 'Reject';
     }
     return entry.status === 'accepted' ? 'Remove' : 'Delete';
   }
 
-  private memberRemovalBusyLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private memberRemovalBusyLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.requestKind === 'join') {
       return 'Rejecting...';
     }
     return entry.status === 'accepted' ? 'Removing...' : 'Deleting...';
   }
 
-  private memberRemovalFailureMessage(entry: AppTypes.ActivityMemberEntry): string {
+  private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.requestKind === 'join') {
       return 'Unable to reject request.';
     }
@@ -601,7 +602,7 @@ export class EventMembersPopupComponent {
     return 'Unable to delete invitation.';
   }
 
-  protected memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
+  protected memberCardToneClass(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'disqualified') {
       return 'member-card-tone-disqualified';
     }
@@ -620,7 +621,7 @@ export class EventMembersPopupComponent {
     return 'member-card-tone-invite-pending';
   }
 
-  protected memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
+  protected memberCardStatusClass(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'disqualified') {
       return 'member-status-disqualified';
     }
@@ -639,7 +640,7 @@ export class EventMembersPopupComponent {
     return 'member-status-invite-pending';
   }
 
-  protected memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
+  protected memberCardStatusIcon(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'disqualified') {
       return 'gavel';
     }
@@ -658,7 +659,7 @@ export class EventMembersPopupComponent {
     return 'outgoing_mail';
   }
 
-  protected memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  protected memberCardStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'disqualified') {
       return 'Disqualified';
     }
@@ -668,11 +669,11 @@ export class EventMembersPopupComponent {
     return this.pendingStatusLabel(entry);
   }
 
-  protected age(entry: AppTypes.ActivityMemberEntry): number {
+  protected age(entry: ActivityContracts.ActivityMemberEntry): number {
     return entry.profile?.age ?? this.usersService.peekCachedUserById(entry.userId)?.age ?? 0;
   }
 
-  protected roleLabel(entry: AppTypes.ActivityMemberEntry): string {
+  protected roleLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.role === 'Admin') {
       return 'Admin';
     }
@@ -682,7 +683,7 @@ export class EventMembersPopupComponent {
     return 'Member';
   }
 
-  protected pendingStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  protected pendingStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'disqualified') {
       return 'Disqualified';
     }
@@ -700,7 +701,7 @@ export class EventMembersPopupComponent {
     return 'Waiting For Admin Approval';
   }
 
-  protected deleteLabel(entry: AppTypes.ActivityMemberEntry): string {
+  protected deleteLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
@@ -711,7 +712,7 @@ export class EventMembersPopupComponent {
   }
 
 
-  private async applyInvites(selectedCandidates: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
+  private async applyInvites(selectedCandidates: readonly ActivityContracts.ActivityMemberEntry[]): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const existingPendingInvites = previousMembers.filter(member =>
       member.status === 'pending' && member.requestKind === 'invite'
@@ -768,8 +769,8 @@ export class EventMembersPopupComponent {
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
-      initialMembers?: readonly AppTypes.ActivityMemberEntry[];
-      onMembersChanged?: (members: readonly AppTypes.ActivityMemberEntry[]) => void;
+      initialMembers?: readonly ActivityContracts.ActivityMemberEntry[];
+      onMembersChanged?: (members: readonly ActivityContracts.ActivityMemberEntry[]) => void;
     }
   ): void {
     const normalizedOwnerId = ownerId.trim();
@@ -895,7 +896,7 @@ export class EventMembersPopupComponent {
 
   private async loadMembersPage(
     query: ListQuery<MembersSmartListFilters>
-  ): Promise<PageResult<AppTypes.ActivityMemberEntry>> {
+  ): Promise<PageResult<ActivityContracts.ActivityMemberEntry>> {
     const ownerId = query.filters?.ownerId?.trim() ?? '';
     if (!ownerId) {
       return {
@@ -933,8 +934,8 @@ export class EventMembersPopupComponent {
   }
 
   private async commitMembers(
-    members: readonly AppTypes.ActivityMemberEntry[],
-    previousMembers: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()
+    members: readonly ActivityContracts.ActivityMemberEntry[],
+    previousMembers: readonly ActivityContracts.ActivityMemberEntry[] = this.currentOwnerMembers()
   ): Promise<void> {
     if (!this.ownerId) {
       return;
@@ -983,8 +984,8 @@ export class EventMembersPopupComponent {
 
 
   private syncVisibleMembers(
-    previousMembers: readonly AppTypes.ActivityMemberEntry[],
-    nextMembers: readonly AppTypes.ActivityMemberEntry[]
+    previousMembers: readonly ActivityContracts.ActivityMemberEntry[],
+    nextMembers: readonly ActivityContracts.ActivityMemberEntry[]
   ): void {
     if (!this.membersListReady || !this.membersSmartList) {
       return;
@@ -1003,20 +1004,20 @@ export class EventMembersPopupComponent {
   }
 
   private filterMembersForView(
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     pendingOnly = this.pendingOnly
-  ): AppTypes.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberEntry[] {
     const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
     return pendingOnly
       ? visibleMembers.filter(member => member.status === 'pending')
       : [...visibleMembers];
   }
 
-  private currentOwnerMembers(): AppTypes.ActivityMemberEntry[] {
+  private currentOwnerMembers(): ActivityContracts.ActivityMemberEntry[] {
     return [...(this.membersCacheByOwnerId.get(this.ownerId) ?? [])];
   }
 
-  protected canApproveMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canApproveMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     if (this.viewOnlyMode) {
       return false;
     }
@@ -1025,7 +1026,7 @@ export class EventMembersPopupComponent {
       && this.isJoinRequest(entry);
   }
 
-  protected canDeleteMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canDeleteMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     if (this.viewOnlyMode) {
       return false;
     }
@@ -1040,7 +1041,7 @@ export class EventMembersPopupComponent {
       && entry.invitedByActiveUser === true;
   }
 
-  protected canDisqualifyMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canDisqualifyMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     if (this.lookupRef?.type === 'chat' || this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
       return false;
     }
@@ -1049,14 +1050,14 @@ export class EventMembersPopupComponent {
       && !this.isProtectedManagerMember(entry);
   }
 
-  protected canReinstateMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canReinstateMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     if (this.lookupRef?.type === 'chat' || this.viewOnlyMode || this.ownerRef?.ownerType !== 'event' || !this.canManageMembers) {
       return false;
     }
     return entry.status === 'disqualified';
   }
 
-  protected canReportMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  protected canReportMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     if (this.lookupRef?.type === 'chat') {
       return false;
     }
@@ -1070,7 +1071,7 @@ export class EventMembersPopupComponent {
     );
   }
 
-  private syncCanManageMembers(members: readonly AppTypes.ActivityMemberEntry[] = this.currentOwnerMembers()): void {
+  private syncCanManageMembers(members: readonly ActivityContracts.ActivityMemberEntry[] = this.currentOwnerMembers()): void {
     if (this.viewOnlyMode) {
       this.canManageMembers = false;
       this.canShowInviteButton = false;
@@ -1087,7 +1088,7 @@ export class EventMembersPopupComponent {
     this.canShowInviteButton = this.canManageMembers || !!activeMember;
   }
 
-  private applySummaryFromMembers(members: readonly AppTypes.ActivityMemberEntry[]): void {
+  private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberEntry[]): void {
     const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
     const acceptedCount = visibleMembers.filter(member => member.status === 'accepted').length;
     const pendingCount = visibleMembers.filter(member => member.status === 'pending').length;
@@ -1156,18 +1157,18 @@ export class EventMembersPopupComponent {
       });
   }
 
-  private isJoinRequest(entry: AppTypes.ActivityMemberEntry): boolean {
+  private isJoinRequest(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return entry.requestKind === 'join'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
-  private isWaitlistMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  private isWaitlistMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
   }
 
   private sortMembersByActionTimeDesc(
-    entries: readonly AppTypes.ActivityMemberEntry[]
-  ): AppTypes.ActivityMemberEntry[] {
+    entries: readonly ActivityContracts.ActivityMemberEntry[]
+  ): ActivityContracts.ActivityMemberEntry[] {
     return [...entries].sort((left, right) =>
       AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
     );
@@ -1182,8 +1183,8 @@ export class EventMembersPopupComponent {
   }
 
   private async runMemberUpdateAfterUiYield(
-    nextMembers: readonly AppTypes.ActivityMemberEntry[],
-    previousMembers: readonly AppTypes.ActivityMemberEntry[]
+    nextMembers: readonly ActivityContracts.ActivityMemberEntry[],
+    previousMembers: readonly ActivityContracts.ActivityMemberEntry[]
   ): Promise<void> {
     await this.waitForMemberActionRender();
     await this.commitMembers(nextMembers, previousMembers);
@@ -1193,14 +1194,14 @@ export class EventMembersPopupComponent {
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
     action: 'disqualify' | 'reinstate',
-    previousMembers: readonly AppTypes.ActivityMemberEntry[]
+    previousMembers: readonly ActivityContracts.ActivityMemberEntry[]
   ): Promise<void> {
     await this.waitForMemberActionRender();
     if (!this.ownerId) {
       return;
     }
     this.suppressedOwnerSyncId = this.ownerId;
-    let normalizedMembers: AppTypes.ActivityMemberEntry[];
+    let normalizedMembers: ActivityContracts.ActivityMemberEntry[];
     try {
       normalizedMembers = this.sortMembersByActionTimeDesc(await this.activityMembersService.applyMemberAction(owner, targetUserId, action));
     } catch (error) {
@@ -1220,11 +1221,11 @@ export class EventMembersPopupComponent {
     this.cdr.markForCheck();
   }
 
-  private isCurrentUser(entry: AppTypes.ActivityMemberEntry): boolean {
+  private isCurrentUser(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return entry.userId === this.activeUserId();
   }
 
-  private isProtectedManagerMember(entry: AppTypes.ActivityMemberEntry): boolean {
+  private isProtectedManagerMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return entry.role === 'Admin' || entry.role === 'Manager';
   }
 

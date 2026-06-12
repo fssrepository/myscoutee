@@ -2,17 +2,19 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivitiesEventSyncPayload,
+  EventFeedbackCard,
+  EventFeedbackEventCard,
+  SubEventLeaderboardState
+} from '../../../core/base/models';
+import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
-  EventFeedbackCard,
-  EventFeedbackEventCard,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+  EventFeedbackSubmitRequestDto
+} from '../../contracts/activity.interface';
 import { LocalEventsService } from '../../local';
 import { HttpEventsService } from '../../http';
 import type {

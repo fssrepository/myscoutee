@@ -1,3 +1,4 @@
+import type { SubmittedEventFeedbackAnswer } from '../../contracts/activity.interface';
 import type { PricingConfig } from './pricing.model';
 
 export interface EventPolicyItem {
@@ -5,44 +6,6 @@ export interface EventPolicyItem {
   title: string;
   description: string;
   required: boolean;
-}
-
-export interface EventCheckoutAssetSelection {
-  subEventId: string;
-  resourceType: 'Car' | 'Accommodation' | 'Supplies';
-}
-
-export interface EventCheckoutLineItem {
-  id: string;
-  kind: 'event' | 'sub_event' | 'resource';
-  label: string;
-  detail: string;
-  amount: number;
-  currency: string;
-}
-
-export interface EventCheckoutSelection {
-  sourceId: string;
-  slotSourceId?: string | null;
-  optionalSubEventIds: string[];
-  assetSelections: EventCheckoutAssetSelection[];
-  acceptedPolicyIds: string[];
-  lineItems: EventCheckoutLineItem[];
-  totalAmount: number;
-  currency: string;
-  paymentSessionId?: string | null;
-  bookingConfirmed?: boolean;
-  pendingReason?: 'approval' | 'waitlist' | null;
-}
-
-export interface EventCheckoutSession {
-  id: string;
-  provider: string;
-  mode: 'dummy' | 'gateway';
-  status: 'pending' | 'approved' | 'requires_action';
-  amount: number;
-  currency: string;
-  paymentUrl?: string | null;
 }
 
 export interface EventFeedbackOption {
@@ -84,75 +47,6 @@ export interface EventFeedbackCard {
   selectedTraitIds: string[];
   answerPrimary: string;
   answerSecondary: string;
-}
-
-export interface SubmittedEventFeedbackAnswer {
-  cardId: string;
-  eventId: string;
-  kind: 'event' | 'attendee';
-  targetUserId: string | null;
-  targetRole: 'Admin' | 'Manager' | 'Member';
-  primaryValue: string;
-  secondaryValue: string;
-  personalityTraitIds: string[];
-  tags: string[];
-  submittedAtIso: string;
-}
-
-export interface EventFeedbackStateDto {
-  eventId: string;
-  removed: boolean;
-  submittedAtIso: string;
-  removedAtIso?: string;
-  organizerNote: string;
-  answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
-}
-
-export interface EventFeedbackReceivedEntryDto {
-  viewerUserId: string;
-  viewerName: string;
-  viewerInitials: string;
-  viewerGender: 'woman' | 'man';
-  viewerImageUrl: string;
-  eventId: string;
-  submittedAtIso: string;
-  updatedAtIso: string;
-  organizerNote: string;
-  answers: SubmittedEventFeedbackAnswer[];
-}
-
-export interface EventFeedbackReceivedEventDto {
-  eventId: string;
-  entries: EventFeedbackReceivedEntryDto[];
-}
-
-export interface EventFeedbackAnswerSubmitDto {
-  cardId: string;
-  kind: 'event' | 'attendee';
-  targetUserId: string | null;
-  targetRole: 'Admin' | 'Manager' | 'Member';
-  primaryValue: string;
-  secondaryValue: string;
-  personalityTraitIds: string[];
-  tags: string[];
-  submittedAtIso: string;
-}
-
-export interface EventFeedbackSubmitRequestDto {
-  userId: string;
-  eventId: string;
-  answers: EventFeedbackAnswerSubmitDto[];
-}
-
-export interface EventFeedbackNoteRequestDto {
-  userId: string;
-  eventId: string;
-  text: string;
-}
-
-export interface EventFeedbackToggleRequestDto {
-  userId: string;
-  eventId: string;
 }
 
 export interface EventFeedbackPersistedState {

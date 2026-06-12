@@ -32,18 +32,19 @@ import {
 } from '../../../shared/ui/components/menu';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
+import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
 type ProfileEditorMenuId = string;
 
 type ProfileEditorMenuContext =
-  | { kind: 'profileStatus'; value: AppTypes.ProfileStatus }
+  | { kind: 'profileStatus'; value: ProfileContracts.ProfileStatus }
   | { kind: 'physique'; value: string }
   | { kind: 'detailValue'; groupIndex: number; rowIndex: number; value: string }
-  | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppTypes.DetailPrivacy }
-  | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppTypes.DetailPrivacy }
-  | { kind: 'experienceFilter'; value: AppTypes.ExperienceFilter }
-  | { kind: 'experienceType'; value: AppTypes.ExperienceEntry['type'] }
+  | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: ProfileContracts.DetailPrivacy }
+  | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: ProfileContracts.DetailPrivacy }
+  | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
+  | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
   | { kind: 'experienceQuickAction'; action: 'create' | 'upload' };
 
 interface ProfileFormState {
@@ -55,7 +56,7 @@ interface ProfileFormState {
   physique: string;
   languages: string[];
   horoscope: string;
-  profileStatus: AppTypes.ProfileStatus;
+  profileStatus: ProfileContracts.ProfileStatus;
   about: string;
 }
 
@@ -112,9 +113,9 @@ export class ProfileEditorComponent {
   private readonly usersService = inject(UsersService);
   private readonly mediaService = inject(MediaService);
   private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
-  private readonly profileDetailsFormByUser: Record<string, AppTypes.ProfileDetailFormGroup[]> = {};
+  private readonly profileDetailsFormByUser: Record<string, ProfileContracts.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
-  private readonly experienceEntriesByUser: Record<string, AppTypes.ExperienceEntry[]> = {};
+  private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
   private lastLoadedUserId = '';
   private experienceEntriesLoadToken = 0;
   private experienceEntriesSaveToken = 0;
@@ -134,24 +135,24 @@ export class ProfileEditorComponent {
   protected panel: ProfileEditorPanel = 'profile';
   protected profileUser: UserDto | null = null;
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
-  protected profileDetailsForm: AppTypes.ProfileDetailFormGroup[] = [];
+  protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected selectedImageIndex = 0;
   protected pendingSlotUploadIndex: number | null = null;
   protected uploadingImageSlotIndex: number | null = null;
   protected languageInput = '';
-  protected mobileProfileSelectorSheet: AppTypes.MobileProfileSelectorSheet | null = null;
+  protected mobileProfileSelectorSheet: ProfileContracts.MobileProfileSelectorSheet | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
   protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected valuesSelectorSelected: string[] = [];
   protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected interestSelectorSelected: string[] = [];
-  protected experienceVisibility: Record<'workspace' | 'school', AppTypes.DetailPrivacy> = {
+  protected experienceVisibility: Record<'workspace' | 'school', ProfileContracts.DetailPrivacy> = {
     workspace: 'Public',
     school: 'Public'
   };
-  protected experienceEntries: AppTypes.ExperienceEntry[] = [];
-  protected experienceFilter: AppTypes.ExperienceFilter = 'All';
+  protected experienceEntries: ProfileContracts.ExperienceEntry[] = [];
+  protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
@@ -159,7 +160,7 @@ export class ProfileEditorComponent {
   protected experienceImportDialog: ExperienceImportDialogState = this.createEmptyExperienceImportDialogState();
   protected experienceRangeStart: Date | null = null;
   protected experienceRangeEnd: Date | null = null;
-  protected experienceForm: Omit<AppTypes.ExperienceEntry, 'id'> = {
+  protected experienceForm: Omit<ProfileContracts.ExperienceEntry, 'id'> = {
     type: 'Workspace',
     title: '',
     org: '',
@@ -243,7 +244,7 @@ export class ProfileEditorComponent {
     return AppUtils.ageFromIsoDate(AppUtils.toIsoDate(this.profileForm.birthday), this.profileUser.age);
   }
 
-  protected get filteredExperienceEntries(): AppTypes.ExperienceEntry[] {
+  protected get filteredExperienceEntries(): ProfileContracts.ExperienceEntry[] {
     const filtered = this.experienceEntries.filter(item => {
       if (this.experienceFilter === 'All') {
         return true;
@@ -335,7 +336,7 @@ export class ProfileEditorComponent {
     this.openExperienceSelector('School');
   }
 
-  protected openExperienceSelector(filter: AppTypes.ExperienceFilter = 'All'): void {
+  protected openExperienceSelector(filter: ProfileContracts.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
@@ -517,7 +518,7 @@ export class ProfileEditorComponent {
     }));
   }
 
-  protected detailValueMenuTrigger(row: AppTypes.ProfileDetailFormRow): AppMenuTrigger {
+  protected detailValueMenuTrigger(row: ProfileContracts.ProfileDetailFormRow): AppMenuTrigger {
     return {
       label: row.value,
       icon: this.detailOptionIcon(row.labelKey, row.value),
@@ -530,7 +531,7 @@ export class ProfileEditorComponent {
   protected detailValueMenuItems(
     groupIndex: number,
     rowIndex: number,
-    row: AppTypes.ProfileDetailFormRow
+    row: ProfileContracts.ProfileDetailFormRow
   ): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
     return row.options.map(option => ({
       id: this.menuItemId(`detail-value-${groupIndex}-${rowIndex}`, option),
@@ -544,14 +545,14 @@ export class ProfileEditorComponent {
     }));
   }
 
-  protected detailPrivacyMenuTrigger(row: AppTypes.ProfileDetailFormRow): AppMenuTrigger {
+  protected detailPrivacyMenuTrigger(row: ProfileContracts.ProfileDetailFormRow): AppMenuTrigger {
     return this.privacyMenuTrigger(row.privacy, 'Change visibility');
   }
 
   protected detailPrivacyMenuItems(
     groupIndex: number,
     rowIndex: number,
-    row: AppTypes.ProfileDetailFormRow
+    row: ProfileContracts.ProfileDetailFormRow
   ): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
     return this.detailPrivacyOptions.map(option => ({
       id: this.menuItemId(`detail-privacy-${groupIndex}-${rowIndex}`, option),
@@ -739,11 +740,11 @@ export class ProfileEditorComponent {
     return this.highlightedImportedExperienceIds.has(entryId);
   }
 
-  protected experienceImportTypeCount(type: AppTypes.ExperienceEntry['type']): number {
+  protected experienceImportTypeCount(type: ProfileContracts.ExperienceEntry['type']): number {
     return this.experienceImportDialog.statistics.countsByType[type] ?? 0;
   }
 
-  protected profileStatusClass(value: AppTypes.ProfileStatus = this.profileForm.profileStatus): string {
+  protected profileStatusClass(value: ProfileContracts.ProfileStatus = this.profileForm.profileStatus): string {
     switch (value) {
       case 'public':
         return 'status-public';
@@ -766,7 +767,7 @@ export class ProfileEditorComponent {
     };
   }
 
-  protected getProfileStatusIcon(value: AppTypes.ProfileStatus = this.profileForm.profileStatus): string {
+  protected getProfileStatusIcon(value: ProfileContracts.ProfileStatus = this.profileForm.profileStatus): string {
     switch (value) {
       case 'public':
         return 'public';
@@ -1011,7 +1012,7 @@ export class ProfileEditorComponent {
     return `profile-detail-privacy-${groupIndex}-${rowIndex}`;
   }
 
-  protected experienceVisibilityValue(type: 'workspace' | 'school'): AppTypes.DetailPrivacy {
+  protected experienceVisibilityValue(type: 'workspace' | 'school'): ProfileContracts.DetailPrivacy {
     return this.experienceVisibility[type];
   }
 
@@ -1334,7 +1335,7 @@ export class ProfileEditorComponent {
     return iconPool[Math.abs(hash) % iconPool.length];
   }
 
-  protected privacyStatusClass(value: AppTypes.DetailPrivacy): string {
+  protected privacyStatusClass(value: ProfileContracts.DetailPrivacy): string {
     switch (value) {
       case 'Public':
         return 'status-public';
@@ -1347,7 +1348,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected privacyStatusIcon(value: AppTypes.DetailPrivacy): string {
+  protected privacyStatusIcon(value: ProfileContracts.DetailPrivacy): string {
     switch (value) {
       case 'Public':
         return 'public';
@@ -1360,7 +1361,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceTypeIcon(type: AppTypes.ExperienceEntry['type']): string {
+  protected experienceTypeIcon(type: ProfileContracts.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
         return 'apartment';
@@ -1373,7 +1374,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceTypeClass(type: AppTypes.ExperienceEntry['type']): string {
+  protected experienceTypeClass(type: ProfileContracts.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
         return 'experience-card-workspace';
@@ -1386,7 +1387,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceFilterIcon(option: AppTypes.ExperienceFilter): string {
+  protected experienceFilterIcon(option: ProfileContracts.ExperienceFilter): string {
     switch (option) {
       case 'Workspace':
         return 'apartment';
@@ -1401,7 +1402,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceFilterClass(option: AppTypes.ExperienceFilter): string {
+  protected experienceFilterClass(option: ProfileContracts.ExperienceFilter): string {
     switch (option) {
       case 'Workspace':
         return 'experience-filter-workspace';
@@ -1416,7 +1417,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceTypeToneClass(type: AppTypes.ExperienceEntry['type']): string {
+  protected experienceTypeToneClass(type: ProfileContracts.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
         return 'experience-filter-workspace';
@@ -1429,7 +1430,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected openExperienceForm(entry?: AppTypes.ExperienceEntry): void {
+  protected openExperienceForm(entry?: ProfileContracts.ExperienceEntry): void {
     this.pendingExperienceDeleteId = null;
     this.showExperienceForm = true;
     if (entry) {
@@ -1466,7 +1467,7 @@ export class ProfileEditorComponent {
       return;
     }
     const dateTo = this.experienceRangeEnd ? AppUtils.toYearMonth(this.experienceRangeEnd) : 'Present';
-    const payload: Omit<AppTypes.ExperienceEntry, 'id'> = {
+    const payload: Omit<ProfileContracts.ExperienceEntry, 'id'> = {
       ...this.experienceForm,
       dateFrom,
       title: this.experienceForm.title.trim(),
@@ -1569,7 +1570,7 @@ export class ProfileEditorComponent {
     return slots;
   }
 
-  private profileDetailsForUser(userId: string, user?: UserDto): AppTypes.ProfileDetailFormGroup[] {
+  private profileDetailsForUser(userId: string, user?: UserDto): ProfileContracts.ProfileDetailFormGroup[] {
     const existing = this.profileDetailsFormByUser[userId];
     if (existing) {
       return existing;
@@ -1582,7 +1583,7 @@ export class ProfileEditorComponent {
     return generated;
   }
 
-  private createProfileDetailsFormForUser(user: UserDto): AppTypes.ProfileDetailFormGroup[] {
+  private createProfileDetailsFormForUser(user: UserDto): ProfileContracts.ProfileDetailFormGroup[] {
     const persisted = this.hydratePersistedProfileDetails(user);
     if (persisted.length > 0) {
       return persisted;
@@ -1605,11 +1606,11 @@ export class ProfileEditorComponent {
     }));
   }
 
-  private hydratePersistedProfileDetails(user: UserDto): AppTypes.ProfileDetailFormGroup[] {
+  private hydratePersistedProfileDetails(user: UserDto): ProfileContracts.ProfileDetailFormGroup[] {
     if (!Array.isArray(user.profileDetails) || user.profileDetails.length === 0) {
       return [];
     }
-    const rowByKey = new Map<string, AppTypes.ProfileDetailFormRow>();
+    const rowByKey = new Map<string, ProfileContracts.ProfileDetailFormRow>();
     for (const group of user.profileDetails) {
       for (const row of group.rows ?? []) {
         const normalizedKey = AppUtils.normalizeText(`${row.labelKey ?? ''}`.trim());
@@ -1690,7 +1691,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  private profileDetailRowByKey(userId: string, labelKey: string): AppTypes.ProfileDetailFormRow | null {
+  private profileDetailRowByKey(userId: string, labelKey: string): ProfileContracts.ProfileDetailFormRow | null {
     const target = AppUtils.normalizeText(labelKey);
     for (const group of this.profileDetailsForUser(userId, this.profileUser ?? undefined)) {
       for (const row of group.rows) {
@@ -1912,7 +1913,7 @@ export class ProfileEditorComponent {
     return bestTone;
   }
 
-  private privacyMenuTrigger(value: AppTypes.DetailPrivacy, ariaLabel: string): AppMenuTrigger {
+  private privacyMenuTrigger(value: ProfileContracts.DetailPrivacy, ariaLabel: string): AppMenuTrigger {
     return {
       icon: this.privacyStatusIcon(value),
       closeIcon: 'close',
@@ -1923,7 +1924,7 @@ export class ProfileEditorComponent {
     };
   }
 
-  private profileStatusPalette(value: AppTypes.ProfileStatus): AppMenuPalette {
+  private profileStatusPalette(value: ProfileContracts.ProfileStatus): AppMenuPalette {
     switch (value) {
       case 'public':
         return 'green';
@@ -1939,7 +1940,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  private privacyPalette(value: AppTypes.DetailPrivacy): AppMenuPalette {
+  private privacyPalette(value: ProfileContracts.DetailPrivacy): AppMenuPalette {
     switch (value) {
       case 'Public':
         return 'green';
@@ -2016,7 +2017,7 @@ export class ProfileEditorComponent {
     }, 280);
   }
 
-  private isDetailPrivacy(value: string): value is AppTypes.DetailPrivacy {
+  private isDetailPrivacy(value: string): value is ProfileContracts.DetailPrivacy {
     return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
 
@@ -2081,12 +2082,12 @@ export class ProfileEditorComponent {
     };
   }
 
-  private cloneExperienceEntries(entries: readonly AppTypes.ExperienceEntry[]): AppTypes.ExperienceEntry[] {
+  private cloneExperienceEntries(entries: readonly ProfileContracts.ExperienceEntry[]): ProfileContracts.ExperienceEntry[] {
     return entries.map(entry => ({ ...entry }));
   }
 
   private setExperienceEntries(
-    entries: readonly AppTypes.ExperienceEntry[],
+    entries: readonly ProfileContracts.ExperienceEntry[],
     highlightedIds: readonly string[] | null = null
   ): void {
     const nextEntries = this.cloneExperienceEntries(entries);
@@ -2102,7 +2103,7 @@ export class ProfileEditorComponent {
     this.pruneHighlightedExperienceIds(nextEntries);
   }
 
-  private pruneHighlightedExperienceIds(entries: readonly AppTypes.ExperienceEntry[]): void {
+  private pruneHighlightedExperienceIds(entries: readonly ProfileContracts.ExperienceEntry[]): void {
     if (this.highlightedImportedExperienceIds.size === 0) {
       return;
     }
@@ -2215,7 +2216,7 @@ export class ProfileEditorComponent {
   }
 
   private async persistExperienceEntries(
-    entries: readonly AppTypes.ExperienceEntry[],
+    entries: readonly ProfileContracts.ExperienceEntry[],
     options?: { highlightedIds?: readonly string[]; onComplete?: () => void }
   ): Promise<void> {
     const userId = this.profileUser?.id?.trim() ?? '';
@@ -2461,7 +2462,7 @@ export class ProfileEditorComponent {
     };
   }
 
-  private cloneProfileDetailsForm(groups: AppTypes.ProfileDetailFormGroup[]): AppTypes.ProfileDetailFormGroup[] {
+  private cloneProfileDetailsForm(groups: ProfileContracts.ProfileDetailFormGroup[]): ProfileContracts.ProfileDetailFormGroup[] {
     return groups.map(group => ({
       title: group.title,
       rows: group.rows.map(row => ({

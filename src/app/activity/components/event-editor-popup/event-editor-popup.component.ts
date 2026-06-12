@@ -40,6 +40,7 @@ import {
 } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppTypes.EventVisibility }
@@ -92,7 +93,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private currentRecord: ActivityEventRecord | null = null;
   private currentSourcePublished = false;
   private publishedCapacityMaxFloor = 0;
-  private currentMemberSummary: AppTypes.ActivityMembersSummary | null = null;
+  private currentMemberSummary: ActivityContracts.ActivityMembersSummary | null = null;
   private lastHandledActivityMembersSyncMs = 0;
   private pendingEventImageFile: File | null = null;
   private readonly slotDateControlValueCache = new Map<string, Date | null>();
@@ -2139,7 +2140,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async resolveCurrentEventMembersSummary(
     eventId: string,
     normalizedCapacity: AppTypes.EventCapacityRange
-  ): Promise<AppTypes.ActivityMembersSummary> {
+  ): Promise<ActivityContracts.ActivityMembersSummary> {
     const queriedSummary = eventId ? await this.activityMembersService.querySummaryByOwnerId(eventId) : null;
     const summary = queriedSummary ?? this.currentMemberSummary;
     const acceptedMembers = summary?.acceptedMembers ?? this.currentRecord?.acceptedMembers ?? 0;

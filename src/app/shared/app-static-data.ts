@@ -6,28 +6,30 @@ import type {
   AssetFilterType,
   AssetCategory,
   AssetType,
-  DetailPrivacy,
   EventBlindMode,
   EventFeedbackListFilter,
   EventFeedbackOption,
   EventFeedbackTraitOption,
   EventExploreOrder,
   EventVisibility,
-  ExperienceEntry,
   ExplainableSurface,
   HelpCenterRevision,
   HelpCenterSection,
-  InterestOptionGroup,
-  ProfileStatus,
   RateFilterEntry,
   RateFilterKey,
   SubEventResourceFilter,
   SubEventsDisplayMode,
-  TournamentLeaderboardType,
-  ValuesOptionGroup
+  TournamentLeaderboardType
 } from './core/base/models';
 import type { AdminNotificationScheduleFrequency } from './core/contracts/admin.interface';
 import { GDPR_CONTENT } from './gdpr-data';
+import type {
+  DetailPrivacy,
+  ExperienceEntry,
+  InterestOptionGroup,
+  ProfileStatus,
+  ValuesOptionGroup
+} from './core/contracts/profile.interface';
 
 interface PersonalityTraitCatalogEntry {
   id: string;

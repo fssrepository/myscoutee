@@ -1,9 +1,9 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { IdeaPost } from '../../base/models';
+import type { IdeaPostDto } from '../../contracts/content.interface';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 
 export class SeedIdeaPostsBuilder {
-  static buildDefaultPosts(): IdeaPost[] {
+  static buildDefaultPosts(): IdeaPostDto[] {
     const nowIso = new Date().toISOString();
     const enPosts = [
       this.defaultPost({
@@ -220,7 +220,7 @@ export class SeedIdeaPostsBuilder {
     featured: boolean;
     submittedAtIso: string;
     nowIso: string;
-  }): IdeaPost {
+  }): IdeaPostDto {
     const imageUrl = this.seedImageUrl(options.id);
     return {
       id: options.id,

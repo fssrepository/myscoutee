@@ -8,6 +8,7 @@ import { ChatThreadBuilder, UserProfileStateBuilder } from '../../base/builders'
 import type { ChatRecord } from '../../base/models/chat.model';
 import { CHATS_TABLE_NAME, type ChatThreadRecord } from '../../base/models/chats.model';
 import { USERS_TABLE_NAME } from '../../base/models/users.model';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -63,7 +64,7 @@ export class LocalChatsRepository {
     };
   }
 
-  queryChatMembers(chatId: string): AppTypes.ActivityMemberEntry[] {
+  queryChatMembers(chatId: string): ActivityContracts.ActivityMemberEntry[] {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -483,7 +484,7 @@ export class LocalChatsRepository {
       : UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
   }
 
-  private toChatMemberEntry(chatId: string, userId: string, index: number): AppTypes.ActivityMemberEntry {
+  private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberEntry {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
     const label = user?.name?.trim() || userId;
     const when = AppUtils.addDays(new Date(), -Math.max(0, index));

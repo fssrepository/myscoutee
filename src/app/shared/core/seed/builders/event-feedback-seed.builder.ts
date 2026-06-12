@@ -7,9 +7,9 @@ import type {
   EventFeedbackCard,
   EventFeedbackOption,
   EventFeedbackPersistedState,
-  EventFeedbackTraitOption,
-  SubmittedEventFeedbackAnswer
+  EventFeedbackTraitOption
 } from '../../base/models';
+import type { SubmittedEventFeedbackAnswer } from '../../contracts/activity.interface';
 
 export class SeedEventFeedbackBuilder {
   static buildEventFeedbackCards(options: {

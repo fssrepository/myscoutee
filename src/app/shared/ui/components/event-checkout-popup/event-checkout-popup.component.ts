@@ -13,6 +13,7 @@ import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ActivityContracts from '../../../core/contracts/activity.interface';
 import { EventsService } from '../../../core/base/services/events.service';
 import type { ActivityEventRecord } from '../../../core/base/models/events.model';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
@@ -326,7 +327,7 @@ export class EventCheckoutPopupComponent {
     }
   }
 
-  protected lineItems(): AppTypes.EventCheckoutLineItem[] {
+  protected lineItems(): ActivityContracts.EventCheckoutLineItem[] {
     const dialog = this.dialog();
     if (!dialog) {
       return [];
@@ -334,7 +335,7 @@ export class EventCheckoutPopupComponent {
     const slot = this.selectedSlot();
     const slotId = slot?.slotTemplateId ?? null;
     const eventPricing = this.resolvePricing(dialog.record.pricing, dialog.record, slotId, slot);
-    const items: AppTypes.EventCheckoutLineItem[] = [
+    const items: ActivityContracts.EventCheckoutLineItem[] = [
       {
         id: `event:${dialog.record.id}`,
         kind: 'event',
@@ -653,7 +654,7 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = '';
   }
 
-  protected trackLineItem(_index: number, item: AppTypes.EventCheckoutLineItem): string {
+  protected trackLineItem(_index: number, item: ActivityContracts.EventCheckoutLineItem): string {
     return item.id;
   }
 
@@ -714,7 +715,7 @@ export class EventCheckoutPopupComponent {
   private buildSelection(
     paymentSessionId: string | null,
     bookingConfirmed = true
-  ): AppTypes.EventCheckoutSelection {
+  ): ActivityContracts.EventCheckoutSelection {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
@@ -734,7 +735,7 @@ export class EventCheckoutPopupComponent {
     };
   }
 
-  private buildCheckoutRequest(): AppTypes.EventCheckoutRequest {
+  private buildCheckoutRequest(): ActivityContracts.EventCheckoutRequest {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');

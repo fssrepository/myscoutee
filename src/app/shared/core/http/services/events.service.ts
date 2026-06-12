@@ -6,15 +6,17 @@ import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
 import type {
   ActivitiesEventSyncPayload,
+  SubEventLeaderboardState
+} from '../../../core/base/models';
+import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+  EventFeedbackSubmitRequestDto
+} from '../../contracts/activity.interface';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,

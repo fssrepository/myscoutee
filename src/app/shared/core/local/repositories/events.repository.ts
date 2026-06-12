@@ -27,6 +27,7 @@ import { EventEditorBuilder } from '../../../core/base/builders';
 import { PricingBuilder } from '../../../core/base/builders/pricing.builder';
 import { USERS_TABLE_NAME } from '../../base/models/users.model';
 import type { LocationCoordinates } from '../../contracts/user.interface';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 interface ActivityEventActivitiesCursor {
   id: string;
@@ -1830,7 +1831,7 @@ export class LocalEventsRepository {
     table: ActivityMembersRecordCollection,
     event: ActivityEventRecord,
     userId: string,
-    status: AppTypes.ActivityMemberStatus,
+    status: ActivityContracts.ActivityMemberStatus,
     waitingList: boolean,
     profile: {
       id?: string;
@@ -1878,7 +1879,7 @@ export class LocalEventsRepository {
       actionAtIso: nowIso,
       metWhere: existing?.metWhere?.trim() || event.title,
       avatarUrl: profile?.images ? AppUtils.firstImageUrl(profile.images) : '',
-      profile: profile ? { ...profile, id: normalizedUserId } as AppTypes.ActivityMemberEntry['profile'] : null,
+      profile: profile ? { ...profile, id: normalizedUserId } as ActivityContracts.ActivityMemberEntry['profile'] : null,
       ownerType: 'event',
       ownerId: normalizedEventId,
       ownerKey,
@@ -1899,7 +1900,7 @@ export class LocalEventsRepository {
 
   private eventMemberUserIdsByStatus(
     eventId: string,
-    status: AppTypes.ActivityMemberStatus
+    status: ActivityContracts.ActivityMemberStatus
   ): string[] {
     return this.eventMemberUserIdsByStatusFromTable(
       this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]),
@@ -1911,7 +1912,7 @@ export class LocalEventsRepository {
   private eventMemberUserIdsByStatusFromTable(
     table: ActivityMembersRecordCollection,
     eventId: string,
-    status: AppTypes.ActivityMemberStatus
+    status: ActivityContracts.ActivityMemberStatus
   ): string[] {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {

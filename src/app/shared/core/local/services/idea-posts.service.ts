@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
+import type { IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
 import type { IdeaPostsTable } from '../../base/models/idea-posts.model';
 import { LocalIdeaPostsRepository } from '../repositories/idea-posts.repository';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -15,21 +15,21 @@ export class LocalIdeaPostsService {
   private readonly ideaPostsRepository = inject(LocalIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
     await this.ideaPostsRepository.whenReady();
     const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
     return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
   }
 
-  async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
+  async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPostDto[]> {
     await this.ideaPostsRepository.whenReady();
     await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
   }
 
-  async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
+  async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
     await this.ideaPostsRepository.whenReady();
     const nowIso = new Date().toISOString();
     const language = this.normalizeLang(request.lang);
@@ -42,7 +42,7 @@ export class LocalIdeaPostsService {
     const contentKey = requestedContentKey || existing?.contentKey || this.contentKeyFromId(id);
     const contentHtml = this.normalizeHtml(request.contentHtml);
     const imageUrls = this.imageUrls(request.imageUrls, request.imageUrl);
-    const post: IdeaPost = {
+    const post: IdeaPostDto = {
       id,
       contentKey,
       lang: language,
@@ -78,7 +78,7 @@ export class LocalIdeaPostsService {
     return this.clonePost(post);
   }
 
-  async deletePost(postId: string, actorUserId = ''): Promise<IdeaPost[]> {
+  async deletePost(postId: string, actorUserId = ''): Promise<IdeaPostDto[]> {
     await this.ideaPostsRepository.whenReady();
     const normalizedPostId = postId.trim();
     if (!normalizedPostId) {
@@ -114,12 +114,12 @@ export class LocalIdeaPostsService {
     return this.sortedPosts(this.table());
   }
 
-  async restorePost(postId: string, actorUserId = ''): Promise<IdeaPost> {
+  async restorePost(postId: string, actorUserId = ''): Promise<IdeaPostDto> {
     await this.ideaPostsRepository.whenReady();
     const normalizedPostId = postId.trim();
     const nowIso = new Date().toISOString();
     const actor = actorUserId.trim() || 'admin';
-    let restored: IdeaPost | null = null;
+    let restored: IdeaPostDto | null = null;
     await Promise.all([
       this.ideaPostsRepository.updateTableAndPersist(table => {
         const post = table.byId[normalizedPostId];
@@ -156,15 +156,15 @@ export class LocalIdeaPostsService {
     return this.ideaPostsRepository.readTable();
   }
 
-  private sortedPosts(table: IdeaPostsTable): IdeaPost[] {
+  private sortedPosts(table: IdeaPostsTable): IdeaPostDto[] {
     return table.ids
       .map(id => table.byId[id])
-      .filter((post): post is IdeaPost => Boolean(post))
+      .filter((post): post is IdeaPostDto => Boolean(post))
       .map(post => this.clonePost(this.normalizePost(post)))
       .sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
-  private normalizePost(post: IdeaPost): IdeaPost {
+  private normalizePost(post: IdeaPostDto): IdeaPostDto {
     const contentHtml = this.normalizeHtml(post.contentHtml);
     const imageUrls = this.imageUrls(post.imageUrls, post.imageUrl);
     return {
@@ -190,7 +190,7 @@ export class LocalIdeaPostsService {
     };
   }
 
-  private clonePost(post: IdeaPost): IdeaPost {
+  private clonePost(post: IdeaPostDto): IdeaPostDto {
     return {
       ...post,
       imageUrls: [...post.imageUrls]
@@ -311,7 +311,7 @@ export class LocalIdeaPostsService {
     return existing?.trim() || fallback;
   }
 
-  private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
+  private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
   }

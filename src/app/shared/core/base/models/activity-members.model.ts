@@ -1,10 +1,9 @@
-import type { ActivityMemberOwnerType } from '.';
-import type * as AppTypes from '.';
 import { APP_INDEXED_DB_KEYS } from '../storage-scope';
+import type { ActivityMemberEntry, ActivityMemberOwnerType } from '../../contracts/activity.interface';
 
 export const ACTIVITY_MEMBERS_TABLE_NAME = APP_INDEXED_DB_KEYS.activityMembers;
 
-export interface ActivityMemberRecord extends AppTypes.ActivityMemberEntry {
+export interface ActivityMemberRecord extends ActivityMemberEntry {
   ownerType: ActivityMemberOwnerType;
   ownerId: string;
   ownerKey: string;

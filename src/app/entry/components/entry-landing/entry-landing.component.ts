@@ -5,6 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
+import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import {
   InfoCardComponent, type InfoCardData
 } from '../../../shared/ui/components/card';
@@ -15,7 +17,7 @@ import {
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { I18nPipe } from '../../../shared/ui';
 
-type IdeaInfoCard = InfoCardData<AppTypes.IdeaArticleDetail>;
+type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 
 interface AppVersionPayload {
   readonly version?: unknown;
@@ -56,7 +58,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
-  @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
+  @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() articlesLoading = false;
   @Input() articlesLoadingDurationMs = 3000;
   @Input() ideaCards: InfoCardData[] = [];
@@ -470,16 +472,16 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       .sort((left, right) => this.ideaSortValue(this.ideaCardDetail(right)) - this.ideaSortValue(this.ideaCardDetail(left)));
   }
 
-  protected selectedIdeaDetail(): AppTypes.IdeaArticleDetail | null {
+  protected selectedIdeaDetail(): IdeaArticleDetailDto | null {
     const published = this.publishedIdeaCards()
       .map(card => this.ideaCardDetail(card))
-      .filter((detail): detail is AppTypes.IdeaArticleDetail => Boolean(detail));
+      .filter((detail): detail is IdeaArticleDetailDto => Boolean(detail));
     return published.find(detail => detail.id === this.selectedIdeaId)
       ?? published[0]
       ?? null;
   }
 
-  protected ideaCardDetail(card: InfoCardData | null | undefined): AppTypes.IdeaArticleDetail | null {
+  protected ideaCardDetail(card: InfoCardData | null | undefined): IdeaArticleDetailDto | null {
     const detail = card?.detailRecord;
     return this.isIdeaArticleDetail(detail) ? detail : null;
   }
@@ -660,11 +662,11 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     };
   }
 
-  protected ideaImageUrl(detail: AppTypes.IdeaArticleDetail | null): string {
+  protected ideaImageUrl(detail: IdeaArticleDetailDto | null): string {
     return `${detail?.imageUrl ?? ''}`.trim();
   }
 
-  protected ideaDateLabel(detail: AppTypes.IdeaArticleDetail | null): string {
+  protected ideaDateLabel(detail: IdeaArticleDetailDto | null): string {
     return detail?.dateLabel?.trim() || 'Fresh article';
   }
 
@@ -681,7 +683,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     return card as IdeaInfoCard;
   }
 
-  private isIdeaArticleDetail(value: unknown): value is AppTypes.IdeaArticleDetail {
+  private isIdeaArticleDetail(value: unknown): value is IdeaArticleDetailDto {
     return Boolean(value)
       && typeof value === 'object'
       && typeof (value as { id?: unknown }).id === 'string'
@@ -698,7 +700,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     }
   }
 
-  private ideaSortValue(detail: AppTypes.IdeaArticleDetail | null): number {
+  private ideaSortValue(detail: IdeaArticleDetailDto | null): number {
     const parsed = Date.parse(detail?.sortAtIso ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -707,7 +709,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     return Math.min(Math.max(index, 0), this.howSlides.length - 1);
   }
 
-  private ideaDayGroupLabel(detail: AppTypes.IdeaArticleDetail | null): string {
+  private ideaDayGroupLabel(detail: IdeaArticleDetailDto | null): string {
     const parsed = Date.parse(detail?.sortAtIso ?? '');
     if (!Number.isFinite(parsed)) {
       return 'Fresh articles';

@@ -10,7 +10,7 @@ import {
   UsersService,
   type ActivityMemberOwnerType,
   type ActivityCounters,
-  type EntryConsentState,
+  type EntryConsentStateDto,
   type HelpCenterRevision,
   type PrivacyConsentRecord,
   type UserDto,
@@ -350,7 +350,7 @@ export class NavigatorService {
     return true;
   }
 
-  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentState | null {
+  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentStateDto | null {
     if (typeof localStorage === 'undefined') {
       return null;
     }
@@ -359,7 +359,7 @@ export class NavigatorService {
       return null;
     }
     try {
-      const parsed = JSON.parse(raw) as Partial<EntryConsentState>;
+      const parsed = JSON.parse(raw) as Partial<EntryConsentStateDto>;
       if (
         parsed.version !== this.entryConsentVersion(revision) ||
         parsed.accepted !== true ||

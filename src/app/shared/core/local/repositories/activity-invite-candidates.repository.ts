@@ -9,6 +9,7 @@ import type { LocalActivityInviteCandidateRecord } from '../mappers';
 import { LocalContactsRepository } from './contacts.repository';
 import { LocalRatesRepository } from './rates.repository';
 import { LocalUsersRepository } from './users.repository';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -94,7 +95,7 @@ export class LocalActivityInviteCandidatesRepository {
 
   private async queryMetRateItems(
     activeUserId: string,
-    sort: AppTypes.ActivityInviteSort
+    sort: ActivityContracts.ActivityInviteSort
   ): Promise<RateRecord[]> {
     const itemsById = new Map<string, RateRecord>();
     for (const socialBadgeEnabled of [false, true]) {

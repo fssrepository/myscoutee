@@ -2,13 +2,14 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
+import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import { AppContext } from '../context';
 import { APP_STORAGE_KEYS } from '../storage-scope';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 export type AppSession =
   | { kind: 'demo'; userId: string }
-  | { kind: 'firebase'; profile: AppTypes.FirebaseAuthProfile };
+  | { kind: 'firebase'; profile: FirebaseAuthProfileDto };
 
 @Injectable({
   providedIn: 'root'
@@ -75,7 +76,7 @@ export class SessionService {
     return session;
   }
 
-  async startFirebaseSession(request: AppTypes.FirebaseAuthRequest = { provider: 'google' }): Promise<AppSession | null> {
+  async startFirebaseSession(request: FirebaseAuthRequestDto = { provider: 'google' }): Promise<AppSession | null> {
     if (this.firebaseBusyRef()) {
       return null;
     }

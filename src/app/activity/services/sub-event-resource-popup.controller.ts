@@ -35,6 +35,7 @@ import type {
 } from '../components/event-supply-contributions-popup/event-supply-contributions-popup.component';
 import type { ListQuery, PageResult } from '../../shared/ui';
 import type { ChatRecord } from '../../shared/core/base/models/chat.model';
+import type * as ActivityContracts from '../../shared/core/contracts/activity.interface';
 
 interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
@@ -2143,7 +2144,7 @@ export class SubEventResourcePopupController {
   private resolveResourceReportTarget(card: AppTypes.SubEventResourceCard): {
     userId: string;
     name: string;
-    ownerType: AppTypes.ActivityMemberOwnerType;
+    ownerType: ActivityContracts.ActivityMemberOwnerType;
   } | null {
     const context = this.popupContextRef();
     if (!context) {
@@ -3262,7 +3263,7 @@ export class SubEventResourcePopupController {
     const requestVersion = ++this.pendingAssetExploreBorrowRequestVersion;
     const pricing = this.resolveAssetExploreBorrowPricing(card, dialog.startAtIso, dialog.endAtIso, dialog.quantity);
     const inventoryApplied = pricing.amount > 0;
-    const lineItems: AppTypes.EventCheckoutLineItem[] = [
+    const lineItems: ActivityContracts.EventCheckoutLineItem[] = [
       {
         id: `resource:${card.id}`,
         kind: 'resource',
@@ -3290,7 +3291,7 @@ export class SubEventResourcePopupController {
           lineItems,
           totalAmount: pricing.amount,
           currency: pricing.currency
-        } satisfies AppTypes.EventCheckoutRequest
+        } satisfies ActivityContracts.EventCheckoutRequest
       : null;
 
     if (inventoryApplied && !dialog.paymentStep) {
@@ -3347,7 +3348,7 @@ export class SubEventResourcePopupController {
           amount: pricing.amount,
           currency: pricing.currency,
           paymentUrl: null
-        } satisfies AppTypes.EventCheckoutSession : null);
+        } satisfies ActivityContracts.EventCheckoutSession : null);
 
     void checkoutSessionPromise
       .then(async session => {
@@ -3960,7 +3961,7 @@ export class SubEventResourcePopupController {
   private syncAssetRequestsFromMembers(
     assetId: string,
     assetType: AppTypes.AssetType,
-    members: readonly AppTypes.ActivityMemberEntry[]
+    members: readonly ActivityContracts.ActivityMemberEntry[]
   ): void {
     const context = this.popupContextRef();
     const asset = this.ownedAssets.assetCards.find(card => card.id === assetId && card.type === assetType)
@@ -4468,7 +4469,7 @@ export class SubEventResourcePopupController {
     card: AppTypes.AssetCard,
     ownerUserId: string | null,
     subEventId?: string
-  ): AppTypes.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberEntry[] {
     const seedBaseDate = new Date('2026-02-24T12:00:00');
     const requests = subEventId
       ? this.assetRequestsForView(card, subEventId, ownerUserId)
@@ -4489,10 +4490,10 @@ export class SubEventResourcePopupController {
         const pendingRequiresAdminApproval = request.status === 'pending'
           && !note.includes('owner approval')
           && !note.includes('join request');
-        const pendingSource: AppTypes.ActivityPendingSource = request.status === 'pending'
+        const pendingSource: ActivityContracts.ActivityPendingSource = request.status === 'pending'
           ? (pendingRequiresAdminApproval ? 'admin' : 'member')
           : null;
-        const requestKind: AppTypes.ActivityMemberRequestKind = request.status === 'pending'
+        const requestKind: ActivityContracts.ActivityMemberRequestKind = request.status === 'pending'
           ? (pendingRequiresAdminApproval ? 'invite' : 'join')
           : null;
         const seed = AppUtils.hashText(`asset-members:${card.id}:${request.id}:${userId}`);

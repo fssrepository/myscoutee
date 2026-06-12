@@ -2,16 +2,12 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
-import type {
-  ActivityMemberEntry,
-  ActivityMemberOwnerRef,
-  ActivityMembersSummary
-} from '../../../core/base/models';
 import type { ActivityMemberRecord } from '../../base/models/activity-members.model';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersMapper, type ActivityMemberProfileFallback } from '../mappers';
+import type { ActivityMemberEntry, ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'

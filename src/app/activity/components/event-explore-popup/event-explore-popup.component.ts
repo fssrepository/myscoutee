@@ -12,7 +12,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/core/base/models';
+import type { EventExploreFeedFilters } from '../../../shared/core/base/models';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
@@ -60,6 +60,8 @@ import { EventCheckoutDialogService } from '../../../shared/ui/services/event-ch
 import { NavigatorService } from '../../../navigator';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -137,7 +139,7 @@ export class EventExplorePopupComponent {
   protected eventExploreHeaderLoadingOverdue = false;
   protected eventExploreStickyLabel = 'No items';
 
-  protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
+  protected selectedMembers: ActivityContracts.ActivityMemberEntry[] = [];
   protected selectedMembersTitle = '';
   protected selectedMembersPendingOnly = false;
   protected selectedMembersRecord: ActivityEventRecord | null = null;
@@ -677,7 +679,7 @@ export class EventExplorePopupComponent {
     return `${acceptedCount} members · ${pendingCount} pending`;
   }
 
-  protected get activityMembersOrdered(): AppTypes.ActivityMemberEntry[] {
+  protected get activityMembersOrdered(): ActivityContracts.ActivityMemberEntry[] {
     if (!this.selectedMembersPendingOnly) {
       return this.sortMembersByActionTimeDesc(this.selectedMembers);
     }
@@ -1241,7 +1243,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  private buildMemberEntries(record: ActivityEventRecord): AppTypes.ActivityMemberEntry[] {
+  private buildMemberEntries(record: ActivityEventRecord): ActivityContracts.ActivityMemberEntry[] {
     const row = EventExploreBuilder.buildActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
     const summary = this.activityMembersService.peekSummaryByOwner(this.eventMembersOwner(record));
@@ -1260,7 +1262,7 @@ export class EventExplorePopupComponent {
       false
     );
 
-    const entries: AppTypes.ActivityMemberEntry[] = [];
+    const entries: ActivityContracts.ActivityMemberEntry[] = [];
     for (const userId of acceptedUserIds) {
       const user = this.resolveUser(userId, record);
       const base = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1476,7 +1478,7 @@ export class EventExplorePopupComponent {
 
   private async submitEventExploreJoinRequest(
     record: ActivityEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null
   ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
@@ -1704,7 +1706,7 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord,
     accepted = false,
     pendingReason: 'approval' | 'waitlist' | null = null
-  ): AppTypes.ActivityMemberEntry {
+  ): ActivityContracts.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
     const entry = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1733,7 +1735,7 @@ export class EventExplorePopupComponent {
 
   private isConfirmedEventExploreBooking(
     record: ActivityEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null
   ): boolean {
     if (this.isEventExploreSelectionFull(record, selection)) {
       return false;
@@ -1749,7 +1751,7 @@ export class EventExplorePopupComponent {
 
   private isEventExploreSelectionFull(
     record: ActivityEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null
   ): boolean {
     const slotSourceId = `${selection?.slotSourceId ?? ''}`.trim();
     if (slotSourceId) {
@@ -1780,7 +1782,7 @@ export class EventExplorePopupComponent {
 
   private buildActivitiesEventSyncPayload(
     record: ActivityEventRecord,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     paymentSessionId: string | null = null
   ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
@@ -1833,7 +1835,7 @@ export class EventExplorePopupComponent {
     };
   }
 
-  private sortMembersByActionTimeDesc(entries: readonly AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+  private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
     return [...entries].sort((left, right) =>
       AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
     );
@@ -1894,15 +1896,15 @@ export class EventExplorePopupComponent {
     return AppUtils.normalizeText(`${topic ?? ''}`.replace(/^#+\s*/, '').trim());
   }
 
-  private activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
+  private activityMemberAge(entry: ActivityContracts.ActivityMemberEntry): number {
     return this.userByIdMap.get(entry.userId)?.age ?? 0;
   }
 
-  private activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private activityMemberRoleLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     return entry.role;
   }
 
-  private activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private activityMemberStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
@@ -1918,7 +1920,7 @@ export class EventExplorePopupComponent {
     return 'Waiting For Admin Approval';
   }
 
-  private memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardStatusIcon(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
     }
@@ -1928,7 +1930,7 @@ export class EventExplorePopupComponent {
     return 'outgoing_mail';
   }
 
-  private memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardStatusClass(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
     }
@@ -1938,7 +1940,7 @@ export class EventExplorePopupComponent {
     return 'member-status-invite-pending';
   }
 
-  private memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardToneClass(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
     }
@@ -1948,19 +1950,19 @@ export class EventExplorePopupComponent {
     return 'member-card-tone-invite-pending';
   }
 
-  private memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role;
     }
     return this.activityMemberStatusLabel(entry);
   }
 
-  private isActivityJoinRequest(entry: AppTypes.ActivityMemberEntry): boolean {
+  private isActivityJoinRequest(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return entry.requestKind === 'join'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
-  private activityMemberDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private activityMemberDeleteLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     return entry.status === 'accepted' ? 'Remove member' : 'Delete invitation';
   }
 }

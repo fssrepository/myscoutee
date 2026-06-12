@@ -6,6 +6,38 @@ export interface LocationCoordinates {
   longitude: number;
 }
 
+export interface FirebaseAuthProfileDto {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  imageUrl?: string;
+}
+
+export type FirebaseAuthProvider = 'google' | 'facebook' | 'email';
+export type FirebaseEmailAuthMode = 'sign-in' | 'create';
+
+export interface FirebaseAuthRequestDto {
+  provider: FirebaseAuthProvider;
+  emailMode?: FirebaseEmailAuthMode;
+  email?: string;
+  password?: string;
+}
+
+export interface EntryConsentStateDto {
+  version: string;
+  accepted: boolean;
+  acceptedAtIso: string;
+}
+
+export interface EntryConsentAuditRecordDto {
+  tsIso: string;
+  action: 'accepted' | 'rejected';
+  version: string;
+  source: 'entry';
+  userAgent: string;
+}
+
 export interface UserPersonalityTraitDto {
   id: string;
   label: string;

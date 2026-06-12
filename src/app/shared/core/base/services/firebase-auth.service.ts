@@ -18,11 +18,15 @@ import {
 } from 'firebase/auth';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../core/base/models';
+import type {
+  FirebaseAuthProfileDto,
+  FirebaseAuthRequestDto,
+  FirebaseEmailAuthMode
+} from '../../contracts/user.interface';
 import { APP_STORAGE_KEYS } from '../storage-scope';
 
 export interface FirebaseAuthSignInResult {
-  profile: AppTypes.FirebaseAuthProfile | null;
+  profile: FirebaseAuthProfileDto | null;
   emailVerificationSent?: boolean;
   email?: string;
   errorMessage?: string;
@@ -49,7 +53,7 @@ export class FirebaseAuthService {
     return environment.firebaseLoginEnabled;
   }
 
-  loadStoredProfile(): AppTypes.FirebaseAuthProfile | null {
+  loadStoredProfile(): FirebaseAuthProfileDto | null {
     if (!this.enabled || typeof localStorage === 'undefined') {
       return null;
     }
@@ -58,7 +62,7 @@ export class FirebaseAuthService {
       return null;
     }
     try {
-      const parsed = JSON.parse(raw) as Partial<AppTypes.FirebaseAuthProfile>;
+      const parsed = JSON.parse(raw) as Partial<FirebaseAuthProfileDto>;
       if (!parsed.id || !parsed.name || !parsed.email || !parsed.initials) {
         return null;
       }
@@ -74,11 +78,11 @@ export class FirebaseAuthService {
     }
   }
 
-  async signInWithGoogle(): Promise<AppTypes.FirebaseAuthProfile | null> {
+  async signInWithGoogle(): Promise<FirebaseAuthProfileDto | null> {
     return (await this.signIn({ provider: 'google' })).profile;
   }
 
-  async signIn(request: AppTypes.FirebaseAuthRequest): Promise<FirebaseAuthSignInResult> {
+  async signIn(request: FirebaseAuthRequestDto): Promise<FirebaseAuthSignInResult> {
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
       return { profile: null };
@@ -102,7 +106,7 @@ export class FirebaseAuthService {
     }
   }
 
-  async restoreSessionProfile(): Promise<AppTypes.FirebaseAuthProfile | null> {
+  async restoreSessionProfile(): Promise<FirebaseAuthProfileDto | null> {
     if (!this.enabled) {
       return null;
     }
@@ -254,7 +258,7 @@ export class FirebaseAuthService {
     });
   }
 
-  private persistProfile(user: User): AppTypes.FirebaseAuthProfile {
+  private persistProfile(user: User): FirebaseAuthProfileDto {
     const profile = this.toFirebaseAuthProfile(user);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(FirebaseAuthService.FIREBASE_AUTH_PROFILE_KEY, JSON.stringify(profile));
@@ -269,7 +273,7 @@ export class FirebaseAuthService {
     localStorage.removeItem(FirebaseAuthService.FIREBASE_AUTH_PROFILE_KEY);
   }
 
-  private toFirebaseAuthProfile(user: User): AppTypes.FirebaseAuthProfile {
+  private toFirebaseAuthProfile(user: User): FirebaseAuthProfileDto {
     const fallbackName = user.displayName?.trim() || user.email?.trim() || 'Firebase User';
     return {
       id: user.uid,
@@ -280,7 +284,7 @@ export class FirebaseAuthService {
     };
   }
 
-  private async runAuthRequest(auth: Auth, request: AppTypes.FirebaseAuthRequest): Promise<{ user: User; emailVerificationSent?: boolean }> {
+  private async runAuthRequest(auth: Auth, request: FirebaseAuthRequestDto): Promise<{ user: User; emailVerificationSent?: boolean }> {
     if (request.provider === 'facebook') {
       const provider = new FacebookAuthProvider();
       provider.addScope('email');
@@ -310,7 +314,7 @@ export class FirebaseAuthService {
     auth: Auth,
     email: string,
     password: string,
-    mode?: AppTypes.FirebaseEmailAuthMode
+    mode?: FirebaseEmailAuthMode
   ): Promise<{ user: User }> {
     if (mode === 'sign-in') {
       return signInWithEmailAndPassword(auth, email, password);

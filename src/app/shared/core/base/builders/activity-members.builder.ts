@@ -1,14 +1,14 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
+import type { ActivityListRow } from '../models';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivityListRow,
   ActivityMemberStatus,
+  ActivityMembersSummary,
   ActivityPendingSource
-} from '../models';
+} from '../../contracts/activity.interface';
 
 export class ActivityMembersBuilder {
   static activityCapacityTotal(

@@ -16,19 +16,18 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { RateRecord } from '../../../shared/core/contracts/activity.interface';
+import type {
+  ActivityMemberOwnerRef,
+  ActivityMembersSummary,
+  RateRecord
+} from '../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivitiesEventDisplaySync } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
-import type {
-  ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  ActivitiesFeedFilters,
-  ActivitiesEventSyncPayload
-} from '../../../shared/core/base/models';
+import type { ActivitiesFeedFilters, ActivitiesEventSyncPayload } from '../../../shared/core/base/models';
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
   AppMenuComponent,
@@ -99,6 +98,7 @@ import type {
   ActivityEventRepositoryItemType
 } from '../../../shared/core/base/models/events.model';
 import { I18nService } from '../../../shared/core';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 // ---------------------------------------------------------------------------
 
@@ -272,7 +272,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
-  protected readonly activityMembersByRowId: Record<string, AppTypes.ActivityMemberEntry[]> = {};
+  protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
   private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
   protected activitiesRateCardRevision = 0;
   protected readonly activityRateCardRevisionByRowId: Record<string, number> = {};
@@ -489,8 +489,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected stackedActivitiesPopup: 'activityMembers' | null = null;
   protected activityMembersReadOnly = false;
   protected activityMembersPendingOnly = false;
-  protected pendingActivityMemberDelete: AppTypes.ActivityMemberEntry | null = null;
-  protected selectedActivityMembers: AppTypes.ActivityMemberEntry[] = [];
+  protected pendingActivityMemberDelete: ActivityContracts.ActivityMemberEntry | null = null;
+  protected selectedActivityMembers: ActivityContracts.ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
   protected selectedActivityMembersRow: AppTypes.ActivityListRow | null = null;
   protected selectedActivityMembersRowId: string | null = null;
@@ -2542,12 +2542,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     row: AppTypes.ActivityListRow,
     acceptedMemberUserIds: readonly string[],
     pendingMemberUserIds: readonly string[]
-  ): AppTypes.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberEntry[] {
     const rowKey = this.activityRowIdentity(row);
     const normalizedAcceptedMemberUserIds = this.uniqueUserIds(acceptedMemberUserIds);
     const normalizedPendingMemberUserIds = this.uniqueUserIds(pendingMemberUserIds)
       .filter(userId => !normalizedAcceptedMemberUserIds.includes(userId));
-    const entries: AppTypes.ActivityMemberEntry[] = [];
+    const entries: ActivityContracts.ActivityMemberEntry[] = [];
     for (const userId of normalizedAcceptedMemberUserIds) {
       const user = this.resolveActivityMemberUser(userId);
       entries.push({

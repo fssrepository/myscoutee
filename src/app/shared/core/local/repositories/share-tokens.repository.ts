@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../base/db';
 import type * as AppTypes from '../../../core/base/models';
+import type { ShareTokenCreateRequest, ShareTokenResolvedItem } from '../../contracts/share.interface';
 import { SHARE_TOKENS_TABLE_NAME } from '../../base/models/share-tokens.model';
 import { LocalEventsRepository } from './events.repository';
 import { LocalAssetsRepository } from './assets.repository';
@@ -19,7 +20,7 @@ export class LocalShareTokensRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  createToken(request: AppTypes.ShareTokenCreateRequest): string {
+  createToken(request: ShareTokenCreateRequest): string {
     const kind = request.kind;
     const entityId = `${request.entityId ?? ''}`.trim();
     if (!entityId || (kind !== 'event' && kind !== 'asset' && kind !== 'adminHelp')) {
@@ -101,7 +102,7 @@ export class LocalShareTokensRepository {
     return token;
   }
 
-  resolveToken(token: string, userId: string): AppTypes.ShareTokenResolvedItem | null {
+  resolveToken(token: string, userId: string): ShareTokenResolvedItem | null {
     const normalizedToken = `${token ?? ''}`.trim();
     if (!normalizedToken) {
       return null;

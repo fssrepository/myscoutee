@@ -7,6 +7,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import type { ChatThreadRecord } from '../../base/models/chats.model';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -48,7 +49,7 @@ export class LocalChatsService extends LocalRouteDelayService {
     return this.chatsRepository.queryChatMessages(chat);
   }
 
-  async queryChatMembers(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMembers(chatId);
   }

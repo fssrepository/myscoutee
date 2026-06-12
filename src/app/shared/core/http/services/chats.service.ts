@@ -11,6 +11,7 @@ import { AppContext } from '../../base/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';
 import type { ChatThreadRecord } from '../../base/models/chats.model';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 interface HttpChatSummaryDto {
   id: string;
@@ -155,7 +156,7 @@ interface HttpChatMemberDto {
   metAtIso?: string | null;
   actionAtIso?: string | null;
   metWhere?: string | null;
-  profile?: AppTypes.ActivityMemberEntry['profile'];
+  profile?: ActivityContracts.ActivityMemberEntry['profile'];
 }
 
 interface HttpChatSocketEventDto {
@@ -325,7 +326,7 @@ export class HttpChatsService {
     }
   }
 
-  async queryChatMembers(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -872,7 +873,7 @@ export class HttpChatsService {
     member: HttpChatMemberDto,
     chatId: string,
     index: number
-  ): AppTypes.ActivityMemberEntry {
+  ): ActivityContracts.ActivityMemberEntry {
     const userId = this.normalizeHttpText(member.userId) || this.normalizeHttpText(member.id) || `chat-member-${index + 1}`;
     const name = this.normalizeHttpText(member.name) || userId;
     const initials = this.normalizeHttpText(member.initials) || AppUtils.initialsFromText(name);

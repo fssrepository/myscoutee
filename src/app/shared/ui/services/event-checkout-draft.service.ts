@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutLineItem } from '../../core/base/models';
+import type { EventCheckoutLineItem } from '../../core/contracts/activity.interface';
 import { APP_STORAGE_KEYS } from '../../core/base/storage-scope';
 
 export interface EventCheckoutDraft {

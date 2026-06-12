@@ -13,6 +13,7 @@ import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
 import { UsersService } from './users.service';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -87,7 +88,7 @@ export class ChatsService extends BaseRouteModeService {
     };
   }
 
-  async queryChatMemberEntries(chatId: string): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryChatMemberEntries(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];

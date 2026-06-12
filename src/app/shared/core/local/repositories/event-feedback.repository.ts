@@ -3,12 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { LocalMemoryDb } from '../../base/db';
 import type {
-  EventFeedbackPersistedState,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
-} from '../../../core/base/models';
+} from '../../contracts/activity.interface';
+import type { EventFeedbackPersistedState } from '../../../core/base/models';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';
 import { LocalEventsRepository } from './events.repository';
 import { LocalUsersRepository } from './users.repository';

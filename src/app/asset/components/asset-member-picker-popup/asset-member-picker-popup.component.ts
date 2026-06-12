@@ -1,3 +1,4 @@
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import {
   ChangeDetectionStrategy,
@@ -43,13 +44,13 @@ import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.s
 
 interface ActivityInviteFilters {
   ownerId?: string;
-  sort?: AppTypes.ActivityInviteSort;
+  sort?: ActivityContracts.ActivityInviteSort;
   fallbackTitle?: string;
 }
 
 type AssetMemberPickerMenuContext = {
   menu: 'invite-sort';
-  sort: AppTypes.ActivityInviteSort;
+  sort: ActivityContracts.ActivityInviteSort;
 };
 
 @Component({
@@ -80,37 +81,37 @@ export class AssetMemberPickerPopupComponent {
   protected isOpen = false;
   protected title = 'Invite members';
   protected ownerId = '';
-  protected ownerType: AppTypes.ActivityMemberOwnerType = 'event';
-  protected inviteSort: AppTypes.ActivityInviteSort = 'recent';
+  protected ownerType: ActivityContracts.ActivityMemberOwnerType = 'event';
+  protected inviteSort: ActivityContracts.ActivityInviteSort = 'recent';
   protected selectedUserIds: string[] = [];
   protected inviteSmartListQuery: Partial<ListQuery<ActivityInviteFilters>> = {};
   protected confirmErrorMessage = '';
   protected isConfirmPending = false;
 
-  private currentCandidates: AppTypes.ActivityMemberEntry[] = [];
+  private currentCandidates: ActivityContracts.ActivityMemberEntry[] = [];
   private persistedSelectedUserIds = new Set<string>();
-  private readonly candidatesByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
+  private readonly candidatesByUserId = new Map<string, ActivityContracts.ActivityMemberEntry>();
   private candidateQueryKey = '';
-  private localCandidates: AppTypes.ActivityMemberEntry[] = [];
+  private localCandidates: ActivityContracts.ActivityMemberEntry[] = [];
   private isLocalCandidateSource = false;
   private inviteSelectionHydrated = false;
-  private inviteApplyHandler: ((selectedCandidates: readonly AppTypes.ActivityMemberEntry[]) => void | Promise<void>) | null = null;
+  private inviteApplyHandler: ((selectedCandidates: readonly ActivityContracts.ActivityMemberEntry[]) => void | Promise<void>) | null = null;
   private closeOwnerPopupOnClose = false;
 
   @ViewChild('inviteSmartList')
-  private inviteSmartList?: SmartListComponent<AppTypes.ActivityMemberEntry, ActivityInviteFilters>;
+  private inviteSmartList?: SmartListComponent<ActivityContracts.ActivityMemberEntry, ActivityInviteFilters>;
 
-  protected inviteItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, ActivityInviteFilters>>;
+  protected inviteItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberEntry, ActivityInviteFilters>>;
 
   @ViewChild('inviteItemTemplate', { read: TemplateRef })
   private set inviteItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.ActivityMemberEntry, ActivityInviteFilters>> | undefined
+    value: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberEntry, ActivityInviteFilters>> | undefined
   ) {
     this.inviteItemTemplateRef = value;
     this.cdr.markForCheck();
   }
 
-  protected readonly inviteSmartListConfig: SmartListConfig<AppTypes.ActivityMemberEntry, ActivityInviteFilters> = {
+  protected readonly inviteSmartListConfig: SmartListConfig<ActivityContracts.ActivityMemberEntry, ActivityInviteFilters> = {
     pageSize: 16,
     defaultView: 'list',
     headerProgress: {
@@ -126,7 +127,7 @@ export class AssetMemberPickerPopupComponent {
     trackBy: (_index, entry) => entry.id
   };
 
-  protected readonly inviteSmartListLoaders: SmartListLoaders<AppTypes.ActivityMemberEntry, ActivityInviteFilters> = {
+  protected readonly inviteSmartListLoaders: SmartListLoaders<ActivityContracts.ActivityMemberEntry, ActivityInviteFilters> = {
     list: query => from(this.loadInviteCandidatesPage(query))
   };
 
@@ -173,7 +174,7 @@ export class AssetMemberPickerPopupComponent {
   }
 
   protected onInviteSmartListStateChange(
-    change: SmartListStateChange<AppTypes.ActivityMemberEntry, ActivityInviteFilters>
+    change: SmartListStateChange<ActivityContracts.ActivityMemberEntry, ActivityInviteFilters>
   ): void {
     for (const entry of change.items) {
       this.candidatesByUserId.set(entry.userId, { ...entry });
@@ -238,7 +239,7 @@ export class AssetMemberPickerPopupComponent {
     this.selectInviteSort(context.sort);
   }
 
-  private selectInviteSort(sort: AppTypes.ActivityInviteSort): void {
+  private selectInviteSort(sort: ActivityContracts.ActivityInviteSort): void {
     if (this.isConfirmPending) {
       return;
     }
@@ -324,13 +325,13 @@ export class AssetMemberPickerPopupComponent {
     }));
   }
 
-  protected selectedInviteChips(): AppTypes.ActivityMemberEntry[] {
+  protected selectedInviteChips(): ActivityContracts.ActivityMemberEntry[] {
     return this.selectedUserIds
       .map(userId => this.candidatesByUserId.get(userId) ?? this.currentCandidates.find(entry => entry.userId === userId) ?? null)
-      .filter((entry): entry is AppTypes.ActivityMemberEntry => Boolean(entry));
+      .filter((entry): entry is ActivityContracts.ActivityMemberEntry => Boolean(entry));
   }
 
-  protected inviteMetLabel(entry: AppTypes.ActivityMemberEntry): string {
+  protected inviteMetLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     const parsed = new Date(entry.metAtIso);
     const dateLabel = Number.isNaN(parsed.getTime())
       ? ''
@@ -338,7 +339,7 @@ export class AssetMemberPickerPopupComponent {
     return dateLabel ? `${entry.metWhere} · ${dateLabel}` : entry.metWhere;
   }
 
-  protected viewCandidateProfile(candidate: AppTypes.ActivityMemberEntry, event: Event): void {
+  protected viewCandidateProfile(candidate: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     const userId = `${candidate.userId ?? ''}`.trim();
     if (!userId) {
@@ -382,7 +383,7 @@ export class AssetMemberPickerPopupComponent {
     };
   }
 
-  private sortLocalCandidates(sort: AppTypes.ActivityInviteSort): AppTypes.ActivityMemberEntry[] {
+  private sortLocalCandidates(sort: ActivityContracts.ActivityInviteSort): ActivityContracts.ActivityMemberEntry[] {
     const candidates = this.localCandidates.map(candidate => ({ ...candidate }));
     if (sort === 'relevant') {
       return candidates;
@@ -394,7 +395,7 @@ export class AssetMemberPickerPopupComponent {
 
   private async loadInviteCandidatesPage(
     query: ListQuery<ActivityInviteFilters>
-  ): Promise<PageResult<AppTypes.ActivityMemberEntry>> {
+  ): Promise<PageResult<ActivityContracts.ActivityMemberEntry>> {
     const ownerId = query.filters?.ownerId?.trim() ?? '';
     if (!ownerId) {
       return {
@@ -410,7 +411,7 @@ export class AssetMemberPickerPopupComponent {
         this.persistedSelectedUserIds = new Set<string>();
         this.currentCandidates = this.sortLocalCandidates(inviteSort);
       } else {
-        const ownerRef: AppTypes.ActivityMemberOwnerRef = {
+        const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
           ownerType: this.ownerType,
           ownerId
         };
@@ -464,11 +465,11 @@ export class AssetMemberPickerPopupComponent {
   }
 
   private mergeInviteCandidates(
-    persistedMembers: readonly AppTypes.ActivityMemberEntry[],
-    candidates: readonly AppTypes.ActivityMemberEntry[],
-    sort: AppTypes.ActivityInviteSort
-  ): AppTypes.ActivityMemberEntry[] {
-    const mergedByUserId = new Map<string, AppTypes.ActivityMemberEntry>();
+    persistedMembers: readonly ActivityContracts.ActivityMemberEntry[],
+    candidates: readonly ActivityContracts.ActivityMemberEntry[],
+    sort: ActivityContracts.ActivityInviteSort
+  ): ActivityContracts.ActivityMemberEntry[] {
+    const mergedByUserId = new Map<string, ActivityContracts.ActivityMemberEntry>();
     if (this.ownerType !== 'asset') {
       for (const member of persistedMembers) {
         mergedByUserId.set(member.userId, { ...member });
@@ -502,7 +503,7 @@ export class AssetMemberPickerPopupComponent {
     return this.selectedUserIds.some(userId => !this.persistedSelectedUserIds.has(userId));
   }
 
-  private async applySelection(selected: readonly AppTypes.ActivityMemberEntry[]): Promise<void> {
+  private async applySelection(selected: readonly ActivityContracts.ActivityMemberEntry[]): Promise<void> {
     if (this.inviteApplyHandler) {
       await Promise.resolve(this.inviteApplyHandler(selected));
       return;

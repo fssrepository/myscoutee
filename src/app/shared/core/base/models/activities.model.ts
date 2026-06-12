@@ -9,9 +9,7 @@ import type {
 import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {
-  EventCheckoutAssetSelection,
   EventBlindMode,
-  EventCheckoutSession,
   EventPolicyItem,
   EventEditorTarget,
   EventRecordKind,
@@ -126,21 +124,6 @@ export interface ActivitiesEventSyncPayload {
   subEventsDisplayMode?: import('./event.model').SubEventsDisplayMode;
   paymentSessionId?: string | null;
 }
-
-export interface EventCheckoutRequest {
-  userId: string;
-  sourceId: string;
-  slotSourceId?: string | null;
-  optionalSubEventIds: string[];
-  assetSelections: EventCheckoutAssetSelection[];
-  acceptedPolicyIds: string[];
-  lineItems: import('./event.model').EventCheckoutLineItem[];
-  totalAmount: number;
-  currency: string;
-  pendingReason?: 'approval' | 'waitlist' | null;
-}
-
-export type { EventCheckoutSession };
 
 export interface EventChatSession {
   item: ChatRecord;

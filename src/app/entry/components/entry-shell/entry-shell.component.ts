@@ -8,7 +8,13 @@ import {
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
 import type * as AppTypes from '../../../shared/core/base/models';
-import type { LocationCoordinates } from '../../../shared/core/contracts/user.interface';
+import type {
+  EntryConsentAuditRecordDto,
+  EntryConsentStateDto,
+  FirebaseAuthProfileDto,
+  FirebaseAuthRequestDto,
+  LocationCoordinates
+} from '../../../shared/core/contracts/user.interface';
 import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -60,13 +66,13 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private entryContentLoadPromise: Promise<void> | null = null;
 
   @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
-  @Input() firebaseAuthProfile: AppTypes.FirebaseAuthProfile | null = null;
+  @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() firebaseAuthIsBusy = false;
   @Input() firebaseAuthMessage = '';
   @Input() isMobileView = false;
 
   @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
-  @Output() readonly firebaseAuthRequested = new EventEmitter<AppTypes.FirebaseAuthRequest>();
+  @Output() readonly firebaseAuthRequested = new EventEmitter<FirebaseAuthRequestDto>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
   @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
 
@@ -181,7 +187,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.showFirebaseAuthPopup = false;
   }
 
-  protected onRequestFirebaseAuth(request: AppTypes.FirebaseAuthRequest): void {
+  protected onRequestFirebaseAuth(request: FirebaseAuthRequestDto): void {
     if (this.firebaseAuthIsBusy) {
       return;
     }
@@ -222,7 +228,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return;
     }
     const nowIso = new Date().toISOString();
-    const consent: AppTypes.EntryConsentState = {
+    const consent: EntryConsentStateDto = {
       version,
       accepted: true,
       acceptedAtIso: nowIso
@@ -466,7 +472,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     });
   }
 
-  private loadEntryConsentState(): AppTypes.EntryConsentState | null {
+  private loadEntryConsentState(): EntryConsentStateDto | null {
     const expectedVersion = this.entryConsentVersion();
     if (!expectedVersion) {
       return null;
@@ -476,7 +482,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return null;
     }
     try {
-      const parsed = JSON.parse(raw) as Partial<AppTypes.EntryConsentState>;
+      const parsed = JSON.parse(raw) as Partial<EntryConsentStateDto>;
       if (
         parsed.version !== expectedVersion ||
         parsed.accepted !== true ||
@@ -495,8 +501,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }
   }
 
-  private appendEntryConsentAudit(action: AppTypes.EntryConsentAuditRecord['action'], tsIso: string): void {
-    const record: AppTypes.EntryConsentAuditRecord = {
+  private appendEntryConsentAudit(action: EntryConsentAuditRecordDto['action'], tsIso: string): void {
+    const record: EntryConsentAuditRecordDto = {
       tsIso,
       action,
       version: this.entryConsentVersion(),
@@ -509,13 +515,13 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     localStorage.setItem(EntryShellComponent.ENTRY_CONSENT_AUDIT_KEY, JSON.stringify(trimmed));
   }
 
-  private loadEntryConsentAudit(): AppTypes.EntryConsentAuditRecord[] {
+  private loadEntryConsentAudit(): EntryConsentAuditRecordDto[] {
     const raw = localStorage.getItem(EntryShellComponent.ENTRY_CONSENT_AUDIT_KEY);
     if (!raw) {
       return [];
     }
     try {
-      const parsed = JSON.parse(raw) as AppTypes.EntryConsentAuditRecord[];
+      const parsed = JSON.parse(raw) as EntryConsentAuditRecordDto[];
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];

@@ -12,7 +12,6 @@ import {
   type ActivityMemberRecord,
   type ActivityMembersRecordCollection
 } from '../../base/models/activity-members.model';
-import type { ActivityMemberOwnerRef } from '../../base/models';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../base/models/assets.model';
 import {
   EVENTS_TABLE_NAME,
@@ -21,6 +20,8 @@ import {
 } from '../../base/models/events.model';
 import { USERS_TABLE_NAME } from '../../base/models/users.model';
 import { SeedEventBuilder, SeedEventsBuilder, SeedScheduleBuilder, SeedUserBuilder } from '../builders';
+import type { ActivityMemberOwnerRef } from '../../contracts/activity.interface';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 interface ExplicitSeedMemberUserIds {
   accepted: string[];
@@ -334,10 +335,10 @@ export class SeedActivityMembersRepository {
     rowKey: string,
     creator: UserDto,
     userId: string,
-    status: AppTypes.ActivityMemberStatus,
+    status: ActivityContracts.ActivityMemberStatus,
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
-  ): AppTypes.ActivityMemberEntry {
+  ): ActivityContracts.ActivityMemberEntry {
     void owner;
     const user = this.resolveDemoUser(userId, users, usersById);
     const base = ActivityMembersBuilder.toActivityMemberEntry(
@@ -419,10 +420,10 @@ export class SeedActivityMembersRepository {
     asset: AppTypes.AssetCard,
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
-  ): AppTypes.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberEntry[] {
     const seedBaseDate = SeedScheduleBuilder.shiftDate(new Date('2026-02-24T12:00:00.000Z'));
     const owner = this.resolveDemoUser(ownerUserId, users, usersById, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
-    const ownerEntry: AppTypes.ActivityMemberEntry = {
+    const ownerEntry: ActivityContracts.ActivityMemberEntry = {
       id: `${asset.id}:owner`,
       userId: owner.id,
       name: owner.name,
@@ -448,14 +449,14 @@ export class SeedActivityMembersRepository {
     const userList = [...users];
     const requestEntries = requests
       .slice(0, SeedActivityMembersRepository.MAX_SEEDED_ASSET_REQUESTS_PER_OWNER)
-      .map((request, index): AppTypes.ActivityMemberEntry => {
+      .map((request, index): ActivityContracts.ActivityMemberEntry => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, userList);
         const matchedUser = usersById.get(requestUserId)
           ?? AppUtils.findUserByName(userList, request.name)
           ?? this.resolveDemoUser(requestUserId, users, usersById, request.name, request.initials, asset.city, request.gender);
         const seed = AppUtils.hashText(`asset-members:${asset.id}:${request.id}:${matchedUser.id}:${index}`);
         const actionAtIso = AppUtils.toIsoDateTime(AppUtils.addDays(seedBaseDate, -((seed % 90) + 1)));
-        const status: AppTypes.ActivityMemberStatus = request.status === 'pending' ? 'pending' : 'accepted';
+        const status: ActivityContracts.ActivityMemberStatus = request.status === 'pending' ? 'pending' : 'accepted';
         return {
           id: request.id?.trim() || `${asset.id}:member:${index + 1}`,
           userId: matchedUser.id,
@@ -725,7 +726,7 @@ export class SeedActivityMembersRepository {
     return next;
   }
 
-  private toRecord(owner: ActivityMemberOwnerRef, member: AppTypes.ActivityMemberEntry): ActivityMemberRecord {
+  private toRecord(owner: ActivityMemberOwnerRef, member: ActivityContracts.ActivityMemberEntry): ActivityMemberRecord {
     const ownerKey = this.ownerKey(owner);
     const createdMs = AppUtils.toSortableDate(member.actionAtIso) || Date.now();
     const createdAtIso = member.actionAtIso || new Date(createdMs).toISOString();

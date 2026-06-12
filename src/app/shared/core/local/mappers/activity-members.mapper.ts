@@ -1,11 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
-import type {
-  ActivityMemberEntry,
-  ActivityMemberOwnerRef,
-  ActivityMembersSummary
-} from '../../base/models';
 import type { ActivityMemberRecord } from '../../base/models/activity-members.model';
+import type { ActivityMemberEntry, ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
 
 export interface ActivityMemberProfileFallback {
   name?: string;

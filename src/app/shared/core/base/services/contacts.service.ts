@@ -5,6 +5,7 @@ import type { ProfileViewData } from '../../contracts/profile.interface';
 import { LocalContactsService } from '../../local/services/contacts.service';
 import { HttpContactsService } from '../../http/services/contacts.service';
 import { BaseRouteModeService } from './base-route-mode.service';
+import type * as ContactContracts from '../../contracts/contact.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -21,7 +22,7 @@ export class ContactsService extends BaseRouteModeService {
     );
   }
 
-  loadContacts(userId: string): Promise<AppTypes.StoredContact[]> {
+  loadContacts(userId: string): Promise<ContactContracts.StoredContact[]> {
     return this.contactsService.loadContacts(userId);
   }
 
@@ -31,12 +32,12 @@ export class ContactsService extends BaseRouteModeService {
 
   saveContacts(
     userId: string,
-    contacts: readonly AppTypes.StoredContact[]
-  ): Promise<AppTypes.StoredContact[]> {
+    contacts: readonly ContactContracts.StoredContact[]
+  ): Promise<ContactContracts.StoredContact[]> {
     return this.contactsService.saveContacts(userId, contacts);
   }
 
-  deleteContact(userId: string, contactId: string): Promise<AppTypes.StoredContact[]> {
+  deleteContact(userId: string, contactId: string): Promise<ContactContracts.StoredContact[]> {
     return this.contactsService.deleteContact(userId, contactId);
   }
 }

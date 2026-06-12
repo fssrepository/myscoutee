@@ -34,6 +34,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { ShareTokensService } from '../../../shared/core';
@@ -140,7 +141,7 @@ export interface AssetExploreBorrowDialogViewState {
   endDate: Date | null;
   startTime: string;
   endTime: string;
-  lineItems: AppTypes.EventCheckoutLineItem[];
+  lineItems: ActivityContracts.EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
   bookingStartAtIso: string;
@@ -161,7 +162,7 @@ export interface AssignedAssetJoinDialogViewState {
   timeframe: string;
   pathLabel: string;
   memberSummary: string;
-  lineItems: AppTypes.EventCheckoutLineItem[];
+  lineItems: ActivityContracts.EventCheckoutLineItem[];
   totalAmount: number;
   shareAmount: number;
   shareMemberCount: number;

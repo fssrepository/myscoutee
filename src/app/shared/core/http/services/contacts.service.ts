@@ -5,10 +5,12 @@ import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import type { ProfileViewData } from '../../contracts/profile.interface';
 import type { UserDto } from '../../contracts/user.interface';
+import type * as ContactContracts from '../../contracts/contact.interface';
+import type * as ProfileContracts from '../../contracts/profile.interface';
 
 interface ContactsSaveRequest {
   userId: string;
-  contacts: AppTypes.StoredContact[];
+  contacts: ContactContracts.StoredContact[];
 }
 
 @Injectable({
@@ -18,13 +20,13 @@ export class HttpContactsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadContacts(userId: string): Promise<AppTypes.StoredContact[]> {
+  async loadContacts(userId: string): Promise<ContactContracts.StoredContact[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     const response = await this.http
-      .get<Array<Partial<AppTypes.StoredContact>> | null>(`${this.apiBaseUrl}/navigator/contacts`, {
+      .get<Array<Partial<ContactContracts.StoredContact>> | null>(`${this.apiBaseUrl}/navigator/contacts`, {
         params: new HttpParams().set('userId', normalizedUserId)
       })
       .toPromise();
@@ -46,21 +48,21 @@ export class HttpContactsService {
 
   async saveContacts(
     userId: string,
-    contacts: readonly AppTypes.StoredContact[]
-  ): Promise<AppTypes.StoredContact[]> {
+    contacts: readonly ContactContracts.StoredContact[]
+  ): Promise<ContactContracts.StoredContact[]> {
     const request: ContactsSaveRequest = {
       userId: userId.trim(),
       contacts: this.cloneContacts(contacts)
     };
     const response = await this.http
-      .put<Array<Partial<AppTypes.StoredContact>> | null>(`${this.apiBaseUrl}/navigator/contacts`, request)
+      .put<Array<Partial<ContactContracts.StoredContact>> | null>(`${this.apiBaseUrl}/navigator/contacts`, request)
       .toPromise();
     return this.normalizeContacts(response);
   }
 
-  async deleteContact(userId: string, contactId: string): Promise<AppTypes.StoredContact[]> {
+  async deleteContact(userId: string, contactId: string): Promise<ContactContracts.StoredContact[]> {
     const response = await this.http
-      .request<Array<Partial<AppTypes.StoredContact>> | null>(
+      .request<Array<Partial<ContactContracts.StoredContact>> | null>(
         'delete',
         `${this.apiBaseUrl}/navigator/contacts/${encodeURIComponent(contactId.trim())}`,
         { body: { userId: userId.trim() } }
@@ -69,13 +71,13 @@ export class HttpContactsService {
     return this.normalizeContacts(response);
   }
 
-  private normalizeContacts(value: Array<Partial<AppTypes.StoredContact>> | null | undefined): AppTypes.StoredContact[] {
+  private normalizeContacts(value: Array<Partial<ContactContracts.StoredContact>> | null | undefined): ContactContracts.StoredContact[] {
     return (Array.isArray(value) ? value : [])
       .map(contact => this.normalizeContact(contact))
-      .filter((contact): contact is AppTypes.StoredContact => Boolean(contact));
+      .filter((contact): contact is ContactContracts.StoredContact => Boolean(contact));
   }
 
-  private normalizeContact(value: Partial<AppTypes.StoredContact> | null | undefined): AppTypes.StoredContact | null {
+  private normalizeContact(value: Partial<ContactContracts.StoredContact> | null | undefined): ContactContracts.StoredContact | null {
     if (!value) {
       return null;
     }
@@ -98,18 +100,18 @@ export class HttpContactsService {
       updatedAtIso: `${value.updatedAtIso ?? ''}`.trim(),
       methods: (value.methods ?? [])
         .map(method => this.normalizeMethod(method))
-        .filter((method): method is AppTypes.ContactMethodDraft => Boolean(method))
+        .filter((method): method is ContactContracts.ContactMethodDraft => Boolean(method))
     };
   }
 
   private normalizeMethod(
-    value: Partial<AppTypes.ContactMethodDraft> | null | undefined
-  ): AppTypes.ContactMethodDraft | null {
+    value: Partial<ContactContracts.ContactMethodDraft> | null | undefined
+  ): ContactContracts.ContactMethodDraft | null {
     if (!value) {
       return null;
     }
-    const type = `${value.type ?? ''}`.trim() as AppTypes.ContactMethodType;
-    const methodType: AppTypes.ContactMethodType = [
+    const type = `${value.type ?? ''}`.trim() as ContactContracts.ContactMethodType;
+    const methodType: ContactContracts.ContactMethodType = [
       'phone',
       'sms',
       'whatsapp',
@@ -131,7 +133,7 @@ export class HttpContactsService {
     };
   }
 
-  private cloneContacts(contacts: readonly AppTypes.StoredContact[]): AppTypes.StoredContact[] {
+  private cloneContacts(contacts: readonly ContactContracts.StoredContact[]): ContactContracts.StoredContact[] {
     return contacts.map(contact => ({
       ...contact,
       methods: contact.methods.map(method => ({ ...method }))
@@ -175,13 +177,13 @@ export class HttpContactsService {
     };
   }
 
-  private normalizeExperienceEntries(entries: readonly Partial<AppTypes.ExperienceEntry>[] | null | undefined): AppTypes.ExperienceEntry[] {
+  private normalizeExperienceEntries(entries: readonly Partial<ProfileContracts.ExperienceEntry>[] | null | undefined): ProfileContracts.ExperienceEntry[] {
     return (Array.isArray(entries) ? entries : [])
       .map(entry => this.normalizeExperienceEntry(entry))
-      .filter((entry): entry is AppTypes.ExperienceEntry => Boolean(entry));
+      .filter((entry): entry is ProfileContracts.ExperienceEntry => Boolean(entry));
   }
 
-  private normalizeExperienceEntry(entry: Partial<AppTypes.ExperienceEntry> | null | undefined): AppTypes.ExperienceEntry | null {
+  private normalizeExperienceEntry(entry: Partial<ProfileContracts.ExperienceEntry> | null | undefined): ProfileContracts.ExperienceEntry | null {
     const id = `${entry?.id ?? ''}`.trim();
     if (!id) {
       return null;

@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutSelection } from '../../core/base/models';
+import type { EventCheckoutSelection } from '../../core/contracts/activity.interface';
 import type { ActivityEventRecord } from '../../core/base/models/events.model';
 
 export interface EventCheckoutDialogConfig {

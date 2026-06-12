@@ -2,15 +2,17 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   ActivitiesEventSyncPayload,
+  SubEventLeaderboardState
+} from '../../../core/base/models';
+import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+  EventFeedbackSubmitRequestDto
+} from '../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';

@@ -4,10 +4,11 @@ import type * as AppTypes from '../../../core/base/models';
 import { LocalMemoryDb } from '../../base/db';
 import type { UserDto } from '../../contracts/user.interface';
 import { CONTACTS_TABLE_NAME } from '../../base/models/contacts.model';
+import type * as ContactContracts from '../../contracts/contact.interface';
 
 const DEMO_CONTACT_OWNER_USER_ID = 'bf057de7c586eede7e84bdc7';
 const DEMO_CONTACT_UPDATED_AT_ISO = '2026-05-04T00:00:00Z';
-const DEMO_CONTACT_METHODS_BY_USER_ID: Record<string, AppTypes.ContactMethodDraft[]> = {
+const DEMO_CONTACT_METHODS_BY_USER_ID: Record<string, ContactContracts.ContactMethodDraft[]> = {
   b29df68956f3fe15e04558de: [
     { id: 'kb-phone', type: 'phone', value: '+1 312 555 0184' },
     { id: 'kb-email', type: 'email', value: 'balazs.kiss@example.com' }
@@ -42,7 +43,7 @@ export class SeedContactsRepository {
     const usersById = new Map(users.map(user => [user.id.trim(), user]));
     const contacts = Object.entries(DEMO_CONTACT_METHODS_BY_USER_ID)
       .map(([contactUserId, methods]) => this.toSeedContact(usersById.get(contactUserId), methods))
-      .filter((contact): contact is AppTypes.StoredContact => Boolean(contact));
+      .filter((contact): contact is ContactContracts.StoredContact => Boolean(contact));
     if (contacts.length === 0) {
       return false;
     }
@@ -64,8 +65,8 @@ export class SeedContactsRepository {
 
   private toSeedContact(
     user: UserDto | undefined,
-    methods: readonly AppTypes.ContactMethodDraft[]
-  ): AppTypes.StoredContact | null {
+    methods: readonly ContactContracts.ContactMethodDraft[]
+  ): ContactContracts.StoredContact | null {
     const userId = user?.id?.trim() ?? '';
     if (!user || !userId) {
       return null;
@@ -85,7 +86,7 @@ export class SeedContactsRepository {
     };
   }
 
-  private cloneContact(contact: AppTypes.StoredContact): AppTypes.StoredContact {
+  private cloneContact(contact: ContactContracts.StoredContact): ContactContracts.StoredContact {
     return {
       ...contact,
       methods: contact.methods.map(method => ({ ...method }))
