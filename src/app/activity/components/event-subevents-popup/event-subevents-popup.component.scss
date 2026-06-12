@@ -113,7 +113,7 @@
 .subevents-panel {
   position: relative;
   z-index: 1;
-  width: min(1060px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   height: calc(100dvh - 1.2rem);
   min-height: calc(100dvh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
@@ -861,7 +861,7 @@
 }
 
 .subevent-leaderboard-popup {
-  width: min(1060px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   max-width: 100%;
   height: calc(100vh - 1.2rem);
   max-height: calc(100vh - 1.2rem);
