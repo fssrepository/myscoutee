@@ -52,7 +52,7 @@ export class LocalIdeaPostsSeedBuilder {
       this.defaultPost({
         id: 'idea-host-use-case',
         lang: 'en',
-        title: 'Use case: host a small event and let the right people join',
+        title: 'Host a small event and let the right people join',
         excerpt: 'Hosts can describe the plan, capacity, resources, and tone before inviting or approving members.',
         contentHtml: `
           <p>Imagine a host who wants to organize a Sunday board-game afternoon for six people. In a normal chat, the details quickly scatter: who is coming, where it is, whether food is needed, who can bring a game, and whether new people are welcome.</p>
@@ -114,7 +114,7 @@ export class LocalIdeaPostsSeedBuilder {
       this.defaultPost({
         id: 'idea-why-priority-matching-hu',
         lang: 'hu',
-        title: 'Preferenciákból kis csoportos találkozó',
+        title: 'Kiscsoportos találkozók preferenciák alapján',
         excerpt: 'A MyScoutee olyan emberekből segít kis csoportos találkozót szervezni, akik még nem ismerik egymást, de a preferenciáik és a találkozás utáni visszajelzéseik alapján passzolhatnak.',
         contentHtml: `
           <p><strong>A MyScoutee nem csak profilnézegető. Arra való, hogy preferenciák alapján kis csoportos találkozók jöjjenek létre olyan emberek között, akik még nem ismerik egymást.</strong></p>
@@ -153,7 +153,7 @@ export class LocalIdeaPostsSeedBuilder {
       this.defaultPost({
         id: 'idea-host-use-case-hu',
         lang: 'hu',
-        title: 'Példa: szervezz kis eseményt, és engedd csatlakozni a megfelelő embereket',
+        title: 'Szervezz kis eseményt, és engedd csatlakozni a megfelelő embereket',
         excerpt: 'A szervezők még meghívás vagy jóváhagyás előtt leírhatják a tervet, létszámot, erőforrásokat és hangulatot.',
         contentHtml: `
           <p>Képzelj el egy vasárnapi társasjáték-délutánt hat fővel. Egy sima chatben gyorsan szétszóródnak a részletek: ki jön, hol lesz, kell-e étel, ki hoz játékot, és jöhetnek-e új emberek.</p>
