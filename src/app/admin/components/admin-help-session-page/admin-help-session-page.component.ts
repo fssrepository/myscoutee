@@ -1,0 +1,452 @@
+import { CommonModule } from '@angular/common';
+import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+
+import {
+  AppPopupContext,
+  ActivitiesService,
+  AdminWorkspaceDataService,
+  AssetDefaultsBuilder,
+  EventsService,
+  SessionService,
+  UsersService,
+  type BootstrapProcessStage,
+  type BootstrapProcessState,
+  type UserSelectorListItemDto,
+  type ShareTokenResolvedItem
+} from '../../../shared/core';
+import type { AssetCard } from '../../../shared/core/base/models';
+import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
+
+@Component({
+  selector: 'app-admin-help-session-page',
+  standalone: true,
+  imports: [CommonModule, ProgressIndicatorComponent, I18nPipe],
+  templateUrl: './admin-help-session-page.component.html',
+  styleUrl: './admin-help-session-page.component.scss'
+})
+export class AdminHelpSessionPageComponent implements OnInit {
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly sessionService = inject(SessionService);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
+  private readonly usersService = inject(UsersService);
+  private readonly activitiesService = inject(ActivitiesService);
+  private readonly eventsService = inject(EventsService);
+  private readonly popupCtx = inject(AppPopupContext);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
+
+  protected sessionLoading = true;
+  protected sessionSubmitting = false;
+  protected loadingProgress = 0;
+  protected loadingLabel = 'Preparing shared support user';
+  protected loadingStage: BootstrapProcessStage = 'selector';
+  protected error = '';
+
+  async ngOnInit(): Promise<void> {
+    await this.openSharedUserView();
+  }
+
+  protected async retry(): Promise<void> {
+    this.error = '';
+    this.sessionLoading = true;
+    this.sessionSubmitting = false;
+    this.loadingProgress = 0;
+    this.loadingStage = 'selector';
+    this.loadingLabel = 'Preparing shared support user';
+    await this.openSharedUserView();
+  }
+
+  protected async goAdmin(): Promise<void> {
+    await this.router.navigateByUrl('/admin', { replaceUrl: true });
+  }
+
+  private async openSharedUserView(): Promise<void> {
+    const token = this.resolveTokenFromRoute();
+    if (!token) {
+      this.fail('This support link is missing its token.');
+      return;
+    }
+    const useLocalHelpSession = this.workspaceData.shouldUseLocalAdminHelpSession;
+    const demoUsersPromise = useLocalHelpSession
+      ? this.loadLocalSupportUsers()
+      : Promise.resolve<UserSelectorListItemDto[]>([]);
+    const resolved = await this.resolveAdminHelpToken(token);
+    if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
+      this.fail('This support link expired or is no longer available.');
+      return;
+    }
+    const userId = resolved.ownerUserId.trim();
+    const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
+    if (useLocalHelpSession) {
+      const users = await demoUsersPromise;
+      const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
+      if (!selectedUser) {
+        this.fail('This shared support user is not available locally.');
+        return;
+      }
+      await this.prepareSharedUserSession(userId, targetUrl);
+      return;
+    }
+    this.loadingProgress = 100;
+    this.loadingStage = 'sessionReady';
+    this.loadingLabel = 'Opening MyScoutee as the user sees it';
+    await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
+  }
+
+  private resolveTokenFromRoute(): string {
+    const rawToken = `${this.route.snapshot.paramMap.get('token') ?? ''}`.trim();
+    try {
+      return decodeURIComponent(rawToken);
+    } catch {
+      return rawToken;
+    }
+  }
+
+  private safeTargetUrl(value: string): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized || normalized.startsWith('http:') || normalized.startsWith('https:') || normalized.startsWith('//')) {
+      return '/game';
+    }
+    return normalized.startsWith('/') ? normalized : `/${normalized}`;
+  }
+
+  private async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
+    return await this.workspaceData.resolveAdminHelpToken(token, value => this.resolveDemoAdminHelpToken(value));
+  }
+
+  private applyProgress(state: BootstrapProcessState): void {
+    this.commitSelectorState(() => {
+      this.loadingProgress = state.percent;
+      this.loadingLabel = state.label;
+      this.loadingStage = state.stage;
+    });
+  }
+
+  protected loadingPosition(): number {
+    const progress = Number(this.loadingProgress);
+    if (!Number.isFinite(progress)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, progress / 100));
+  }
+
+  private async loadLocalSupportUsers(): Promise<UserSelectorListItemDto[]> {
+    this.commitSelectorState(() => {
+      this.sessionSubmitting = false;
+      this.sessionLoading = true;
+      this.loadingProgress = 0;
+      this.loadingStage = 'selector';
+      this.loadingLabel = 'Loading local support users';
+    });
+    await this.waitForPopupPaint();
+
+    const users = await this.usersService.loadAvailableDemoUsers(undefined, state => this.applyProgress(state));
+    this.commitSelectorState(() => {
+      this.loadingProgress = 100;
+      this.loadingStage = 'ready';
+      this.loadingLabel = 'Local support user ready';
+    });
+    await this.waitForLoaderCompletionBeat();
+
+    return users;
+  }
+
+  private async prepareSharedUserSession(userId: string, targetUrl: string): Promise<void> {
+    this.commitSelectorState(() => {
+      this.sessionSubmitting = true;
+      this.sessionLoading = true;
+      this.loadingProgress = 0;
+      this.loadingStage = 'session';
+      this.loadingLabel = 'Preparing shared user session';
+    });
+    await this.waitForPopupPaint();
+
+    try {
+      await this.usersService.prepareDemoUserSession(userId, state => this.applyProgress(state));
+      this.commitSelectorState(() => {
+        this.loadingProgress = 100;
+        this.loadingStage = 'sessionReady';
+        this.loadingLabel = 'Shared user session ready';
+      });
+      await this.waitForLoaderCompletionBeat();
+      this.sessionService.startDemoSession(userId);
+      await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl));
+    } catch {
+      this.commitSelectorState(() => {
+        this.sessionLoading = false;
+        this.sessionSubmitting = false;
+        this.loadingProgress = 0;
+        this.loadingStage = 'selector';
+        this.loadingLabel = 'Preparing shared support user';
+      });
+    }
+  }
+
+  private fail(message: string): void {
+    this.error = message;
+    this.sessionLoading = false;
+    this.sessionSubmitting = false;
+    this.loadingProgress = 0;
+    this.loadingStage = 'selector';
+    this.loadingLabel = 'Support link unavailable';
+  }
+
+  private commitSelectorState(update: () => void): void {
+    this.ngZone.run(() => {
+      update();
+      this.changeDetectorRef.detectChanges();
+    });
+  }
+
+  private waitForPopupPaint(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            setTimeout(resolve, 80);
+          });
+        });
+        return;
+      }
+      setTimeout(resolve, 80);
+    });
+  }
+
+  private waitForLoaderCompletionBeat(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 240));
+  }
+
+  private resolveDemoAdminHelpToken(token: string): ShareTokenResolvedItem | null {
+    const reportToken = this.resolveDemoAdminReportToken(token);
+    if (reportToken) {
+      return reportToken;
+    }
+    const prefix = 'myscoutee:token:admin-help-';
+    if (!token.startsWith(prefix)) {
+      return null;
+    }
+    const payload = token.slice(prefix.length);
+    const parsed = this.parseDemoAdminHelpPayload(payload);
+    if (!parsed) {
+      return null;
+    }
+    const targetUrl = this.demoHelpTargetUrl(parsed.targetKey);
+    return {
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: parsed.ownerUserId,
+      title: 'Shared help view',
+      subtitle: 'MyScoutee support session',
+      description: 'The user allowed MyScoutee admin to open their current app view.',
+      imageUrl: null,
+      url: targetUrl
+    };
+  }
+
+  private resolveDemoAdminReportToken(token: string): ShareTokenResolvedItem | null {
+    const prefix = 'myscoutee:token:admin-report:';
+    if (!token.startsWith(prefix)) {
+      return null;
+    }
+    const payload = token.slice(prefix.length);
+    const [ownerUserId, encodedTarget] = payload.split(':');
+    const targetUrl = this.decodeDemoTokenPayload(encodedTarget);
+    if (!ownerUserId?.trim() || !targetUrl) {
+      return null;
+    }
+    return {
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: ownerUserId.trim(),
+      title: 'Shared report context',
+      subtitle: 'MyScoutee support session',
+      description: 'MyScoutee admin opened a report context as the reporting user sees it.',
+      imageUrl: null,
+      url: targetUrl
+    };
+  }
+
+  private decodeDemoTokenPayload(value: string | undefined): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    try {
+      const padded = normalized.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+      const binary = atob(padded);
+      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
+      return new TextDecoder().decode(bytes);
+    } catch {
+      return '';
+    }
+  }
+
+  private parseDemoAdminHelpPayload(payload: string): { ownerUserId: string; targetKey: string } | null {
+    const targetKeys = ['service-chat', 'events', 'asset-supplies', 'asset-car'];
+    const targetKey = targetKeys.find(key => payload.endsWith(`-${key}`)) ?? 'current';
+    const userPayload = targetKey === 'current' ? payload : payload.slice(0, -(targetKey.length + 1));
+    const ownerUserId = userPayload.split('-').pop()?.trim() ?? '';
+    return ownerUserId ? { ownerUserId, targetKey } : null;
+  }
+
+  private demoHelpTargetUrl(targetKey: string): string {
+    switch (targetKey) {
+      case 'service-chat':
+        return '/game?supportTarget=service-chat';
+      case 'events':
+        return '/game?supportTarget=event&eventId=e1';
+      case 'asset-supplies':
+        return '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700';
+      case 'asset-car':
+        return '/game?supportTarget=asset&assetFilter=Car';
+      default:
+        return '/game';
+    }
+  }
+
+  private async queueSharedSupportTarget(userId: string, targetUrl: string): Promise<string> {
+    const normalized = this.safeTargetUrl(targetUrl);
+    const parsed = this.parseRelativeUrl(normalized);
+    if (!parsed) {
+      return normalized;
+    }
+    const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
+    if (supportTarget === 'service-chat' || supportTarget === 'chats' || supportTarget === 'chat-message') {
+      this.popupCtx.openNavigatorActivitiesRequest('chats');
+    } else if (supportTarget === 'member') {
+      const ownerId = `${parsed.searchParams.get('ownerId') ?? ''}`.trim();
+      if (ownerId) {
+        this.popupCtx.requestActivitiesNavigation({
+          type: 'members',
+          ownerId,
+          ownerType: 'event',
+          viewOnly: true,
+          canManage: false,
+          subtitle: 'Reported member context'
+        });
+      } else {
+        this.popupCtx.openNavigatorActivitiesRequest('events');
+      }
+    } else if (supportTarget === 'event') {
+      const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
+      const eventRecord = eventId ? await this.eventsService.queryKnownItemById(userId, eventId) : null;
+      if (eventRecord) {
+        this.popupCtx.requestActivitiesNavigation({
+          type: 'eventEditor',
+          row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: userId }),
+          readOnly: true
+        });
+      } else {
+        this.popupCtx.openNavigatorActivitiesRequest('events');
+      }
+    } else if (supportTarget === 'events') {
+      this.popupCtx.openNavigatorActivitiesRequest('events');
+    } else if (supportTarget === 'rates') {
+      this.popupCtx.openNavigatorActivitiesRequest('rates');
+    } else if (supportTarget === 'asset') {
+      const assetFilter = this.toAssetFilter(parsed.searchParams.get('assetFilter'));
+      if (assetFilter) {
+        const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
+        this.popupCtx.requestActivitiesNavigation({
+          type: 'assetExplore',
+          assetType: assetFilter,
+          assetId: assetId || undefined,
+          viewOnly: Boolean(assetId),
+          fallbackAsset: this.buildSupportFallbackAsset(assetFilter, parsed)
+        });
+      }
+    }
+    return parsed.pathname || '/game';
+  }
+
+  private buildSupportFallbackAsset(assetType: 'Car' | 'Accommodation' | 'Supplies', parsed: URL): AssetCard | undefined {
+    const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
+    if (!assetId) {
+      return undefined;
+    }
+    const title = `${parsed.searchParams.get('assetTitle') ?? ''}`.trim() || 'Shared asset';
+    const subtitle = `${parsed.searchParams.get('assetSubtitle') ?? ''}`.trim();
+    const city = `${parsed.searchParams.get('assetCity') ?? ''}`.trim();
+    const details = `${parsed.searchParams.get('assetDetails') ?? ''}`.trim();
+    const category = AssetDefaultsBuilder.normalizeCategory(
+      assetType,
+      `${parsed.searchParams.get('assetCategory') ?? ''}`.trim()
+    );
+    const imageUrl = this.safeImageUrl(parsed.searchParams.get('assetPreview'))
+      || this.defaultSupportAssetImage(assetType, assetId || title);
+    return {
+      id: assetId,
+      type: assetType,
+      title,
+      subtitle,
+      category,
+      city: city || this.defaultSupportAssetCity(assetType),
+      capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === 'Supplies' ? 4 : 1),
+      quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === 'Supplies' ? 4 : 1),
+      details: details || subtitle || title,
+      imageUrl,
+      sourceLink: this.safeImageUrl(parsed.searchParams.get('assetSourceLink')) || imageUrl,
+      routes: [],
+      topics: [],
+      policies: [],
+      pricing: null,
+      visibility: 'Public',
+      ownerUserId: '',
+      requests: []
+    };
+  }
+
+  private positiveIntegerParam(parsed: URL, key: string): number {
+    return Math.max(0, Math.trunc(Number(parsed.searchParams.get(key)) || 0));
+  }
+
+  private defaultSupportAssetCity(assetType: 'Car' | 'Accommodation' | 'Supplies'): string {
+    return assetType === 'Supplies' ? 'Austin' : '';
+  }
+
+  private defaultSupportAssetImage(assetType: 'Car' | 'Accommodation' | 'Supplies', seed: string): string {
+    const flavor = assetType === 'Car'
+      ? 'road'
+      : assetType === 'Accommodation'
+        ? 'stay'
+        : 'gear';
+    const normalizedSeed = encodeURIComponent(`${assetType.toLowerCase()}-${flavor}-${seed || assetType.toLowerCase()}`);
+    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
+  }
+
+  private safeImageUrl(value: string | null): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    return normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('/')
+      ? normalized
+      : '';
+  }
+
+  private parseRelativeUrl(value: string): URL | null {
+    try {
+      const origin = typeof window !== 'undefined' && window.location?.origin
+        ? window.location.origin
+        : 'http://localhost';
+      return new URL(value, origin);
+    } catch {
+      return null;
+    }
+  }
+
+  private toAssetFilter(value: string | null): 'Car' | 'Accommodation' | 'Supplies' | null {
+    switch (`${value ?? ''}`.trim()) {
+      case 'Car':
+        return 'Car';
+      case 'Accommodation':
+        return 'Accommodation';
+      case 'Supplies':
+        return 'Supplies';
+      default:
+        return null;
+    }
+  }
+}

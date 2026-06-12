@@ -1,0 +1,12 @@
+:host {
+  position: fixed;
+  z-index: 19000;
+  display: none;
+  width: 0;
+  height: 0;
+  overflow: visible;
+}
+
+:host(.app-menu-outlet--open) {
+  display: block;
+}

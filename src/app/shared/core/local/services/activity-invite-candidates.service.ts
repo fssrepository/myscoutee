@@ -1,16 +1,18 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
-import type { ActivityInviteCandidatesQuery } from '../../base/interfaces/activity-invite.interface';
+import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity-invite.interface';
+import type { ActivityMemberEntry } from '../../contracts/activity-member.interface';
+import { LocalActivityInviteCandidatesMapper } from '../mappers';
 import { LocalActivityInviteCandidatesRepository } from '../repositories/activity-invite-candidates.repository';
 
 @Injectable({
   providedIn: 'root'
 })
-export class LocalActivityInviteCandidatesService {
+export class LocalActivityInviteCandidatesService implements IActivityInviteCandidatesService {
   private readonly activityInviteCandidatesRepository = inject(LocalActivityInviteCandidatesRepository);
 
-  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<AppTypes.ActivityMemberEntry[]> {
-    return this.activityInviteCandidatesRepository.queryCandidates(query);
+  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]> {
+    const records = await this.activityInviteCandidatesRepository.queryCandidateRecords(query);
+    return LocalActivityInviteCandidatesMapper.toEntries(query, records);
   }
 }

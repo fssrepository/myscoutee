@@ -10,18 +10,13 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
   providedIn: 'root'
 })
 export class LocalIdeaPostsService {
+  private static readonly ADMIN_IDEAS_ROUTE = '/admin/ideas';
   private static readonly MAX_IMAGE_URLS = 24;
   private readonly ideaPostsRepository = inject(LocalIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async init(): Promise<boolean> {
-    await this.ideaPostsRepository.whenReady();
-    return this.ideaPostsRepository.seedDefaults();
-  }
-
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    await this.ideaPostsRepository.seedDefaults();
     const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
     return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
@@ -29,15 +24,13 @@ export class LocalIdeaPostsService {
 
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    this.ideaPostsRepository.assertSeeded();
-    await this.routeDelay.waitForRouteDelay('/admin/ideas');
+    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
   }
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     await this.ideaPostsRepository.whenReady();
-    this.ideaPostsRepository.assertSeeded();
     const nowIso = new Date().toISOString();
     const language = this.normalizeLang(request.lang);
     const requestedContentKey = `${request.contentKey ?? ''}`.trim();
@@ -80,7 +73,7 @@ export class LocalIdeaPostsService {
         },
         ids: [...new Set([...table.ids.filter(currentId => currentId !== id), id])]
       })),
-      this.routeDelay.waitForRouteDelay('/admin/ideas')
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE)
     ]);
     return this.clonePost(post);
   }
@@ -116,7 +109,7 @@ export class LocalIdeaPostsService {
           }
         };
       }),
-      this.routeDelay.waitForRouteDelay('/admin/ideas')
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE)
     ]);
     return this.sortedPosts(this.table());
   }
@@ -151,7 +144,7 @@ export class LocalIdeaPostsService {
           }
         };
       }),
-      this.routeDelay.waitForRouteDelay('/admin/ideas')
+      this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE)
     ]);
     if (!restored) {
       throw new Error('Article could not be restored.');

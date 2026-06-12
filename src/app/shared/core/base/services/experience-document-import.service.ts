@@ -5,7 +5,7 @@ import type {
   ParsedExperienceImportEntry,
   UserExperienceImportParseResult
 } from '../interfaces/experience.interface';
-import type { ExperienceEntry } from '../models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 
 type ExperienceSectionType = ExperienceEntry['type'] | 'Ignore';
 type PdfFontMap = {

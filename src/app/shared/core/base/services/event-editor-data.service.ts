@@ -14,25 +14,25 @@ export class EventEditorDataService extends BaseRouteModeService {
   private readonly httpEventEditorDataService = inject(HttpEventEditorDataService);
 
   peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
-    return this.isDemoModeEnabled('/activities/events')
+    return this.isLocalRouteEnabled('/activities/events')
       ? this.localEventEditorDataService.peekKnownItemById(userId, itemId)
       : this.httpEventEditorDataService.peekKnownItemById(userId, itemId);
   }
 
   queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
-    return this.isDemoModeEnabled('/activities/events')
+    return this.isLocalRouteEnabled('/activities/events')
       ? this.localEventEditorDataService.queryKnownItemById(userId, itemId)
       : this.httpEventEditorDataService.queryKnownItemById(userId, itemId);
   }
 
   loadFullItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
-    return this.isDemoModeEnabled('/activities/events')
+    return this.isLocalRouteEnabled('/activities/events')
       ? this.localEventEditorDataService.loadFullItemById(userId, itemId)
       : this.httpEventEditorDataService.loadFullItemById(userId, itemId);
   }
 
   querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
-    return this.isDemoModeEnabled('/activities/events/members')
+    return this.isLocalRouteEnabled('/activities/events/members')
       ? this.localEventEditorDataService.querySummaryByOwnerId(ownerId)
       : this.httpEventEditorDataService.querySummaryByOwnerId(ownerId);
   }

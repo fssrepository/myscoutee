@@ -5,14 +5,25 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
-import { RouteDelayService } from '../../../shared/core/base/services/route-delay.service';
+import { AppContext, IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
 import {
+  INFO_CARD_AVAILABLE_ACTIONS,
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent
+  type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent,
+  type InfoCardResolvedMenuAction
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import {
+  AppMenuDispatcher,
+  AppMenuComponent,
+  AppMenuOutletComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette
+} from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   SmartListComponent,
@@ -23,12 +34,28 @@ import {
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
 type IdeaPanelLoadingMode = 'viewer' | 'editor';
 type IdeaInfoCard = InfoCardData<IdeaArticleDetail>;
+type IdeaFilterMenuItemId = 'idea-filter-menu' | `idea-filter:${IdeaPostFilter}`;
+type IdeaLanguageMenuScope = 'list' | 'form';
+type IdeaLanguageMenuItemId = `${IdeaLanguageMenuScope}-language-menu` | `${IdeaLanguageMenuScope}-language:${string}`;
+
+interface IdeaFilterMenuContext {
+  filter: IdeaPostFilter;
+}
+
+interface IdeaLanguageMenuContext {
+  scope: IdeaLanguageMenuScope;
+  language: string;
+}
+
+interface IdeaCardMenuContext {
+  card: IdeaInfoCard;
+  action: InfoCardResolvedMenuAction;
+}
 
 interface IdeaPostDraft {
   id: string | null;
@@ -58,7 +85,17 @@ interface IdeaPostLangCache {
 @Component({
   selector: 'app-admin-idea-editor-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, SmartListComponent, InfoCardComponent, EditableImageCarouselComponent, ProgressIndicatorComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
+    SmartListComponent,
+    InfoCardComponent,
+    EditableImageCarouselComponent,
+    ProgressIndicatorComponent
+  ],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss'
 })
@@ -67,11 +104,11 @@ export class AdminIdeaEditorPopupComponent {
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
   protected readonly admin = inject(AdminShellService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly appCtx = inject(AppContext);
   private readonly ideaPosts = inject(IdeaPostsService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   protected loading = false;
   protected saving = false;
@@ -82,9 +119,6 @@ export class AdminIdeaEditorPopupComponent {
   protected viewerPost: IdeaPost | null = null;
   protected articlePanelLoading = false;
   protected articlePanelLoadingMode: IdeaPanelLoadingMode | null = null;
-  protected filterMenuOpen = false;
-  protected languageMenuOpen = false;
-  protected formLanguageMenuOpen = false;
   protected ideaFilter: IdeaPostFilter = 'all';
   protected selectedContentLang = 'en';
   protected draftContentLang = 'en';
@@ -209,9 +243,6 @@ export class AdminIdeaEditorPopupComponent {
         this.articlePanelLoading = false;
         this.articlePanelLoadingMode = null;
         this.articlePanelLoadGeneration += 1;
-        this.filterMenuOpen = false;
-        this.languageMenuOpen = false;
-        this.formLanguageMenuOpen = false;
         this.error = '';
         this.clearAdminIndexes();
         return;
@@ -225,13 +256,7 @@ export class AdminIdeaEditorPopupComponent {
       return;
     }
     event.preventDefault();
-    if (this.filterMenuOpen) {
-      this.filterMenuOpen = false;
-      return;
-    }
-    if (this.languageMenuOpen || this.formLanguageMenuOpen) {
-      this.languageMenuOpen = false;
-      this.formLanguageMenuOpen = false;
+    if (this.hasOpenSharedMenu()) {
       return;
     }
     if (this.viewerPostId) {
@@ -276,16 +301,11 @@ export class AdminIdeaEditorPopupComponent {
   protected async startNew(event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetLang = this.selectedContentLang;
-    const generation = this.beginArticlePanelLoad('editor');
     this.draftContentLang = targetLang;
     this.editing = false;
     this.draft = null;
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
-      return;
-    }
     this.beginEditing({
       id: null,
       contentKey: '',
@@ -298,22 +318,15 @@ export class AdminIdeaEditorPopupComponent {
       submittedAtLocal: this.toDateTimeLocal(new Date().toISOString()),
       mode: 'html'
     });
-    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected async openViewer(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
-    const generation = this.beginArticlePanelLoad('viewer');
     this.viewerPostId = '';
     this.viewerPost = null;
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
-      return;
-    }
     this.viewerPostId = targetPost.id;
     this.viewerPost = targetPost;
-    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected closeViewer(event?: Event): void {
@@ -329,18 +342,12 @@ export class AdminIdeaEditorPopupComponent {
   protected async startEditing(post: IdeaPost, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
-    const generation = this.beginArticlePanelLoad('editor');
     this.viewerPostId = '';
     this.viewerPost = null;
     this.editing = false;
     this.draft = null;
     this.draftContentLang = this.normalizeContentLang(targetPost.lang);
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
-      return;
-    }
     this.beginEditing(this.draftFromPost(targetPost));
-    this.finishArticlePanelLoad(generation, 'editor');
   }
 
   protected closeEditor(event?: Event): void {
@@ -362,11 +369,6 @@ export class AdminIdeaEditorPopupComponent {
     const submittedAtIso = this.fromDateTimeLocal(activeDraft.submittedAtLocal);
     const contentHtml = activeDraft.contentHtml.trim() || '<p></p>';
     const imageUrls = this.draftImageUrls(activeDraft);
-    const generation = this.beginArticlePanelLoad('viewer');
-    await this.waitForArticlePanelLoad();
-    if (!this.isCurrentArticlePanelLoad(generation, 'viewer')) {
-      return;
-    }
     this.viewerPostId = activeDraft.id || 'draft-preview';
     this.viewerPost = {
       id: activeDraft.id || 'draft-preview',
@@ -389,7 +391,6 @@ export class AdminIdeaEditorPopupComponent {
       updatedAtIso: submittedAtIso,
       updatedByUserId: this.actorUserId()
     };
-    this.finishArticlePanelLoad(generation, 'viewer');
   }
 
   protected async saveDraft(event?: Event): Promise<IdeaPost | null> {
@@ -834,6 +835,88 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
+  protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: InfoCardMenuRequestEvent): void {
+    const menuId = `admin-idea-card:${request.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      scope: 'admin-idea-editor',
+      kind: 'select',
+      title: this.infoCardMenuTitle(request.card),
+      items: this.infoCardMenuItems(card, request),
+      triggerRect: request.triggerRect,
+      openUp: request.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger
+    }, null);
+  }
+
+  protected onIdeaDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as IdeaCardMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    this.onIdeaCardMenuAction(context.card, {
+      id: context.card.id,
+      actionId: context.action.id,
+      action: context.action,
+      card: context.card
+    });
+  }
+
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private infoCardMenuItems(
+    card: IdeaInfoCard,
+    request: InfoCardMenuRequestEvent
+  ): readonly AppMenuItem<string, IdeaCardMenuContext>[] {
+    return request.actions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        surface: 'tinted',
+        context: {
+          card,
+          action
+        }
+      }];
+    });
+  }
+
+  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'warning';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
+  }
+
   protected contentLanguages(): Array<{ lang: string; label: string }> {
     return APP_STATIC_DATA.contentLanguages;
   }
@@ -852,15 +935,13 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected selectListContentLanguage(lang: string, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
     const normalized = this.normalizeContentLang(lang);
     if (normalized === this.selectedContentLang || this.loading || this.saving) {
-      this.languageMenuOpen = false;
       return;
     }
     this.selectedContentLang = normalized;
-    this.filterMenuOpen = false;
-    this.languageMenuOpen = false;
     this.editing = false;
     this.draft = null;
     this.viewerPostId = '';
@@ -874,19 +955,15 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected async selectDraftContentLanguage(lang: string, event?: Event): Promise<void> {
+    event?.preventDefault();
     event?.stopPropagation();
     const normalized = this.normalizeContentLang(lang);
     if (!this.draft || normalized === this.draftContentLang || this.saving) {
-      this.formLanguageMenuOpen = false;
       return;
     }
     const currentDraft = this.draft;
-    this.formLanguageMenuOpen = false;
     const generation = this.beginArticlePanelLoad('editor');
-    const [translation] = await Promise.all([
-      this.findArticleTranslation(currentDraft.contentKey, normalized),
-      this.waitForArticlePanelLoad()
-    ]);
+    const translation = await this.findArticleTranslation(currentDraft.contentKey, normalized);
     if (!this.isCurrentArticlePanelLoad(generation, 'editor')) {
       return;
     }
@@ -896,31 +973,13 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected setIdeaFilter(filter: IdeaPostFilter, event?: Event): void {
+    event?.preventDefault();
     event?.stopPropagation();
     if (this.ideaFilter === filter) {
-      this.filterMenuOpen = false;
       return;
     }
     this.ideaFilter = filter;
-    this.filterMenuOpen = false;
     this.refreshIdeaList();
-  }
-
-  protected toggleFilterMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.languageMenuOpen = false;
-    this.filterMenuOpen = !this.filterMenuOpen;
-  }
-
-  protected toggleLanguageMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.filterMenuOpen = false;
-    this.languageMenuOpen = !this.languageMenuOpen;
-  }
-
-  protected toggleFormLanguageMenu(event?: Event): void {
-    event?.stopPropagation();
-    this.formLanguageMenuOpen = !this.formLanguageMenuOpen;
   }
 
   protected articlePanelLoadingLabel(): string {
@@ -939,6 +998,63 @@ export class AdminIdeaEditorPopupComponent {
 
   protected filterCount(filter: IdeaPostFilter = this.ideaFilter): number {
     return this.filterPosts(this.posts(), filter).length;
+  }
+
+  protected ideaFilterMenuModel(): AppMenuModel<IdeaFilterMenuItemId, IdeaFilterMenuContext> {
+    return {
+      nodes: [
+        {
+          id: 'idea-filter-root',
+          children: [
+            {
+              id: 'idea-filter-menu',
+              kind: 'select-trigger',
+              label: this.filterLabel(),
+              icon: this.filterIcon(),
+              counter: this.filterCount(),
+              ariaLabel: 'Filter articles',
+              children: this.filterOptions.map(option => ({
+                id: `idea-filter:${option.id}`,
+                kind: 'radio',
+                label: option.label,
+                icon: option.icon,
+                checked: this.ideaFilter === option.id,
+                counter: this.filterCount(option.id),
+                context: { filter: option.id }
+              }))
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  protected onIdeaFilterMenuSelect(event: AppMenuItemSelectEvent<IdeaFilterMenuItemId, IdeaFilterMenuContext>): void {
+    const filter = event.context?.filter;
+    if (!filter) {
+      return;
+    }
+    this.setIdeaFilter(filter, event.sourceEvent);
+  }
+
+  protected listLanguageMenuModel(): AppMenuModel<IdeaLanguageMenuItemId, IdeaLanguageMenuContext> {
+    return this.contentLanguageMenuModel('list', this.selectedContentLang, this.loading || this.saving);
+  }
+
+  protected formLanguageMenuModel(): AppMenuModel<IdeaLanguageMenuItemId, IdeaLanguageMenuContext> {
+    return this.contentLanguageMenuModel('form', this.draftContentLang, this.saving);
+  }
+
+  protected onContentLanguageMenuSelect(event: AppMenuItemSelectEvent<IdeaLanguageMenuItemId, IdeaLanguageMenuContext>): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+    if (context.scope === 'form') {
+      void this.selectDraftContentLanguage(context.language, event.sourceEvent);
+      return;
+    }
+    this.selectListContentLanguage(context.language, event.sourceEvent);
   }
 
   protected filterDescription(): string {
@@ -997,7 +1113,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.workspace.activeAdmin()?.id?.trim() || 'admin';
+    return this.appCtx.activeUserId().trim() || 'admin';
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {
@@ -1031,18 +1147,55 @@ export class AdminIdeaEditorPopupComponent {
       && this.articlePanelLoadingMode === mode;
   }
 
-  private async waitForArticlePanelLoad(): Promise<void> {
-    await this.routeDelay.waitForRouteDelay('/admin/ideas', undefined, undefined, 450);
+  private contentLanguageMenuModel(
+    scope: IdeaLanguageMenuScope,
+    currentLanguage: string,
+    disabled: boolean
+  ): AppMenuModel<IdeaLanguageMenuItemId, IdeaLanguageMenuContext> {
+    const normalizedCurrentLanguage = this.normalizeContentLang(currentLanguage);
+    const rootId: IdeaLanguageMenuItemId = `${scope}-language-menu`;
+    return {
+      nodes: [
+        {
+          id: `${scope}-language-root`,
+          children: [
+            {
+              id: rootId,
+              kind: 'select-trigger',
+              label: this.contentLanguageMenuLabel(normalizedCurrentLanguage),
+              disabled,
+              ariaLabel: 'Content language',
+              children: this.contentLanguages().map(language => {
+                const normalizedLanguage = this.normalizeContentLang(language.lang);
+                return {
+                  id: `${scope}-language:${normalizedLanguage}` as IdeaLanguageMenuItemId,
+                  kind: 'radio',
+                  label: this.contentLanguageMenuLabel(normalizedLanguage),
+                  checked: normalizedCurrentLanguage === normalizedLanguage,
+                  context: { scope, language: normalizedLanguage }
+                };
+              })
+            }
+          ]
+        }
+      ]
+    };
   }
 
-  protected articlePanelLoadProgressDurationMs(): number {
-    return this.routeDelay.resolveRequestTimeoutMs('/admin/ideas');
+  private contentLanguageMenuLabel(lang: string): string {
+    return `${this.contentLanguageFlag(lang)} ${this.contentLanguageLabel(lang)}`;
+  }
+
+  private hasOpenSharedMenu(): boolean {
+    if (typeof document === 'undefined') {
+      return false;
+    }
+    return !!document.querySelector('.popup-panel-idea-editor .app-menu-host--open');
   }
 
   private beginEditing(draft: IdeaPostDraft): void {
     this.draft = draft;
     this.editing = true;
-    this.formLanguageMenuOpen = false;
   }
 
   private draftFromPost(post: IdeaPost): IdeaPostDraft {

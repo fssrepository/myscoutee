@@ -11,12 +11,11 @@ import type {
   UserGameMode
 } from '../interfaces/game.interface';
 import { LocalGameService } from '../../local';
-import { LocalUsersRatingsRepository } from '../../local/repositories/users-ratings.repository';
+import { LocalRatesRepository } from '../../local/repositories/rates.repository';
 import { HttpGameService } from '../../http';
-import { HttpUsersRatingsRepository } from '../../http/repositories/users-ratings.repository';
-import { BaseUsersRatingsRepository } from '../repositories/users-ratings.repository';
 import type { UserDto } from '../interfaces/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { RateOutboxService } from './rate-outbox.service';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -35,9 +34,9 @@ export class GameService extends BaseRouteModeService {
   private static readonly USER_RATES_OUTBOX_SYNC_INTERVAL_MS = 30000;
   private static readonly USER_RATES_OUTBOX_SYNC_BATCH_SIZE = 50;
   private readonly localGameService = inject(LocalGameService);
-  private readonly localUsersRatingsRepository = inject(LocalUsersRatingsRepository);
+  private readonly localRatesRepository = inject(LocalRatesRepository);
   private readonly httpGameService = inject(HttpGameService);
-  private readonly httpUsersRatingsRepository = inject(HttpUsersRatingsRepository);
+  private readonly rateOutboxService = inject(RateOutboxService);
   private readonly appCtx = inject(AppContext);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
@@ -51,10 +50,6 @@ export class GameService extends BaseRouteModeService {
 
   private get gameDataService(): UserGameDataService {
     return this.resolveRouteService('/game-cards/query', this.localGameService, this.httpGameService);
-  }
-
-  private get usersRatingsRepository(): BaseUsersRatingsRepository {
-    return this.resolveRouteService('/activities/rates', this.localUsersRatingsRepository, this.httpUsersRatingsRepository);
   }
 
   getGameCardsUsersSnapshot(): UserDto[] {
@@ -71,7 +66,7 @@ export class GameService extends BaseRouteModeService {
     ) {
       return false;
     }
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localGameService.didUsersMeet(normalizedLeftUserId, normalizedRightUserId);
     }
     return false;
@@ -82,7 +77,7 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    if (this.isDemoModeEnabled('/activities/events')) {
+    if (this.isLocalRouteEnabled('/activities/events')) {
       return this.localGameService.queryMetUserIds(normalizedUserId);
     }
     return [];
@@ -96,10 +91,10 @@ export class GameService extends BaseRouteModeService {
     if (mode !== 'single' && mode !== 'friends-in-common') {
       return [];
     }
-    if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.localUsersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
+    if (this.isLocalRouteEnabled('/activities/rates')) {
+      return this.localRatesRepository.queryRatedGameCardUserIds(normalizedUserId, 'single');
     }
-    return this.httpUsersRatingsRepository.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
+    return this.rateOutboxService.queryPendingRatedGameCardUserIds(normalizedUserId, 'single');
   }
 
   queryExcludedGameCardPairKeys(userId: string): string[] {
@@ -107,10 +102,10 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return [];
     }
-    if (this.isDemoModeEnabled('/activities/rates')) {
-      return this.localUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
+    if (this.isLocalRouteEnabled('/activities/rates')) {
+      return this.localRatesRepository.queryRatedGameCardPairKeys(normalizedUserId);
     }
-    return this.httpUsersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId);
+    return this.rateOutboxService.queryPendingRatedGameCardPairKeys(normalizedUserId);
   }
 
   recordUserGameCardRating(
@@ -122,8 +117,15 @@ export class GameService extends BaseRouteModeService {
     bridgeUserId?: string,
     bridgeCount?: number
   ): void {
-    this.resolveRouteService('/activities/rates', this.localGameService, this.httpGameService)
-      .recordGameCardRating(raterUserId, ratedUserId, rating, mode, socialContext, bridgeUserId, bridgeCount);
+    this.rateOutboxService.enqueueGameCardRatingOutbox(
+      raterUserId,
+      ratedUserId,
+      rating,
+      mode,
+      socialContext,
+      bridgeUserId,
+      bridgeCount
+    );
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
@@ -140,7 +142,7 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedFirstId || !normalizedSecondId) {
       return;
     }
-    this.usersRatingsRepository.enqueueGameCardPairRatingOutbox(
+    this.rateOutboxService.enqueueGameCardPairRatingOutbox(
       raterUserId,
       normalizedFirstId,
       normalizedSecondId,
@@ -159,7 +161,7 @@ export class GameService extends BaseRouteModeService {
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number
   ): Promise<UserGameCardsDto | null> {
-    if (this.isDemoModeEnabled('/game-cards/query')) {
+    if (this.isLocalRouteEnabled('/game-cards/query')) {
       await this.localGameService.whenReady();
     }
     const normalizedUserId = request.userId.trim();
@@ -480,7 +482,7 @@ export class GameService extends BaseRouteModeService {
     excludedUserIds: ReadonlySet<string>,
     excludedPairKeys: ReadonlySet<string>
   ): string | null {
-    if (!cursor || !this.isDemoModeEnabled('/game-cards/query')) {
+    if (!cursor || !this.isLocalRouteEnabled('/game-cards/query')) {
       return cursor;
     }
     const parsedCursor = Number.parseInt(cursor, 10);
@@ -614,7 +616,7 @@ export class GameService extends BaseRouteModeService {
     }
     this.userRatesOutboxSyncInFlight = true;
     try {
-      await this.usersRatingsRepository.flushPendingUserRatesOutboxBatch(
+      await this.rateOutboxService.flushPendingUserRatesOutboxBatch(
         GameService.USER_RATES_OUTBOX_SYNC_BATCH_SIZE
       );
     } finally {

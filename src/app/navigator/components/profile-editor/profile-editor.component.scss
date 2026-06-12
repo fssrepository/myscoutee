@@ -836,6 +836,18 @@
   box-sizing: border-box;
 }
 
+.physique-field .physique-select-wrap,
+.experience-type-field .experience-type-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.profile-details-privacy-fab app-menu,
+.profile-details-privacy-fab app-menu-trigger {
+  display: inline-block;
+}
+
 .name-field input,
 .city-field input {
   width: 100%;
@@ -1148,7 +1160,7 @@
   line-height: 14px;
 }
 
-.profile-details-privacy-fab.is-just-selected .profile-details-privacy-trigger {
+.profile-details-privacy-fab.is-just-selected app-menu-trigger {
   animation: privacy-fab-select-pulse 0.26s ease;
 }
 
@@ -1933,6 +1945,7 @@
   }
 
   .basics-moved-grid .physique-field .profile-status-select-wrap,
+  .basics-moved-grid .physique-field .physique-select-wrap,
   .basics-moved-grid .horoscope-field .readonly-select,
   .basics-moved-grid .languages-field .language-select-btn {
     width: 100%;
@@ -1950,7 +1963,8 @@
     padding-right: 0.48rem;
   }
 
-  .basics-moved-grid .physique-field .profile-status-select-wrap {
+  .basics-moved-grid .physique-field .profile-status-select-wrap,
+  .basics-moved-grid .physique-field .physique-select-wrap {
     min-height: 36px;
     margin-top: 0;
   }

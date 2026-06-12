@@ -6,16 +6,26 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { AppUtils } from '../../../shared/app-utils';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { PricingEditorComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  PricingEditorComponent
+} from '../../../shared/ui';
 
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
 export type EventSubeventStageInsertPlacement = 'before' | 'after';
 export type EventSubeventTournamentLeaderboardType = 'Score' | 'Fifa';
 
+type EventSubeventStageFormMenuContext =
+  | { menu: 'optional'; optional: boolean }
+  | { menu: 'insert-target'; targetId: string | null }
+  | { menu: 'leaderboard-type'; leaderboardType: EventSubeventTournamentLeaderboardType };
 
 export interface EventSubeventStageFormPopupView {
   open: boolean;
@@ -26,7 +36,6 @@ export interface EventSubeventStageFormPopupView {
   invalidName: boolean;
   invalidDescription: boolean;
   showOptionalToggle: boolean;
-  showOptionalPicker: boolean;
   modeClass: EventSubeventStageFormModeClass;
   modeIcon: string;
   slotBoundTiming: boolean;
@@ -73,12 +82,12 @@ export interface EventSubeventStageFormModel {
     CommonModule,
     FormsModule,
     MatIconModule,
-    MatSelectModule,
     MatFormFieldModule,
     MatInputModule,
     MatDatepickerModule,
     MatTimepickerModule,
     MatNativeDateModule,
+    AppMenuComponent,
     PricingEditorComponent
   ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
@@ -100,7 +109,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   @Output() readonly save = new EventEmitter<Event>();
   @Output() readonly cancel = new EventEmitter<Event>();
-  @Output() readonly toggleOptionalPicker = new EventEmitter<Event>();
   @Output() readonly selectOptional = new EventEmitter<boolean>();
   @Output() readonly selectInsertPlacement = new EventEmitter<EventSubeventStageInsertPlacement>();
   @Output() readonly insertTargetChange = new EventEmitter<string | null>();
@@ -153,6 +161,118 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   protected trackByInsertOption(_: number, option: { id: string }): string {
     return option.id;
+  }
+
+  protected optionalMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.model.optional ? 'Optional' : 'Mandatory',
+      icon: this.view.modeIcon,
+      palette: this.model.optional ? 'blue' : 'red',
+      ariaLabel: 'Sub event optional mode',
+      shape: 'pill'
+    };
+  }
+
+  protected optionalMenuItems(): readonly AppMenuItem<string, EventSubeventStageFormMenuContext>[] {
+    return [
+      {
+        id: 'subevent-optional-mandatory',
+        label: 'Mandatory',
+        icon: 'block',
+        kind: 'radio',
+        palette: 'red',
+        surface: 'tinted',
+        active: !this.model.optional,
+        context: { menu: 'optional', optional: false }
+      },
+      {
+        id: 'subevent-optional-optional',
+        label: 'Optional',
+        icon: 'toggle_on',
+        kind: 'radio',
+        palette: 'blue',
+        surface: 'tinted',
+        active: this.model.optional,
+        context: { menu: 'optional', optional: true }
+      }
+    ];
+  }
+
+  protected insertTargetMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.insertTargetLabel(),
+      icon: 'vertical_align_bottom',
+      palette: 'default',
+      ariaLabel: this.view.insertFieldLabel,
+      shape: 'field'
+    };
+  }
+
+  protected insertTargetMenuItems(): readonly AppMenuItem<string, EventSubeventStageFormMenuContext>[] {
+    return this.view.insertOptions.map(option => ({
+      id: `subevent-insert-target-${option.id}`,
+      label: option.label,
+      icon: 'route',
+      kind: 'radio',
+      active: option.id === this.view.insertTargetId,
+      context: { menu: 'insert-target', targetId: option.id }
+    }));
+  }
+
+  protected tournamentLeaderboardMenuTrigger(): AppMenuTrigger {
+    const value = this.view.tournamentLeaderboardTypeValue;
+    return {
+      label: value,
+      icon: this.view.tournamentLeaderboardTypeIcon,
+      palette: this.tournamentLeaderboardPalette(value),
+      ariaLabel: 'Leaderboard type',
+      shape: 'field'
+    };
+  }
+
+  protected tournamentLeaderboardMenuItems(): readonly AppMenuItem<string, EventSubeventStageFormMenuContext>[] {
+    return this.view.tournamentLeaderboardTypeOptions.map(option => ({
+      id: `subevent-leaderboard-type-${option.toLowerCase()}`,
+      label: option,
+      icon: this.tournamentLeaderboardIcon(option),
+      kind: 'radio',
+      palette: this.tournamentLeaderboardPalette(option),
+      surface: 'tinted',
+      active: option === this.view.tournamentLeaderboardTypeValue,
+      context: { menu: 'leaderboard-type', leaderboardType: option }
+    }));
+  }
+
+  protected onStageFormMenuSelect(event: AppMenuItemSelectEvent<string, EventSubeventStageFormMenuContext>): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+
+    switch (context.menu) {
+      case 'optional':
+        this.selectOptional.emit(context.optional);
+        break;
+      case 'insert-target':
+        this.insertTargetChange.emit(context.targetId);
+        break;
+      case 'leaderboard-type':
+        this.tournamentLeaderboardTypeChange.emit(context.leaderboardType);
+        break;
+    }
+  }
+
+  private insertTargetLabel(): string {
+    const selected = this.view.insertOptions.find(option => option.id === this.view.insertTargetId);
+    return selected?.label ?? this.view.insertOptions[0]?.label ?? 'Select stage';
+  }
+
+  private tournamentLeaderboardIcon(option: EventSubeventTournamentLeaderboardType): string {
+    return option === 'Fifa' ? 'sports_soccer' : 'leaderboard';
+  }
+
+  private tournamentLeaderboardPalette(option: EventSubeventTournamentLeaderboardType): AppMenuPalette {
+    return option === 'Fifa' ? 'orange' : 'blue';
   }
 
   private ensureIsoLocal(value: string): string {
@@ -218,7 +338,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       invalidName: false,
       invalidDescription: false,
       showOptionalToggle: false,
-      showOptionalPicker: false,
       modeClass: 'subevent-mode-mandatory',
       modeIcon: 'block',
       slotBoundTiming: false,

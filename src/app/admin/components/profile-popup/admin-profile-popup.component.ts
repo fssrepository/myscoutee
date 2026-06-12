@@ -3,8 +3,8 @@ import { Component, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/core';
-import { AdminProfileService } from '../../services/admin-profile.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 @Component({
@@ -16,7 +16,6 @@ import { AdminShellService } from '../../services/admin-shell.service';
 })
 export class AdminProfilePopupComponent {
   protected readonly admin = inject(AdminShellService);
-  private readonly adminProfile = inject(AdminProfileService);
   private readonly appCtx = inject(AppContext);
   protected name = '';
   protected headline = '';
@@ -35,10 +34,14 @@ export class AdminProfilePopupComponent {
   }
 
   protected save(): void {
-    this.adminProfile.updateAdminProfile({
-      name: this.name,
-      headline: this.headline,
-      about: this.about
+    this.appCtx.patchActiveUserProfile(current => {
+      const name = this.name.trim() || current.name;
+      return {
+        name,
+        initials: AppUtils.initialsFromText(name),
+        headline: this.headline.trim(),
+        about: this.about.trim()
+      };
     });
     this.admin.closePopup();
   }

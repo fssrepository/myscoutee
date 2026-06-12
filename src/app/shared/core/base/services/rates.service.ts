@@ -1,12 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateRecord } from '../models/rate.model';
+import type { RateRecord } from '../../contracts/rate.interface';
 import type { ActivityRatePageResult } from '../interfaces/game.interface';
 import { LocalRatesService } from '../../local';
 import { HttpRatesService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { GameService } from './game.service';
+import { RateOutboxService } from './rate-outbox.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,7 @@ export class RatesService extends BaseRouteModeService {
   private readonly localRatesService = inject(LocalRatesService);
   private readonly httpRatesService = inject(HttpRatesService);
   private readonly gameService = inject(GameService);
+  private readonly rateOutboxService = inject(RateOutboxService);
 
   private get ratesService(): LocalRatesService | HttpRatesService {
     return this.resolveRouteService('/activities/rates', this.localRatesService, this.httpRatesService);
@@ -26,7 +28,7 @@ export class RatesService extends BaseRouteModeService {
     rating: number,
     direction?: RateRecord['direction'] | null
   ): void {
-    this.ratesService.recordActivityRate(ownerUserId, item, rating, direction);
+    this.rateOutboxService.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
     this.gameService.resetUserGameCardsStack(ownerUserId);
     this.gameService.kickUserRatesOutboxSync();
   }

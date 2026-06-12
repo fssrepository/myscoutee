@@ -91,18 +91,6 @@
   color: rgba(21, 39, 62, 0.72);
 }
 
-.popup-close {
-  min-width: 34px;
-  min-height: 34px;
-  padding: 0 !important;
-  line-height: 0;
-  --mdc-icon-button-state-layer-size: 34px;
-}
-
-.popup-close .mat-icon {
-  margin: 0;
-}
-
 .popup-body.popup-body-assets-list,
 .popup-body.popup-body-assets-tickets {
   overflow: hidden;

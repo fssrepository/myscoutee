@@ -1,4 +1,4 @@
-import type { ActivityMemberRole } from './activity-member.model';
+import type { ActivityMemberRole } from '../../contracts/activity-member.interface';
 import type { ActivityListRow } from './activities-ui.model';
 import type { EventPolicyItem, EventVisibility } from './event.model';
 import type { PricingConfig } from './pricing.model';

@@ -51,6 +51,7 @@ export interface IdeaArticleDetail {
 
 export interface LandingContentState {
   privacy: HelpCenterState;
+  terms: HelpCenterState;
   ideas: IdeaPost[];
   loginAvailability: UserLocationEligibilityResponseDto | null;
 }

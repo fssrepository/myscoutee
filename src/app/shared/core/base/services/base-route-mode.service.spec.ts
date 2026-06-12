@@ -6,8 +6,8 @@ import { SessionService } from './session.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 class TestRouteModeService extends BaseRouteModeService {
-  resolve(route: string): 'demo' | 'http' {
-    return this.resolveRouteService(route, 'demo' as const, 'http' as const);
+  resolve(route: string): 'local' | 'http' {
+    return this.resolveRouteService(route, 'local' as const, 'http' as const);
   }
 }
 
@@ -54,7 +54,7 @@ describe('BaseRouteModeService', () => {
 
     const service = createService();
 
-    expect(service.resolve('/privacy/consents')).toBe('demo');
+    expect(service.resolve('/privacy/consents')).toBe('local');
   });
 });
 

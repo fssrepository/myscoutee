@@ -11,7 +11,7 @@ import type {
 } from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
-import { HttpUsersRatingsRepository } from '../repositories/users-ratings.repository';
+import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 
 @Injectable({
   providedIn: 'root'
@@ -20,32 +20,12 @@ export class HttpGameService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_QUERY_ROUTE = '/game-cards/query';
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly usersRatingsRepository = inject(HttpUsersRatingsRepository);
+  private readonly rateOutboxRepository = inject(RateOutboxRepository);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly gameCardsUsersSnapshot: UserDto[] = [];
 
   queryGameCardsUsersSnapshot(): UserDto[] {
     return this.gameCardsUsersSnapshot;
-  }
-
-  recordGameCardRating(
-    raterUserId: string,
-    ratedUserId: string,
-    rating: number,
-    mode: 'single' | 'pair' = 'single',
-    socialContext?: UserGameSocialCard['socialContext'],
-    bridgeUserId?: string,
-    bridgeCount?: number
-  ): void {
-    this.usersRatingsRepository.enqueueGameCardRatingOutbox(
-      raterUserId,
-      ratedUserId,
-      rating,
-      mode,
-      socialContext,
-      bridgeUserId,
-      bridgeCount
-    );
   }
 
   async queryUserGameCardsByFilter(
@@ -128,10 +108,10 @@ export class HttpGameService implements UserGameDataService {
     const mode = request.mode ?? 'single';
     const pendingRatedUserIds = new Set(
       mode === 'single' || mode === 'friends-in-common'
-        ? this.usersRatingsRepository.queryPendingRatedGameCardUserIds(userId, 'single')
+        ? this.rateOutboxRepository.queryPendingRatedGameCardUserIds(userId, 'single')
         : []
     );
-    const pendingRatedPairKeys = new Set(this.usersRatingsRepository.queryPendingRatedGameCardPairKeys(userId));
+    const pendingRatedPairKeys = new Set(this.rateOutboxRepository.queryPendingRatedGameCardPairKeys(userId));
     if (pendingRatedUserIds.size === 0 && pendingRatedPairKeys.size === 0) {
       return cards;
     }

@@ -23,6 +23,7 @@ export interface GdprContent {
   dataCategories: GdprDataCategory[];
   purposes: string[];
   retention: string[];
+  accountControls: string[];
   sharing: string[];
   security: string[];
 }
@@ -102,6 +103,12 @@ export const GDPR_CONTENT: GdprContent = {
     'Precise location coordinates: stored only for active location-enabled features and deleted when no longer required.',
     'Safety and audit logs: retained based on legal/compliance needs.',
     'Deleted accounts: data removed or anonymized after retention window.'
+  ],
+  accountControls: [
+    'Delete account is available from the user settings menu. Confirming it schedules the account for deletion and signs the user out.',
+    'If the account has been deleted but not yet purged, signing in again can show a reactivation confirmation before the 30-day deletion window ends.',
+    'If deletion is requested from Meta/Facebook account settings after Facebook login, Meta sends the request to the MyScoutee backend callback and matching accounts follow the same deletion schedule.',
+    'Deletion requests can also be sent to myscoutee1@gmail.com from the email address connected to the MyScoutee account.'
   ],
   sharing: [
     'Service providers for hosting, analytics, and support operations.',

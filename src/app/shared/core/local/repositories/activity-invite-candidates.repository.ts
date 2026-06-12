@@ -1,27 +1,24 @@
 import { Injectable, inject } from '@angular/core';
 
-import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../../base/interfaces/user.interface';
-import type { RateRecord } from '../../base/models/rate.model';
-import type {
-  ActivityInviteCandidatesQuery,
-  ActivityInviteCandidatesRepository
-} from '../../base/interfaces/activity-invite.interface';
+import type { ActivityInviteCandidatesQuery } from '../../contracts/activity-invite.interface';
+import type { UserDto } from '../../contracts/user.interface';
+import type { RateRecord } from '../../contracts/rate.interface';
+import type { LocalActivityInviteCandidateRecord } from '../mappers';
 import { LocalContactsRepository } from './contacts.repository';
-import { LocalUsersRatingsRepository } from './users-ratings.repository';
+import { LocalRatesRepository } from './rates.repository';
 import { LocalUsersRepository } from './users.repository';
 
 @Injectable({
   providedIn: 'root'
 })
-export class LocalActivityInviteCandidatesRepository implements ActivityInviteCandidatesRepository {
+export class LocalActivityInviteCandidatesRepository {
   private readonly usersRepository = inject(LocalUsersRepository);
-  private readonly usersRatingsRepository = inject(LocalUsersRatingsRepository);
+  private readonly ratesRepository = inject(LocalRatesRepository);
   private readonly contactsRepository = inject(LocalContactsRepository);
 
-  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryCandidateRecords(query: ActivityInviteCandidatesQuery): Promise<LocalActivityInviteCandidateRecord[]> {
     const activeUserId = query.activeUserId.trim();
     const ownerId = query.owner.ownerId.trim();
     if (!activeUserId || !ownerId) {
@@ -38,7 +35,7 @@ export class LocalActivityInviteCandidatesRepository implements ActivityInviteCa
 
     // Filter out existing contacts at the repository level if the owner is an asset
     if (query.owner.ownerType === 'asset') {
-      for (const contact of this.contactsRepository.queryContactsByUser(activeUserId)) {
+      for (const contact of this.contactsRepository.queryContactRecordsByUser(activeUserId)) {
         const contactUserId = (contact.userId || contact.id || '').trim();
         if (contactUserId) {
           existingUserIds.add(contactUserId);
@@ -68,41 +65,24 @@ export class LocalActivityInviteCandidatesRepository implements ActivityInviteCa
       }
     }
 
-    const row = this.buildOwnerRow(query);
-    const rowKey = `${row.type}:${row.id}`;
     const candidates = [...latestMetByUserId.keys()]
       .filter(userId => !existingUserIds.has(userId))
       .map(userId => this.usersRepository.queryUserById(userId))
       .filter((user): user is UserDto => Boolean(user))
       .map(user => {
-        const entry = ActivityMembersBuilder.toActivityMemberEntry(
-          user as unknown as UserDto,
-          row,
-          rowKey,
-          activeUserId,
-          {
-            status: 'pending',
-            pendingSource: 'admin',
-            invitedByActiveUser: true
-          }
-        );
         const latestMet = latestMetByUserId.get(user.id)!;
         return {
-          ...entry,
+          user,
           metAtIso: latestMet.metAtIso,
-          actionAtIso: latestMet.metAtIso,
           metWhere: latestMet.metWhere,
-          status: 'pending' as const,
-          pendingSource: 'admin' as const,
-          requestKind: 'invite' as const,
-          invitedByActiveUser: true
+          userRateAffinity: latestMet.userRateAffinity
         };
       });
 
     candidates.sort((left, right) => {
       if (query.sort === 'relevant') {
-        const leftUserRateAffinity = latestMetByUserId.get(left.userId)?.userRateAffinity ?? 0;
-        const rightUserRateAffinity = latestMetByUserId.get(right.userId)?.userRateAffinity ?? 0;
+        const leftUserRateAffinity = latestMetByUserId.get(left.user.id)?.userRateAffinity ?? 0;
+        const rightUserRateAffinity = latestMetByUserId.get(right.user.id)?.userRateAffinity ?? 0;
         if (rightUserRateAffinity !== leftUserRateAffinity) {
           return rightUserRateAffinity - leftUserRateAffinity;
         }
@@ -112,30 +92,13 @@ export class LocalActivityInviteCandidatesRepository implements ActivityInviteCa
     return candidates;
   }
 
-  private buildOwnerRow(query: ActivityInviteCandidatesQuery): AppTypes.ActivityListRow {
-    const type = query.owner.sourceType;
-    return {
-      id: query.owner.ownerId,
-      type,
-      status: type === 'hosting' ? 'H' : 'A',
-      title: query.owner.title,
-      subtitle: query.owner.subtitle,
-      detail: query.owner.detail,
-      dateIso: query.owner.dateIso,
-      distanceMetersExact: Math.max(0, Math.round((Number(query.owner.distanceKm) || 0) * 1000)),
-      unread: 0,
-      metricScore: 0,
-      isAdmin: query.owner.isAdmin
-    } as AppTypes.ActivityListRow;
-  }
-
   private async queryMetRateItems(
     activeUserId: string,
     sort: AppTypes.ActivityInviteSort
   ): Promise<RateRecord[]> {
     const itemsById = new Map<string, RateRecord>();
     for (const socialBadgeEnabled of [false, true]) {
-      const page = await this.usersRatingsRepository.queryActivityRateItemsPage({
+      const page = await this.ratesRepository.queryActivityRateItemsPage({
         ownerUserId: activeUserId,
         mode: 'single',
         displayDirection: 'met',

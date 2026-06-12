@@ -70,6 +70,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
   @Output() readonly consentRequested = new EventEmitter<void>();
+  @Output() readonly termsRequested = new EventEmitter<void>();
 
   protected readonly howSlides: readonly HowStepSlide[] = [
     {
@@ -421,6 +422,14 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       return;
     }
     this.consentRequested.emit();
+  }
+
+  protected requestTerms(event?: Event): void {
+    event?.preventDefault();
+    if (this.networkUnavailable) {
+      return;
+    }
+    this.termsRequested.emit();
   }
 
   protected openPreviewGuide(event?: Event): void {

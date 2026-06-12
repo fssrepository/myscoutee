@@ -242,6 +242,7 @@
                     <ng-container
                       [ngTemplateOutlet]="templateRef"
                       [ngTemplateOutletContext]="itemContext(item, itemIndex, group.label)"
+                      [ngTemplateOutletInjector]="itemTemplateInjector"
                     ></ng-container>
                   </div>
                 }
@@ -287,6 +288,7 @@
                 >
                   <ng-container
                     [ngTemplateOutlet]="fullscreenTemplateRef"
+                    [ngTemplateOutletInjector]="itemTemplateInjector"
                     [ngTemplateOutletContext]="
                       hostedFullscreenItemContext(
                         thirdItem,
@@ -305,6 +307,7 @@
                 >
                   <ng-container
                     [ngTemplateOutlet]="fullscreenTemplateRef"
+                    [ngTemplateOutletInjector]="itemTemplateInjector"
                     [ngTemplateOutletContext]="
                       hostedFullscreenItemContext(
                         nextItem,
@@ -324,6 +327,7 @@
               >
                 <ng-container
                   [ngTemplateOutlet]="fullscreenTemplateRef"
+                  [ngTemplateOutletInjector]="itemTemplateInjector"
                   [ngTemplateOutletContext]="
                     hostedFullscreenItemContext(currentItem, hostedFullscreenCurrentRenderState())
                   "
@@ -381,6 +385,8 @@
       (scoreSelect)="onPaginationRatingSelect($event)"
     ></app-rating-star-bar>
   }
+
+  <app-menu-outlet (itemSelect)="onDispatchedMenuItemSelect($event)"></app-menu-outlet>
 </div>
 
 <ng-template #fullscreenEmptyState>

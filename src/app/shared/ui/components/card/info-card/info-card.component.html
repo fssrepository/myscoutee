@@ -225,19 +225,30 @@
 
     @if (hasMenuActions()) {
       <div class="ui-info-card__actions">
-        <button
-          type="button"
-          class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
-          [class.is-open]="menuTriggerOpen"
-          [attr.aria-label]="(menuTriggerOpen ? 'close.card.actions' : 'open.card.actions') | i18n"
-          (click)="toggleMenu($event)"
-          >
-          <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>
-          @if ((card?.menuBadgeCount ?? 0) > 0) {
-            <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ card?.menuBadgeCount }}</span>
-          }
-        </button>
-        @if (menuOpen && !useSharedMenu) {
+        @if (useSharedMenuTrigger) {
+          <app-menu-trigger
+            kind="select"
+            [scope]="sharedMenuScope"
+            [menuId]="sharedMenuId()"
+            [title]="sharedMenuTitle()"
+            [trigger]="sharedMenuTrigger()"
+            [items]="sharedMenuItems()"
+          ></app-menu-trigger>
+        } @else {
+          <button
+            type="button"
+            class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
+            [class.is-open]="menuTriggerOpen"
+            [attr.aria-label]="(menuTriggerOpen ? 'close.card.actions' : 'open.card.actions') | i18n"
+            (click)="toggleMenu($event)"
+            >
+            <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>
+            @if ((card?.menuBadgeCount ?? 0) > 0) {
+              <span class="ui-info-card__pending-badge card-badge asset-request-badge">{{ card?.menuBadgeCount }}</span>
+            }
+          </button>
+        }
+        @if (menuOpen && !useSharedMenu && !useSharedMenuTrigger) {
           <div
             class="ui-info-card__menu item-action-menu"
             [class.is-open]="menuOpen"

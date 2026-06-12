@@ -1,4 +1,4 @@
-import type { ExperienceEntry } from '../models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 
 export interface UserExperiencesQueryResponseDto {
   userId: string;

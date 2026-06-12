@@ -1,7 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import type { ActivityInviteOwnerContext } from '../interfaces/activity-invite.interface';
+import type {
+  IActivityInviteCandidatesService,
+  ActivityInviteOwnerContext
+} from '../../contracts/activity-invite.interface';
 import { LocalActivityInviteCandidatesService } from '../../local/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';
@@ -23,7 +26,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService {
   private readonly appCtx = inject(AppContext);
 
 
-  private get inviteCandidatesService(): LocalActivityInviteCandidatesService | HttpActivityInviteCandidatesService {
+  private get inviteCandidatesService(): IActivityInviteCandidatesService {
     return this.resolveRouteService(
       ACTIVITY_INVITE_CANDIDATES_ROUTE,
       this.localActivityInviteCandidatesService,

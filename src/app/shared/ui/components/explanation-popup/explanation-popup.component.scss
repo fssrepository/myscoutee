@@ -22,7 +22,7 @@
 .explanation-popup__panel {
   position: relative;
   z-index: 1;
-  width: min(1060px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   height: calc(100dvh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
   overflow: hidden;
@@ -38,8 +38,8 @@
 }
 
 .explanation-popup__panel--loading {
-  height: auto;
-  max-height: min(360px, calc(100dvh - 1.2rem));
+  height: calc(100dvh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
 }
 
 @supports not (height: 100dvh) {
@@ -113,7 +113,8 @@
 }
 
 .explanation-popup__loading-body {
-  min-height: 180px;
+  flex: 1 1 auto;
+  min-height: 0;
   display: grid;
   place-items: center;
   gap: 0.74rem;

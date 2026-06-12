@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
@@ -7,6 +7,9 @@ import {
   AppContext,
   AppPopupContext,
   ExplanationGuideService,
+  HelpCenterService,
+  PrivacyPolicyService,
+  TermsPolicyService,
   USER_PROFILE_SAVE_CONTEXT_KEY,
   type ActivityCounters,
   type UserDto,
@@ -14,12 +17,18 @@ import {
 } from '../../../shared/core';
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import {
-  resolveHostTierColorClass, resolveHostTierIcon, resolveHostTierToneClass, resolveMemberImpressionTitle, resolveTraitColorClass, resolveTraitIcon, resolveTraitToneClass
+  resolveHostTierIcon, resolveMemberImpressionTitle, resolveTraitIcon
 } from '../../navigator-presenters';
-import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
-import { I18nPipe } from '../../../shared/ui';
-import { NavigatorService } from '../../navigator.service';
-import { NavigatorSettingsMenuComponent } from '../navigator-settings-menu/navigator-settings-menu.component';
+import {
+  AppMenuComponent,
+  ProgressIndicatorComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuValueMap
+} from '../../../shared/ui';
+import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 
@@ -31,10 +40,51 @@ interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   totalBadgeCount: number;
 }
 
+type NavigatorMenuShortcutId =
+  | 'impressions'
+  | 'feedback'
+  | 'rates'
+  | 'chat'
+  | 'invitations'
+  | 'events'
+  | 'hosting'
+  | 'car'
+  | 'accommodation'
+  | 'supplies'
+  | 'tickets'
+  | 'contacts';
+
+type NavigatorAdminMenuShortcutId =
+  | 'adminReports'
+  | 'adminFeedback'
+  | 'adminChat'
+  | 'adminJobs'
+  | 'adminParams'
+  | 'adminContent'
+  | 'adminArticle'
+  | 'adminStats'
+  | 'adminMetrics'
+  | 'adminGraph';
+
+type NavigatorSettingsMenuItemId =
+  | 'help'
+  | 'feedback'
+  | 'report-bugs'
+  | 'privacy'
+  | 'terms'
+  | 'delete-account'
+  | 'logout';
+
+type NavigatorHeaderActionMenuItemId =
+  | 'explanations'
+  | 'share'
+  | 'settings'
+  | NavigatorSettingsMenuItemId;
+
 @Component({
   selector: 'app-navigator-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatRippleModule, NavigatorSettingsMenuComponent, ProgressIndicatorComponent, CounterBadgePipe, I18nPipe],
+  imports: [CommonModule, MatIconModule, MatRippleModule, ProgressIndicatorComponent, AppMenuComponent],
   templateUrl: './navigator-menu.component.html',
   styleUrl: './navigator-menu.component.scss'
 })
@@ -42,6 +92,9 @@ export class NavigatorMenuComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly helpCenter = inject(HelpCenterService);
+  private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly termsPolicy = inject(TermsPolicyService);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
@@ -49,6 +102,10 @@ export class NavigatorMenuComponent {
   private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   protected readonly activeUser = this.appCtx.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
+  protected readonly helpVersionLabel = this.helpCenter.activeVersionLabel;
+  protected readonly hasActiveHelpRevision = this.helpCenter.hasActiveRevision;
+  protected readonly privacyVersionLabel = this.privacyPolicy.activeVersionLabel;
+  protected readonly termsVersionLabel = this.termsPolicy.activeVersionLabel;
   protected readonly isOnline = this.appCtx.isOnline;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly isLoggingOut = computed(() => this.userLogoutLoadState().status === 'loading');
@@ -130,36 +187,505 @@ export class NavigatorMenuComponent {
   });
   protected readonly menuUiState = this.navigatorService.menuUiState;
   protected readonly isCoveredByAssetPopup = this.navigatorService.navigatorCoveredByAssetPopup;
+  protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
+    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [
+      {
+        id: 'help',
+        label: 'Help',
+        icon: 'help_outline',
+        counter: this.helpVersionLabel(),
+        disabled: !this.hasActiveHelpRevision(),
+        ariaLabel: 'Open help'
+      }
+    ];
+    if (!this.isAdminMode()) {
+      items.push({
+        id: 'feedback',
+        label: 'Send Feedback',
+        icon: 'feedback',
+        ariaLabel: 'Send feedback'
+      });
+    }
+    items.push(
+      {
+        id: 'report-bugs',
+        label: 'Report Bugs',
+        icon: 'bug_report',
+        href: 'https://github.com/fssrepository/myscoutee/issues',
+        target: '_blank',
+        rel: 'noopener noreferrer',
+        ariaLabel: 'Report bugs'
+      },
+      {
+        id: 'privacy',
+        label: 'Privacy',
+        icon: 'policy',
+        counter: this.privacyVersionLabel(),
+        ariaLabel: 'Open privacy'
+      },
+      {
+        id: 'terms',
+        label: 'Terms',
+        icon: 'rule',
+        counter: this.termsVersionLabel(),
+        ariaLabel: 'Open terms'
+      }
+    );
+    if (!this.isAdminMode()) {
+      items.push({
+        id: 'delete-account',
+        label: 'Delete account',
+        icon: 'delete_forever',
+        palette: 'danger',
+        ariaLabel: 'Delete account'
+      });
+    }
+    items.push({
+      id: 'logout',
+      label: 'Logout',
+      icon: 'logout',
+      ariaLabel: 'Logout'
+    });
+    return items;
+  });
+  protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
+    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    if (!this.isAdminMode()) {
+      items.push(
+        {
+          id: 'explanations',
+          label: 'Explanations',
+          icon: 'tips_and_updates',
+          kind: 'toggle',
+          checked: this.explanationGuideEnabled(),
+          ariaLabel: this.explanationGuideEnabled() ? 'Turn explanations off' : 'Turn explanations on'
+        },
+        {
+          id: 'share',
+          label: 'Share MyScoutee',
+          icon: 'share',
+          ariaLabel: 'Share MyScoutee'
+        }
+      );
+    }
+    items.push({
+      id: 'settings',
+      label: 'Settings',
+      icon: 'settings',
+      ariaLabel: this.isAdminMode() ? 'Open admin settings menu' : 'Open settings menu',
+      children: this.settingsMenuItems()
+    });
+    return {
+      nodes: [
+        {
+          id: 'navigator-header-actions',
+          children: items
+        }
+      ]
+    };
+  });
+  protected readonly navigatorMenuValues = computed<AppMenuValueMap<NavigatorMenuShortcutId>>(() => {
+    const user = this.menuUser();
+    if (!user) {
+      return {};
+    }
+    return {
+      impressions: this.impressionShortcutBadgeCount(user),
+      feedback: user.activities.feedback,
+      rates: user.activities.game,
+      chat: user.activities.chat,
+      invitations: user.activities.invitations,
+      events: user.activities.events,
+      hosting: user.activities.hosting,
+      car: user.activities.cars,
+      accommodation: user.activities.accommodation,
+      supplies: user.activities.supplies,
+      tickets: user.activities.tickets,
+      contacts: user.activities.contacts
+    };
+  });
+  protected readonly adminNavigatorMenuValues = computed<AppMenuValueMap<NavigatorAdminMenuShortcutId>>(() => {
+    const user = this.menuUser();
+    if (!user) {
+      return {};
+    }
+    return {
+      adminReports: user.activities.game,
+      adminFeedback: user.activities.feedback,
+      adminChat: user.activities.chat,
+      adminJobs: user.activities.adminJobs,
+      adminMetrics: user.activities.adminMetrics
+    };
+  });
+  protected readonly navigatorMenuModel = computed<AppMenuModel<NavigatorMenuShortcutId>>(() => {
+    const user = this.menuUser();
+    if (!user) {
+      return { nodes: [] };
+    }
+    const primaryDisabled = this.isPrimaryMenuDisabled(user);
+    return {
+      nodes: [
+        {
+          id: 'impressions',
+          label: 'Impressions',
+          icon: 'psychology',
+          palette: 'violet',
+          children: [
+            {
+              id: 'impressions',
+              span: 4,
+              ariaLabel: 'Open impressions',
+              disabled: primaryDisabled,
+              segments: [
+                {
+                  id: 'host',
+                  label: user.hostTier.replace(' Host', ''),
+                  description: 'Host',
+                  icon: this.getHostTierIcon(user.hostTier),
+                  palette: this.hostTierPalette(user.hostTier)
+                },
+                {
+                  id: 'member',
+                  label: user.memberImpressionTitle.replace(' Attendee', ''),
+                  description: 'Attendee',
+                  icon: this.getTraitIcon(user.traitLabel),
+                  palette: this.traitPalette(user.traitLabel)
+                }
+              ]
+            },
+            {
+              id: 'feedback',
+              label: 'Feedback',
+              icon: 'rate_review',
+              palette: 'purple',
+              ariaLabel: 'Open feedback',
+              disabled: primaryDisabled
+            }
+          ]
+        },
+        {
+          id: 'activities',
+          label: 'Activities',
+          icon: 'local_activity',
+          palette: 'blue',
+          children: [
+            {
+              id: 'rates',
+              label: 'Rates',
+              icon: 'star',
+              palette: 'gold',
+              ariaLabel: 'Open rates',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'chat',
+              label: 'Chats',
+              icon: 'chat',
+              palette: 'blue',
+              ariaLabel: 'Open chat',
+              disabled: !this.isOnline()
+            },
+            {
+              id: 'invitations',
+              label: 'Invitations',
+              icon: 'mail',
+              palette: 'purple',
+              ariaLabel: 'Open invitations',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'events',
+              label: 'Events',
+              icon: 'event',
+              palette: 'orange',
+              ariaLabel: 'Open events',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'hosting',
+              label: 'My Events',
+              icon: 'stadium',
+              palette: 'teal',
+              ariaLabel: 'Open my events',
+              disabled: primaryDisabled
+            }
+          ]
+        },
+        {
+          id: 'assets',
+          label: 'My Assets',
+          icon: 'inventory_2',
+          palette: 'brown',
+          children: [
+            {
+              id: 'car',
+              label: 'Car',
+              icon: 'directions_car',
+              palette: 'blue',
+              ariaLabel: 'Car',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'accommodation',
+              label: 'Property',
+              icon: 'apartment',
+              palette: 'green',
+              ariaLabel: 'Property',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'supplies',
+              label: 'Supplies',
+              icon: 'inventory_2',
+              palette: 'brown',
+              ariaLabel: 'Supplies',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'tickets',
+              label: 'Ticket',
+              icon: 'qr_code_2',
+              palette: 'blue',
+              ariaLabel: 'Ticket',
+              disabled: primaryDisabled
+            },
+            {
+              id: 'contacts',
+              label: 'Contacts',
+              icon: 'contacts',
+              palette: 'teal',
+              ariaLabel: 'Contacts',
+              disabled: primaryDisabled
+            }
+          ]
+        }
+      ]
+    };
+  });
+  protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
+    const disabled = !this.isOnline();
+    return {
+      nodes: [
+        {
+          id: 'admin-moderation',
+          label: 'Moderation & support',
+          icon: 'admin_panel_settings',
+          palette: 'orange',
+          children: [
+            {
+              id: 'adminReports',
+              label: 'Reports',
+              icon: 'report',
+              palette: 'orange',
+              ariaLabel: 'Open reports',
+              disabled
+            },
+            {
+              id: 'adminFeedback',
+              label: 'Feedback',
+              icon: 'feedback',
+              palette: 'purple',
+              ariaLabel: 'Open application feedback',
+              disabled
+            },
+            {
+              id: 'adminChat',
+              label: 'Chats',
+              icon: 'chat',
+              palette: 'blue',
+              ariaLabel: 'Open admin chats',
+              disabled
+            }
+          ]
+        },
+        {
+          id: 'admin-configuration',
+          label: 'Configuration',
+          icon: 'tune',
+          palette: 'teal',
+          children: [
+            {
+              id: 'adminJobs',
+              label: 'jobs',
+              icon: 'pending_actions',
+              palette: 'blue',
+              ariaLabel: 'Open jobs',
+              disabled
+            },
+            {
+              id: 'adminParams',
+              label: 'params',
+              icon: 'tune',
+              palette: 'purple',
+              ariaLabel: 'Open parameters',
+              disabled
+            },
+            {
+              id: 'adminContent',
+              label: 'Content',
+              icon: 'edit_note',
+              palette: 'green',
+              ariaLabel: 'Open content editor',
+              disabled
+            },
+            {
+              id: 'adminArticle',
+              label: 'Article',
+              icon: 'tips_and_updates',
+              palette: 'gold',
+              ariaLabel: 'Open article editor',
+              disabled
+            }
+          ]
+        },
+        {
+          id: 'admin-monitoring',
+          label: 'monitoring',
+          icon: 'monitoring',
+          palette: 'blue',
+          children: [
+            {
+              id: 'adminStats',
+              label: 'stats',
+              icon: 'query_stats',
+              palette: 'green',
+              ariaLabel: 'Open stats',
+              disabled
+            },
+            {
+              id: 'adminMetrics',
+              label: 'metrics',
+              icon: 'monitoring',
+              palette: 'cyan',
+              ariaLabel: 'Open monitoring metrics',
+              disabled
+            },
+            {
+              id: 'adminGraph',
+              label: 'Graph',
+              icon: 'hub',
+              palette: 'violet',
+              ariaLabel: 'Open affinity graph',
+              disabled
+            }
+          ]
+        }
+      ]
+    };
+  });
 
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.menuUiState().settingsOpen) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-    if (target.closest('.user-settings-menu') || target.closest('.user-menu-settings-btn')) {
-      return;
-    }
-    this.onCloseSettingsMenu();
+  constructor() {
+    void this.helpCenter.preloadAll();
   }
 
   protected onCloseMenu(): void {
     this.navigatorService.closeMenu();
   }
 
-  protected onToggleSettingsMenu(event: MouseEvent): void {
-    event.stopPropagation();
-    this.navigatorService.toggleSettingsMenu();
+  protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
+    switch (event.id) {
+      case 'explanations':
+        this.onToggleExplanationGuide(event.sourceEvent);
+        return;
+      case 'share':
+        this.onShareProfile(event.sourceEvent);
+        return;
+      case 'settings':
+        return;
+      case 'help':
+      case 'feedback':
+      case 'privacy':
+      case 'terms':
+        this.openSettingsPopup(event.id);
+        return;
+      case 'delete-account':
+        this.navigatorService.openDeleteAccountConfirm();
+        return;
+      case 'logout':
+        this.navigatorService.openLogoutConfirm();
+        return;
+      case 'report-bugs':
+        return;
+    }
   }
 
-  protected onCloseSettingsMenu(): void {
-    this.navigatorService.closeSettingsMenu();
+  protected onNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorMenuShortcutId>): void {
+    switch (event.id) {
+      case 'impressions':
+        this.openImpressions(event.sourceEvent);
+        return;
+      case 'feedback':
+        this.openEventFeedbackPopup(event.sourceEvent);
+        return;
+      case 'rates':
+        this.openRatesShortcut(event.sourceEvent);
+        return;
+      case 'chat':
+        this.openChatShortcut(event.sourceEvent);
+        return;
+      case 'invitations':
+        this.openInvitationShortcut(event.sourceEvent);
+        return;
+      case 'events':
+        this.openEventShortcut(event.sourceEvent);
+        return;
+      case 'hosting':
+        this.openHostingShortcut(event.sourceEvent);
+        return;
+      case 'car':
+        this.openAssetCarPopup(event.sourceEvent);
+        return;
+      case 'accommodation':
+        this.openAssetAccommodationPopup(event.sourceEvent);
+        return;
+      case 'supplies':
+        this.openAssetSuppliesPopup(event.sourceEvent);
+        return;
+      case 'tickets':
+        this.openAssetTicketsPopup(event.sourceEvent);
+        return;
+      case 'contacts':
+        this.openContactsPopup(event.sourceEvent);
+        return;
+    }
   }
 
-  protected onShareProfile(event: MouseEvent): void {
+  protected onAdminNavigatorMenuSelect(event: AppMenuItemSelectEvent<NavigatorAdminMenuShortcutId>): void {
+    switch (event.id) {
+      case 'adminReports':
+        this.openAdminReportsShortcut(event.sourceEvent);
+        return;
+      case 'adminFeedback':
+        this.openAdminFeedbackShortcut(event.sourceEvent);
+        return;
+      case 'adminChat':
+        this.openAdminChatShortcut(event.sourceEvent);
+        return;
+      case 'adminJobs':
+        this.openAdminNotificationsShortcut(event.sourceEvent);
+        return;
+      case 'adminParams':
+        this.openAdminParamsShortcut(event.sourceEvent);
+        return;
+      case 'adminContent':
+        this.openAdminHelpEditorShortcut(event.sourceEvent);
+        return;
+      case 'adminArticle':
+        this.openAdminIdeaEditorShortcut(event.sourceEvent);
+        return;
+      case 'adminStats':
+        this.openAdminStatsShortcut(event.sourceEvent);
+        return;
+      case 'adminMetrics':
+        this.openAdminMonitoringShortcut(event.sourceEvent);
+        return;
+      case 'adminGraph':
+        this.openAdminAffinityGraphShortcut(event.sourceEvent);
+        return;
+    }
+  }
+
+  protected onShareProfile(event: Event): void {
     event.stopPropagation();
     const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
     const url = new URL(baseHref, window.location.origin).toString();
@@ -174,7 +700,7 @@ export class NavigatorMenuComponent {
     }
   }
 
-  protected onToggleExplanationGuide(event: MouseEvent): void {
+  protected onToggleExplanationGuide(event: Event): void {
     event.stopPropagation();
     this.explanationGuide.toggleEnabled();
   }
@@ -192,6 +718,48 @@ export class NavigatorMenuComponent {
       default:
         return 'status-inactive';
     }
+  }
+
+  protected navigatorHeaderStatusClass(user: NavigatorMenuUser): string {
+    return this.isAdminMode() ? 'status-friends' : this.profileStatusClass(user.profileStatus);
+  }
+
+  protected navigatorHeaderBadgeLabel(user: NavigatorMenuUser): string {
+    return this.isAdminMode() ? 'ADMIN' : `${user.completion}%`;
+  }
+
+  protected navigatorHeaderName(user: NavigatorMenuUser): string {
+    return this.isAdminMode() ? user.name : `${user.name}, ${user.age}`;
+  }
+
+  protected navigatorHeaderMetaIcon(): string {
+    return this.isAdminMode() ? 'admin_panel_settings' : 'location_on';
+  }
+
+  protected navigatorHeaderMetaText(user: NavigatorMenuUser): string {
+    return this.isAdminMode() ? 'Admin workspace' : user.city;
+  }
+
+  protected isNavigatorHeaderProfileDisabled(user: NavigatorMenuUser): boolean {
+    return this.isAdminMode() ? !this.isOnline() : !this.isOnline() || this.isBlockedUser(user);
+  }
+
+  protected navigatorHeaderProfileLabel(): string {
+    return this.isAdminMode() ? 'Open admin profile' : 'Open profile editor';
+  }
+
+  protected openNavigatorHeaderProfile(event: Event): void {
+    if (this.isAdminMode()) {
+      this.openAdminProfileShortcut(event);
+      return;
+    }
+    this.openProfileEditor(event);
+  }
+
+  protected navigatorOfflineNote(): string {
+    return this.isAdminMode()
+      ? 'Offline mode is active. Admin actions wait for the connection to return.'
+      : 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
   }
 
   protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {
@@ -212,24 +780,61 @@ export class NavigatorMenuComponent {
     };
   }
 
-  protected getHostTierToneClass(tier: string): string {
-    return resolveHostTierToneClass(tier);
+  private hostTierPalette(tier: string): AppMenuPalette {
+    const normalizedTier = tier.toLowerCase();
+    if (normalizedTier.includes('platinum')) {
+      return 'sky';
+    }
+    if (normalizedTier.includes('gold')) {
+      return 'gold';
+    }
+    if (normalizedTier.includes('silver')) {
+      return 'slate';
+    }
+    if (normalizedTier.includes('bronze')) {
+      return 'brown';
+    }
+    return 'blue';
   }
 
-  protected getHostTierColorClass(tier: string): string {
-    return resolveHostTierColorClass(tier);
+  private traitPalette(trait: string): AppMenuPalette {
+    const normalizedTrait = trait.toLowerCase();
+    if (normalizedTrait.includes('creative')) {
+      return 'violet';
+    }
+    if (normalizedTrait.includes('empath')) {
+      return 'pink';
+    }
+    if (normalizedTrait.includes('reliable')) {
+      return 'green';
+    }
+    if (normalizedTrait.includes('adventurer')) {
+      return 'sky';
+    }
+    if (normalizedTrait.includes('thinker')) {
+      return 'blue';
+    }
+    if (normalizedTrait.includes('social')) {
+      return 'teal';
+    }
+    if (normalizedTrait.includes('playful')) {
+      return 'orange';
+    }
+    if (normalizedTrait.includes('ambitious')) {
+      return 'purple';
+    }
+    return 'violet';
+  }
+
+  private openSettingsPopup(popup: NavigatorSettingsPopup): void {
+    if (popup === 'help' && !this.hasActiveHelpRevision()) {
+      return;
+    }
+    this.navigatorService.openSettingsPopup(popup);
   }
 
   protected getHostTierIcon(tier: string): string {
     return resolveHostTierIcon(tier);
-  }
-
-  protected getTraitToneClass(trait: string): string {
-    return resolveTraitToneClass(trait);
-  }
-
-  protected getTraitColorClass(trait: string): string {
-    return resolveTraitColorClass(trait);
   }
 
   protected getTraitIcon(trait: string): string {

@@ -15,22 +15,16 @@ export const routes: Routes = [
   },
   {
     path: 'privacy-policy',
-    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
-    data: { legalPage: 'privacy' }
-  },
-  {
-    path: 'data-deletion',
-    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
-    data: { legalPage: 'deletion' }
+    loadComponent: () => import('./shared/ui/components/privacy-policy-popup/privacy-policy-popup.component').then(m => m.PrivacyPolicyPopupComponent)
   },
   {
     path: 'terms',
-    loadComponent: () => import('./legal/components/legal-page/legal-page.component').then(m => m.LegalPageComponent),
-    data: { legalPage: 'terms' }
+    loadComponent: () => import('./shared/ui/components/terms-policy/terms-policy.component').then(m => m.TermsPolicyComponent)
   },
   {
     path: 'admin/help/:token',
-    loadComponent: () => import('./admin/admin-help-session-page.component').then(m => m.AdminHelpSessionPageComponent)
+    loadComponent: () => import('./admin/components/admin-help-session-page/admin-help-session-page.component')
+      .then(m => m.AdminHelpSessionPageComponent)
   },
   {
     path: 'admin/workspace',

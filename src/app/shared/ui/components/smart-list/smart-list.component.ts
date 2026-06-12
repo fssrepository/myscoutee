@@ -7,6 +7,7 @@ import {
   ElementRef,
   EventEmitter,
   Input,
+  Injector,
   NgZone,
   OnChanges,
   OnDestroy,
@@ -30,6 +31,11 @@ import {
   RatingStarBarComponent,
   type RatingStarBarConfig
 } from '../rating-star-bar';
+import {
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  type AppMenuItemSelectEvent
+} from '../menu';
 import {
   buildSmartListCalendarItemsByDate,
   buildSmartListCalendarMonthPage,
@@ -110,8 +116,10 @@ type SmartListCalendarWindow = {
     CommonModule,
     MatIconModule,
     ProgressIndicatorComponent,
-    RatingStarBarComponent
+    RatingStarBarComponent,
+    AppMenuOutletComponent
   ],
+  providers: [AppMenuDispatcher],
   templateUrl: './smart-list.component.html',
   styleUrl: './smart-list.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -134,6 +142,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly hostRef = inject(ElementRef<HTMLElement>);
+  protected readonly itemTemplateInjector = inject(Injector);
+  private readonly itemMenuDispatcher = inject(AppMenuDispatcher);
   private restoreAnchorSequence = 0;
   private readonly ngZone = inject(NgZone);
 
@@ -156,6 +166,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T, TFilters>>();
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
+  @Output() readonly menuItemSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
@@ -180,6 +191,22 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   totalItemCount(): number {
     return this.total;
+  }
+
+  protected onDispatchedMenuItemSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    this.menuItemSelect.emit(event);
+  }
+
+  menuOpen(): boolean {
+    return this.itemMenuDispatcher.activeMenu() !== null;
+  }
+
+  isMenuOpen(id: string): boolean {
+    return this.itemMenuDispatcher.isOpen(id);
+  }
+
+  closeMenu(id?: string): void {
+    this.itemMenuDispatcher.close(id);
   }
   private hasMore = true;
   private pageIndex = 0;
