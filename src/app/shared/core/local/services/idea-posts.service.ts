@@ -15,14 +15,8 @@ export class LocalIdeaPostsService {
   private readonly ideaPostsRepository = inject(LocalIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async init(): Promise<boolean> {
-    await this.ideaPostsRepository.whenReady();
-    return this.ideaPostsRepository.seedDefaults();
-  }
-
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    await this.ideaPostsRepository.seedDefaults();
     const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
     return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
@@ -30,7 +24,6 @@ export class LocalIdeaPostsService {
 
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPost[]> {
     await this.ideaPostsRepository.whenReady();
-    this.ideaPostsRepository.assertSeeded();
     await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
@@ -38,7 +31,6 @@ export class LocalIdeaPostsService {
 
   async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
     await this.ideaPostsRepository.whenReady();
-    this.ideaPostsRepository.assertSeeded();
     const nowIso = new Date().toISOString();
     const language = this.normalizeLang(request.lang);
     const requestedContentKey = `${request.contentKey ?? ''}`.trim();

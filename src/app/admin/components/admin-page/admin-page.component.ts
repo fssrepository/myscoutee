@@ -1,16 +1,13 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, Type, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, Type, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
 import { NavigatorComponent } from '../../../navigator';
-import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
 import {
   SessionService,
-  AppPopupContext,
-  type AdminBootstrapProcessState,
-  type BootstrapProcessStage
+  AppPopupContext
 } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
@@ -25,7 +22,6 @@ import { AdminWorkspaceService } from '../../services/admin-workspace.service';
     MatIconModule,
     MatRippleModule,
     NavigatorComponent,
-    EntryDemoUserSelectorComponent,
     ConfirmationDialogComponent
   ],
   templateUrl: './admin-page.component.html',
@@ -36,8 +32,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly shell = inject(AdminShellService);
   protected readonly sessionService = inject(SessionService);
   private readonly document = inject(DOCUMENT);
-  private readonly changeDetectorRef = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
   private readonly popupCtx = inject(AppPopupContext);
@@ -51,15 +45,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly statsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly affinityGraphPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly monitoringPopupComponentRef = signal<Type<unknown> | null>(null);
-  private selectorLoadToken = 0;
 
-  protected selectorOpen = false;
-  protected selectorLoading = false;
-  protected selectorSubmitting = false;
-  protected selectorLoadingProgress = 0;
-  protected selectorLoadingLabel = 'Preparing admin data';
-  protected selectorLoadingStage: BootstrapProcessStage = 'selector';
-  protected selectorErrorMessage = '';
   protected readonly restoringWorkspace = signal(this.currentRouteIsWorkspace());
   protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
   protected readonly feedbackPopupComponent = this.feedbackPopupComponentRef.asReadonly();
@@ -183,9 +169,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   protected async requestAdminLogin(): Promise<void> {
-    this.selectorErrorMessage = '';
     if (!this.workspace.isFirebaseAdminMode) {
-      this.openSelector();
+      this.openAdminSelector();
       return;
     }
     const session = await this.sessionService.startFirebaseSession();
@@ -202,54 +187,24 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  protected openSelector(): void {
-    const loadToken = ++this.selectorLoadToken;
-    this.selectorOpen = true;
-    this.selectorLoading = true;
-    this.selectorSubmitting = false;
-    this.selectorLoadingProgress = 0;
-    this.selectorLoadingLabel = 'Preparing admin affinity graph';
-    this.selectorLoadingStage = 'selector';
-    this.selectorErrorMessage = '';
-    void this.loadAdminSelector(loadToken);
+  private openAdminSelector(): void {
+    this.popupCtx.openDemoBootstrapSelector({
+      mode: 'admin',
+      title: 'Select admin user',
+      subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',
+      users: this.workspace.adminUsers(),
+      onSelect: adminUserId => this.openSelectedAdmin(adminUserId)
+    });
   }
 
-  protected closeSelector(): void {
-    if (this.selectorSubmitting) {
-      return;
-    }
-    this.selectorLoadToken += 1;
-    this.selectorOpen = false;
-    this.selectorLoading = false;
-    this.selectorSubmitting = false;
-    this.selectorErrorMessage = '';
-  }
-
-  protected async onSelectAdminUser(adminUserId: string): Promise<void> {
-    if (this.selectorLoading || this.selectorSubmitting) {
-      return;
-    }
-    this.selectorSubmitting = true;
-    this.selectorLoading = true;
-    this.selectorLoadingProgress = 0;
-    this.selectorLoadingStage = 'selector';
-    this.selectorLoadingLabel = 'Preparing admin bootstrap';
+  private async openSelectedAdmin(adminUserId: string): Promise<boolean> {
     this.workspace.prepareSelectedAdminSession(adminUserId);
-    const dashboard = await this.workspace.bootstrapAdmin(adminUserId, state => this.applyProgress(state));
+    const dashboard = await this.workspace.bootstrapAdmin(adminUserId);
     if (dashboard) {
-      this.selectorOpen = false;
-      this.selectorLoading = false;
-      this.selectorSubmitting = false;
       await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
-      return;
+      return true;
     }
-    this.selectorLoading = false;
-    this.selectorSubmitting = false;
-    this.selectorErrorMessage = this.workspace.error() || 'Unable to open admin workspace.';
-  }
-
-  protected retrySelector(): void {
-    this.openSelector();
+    return false;
   }
 
   @HostListener('window:adminLogoutRequested')
@@ -262,63 +217,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.workspace.handleAdminAccessDenied();
     if (this.router.url.split('?')[0].startsWith('/admin')) {
       void this.router.navigateByUrl('/admin', { replaceUrl: true });
-    }
-  }
-
-  private applyProgress(state: AdminBootstrapProcessState): void {
-    this.commitSelectorState(() => {
-      this.selectorLoadingProgress = state.percent;
-      this.selectorLoadingLabel = state.label;
-      this.selectorLoadingStage = this.toDemoProcessStage(state.stage);
-    });
-  }
-
-  private async loadAdminSelector(loadToken: number): Promise<void> {
-    try {
-      await this.workspace.prepareDemoAdminSelector(state => {
-        if (this.selectorLoadToken === loadToken && this.selectorOpen) {
-          this.applyProgress(state);
-        }
-      });
-      if (this.selectorLoadToken !== loadToken || !this.selectorOpen) {
-        return;
-      }
-      this.commitSelectorState(() => {
-        this.selectorLoading = false;
-        this.selectorLoadingProgress = 100;
-        this.selectorLoadingLabel = 'Select an admin user';
-        this.selectorLoadingStage = 'ready';
-      });
-    } catch {
-      if (this.selectorLoadToken !== loadToken || !this.selectorOpen) {
-        return;
-      }
-      this.commitSelectorState(() => {
-        this.selectorLoading = false;
-        this.selectorErrorMessage = this.workspace.error() || 'Unable to prepare admin selector.';
-      });
-    }
-  }
-
-  private commitSelectorState(update: () => void): void {
-    this.ngZone.run(() => {
-      update();
-      this.changeDetectorRef.detectChanges();
-    });
-  }
-
-  private toDemoProcessStage(stage: AdminBootstrapProcessState['stage']): BootstrapProcessStage {
-    switch (stage) {
-      case 'indexedDb':
-        return 'indexedDb';
-      case 'affinityGraph':
-        return 'affinityGraph';
-      case 'profile':
-        return 'session';
-      case 'ready':
-        return 'sessionReady';
-      default:
-        return 'selector';
     }
   }
 

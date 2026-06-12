@@ -3,7 +3,6 @@ import { Injectable, inject } from '@angular/core';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 import type { BootstrapProcessState } from '../../base/services/bootstrap.service';
-import { LocalBootstrapService } from './bootstrap.service';
 import type {
   UserDto,
   UserByIdQueryResponse,
@@ -20,11 +19,10 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { LocationCoordinates } from '../../base/interfaces/location.interface';
 import {
-  LocalUserFilterPreferencesBuilder,
-  LocalUserMenuCountersBuilder,
   LocalUserRealtimeSnapshotBuilder,
   type LocalUserRealtimeSnapshotState
 } from '../builders';
+import { UserFilterPreferencesBuilder, UserMenuCountersBuilder } from '../../base/builders';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { APP_STORAGE_KEYS } from '../../base/storage-scope';
@@ -44,7 +42,6 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
-  private readonly bootstrapService = inject(LocalBootstrapService);
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -55,33 +52,17 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     _requestTimeoutMs?: number,
     onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UsersListQueryResponse> {
-    let routeDelaySettled = false;
-    let pendingReadyProgress: BootstrapProcessState | null = null;
-    const routeDelayPromise = this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE)
-      .finally(() => {
-        routeDelaySettled = true;
-      });
-    const reportProgress = onProgress
-      ? (state: BootstrapProcessState): void => {
-          if (state.stage === 'ready' && !routeDelaySettled) {
-            pendingReadyProgress = state;
-            onProgress({
-              percent: 98,
-              label: 'Loading demo users',
-              stage: 'indexedDb'
-            });
-            return;
-          }
-          pendingReadyProgress = null;
-          onProgress(state);
-        }
-      : undefined;
-
-    await this.bootstrapService.ensureReady(reportProgress);
-    await routeDelayPromise;
-    if (pendingReadyProgress) {
-      onProgress?.(pendingReadyProgress);
-    }
+    onProgress?.({
+      percent: 98,
+      label: 'Loading demo users',
+      stage: 'indexedDb'
+    });
+    await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
+    onProgress?.({
+      percent: 100,
+      label: 'Demo data ready',
+      stage: 'ready'
+    });
     return {
       users: this.usersRepository.queryAvailableDemoUsers()
     };
@@ -91,7 +72,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     userId: string,
     onProgress?: (state: BootstrapProcessState) => void
   ): Promise<void> {
-    await this.bootstrapService.ensureUserReady(userId, onProgress);
+    if (!userId.trim()) {
+      return;
+    }
+    onProgress?.({
+      percent: 100,
+      label: 'Demo session ready',
+      stage: 'sessionReady'
+    });
   }
 
   peekCachedUsers(): UserDto[] {
@@ -182,7 +170,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     }
     const counterOverrides = loadedUser ? this.buildInitialMenuCounterOverrides(loadedUser) : null;
     const user = loadedUser
-      ? this.withSeededActivityCounts(loadedUser, counterOverrides)
+      ? this.withActivityCounts(loadedUser, counterOverrides)
       : null;
     if (user) {
       this.primeLocalRealtimeState(user);
@@ -195,7 +183,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       filterCount,
       counterOverrides,
       filterPreferences: user
-        ? (persistedFilterPreferences ?? LocalUserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
+        ? (persistedFilterPreferences ?? UserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
         : null
     };
   }
@@ -225,15 +213,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       state = LocalUserRealtimeSnapshotBuilder.advanceState(state, nextCursor);
       this.realtimeStateByUserId[normalizedUserId] = state;
     }
-    return {
-      userId: normalizedUserId,
-      counters: LocalUserRealtimeSnapshotBuilder.buildSnapshotCounters(state, {
-        suppressImpressionChangeFlags: !advanced
-      }),
-      impressions: state.impressions,
-      cursor: String(nextCursor),
-      serverTsIso: new Date().toISOString()
-    };
+    return LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
+      suppressImpressionChangeFlags: !advanced
+    });
   }
 
   private primeLocalRealtimeState(user: UserDto): void {
@@ -411,7 +393,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   private buildInitialMenuCounterOverrides(user: UserDto) {
-    return LocalUserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
+    return UserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
       cars: user.activities.cars ?? 0,
       accommodation: user.activities.accommodation ?? 0,
       supplies: user.activities.supplies ?? 0,
@@ -421,7 +403,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     });
   }
 
-  private withSeededActivityCounts(
+  private withActivityCounts(
     user: UserDto,
     counters: ReturnType<LocalUsersService['buildInitialMenuCounterOverrides']> | null
   ): UserDto {

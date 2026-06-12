@@ -98,20 +98,4 @@
       </section>
     </div>
   </section>
-
-  <app-entry-demo-user-selector
-    [open]="selectorOpen"
-    [title]="'Select admin user'"
-    [subtitle]="'Login disabled mode. Choose an admin user to seed moderation data.'"
-    [loading]="selectorLoading"
-    [loadingProgress]="selectorLoadingProgress"
-    [loadingLabel]="selectorLoadingLabel"
-    [loadingStage]="selectorLoadingStage"
-    [errorMessage]="selectorErrorMessage"
-    [submitting]="selectorSubmitting"
-    [users]="workspace.adminUsers()"
-    (closeRequested)="closeSelector()"
-    (retryRequested)="retrySelector()"
-    (userSelected)="onSelectAdminUser($event)"
-  ></app-entry-demo-user-selector>
 }

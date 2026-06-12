@@ -3,7 +3,6 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { HttpAdminWorkspaceService } from '../../http/services/admin-workspace.service';
 import { LocalAdminWorkspaceService } from '../../local/services/admin-workspace.service';
-import type { UserSelectorListItemDto } from '../interfaces';
 import type { AdminBootstrapProcessState, AdminDashboardDto, ShareTokenResolvedItem } from '../models';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ShareTokensService } from './share-tokens.service';
@@ -31,7 +30,7 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
     return environment.firebaseLoginEnabled === true;
   }
 
-  get shouldUseEmbeddedAdminHelpSelector(): boolean {
+  get shouldUseLocalAdminHelpSession(): boolean {
     return environment.activitiesDataSource !== 'http' || !this.isFirebaseAdminMode;
   }
 
@@ -55,23 +54,12 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
     }
   }
 
-  async prepareAdminSelector(
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<UserSelectorListItemDto[]> {
-    if (!this.isLocalAdminWorkspace()) {
-      onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
-      return this.adminUsers();
-    }
-    return await this.localService.prepareAdminSelector(onProgress);
-  }
-
   async loadDashboard(
     adminUserId?: string,
-    onProgress?: (state: AdminBootstrapProcessState) => void
+    _onProgress?: (state: AdminBootstrapProcessState) => void
   ): Promise<AdminDashboardDto> {
-    const service = this.resolveRouteService(ADMIN_WORKSPACE_ROUTE, this.localService, this.httpService);
-    return service === this.localService
-      ? await this.localService.loadDashboard(adminUserId, onProgress)
+    return this.isLocalAdminWorkspace()
+      ? await this.localService.loadDashboard(adminUserId)
       : await this.httpService.loadDashboard(adminUserId);
   }
 

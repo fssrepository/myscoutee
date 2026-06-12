@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { ProfileViewData } from '../../base/interfaces/profile.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
 import { LocalContactsRepository } from '../repositories/contacts.repository';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -48,10 +47,6 @@ export class LocalContactsService extends LocalRouteDelayService {
     const savedContacts = this.contactsRepository.deleteContact(userId, contactId);
     await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
     return savedContacts;
-  }
-
-  seedDefaultContacts(users: readonly UserDto[]): boolean {
-    return this.contactsRepository.seedDefaultContacts(users);
   }
 
   private emptyProfileViewData(): ProfileViewData {

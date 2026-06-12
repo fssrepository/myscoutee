@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { UserSelectorListItemDto } from '../interfaces/user.interface';
 import type { ActivityMemberEntry } from '../models/activity-member.model';
 import type { ActivitiesNavigationRequest, ActivityMemberOwnerType } from '../models/activities.model';
 
@@ -34,11 +35,24 @@ export interface AdminNavigatorRequest {
   popup: 'reports' | 'feedback' | 'chat' | 'profile' | 'help-editor' | 'idea-editor' | 'notifications' | 'params' | 'stats' | 'affinity-graph' | 'monitoring';
 }
 
+export type DemoBootstrapSelectorMode = 'member' | 'admin';
+
+export interface DemoBootstrapSelectorState {
+  updatedMs: number;
+  mode: DemoBootstrapSelectorMode;
+  title?: string;
+  subtitle?: string;
+  users?: readonly UserSelectorListItemDto[];
+  onSelect: (userId: string) => boolean | Promise<boolean>;
+  onClose?: () => void;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class AppPopupContext {
   private readonly _activityInvitePopup = signal<ActivityInvitePopupState | null>(null);
+  private readonly _demoBootstrapSelector = signal<DemoBootstrapSelectorState | null>(null);
   private readonly _navigatorActivitiesRequest = signal<NavigatorActivitiesRequest | null>(null);
   private readonly _navigatorAssetRequest = signal<NavigatorAssetRequest | null>(null);
   private readonly _navigatorEventFeedbackRequest = signal<NavigatorEventFeedbackRequest | null>(null);
@@ -46,6 +60,7 @@ export class AppPopupContext {
   private readonly _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
 
   readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
+  readonly demoBootstrapSelector = this._demoBootstrapSelector.asReadonly();
   readonly navigatorActivitiesRequest = this._navigatorActivitiesRequest.asReadonly();
   readonly navigatorAssetRequest = this._navigatorAssetRequest.asReadonly();
   readonly navigatorEventFeedbackRequest = this._navigatorEventFeedbackRequest.asReadonly();
@@ -85,6 +100,29 @@ export class AppPopupContext {
 
   closeActivityInvitePopup(): void {
     this._activityInvitePopup.set(null);
+  }
+
+  openDemoBootstrapSelector(payload: {
+    mode: DemoBootstrapSelectorMode;
+    title?: string;
+    subtitle?: string;
+    users?: readonly UserSelectorListItemDto[];
+    onSelect: (userId: string) => boolean | Promise<boolean>;
+    onClose?: () => void;
+  }): void {
+    this._demoBootstrapSelector.set({
+      updatedMs: Date.now(),
+      mode: payload.mode === 'admin' ? 'admin' : 'member',
+      title: payload.title?.trim() || undefined,
+      subtitle: payload.subtitle?.trim() || undefined,
+      users: payload.users?.map(user => ({ ...user })),
+      onSelect: payload.onSelect,
+      onClose: payload.onClose
+    });
+  }
+
+  closeDemoBootstrapSelector(): void {
+    this._demoBootstrapSelector.set(null);
   }
 
   openNavigatorActivitiesRequest(

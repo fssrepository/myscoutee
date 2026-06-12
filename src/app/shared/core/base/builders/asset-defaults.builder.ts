@@ -149,6 +149,16 @@ export class AssetDefaultsBuilder {
     return this.defaultCategory(type);
   }
 
+  static defaultAssetImage(type: AppTypes.AssetType, seed = type.toLowerCase()): string {
+    const flavor = type === 'Car'
+      ? 'road'
+      : type === 'Accommodation'
+        ? 'stay'
+        : 'gear';
+    const normalizedSeed = encodeURIComponent(`${type.toLowerCase()}-${flavor}-${seed || type.toLowerCase()}`);
+    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
+  }
+
   static ownedAssetEmptyLabel(type: AppTypes.AssetType): string {
     if (type === 'Accommodation') {
       return 'No properties yet';

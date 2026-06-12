@@ -4,3 +4,4 @@ export * from './activities-query.converter';
 export * from './activities-rate.converter';
 export { AssetTicketConverter } from './asset-ticket.converter';
 export { EventEditorConverter } from './event-editor.converter';
+export { UserRealtimeSnapshotConverter } from './user-realtime-snapshot.converter';

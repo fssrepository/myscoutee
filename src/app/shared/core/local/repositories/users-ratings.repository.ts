@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
-import { LocalUserRatesBuilder, LocalUserSeedBuilder } from '../builders';
+import { UserRatesBuilder, UserProfileStateBuilder } from '../../base/builders';
 import type { RateRecord } from '../../base/models/rate.model';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
@@ -26,166 +26,11 @@ import {
   providedIn: 'root'
 })
 export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
-  private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-  private static readonly MIN_ACTIVITY_RATE_CONNECTIONS = 8;
-  private static readonly DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO = 0.25;
-  private static readonly FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT = 3;
-  private static readonly FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 4;
-  private static readonly DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT = 1;
-  private static readonly MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS = 1000;
   protected override readonly memoryDb = inject(LocalMemoryDb);
-  private initialized = false;
-
-  init(seedUsers?: readonly UserDto[]): void {
-    if (this.initialized) {
-      return;
-    }
-    const users = (seedUsers?.length ? [...seedUsers] : this.querySeedUsers())
-      .filter(user => !LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
-    const visibleSeedUsers = users.filter(user => LocalUserSeedBuilder.isActivityRateVisibleProfile(user));
-    const ownerIdsToSeed = this.collectOwnerIdsNeedingActivityRateSeed(visibleSeedUsers);
-    const currentRatesCount = this.memoryDb.read()[USER_RATES_TABLE_NAME].ids.length;
-    const remainingBootstrapSlots = Math.max(
-      0,
-      LocalUsersRatingsRepository.MAX_DEMO_ACTIVITY_RATE_BOOTSTRAP_RECORDS - currentRatesCount
-    );
-    if (ownerIdsToSeed.length === 0) {
-      this.initialized = true;
-      return;
-    }
-    if (remainingBootstrapSlots <= 0) {
-      this.initialized = true;
-      return;
-    }
-    const records: UserRateRecord[] = [];
-    for (let ownerIndex = 0; ownerIndex < ownerIdsToSeed.length; ownerIndex += 1) {
-      const ownerUserId = ownerIdsToSeed[ownerIndex];
-      if (!ownerUserId) {
-        continue;
-      }
-      const ownerGraphCohortUsers = this.graphSeedCohortUsers(visibleSeedUsers, ownerUserId);
-      const ownerRecords = LocalUserRatesBuilder.buildGeneratedRateItemsForUser(ownerGraphCohortUsers, ownerUserId, {
-        extraSingleGivenCount: ownerIndex < LocalUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_OWNER_COUNT
-          ? LocalUsersRatingsRepository.FEATURED_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT
-          : LocalUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
-        userCoverageRatio: LocalUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
-      })
-        .map(item => LocalUserRatesBuilder.toActivityRateRecord(ownerUserId, item));
-      if (records.length + ownerRecords.length > remainingBootstrapSlots) {
-        break;
-      }
-      records.push(...ownerRecords);
-    }
-    if (records.length === 0) {
-      this.initialized = true;
-      return;
-    }
-    this.memoryDb.write(state => {
-      const current = state[USER_RATES_TABLE_NAME];
-      const byId = { ...current.byId };
-      const ids = [...current.ids];
-      const existingIds = new Set(ids);
-      for (const record of records) {
-        byId[record.id] = { ...record };
-        if (!existingIds.has(record.id)) {
-          existingIds.add(record.id);
-          ids.push(record.id);
-        }
-      }
-      return {
-        ...state,
-        [USER_RATES_TABLE_NAME]: this.rebuildUserRatesTableIndex({
-          ...current,
-          byId,
-          ids
-        })
-      };
-    });
-    this.initialized = true;
-  }
-
-  private querySeedUsers(): UserDto[] {
-    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
-    if (usersTable.ids.length > 0) {
-      return usersTable.ids
-        .map(id => usersTable.byId[id])
-        .filter((user): user is UserDto => Boolean(user?.id?.trim()))
-        .filter(user => !LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
-    }
-    return LocalUserSeedBuilder.buildExpandedDemoUsers(LocalUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT)
-      .filter(user => !LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
-  }
-
-  private collectOwnerIdsNeedingActivityRateSeed(
-    users: readonly { id: string; gender?: 'woman' | 'man' }[]
-  ): string[] {
-    const counterpartIdsByOwner = new Map<string, Set<string>>();
-    for (const user of users) {
-      const ownerUserId = user.id.trim();
-      if (!ownerUserId) {
-        continue;
-      }
-      counterpartIdsByOwner.set(ownerUserId, new Set<string>());
-    }
-
-    const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
-    for (const id of ratesTable.ids) {
-      const record = ratesTable.byId[id];
-      if (!record) {
-        continue;
-      }
-      const ownerUserId = record.ownerUserId?.trim() ?? '';
-      const bucket = counterpartIdsByOwner.get(ownerUserId);
-      if (!bucket) {
-        continue;
-      }
-      for (const counterpartUserId of this.activityRateCounterpartUserIds(record, ownerUserId)) {
-        if (counterpartUserId) {
-          bucket.add(counterpartUserId);
-        }
-      }
-    }
-
-    return [...counterpartIdsByOwner.entries()]
-      .filter(([, counterpartIds]) => counterpartIds.size < LocalUsersRatingsRepository.MIN_ACTIVITY_RATE_CONNECTIONS)
-      .map(([ownerUserId]) => ownerUserId);
-  }
-
-  private graphSeedCohortUsers<TUser extends { id: string }>(users: readonly TUser[], ownerUserId: string): readonly TUser[] {
-    if (users.length < LocalUsersRatingsRepository.MIN_ACTIVITY_RATE_CONNECTIONS * 2) {
-      return users;
-    }
-    const midpoint = Math.ceil(users.length * 2 / 3);
-    const ownerIndex = users.findIndex(user => user.id.trim() === ownerUserId.trim());
-    if (ownerIndex < 0) {
-      return users;
-    }
-    const cohortStart = ownerIndex < midpoint ? 0 : midpoint;
-    const cohortEnd = ownerIndex < midpoint ? midpoint : users.length;
-    return users.slice(cohortStart, cohortEnd);
-  }
-
-  private activityRateCounterpartUserIds(record: UserRateRecord, ownerUserId: string): string[] {
-    const normalizedOwnerUserId = ownerUserId.trim();
-    if (!normalizedOwnerUserId) {
-      return [];
-    }
-    if (record.mode === 'pair' && record.ownerUserId?.trim() === normalizedOwnerUserId) {
-      return [record.fromUserId.trim(), record.toUserId.trim()]
-        .filter(userId => userId.length > 0 && userId !== normalizedOwnerUserId);
-    }
-    if (record.fromUserId.trim() === normalizedOwnerUserId) {
-      return [record.toUserId.trim()].filter(Boolean);
-    }
-    if (record.toUserId.trim() === normalizedOwnerUserId) {
-      return [record.fromUserId.trim()].filter(Boolean);
-    }
-    return [];
-  }
 
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
     const normalizedRaterId = raterUserId.trim();
-    if (!normalizedRaterId || LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
+    if (!normalizedRaterId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
       return [];
     }
     const state = this.memoryDb.read();
@@ -202,7 +47,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = LocalUserRatesBuilder.toRateRecord(record);
+      const item = UserRatesBuilder.toRateRecord(record);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -227,7 +72,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       if (payload.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = LocalUserRatesBuilder.toRateRecord(payload);
+      const item = UserRatesBuilder.toRateRecord(payload);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -245,12 +90,12 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
 
     return Array.from(ratedUserIds)
       .filter(id => id.length > 0)
-      .filter(id => !LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(id));
+      .filter(id => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(id));
   }
 
   override queryRatedGameCardPairKeys(ownerUserId: string): string[] {
     const normalizedOwnerUserId = ownerUserId.trim();
-    if (!normalizedOwnerUserId || LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
+    if (!normalizedOwnerUserId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
       return [];
     }
     const pairKeys = new Set(this.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
@@ -263,7 +108,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
-      const item = LocalUserRatesBuilder.toRateRecord(record);
+      const item = UserRatesBuilder.toRateRecord(record);
       if (!item || item.mode !== 'pair' || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -337,7 +182,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    if (LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId)) {
+    if (UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId)) {
       return [];
     }
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
@@ -367,9 +212,9 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
   }
 
   private referencesEmptyOnboardingProfile(item: RateRecord): boolean {
-    return LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(item.userId)
-      || LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
-      || LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
+    return UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.userId)
+      || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
+      || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
   private activityRateItemUsersAreVisible(
@@ -388,7 +233,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       && ids.indexOf(userId) === index
     );
     return displayedUserIds.every(userId =>
-      LocalUserSeedBuilder.isActivityRateVisibleProfile(usersById.get(userId))
+      UserProfileStateBuilder.isActivityRateVisibleProfile(usersById.get(userId))
     );
   }
 
@@ -936,7 +781,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
     if (!ownerUserId) {
       return null;
     }
-    const item = LocalUserRatesBuilder.toRateRecord(record);
+    const item = UserRatesBuilder.toRateRecord(record);
     if (!item) {
       return null;
     }

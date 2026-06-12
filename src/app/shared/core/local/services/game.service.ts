@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { LocalRouteDelayService } from './route-delay.service';
-import { LocalUserSeedBuilder } from '../builders';
+import { UserProfileStateBuilder } from '../../base/builders';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersRatingsRepository } from '../repositories/users-ratings.repository';
@@ -37,8 +37,8 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   queryGameCardsUsersSnapshot(): UserDto[] {
     return this.usersRepository.queryAllUsers()
       .filter(user => user.id.trim().length > 0)
-      .filter(user => !LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id))
-      .filter(user => LocalUserSeedBuilder.isActivityRateVisibleProfile(user));
+      .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id))
+      .filter(user => UserProfileStateBuilder.isActivityRateVisibleProfile(user));
   }
 
   recordGameCardRating(
@@ -71,7 +71,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       return { cards: null };
     }
     const activeUser = this.usersRepository.queryUserById(normalizedUserId);
-    if (!LocalUserSeedBuilder.isPublicGameProfile(activeUser)) {
+    if (!UserProfileStateBuilder.isPublicGameProfile(activeUser)) {
       return {
         cards: {
           filterCount: 0,
@@ -441,13 +441,13 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     const candidate = usersById.get(card.userId.trim());
     if (mode === 'friends-in-common') {
       const bridge = usersById.get(card.bridgeUserId?.trim() ?? '');
-      return LocalUserSeedBuilder.isPublicGameProfile(candidate)
-        && LocalUserSeedBuilder.isInsideNetworkGameProfile(bridge);
+      return UserProfileStateBuilder.isPublicGameProfile(candidate)
+        && UserProfileStateBuilder.isInsideNetworkGameProfile(bridge);
     }
 
     const secondUser = usersById.get((card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || ''));
-    return LocalUserSeedBuilder.isInsideNetworkGameProfile(candidate)
-      && LocalUserSeedBuilder.isInsideNetworkGameProfile(secondUser);
+    return UserProfileStateBuilder.isInsideNetworkGameProfile(candidate)
+      && UserProfileStateBuilder.isInsideNetworkGameProfile(secondUser);
   }
 
   private socialPairKey(card: UserGameSocialCard): string | null {

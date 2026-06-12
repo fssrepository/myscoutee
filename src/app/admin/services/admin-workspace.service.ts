@@ -54,12 +54,6 @@ export class AdminWorkspaceService {
     this.activateAdminProfile(normalized);
   }
 
-  async prepareDemoAdminSelector(
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<UserSelectorListItemDto[]> {
-    return await this.workspaceData.prepareAdminSelector(onProgress);
-  }
-
   patchModerationUser(patch: AdminModerationUserPatch | null | undefined): AdminReportedUserDto | null {
     const dashboard = this.dashboardRef();
     const normalizedUserId = `${patch?.userId ?? ''}`.trim();

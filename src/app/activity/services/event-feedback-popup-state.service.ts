@@ -2,7 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type * as AppTypes from '../../shared/core/base/models';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
-import { LocalEventFeedbackBuilder } from '../../shared/core/local/builders';
+import { EventFeedbackBuilder } from '../../shared/core/base/builders';
 import { EventsService } from '../../shared/core/base';
 import { AppContext, type UserDto } from '../../shared/core';
 import type { ActivityEventSeedItem } from '../../shared/core/base/models/event-seed-item.model';
@@ -1127,7 +1127,7 @@ export class EventFeedbackPopupStateService {
   private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
     const source = this.sourceRef();
     if (!source) return [];
-    return LocalEventFeedbackBuilder.buildEventFeedbackCards({
+    return EventFeedbackBuilder.buildEventFeedbackCards({
       eventItems: source.eventItems,
       users: source.users,
       activeUser: source.activeUser,

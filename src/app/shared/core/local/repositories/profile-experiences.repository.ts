@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 
 import type { ExperienceEntry } from '../../base/models/profile.model';
 import { LocalMemoryDb } from '../../base/db';
-import { LocalProfileExperienceSeedBuilder } from '../builders';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experiences.model';
 
 @Injectable({
@@ -10,44 +9,8 @@ import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experi
 })
 export class LocalProfileExperiencesRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
-  private initialized = false;
-
-  init(): void {
-    if (this.initialized) {
-      return;
-    }
-
-    const seededByUserId = LocalProfileExperienceSeedBuilder.buildSeededExperiencesByUserId();
-    const table = this.memoryDb.read()[PROFILE_EXPERIENCES_TABLE_NAME];
-    const nextByUserId = { ...table.byUserId };
-    const nextUserIds = [...table.userIds];
-    let changed = false;
-
-    for (const [userId, entries] of Object.entries(seededByUserId)) {
-      const normalizedUserId = userId.trim();
-      if (!normalizedUserId || Object.prototype.hasOwnProperty.call(nextByUserId, normalizedUserId)) {
-        continue;
-      }
-      nextByUserId[normalizedUserId] = this.cloneEntries(entries);
-      nextUserIds.push(normalizedUserId);
-      changed = true;
-    }
-
-    if (changed) {
-      this.memoryDb.write(state => ({
-        ...state,
-        [PROFILE_EXPERIENCES_TABLE_NAME]: {
-          byUserId: nextByUserId,
-          userIds: [...new Set(nextUserIds)]
-        }
-      }));
-    }
-
-    this.initialized = true;
-  }
 
   queryUserExperiences(userId: string): ExperienceEntry[] {
-    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -57,7 +20,6 @@ export class LocalProfileExperiencesRepository {
   }
 
   replaceUserExperiences(userId: string, entries: readonly ExperienceEntry[]): ExperienceEntry[] {
-    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];

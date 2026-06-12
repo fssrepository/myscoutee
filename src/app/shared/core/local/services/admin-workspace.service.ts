@@ -1,50 +1,27 @@
-import { Location } from '@angular/common';
 import { Injectable, inject, signal } from '@angular/core';
 
 import type { UserDto, UserSelectorListItemDto } from '../../base/interfaces';
-import type { AdminBootstrapMenuSeedState } from '../../base/services/admin-bootstrap.service';
-import { BootstrapProcessService } from '../../base/services/bootstrap.service';
-import type { AdminMonitoringStateDto } from '../../base/models/admin-monitoring.model';
-import type { AdminNotificationCenterState } from '../../base/models/admin-notification.model';
-import type { ChatPopupMessage, ChatRecord } from '../../base/models/chat.model';
-import { LocalAdminBootstrapService } from './admin-bootstrap.service';
 import type {
-  AdminBootstrapProcessState,
   AdminChatMessageDto,
   AdminDashboardDto,
   AdminFeedbackDto,
-  AdminHelpTarget,
   AdminModerationStore,
   AdminReportDto,
   AdminReportedUserDto,
   AdminUserDto
 } from '../../base/models';
-import {
-  AdminHelpSeedBuilder,
-  AdminModerationSeedBuilder,
-  AdminMonitoringSeedBuilder,
-  AdminNotificationsSeedBuilder,
-  AdminParamsSeedBuilder,
-  AdminProfileSeedBuilder,
-  AdminStatsSeedBuilder
-} from '../builders/admin';
+import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
+import { LocalAdminSupportSessionService } from './admin-support-session.service';
+import { LocalRouteDelayService } from './route-delay.service';
 
-const ADMIN_DEMO_SELECTOR_PROCESS_STEPS: readonly AdminBootstrapProcessState[] = [
-  { stage: 'records', percent: 24, label: 'Preparing admin graph members' },
-  { stage: 'records', percent: 54, label: 'Preparing admin graph ratings' },
-  { stage: 'affinityGraph', percent: 82, label: 'Preparing admin affinity graph' },
-  { stage: 'ready', percent: 100, label: 'Admin selector ready' }
-];
+const ADMIN_WORKSPACE_LOAD_ROUTE = '/admin/workspace';
 
 @Injectable({
   providedIn: 'root'
 })
-export class LocalAdminWorkspaceService {
-  private readonly location = inject(Location);
-  private readonly bootstrapData = inject(LocalAdminBootstrapService);
-  private readonly bootstrapProcess = inject(BootstrapProcessService);
-  private demoAdminSelectorPromise: Promise<void> | null = null;
-  private demoAdminSelectorReady = false;
+export class LocalAdminWorkspaceService extends LocalRouteDelayService {
+  private readonly moderationRepository = inject(LocalAdminModerationRepository);
+  private readonly supportSession = inject(LocalAdminSupportSessionService);
 
   readonly adminUsers = signal<UserSelectorListItemDto[]>([
     {
@@ -65,170 +42,45 @@ export class LocalAdminWorkspaceService {
     }
   ]).asReadonly();
 
-  async prepareAdminSelector(
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<UserSelectorListItemDto[]> {
-    if (this.demoAdminSelectorReady) {
-      onProgress?.({ percent: 100, label: 'Admin selector ready', stage: 'ready' });
-      return this.adminUsers();
-    }
-
-    if (!this.demoAdminSelectorPromise) {
-      this.demoAdminSelectorPromise = this.bootstrapDemoAdminSelector(onProgress)
-        .finally(() => {
-          this.demoAdminSelectorPromise = null;
-        });
-    }
-    await this.demoAdminSelectorPromise;
-    return this.adminUsers();
-  }
-
-  async loadDashboard(
-    adminUserId?: string,
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<AdminDashboardDto> {
-    return await this.bootstrapDemoDashboardData(adminUserId, onProgress);
-  }
-
-  private async bootstrapDemoDashboardData(
-    adminUserId?: string,
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<AdminDashboardDto> {
-    const admin = this.resolveDemoAdmin(adminUserId);
-    await this.prepareAdminSelector();
-    onProgress?.({ percent: 18, label: 'Preparing admin data', stage: 'indexedDb' });
-    await this.bootstrapData.whenUsersReady();
-    await this.initOptionalDemoHelpCenter();
-    await this.bootstrapData.initIdeaPosts();
-    this.bootstrapData.initUsers();
-    this.bootstrapData.initUserRatings();
-    await this.ensureDemoAdminProfiles();
-    onProgress?.({ percent: 36, label: 'Preparing admin records', stage: 'records' });
-    this.bootstrapData.initChats();
-    onProgress?.({ percent: 48, label: 'Creating moderation records', stage: 'records' });
-    const store = this.buildSeedDemoModerationStore();
-    const menuSeedState = await this.resetAndSeedDemoAdminStores(store);
-    await this.seedDemoAdminMenuCounters(menuSeedState);
-    await this.ensureDemoAdminSupportSeed(admin);
-    onProgress?.({ percent: 74, label: 'Resolving reported users', stage: 'records' });
-    const dashboard = this.buildDemoDashboard(admin, store);
-    onProgress?.({ percent: 92, label: 'Opening admin workspace', stage: 'profile' });
-    onProgress?.({ percent: 100, label: 'Admin workspace ready', stage: 'ready' });
-    return dashboard;
-  }
-
-  private async initOptionalDemoHelpCenter(): Promise<void> {
+  async loadDashboard(adminUserId?: string): Promise<AdminDashboardDto> {
+    const read = this.readDashboard(adminUserId);
+    const delay = this.waitForRouteDelay(ADMIN_WORKSPACE_LOAD_ROUTE);
     try {
-      await this.bootstrapData.initHelpCenter();
-    } catch {
-      // Help, privacy, and explanation content should never block admin demo bootstrap.
+      const [dashboard] = await Promise.all([read, delay]);
+      return dashboard;
+    } catch (error) {
+      await delay.catch(() => undefined);
+      throw error;
     }
   }
 
-  private async bootstrapDemoAdminSelector(
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<void> {
-    this.demoAdminSelectorReady = false;
-    const seededUsers = await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[0], () =>
-      this.bootstrapData.initUsers()
-    );
-    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[1], () => {
-      this.bootstrapData.initUserRatings(seededUsers);
-    });
-    await this.runAdminSelectorStep(onProgress, ADMIN_DEMO_SELECTOR_PROCESS_STEPS[2], () =>
-      this.bootstrapData.buildAndWriteAffinityGraphSnapshot()
-    );
-    this.demoAdminSelectorReady = true;
-    onProgress?.(ADMIN_DEMO_SELECTOR_PROCESS_STEPS[3]);
-  }
-
-  private async runAdminSelectorStep<T = void>(
-    onProgress: ((state: AdminBootstrapProcessState) => void) | undefined,
-    step: AdminBootstrapProcessState,
-    work?: () => T | Promise<T>
-  ): Promise<T> {
-    return await this.bootstrapProcess.runStep(step, onProgress, work);
-  }
-
-  private async resetAndSeedDemoAdminStores(
-    moderation: AdminModerationStore
-  ): Promise<AdminBootstrapMenuSeedState<AdminNotificationCenterState, AdminMonitoringStateDto>> {
-    return await this.bootstrapData.resetAndSeedAdminStores({
-      moderation,
-      notificationCenter: AdminNotificationsSeedBuilder.buildDefaultNotificationCenter(),
-      monitoring: AdminMonitoringSeedBuilder.buildDefaultMonitoringState(),
-      stats: AdminStatsSeedBuilder.buildSeedDemoStatsSnapshot(),
-      params: AdminParamsSeedBuilder.buildDefaultParamsStore()
-    });
-  }
-
-  private async seedDemoAdminMenuCounters(
-    seedState: AdminBootstrapMenuSeedState<AdminNotificationCenterState, AdminMonitoringStateDto>
-  ): Promise<void> {
-    const notificationCenter = seedState.notificationCenter;
-    const monitoringState = seedState.monitoring;
-    const adminJobs = this.countFailedNotificationRules(notificationCenter);
-    const adminMetrics = this.countAlertMonitoringMetrics(monitoringState);
-    for (const admin of this.adminUsers()) {
-      const user = this.bootstrapData.findUser(admin.id);
-      if (!user) {
-        continue;
-      }
-      const nextActivities = {
-        game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
-        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
-        invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
-        events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
-        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
-        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
-        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
-        adminJobs,
-        adminMetrics
+  resolveDemoAdmin(adminUserId?: string): AdminUserDto {
+    const id = `${adminUserId ?? ''}`.trim();
+    if (id === 'admin-demo-noel') {
+      return {
+        id: 'admin-demo-noel',
+        name: 'Noel Safety',
+        initials: 'NS',
+        email: 'noel.admin@myscoutee.local',
+        images: this.demoAdminImages('admin-demo-noel')
       };
-      if (
-        nextActivities.adminJobs === Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0))
-        && nextActivities.adminMetrics === Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
-      ) {
-        continue;
-      }
-      await this.bootstrapData.saveUser({
-        ...user,
-        activities: nextActivities
-      });
     }
+    return {
+      id: 'admin-demo-ava',
+      name: 'Ava',
+      initials: 'AM',
+      email: 'ava.admin@myscoutee.local',
+      images: this.demoAdminImages('admin-demo-ava')
+    };
   }
 
-  private countFailedNotificationRules(state: AdminNotificationCenterState | null | undefined): number {
-    return (state?.rules ?? []).filter(rule => {
-      const current = `${rule.runState?.currentStatus ?? ''}`.trim().toLowerCase();
-      const last = `${rule.runState?.lastRunStatus ?? ''}`.trim().toLowerCase();
-      return this.isFailureStatus(current) || this.isFailureStatus(last);
-    }).length;
-  }
-
-  private countAlertMonitoringMetrics(state: AdminMonitoringStateDto | null | undefined): number {
-    return (state?.categories ?? [])
-      .flatMap(category => category.nodes ?? [])
-      .flatMap(node => node.metrics ?? [])
-      .filter(metric => metric.status === 'alert' || this.isFailureStatus(metric.key) || this.isFailureStatus(metric.labelKey))
-      .reduce((total, metric) => total + Math.max(0, Math.trunc(Number(metric.value) || 0)), 0);
-  }
-
-  private isFailureStatus(value: string): boolean {
-    const normalized = `${value ?? ''}`.trim().toLowerCase();
-    return normalized.includes('failed')
-      || normalized.includes('error')
-      || normalized.includes('missed')
-      || normalized.includes('timeout')
-      || normalized.includes('hiany')
-      || normalized.includes('hiba');
-  }
-
-  private buildSeedDemoModerationStore(): AdminModerationStore {
-    return AdminModerationSeedBuilder.buildSeedDemoModerationStore({
-      userImageUrl: userId => this.firstUserImage(this.bootstrapData.findUser(userId)),
-      chatMessages: (ownerUserId, chatId) => this.demoChatMessages(ownerUserId, chatId)
-    });
+  private async readDashboard(adminUserId?: string): Promise<AdminDashboardDto> {
+    await this.moderationRepository.whenReady();
+    const store = await this.moderationRepository.readStore();
+    if (!store?.reports?.length && !store?.feedback?.length) {
+      throw new Error('Demo admin workspace is not bootstrapped.');
+    }
+    return this.buildDemoDashboard(this.resolveDemoAdmin(adminUserId), store);
   }
 
   private buildDemoDashboard(admin: AdminUserDto, store: AdminModerationStore): AdminDashboardDto {
@@ -242,7 +94,7 @@ export class LocalAdminWorkspaceService {
       reportsByUser.set(key, [...(reportsByUser.get(key) ?? []), this.enrichDemoReport(report)]);
     }
     const reportedUsers = [...reportsByUser.entries()].map(([userId, reports]) => {
-      const user = this.bootstrapData.findUser(userId);
+      const user = this.supportSession.findUser(userId);
       const sortedReports = [...reports].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
       );
@@ -266,7 +118,7 @@ export class LocalAdminWorkspaceService {
     );
     return {
       activeAdmin,
-      activeAdminProfile: this.bootstrapData.findUser(activeAdmin.id),
+      activeAdminProfile: this.supportSession.findUser(activeAdmin.id),
       reportedUsers,
       blockedUsers: this.demoBlockedUsers(store, reportsByUser, activeAdmin.id),
       feedback: [...store.feedback].sort((first, second) =>
@@ -281,7 +133,7 @@ export class LocalAdminWorkspaceService {
     adminId: string
   ): AdminReportedUserDto[] {
     const reportedBlocked = [...reportsByUser.keys()]
-      .map(userId => this.bootstrapData.findUser(userId))
+      .map(userId => this.supportSession.findUser(userId))
       .filter((user): user is UserDto => user?.profileStatus === 'blocked');
     return reportedBlocked.map(user => {
       const reports = [...(reportsByUser.get(user.id) ?? [])].sort((first, second) =>
@@ -307,33 +159,8 @@ export class LocalAdminWorkspaceService {
     );
   }
 
-  private async ensureDemoAdminProfiles(): Promise<void> {
-    const admins = [
-      this.resolveDemoAdmin('admin-demo-ava'),
-      this.resolveDemoAdmin('admin-demo-noel')
-    ];
-    for (const admin of admins) {
-      const existing = this.bootstrapData.findUser(admin.id);
-      if (existing) {
-        const seededImages = this.demoAdminImages(admin.id);
-        const existingImages = existing.images ?? [];
-        if (
-          seededImages.length > 0
-          && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)))
-        ) {
-          await this.bootstrapData.saveUser({
-            ...existing,
-            images: seededImages
-          });
-        }
-        continue;
-      }
-      await this.bootstrapData.saveUser(AdminProfileSeedBuilder.buildDemoAdminUser(admin));
-    }
-  }
-
   private enrichDemoFeedback(feedback: AdminFeedbackDto): AdminFeedbackDto {
-    const user = this.bootstrapData.findUser(feedback.userId);
+    const user = this.supportSession.findUser(feedback.userId);
     return {
       ...feedback,
       userName: user?.name ?? feedback.userName,
@@ -341,12 +168,8 @@ export class LocalAdminWorkspaceService {
     };
   }
 
-  private firstUserImage(user: UserDto | null | undefined): string | null {
-    return user?.images?.find(image => image.trim().length > 0) ?? null;
-  }
-
   private enrichDemoReport(report: AdminReportDto): AdminReportDto {
-    const reporter = this.bootstrapData.findUser(report.reporterUserId);
+    const reporter = this.supportSession.findUser(report.reporterUserId);
     if (report.chatId && (!report.chatMessages || report.chatMessages.length === 0)) {
       return {
         ...report,
@@ -361,98 +184,13 @@ export class LocalAdminWorkspaceService {
     };
   }
 
-  private async ensureDemoAdminSupportSeed(admin: AdminUserDto): Promise<void> {
-    const helpUser = this.bootstrapData.findUser('u1');
-    if (!helpUser) {
-      return;
-    }
-    const now = new Date();
-    const chat: ChatRecord & { ownerUserId?: string } = {
-      id: `c-admin-service-help-${helpUser.id}`,
-      avatar: helpUser.initials,
-      title: `MyScoutee Support · ${helpUser.name}`,
-      lastMessage: 'Please help me with what I see on MyScoutee.',
-      lastSenderId: helpUser.id,
-      memberIds: [admin.id, helpUser.id],
-      unread: 1,
-      dateIso: now.toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
-      ownerUserId: admin.id
-    };
-    const existingChat = this.bootstrapData.findChatsByUser(admin.id)
-      .find(item => item.id === chat.id);
-    const existingMessageIds = new Set(
-      existingChat ? this.bootstrapData.readChatMessages(existingChat).map(message => message.id) : []
-    );
-    let changed = false;
-    const targets = this.demoAdminHelpTargets();
-    for (let index = 0; index < targets.length; index += 1) {
-      const target = targets[index];
-      if (!target) {
-        continue;
-      }
-      const token = this.bootstrapData.ensureAdminHelpToken({
-        adminId: admin.id,
-        userId: helpUser.id,
-        targetKey: target.key,
-        targetUrl: target.targetUrl
-      });
-      const helpUrl = this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
-      const sentAt = new Date(now.getTime() + index * 1000);
-      const sentAtIso = sentAt.toISOString();
-      const message: ChatPopupMessage = {
-        id: target.messageId,
-        sender: helpUser.name,
-        senderAvatar: {
-          id: helpUser.id,
-          initials: helpUser.initials,
-          gender: helpUser.gender
-        },
-        text: target.text,
-        time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        sentAtIso,
-        mine: false,
-        readBy: [],
-        attachments: [{
-          id: target.attachmentId,
-          type: target.attachmentType,
-          title: target.title,
-          entityId: target.attachmentType === 'link' ? token : target.attachmentEntityId,
-          assetType: target.assetType ?? null,
-          ownerUserId: helpUser.id,
-          subtitle: target.subtitle,
-          description: target.description,
-          url: helpUrl,
-          previewUrl: target.previewUrl ?? null
-        }]
-      };
-      if (existingMessageIds.has(target.messageId) && existingChat) {
-        await this.bootstrapData.updateChatMessage(existingChat, target.messageId, {
-          attachments: message.attachments ?? []
-        });
-        changed = true;
-        continue;
-      }
-      await this.bootstrapData.appendChatMessage(chat, message);
-      changed = true;
-    }
-    if (changed) {
-      await this.bootstrapProcess.waitForUiYield();
-    }
-  }
-
-  private demoAdminHelpTargets(): AdminHelpTarget[] {
-    return AdminHelpSeedBuilder.demoAdminHelpTargets();
-  }
-
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
-    const chat = this.bootstrapData.findChatsByUser(ownerUserId)
+    const chat = this.supportSession.findChatsByUser(ownerUserId)
       .find(item => item.id === chatId);
     if (!chat) {
       return [];
     }
-    return this.bootstrapData.readChatMessages(chat).map(message => ({
+    return this.supportSession.readChatMessages(chat).map(message => ({
       id: message.id,
       sender: message.sender,
       senderUserId: message.senderAvatar.id,
@@ -470,7 +208,7 @@ export class LocalAdminWorkspaceService {
     if (!normalizedUserId || !normalizedAdminId) {
       return false;
     }
-    return this.bootstrapData.findChatsByUser(normalizedAdminId)
+    return this.supportSession.findChatsByUser(normalizedAdminId)
       .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
   }
 
@@ -480,41 +218,17 @@ export class LocalAdminWorkspaceService {
     if (!normalizedUserId || !normalizedAdminId) {
       return 0;
     }
-    const chat = this.bootstrapData.findChatsByUser(normalizedAdminId)
+    const chat = this.supportSession.findChatsByUser(normalizedAdminId)
       .find(item => item.id === `c-support-admin-${normalizedUserId}`);
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
   }
 
-  private resolveDemoAdmin(adminUserId?: string): AdminUserDto {
-    const id = `${adminUserId ?? ''}`.trim();
-    if (id === 'admin-demo-noel') {
-      return {
-        id: 'admin-demo-noel',
-        name: 'Noel Safety',
-        initials: 'NS',
-        email: 'noel.admin@myscoutee.local',
-        images: this.demoAdminImages('admin-demo-noel')
-      };
-    }
-    return {
-      id: 'admin-demo-ava',
-      name: 'Ava',
-      initials: 'AM',
-      email: 'ava.admin@myscoutee.local',
-      images: this.demoAdminImages('admin-demo-ava')
-    };
-  }
-
-  private demoAdminImages(adminUserId: string): string[] {
-    return AdminProfileSeedBuilder.demoAdminImages(adminUserId);
-  }
-
-  private isLegacyDemoAdminImage(imageUrl: string | null | undefined): boolean {
-    return AdminProfileSeedBuilder.isLegacyDemoAdminImage(imageUrl);
+  private firstUserImage(user: UserDto | null | undefined): string | null {
+    return user?.images?.find(image => image.trim().length > 0) ?? null;
   }
 
   private mergeStoredAdminProfile(admin: AdminUserDto): AdminUserDto {
-    const stored = this.bootstrapData.findUser(admin.id);
+    const stored = this.supportSession.findUser(admin.id);
     if (!stored) {
       return admin;
     }
@@ -527,6 +241,12 @@ export class LocalAdminWorkspaceService {
       about: `${stored.about ?? ''}`.trim() || admin.about || null,
       images: [...(stored.images ?? admin.images ?? [])]
     };
+  }
+
+  private demoAdminImages(adminUserId: string): string[] {
+    return adminUserId.includes('noel')
+      ? ['https://randomuser.me/api/portraits/men/75.jpg']
+      : ['https://randomuser.me/api/portraits/women/65.jpg'];
   }
 
   private adminDisplayName(name: string): string {

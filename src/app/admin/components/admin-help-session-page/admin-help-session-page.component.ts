@@ -16,12 +16,12 @@ import {
   type ShareTokenResolvedItem
 } from '../../../shared/core';
 import type { AssetCard } from '../../../shared/core/base/models';
-import { EntryDemoUserSelectorComponent } from '../../../entry/components/entry-demo-user-selector/entry-demo-user-selector.component';
+import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
 
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
-  imports: [CommonModule, EntryDemoUserSelectorComponent],
+  imports: [CommonModule, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-help-session-page.component.html',
   styleUrl: './admin-help-session-page.component.scss'
 })
@@ -37,14 +37,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
 
-  protected selectorOpen = true;
-  protected selectorLoading = true;
-  protected selectorSubmitting = false;
-  protected selectorLoadingProgress = 0;
-  protected selectorLoadingLabel = 'Preparing demo data';
-  protected selectorLoadingStage: BootstrapProcessStage = 'selector';
-  protected selectorUsers: UserSelectorListItemDto[] = [];
-  protected selectorSelectedUserId = '';
+  protected sessionLoading = true;
+  protected sessionSubmitting = false;
+  protected loadingProgress = 0;
+  protected loadingLabel = 'Preparing shared support user';
+  protected loadingStage: BootstrapProcessStage = 'selector';
   protected error = '';
 
   async ngOnInit(): Promise<void> {
@@ -53,13 +50,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   protected async retry(): Promise<void> {
     this.error = '';
-    this.selectorLoading = true;
-    this.selectorSubmitting = false;
-    this.selectorLoadingProgress = 0;
-    this.selectorLoadingStage = 'selector';
-    this.selectorLoadingLabel = 'Preparing demo data';
-    this.selectorUsers = [];
-    this.selectorSelectedUserId = '';
+    this.sessionLoading = true;
+    this.sessionSubmitting = false;
+    this.loadingProgress = 0;
+    this.loadingStage = 'selector';
+    this.loadingLabel = 'Preparing shared support user';
     await this.openSharedUserView();
   }
 
@@ -73,9 +68,9 @@ export class AdminHelpSessionPageComponent implements OnInit {
       this.fail('This support link is missing its token.');
       return;
     }
-    const useEmbeddedSelector = this.workspaceData.shouldUseEmbeddedAdminHelpSelector;
-    const demoUsersPromise = useEmbeddedSelector
-      ? this.prepareDemoSelectorUsers()
+    const useLocalHelpSession = this.workspaceData.shouldUseLocalAdminHelpSession;
+    const demoUsersPromise = useLocalHelpSession
+      ? this.loadLocalSupportUsers()
       : Promise.resolve<UserSelectorListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
@@ -84,20 +79,19 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
-    if (useEmbeddedSelector) {
-      this.selectorSelectedUserId = userId;
+    if (useLocalHelpSession) {
       const users = await demoUsersPromise;
       const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
       if (!selectedUser) {
-        this.fail('This shared support user is not available in the demo selector.');
+        this.fail('This shared support user is not available locally.');
         return;
       }
-      await this.prepareAutoSelectedDemoUser(userId, targetUrl);
+      await this.prepareSharedUserSession(userId, targetUrl);
       return;
     }
-    this.selectorLoadingProgress = 100;
-    this.selectorLoadingStage = 'sessionReady';
-    this.selectorLoadingLabel = 'Opening MyScoutee as the user sees it';
+    this.loadingProgress = 100;
+    this.loadingStage = 'sessionReady';
+    this.loadingLabel = 'Opening MyScoutee as the user sees it';
     await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
   }
 
@@ -124,74 +118,79 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   private applyProgress(state: BootstrapProcessState): void {
     this.commitSelectorState(() => {
-      this.selectorLoadingProgress = state.percent;
-      this.selectorLoadingLabel = state.label;
-      this.selectorLoadingStage = state.stage;
+      this.loadingProgress = state.percent;
+      this.loadingLabel = state.label;
+      this.loadingStage = state.stage;
     });
   }
 
-  private async prepareDemoSelectorUsers(): Promise<UserSelectorListItemDto[]> {
+  protected loadingPosition(): number {
+    const progress = Number(this.loadingProgress);
+    if (!Number.isFinite(progress)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(1, progress / 100));
+  }
+
+  private async loadLocalSupportUsers(): Promise<UserSelectorListItemDto[]> {
     this.commitSelectorState(() => {
-      this.selectorSubmitting = false;
-      this.selectorLoading = true;
-      this.selectorLoadingProgress = 0;
-      this.selectorLoadingStage = 'selector';
-      this.selectorLoadingLabel = 'Preparing demo data';
+      this.sessionSubmitting = false;
+      this.sessionLoading = true;
+      this.loadingProgress = 0;
+      this.loadingStage = 'selector';
+      this.loadingLabel = 'Loading local support users';
     });
     await this.waitForPopupPaint();
 
     const users = await this.usersService.loadAvailableDemoUsers(undefined, state => this.applyProgress(state));
     this.commitSelectorState(() => {
-      this.selectorUsers = users;
-      this.selectorLoadingProgress = 100;
-      this.selectorLoadingStage = 'ready';
-      this.selectorLoadingLabel = 'Demo data ready';
+      this.loadingProgress = 100;
+      this.loadingStage = 'ready';
+      this.loadingLabel = 'Local support user ready';
     });
     await this.waitForLoaderCompletionBeat();
 
     return users;
   }
 
-  private async prepareAutoSelectedDemoUser(userId: string, targetUrl: string): Promise<void> {
+  private async prepareSharedUserSession(userId: string, targetUrl: string): Promise<void> {
     this.commitSelectorState(() => {
-      this.selectorSubmitting = true;
-      this.selectorLoading = true;
-      this.selectorLoadingProgress = 0;
-      this.selectorLoadingStage = 'session';
-      this.selectorLoadingLabel = 'Preparing demo session';
+      this.sessionSubmitting = true;
+      this.sessionLoading = true;
+      this.loadingProgress = 0;
+      this.loadingStage = 'session';
+      this.loadingLabel = 'Preparing shared user session';
     });
     await this.waitForPopupPaint();
 
     try {
       await this.usersService.prepareDemoUserSession(userId, state => this.applyProgress(state));
       this.commitSelectorState(() => {
-        this.selectorLoadingProgress = 100;
-        this.selectorLoadingStage = 'sessionReady';
-        this.selectorLoadingLabel = 'Demo session ready';
+        this.loadingProgress = 100;
+        this.loadingStage = 'sessionReady';
+        this.loadingLabel = 'Shared user session ready';
       });
       await this.waitForLoaderCompletionBeat();
       this.sessionService.startDemoSession(userId);
       await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl));
     } catch {
       this.commitSelectorState(() => {
-        this.selectorLoading = false;
-        this.selectorSubmitting = false;
-        this.selectorLoadingProgress = 0;
-        this.selectorLoadingStage = 'selector';
-        this.selectorLoadingLabel = 'Preparing demo data';
+        this.sessionLoading = false;
+        this.sessionSubmitting = false;
+        this.loadingProgress = 0;
+        this.loadingStage = 'selector';
+        this.loadingLabel = 'Preparing shared support user';
       });
     }
   }
 
   private fail(message: string): void {
     this.error = message;
-    this.selectorLoading = false;
-    this.selectorSubmitting = false;
-    this.selectorLoadingProgress = 0;
-    this.selectorLoadingStage = 'selector';
-    this.selectorLoadingLabel = 'Support link unavailable';
-    this.selectorUsers = [];
-    this.selectorSelectedUserId = '';
+    this.sessionLoading = false;
+    this.sessionSubmitting = false;
+    this.loadingProgress = 0;
+    this.loadingStage = 'selector';
+    this.loadingLabel = 'Support link unavailable';
   }
 
   private commitSelectorState(update: () => void): void {

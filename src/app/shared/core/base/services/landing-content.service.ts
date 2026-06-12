@@ -71,6 +71,10 @@ export class LandingContentService extends BaseRouteModeService {
     return this.ideaPosts.publishedIdeaInfoCards().map(card => ({ ...card }));
   }
 
+  usesLocalContent(): boolean {
+    return this.isLocalRouteEnabled(LandingContentService.LANDING_CONTENT_ROUTE);
+  }
+
   private landingService(): LocalLandingContentService | HttpLandingContentService {
     return this.resolveRouteService(
       LandingContentService.LANDING_CONTENT_ROUTE,

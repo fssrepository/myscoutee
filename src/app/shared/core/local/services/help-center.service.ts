@@ -12,7 +12,7 @@ import type {
   PrivacyConsentSaveRequest
 } from '../../base/models';
 import { RouteDelayService } from '../../base/services/route-delay.service';
-import { LocalHelpCenterSeedBuilder } from '../builders';
+import { HelpCenterContentBuilder } from '../../base/builders';
 import type { HelpCenterTable } from '../../base/models/help-center.model';
 import { LocalHelpCenterRepository } from '../repositories/help-center.repository';
 
@@ -25,15 +25,6 @@ const LAZY_HELP_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAA
 export class LocalHelpCenterService {
   private readonly helpCenterRepository = inject(LocalHelpCenterRepository);
   private readonly routeDelay = inject(RouteDelayService);
-
-  async init(): Promise<boolean> {
-    await this.helpCenterRepository.whenReady();
-    const changed = this.ensureStaticDefaultsSeeded();
-    if (changed) {
-      await this.helpCenterRepository.flushToIndexedDb();
-    }
-    return changed;
-  }
 
   async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
     const documentKind = this.normalizeKind(kind);
@@ -64,25 +55,6 @@ export class LocalHelpCenterService {
     const table = this.table();
     this.assertBootstrappedState(table, documentKind, language, context);
     return this.stateFromTable(table, documentKind, language, context);
-  }
-
-  private ensureStaticDefaultsSeeded(): boolean {
-    let changed = false;
-    for (const option of this.availableLanguages()) {
-      const language = option.lang;
-      const helpSeeded = this.ensureSeeded('help', language);
-      const privacySeeded = this.ensureSeeded('privacy', language);
-      const termsSeeded = this.ensureSeeded('terms', language);
-      const explanationsSeeded = LocalHelpCenterSeedBuilder.explanationBootstrapContextKeys()
-        .map(contextKey => this.ensureSeeded('explanation', language, contextKey))
-        .some(Boolean);
-      changed = helpSeeded
-        || privacySeeded
-        || termsSeeded
-        || explanationsSeeded
-        || changed;
-    }
-    return changed;
   }
 
   async loadPrivacyConsent(
@@ -344,88 +316,6 @@ export class LocalHelpCenterService {
       this.routeDelay.waitForRouteDelay(`/admin/${documentKind}/revisions/delete`)
     ]);
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
-  }
-
-  private ensureSeeded(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): boolean {
-    const table = this.table();
-    const language = this.normalizeLang(lang);
-    const context = this.normalizeContextKey(kind, contextKey, false);
-    const existingRevisions = this.revisionsForKind(table, kind, language, context);
-    if (existingRevisions.length > 0) {
-      return this.ensureActiveRevision(table, kind, language, context, existingRevisions);
-    }
-    const revision = this.cloneRevision(this.defaultRevision(kind, language, context), kind);
-    const revisionContextKey = this.revisionContextKey(revision);
-    const audit = this.auditEntry({
-      action: 'seed',
-      actorUserId: 'system',
-      revision,
-      message: `Seeded default ${this.documentLabel(kind).toLowerCase()} revision v${revision.version}.`
-    });
-    this.helpCenterRepository.updateTable(current => {
-      return {
-        ...current,
-        seeded: current.seeded || kind === 'help',
-        seededKinds: { ...(current.seededKinds ?? {}), [kind]: true },
-        activeRevisionId: kind === 'help' && language === 'en' ? revision.id : current.activeRevisionId,
-        activeRevisionIdsByKind: {
-          ...(current.activeRevisionIdsByKind ?? {}),
-          [this.activeRevisionKey(kind, language, revisionContextKey)]: revision.id
-        },
-        revisionsById: {
-          ...this.normalizedRevisionsById(current),
-          [revision.id]: revision
-        },
-        revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
-        auditById: {
-          ...current.auditById,
-          [audit.id]: audit
-        },
-        auditIds: [...current.auditIds, audit.id]
-      };
-    });
-    return true;
-  }
-
-  private ensureActiveRevision(
-    table: HelpCenterTable,
-    kind: HelpCenterDocumentKind,
-    lang: string,
-    contextKey: string | null,
-    revisions: readonly HelpCenterRevision[]
-  ): boolean {
-    const activeRevisionId = this.activeRevisionId(table, kind, lang, contextKey);
-    if (activeRevisionId && revisions.some(revision => revision.id === activeRevisionId)) {
-      return false;
-    }
-    const revision = this.latestRevision(revisions);
-    if (!revision) {
-      return false;
-    }
-    const normalizedRevision = {
-      ...this.cloneRevision(revision, kind),
-      active: true
-    };
-    this.helpCenterRepository.updateTable(current => {
-      return {
-        ...current,
-        activeRevisionId: kind === 'help' && this.normalizeLang(lang) === 'en'
-          ? normalizedRevision.id
-          : current.activeRevisionId,
-        activeRevisionIdsByKind: {
-          ...(current.activeRevisionIdsByKind ?? {}),
-          [this.activeRevisionKey(kind, lang, contextKey)]: normalizedRevision.id
-        },
-        revisionsById: {
-          ...this.normalizedRevisionsById(current),
-          [normalizedRevision.id]: normalizedRevision
-        },
-        revisionIds: current.revisionIds.includes(normalizedRevision.id)
-          ? current.revisionIds
-          : [...current.revisionIds, normalizedRevision.id]
-      };
-    });
-    return true;
   }
 
   private assertBootstrappedState(
@@ -777,19 +667,19 @@ export class LocalHelpCenterService {
   }
 
   private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision {
-    return this.cloneRevision(LocalHelpCenterSeedBuilder.defaultRevision(kind, lang, contextKey), kind);
+    return this.cloneRevision(HelpCenterContentBuilder.defaultRevision(kind, lang, contextKey), kind);
   }
 
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
-    return LocalHelpCenterSeedBuilder.defaultTitle(kind, version, lang);
+    return HelpCenterContentBuilder.defaultTitle(kind, version, lang);
   }
 
   private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    return LocalHelpCenterSeedBuilder.defaultSummary(kind, lang);
+    return HelpCenterContentBuilder.defaultSummary(kind, lang);
   }
 
   private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    return LocalHelpCenterSeedBuilder.defaultDescription(kind, lang);
+    return HelpCenterContentBuilder.defaultDescription(kind, lang);
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevision['headerColor'] {
@@ -806,11 +696,11 @@ export class LocalHelpCenterService {
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {
-    return LocalHelpCenterSeedBuilder.documentLabel(kind);
+    return HelpCenterContentBuilder.documentLabel(kind);
   }
 
   private defaultSectionIcon(kind: HelpCenterDocumentKind): string {
-    return LocalHelpCenterSeedBuilder.defaultSectionIcon(kind);
+    return HelpCenterContentBuilder.defaultSectionIcon(kind);
   }
 
   private revisionKind(revision: HelpCenterRevision | null | undefined): HelpCenterDocumentKind {

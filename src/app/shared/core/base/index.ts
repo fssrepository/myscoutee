@@ -24,11 +24,6 @@ export { TermsPolicyService, type TermsPolicyOpenOptions } from './services/term
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
-export {
-  AdminBootstrapService,
-  type AdminBootstrapMenuSeedState,
-  type AdminBootstrapStoresSeed
-} from './services/admin-bootstrap.service';
 export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
 export {
   AdminParamsService,
