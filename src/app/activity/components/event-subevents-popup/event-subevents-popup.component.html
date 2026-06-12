@@ -173,6 +173,7 @@
               [loadPage]="casualSmartListLoadPage"
               [itemTemplate]="casualSubEventTemplate"
               [query]="casualSmartListQuery"
+              (menuItemSelect)="onSubeventMenuSelect($event)"
             ></app-smart-list>
             <ng-template #casualSubEventTemplate let-subEvent let-index="index">
               <article

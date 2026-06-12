@@ -28,7 +28,7 @@
               <mat-icon>done</mat-icon>
             </button>
           </span>
-          <button type="button" class="experience-form-close-btn" [disabled]="isSavePending" (click)="requestClose()" aria-label="Close asset form">
+          <button type="button" class="popup-close asset-form-close-btn" [disabled]="isSavePending" (click)="requestClose()" aria-label="Close asset form">
             <mat-icon>close</mat-icon>
           </button>
         </div>
@@ -202,7 +202,7 @@
               <button type="button" class="popup-header-add-btn event-slots-add-btn" [disabled]="isSavePending" (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
                 <mat-icon>add</mat-icon>
               </button>
-              <button type="button" class="event-slots-popup-close" (click)="closePoliciesPopup()" aria-label="Close policy setup">
+              <button type="button" class="popup-close asset-form-close-btn" (click)="closePoliciesPopup()" aria-label="Close policy setup">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
@@ -251,7 +251,7 @@
                 >
                   <mat-icon>done</mat-icon>
                 </button>
-                <button type="button" class="event-slots-popup-close" (click)="closePolicyEditor()" aria-label="Close policy form">
+                <button type="button" class="popup-close asset-form-close-btn" (click)="closePolicyEditor()" aria-label="Close policy form">
                   <mat-icon>close</mat-icon>
                 </button>
               </div>

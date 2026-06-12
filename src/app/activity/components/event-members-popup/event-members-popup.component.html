@@ -59,6 +59,7 @@
             [loaders]="membersSmartListLoaders"
             [itemTemplate]="membersItemTemplateRef ?? null"
             [query]="membersSmartListQuery"
+            (menuItemSelect)="onMemberActionMenuSelect($event)"
             (stateChange)="onMembersSmartListStateChange($event)"
           ></app-smart-list>
           <ng-template #memberItemTemplate let-member>
@@ -109,7 +110,6 @@
               </div>
             </article>
           </ng-template>
-          <app-menu-outlet (itemSelect)="onMemberActionMenuSelect($event)"></app-menu-outlet>
         </div>
       </div>
     </div>

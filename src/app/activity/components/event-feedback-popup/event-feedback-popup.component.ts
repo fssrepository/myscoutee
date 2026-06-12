@@ -9,19 +9,15 @@ import { from } from 'rxjs';
 import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import type { ActivityEventSeedItem } from '../../../shared/core/base/models/event-seed-item.model';
 import {
-  AppMenuDispatcher,
   AppMenuComponent,
-  AppMenuOutletComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  INFO_CARD_AVAILABLE_ACTIONS,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
   type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
   type InfoCardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
@@ -82,7 +78,6 @@ interface OrganizerEventFeedbackCarouselSection {
     MatIconModule,
     MatButtonModule,
     AppMenuComponent,
-    AppMenuOutletComponent,
     SmartListComponent,
     InfoCardComponent
   ],
@@ -97,7 +92,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private readonly gameService = inject(GameService);
   private readonly usersService = inject(UsersService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventRecordsRef = signal<ActivityEventRecord[]>([]);
   private lastLoadedUserId = '';
   private loadRequestVersion = 0;
@@ -282,29 +276,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     this.feedback.selectEventFeedbackListFilter(event.context.filter, event.sourceEvent);
   }
 
-  protected openEventFeedbackInfoCardMenu(
-    item: AppTypes.EventFeedbackEventCard,
-    request: InfoCardMenuRequestEvent
-  ): void {
-    const menuId = `event-feedback-card:${request.id}`;
-    if (this.appMenuDispatcher.isOpen(menuId)) {
-      this.appMenuDispatcher.close(menuId);
-      return;
-    }
-    this.appMenuDispatcher.open({
-      id: menuId,
-      scope: 'event-feedback',
-      kind: 'select',
-      title: this.infoCardMenuTitle(request.card),
-      items: this.infoCardMenuItems(item, request),
-      triggerRect: request.triggerRect,
-      openUp: request.openUp,
-      panelAlign: 'auto',
-      closeOnSelect: true,
-      onClose: request.closeTrigger
-    }, null);
-  }
-
   protected onEventFeedbackDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as EventFeedbackMenuContext | undefined;
     if (context?.menu !== 'info-card') {
@@ -328,57 +299,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
         return 'violet';
       default:
         return 'amber';
-    }
-  }
-
-  private infoCardMenuTitle(card: InfoCardData): string | null {
-    if (card.menuTitle === null) {
-      return null;
-    }
-    return `${card.menuTitle ?? card.title ?? ''}`.trim();
-  }
-
-  private infoCardMenuItems(
-    item: AppTypes.EventFeedbackEventCard,
-    request: InfoCardMenuRequestEvent
-  ): readonly AppMenuItem<string, EventFeedbackMenuContext>[] {
-    return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
-      if (!config) {
-        return [];
-      }
-      const action: InfoCardResolvedMenuAction = {
-        id: actionId,
-        ...config
-      };
-      return [{
-        id: actionId,
-        label: config.label,
-        icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
-        surface: 'tinted',
-        context: {
-          menu: 'info-card',
-          item,
-          card: request.card,
-          action
-        }
-      }];
-    });
-  }
-
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
-    switch (tone) {
-      case 'accent':
-        return 'green';
-      case 'review':
-        return 'violet';
-      case 'warning':
-        return 'warning';
-      case 'destructive':
-        return 'danger';
-      default:
-        return 'neutral';
     }
   }
 

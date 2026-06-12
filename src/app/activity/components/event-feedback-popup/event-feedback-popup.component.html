@@ -31,6 +31,7 @@
               [loadPage]="eventFeedbackSmartListLoadPage"
               [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
               [query]="eventFeedbackSmartListQuery"
+              (menuItemSelect)="onEventFeedbackDispatchedMenuSelect($event)"
             ></app-smart-list>
             <ng-template #eventFeedbackItemTemplate let-item>
               <div
@@ -41,17 +42,13 @@
                 >
                 <app-info-card
                   [card]="eventFeedbackInfoCard(item)"
-                  [useSharedMenu]="true"
+                  [useSharedMenuTrigger]="true"
+                  [sharedMenuContext]="{ menu: 'info-card', item: item }"
                   (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
                   (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
-                  (menuRequest)="openEventFeedbackInfoCardMenu(item, $event)"
                 ></app-info-card>
               </div>
             </ng-template>
-            <app-menu-outlet
-              scope="event-feedback"
-              (itemSelect)="onEventFeedbackDispatchedMenuSelect($event)"
-            ></app-menu-outlet>
           </div>
         </div>
       </div>

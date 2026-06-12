@@ -340,6 +340,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       label: label || 'Select',
       icon,
       palette,
+      shape: 'field',
       disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
       ariaLabel: 'Open selector'
     };
@@ -386,6 +387,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       label: languages.length > 0 ? languages.join(', ') : 'Select languages',
       icon: 'translate',
       palette: languages.length > 0 ? 'sky' : 'neutral',
+      shape: 'field',
       disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
       ariaLabel: 'Open language selector'
     };

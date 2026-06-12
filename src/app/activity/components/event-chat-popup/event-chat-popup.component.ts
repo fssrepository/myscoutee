@@ -24,8 +24,6 @@ import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
 import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
 import {
   AppMenuComponent,
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
   AppMenuTriggerComponent,
   CounterBadgePipe,
   SmartListComponent,
@@ -104,7 +102,6 @@ interface SelectedChatNavigationState {
     MatButtonModule,
     MatIconModule,
     AppMenuComponent,
-    AppMenuOutletComponent,
     AppMenuTriggerComponent,
     SmartListComponent,
     CounterBadgePipe
@@ -129,7 +126,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly mediaService = inject(MediaService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly location = inject(Location);
-  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   protected readonly session = computed(() => this.activitiesContext.eventChatSession());
   protected chatInitialLoadPending = false;
@@ -277,7 +273,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private chatThreadScrollDismissElement: HTMLElement | null = null;
   private suppressTouchContextMenuUntilMs = 0;
   private readonly dismissMessageUiOnChatScroll = () => {
-    if (!this.selectedMessageId && !this.quickReactionMessageId && !this.emojiPickerMessageId && !this.appMenuDispatcher.activeMenu()) {
+    if (!this.selectedMessageId && !this.quickReactionMessageId && !this.emojiPickerMessageId && !(this.chatThreadSmartList?.menuOpen() ?? false)) {
       return;
     }
     this.closeTransientMessageUi();
@@ -305,7 +301,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.closeTransientMessageUi();
       this.replyTarget = null;
       this.editingMessageId = '';
-      this.appMenuDispatcher.close();
+      this.chatThreadSmartList?.closeMenu();
       this.allMessages = [];
       this.typingIndicators = [];
       this.localTypingActive = false;
@@ -343,7 +339,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected close(): void {
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
@@ -499,7 +495,7 @@ export class EventChatPopupComponent implements OnDestroy {
       { id: 'chat-composer-image', label: 'Upload image', icon: 'image', palette: 'sky', surface: 'tinted', context: { menu: 'composer', action: 'image' } },
       { id: 'chat-composer-voice', label: 'Send a voice clip', icon: 'mic', palette: 'violet', surface: 'tinted', context: { menu: 'composer', action: 'voice' } },
       { id: 'chat-composer-poll', label: 'Create a poll', icon: 'poll', palette: 'green', surface: 'tinted', context: { menu: 'composer', action: 'poll' } },
-      { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'amber', surface: 'tinted', context: { menu: 'composer', action: 'event' } },
+      { id: 'chat-composer-event', label: 'Share event', icon: 'event', palette: 'blue', surface: 'tinted', context: { menu: 'composer', action: 'event' } },
       { id: 'chat-composer-asset', label: 'Share asset', icon: 'inventory_2', palette: 'brown', surface: 'tinted', context: { menu: 'composer', action: 'asset' } }
     ];
   }
@@ -640,7 +636,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatEvent(event?: Event): void {
     event?.stopPropagation();
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     const row = this.selectedChatNavigationState?.eventRow ?? this.chatEventRow();
     if (!row) {
       return;
@@ -692,7 +688,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || !state?.subEvent) {
       return;
     }
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     this.popupCtx.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: state.eventRow?.id ?? session.item.eventId,
@@ -1264,7 +1260,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.selectedMessageId = this.selectedMessageId === messageId ? '' : messageId;
     this.selectedMessageToolsDown = this.selectedMessageId ? this.shouldOpenMessageToolsDown(event) : false;
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
     this.emojiPickerMessageId = '';
@@ -1283,7 +1279,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.quickReactionMessageId = '';
       this.quickReactionOpenDown = false;
       this.emojiPickerMessageId = '';
-      this.appMenuDispatcher.close();
+      this.chatThreadSmartList?.closeMenu();
       this.cdr.markForCheck();
     }, 420);
   }
@@ -1306,7 +1302,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.bindChatThreadScrollDismissListener();
     const wasOpen = this.quickReactionMessageId === messageId;
     this.selectedMessageId = messageId;
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     this.emojiPickerMessageId = '';
     this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown(event);
     this.quickReactionMessageId = wasOpen ? '' : messageId;
@@ -1325,7 +1321,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.selectedMessageId = messageId;
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     this.emojiPickerMessageId = messageId;
     this.emojiPickerQuery = '';
     this.emojiPickerCategory = 'smileys';
@@ -1523,7 +1519,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.selectedMessageId = '';
     this.highlightedMessageId = targetId;
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     this.quickReactionMessageId = '';
     this.emojiPickerMessageId = '';
     this.cdr.markForCheck();
@@ -1659,7 +1655,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected reportMessage(message: AppTypes.ChatPopupMessage, event?: Event): void {
     event?.stopPropagation();
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     if (!this.canReportMessage(message)) {
       return;
     }
@@ -3389,7 +3385,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private closeTransientMessageUi(options: { keepEditing?: boolean } = {}): void {
-    this.appMenuDispatcher.close();
+    this.chatThreadSmartList?.closeMenu();
     if (this.voiceComposerOpen) {
       this.resetVoiceRecorder();
     }

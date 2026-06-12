@@ -9,8 +9,6 @@ import { tap } from 'rxjs/operators';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   AppMenuComponent,
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
   AppMenuTriggerComponent,
   ProgressIndicatorComponent,
   SmartListComponent,
@@ -172,7 +170,6 @@ type ContactsMenuContext =
     MatButtonModule,
     MatIconModule,
     AppMenuComponent,
-    AppMenuOutletComponent,
     AppMenuTriggerComponent,
     ProgressIndicatorComponent,
     SmartListComponent
@@ -188,7 +185,6 @@ export class ContactsPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly contactsDataService = inject(ContactsDataService);
-  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   protected readonly contactsPopupOpen = this.navigatorService.contactsPopupOpen;
   protected readonly contactMethodOptions = CONTACT_METHOD_OPTIONS;
   protected readonly searchText = signal('');
@@ -303,8 +299,8 @@ export class ContactsPopupComponent implements OnDestroy {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
-    if (this.appMenuDispatcher.activeMenu()) {
-      this.appMenuDispatcher.close();
+    if (this.contactsSmartList?.menuOpen()) {
+      this.contactsSmartList.closeMenu();
       return;
     }
     if (this.editingContact()) {
@@ -352,7 +348,7 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   protected isActionMenuOpen(contact: ContactListItem): boolean {
-    return this.appMenuDispatcher.isOpen(this.contactActionMenuId(contact));
+    return this.contactsSmartList?.isMenuOpen(this.contactActionMenuId(contact)) ?? false;
   }
 
   protected clearSearch(event?: Event): void {
@@ -546,6 +542,7 @@ export class ContactsPopupComponent implements OnDestroy {
       label: option.label,
       icon: option.icon,
       palette: this.methodMenuPalette(method.type),
+      shape: 'field',
       disabled: () => this.isFormSavePending(),
       ariaLabel: 'Open contact method type'
     };
@@ -1073,6 +1070,6 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private closeActionMenu(): void {
-    this.appMenuDispatcher.close();
+    this.contactsSmartList?.closeMenu();
   }
 }

@@ -811,7 +811,7 @@ export class EventResourcePopupComponent implements DoCheck {
       ariaLabel: 'Open asset filter',
       palette: this.resourceTypePalette(filter),
       counter: count > 0 ? { value: count, max: 99 } : null,
-      shape: 'field'
+      shape: 'pill'
     };
   }
 

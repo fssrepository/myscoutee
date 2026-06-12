@@ -153,6 +153,7 @@
                 [loadPage]="assetSmartListLoadPage"
                 [itemTemplate]="assetItemTemplate"
                 [query]="assetSmartListQuery"
+                (menuItemSelect)="onAssetDispatchedMenuSelect($event)"
                 (stateChange)="onAssetSmartListStateChange($event)"
               ></app-smart-list>
             }
@@ -319,11 +320,11 @@
   <ng-template #assetItemTemplate let-card let-groupLabel="groupLabel" let-selectMode="selectMode">
     <app-info-card
       [card]="ownedAssetInfoCard(card, { groupLabel: groupLabel, selectMode: selectMode, selected: isAssetAssignCardSelected(card.id), selectDisabled: isBasketSavePending() })"
-      [useSharedMenu]="true"
+      [useSharedMenuTrigger]="true"
+      [sharedMenuContext]="{ menu: 'asset-info-card', assetCard: card }"
       (mediaStartClick)="openOwnedAssetMap(card)"
       (mediaEndClick)="onOwnedAssetMediaEndClick(card, selectMode)"
       (menuAction)="onOwnedAssetInfoCardMenuAction(card, $event)"
-      (menuRequest)="openOwnedAssetInfoCardMenu(card, $event)"
     ></app-info-card>
   </ng-template>
 

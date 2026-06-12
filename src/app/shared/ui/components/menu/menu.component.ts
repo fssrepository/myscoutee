@@ -372,6 +372,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (configuredIcon !== null && configuredIcon !== undefined) {
       return `${configuredIcon}`.trim();
     }
+    if (this.trigger?.hideLabel === true) {
+      return '';
+    }
     if (this.isSelectKind && this.triggerShape() !== 'icon') {
       return 'expand_more';
     }
@@ -417,7 +420,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (!this.hasTrigger) {
       return 'default';
     }
-    return this.isSelectKind ? 'field' : 'default';
+    return this.isSelectKind ? 'pill' : 'default';
   }
 
   protected hasTriggerCounter(): boolean {

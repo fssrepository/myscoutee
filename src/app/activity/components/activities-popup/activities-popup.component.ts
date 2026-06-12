@@ -32,6 +32,7 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import {
   AppMenuComponent,
+  AppMenuDispatcher,
   type AppMenuBranch,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -41,8 +42,10 @@ import {
   EventCheckoutPopupComponent,
   I18nPipe,
   type CardProfileViewData,
+  type InfoCardData,
   SmartListComponent,
   type InfoCardMenuActionEvent,
+  type InfoCardResolvedMenuAction,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -103,6 +106,13 @@ type ActivitiesSmartListFilters = ActivitiesFeedFilters;
 type ActivitiesEventSyncMessage = ActivitiesEventSyncPayload | ActivitiesEventDisplaySync;
 type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 
+interface ActivitiesInfoCardMenuContext {
+  menu: 'activity-event-card';
+  row: AppTypes.ActivityListRow;
+  card: InfoCardData;
+  action: InfoCardResolvedMenuAction;
+}
+
 interface ActivitiesEventScopeOption {
   key: AppTypes.ActivitiesEventScope;
   label: string;
@@ -138,6 +148,7 @@ type ActivitiesToolbarMenuContext =
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
+  providers: [AppMenuDispatcher],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
@@ -567,6 +578,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
     this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
+  }
+
+  protected onActivityEventSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as ActivitiesInfoCardMenuContext | undefined;
+    if (context?.menu !== 'activity-event-card') {
+      return;
+    }
+    this.onActivityEventInfoCardMenuAction(context.row, {
+      id: context.card.id,
+      actionId: context.action.id,
+      action: context.action,
+      card: context.card
+    });
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
@@ -1132,7 +1156,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: this.activitiesToolbar.activitiesSecondaryFilterLabel(),
       icon: this.activitiesToolbar.activitiesSecondaryFilterIcon(),
       palette: this.activitiesSecondaryPalette(filter),
-      shape: 'pill'
+      shape: 'pill',
+      hideLabel: this.isMobileView
     });
   }
 
@@ -1152,7 +1177,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: this.activitiesToolbar.activityViewLabel(),
       icon: this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
       palette: this.activitiesViewPalette(this.activitiesView),
-      shape: 'pill'
+      shape: 'pill',
+      hideLabel: this.isMobileView
     });
   }
 
@@ -1247,6 +1273,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     palette: AppMenuPalette;
     counter?: number;
     shape?: AppMenuTrigger['shape'];
+    hideLabel?: boolean;
   }): AppMenuTrigger {
     const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
     return {
@@ -1254,6 +1281,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       icon: options.icon,
       palette: options.palette,
       shape: options.shape ?? 'pill',
+      hideLabel: options.hideLabel,
       counter: counter > 0 ? { value: counter, max: 99 } : null
     };
   }

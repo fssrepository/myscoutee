@@ -161,6 +161,7 @@
             [view]="activitiesView"
             [query]="activitiesSmartListQuery"
             (itemSelect)="onActivitiesSmartListItemSelect($event)"
+            (menuItemSelect)="onActivityEventSharedMenuSelect($event)"
             (stateChange)="onActivitiesSmartListStateChange($event)"
             (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
             (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"

@@ -4,7 +4,7 @@
 @include ui.popup-shell();
 @include ui.form-controls();
 @include asset-interactions.host-motion-vars(contents);
-@include asset-interactions.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn, .experience-action-btn, .asset-source-refresh-btn, .asset-image-dropzone');
+@include asset-interactions.interactive-feedback('.popup-header-add-btn, .asset-form-close-btn, .experience-action-btn, .asset-source-refresh-btn, .asset-image-dropzone');
 
 .experience-form-overlay {
   z-index: 4200;
@@ -31,11 +31,6 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-}
-
-.experience-form-close-btn {
-  background: rgba(235, 242, 255, 0.9);
-  color: rgba(39, 87, 148, 0.94);
 }
 
 .asset-form-save-btn-shell {
@@ -305,20 +300,6 @@
   color: rgba(61, 83, 114, 0.84);
   font-size: 0.84rem;
   line-height: 1.5;
-}
-
-.event-slots-popup-close {
-  width: 38px;
-  height: 38px;
-  border: 0;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: #6d829a;
-  background: rgba(240, 245, 251, 0.96);
-  box-shadow: inset 0 0 0 1px rgba(125, 146, 173, 0.22);
-  cursor: pointer;
 }
 
 .event-slots-popup-body {

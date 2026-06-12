@@ -17,6 +17,12 @@ import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directiv
 import { I18nPipe } from '../../../pipes';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
 import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
+import {
+  AppMenuTriggerComponent,
+  type AppMenuItem,
+  type AppMenuPalette,
+  type AppMenuTrigger
+} from '../../menu';
 import type {
   InfoCardClickEvent,
   InfoCardData,
@@ -40,7 +46,15 @@ import { INFO_CARD_AVAILABLE_ACTIONS } from '../card.types';
 @Component({
   selector: 'app-info-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent, CounterBadgePipe, I18nPipe],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    LazyBgImageDirective,
+    ProgressIndicatorComponent,
+    CounterBadgePipe,
+    I18nPipe,
+    AppMenuTriggerComponent
+  ],
   templateUrl: './info-card.component.html',
   styleUrl: './info-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -57,6 +71,9 @@ export class InfoCardComponent implements OnDestroy {
 
   @Input() card: InfoCardData | null = null;
   @Input() useSharedMenu = false;
+  @Input() useSharedMenuTrigger = false;
+  @Input() sharedMenuScope = 'default';
+  @Input() sharedMenuContext: Record<string, unknown> | null = null;
 
   @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();
   @Output() readonly mediaStartClick = new EventEmitter<InfoCardClickEvent>();
@@ -297,6 +314,56 @@ export class InfoCardComponent implements OnDestroy {
     return `${this.card?.menuTitle ?? this.card?.title ?? ''}`.trim();
   }
 
+  protected sharedMenuTitle(): string | null {
+    return this.resolvedMenuTitle() || null;
+  }
+
+  protected sharedMenuId(): string {
+    return `info-card-actions-${this.card?.id ?? 'unknown'}`;
+  }
+
+  protected sharedMenuTrigger(): AppMenuTrigger {
+    const menuBadgeCount = Math.max(0, Math.trunc(Number(this.card?.menuBadgeCount) || 0));
+    return {
+      icon: 'more_vert',
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'default',
+      counter: menuBadgeCount > 0 ? { value: menuBadgeCount, max: 99 } : null,
+      ariaLabel: 'Open menu'
+    };
+  }
+
+  protected sharedMenuItems(): readonly AppMenuItem<string, Record<string, unknown>>[] {
+    const card = this.card;
+    if (!card?.menuActions?.length) {
+      return [];
+    }
+    return card.menuActions.flatMap(actionId => {
+      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: InfoCardResolvedMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.sharedMenuActionPalette(config.tone),
+        surface: 'tinted',
+        context: {
+          ...(this.sharedMenuContext ?? {}),
+          card,
+          action
+        }
+      }];
+    });
+  }
+
   protected hasFooterChips(): boolean {
     return (this.card?.footerChips?.length ?? 0) > 0;
   }
@@ -309,6 +376,20 @@ export class InfoCardComponent implements OnDestroy {
 
   protected trackByFooterChip(index: number, chip: InfoCardFooterChip): string | number {
     return `${chip.label}:${chip.toneClass ?? ''}:${index}`;
+  }
+
+  private sharedMenuActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'brown';
+      case 'warning':
+      case 'review':
+        return 'orange';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'default';
+    }
   }
 
   protected rootClassList(): string[] {

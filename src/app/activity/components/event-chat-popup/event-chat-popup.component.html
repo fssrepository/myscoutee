@@ -98,6 +98,7 @@
               [loadPage]="chatThreadLoadPage"
               [itemTemplate]="chatThreadMessageTemplate"
               [query]="chatThreadQuery"
+              (menuItemSelect)="onDispatchedChatMenuSelect($event)"
             ></app-smart-list>
             @if (typingIndicators.length > 0) {
               <div class="chat-typing-indicator">
@@ -500,8 +501,6 @@
     </div>
   </article>
 </ng-template>
-
-<app-menu-outlet (itemSelect)="onDispatchedChatMenuSelect($event)"></app-menu-outlet>
 
 @if (emojiPickerMessage(); as emojiMessage) {
   <section class="chat-modal chat-emoji-modal">

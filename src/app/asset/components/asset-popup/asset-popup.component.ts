@@ -29,9 +29,7 @@ import {
   type BasketChip,
   type InfoCardData,
   type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
   type InfoCardResolvedMenuAction,
-  INFO_CARD_AVAILABLE_ACTIONS,
   type ListQuery,
   type SingleRowData,
   type SmartListConfig,
@@ -299,28 +297,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
-  protected openOwnedAssetInfoCardMenu(
-    card: AppTypes.AssetCard,
-    event: InfoCardMenuRequestEvent
-  ): void {
-    const menuId = `asset-info-card:${event.id}`;
-    if (this.appMenuDispatcher.isOpen(menuId)) {
-      this.appMenuDispatcher.close(menuId);
-      return;
-    }
-    this.appMenuDispatcher.open({
-      id: menuId,
-      kind: 'select',
-      title: this.infoCardMenuTitle(event.card),
-      items: this.assetInfoCardMenuItems(card, event),
-      triggerRect: event.triggerRect,
-      openUp: event.openUp,
-      panelAlign: 'auto',
-      closeOnSelect: true,
-      onClose: event.closeTrigger
-    }, null);
-  }
-
   protected ticketOrderMenuTrigger(): AppMenuTrigger {
     return {
       label: () => this.assetPopup.ticketDateOrderLabel(),
@@ -521,57 +497,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       return;
     }
     await this.promoteSupplyRequestRowToManager(row, event);
-  }
-
-  private infoCardMenuTitle(card: InfoCardData): string | null {
-    if (card.menuTitle === null) {
-      return null;
-    }
-    return `${card.menuTitle ?? card.title ?? ''}`.trim();
-  }
-
-  private assetInfoCardMenuItems(
-    assetCard: AppTypes.AssetCard,
-    request: InfoCardMenuRequestEvent
-  ): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
-    return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
-      if (!config) {
-        return [];
-      }
-      const action: InfoCardResolvedMenuAction = {
-        id: actionId,
-        ...config
-      };
-      return [{
-        id: actionId,
-        label: config.label,
-        icon: config.icon,
-        palette: this.infoCardActionPalette(config.tone),
-        context: {
-          menu: 'asset-info-card',
-          assetCard,
-          card: request.card,
-          action
-        }
-      }];
-    });
-  }
-
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
-    switch (tone) {
-      case 'accent':
-        return 'green';
-      case 'review':
-        return 'violet';
-      case 'warning':
-        return 'amber';
-      case 'destructive':
-        return 'danger';
-      case 'default':
-      default:
-        return 'default';
-    }
   }
 
   private assetFilterPalette(filter: AppTypes.AssetFilterType): AppMenuPalette {

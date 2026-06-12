@@ -49,6 +49,7 @@
           [loadPage]="contactSmartListLoadPage"
           [itemTemplate]="contactItemTemplate"
           [query]="contactSmartListQuery()"
+          (menuItemSelect)="onContactsMenuSelect($event)"
         ></app-smart-list>
 
         <ng-template #contactItemTemplate let-contact>
@@ -240,7 +241,6 @@
           }
       </div>
     </div>
-    <app-menu-outlet (itemSelect)="onContactsMenuSelect($event)"></app-menu-outlet>
   </section>
   }
 }

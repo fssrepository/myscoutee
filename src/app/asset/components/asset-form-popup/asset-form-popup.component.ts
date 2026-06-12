@@ -115,6 +115,7 @@ export class AssetFormPopupComponent implements OnChanges {
       label: this.assetTypeLabel(this.assetForm.type),
       icon: this.assetTypeIcon(this.assetForm.type),
       palette: this.assetTypePalette(this.assetForm.type),
+      shape: 'field',
       disabled: () => this.isSavePending || this.isLoading,
       ariaLabel: 'Open asset type'
     };
@@ -139,6 +140,7 @@ export class AssetFormPopupComponent implements OnChanges {
       label: this.assetCategoryLabel(this.assetForm.category),
       icon: this.assetCategoryIcon(this.assetForm.category),
       palette: this.assetCategoryPalette(this.assetForm.category),
+      shape: 'field',
       disabled: () => this.isSavePending || this.isLoading,
       ariaLabel: 'Open asset category'
     };

@@ -82,6 +82,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   protected isMobileViewport = false;
 
   @Input() menuId = '';
+  @Input() scope = 'default';
   @Input() kind: AppMenuKind = 'select';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
@@ -213,6 +214,9 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     if (configuredIcon !== null && configuredIcon !== undefined) {
       return `${configuredIcon}`.trim();
     }
+    if (this.trigger?.hideLabel === true) {
+      return '';
+    }
     if (this.isSelectKind && this.triggerShape() !== 'icon') {
       return 'expand_more';
     }
@@ -255,7 +259,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     if (this.trigger?.shape) {
       return this.trigger.shape;
     }
-    return this.isSelectKind ? 'field' : 'default';
+    return this.isSelectKind ? 'pill' : 'default';
   }
 
   protected hasTriggerCounter(): boolean {
@@ -293,6 +297,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   private dispatchConfig(): AppMenuDispatchConfig<TId, TContext> {
     return {
       id: this.resolvedMenuId(),
+      scope: this.scope,
       kind: this.kind,
       title: this.title,
       items: this.items,

@@ -276,6 +276,7 @@ export class AdminParamsPopupComponent implements OnDestroy {
     return {
       label: this.textFieldOptionLabel(field),
       ariaLabel: this.textFieldSelectTitle(field),
+      shape: 'field',
       disabled: this.saving() || field.readOnly === true
     };
   }
