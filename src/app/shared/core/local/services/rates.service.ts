@@ -1,11 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateRecord } from '../../base/models/rate.model';
+import type { RateRecord } from '../../contracts/rate.interface';
 import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalUsersRatingsRepository } from '../repositories/users-ratings.repository';
+import { LocalRatesRepository } from '../repositories/rates.repository';
 
 @Injectable({
   providedIn: 'root'
@@ -13,24 +13,15 @@ import { LocalUsersRatingsRepository } from '../repositories/users-ratings.repos
 export class LocalRatesService extends LocalRouteDelayService {
   private static readonly RATES_ROUTE = '/activities/rates';
   private readonly usersRepository = inject(LocalUsersRepository);
-  private readonly usersRatingsRepository = inject(LocalUsersRatingsRepository);
-
-  recordActivityRate(
-    ownerUserId: string,
-    item: RateRecord,
-    rating: number,
-    direction?: RateRecord['direction'] | null
-  ): void {
-    this.usersRatingsRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
-  }
+  private readonly ratesRepository = inject(LocalRatesRepository);
 
   peekRateItemsByUser(userId: string): RateRecord[] {
-    return this.usersRatingsRepository.peekRateItemsByUserId(userId);
+    return this.ratesRepository.peekRateItemsByUserId(userId);
   }
 
   async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
     await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE);
-    return this.usersRatingsRepository.queryRateItemsByUserId(userId);
+    return this.ratesRepository.queryRateItemsByUserId(userId);
   }
 
   async queryActivitiesRatePage(
@@ -40,7 +31,7 @@ export class LocalRatesService extends LocalRouteDelayService {
   ): Promise<ActivityRatePageResult> {
     await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE, signal);
     const ownerUserId = this.resolveDemoActivityUserId(userId);
-    const page = await this.usersRatingsRepository.queryActivityRateItemsPage(
+    const page = await this.ratesRepository.queryActivityRateItemsPage(
       this.toActivityRateRecordQuery(ownerUserId, request)
     );
     const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, { ...user }]));

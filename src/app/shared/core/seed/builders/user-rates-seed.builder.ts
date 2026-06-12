@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { RateRecord } from '../../base/models/rate.model';
+import type { RateRecord } from '../../contracts/rate.interface';
 import type { UserRateRecord } from '../../base/interfaces/game.interface';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 

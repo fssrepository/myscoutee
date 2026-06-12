@@ -1,18 +1,43 @@
+import { Injectable, inject } from '@angular/core';
+
+import { environment } from '../../../../../environments/environment';
 import { UserRatesBuilder } from '../builders/user-rates.builder';
-import type { AppMemoryDb } from '../db';
+import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../db';
+import { resolveRouteConfig } from '../config';
 import type {
   UserGameMode,
   UserRateOutboxRecord,
   UserRateRecord,
   UserRatesSyncResult
 } from '../interfaces/game.interface';
-import type { RateRecord } from '../models/rate.model';
+import type { RateRecord } from '../../contracts/rate.interface';
 import {
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../models/users.model';
+import { SessionService } from '../services/session.service';
 
-export abstract class BaseUsersRatingsRepository {
-  protected abstract readonly memoryDb: AppMemoryDb;
+@Injectable({
+  providedIn: 'root'
+})
+export class RateOutboxRepository {
+  private readonly localMemoryDb = inject(LocalMemoryDb);
+  private readonly httpMemoryDb = inject(HttpMemoryDb);
+  private readonly sessionService = inject(SessionService);
+
+  protected get memoryDb(): AppMemoryDb {
+    return this.isLocalRouteEnabled('/activities/rates')
+      ? this.localMemoryDb
+      : this.httpMemoryDb;
+  }
+
+  private isLocalRouteEnabled(route: string): boolean {
+    const routeConfig = resolveRouteConfig(route);
+    if (routeConfig.http) {
+      return false;
+    }
+    return environment.activitiesDataSource !== 'http'
+      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
+  }
 
   queryPendingUserRatesOutbox(limit = 50): UserRateOutboxRecord[] {
     const maxItems = Math.max(1, Math.trunc(Number(limit) || 50));
@@ -29,15 +54,9 @@ export abstract class BaseUsersRatingsRepository {
       }));
   }
 
-  async flushPendingUserRatesOutboxBatch(limit = 50): Promise<void> {
-    const batch = this.queryPendingUserRatesOutbox(limit);
-    if (batch.length === 0) {
-      return;
-    }
-    const syncResult = await this.syncUserRatesBatch(
-      batch.map(item => ({ ...item.payload }))
-    );
-    this.applyUserRatesSyncResult(batch, syncResult.syncedRateIds, syncResult.failedRateIds, syncResult.error);
+  queryPendingUserRateRecords(limit = Number.MAX_SAFE_INTEGER): UserRateRecord[] {
+    return this.queryPendingUserRatesOutbox(limit)
+      .map(record => ({ ...record.payload }));
   }
 
   queryPendingRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
@@ -271,8 +290,6 @@ export abstract class BaseUsersRatingsRepository {
     this.enqueueNormalizedRateOutbox(nextRecord);
   }
 
-  protected abstract syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult>;
-
   protected buildNormalizedRateRecord(
     raterUserId: string,
     ratedUserId: string,
@@ -315,7 +332,7 @@ export abstract class BaseUsersRatingsRepository {
     });
   }
 
-  protected buildNormalizedActivityRateRecord(
+  buildNormalizedActivityRateRecord(
     ownerUserId: string,
     item: RateRecord,
     rating: number,
@@ -421,7 +438,7 @@ export abstract class BaseUsersRatingsRepository {
     void this.memoryDb.flushToIndexedDb();
   }
 
-  protected mergePendingOutboxRateItems(userId: string, items: readonly RateRecord[]): RateRecord[] {
+  mergePendingOutboxRateItems(userId: string, items: readonly RateRecord[]): RateRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -469,7 +486,7 @@ export abstract class BaseUsersRatingsRepository {
     return Math.max(0, Math.min(10, Math.trunc(Number(value))));
   }
 
-  protected toUserRateSyncPayload(record: UserRateRecord): UserRateRecord | null {
+  toUserRateSyncPayload(record: UserRateRecord): UserRateRecord | null {
     const id = record.id?.trim() ?? '';
     const fromUserId = record.fromUserId?.trim() ?? '';
     const toUserId = record.toUserId?.trim() ?? '';
@@ -570,8 +587,12 @@ export abstract class BaseUsersRatingsRepository {
       .join(':');
   }
 
-  private applyUserRatesSyncResult(
-    batch: UserRateOutboxRecord[],
+  applyUserRatesSyncResult(batch: readonly UserRateOutboxRecord[], result: UserRatesSyncResult): void {
+    this.applyUserRatesSyncOutcome(batch, result.syncedRateIds, result.failedRateIds, result.error);
+  }
+
+  private applyUserRatesSyncOutcome(
+    batch: readonly UserRateOutboxRecord[],
     syncedRateIds: string[],
     failedRateIds: string[],
     error: string | null

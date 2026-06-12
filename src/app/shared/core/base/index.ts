@@ -5,7 +5,7 @@ export * from './formatters';
 export * from './guards';
 export * from './models';
 export { AppMemoryDb, LocalMemoryDb, HttpMemoryDb } from './db';
-export { BaseUsersRatingsRepository } from './repositories/users-ratings.repository';
+export { RateOutboxRepository } from './repositories/rate-outbox.repository';
 export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
 export {

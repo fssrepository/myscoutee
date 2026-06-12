@@ -2,7 +2,10 @@ import type { LocationCoordinates } from '../interfaces/location.interface';
 import type { PopupHeaderLookup } from './popup.model';
 import type { ChatRecord } from './chat.model';
 import type { AssetCard, AssetType } from './asset.model';
-import type { ActivityMemberEntry } from './activity-member.model';
+import type {
+  ActivityMemberEntry,
+  ActivityMemberOwnerType
+} from '../../contracts/activity-member.interface';
 import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {
@@ -21,7 +24,6 @@ import type { PricingConfig } from './pricing.model';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
-export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group' | 'asset';
 
 export interface ActivitiesFeedFilters {
   primaryFilter?: ActivitiesPrimaryFilter;
@@ -43,21 +45,6 @@ export interface EventExploreFeedFilters {
   openSpotsOnly: boolean;
   topic: string;
   excludedSourceIds?: string[];
-}
-
-export interface ActivityMemberOwnerRef {
-  ownerType: ActivityMemberOwnerType;
-  ownerId: string;
-}
-
-export interface ActivityMembersSummary {
-  ownerType: ActivityMemberOwnerType;
-  ownerId: string;
-  acceptedMembers: number;
-  pendingMembers: number;
-  capacityTotal: number;
-  acceptedMemberUserIds: string[];
-  pendingMemberUserIds: string[];
 }
 
 export type ActivitiesNavigationRequest =

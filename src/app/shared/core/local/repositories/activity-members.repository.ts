@@ -4,10 +4,7 @@ import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary
 } from '../../../core/base/models';
-import type * as AppTypes from '../../../core/base/models';
-import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../base/interfaces/user.interface';
-import { HttpActivityMembersRepository } from '../../http/repositories/activity-members.repository';
 import type { UserGameMode, UserGameSocialCard } from '../../base/interfaces/game.interface';
 import { LocalMemoryDb } from '../../base/db';
 import type { ActivityEventRecord } from '../../base/models/events.model';
@@ -29,8 +26,8 @@ export interface DemoAcceptedEventMemberGroup {
 @Injectable({
   providedIn: 'root'
 })
-export class LocalActivityMembersRepository extends HttpActivityMembersRepository {
-  protected override readonly memoryDb = inject(LocalMemoryDb);
+export class LocalActivityMembersRepository {
+  private readonly memoryDb = inject(LocalMemoryDb);
   private readonly localUsersRepository = inject(LocalUsersRepository);
   private readonly ownerCapacityByKey = new Map<string, number>();
   private gameSocialCardsCacheToken = '';
@@ -41,16 +38,12 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
   } | null = null;
   private readonly gameSocialCardsByUserId = new Map<string, Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]>>();
 
-  constructor() {
-    super();
+  peekRecordsByOwner(owner: ActivityMemberOwnerRef): ActivityMemberRecord[] {
+    return this.readRecordsByOwner(owner);
   }
 
-  override peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
-    return this.readMembersByOwner(owner);
-  }
-
-  override async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
-    return this.readMembersByOwner(owner);
+  async queryRecordsByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberRecord[]> {
+    return this.readRecordsByOwner(owner);
   }
 
   queryAcceptedEventMemberGroups(): DemoAcceptedEventMemberGroup[] {
@@ -374,83 +367,69 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
     return `${table.ids.length}:${Object.keys(table.idsByOwnerKey).length}:${latestUpdatedMs}`;
   }
 
-  override peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
-    return this.readSummaryByOwner(owner);
-  }
-
-  override async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
-    return this.normalizeOwners(owners)
-      .map(owner => this.readSummaryByOwner(owner))
-      .filter((summary): summary is ActivityMembersSummary => Boolean(summary));
-  }
-
-  override async replaceMembersByOwner(
+  replaceRecordsByOwner(
     owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null,
-    actorUserId = ''
-  ): Promise<void> {
-    void actorUserId;
+    records: readonly ActivityMemberRecord[],
+    summary: ActivityMembersSummary,
+    syncUserIds = true
+  ): void {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;
     }
-    const summary = this.writeOwnerMembers(normalizedOwner, members, capacityTotal, true);
-    this.cacheMembers(normalizedOwner, members, summary.capacityTotal);
+    this.writeOwnerRecords(normalizedOwner, records, summary, syncUserIds);
   }
 
-  override async applyMemberAction(
-    owner: ActivityMemberOwnerRef,
-    actorUserId: string,
-    targetUserId: string,
-    action: 'disqualify' | 'reinstate',
-    reason?: string | null
-  ): Promise<AppTypes.ActivityMemberEntry[]> {
-    const normalizedOwner = this.normalizeOwnerRef(owner);
-    const normalizedTargetUserId = targetUserId.trim();
-    if (!normalizedOwner || !normalizedTargetUserId) {
-      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+  normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {
+    const ownerType = owner?.ownerType;
+    const ownerId = owner?.ownerId?.trim() ?? '';
+    if ((ownerType !== 'event' && ownerType !== 'subEvent' && ownerType !== 'group' && ownerType !== 'asset') || !ownerId) {
+      return null;
     }
-    const previousMembers = this.readMembersByOwner(normalizedOwner);
-    const nowIso = AppUtils.toIsoDateTime(new Date());
-    const nextMembers = previousMembers.map(member => {
-      if (member.userId !== normalizedTargetUserId) {
-        return member;
-      }
-      if (action === 'disqualify' && member.status === 'accepted') {
-        return {
-          ...member,
-          status: 'disqualified' as const,
-          pendingSource: null,
-          requestKind: null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso
-        };
-      }
-      if (action === 'reinstate' && member.status === 'disqualified') {
-        return {
-          ...member,
-          status: 'accepted' as const,
-          pendingSource: null,
-          requestKind: null,
-          invitedByUserId: null,
-          invitedByActiveUser: false,
-          actionAtIso: nowIso
-        };
-      }
-      return member;
-    });
-    const changed = nextMembers.some((member, index) => member.status !== previousMembers[index]?.status);
-    if (!changed) {
-      return this.cloneEntries(previousMembers);
-    }
-    const summary = this.writeOwnerMembers(normalizedOwner, nextMembers, undefined, true);
-    this.cacheMembers(normalizedOwner, nextMembers, summary.capacityTotal);
-    return this.cloneEntries(nextMembers);
+    return {
+      ownerType,
+      ownerId
+    };
   }
 
-  private readMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
+  normalizeOwners(owners: readonly ActivityMemberOwnerRef[]): ActivityMemberOwnerRef[] {
+    const next: ActivityMemberOwnerRef[] = [];
+    const seen = new Set<string>();
+    for (const owner of owners) {
+      const normalizedOwner = this.normalizeOwnerRef(owner);
+      if (!normalizedOwner) {
+        continue;
+      }
+      const key = this.ownerKey(normalizedOwner);
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      next.push(normalizedOwner);
+    }
+    return next;
+  }
+
+  ownerKey(owner: ActivityMemberOwnerRef): string {
+    return `${owner.ownerType}:${owner.ownerId}`;
+  }
+
+  resolveOwnerCapacityTotal(owner: ActivityMemberOwnerRef, acceptedMembers: number): number {
+    const ownerKey = this.ownerKey(owner);
+    const storedCapacity = this.ownerCapacityByKey.get(ownerKey);
+    if (owner.ownerType === 'event') {
+      return Math.max(
+        acceptedMembers,
+        storedCapacity ?? this.resolveEventCapacityTotal(owner.ownerId, acceptedMembers)
+      );
+    }
+    return Math.max(
+      acceptedMembers,
+      storedCapacity ?? this.parseSampleCapacityLabel(owner.ownerId).capacityTotal ?? 0
+    );
+  }
+
+  private readRecordsByOwner(owner: ActivityMemberOwnerRef): ActivityMemberRecord[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
@@ -460,8 +439,7 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
     return (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is ActivityMemberRecord => Boolean(record))
-      .map(record => this.toMemberEntry(record))
-      .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
+      .map(record => this.cloneRecord(record));
   }
 
   private get localActivityMemberUsers(): UserDto[] {
@@ -469,46 +447,33 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
       .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id));
   }
 
-  private readSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
-    const normalizedOwner = this.normalizeOwnerRef(owner);
-    if (!normalizedOwner) {
-      return null;
-    }
-    const members = this.readMembersByOwner(normalizedOwner);
-    const acceptedMembers = members.filter(member => member.status === 'accepted').length;
-    const capacityTotal = this.resolveOwnerCapacityTotal(normalizedOwner, acceptedMembers);
-    return this.buildSummary(normalizedOwner, members, capacityTotal);
-  }
-
-  private writeOwnerMembers(
+  private writeOwnerRecords(
     owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
-    capacityTotal?: number | null,
+    records: readonly ActivityMemberRecord[],
+    summary: ActivityMembersSummary,
     syncUserIds = true
-  ): ActivityMembersSummary {
+  ): void {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
-      return this.buildSummary({ ownerType: 'event', ownerId: '' }, [], 0);
+      return;
     }
     const ownerKey = this.ownerKey(normalizedOwner);
-    const normalizedMembers = this.cloneEntries(members);
-    const summary = this.buildSummary(
-      normalizedOwner,
-      normalizedMembers,
-      capacityTotal ?? this.readSummaryByOwner(normalizedOwner)?.capacityTotal ?? null
-    );
+    const normalizedRecords = records.map(record => ({
+      ...this.cloneRecord(record),
+      ownerType: normalizedOwner.ownerType,
+      ownerId: normalizedOwner.ownerId,
+      ownerKey
+    }));
 
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
       const nextById = { ...table.byId };
       const nextIds: string[] = [];
       const nextIdsByOwnerKey = this.cloneOwnerKeyIndex(table.idsByOwnerKey);
-      const existingOwnerRecordsById: Record<string, ActivityMemberRecord> = {};
 
       for (const id of table.ids) {
         const current = table.byId[id];
         if (current?.ownerKey === ownerKey) {
-          existingOwnerRecordsById[id] = current;
           delete nextById[id];
           continue;
         }
@@ -517,9 +482,8 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
 
       delete nextIdsByOwnerKey[ownerKey];
 
-      for (const member of normalizedMembers) {
-        const record = this.toRecord(normalizedOwner, member, existingOwnerRecordsById[member.id]);
-        nextById[record.id] = record;
+      for (const record of normalizedRecords) {
+        nextById[record.id] = this.cloneRecord(record);
         nextIds.push(record.id);
         const ownerBucket = nextIdsByOwnerKey[ownerKey] ?? [];
         ownerBucket.push(record.id);
@@ -540,8 +504,6 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
     if (normalizedOwner.ownerType === 'event') {
       this.syncSingleEventSummary(normalizedOwner.ownerId, summary, syncUserIds);
     }
-
-    return summary;
   }
 
   private syncSingleEventSummary(eventId: string, summary: ActivityMembersSummary, syncUserIds: boolean): void {
@@ -626,21 +588,6 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
     return Math.max(acceptedMembers, sampleCapacity, 4);
   }
 
-  private resolveOwnerCapacityTotal(owner: ActivityMemberOwnerRef, acceptedMembers: number): number {
-    const ownerKey = this.ownerKey(owner);
-    const storedCapacity = this.ownerCapacityByKey.get(ownerKey);
-    if (owner.ownerType === 'event') {
-      return Math.max(
-        acceptedMembers,
-        storedCapacity ?? this.resolveEventCapacityTotal(owner.ownerId, acceptedMembers)
-      );
-    }
-    return Math.max(
-      acceptedMembers,
-      storedCapacity ?? this.parseSampleCapacityLabel(owner.ownerId).capacityTotal ?? 0
-    );
-  }
-
   private parseSampleCapacityLabel(eventId: string): { acceptedMembers: number | null; capacityTotal: number | null } {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
@@ -660,77 +607,10 @@ export class LocalActivityMembersRepository extends HttpActivityMembersRepositor
     };
   }
 
-  private resolveDemoUser(
-    userId: string,
-    fallbackName = 'Unknown User',
-    fallbackInitials = AppUtils.initialsFromText(fallbackName),
-    fallbackCity = '',
-    fallbackGender: UserDto['gender'] = 'man'
-  ): UserDto {
-    const normalizedUserId = userId.trim();
-    const byId = this.localActivityMemberUsers.find(user => user.id === normalizedUserId);
-    if (byId) {
-      return byId;
-    }
-    const templateSeed = AppUtils.hashText(`${normalizedUserId}:${fallbackName}`);
-    const demoUsers = this.localActivityMemberUsers;
-    const template = demoUsers[templateSeed % demoUsers.length];
+  private cloneRecord(record: ActivityMemberRecord): ActivityMemberRecord {
     return {
-      ...(template ?? demoUsers[0]),
-      id: normalizedUserId || template?.id || 'unknown-user',
-      name: fallbackName || template?.name || 'Unknown User',
-      initials: fallbackInitials || template?.initials || 'UN',
-      city: fallbackCity || template?.city || '',
-      gender: fallbackGender || template?.gender || 'man'
-    };
-  }
-
-  private toRecord(
-    owner: ActivityMemberOwnerRef,
-    member: AppTypes.ActivityMemberEntry,
-    existingRecord?: ActivityMemberRecord | null
-  ): ActivityMemberRecord {
-    const normalizedOwner = this.normalizeOwnerRef(owner)!;
-    const nowMs = Date.now();
-    const nowIso = new Date(nowMs).toISOString();
-    const invitedByUserId = member.status === 'pending'
-      && (member.requestKind === 'invite' || member.requestKind === 'waitlist-invite')
-      ? member.invitedByUserId?.trim() || null
-      : null;
-    return {
-      ...member,
-      invitedByUserId,
-      invitedByActiveUser: invitedByUserId ? member.invitedByActiveUser === true : false,
-      ownerType: normalizedOwner.ownerType,
-      ownerId: normalizedOwner.ownerId,
-      ownerKey: this.ownerKey(normalizedOwner),
-      createdMs: Number.isFinite(Number(existingRecord?.createdMs)) ? Number(existingRecord?.createdMs) : nowMs,
-      updatedMs: nowMs,
-      createdAtIso: existingRecord?.createdAtIso?.trim() || nowIso,
-      updatedAtIso: nowIso
-    };
-  }
-
-  private toMemberEntry(record: ActivityMemberRecord): AppTypes.ActivityMemberEntry {
-    return {
-      id: record.id,
-      userId: record.userId,
-      name: record.name,
-      initials: record.initials,
-      gender: record.gender,
-      city: record.city,
-      statusText: record.statusText,
-      role: record.role,
-      status: record.status,
-      pendingSource: record.pendingSource,
-      requestKind: record.requestKind,
-      invitedByActiveUser: record.invitedByActiveUser,
-      invitedByUserId: record.invitedByUserId ?? null,
-      metAtIso: record.metAtIso,
-      actionAtIso: record.actionAtIso,
-      metWhere: record.metWhere,
-      avatarUrl: record.avatarUrl,
-      profile: this.resolveDemoUser(record.userId, record.name, record.initials, record.city, record.gender)
+      ...record,
+      profile: record.profile ? { ...record.profile } : record.profile
     };
   }
 

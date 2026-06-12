@@ -29,7 +29,7 @@ export { LocalMediaRepository } from './repositories/media.repository';
 export { LocalContactsRepository } from './repositories/contacts.repository';
 export { LocalShareTokensRepository } from './repositories/share-tokens.repository';
 export { LocalProfileExperiencesRepository } from './repositories/profile-experiences.repository';
-export { LocalUsersRatingsRepository } from './repositories/users-ratings.repository';
+export { LocalRatesRepository } from './repositories/rates.repository';
 export { LocalUsersRepository as LocalUsersRepository } from './repositories/users.repository';
 export { LocalAssetsService } from './services/assets.service';
 export { LocalAdminAffinityGraphService } from './services/admin-affinity-graph.service';

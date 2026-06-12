@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
-import type { ProfileViewData } from '../../base/interfaces/profile.interface';
+import type { StoredContact } from '../../contracts/contact.interface';
+import type { ProfileViewData } from '../../contracts/profile.interface';
+import { LocalContactsMapper, LocalProfileExperiencesMapper } from '../mappers';
 import { LocalContactsRepository } from '../repositories/contacts.repository';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -16,9 +17,9 @@ export class LocalContactsService extends LocalRouteDelayService {
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
 
-  async loadContacts(userId: string): Promise<AppTypes.StoredContact[]> {
+  async loadContacts(userId: string): Promise<StoredContact[]> {
     await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    return this.contactsRepository.queryContactsByUser(userId);
+    return LocalContactsMapper.cloneContacts(this.contactsRepository.queryContactRecordsByUser(userId));
   }
 
   async loadContactProfile(userId: string): Promise<ProfileViewData> {
@@ -30,23 +31,28 @@ export class LocalContactsService extends LocalRouteDelayService {
     const user = this.usersRepository.queryUserById(normalizedUserId);
     return {
       user: user ? this.clone(user) : null,
-      experiences: this.profileExperiencesRepository.queryUserExperiences(normalizedUserId)
+      experiences: LocalProfileExperiencesMapper.cloneEntries(
+        this.profileExperiencesRepository.queryUserExperienceRecords(normalizedUserId)
+      )
     };
   }
 
   async saveContacts(
     userId: string,
-    contacts: readonly AppTypes.StoredContact[]
-  ): Promise<AppTypes.StoredContact[]> {
-    const savedContacts = this.contactsRepository.replaceContactsForUser(userId, contacts);
+    contacts: readonly StoredContact[]
+  ): Promise<StoredContact[]> {
+    const savedContacts = this.contactsRepository.replaceContactRecordsForUser(
+      userId,
+      LocalContactsMapper.toStoredContacts(contacts)
+    );
     await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    return savedContacts;
+    return LocalContactsMapper.cloneContacts(savedContacts);
   }
 
-  async deleteContact(userId: string, contactId: string): Promise<AppTypes.StoredContact[]> {
-    const savedContacts = this.contactsRepository.deleteContact(userId, contactId);
+  async deleteContact(userId: string, contactId: string): Promise<StoredContact[]> {
+    const savedContacts = this.contactsRepository.deleteContactRecord(userId, contactId);
     await this.waitForRouteDelay(LocalContactsService.CONTACTS_ROUTE);
-    return savedContacts;
+    return LocalContactsMapper.cloneContacts(savedContacts);
   }
 
   private emptyProfileViewData(): ProfileViewData {

@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ExperienceEntry } from '../../base/models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { LocalMemoryDb } from '../../base/db';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experiences.model';
+import { LocalProfileExperiencesMapper } from '../mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -10,22 +11,22 @@ import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experi
 export class LocalProfileExperiencesRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
-  queryUserExperiences(userId: string): ExperienceEntry[] {
+  queryUserExperienceRecords(userId: string): ExperienceEntry[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     const table = this.memoryDb.read()[PROFILE_EXPERIENCES_TABLE_NAME];
-    return this.cloneEntries(table.byUserId[normalizedUserId] ?? []);
+    return LocalProfileExperiencesMapper.cloneEntries(table.byUserId[normalizedUserId] ?? []);
   }
 
-  replaceUserExperiences(userId: string, entries: readonly ExperienceEntry[]): ExperienceEntry[] {
+  replaceUserExperienceRecords(userId: string, entries: readonly ExperienceEntry[]): ExperienceEntry[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
 
-    const normalizedEntries = this.normalizeEntries(entries);
+    const entryRecords = LocalProfileExperiencesMapper.cloneEntries(entries);
     this.memoryDb.write(state => {
       const table = state[PROFILE_EXPERIENCES_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(table.byUserId, normalizedUserId);
@@ -34,7 +35,7 @@ export class LocalProfileExperiencesRepository {
         [PROFILE_EXPERIENCES_TABLE_NAME]: {
           byUserId: {
             ...table.byUserId,
-            [normalizedUserId]: this.cloneEntries(normalizedEntries)
+            [normalizedUserId]: LocalProfileExperiencesMapper.cloneEntries(entryRecords)
           },
           userIds: exists
             ? [...table.userIds]
@@ -43,41 +44,6 @@ export class LocalProfileExperiencesRepository {
       };
     });
 
-    return this.cloneEntries(normalizedEntries);
-  }
-
-  private normalizeEntries(entries: readonly ExperienceEntry[]): ExperienceEntry[] {
-    return entries
-      .map(entry => this.normalizeEntry(entry))
-      .filter((entry): entry is ExperienceEntry => Boolean(entry));
-  }
-
-  private normalizeEntry(entry: ExperienceEntry | null | undefined): ExperienceEntry | null {
-    const id = `${entry?.id ?? ''}`.trim();
-    if (!id) {
-      return null;
-    }
-    const type = this.normalizeType(entry?.type);
-    return {
-      id,
-      type,
-      title: `${entry?.title ?? ''}`.trim(),
-      org: `${entry?.org ?? ''}`.trim(),
-      city: `${entry?.city ?? ''}`.trim(),
-      dateFrom: `${entry?.dateFrom ?? ''}`.trim(),
-      dateTo: `${entry?.dateTo ?? ''}`.trim() || 'Present',
-      description: `${entry?.description ?? ''}`.trim()
-    };
-  }
-
-  private normalizeType(value: ExperienceEntry['type'] | null | undefined): ExperienceEntry['type'] {
-    if (value === 'School' || value === 'Online Session' || value === 'Additional Project') {
-      return value;
-    }
-    return 'Workspace';
-  }
-
-  private cloneEntries(entries: readonly ExperienceEntry[]): ExperienceEntry[] {
-    return entries.map(entry => ({ ...entry }));
+    return LocalProfileExperiencesMapper.cloneEntries(entryRecords);
   }
 }

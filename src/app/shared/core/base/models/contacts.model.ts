@@ -1,4 +1,4 @@
-import type { StoredContact } from './contact.model';
+import type { StoredContact } from '../../contracts/contact.interface';
 import { APP_INDEXED_DB_KEYS } from '../storage-scope';
 
 export const CONTACTS_TABLE_NAME = APP_INDEXED_DB_KEYS.contacts;

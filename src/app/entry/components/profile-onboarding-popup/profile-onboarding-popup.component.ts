@@ -27,7 +27,7 @@ import type {
   ExperienceEntry,
   ProfileDetailFormGroup,
   ProfileStatus
-} from '../../../shared/core/base/models/profile.model';
+} from '../../../shared/core/contracts/profile.interface';
 
 interface OnboardingStep {
   id: ProfileOnboardingStepId;

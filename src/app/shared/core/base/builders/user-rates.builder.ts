@@ -1,5 +1,5 @@
 import type { UserRateRecord } from '../interfaces/game.interface';
-import type { RateRecord } from '../models/rate.model';
+import type { RateRecord } from '../../contracts/rate.interface';
 
 export class UserRatesBuilder {
   static toActivityRateRecord(ownerUserId: string, item: RateRecord): UserRateRecord {

@@ -4,8 +4,8 @@ import { AppUtils } from '../../../app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder, UserProfileStateBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import type { UserDto } from '../../base/interfaces/user.interface';
-import { HttpAssetsRepository } from '../../http/repositories/assets.repository';
 import { LocalMemoryDb } from '../../base/db';
+import { LocalAssetsMapper } from '../mappers/assets.mapper';
 import { LocalUsersRepository } from './users.repository';
 import {
   ASSETS_TABLE_NAME,
@@ -21,18 +21,26 @@ import {
 @Injectable({
   providedIn: 'root'
 })
-export class LocalAssetsRepository extends HttpAssetsRepository {
+export class LocalAssetsRepository {
   private static readonly VISIBLE_EXPLORE_OWNER_LIMIT = 12;
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly usersRepository = inject(LocalUsersRepository);
 
-  override peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
+  peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     return this.readOwnerAssets(normalizedUserId);
+  }
+
+  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedAssetId) {
+      return null;
+    }
+    return this.peekOwnedAssetsByUser(userId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
   peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppTypes.AssetCard[]> {
@@ -60,7 +68,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     return assetsByUserId;
   }
 
-  override async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -68,7 +76,16 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     return this.readOwnerAssets(normalizedUserId);
   }
 
-  override async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return null;
+    }
+    return this.readOwnerAssets(normalizedUserId).find(card => card.id === normalizedAssetId) ?? null;
+  }
+
+  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -89,9 +106,9 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       .find(card => card.type === type && card.id === normalizedAssetId) ?? null;
   }
 
-  override async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
+  async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
     const normalizedUserId = userId.trim();
-    const normalizedAsset = this.normalizeCard(asset);
+    const normalizedAsset = LocalAssetsMapper.normalizeCard(asset);
     if (!normalizedUserId || !normalizedAsset) {
       return asset;
     }
@@ -117,18 +134,10 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       };
     });
 
-      return {
-        ...normalizedAsset,
-        routes: [...(normalizedAsset.routes ?? [])],
-        topics: [...(normalizedAsset.topics ?? [])],
-        policies: (normalizedAsset.policies ?? []).map(item => ({ ...item })),
-        pricing: normalizedAsset.pricing ? PricingBuilder.clonePricingConfig(normalizedAsset.pricing) : undefined,
-        requests: normalizedAsset.requests.map(request => this.cloneRequest(request)),
-        menuActions: [...(normalizedAsset.menuActions ?? [])]
-      };
+    return LocalAssetsMapper.cloneCards([normalizedAsset])[0] ?? normalizedAsset;
   }
 
-  override async replaceOwnedAssets(
+  async replaceOwnedAssets(
     userId: string,
     assets: readonly AppTypes.AssetCard[]
   ): Promise<AppTypes.AssetCard[]> {
@@ -136,7 +145,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    const normalizedAssets = this.normalizeCards(assets);
+    const normalizedAssets = LocalAssetsMapper.normalizeCards(assets);
     const currentTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     const ownerIds = [...(currentTable.idsByOwnerUserId[normalizedUserId] ?? [])];
     const seenIds = new Set<string>();
@@ -176,18 +185,10 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       };
     });
 
-    return normalizedAssets.map(asset => ({
-      ...asset,
-      routes: [...(asset.routes ?? [])],
-      topics: [...(asset.topics ?? [])],
-      policies: (asset.policies ?? []).map(item => ({ ...item })),
-      pricing: asset.pricing ? PricingBuilder.clonePricingConfig(asset.pricing) : undefined,
-      requests: asset.requests.map(request => this.cloneRequest(request)),
-      menuActions: [...(asset.menuActions ?? [])]
-    }));
+    return LocalAssetsMapper.cloneCards(normalizedAssets);
   }
 
-  override async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
+  async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -206,7 +207,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     });
   }
 
-  override async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -216,7 +217,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
       const current = table.byId[normalizedAssetId];
-      if (!current || this.normalizeAssetStatus(current.status) !== 'UR' || !this.canTakeOverAsset(current, normalizedUserId)) {
+      if (!current || LocalAssetsMapper.normalizeAssetStatus(current.status) !== 'UR' || !this.canTakeOverAsset(current, normalizedUserId)) {
         return state;
       }
       const actor = this.queryUsers().find(user => user.id === normalizedUserId) ?? null;
@@ -224,7 +225,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
         ...current,
         ownerUserId: normalizedUserId,
         ownerName: actor?.name ?? current.ownerName,
-        status: this.restoredAssetStatus(current),
+        status: LocalAssetsMapper.restoredAssetStatus(current),
         statusBeforeSuppression: null,
         updatedMs: Date.now(),
         updatedAtIso: new Date().toISOString()
@@ -237,7 +238,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     return saved ? this.toAssetCard(saved, normalizedUserId) : null;
   }
 
-  override async makeAssetManager(
+  async makeAssetManager(
     userId: string,
     assetId: string,
     targetUserId: string
@@ -330,7 +331,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
     const targetUser = this.resolveAssetRoleDemoUser(normalizedTargetUserId, record);
     let promotedExistingRequest = false;
     const next = record.requests.map(request => {
-      const cloned = this.cloneRequest(request);
+      const cloned = LocalAssetsMapper.cloneRequest(request);
       if (`${cloned.userId ?? ''}`.trim() !== normalizedTargetUserId) {
         return cloned;
       }
@@ -450,7 +451,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       return ['share'];
     }
     const actions: string[] = [];
-    const status = this.normalizeAssetStatus(record.status);
+    const status = LocalAssetsMapper.normalizeAssetStatus(record.status);
     if (status === 'UR' && this.isActiveDemoUser(normalizedViewerUserId)) {
       actions.push('takeOver');
     }
@@ -472,7 +473,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
 
   private canManageAssetMembers(record: AssetRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId) || this.normalizeAssetStatus(record.status) === 'T') {
+    if (!normalizedUserId || !this.isActiveDemoUser(normalizedUserId) || LocalAssetsMapper.normalizeAssetStatus(record.status) === 'T') {
       return false;
     }
     return record.ownerUserId === normalizedUserId || this.isAcceptedAssetManager(record.id, normalizedUserId);
@@ -510,7 +511,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
   }
 
   private isSuppressedAssetStatus(status: string | null | undefined): boolean {
-    const normalized = this.normalizeAssetStatus(status);
+    const normalized = LocalAssetsMapper.normalizeAssetStatus(status);
     return normalized === 'UR' || normalized === 'B' || normalized === 'D' || normalized === 'I' || normalized === 'T';
   }
 
@@ -604,11 +605,11 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       visibility: record.visibility,
-      status: this.normalizeAssetStatus(record.status),
+      status: LocalAssetsMapper.normalizeAssetStatus(record.status),
       ownerUserId: record.ownerUserId,
       ownerName: record.ownerName,
       requests: record.requests.map(request => ({
-        ...this.cloneRequest(request),
+        ...LocalAssetsMapper.cloneRequest(request),
         menuActions: this.resolveRequestMenuActions(record, request, viewerUserId)
       })),
       menuActions: this.resolveMenuActions(record, viewerUserId)
@@ -628,7 +629,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       topics: cloneNested ? [...(record.topics ?? [])] : (record.topics ?? []),
       policies: cloneNested ? (record.policies ?? []).map(item => ({ ...item })) : (record.policies ?? []),
       pricing: cloneNested && record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : record.pricing,
-      requests: cloneNested ? record.requests.map(request => this.cloneRequest(request)) : record.requests,
+      requests: cloneNested ? record.requests.map(request => LocalAssetsMapper.cloneRequest(request)) : record.requests,
       menuActions: cloneNested ? [...(record.menuActions ?? [])] : (record.menuActions ?? [])
     };
   }
@@ -764,7 +765,7 @@ export class LocalAssetsRepository extends HttpAssetsRepository {
       topics: [...(record.topics ?? [])],
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      requests: record.requests.map(request => this.cloneRequest(request)),
+      requests: record.requests.map(request => LocalAssetsMapper.cloneRequest(request)),
       menuActions: [...(record.menuActions ?? [])]
     };
   }

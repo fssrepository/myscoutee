@@ -6,7 +6,7 @@ import type {
   UserExperienceImportResult,
   UserExperiencesPersistenceService
 } from '../interfaces/experience.interface';
-import type { ExperienceEntry } from '../models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ExperienceDocumentImportService } from './experience-document-import.service';
 import { LocalUserExperiencesService } from '../../local';

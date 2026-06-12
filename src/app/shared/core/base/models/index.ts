@@ -1,11 +1,8 @@
 export * from './entry.model';
 export * from './popup.model';
-export * from './activity-member.model';
 export * from './activity-resource.model';
 export * from './chat.model';
 export * from './chat-voice-clip.model';
-export * from './rate.model';
-export * from './profile.model';
 export * from './event.model';
 export * from './pricing.model';
 export type {
@@ -19,7 +16,6 @@ export * from './activities-ui.model';
 export * from './activities.model';
 export * from './share-token.model';
 export * from './idea-post.model';
-export * from './contact.model';
 export * from './admin-notification.model';
 export * from './admin-monitoring.model';
 export * from './admin-dashboard.model';
@@ -44,3 +40,42 @@ export * from './memory.model';
 export * from './profile-experiences.model';
 export * from './share-tokens.model';
 export * from './users.model';
+export type {
+  ActivityInviteSort,
+  ActivityMemberEntry,
+  ActivityMemberOwnerRef,
+  ActivityMemberOwnerType,
+  ActivityMemberRequestKind,
+  ActivityMemberRole,
+  ActivityMembersSummary,
+  ActivityMemberStatus,
+  ActivityPendingSource
+} from '../../contracts/activity-member.interface';
+export type {
+  ContactFormValue,
+  ContactListFilters,
+  ContactListItem,
+  ContactMethodDraft,
+  ContactMethodItem,
+  ContactMethodOption,
+  ContactMethodType,
+  StoredContact
+} from '../../contracts/contact.interface';
+export type {
+  DetailPrivacy,
+  ExperienceEntry,
+  ExperienceFilter,
+  InterestOptionGroup,
+  MobileProfileSelectorOption,
+  MobileProfileSelectorSheet,
+  ProfileDetailFormGroup,
+  ProfileDetailFormRow,
+  ProfileStatus,
+  ValuesOptionGroup
+} from '../../contracts/profile.interface';
+export type {
+  RateRecord,
+  RateRecordDirection,
+  RateRecordMode,
+  RateRecordSocialContext
+} from '../../contracts/rate.interface';

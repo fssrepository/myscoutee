@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { UserRatesBuilder, UserProfileStateBuilder } from '../../base/builders';
-import type { RateRecord } from '../../base/models/rate.model';
+import type { RateRecord } from '../../contracts/rate.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
 import type {
   ActivityRateRecordQuery,
@@ -11,13 +11,12 @@ import type {
   UserRatesSyncResult
 } from '../../base/interfaces/game.interface';
 import { LocalMemoryDb } from '../../base/db';
-import { BaseUsersRatingsRepository } from '../../base/repositories/users-ratings.repository';
+import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
 } from '../../base/models/activity-members.model';
 import {
   type UserRatesRecordCollection,
-  USER_RATES_OUTBOX_TABLE_NAME,
   USER_RATES_TABLE_NAME,
   USERS_TABLE_NAME
 } from '../../base/models/users.model';
@@ -25,8 +24,9 @@ import {
 @Injectable({
   providedIn: 'root'
 })
-export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
-  protected override readonly memoryDb = inject(LocalMemoryDb);
+export class LocalRatesRepository {
+  private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly rateOutboxRepository = inject(RateOutboxRepository);
 
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
     const normalizedRaterId = raterUserId.trim();
@@ -35,7 +35,6 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
     }
     const state = this.memoryDb.read();
     const ratesTable = state[USER_RATES_TABLE_NAME];
-    const outboxTable = state[USER_RATES_OUTBOX_TABLE_NAME];
 
     const ratedUserIds = new Set<string>();
 
@@ -63,29 +62,8 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       }
     }
 
-    for (const id of outboxTable.ids) {
-      const outboxRecord = outboxTable.byId[id];
-      const payload = outboxRecord?.payload;
-      if (!payload || outboxRecord.status !== 'pending') {
-        continue;
-      }
-      if (payload.ownerUserId?.trim() !== normalizedRaterId) {
-        continue;
-      }
-      const item = UserRatesBuilder.toRateRecord(payload);
-      if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
-        continue;
-      }
-      if (mode === 'single' && item.mode !== 'individual') {
-        continue;
-      }
-      if (mode !== 'single' && item.mode !== 'pair') {
-        continue;
-      }
-      ratedUserIds.add(item.userId.trim());
-      if (item.secondaryUserId?.trim()) {
-        ratedUserIds.add(item.secondaryUserId.trim());
-      }
+    for (const userId of this.rateOutboxRepository.queryPendingRatedGameCardUserIds(normalizedRaterId, mode)) {
+      ratedUserIds.add(userId);
     }
 
     return Array.from(ratedUserIds)
@@ -93,12 +71,12 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       .filter(id => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(id));
   }
 
-  override queryRatedGameCardPairKeys(ownerUserId: string): string[] {
+  queryRatedGameCardPairKeys(ownerUserId: string): string[] {
     const normalizedOwnerUserId = ownerUserId.trim();
     if (!normalizedOwnerUserId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
       return [];
     }
-    const pairKeys = new Set(this.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
+    const pairKeys = new Set(this.rateOutboxRepository.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     for (const id of ratesTable.ids) {
       const record = ratesTable.byId[id];
@@ -186,7 +164,6 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
       return [];
     }
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
-    const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     const recordsById = new Map<string, UserRateRecord>();
     const usersById = this.usersById();
     const indexedIds = ratesTable.idsByRelevantUserId[normalizedUserId] ?? [];
@@ -196,12 +173,8 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
         recordsById.set(record.id, record);
       }
     }
-    for (const id of outboxTable.ids) {
-      const record = outboxTable.byId[id];
-      if (!record?.payload) {
-        continue;
-      }
-      recordsById.set(record.payload.id, record.payload);
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      recordsById.set(record.id, record);
     }
     return [...recordsById.values()]
       .filter((record): record is UserRateRecord => Boolean(record))
@@ -752,7 +725,16 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
     return AppUtils.toSortableDate(record?.happenedAtIso ?? record?.updatedAtIso ?? record?.createdAtIso ?? '');
   }
 
-  protected override async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
+  async flushPendingUserRatesOutboxBatch(limit = 50): Promise<void> {
+    const batch = this.rateOutboxRepository.queryPendingUserRatesOutbox(limit);
+    if (batch.length === 0) {
+      return;
+    }
+    const syncResult = await this.syncUserRatesBatch(batch.map(item => ({ ...item.payload })));
+    this.rateOutboxRepository.applyUserRatesSyncResult(batch, syncResult);
+  }
+
+  private async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
     if (rates.length === 0) {
       return {
         syncedRateIds: [],
@@ -785,7 +767,7 @@ export class LocalUsersRatingsRepository extends BaseUsersRatingsRepository {
     if (!item) {
       return null;
     }
-    const normalized = this.buildNormalizedActivityRateRecord(
+    const normalized = this.rateOutboxRepository.buildNormalizedActivityRateRecord(
       ownerUserId,
       item,
       Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0

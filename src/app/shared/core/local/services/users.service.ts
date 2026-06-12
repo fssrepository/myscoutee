@@ -23,7 +23,7 @@ import {
   type LocalUserRealtimeSnapshotState
 } from '../builders';
 import { UserFilterPreferencesBuilder, UserMenuCountersBuilder } from '../../base/builders';
-import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
+import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { APP_STORAGE_KEYS } from '../../base/storage-scope';
 
@@ -41,7 +41,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-  private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -330,7 +330,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         message: 'Reports can only be submitted for members you shared an event with.'
       };
     }
-    const members = this.activityMembersRepository.peekMembersByOwner({
+    const members = this.activityMembersService.peekMembersByOwner({
       ownerType: 'event',
       ownerId: normalizedEventId
     });

@@ -1,7 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 import type { UserSelectorListItemDto } from '../interfaces/user.interface';
-import type { ActivityMemberEntry } from '../models/activity-member.model';
-import type { ActivitiesNavigationRequest, ActivityMemberOwnerType } from '../models/activities.model';
+import type { ActivityMemberEntry, ActivityMemberOwnerType } from '../../contracts/activity-member.interface';
+import type { ActivitiesNavigationRequest } from '../models/activities.model';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;

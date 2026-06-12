@@ -5,7 +5,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { UserProfileStateBuilder } from '../../base/builders';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalUsersRatingsRepository } from '../repositories/users-ratings.repository';
+import { LocalRatesRepository } from '../repositories/rates.repository';
 import type {
   UserGameSocialCard,
   UserGameCardsQueryRequest,
@@ -27,7 +27,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   private static readonly HOME_FRESHNESS_HALF_LIFE_DAYS = 14;
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
-  private readonly usersRatingsRepository = inject(LocalUsersRatingsRepository);
+  private readonly ratesRepository = inject(LocalRatesRepository);
   private readonly userFacetById = APP_STATIC_DATA.homeUserFacetById;
 
   async whenReady(): Promise<void> {
@@ -39,26 +39,6 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       .filter(user => user.id.trim().length > 0)
       .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id))
       .filter(user => UserProfileStateBuilder.isActivityRateVisibleProfile(user));
-  }
-
-  recordGameCardRating(
-    raterUserId: string,
-    ratedUserId: string,
-    rating: number,
-    mode: 'single' | 'pair' = 'single',
-    socialContext?: UserGameSocialCard['socialContext'],
-    bridgeUserId?: string,
-    bridgeCount?: number
-  ): void {
-    this.usersRatingsRepository.enqueueGameCardRatingOutbox(
-      raterUserId,
-      ratedUserId,
-      rating,
-      mode,
-      socialContext,
-      bridgeUserId,
-      bridgeCount
-    );
   }
 
   async queryUserGameCardsByFilter(
@@ -85,8 +65,8 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     if (mode === 'separated-friends' || mode === 'friends-in-common') {
       const allUsers = this.usersRepository.queryAllUsers();
       const usersById = new Map(allUsers.map(user => [user.id, user] as const));
-      const ratedPairKeys = new Set(this.usersRatingsRepository.queryRatedGameCardPairKeys(normalizedUserId));
-      const ratedSingleUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(normalizedUserId, 'single'));
+      const ratedPairKeys = new Set(this.ratesRepository.queryRatedGameCardPairKeys(normalizedUserId));
+      const ratedSingleUserIds = new Set(this.ratesRepository.queryRatedGameCardUserIds(normalizedUserId, 'single'));
       const allSocialCards = this.activityMembersRepository
         .queryGameSocialCards(normalizedUserId, mode)
         .filter(card => this.isSocialCardVisible(usersById, card, mode))
@@ -338,7 +318,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       }
     }
     for (const user of this.usersRepository.queryAllUsers()) {
-      for (const rate of this.usersRatingsRepository.queryUserRatesByUserId(user.id)) {
+      for (const rate of this.ratesRepository.queryUserRatesByUserId(user.id)) {
         const timestamp = Date.parse(rate.happenedAtIso?.trim() || rate.updatedAtIso || rate.createdAtIso || '');
         if (!Number.isFinite(timestamp) || timestamp <= 0) {
           continue;

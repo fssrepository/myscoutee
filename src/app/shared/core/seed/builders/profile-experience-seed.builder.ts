@@ -1,4 +1,4 @@
-import type { ExperienceEntry } from '../../base/models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 
 type ProfileExperienceSeedRecord = Record<string, ExperienceEntry[]>;
 

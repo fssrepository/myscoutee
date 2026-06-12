@@ -10,14 +10,14 @@ import { LocalMemoryDb } from '../../base/db';
 import { UserProfileStateBuilder, UserRecordsBuilder } from '../../base/builders';
 import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
 import type { AppMemorySchema } from '../../base/models/memory.model';
-import { LocalUsersRatingsRepository } from './users-ratings.repository';
+import { LocalRatesRepository } from './rates.repository';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LocalUsersRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
-  private readonly usersRatingsRepository = inject(LocalUsersRatingsRepository);
+  private readonly ratesRepository = inject(LocalRatesRepository);
 
   readonly usersTable = computed(() => this.memoryDb.read()[USERS_TABLE_NAME]);
   readonly demoUsers = computed(() => this.queryAvailableDemoUsers());
@@ -184,7 +184,7 @@ export class LocalUsersRepository {
     if (!normalizedRaterId) {
       return users;
     }
-    const ratedUserIds = new Set(this.usersRatingsRepository.queryRatedGameCardUserIds(normalizedRaterId, 'single'));
+    const ratedUserIds = new Set(this.ratesRepository.queryRatedGameCardUserIds(normalizedRaterId, 'single'));
     return users
       .filter(user => user.id !== normalizedRaterId)
       .filter(user => !ratedUserIds.has(user.id));

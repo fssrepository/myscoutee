@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ExperienceEntry } from '../../base/models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { LocalMemoryDb } from '../../base/db';
 import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experiences.model';
 import { SeedProfileExperienceBuilder } from '../builders';

@@ -6,7 +6,7 @@ import type {
   UserExperiencesPersistenceService,
   UserExperiencesQueryResponseDto
 } from '../../base/interfaces/experience.interface';
-import type { ExperienceEntry } from '../../base/models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
 
 @Injectable({
   providedIn: 'root'

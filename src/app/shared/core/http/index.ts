@@ -1,9 +1,7 @@
-export { HttpAssetsRepository } from './repositories/assets.repository';
 export {
-  HttpAdminAffinityGraphRepository,
   type AdminAffinityGraphRangeParams,
   type AdminAffinityGraphTileParams
-} from './repositories/admin-affinity-graph.repository';
+} from './services/admin-affinity-graph.service';
 export { HttpAdminAffinityGraphService } from './services/admin-affinity-graph.service';
 export { HttpAdminModerationService } from './services/admin-moderation.service';
 export { HttpAdminWorkspaceService } from './services/admin-workspace.service';
@@ -11,11 +9,6 @@ export { HttpAdminParamsService } from './services/admin-params.service';
 export { HttpAdminMonitoringService } from './services/admin-monitoring.service';
 export { HttpAdminStatsService } from './services/admin-stats.service';
 export { HttpAdminNotificationsService } from './services/admin-notifications.service';
-export { HttpAssetTicketsRepository } from './repositories/asset-tickets.repository';
-export { HttpActivityInviteCandidatesRepository } from './repositories/activity-invite-candidates.repository';
-export { HttpActivityMembersRepository } from './repositories/activity-members.repository';
-export { HttpActivityResourcesRepository } from './repositories/activity-resources.repository';
-export { HttpUsersRatingsRepository } from './repositories/users-ratings.repository';
 export { HttpAssetsService } from './services/assets.service';
 export { HttpAssetTicketsService } from './services/asset-tickets.service';
 export { HttpActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
