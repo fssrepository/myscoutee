@@ -264,22 +264,14 @@
                 <label class="subevent-leaderboard-entry-field">
                   <span>Member</span>
                   <div class="subevent-leaderboard-select">
-                    <mat-select
-                      [ngModel]="form.memberId"
-                      (selectionChange)="form.memberId = $event.value"
-                      [panelWidth]="null"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel subevent-leaderboard-options-panel"
-                      >
-                      @for (member of currentEntryMembers(); track trackById($index, member)) {
-                        <mat-option
-                          [value]="member.id"
-                          class="status-option"
-                          >
-                          <span class="subevent-leaderboard-option-label">{{ member.name }}</span>
-                        </mat-option>
-                      }
-                    </mat-select>
+                    <app-menu
+                      class="subevent-leaderboard-member-menu"
+                      kind="select"
+                      [trigger]="leaderboardMemberMenuTrigger('score-member')"
+                      [items]="leaderboardMemberMenuItems('score-member')"
+                      panelAlign="start"
+                      (itemSelect)="onLeaderboardMenuSelect($event)"
+                    ></app-menu>
                   </div>
                 </label>
                 <label class="subevent-leaderboard-entry-field">
@@ -296,43 +288,27 @@
                 <label class="subevent-leaderboard-entry-field">
                   <span>Member A</span>
                   <div class="subevent-leaderboard-select">
-                    <mat-select
-                      [ngModel]="form.homeMemberId"
-                      (selectionChange)="onEntryHomeMemberChange($event.value)"
-                      [panelWidth]="null"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel subevent-leaderboard-options-panel"
-                      >
-                      @for (member of currentEntryMembers(); track trackById($index, member)) {
-                        <mat-option
-                          [value]="member.id"
-                          class="status-option"
-                          >
-                          <span class="subevent-leaderboard-option-label">{{ member.name }}</span>
-                        </mat-option>
-                      }
-                    </mat-select>
+                    <app-menu
+                      class="subevent-leaderboard-member-menu"
+                      kind="select"
+                      [trigger]="leaderboardMemberMenuTrigger('home-member')"
+                      [items]="leaderboardMemberMenuItems('home-member')"
+                      panelAlign="start"
+                      (itemSelect)="onLeaderboardMenuSelect($event)"
+                    ></app-menu>
                   </div>
                 </label>
                 <label class="subevent-leaderboard-entry-field">
                   <span>Member B</span>
                   <div class="subevent-leaderboard-select">
-                    <mat-select
-                      [ngModel]="form.awayMemberId"
-                      (selectionChange)="onEntryAwayMemberChange($event.value)"
-                      [panelWidth]="null"
-                      disableOptionCentering
-                      panelClass="selector-options-panel profile-bottom-sheet-panel subevent-leaderboard-options-panel"
-                      >
-                      @for (member of currentEntryMembers(); track trackById($index, member)) {
-                        <mat-option
-                          [value]="member.id"
-                          class="status-option"
-                          >
-                          <span class="subevent-leaderboard-option-label">{{ member.name }}</span>
-                        </mat-option>
-                      }
-                    </mat-select>
+                    <app-menu
+                      class="subevent-leaderboard-member-menu"
+                      kind="select"
+                      [trigger]="leaderboardMemberMenuTrigger('away-member')"
+                      [items]="leaderboardMemberMenuItems('away-member')"
+                      panelAlign="start"
+                      (itemSelect)="onLeaderboardMenuSelect($event)"
+                    ></app-menu>
                   </div>
                 </label>
                 <label class="subevent-leaderboard-entry-field subevent-leaderboard-score-field">

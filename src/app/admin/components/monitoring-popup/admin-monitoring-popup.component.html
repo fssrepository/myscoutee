@@ -11,39 +11,12 @@
         </div>
         <div class="monitoring-header-actions">
           @if (!loading()) {
-            <div class="monitoring-filter-wrap">
-              <button
-                type="button"
-                class="monitoring-filter-btn"
-                [class.is-open]="filterMenuOpen()"
-                (click)="toggleFilterMenu($event)"
-                [attr.aria-expanded]="filterMenuOpen()"
-                [attr.aria-label]="'admin.monitoring.filter.aria' | i18n"
-              >
-                <mat-icon>{{ filterIcon() }}</mat-icon>
-                <span>{{ filterLabelKey() | i18n }}</span>
-                <strong>{{ filterCount() }}</strong>
-                <mat-icon class="monitoring-filter-caret">expand_more</mat-icon>
-              </button>
-              @if (filterMenuOpen()) {
-                <div class="monitoring-filter-menu" role="menu" (click)="$event.stopPropagation()">
-                  @for (option of filterOptions; track option.key) {
-                    <button
-                      type="button"
-                      class="monitoring-filter-option"
-                      [class.is-active]="filter() === option.key"
-                      (click)="selectFilter(option.key, $event)"
-                      role="menuitemradio"
-                      [attr.aria-checked]="filter() === option.key"
-                    >
-                      <mat-icon>{{ option.icon }}</mat-icon>
-                      <span>{{ option.labelKey | i18n }}</span>
-                      <strong>{{ filterCount(option.key) }}</strong>
-                    </button>
-                  }
-                </div>
-              }
-            </div>
+            <app-menu
+              class="monitoring-filter-wrap"
+              kind="button-row"
+              [model]="filterMenuModel()"
+              (itemSelect)="onFilterMenuSelect($event)"
+            ></app-menu>
           }
           <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
             <mat-icon>close</mat-icon>

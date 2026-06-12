@@ -14,6 +14,8 @@ export {
   AppPopupContext,
   type ActivityInvitePopupState,
   type AdminNavigatorRequest,
+  type DemoBootstrapSelectorMode,
+  type DemoBootstrapSelectorState,
   type NavigatorActivitiesRequest,
   type NavigatorAssetRequest,
   type NavigatorEventFeedbackRequest

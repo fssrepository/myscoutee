@@ -753,6 +753,20 @@ button.ui-info-card__overlay-action {
   align-items: center;
 }
 
+.ui-info-card__actions .app-menu-host--trigger-icon .app-menu__trigger--shape-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.ui-info-card__actions .app-menu-host--trigger-icon .app-menu__trigger--shape-icon .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
 .ui-info-card__menu-trigger {
   position: relative;
   z-index: 31;

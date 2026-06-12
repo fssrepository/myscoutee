@@ -15,6 +15,11 @@ import type {
   AdminNotificationIntervalUnit
 } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel
+} from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminShellService } from '../../services/admin-shell.service';
 
@@ -26,6 +31,11 @@ const PROCESS_LIST_FILTER = {
   failed: 'failed'
 } as const;
 type ProcessListFilter = typeof PROCESS_LIST_FILTER[keyof typeof PROCESS_LIST_FILTER];
+type ProcessFilterMenuItemId = 'process-filter-menu' | `process-filter:${ProcessListFilter}`;
+
+interface ProcessFilterMenuContext {
+  filter: ProcessListFilter;
+}
 
 const PROCESS_STATUS_KIND = {
   running: 'running',
@@ -298,7 +308,7 @@ const STATUS_CLASS_PREFIX = 'is-';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, ProgressIndicatorComponent, I18nPipe],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })
@@ -325,7 +335,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly timingDirtyKeys = signal<ReadonlySet<string>>(new Set());
   protected readonly parameterDirtyKeys = signal<ReadonlySet<string>>(new Set());
   protected readonly processFilter = signal<ProcessListFilter>(PROCESS_LIST_FILTER.all);
-  protected readonly processFilterMenuOpen = signal(false);
   private loadedForOpen = false;
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
   private readonly timingBaselineSignatures = new Map<string, string>();
@@ -341,7 +350,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         this.error.set('');
         this.detailOpen.set(false);
         this.scheduleEditorOpen.set(false);
-        this.processFilterMenuOpen.set(false);
         this.timingDirtyKeys.set(new Set());
         this.parameterDirtyKeys.set(new Set());
         this.stopRuntimeUpdates();
@@ -552,7 +560,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected openDetail(rule: AdminNotificationRule): void {
     this.selectedRuleKey.set(rule.ruleKey);
-    this.processFilterMenuOpen.set(false);
     this.detailOpen.set(true);
   }
 
@@ -599,17 +606,47 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return this.processRules().filter(rule => this.matchesProcessFilter(rule, filter)).length;
   }
 
-  protected toggleProcessFilterMenu(event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.processFilterMenuOpen.set(!this.processFilterMenuOpen());
+  protected processFilterMenuModel(): AppMenuModel<ProcessFilterMenuItemId, ProcessFilterMenuContext> {
+    return {
+      nodes: [
+        {
+          id: 'process-filter-root',
+          children: [
+            {
+              id: 'process-filter-menu',
+              kind: 'select-trigger',
+              label: this.processFilterLabel(),
+              icon: this.processFilterIcon(),
+              counter: this.processFilterCount(),
+              ariaLabel: 'admin.jobs.filter.aria',
+              children: this.processFilterOptions.map(option => ({
+                id: `process-filter:${option.key}`,
+                kind: 'radio',
+                label: option.labelKey,
+                icon: option.icon,
+                checked: this.processFilter() === option.key,
+                counter: this.processFilterCount(option.key),
+                context: { filter: option.key }
+              }))
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  protected onProcessFilterMenuSelect(event: AppMenuItemSelectEvent<ProcessFilterMenuItemId, ProcessFilterMenuContext>): void {
+    const nextFilter = event.context?.filter;
+    if (!nextFilter) {
+      return;
+    }
+    this.selectProcessFilter(nextFilter, event.sourceEvent);
   }
 
   protected selectProcessFilter(filter: ProcessListFilter, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     this.processFilter.set(filter);
-    this.processFilterMenuOpen.set(false);
   }
 
   private matchesProcessFilter(rule: AdminNotificationRule, filter: ProcessListFilter): boolean {
@@ -896,7 +933,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     this.selectedRuleKey.set(rule.ruleKey);
-    this.processFilterMenuOpen.set(false);
     this.scheduleEditorOpen.set(false);
     this.parameterDraft.set({
       ruleKey: rule.ruleKey,

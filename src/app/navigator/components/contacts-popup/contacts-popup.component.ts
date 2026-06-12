@@ -3,14 +3,19 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { AppUtils } from '../../../shared/app-utils';
 import {
+  AppMenuComponent,
+  AppMenuTriggerComponent,
   ProgressIndicatorComponent,
   SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -151,6 +156,11 @@ const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
   CONTACT_METHOD_OPTIONS.map(option => [option.value, option])
 );
 
+type ContactsMenuContext =
+  | { menu: 'contact-action'; action: 'run-method'; contactId: string; methodId: string }
+  | { menu: 'contact-action'; action: 'edit' | 'delete'; contactId: string }
+  | { menu: 'method-type'; methodId: string; type: ContactMethodType };
+
 @Component({
   selector: 'app-contacts-popup',
   standalone: true,
@@ -159,7 +169,8 @@ const CONTACT_METHOD_OPTION_BY_TYPE = new Map(
     FormsModule,
     MatButtonModule,
     MatIconModule,
-    MatSelectModule,
+    AppMenuComponent,
+    AppMenuTriggerComponent,
     ProgressIndicatorComponent,
     SmartListComponent
   ],
@@ -176,9 +187,7 @@ export class ContactsPopupComponent implements OnDestroy {
   private readonly contactsDataService = inject(ContactsDataService);
   protected readonly contactsPopupOpen = this.navigatorService.contactsPopupOpen;
   protected readonly contactMethodOptions = CONTACT_METHOD_OPTIONS;
-  protected readonly isMobileViewport = signal(this.detectMobileViewport());
   protected readonly searchText = signal('');
-  protected readonly openActionMenu = signal<{ id: string; openUp: boolean } | null>(null);
   protected readonly editingContact = signal<ContactFormValue | null>(null);
   protected readonly isFormSavePending = signal(false);
   protected readonly formErrorMessage = signal('');
@@ -290,35 +299,15 @@ export class ContactsPopupComponent implements OnDestroy {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
+    if (this.contactsSmartList?.menuOpen()) {
+      this.contactsSmartList.closeMenu();
+      return;
+    }
     if (this.editingContact()) {
       this.closeFormPopup();
       return;
     }
-    if (this.openActionMenu()) {
-      this.closeActionMenu();
-      return;
-    }
     this.closePopup();
-  }
-
-  @HostListener('window:resize')
-  protected onWindowResize(): void {
-    this.isMobileViewport.set(this.detectMobileViewport());
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.openActionMenu()) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) {
-      return;
-    }
-    if (target.closest('.contact-menu-anchor')) {
-      return;
-    }
-    this.closeActionMenu();
   }
 
   protected closePopup(event?: Event): void {
@@ -358,26 +347,8 @@ export class ContactsPopupComponent implements OnDestroy {
     await this.openCreateContactPickerFromMembers();
   }
 
-  protected toggleActionMenu(contact: ContactListItem, event: Event): void {
-    event.stopPropagation();
-    const openActionMenu = this.openActionMenu();
-    if (openActionMenu?.id === contact.id) {
-      this.openActionMenu.set(null);
-      return;
-    }
-    this.openActionMenu.set({
-      id: contact.id,
-      openUp: this.shouldOpenInlineMenuUp(event)
-    });
-  }
-
   protected isActionMenuOpen(contact: ContactListItem): boolean {
-    return this.openActionMenu()?.id === contact.id;
-  }
-
-  protected isActionMenuOpenUp(contact: ContactListItem): boolean {
-    const menu = this.openActionMenu();
-    return menu?.id === contact.id && menu.openUp;
+    return this.contactsSmartList?.isMenuOpen(this.contactActionMenuId(contact)) ?? false;
   }
 
   protected clearSearch(event?: Event): void {
@@ -513,17 +484,108 @@ export class ContactsPopupComponent implements OnDestroy {
     return `contact-method-tone-${type}`;
   }
 
-  protected methodPanelClasses(type: ContactMethodType): string[] {
+  protected trackMethod(_index: number, method: ContactMethodDraft): string {
+    return `${method.id}:${method.type}`;
+  }
+
+  protected contactActionMenuId(contact: ContactListItem): string {
+    return `contact-action-${contact.id}`;
+  }
+
+  protected contactActionMenuTrigger(contact: ContactListItem): AppMenuTrigger {
+    return {
+      icon: 'more_vert',
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'neutral',
+      ariaLabel: this.isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'
+    };
+  }
+
+  protected contactActionMenuItems(contact: ContactListItem): readonly AppMenuItem<string, ContactsMenuContext>[] {
+    const methodItems = contact.methods.map(method => ({
+      id: `contact-${contact.id}-method-${method.id}`,
+      label: method.menuLabel,
+      icon: method.icon,
+      palette: this.methodMenuPalette(method.type),
+      surface: 'tinted' as const,
+      context: {
+        menu: 'contact-action' as const,
+        action: 'run-method' as const,
+        contactId: contact.id,
+        methodId: method.id
+      }
+    }));
     return [
-      'selector-options-panel',
-      'profile-bottom-sheet-panel',
-      'contact-method-panel',
-      this.methodToneClass(type)
+      ...methodItems,
+      ...(methodItems.length > 0 ? [{ id: `contact-${contact.id}-methods-divider`, kind: 'divider' as const }] : []),
+      {
+        id: `contact-${contact.id}-edit`,
+        label: 'Edit',
+        icon: 'edit',
+        context: { menu: 'contact-action', action: 'edit', contactId: contact.id }
+      },
+      {
+        id: `contact-${contact.id}-delete`,
+        label: 'Delete',
+        icon: 'delete',
+        palette: 'danger',
+        context: { menu: 'contact-action', action: 'delete', contactId: contact.id }
+      }
     ];
   }
 
-  protected trackMethod(_index: number, method: ContactMethodDraft): string {
-    return `${method.id}:${method.type}`;
+  protected methodTypeMenuTrigger(method: ContactMethodDraft): AppMenuTrigger {
+    const option = this.methodOption(method.type);
+    return {
+      label: option.label,
+      icon: option.icon,
+      palette: this.methodMenuPalette(method.type),
+      shape: 'field',
+      disabled: () => this.isFormSavePending(),
+      ariaLabel: 'Open contact method type'
+    };
+  }
+
+  protected methodTypeMenuItems(method: ContactMethodDraft): readonly AppMenuItem<string, ContactsMenuContext>[] {
+    return this.contactMethodOptions.map(option => ({
+      id: `method-${method.id}-type-${option.value}`,
+      label: option.label,
+      icon: option.icon,
+      kind: 'radio',
+      active: method.type === option.value,
+      palette: this.methodMenuPalette(option.value),
+      surface: 'tinted',
+      context: { menu: 'method-type', methodId: method.id, type: option.value }
+    }));
+  }
+
+  protected onContactsMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as ContactsMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'method-type') {
+      this.updateMethodType(context.methodId, context.type);
+      return;
+    }
+    const contact = this.contactListItems().find(item => item.id === context.contactId);
+    if (!contact) {
+      return;
+    }
+    if (context.action === 'run-method') {
+      const method = contact.methods.find(item => item.id === context.methodId);
+      if (method) {
+        this.runMethod(method, event.sourceEvent);
+      }
+      return;
+    }
+    if (context.action === 'edit') {
+      this.openEditForm(contact, event.sourceEvent);
+      return;
+    }
+    this.confirmDelete(contact, event.sourceEvent);
   }
 
   protected visibleMethodChips(contact: ContactListItem): ContactMethodItem[] {
@@ -658,6 +720,30 @@ export class ContactsPopupComponent implements OnDestroy {
 
   private lookupMethodOption(type: ContactMethodType): ContactMethodOption {
     return CONTACT_METHOD_OPTION_BY_TYPE.get(type) ?? CONTACT_METHOD_OPTIONS[0];
+  }
+
+  private methodMenuPalette(type: ContactMethodType): AppMenuPalette {
+    switch (type) {
+      case 'sms':
+        return 'violet';
+      case 'whatsapp':
+        return 'green';
+      case 'email':
+        return 'orange';
+      case 'facebook':
+        return 'blue';
+      case 'instagram':
+        return 'pink';
+      case 'telegram':
+        return 'sky';
+      case 'linkedin':
+        return 'cyan';
+      case 'website':
+        return 'slate';
+      case 'phone':
+      default:
+        return 'blue';
+    }
   }
 
   private async addContacts(selectedCandidates: readonly ActivityMemberEntry[]): Promise<void> {
@@ -984,20 +1070,6 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private closeActionMenu(): void {
-    this.openActionMenu.set(null);
-  }
-
-  private shouldOpenInlineMenuUp(event: Event): boolean {
-    const currentTarget = event.currentTarget;
-    if (!(currentTarget instanceof HTMLElement)) {
-      return false;
-    }
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
-    const rect = currentTarget.getBoundingClientRect();
-    return rect.bottom > viewportHeight * 0.68;
-  }
-
-  private detectMobileViewport(): boolean {
-    return typeof window !== 'undefined' ? window.innerWidth <= 900 : false;
+    this.contactsSmartList?.closeMenu();
   }
 }

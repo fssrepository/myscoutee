@@ -9,7 +9,7 @@ import {
   type SingleCardData
 } from '../../../../../shared/ui';
 import type { ImageCardData, ImageCardDirection, ImageCardMode } from '../../../../../shared/ui';
-import type { RateRecord } from '../../../../../shared/core/base/models/rate.model';
+import type { RateRecord } from '../../../../../shared/core/contracts/rate.interface';
 
 interface BuildActivitiesRateCardOptions {
   groupLabel?: string | null;

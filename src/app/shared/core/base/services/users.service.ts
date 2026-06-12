@@ -21,6 +21,7 @@ import type {
 } from '../interfaces/user.interface';
 import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
 import type { LocationCoordinates } from '../interfaces/location.interface';
+import { UserRealtimeSnapshotConverter } from '../converters';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
@@ -424,61 +425,7 @@ export class UsersService extends BaseRouteModeService {
     fallbackUserId: string,
     fallbackCursor: string | null
   ): UserRealtimeLongPollResponseDto {
-    const normalizeCounter = (value: unknown): number | undefined => {
-      if (!Number.isFinite(value)) {
-        return undefined;
-      }
-      return Math.max(0, Math.trunc(Number(value)));
-    };
-    const counters = snapshot.counters ?? {};
-    return {
-      userId: (snapshot.userId ?? fallbackUserId).trim() || fallbackUserId,
-      counters: {
-        game: normalizeCounter(counters.game),
-        chat: normalizeCounter(counters.chat),
-        invitations: normalizeCounter(counters.invitations),
-        events: normalizeCounter(counters.events),
-        hosting: normalizeCounter(counters.hosting),
-        cars: normalizeCounter(counters.cars),
-        accommodation: normalizeCounter(counters.accommodation),
-        supplies: normalizeCounter(counters.supplies),
-        tickets: normalizeCounter(counters.tickets),
-        contacts: normalizeCounter(counters.contacts),
-        feedback: normalizeCounter(counters.feedback),
-        event: {
-          all: normalizeCounter(counters.event?.all),
-          active: normalizeCounter(counters.event?.active),
-          pending: normalizeCounter(counters.event?.pending),
-          invitations: normalizeCounter(counters.event?.invitations),
-          hosting: normalizeCounter(counters.event?.hosting),
-          drafts: normalizeCounter(counters.event?.drafts),
-          trash: normalizeCounter(counters.event?.trash)
-        },
-        asset: {
-          cars: normalizeCounter(counters.asset?.cars),
-          accommodation: normalizeCounter(counters.asset?.accommodation),
-          supplies: normalizeCounter(counters.asset?.supplies),
-          tickets: normalizeCounter(counters.asset?.tickets)
-        },
-        eventFeedback: {
-          ownEvents: normalizeCounter(counters.eventFeedback?.ownEvents),
-          pending: normalizeCounter(counters.eventFeedback?.pending),
-          feedbacked: normalizeCounter(counters.eventFeedback?.feedbacked),
-          removed: normalizeCounter(counters.eventFeedback?.removed)
-        },
-        adminJobs: normalizeCounter(counters.adminJobs),
-        adminMetrics: normalizeCounter(counters.adminMetrics),
-        impressionsHostChanged: counters.impressionsHostChanged === true,
-        impressionsMemberChanged: counters.impressionsMemberChanged === true
-      },
-      impressions: snapshot.impressions,
-      cursor: typeof snapshot.cursor === 'string'
-        ? snapshot.cursor.trim()
-        : fallbackCursor,
-      serverTsIso: typeof snapshot.serverTsIso === 'string'
-        ? snapshot.serverTsIso
-        : new Date().toISOString()
-    };
+    return UserRealtimeSnapshotConverter.snapshot(snapshot, fallbackUserId, fallbackCursor);
   }
 
   private normalizeCounterOverrides(
@@ -592,28 +539,7 @@ export class UsersService extends BaseRouteModeService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: user.impressions
-        ? {
-            host: user.impressions.host
-              ? {
-                  ...user.impressions.host,
-                  vibeBadges: [...(user.impressions.host.vibeBadges ?? [])],
-                  personalityBadges: [...(user.impressions.host.personalityBadges ?? [])],
-                  personalityTraits: (user.impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
-                  categoryBadges: [...(user.impressions.host.categoryBadges ?? [])]
-                }
-              : undefined,
-            member: user.impressions.member
-              ? {
-                  ...user.impressions.member,
-                  vibeBadges: [...(user.impressions.member.vibeBadges ?? [])],
-                  personalityBadges: [...(user.impressions.member.personalityBadges ?? [])],
-                  personalityTraits: (user.impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
-                  categoryBadges: [...(user.impressions.member.categoryBadges ?? [])]
-                }
-              : undefined
-          }
-        : undefined,
+      impressions: UserRealtimeSnapshotConverter.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),

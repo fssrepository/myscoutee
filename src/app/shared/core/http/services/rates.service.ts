@@ -5,37 +5,70 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateRecord } from '../../base/models/rate.model';
-import type { ActivityRatePageResult } from '../../base/interfaces/game.interface';
+import type { RateRecord } from '../../contracts/rate.interface';
+import type {
+  ActivityRatePageResult,
+  UserRateRecord,
+  UserRatesSyncResult
+} from '../../base/interfaces/game.interface';
 import type { UserDto } from '../../base/interfaces/user.interface';
-import { HttpUsersRatingsRepository } from '../repositories/users-ratings.repository';
+import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpRatesService {
+  private static readonly USER_RATES_SYNC_ROUTE = '/user-rates/sync';
   private static readonly USER_RATES_ROUTE = '/activities/rates';
   private static readonly USER_RATES_PAGE_ROUTE = '/activities/rates/page';
 
-  private readonly usersRatingsRepository = inject(HttpUsersRatingsRepository);
+  private readonly rateOutboxRepository = inject(RateOutboxRepository);
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-
-  recordActivityRate(
-    ownerUserId: string,
-    item: RateRecord,
-    rating: number,
-    direction?: RateRecord['direction'] | null
-  ): void {
-    this.usersRatingsRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
-  }
+  private readonly cachedRatesByUserId: Record<string, RateRecord[]> = {};
 
   peekRateItemsByUser(userId: string): RateRecord[] {
-    return this.usersRatingsRepository.peekRateItemsByUserId(userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    return this.cloneRateItems(
+      this.rateOutboxRepository.mergePendingOutboxRateItems(
+        normalizedUserId,
+        this.cachedRatesByUserId[normalizedUserId] ?? []
+      )
+    );
   }
 
   async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
-    return this.usersRatingsRepository.queryRateItemsByUserId(userId);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    try {
+      const response = await this.http
+        .get<RateRecord[] | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_ROUTE}`, {
+          params: new HttpParams().set('userId', normalizedUserId)
+        })
+        .toPromise();
+      const items = this.rateOutboxRepository.mergePendingOutboxRateItems(
+        normalizedUserId,
+        Array.isArray(response) ? response : []
+      );
+      this.cachedRatesByUserId[normalizedUserId] = this.cloneRateItems(items);
+      return this.cloneRateItems(items);
+    } catch {
+      return this.peekRateItemsByUser(normalizedUserId);
+    }
+  }
+
+  async flushPendingUserRatesOutboxBatch(limit = 50): Promise<void> {
+    const batch = this.rateOutboxRepository.queryPendingUserRatesOutbox(limit);
+    if (batch.length === 0) {
+      return;
+    }
+    const syncResult = await this.syncUserRatesBatch(batch.map(item => ({ ...item.payload })));
+    this.rateOutboxRepository.applyUserRatesSyncResult(batch, syncResult);
   }
 
   async queryActivitiesRatePage(
@@ -45,7 +78,7 @@ export class HttpRatesService {
   ): Promise<ActivityRatePageResult> {
     this.throwIfAborted(signal);
     try {
-      await this.usersRatingsRepository.flushPendingUserRatesOutboxBatch();
+      await this.flushPendingUserRatesOutboxBatch();
     } catch {
       // Fall through to the mixed server/cache read below.
     }
@@ -311,5 +344,78 @@ export class HttpRatesService {
         feedback: user.activities?.feedback ?? 0
       }
     };
+  }
+
+  private async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
+    if (rates.length === 0) {
+      return {
+        syncedRateIds: [],
+        failedRateIds: [],
+        error: null
+      };
+    }
+    const payloadRates: UserRateRecord[] = [];
+    const invalidRateIds: string[] = [];
+    for (const rate of rates) {
+      const payload = this.rateOutboxRepository.toUserRateSyncPayload(rate);
+      if (payload) {
+        payloadRates.push(payload);
+      } else if (rate.id?.trim()) {
+        invalidRateIds.push(rate.id.trim());
+      }
+    }
+    if (payloadRates.length === 0) {
+      return {
+        syncedRateIds: [],
+        failedRateIds: this.dedupeIds([...invalidRateIds, ...rates.map(rate => rate.id)]),
+        error: 'No valid user rates to sync'
+      };
+    }
+    try {
+      const response = await this.http
+        .post<{ syncedRateIds?: string[]; failedRateIds?: string[] } | null>(
+          `${this.apiBaseUrl}${HttpRatesService.USER_RATES_SYNC_ROUTE}`,
+          { rates: payloadRates }
+        )
+        .toPromise();
+      if (!response) {
+        return {
+          syncedRateIds: [],
+          failedRateIds: this.dedupeIds([...payloadRates.map(rate => rate.id), ...invalidRateIds]),
+          error: 'Empty sync response'
+        };
+      }
+      const syncedRateIds = Array.isArray(response.syncedRateIds)
+        ? response.syncedRateIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      const failedRateIds = Array.isArray(response.failedRateIds)
+        ? response.failedRateIds
+          .map(id => String(id).trim())
+          .filter(id => id.length > 0)
+        : [];
+      return {
+        syncedRateIds,
+        failedRateIds: this.dedupeIds([...failedRateIds, ...invalidRateIds]),
+        error: null
+      };
+    } catch {
+      return {
+        syncedRateIds: [],
+        failedRateIds: this.dedupeIds([...payloadRates.map(rate => rate.id), ...invalidRateIds]),
+        error: 'User rates sync request failed'
+      };
+    }
+  }
+
+  private dedupeIds(ids: readonly string[]): string[] {
+    return [...new Set(ids
+      .map(id => `${id ?? ''}`.trim())
+      .filter(id => id.length > 0))];
+  }
+
+  private cloneRateItems(items: readonly RateRecord[]): RateRecord[] {
+    return items.map(item => ({ ...item }));
   }
 }

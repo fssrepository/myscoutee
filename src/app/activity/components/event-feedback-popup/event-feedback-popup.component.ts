@@ -9,11 +9,16 @@ import { from } from 'rxjs';
 import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import type { ActivityEventSeedItem } from '../../../shared/core/base/models/event-seed-item.model';
 import {
-  CounterBadgePipe,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
   type InfoCardMenuActionEvent,
+  type InfoCardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -28,6 +33,16 @@ interface EventFeedbackListFilters {
   filter: AppTypes.EventFeedbackListFilter;
   userId: string;
 }
+
+type EventFeedbackMenuContext = {
+  menu: 'filter';
+  filter: AppTypes.EventFeedbackListFilter;
+} | {
+  menu: 'info-card';
+  item: AppTypes.EventFeedbackEventCard;
+  card: InfoCardData;
+  action: InfoCardResolvedMenuAction;
+};
 
 interface OrganizerEventFeedbackCarouselStatItem {
   key: string;
@@ -62,9 +77,9 @@ interface OrganizerEventFeedbackCarouselSection {
     MatRippleModule,
     MatIconModule,
     MatButtonModule,
+    AppMenuComponent,
     SmartListComponent,
-    InfoCardComponent,
-    CounterBadgePipe
+    InfoCardComponent
   ],
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'
@@ -221,6 +236,71 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     },
     trackBy: (_index, item) => item.eventId
   };
+
+  protected eventFeedbackFilterMenuTrigger(): AppMenuTrigger {
+    const filter = this.feedback.eventFeedbackListFilter();
+    const count = this.feedback.eventFeedbackFilterCount(filter);
+    return {
+      label: this.feedback.eventFeedbackFilterLabel(),
+      icon: this.feedback.eventFeedbackFilterIcon(),
+      ariaLabel: 'Open event feedback filter',
+      palette: this.eventFeedbackFilterPalette(filter),
+      counter: count > 0 ? { value: count, max: 99 } : null,
+      shape: 'pill'
+    };
+  }
+
+  protected eventFeedbackFilterMenuItems(): readonly AppMenuItem<string, EventFeedbackMenuContext>[] {
+    const active = this.feedback.eventFeedbackListFilter();
+    return this.feedback.eventFeedbackListFilters.map(option => {
+      const count = this.feedback.eventFeedbackFilterCount(option.key);
+      return {
+        id: `feedback-filter-${option.key}`,
+        label: option.label,
+        icon: option.icon,
+        kind: 'radio',
+        active: option.key === active,
+        checked: option.key === active,
+        palette: this.eventFeedbackFilterPalette(option.key),
+        surface: 'tinted',
+        counter: count > 0 ? { value: count, max: 99 } : null,
+        context: { menu: 'filter', filter: option.key }
+      };
+    });
+  }
+
+  protected onEventFeedbackMenuSelect(event: AppMenuItemSelectEvent<string, EventFeedbackMenuContext>): void {
+    if (event.context?.menu !== 'filter') {
+      return;
+    }
+    this.feedback.selectEventFeedbackListFilter(event.context.filter, event.sourceEvent);
+  }
+
+  protected onEventFeedbackDispatchedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as EventFeedbackMenuContext | undefined;
+    if (context?.menu !== 'info-card') {
+      return;
+    }
+    this.onEventFeedbackCardMenuAction(context.item, {
+      id: context.card.id,
+      actionId: context.action.id,
+      action: context.action,
+      card: context.card
+    });
+  }
+
+  private eventFeedbackFilterPalette(filter: AppTypes.EventFeedbackListFilter): AppMenuPalette {
+    switch (filter) {
+      case 'feedbacked':
+        return 'green';
+      case 'removed':
+        return 'slate';
+      case 'own-events':
+        return 'violet';
+      default:
+        return 'amber';
+    }
+  }
 
   constructor() {
     this.feedback.registerSource(this);
@@ -403,7 +483,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private openRemoveEventFeedbackDialog(item: AppTypes.EventFeedbackEventCard): void {
-    this.feedback.closeEventFeedbackCardMenu();
     this.confirmationDialogService.open({
       title: 'Remove feedback?',
       message: `${item.title} will be moved to Removed without feedback.`,
@@ -420,7 +499,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   private openRestoreEventFeedbackDialog(item: AppTypes.EventFeedbackEventCard): void {
-    this.feedback.closeEventFeedbackCardMenu();
     this.confirmationDialogService.open({
       title: 'Restore feedback?',
       message: `${item.title} will move back to Pending.`,

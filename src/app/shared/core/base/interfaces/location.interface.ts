@@ -1,4 +1,1 @@
-export interface LocationCoordinates {
-  latitude: number;
-  longitude: number;
-}
+export * from '../../contracts/location.interface';

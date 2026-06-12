@@ -1,10 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
-import type { ActivityEventSeedItem } from '../../base/models/event-seed-item.model';
 import { LocalMemoryDb } from '../../base/db';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';
-import { LocalEventSeedBuilder, LocalEventsRepositoryBuilder, LocalSeedScheduleBuilder, LocalUserSeedBuilder } from '../builders';
+import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../base/builders';
 import {
   EVENTS_TABLE_NAME,
   type ActivityEventActivitiesListQueryResult,
@@ -47,97 +46,32 @@ interface ActivityEventExploreCursor {
   providedIn: 'root'
 })
 export class LocalEventsRepository {
-  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 15;
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
-  private static readonly SYNTHETIC_EVENT_TITLE_PREFIXES = [
-    'Lantern',
-    'Harbor',
-    'Mosaic',
-    'Skyline',
-    'Bluebird',
-    'Cinder',
-    'Sunday',
-    'Signal',
-    'Northstar',
-    'Wildflower',
-    'Sidecar',
-    'Velvet'
-  ] as const;
-  private static readonly SYNTHETIC_EVENT_TITLE_SUFFIXES = [
-    'Social',
-    'Circuit',
-    'Session',
-    'Shuffle',
-    'Exchange',
-    'Sprint',
-    'Gathering',
-    'Meetup',
-    'Studio',
-    'Walk',
-    'Brunch',
-    'Mixer'
-  ] as const;
   private readonly memoryDb = inject(LocalMemoryDb);
-  private initialized = false;
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  init(): void {
-    if (this.initialized) {
-      return;
-    }
-    const state = this.memoryDb.read();
-    const seededRecords = this.buildSeededRecords();
-    const currentTable = state[EVENTS_TABLE_NAME];
-
-    if (currentTable.ids.length === 0) {
-      this.memoryDb.write(currentState => ({
-        ...currentState,
-        [EVENTS_TABLE_NAME]: seededRecords
-      }));
-      this.initialized = true;
-      return;
-    }
-
-    const migration = this.mergeSeededRecords(currentTable, seededRecords);
-    if (!migration.changed) {
-      this.initialized = true;
-      return;
-    }
-
-    this.memoryDb.write(currentState => ({
-      ...currentState,
-      [EVENTS_TABLE_NAME]: migration.table
-    }));
-    this.initialized = true;
-  }
-
   queryItemsByUser(userId: string): ActivityEventRecord[] {
-    this.init();
     this.materializeSlotRecords();
     return this.queryUserRecords(userId);
   }
 
   queryInvitationItemsByUser(userId: string): ActivityEventRecord[] {
-    this.init();
     return this.queryUserRecords(userId).filter(record => record.isInvitation);
   }
 
   queryEventItemsByUser(userId: string): ActivityEventRecord[] {
-    this.init();
     return this.queryUserRecords(userId).filter(record => record.type === 'events');
   }
 
   queryItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
-    this.init();
     this.materializeSlotRecords();
     return this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
   }
 
   queryEventItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
-    this.init();
     const recordsByUserId = this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
     return new Map(
       [...recordsByUserId.entries()].map(([userId, records]) => [
@@ -148,12 +82,10 @@ export class LocalEventsRepository {
   }
 
   queryHostingItemsByUser(userId: string): ActivityEventRecord[] {
-    this.init();
     return this.queryUserRecords(userId).filter(record => record.type === 'hosting');
   }
 
   queryTrashedItemsByUser(userId: string): ActivityEventRecord[] {
-    this.init();
     return this.queryUserRecords(userId).filter(record => this.isTrashScopeStatus(record));
   }
 
@@ -162,7 +94,6 @@ export class LocalEventsRepository {
     filter: ActivityEventScopeFilter,
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
   ): ActivityEventRecord[] {
-    this.init();
     this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
     const memberEventItems = userItems
@@ -356,7 +287,6 @@ export class LocalEventsRepository {
   }
 
   queryActivitiesEventListPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesListQueryResult {
-    this.init();
     this.materializeSlotRecords();
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
@@ -448,7 +378,6 @@ export class LocalEventsRepository {
   }
 
   queryExploreItems(userId: string): ActivityEventRecord[] {
-    this.init();
     this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -464,11 +393,11 @@ export class LocalEventsRepository {
       }
       const existing = byEventId.get(record.id);
       if (!existing || this.shouldPreferExploreRecord(record, existing)) {
-        byEventId.set(record.id, this.withResolvedSlotContext(LocalEventsRepositoryBuilder.cloneRecord(record), table));
+        byEventId.set(record.id, this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
       }
     }
 
-    return [...byEventId.values()].map(record => LocalEventsRepositoryBuilder.cloneRecord(record));
+    return [...byEventId.values()].map(record => ActivityEventRecordBuilder.cloneRecord(record));
   }
 
   peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
@@ -485,7 +414,6 @@ export class LocalEventsRepository {
   }
 
   queryEventExplorePage(query: ActivityEventExploreQuery): ActivityEventExploreQueryResult {
-    this.init();
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -525,7 +453,6 @@ export class LocalEventsRepository {
   }
 
   syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): ActivityEventRecord | null {
-    this.init();
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
@@ -589,7 +516,6 @@ export class LocalEventsRepository {
   }
 
   trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.init();
     this.updateItemState(userId, type, sourceId, {
       status: 'T',
       isTrashed: true,
@@ -598,7 +524,6 @@ export class LocalEventsRepository {
   }
 
   publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.init();
     this.updateItemState(userId, type, sourceId, {
       status: type === 'hosting' ? 'H' : 'A',
       published: true
@@ -606,7 +531,6 @@ export class LocalEventsRepository {
   }
 
   unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.init();
     this.updateItemState(userId, type, sourceId, {
       status: 'DR',
       published: false
@@ -614,7 +538,6 @@ export class LocalEventsRepository {
   }
 
   restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.init();
     this.updateItemState(userId, type, sourceId, {
       status: type === 'hosting' ? 'H' : 'A',
       statusBeforeSuppression: null,
@@ -624,7 +547,6 @@ export class LocalEventsRepository {
   }
 
   takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.init();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedSourceId) {
       return;
@@ -669,7 +591,6 @@ export class LocalEventsRepository {
     action: string;
     reason?: string | null;
   }): ActivityEventRecord | null {
-    this.init();
     const normalizedUserId = request.userId.trim();
     const normalizedSourceId = request.sourceId.trim();
     const actionTarget = this.resolveStageActionTarget(request.action, request.reason);
@@ -729,7 +650,6 @@ export class LocalEventsRepository {
   }
 
   querySubEventLeaderboard(eventId: string, subEventId: string): AppTypes.SubEventLeaderboardState | null {
-    this.init();
     const normalizedEventId = eventId.trim();
     const normalizedSubEventId = subEventId.trim();
     if (!normalizedEventId || !normalizedSubEventId) {
@@ -809,7 +729,6 @@ export class LocalEventsRepository {
     accepted = false,
     waitingList = false
   ): ActivityEventRecord | null {
-    this.init();
     this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -904,13 +823,11 @@ export class LocalEventsRepository {
   }
 
   isItemTrashed(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): boolean {
-    this.init();
     const record = this.findItem(userId, type, sourceId);
     return record?.isTrashed === true;
   }
 
   countTicketItemsByUser(userId: string): number {
-    this.init();
     return this.queryUserRecords(userId)
       .filter(record => !record.isInvitation)
       .filter(record => !record.isTrashed)
@@ -929,7 +846,6 @@ export class LocalEventsRepository {
   }
 
   countPendingEventFeedbackByUser(userId: string, feedbackUnlockDelayMs: number): number {
-    this.init();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return 0;
@@ -986,7 +902,7 @@ export class LocalEventsRepository {
         if (!overlayRecord) {
           return state;
         }
-        const overlayKey = LocalEventsRepositoryBuilder.buildRecordKey(overlayRecord.userId, overlayRecord.type, overlayRecord.id);
+        const overlayKey = ActivityEventRecordBuilder.buildRecordKey(overlayRecord.userId, overlayRecord.type, overlayRecord.id);
         nextById[overlayKey] = overlayRecord;
         if (!nextIds.includes(overlayKey)) {
           nextIds.push(overlayKey);
@@ -1031,7 +947,7 @@ export class LocalEventsRepository {
       ? ['invitations']
       : ['events', 'hosting'];
     return candidateTypes
-      .map(candidateType => LocalEventsRepositoryBuilder.buildRecordKey(normalizedUserId, candidateType, normalizedSourceId))
+      .map(candidateType => ActivityEventRecordBuilder.buildRecordKey(normalizedUserId, candidateType, normalizedSourceId))
       .filter((recordKey, index, recordKeys) => recordKeys.indexOf(recordKey) === index && Boolean(table.byId[recordKey]));
   }
 
@@ -1059,7 +975,7 @@ export class LocalEventsRepository {
     }
 
     const overlayType: ActivityEventRepositoryItemType = type === 'hosting' ? 'hosting' : 'events';
-    const baseRecord = LocalEventsRepositoryBuilder.cloneRecord(preferredRecord);
+    const baseRecord = ActivityEventRecordBuilder.cloneRecord(preferredRecord);
     return {
       ...baseRecord,
       userId: normalizedUserId,
@@ -1081,7 +997,7 @@ export class LocalEventsRepository {
       return null;
     }
     const record = this.memoryDb.read()[EVENTS_TABLE_NAME].byId[recordKey];
-    return record ? LocalEventsRepositoryBuilder.cloneRecord(record) : null;
+    return record ? ActivityEventRecordBuilder.cloneRecord(record) : null;
   }
 
   private resolveRecordKey(
@@ -1095,12 +1011,12 @@ export class LocalEventsRepository {
       return null;
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
-    const directKey = LocalEventsRepositoryBuilder.buildRecordKey(normalizedUserId, type, normalizedSourceId);
+    const directKey = ActivityEventRecordBuilder.buildRecordKey(normalizedUserId, type, normalizedSourceId);
     if (table.byId[directKey]) {
       return directKey;
     }
     if (type === 'hosting') {
-      const adminEventKey = LocalEventsRepositoryBuilder.buildRecordKey(normalizedUserId, 'events', normalizedSourceId);
+      const adminEventKey = ActivityEventRecordBuilder.buildRecordKey(normalizedUserId, 'events', normalizedSourceId);
       if (table.byId[adminEventKey]?.isAdmin === true) {
         return adminEventKey;
       }
@@ -1124,7 +1040,7 @@ export class LocalEventsRepository {
       .filter((record): record is ActivityEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
-      .map(record => this.withResolvedSlotContext(LocalEventsRepositoryBuilder.cloneRecord(record), table));
+      .map(record => this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
@@ -1167,7 +1083,7 @@ export class LocalEventsRepository {
         continue;
       }
       recordsByUserId.get(recordUserId)?.push(
-        this.withResolvedSlotContext(LocalEventsRepositoryBuilder.cloneRecord(record), table)
+        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table)
       );
       const directIds = directIdsByUserId.get(recordUserId) ?? new Set<string>();
       directIds.add(record.id);
@@ -1192,7 +1108,7 @@ export class LocalEventsRepository {
     const normalizedUserId = userId.trim();
     const pending = this.eventMemberUserIdsByStatus(record.id, 'pending').includes(normalizedUserId);
     return {
-      ...LocalEventsRepositoryBuilder.cloneRecord(record),
+      ...ActivityEventRecordBuilder.cloneRecord(record),
       userId,
       type: 'events',
       isAdmin: false,
@@ -1239,8 +1155,8 @@ export class LocalEventsRepository {
     }
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
     return user
-      ? LocalUserSeedBuilder.isEmptyOnboardingProfile(user)
-      : LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
+      ? UserProfileStateBuilder.isEmptyOnboardingProfile(user)
+      : UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
   }
 
   private computePreferredEventRecords(table: ActivityEventRecordCollection): ActivityEventRecord[] {
@@ -1297,11 +1213,11 @@ export class LocalEventsRepository {
   ): ActivityEventRecord {
     const eventCoordinates = this.normalizeLocationCoordinates(record.locationCoordinates);
     if (!viewerCoordinates || !eventCoordinates) {
-      return LocalEventsRepositoryBuilder.cloneRecord(record);
+      return ActivityEventRecordBuilder.cloneRecord(record);
     }
     const distanceMeters = this.haversineDistanceMeters(viewerCoordinates, eventCoordinates);
     return {
-      ...LocalEventsRepositoryBuilder.cloneRecord(record),
+      ...ActivityEventRecordBuilder.cloneRecord(record),
       distanceKm: Math.round((distanceMeters / 1000) * 10) / 10
     };
   }
@@ -1347,7 +1263,7 @@ export class LocalEventsRepository {
     query: ActivityEventActivitiesQuery
   ): number {
     const cursorRecord: ActivityEventRecord = {
-      ...LocalEventsRepositoryBuilder.cloneRecord(record),
+      ...ActivityEventRecordBuilder.cloneRecord(record),
       id: cursor.id,
       distanceKm: cursor.distanceMeters / 1000,
       boost: cursor.boost,
@@ -1587,7 +1503,7 @@ export class LocalEventsRepository {
       record.creatorUserId,
       ...this.eventMemberUserIdsByStatus(record.id, 'accepted')
     ].some(userId =>
-      userId !== activeUserId && LocalUserSeedBuilder.isFriendOfActiveUser(userId, activeUserId)
+      userId !== activeUserId && UserProfileStateBuilder.isFriendOfActiveUser(userId, activeUserId)
     );
   }
 
@@ -1641,7 +1557,7 @@ export class LocalEventsRepository {
     if (record.visibility === 'Invitation only') {
       return false;
     }
-    if (record.visibility === 'Friends only' && !LocalUserSeedBuilder.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
+    if (record.visibility === 'Friends only' && !UserProfileStateBuilder.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
       return false;
     }
     return true;
@@ -1695,7 +1611,7 @@ export class LocalEventsRepository {
     const creator = usersTable.byId[context.userId] ?? null;
     const acceptedUsers = this.eventMemberUserIdsByStatus(payload.id, 'accepted')
       .map(userId => usersTable.byId[userId] ?? null);
-    const affinity = LocalEventsRepositoryBuilder.resolveEventAffinity({
+    const affinity = ActivityEventRecordBuilder.resolveEventAffinity({
       id: payload.id,
       title: payload.title,
       subtitle: payload.shortDescription,
@@ -1764,7 +1680,7 @@ export class LocalEventsRepository {
       subEvents,
       subEventsDisplayMode: payload.subEventsDisplayMode
         ?? existing?.subEventsDisplayMode
-        ?? (subEvents ? LocalEventSeedBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
+        ?? (subEvents ? ActivityEventRecordBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
       rating,
       boost,
       affinity
@@ -1808,7 +1724,7 @@ export class LocalEventsRepository {
     }
 
     const pendingWithoutInvitation = pendingMemberUserIds.filter(userId =>
-      !nextById[LocalEventsRepositoryBuilder.buildRecordKey(userId, 'invitations', normalizedSourceId)]
+      !nextById[ActivityEventRecordBuilder.buildRecordKey(userId, 'invitations', normalizedSourceId)]
     );
     const usersToInvite = promoteSingle
       ? pendingWithoutInvitation.slice(0, 1)
@@ -1826,7 +1742,7 @@ export class LocalEventsRepository {
     userIds: readonly string[]
   ): void {
     for (const userId of this.normalizeUserIds(userIds)) {
-      const recordKey = LocalEventsRepositoryBuilder.buildRecordKey(userId, 'invitations', sourceId);
+      const recordKey = ActivityEventRecordBuilder.buildRecordKey(userId, 'invitations', sourceId);
       if (!table.byId[recordKey] && !nextById[recordKey]) {
         continue;
       }
@@ -1840,7 +1756,7 @@ export class LocalEventsRepository {
 
   private buildDemoWaitlistInvitationRecord(record: ActivityEventRecord, userId: string): ActivityEventRecord {
     return {
-      ...LocalEventsRepositoryBuilder.cloneRecord(record),
+      ...ActivityEventRecordBuilder.cloneRecord(record),
       userId,
       type: 'invitations',
       status: 'INV',
@@ -1860,8 +1776,8 @@ export class LocalEventsRepository {
     ids: string[],
     record: ActivityEventRecord
   ): void {
-    const recordKey = LocalEventsRepositoryBuilder.buildRecordKey(record.userId, record.type, record.id);
-    byId[recordKey] = LocalEventsRepositoryBuilder.cloneRecord(record);
+    const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
+    byId[recordKey] = ActivityEventRecordBuilder.cloneRecord(record);
     if (!ids.includes(recordKey)) {
       ids.push(recordKey);
     }
@@ -2108,661 +2024,6 @@ export class LocalEventsRepository {
     });
   }
 
-  private buildSeededRecords(): ActivityEventRecordCollection {
-    const eventsByUser = this.buildEventsByUserWithSyntheticSeed();
-    return LocalEventsRepositoryBuilder.buildRecordCollection({
-      invitationsByUser: LocalEventsRepositoryBuilder.buildSeedInvitationItemsByUser(),
-      eventsByUser,
-      hostingByUser: LocalEventsRepositoryBuilder.buildSeedHostingItemsByUser(),
-      publishedById: LocalEventsRepositoryBuilder.buildSeedPublishedById()
-    });
-  }
-
-  private buildEventsByUserWithSyntheticSeed(): Record<string, readonly ActivityEventSeedItem[]> {
-    const users = LocalUserSeedBuilder.buildExpandedDemoUsers(50)
-      .filter(user => !LocalUserSeedBuilder.isEmptyOnboardingProfileUserId(user.id));
-    const userById = new Map(users.map(user => [user.id, user]));
-    const seeded: Record<string, readonly ActivityEventSeedItem[]> = {};
-    const seedEventsByUser = LocalEventsRepositoryBuilder.buildSeedEventItemsByUser();
-    const featuredFriendsOnlyByUser = this.buildFeaturedFriendsOnlyEvents(userById);
-    const userIds = Array.from(new Set([
-      ...Object.keys(seedEventsByUser),
-      ...Object.keys(featuredFriendsOnlyByUser)
-    ]));
-
-    for (const userId of userIds) {
-      const items = seedEventsByUser[userId] ?? [];
-      const baseItems = [
-        ...(featuredFriendsOnlyByUser[userId] ?? []),
-        ...items.map(item => ({
-          ...item,
-          topics: item.topics ? [...item.topics] : item.topics
-        }))
-      ].map(item => ({
-        ...item,
-        topics: item.topics ? [...item.topics] : item.topics
-      }));
-      if (baseItems.length >= LocalEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER) {
-        seeded[userId] = baseItems;
-        continue;
-      }
-
-      const user = userById.get(userId);
-      const synthetic: ActivityEventSeedItem[] = [];
-      const needed = LocalEventsRepository.MIN_DEMO_EVENT_ITEMS_PER_USER - baseItems.length;
-      const creatorCandidates = users.filter(candidate => candidate.id !== userId);
-
-      for (let index = 0; index < needed; index += 1) {
-        const seq = baseItems.length + index + 1;
-        const id = `ex-${userId}-${seq}`;
-        const seed = AppUtils.hashText(`${userId}:${id}:${seq}`);
-        const isJoinedMemberSeed = index >= 3 && index <= 5;
-        const isOwnedHostingSeed = index === 6;
-        const start = LocalSeedScheduleBuilder.buildDeterministicStartDate(seed, index);
-        const end = new Date(start.getTime() + ((2 + (index % 3)) * 60 * 60 * 1000));
-        const visibility = seq === 12
-          ? 'Friends only'
-          : ((index % 2) === 0 ? 'Friends only' : 'Public');
-        const blindMode = (index % 5) === 0 ? 'Blind Event' : 'Open Event';
-        const creatorUserId = isJoinedMemberSeed && creatorCandidates.length > 0
-          ? (creatorCandidates[(seed + (index * 5)) % creatorCandidates.length]?.id ?? userId)
-          : userId;
-        const title = this.buildSyntheticEventTitle(user, seq, seed);
-        const defaultDescription = this.buildSyntheticEventDescription(user, seq, seed);
-        const checkoutVariation = this.buildSyntheticCheckoutVariation(id, index);
-
-        synthetic.push({
-          id,
-          avatar: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Synthetic Event'),
-          title,
-          shortDescription: checkoutVariation?.shortDescription ?? defaultDescription,
-          timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
-          activity: (index % 5) + 1,
-          isAdmin: isJoinedMemberSeed ? false : (isOwnedHostingSeed ? true : (seq % 4) === 0),
-          creatorUserId,
-          startAt: start.toISOString().slice(0, 19),
-          endAt: end.toISOString().slice(0, 19),
-          distanceKm: 3 + (index % 42),
-          visibility,
-          blindMode,
-          imageUrl: `https://picsum.photos/seed/event-${id}/1200/700`,
-          sourceLink: `https://example.com/events/${id}`,
-          location: user?.city ? `${user.city} · Community Hub` : 'Community Hub',
-          capacityMin: 6 + (index % 10),
-          capacityMax: 12 + (index % 18),
-          rating: 6 + ((seed % 35) / 10),
-          boost: 50 + (seed % 51),
-          generated: true,
-          ...checkoutVariation
-        });
-      }
-
-      seeded[userId] = [...baseItems, ...synthetic];
-    }
-
-    return seeded;
-  }
-
-  private buildSyntheticEventTitle(
-    user: { city?: string; initials?: string } | undefined,
-    seq: number,
-    seed: number
-  ): string {
-    const city = user?.city?.trim() || 'Austin';
-    const prefix = LocalEventsRepository.SYNTHETIC_EVENT_TITLE_PREFIXES[
-      seed % LocalEventsRepository.SYNTHETIC_EVENT_TITLE_PREFIXES.length
-    ] ?? 'Lantern';
-    const suffix = LocalEventsRepository.SYNTHETIC_EVENT_TITLE_SUFFIXES[
-      ((seed >> 4) + seq) % LocalEventsRepository.SYNTHETIC_EVENT_TITLE_SUFFIXES.length
-    ] ?? 'Social';
-    const initials = (user?.initials?.replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'EV').slice(0, 2) || 'EV';
-    const badge = `${initials}${seq.toString().padStart(2, '0')}${(seed % 36).toString(36).toUpperCase()}`;
-    return `${city} ${prefix} ${suffix} ${badge}`;
-  }
-
-  private buildSyntheticEventDescription(
-    user: { city?: string } | undefined,
-    seq: number,
-    seed: number
-  ): string {
-    const city = user?.city?.trim() || 'Austin';
-    const variations = [
-      'Rotating intros with light structure and quick regroup rounds.',
-      'Loose small-group pacing with fresh pairings each half hour.',
-      'Casual social format built for drop-ins, loops, and new conversations.',
-      'Compact city meetup with easy check-in flow and mellow energy.'
-    ] as const;
-    const variation = variations[(seed >> 7) % variations.length] ?? variations[0];
-    return `${city} synthetic event ${seq} with ${variation.toLowerCase()}`;
-  }
-
-  private buildSyntheticCheckoutVariation(
-    sourceId: string,
-    index: number
-  ): Partial<ActivityEventSeedItem> | null {
-    if (index === 0) {
-      const slotTemplates: AppTypes.EventSlotTemplate[] = [
-        {
-          id: `${sourceId}-slot-1`,
-          startAt: '2026-04-18T18:30:00',
-          endAt: '2026-04-18T20:00:00'
-        },
-        {
-          id: `${sourceId}-slot-2`,
-          startAt: '2026-04-18T20:15:00',
-          endAt: '2026-04-18T22:15:00'
-        }
-      ].map(slot => this.rebaseSeedSlotTemplate(slot));
-      return {
-        timeframe: 'Every Sat · Apr 18 - Jun 20',
-        startAt: this.rebaseSeedDateTime('2026-04-18T18:00:00'),
-        endAt: this.rebaseSeedDateTime('2026-06-20T23:00:00'),
-        frequency: 'Weekly',
-        ticketing: true,
-        visibility: 'Public',
-        slotsEnabled: true,
-        slotTemplates,
-        pricing: this.buildSyntheticCheckoutPricing(38, slotTemplates),
-        policies: this.buildSyntheticPolicies(),
-        subEvents: this.buildSyntheticCheckoutSubEvents({
-          sourceId,
-          firstSlotStartAt: slotTemplates[0]?.startAt ?? this.rebaseSeedDateTime('2026-04-18T18:30:00'),
-          firstSlotEndAt: slotTemplates[0]?.endAt ?? this.rebaseSeedDateTime('2026-04-18T20:00:00'),
-          includePaidOptional: true
-        }),
-        shortDescription: 'Weekly tasting series with optional paid extras and host approval before payment.'
-      };
-    }
-
-    if (index === 1) {
-      const firstSlotStartAt = this.rebaseSeedDateTime('2026-05-03T19:10:00');
-      const firstSlotEndAt = this.rebaseSeedDateTime('2026-05-03T20:30:00');
-      return {
-        timeframe: 'May 3 · 7:00 PM - 10:00 PM',
-        startAt: this.rebaseSeedDateTime('2026-05-03T19:00:00'),
-        endAt: this.rebaseSeedDateTime('2026-05-03T22:00:00'),
-        frequency: 'One-time',
-        ticketing: true,
-        visibility: 'Public',
-        slotsEnabled: false,
-        slotTemplates: [],
-        pricing: this.buildSyntheticCheckoutPricing(22),
-        policies: this.buildSyntheticPolicies(),
-        subEvents: this.buildSyntheticCheckoutSubEvents({
-          sourceId,
-          firstSlotStartAt,
-          firstSlotEndAt,
-          includePaidOptional: true
-        }),
-        shortDescription: 'Late-night tasting event with optional add-ons and host approval before payment.'
-      };
-    }
-
-    if (index === 2) {
-      const slotTemplates: AppTypes.EventSlotTemplate[] = [
-        {
-          id: `${sourceId}-slot-1`,
-          startAt: '2026-04-19T13:00:00',
-          endAt: '2026-04-19T14:15:00'
-        },
-        {
-          id: `${sourceId}-slot-2`,
-          startAt: '2026-04-19T15:00:00',
-          endAt: '2026-04-19T16:30:00'
-        }
-      ].map(slot => this.rebaseSeedSlotTemplate(slot));
-      return {
-        timeframe: 'Every Sun · Apr 19 - May 31',
-        startAt: this.rebaseSeedDateTime('2026-04-19T12:30:00'),
-        endAt: this.rebaseSeedDateTime('2026-05-31T18:00:00'),
-        frequency: 'Weekly',
-        ticketing: false,
-        visibility: 'Public',
-        slotsEnabled: true,
-        slotTemplates,
-        pricing: PricingBuilder.createDefaultPricingConfig('event'),
-        policies: [],
-        subEvents: this.buildSyntheticCheckoutSubEvents({
-          sourceId,
-          firstSlotStartAt: slotTemplates[0]?.startAt ?? this.rebaseSeedDateTime('2026-04-19T13:00:00'),
-          firstSlotEndAt: slotTemplates[0]?.endAt ?? this.rebaseSeedDateTime('2026-04-19T14:15:00'),
-          includePaidOptional: false
-        }),
-        shortDescription: 'Checkout demo: free recurring event with multiple slots, so you can test slot picking and join requests only.'
-      };
-    }
-
-    return null;
-  }
-
-  private rebaseSeedSlotTemplate(slot: AppTypes.EventSlotTemplate): AppTypes.EventSlotTemplate {
-    return {
-      ...slot,
-      startAt: this.rebaseSeedDateTime(slot.startAt),
-      endAt: this.rebaseSeedDateTime(slot.endAt)
-    };
-  }
-
-  private rebaseSeedDateTime(value: string): string {
-    return LocalSeedScheduleBuilder.rebaseDateTime(value) ?? value;
-  }
-
-  private buildSyntheticPolicies(): AppTypes.EventPolicyItem[] {
-    return [
-      {
-        id: 'policy-checkin-window',
-        title: 'Check-in window',
-        description: 'Arrive within the first 15 minutes of your selected slot so the organizer can release late spots.',
-        required: true
-      },
-      {
-        id: 'policy-cancellation',
-        title: 'Cancellation',
-        description: 'Optional extras are refundable only until 24 hours before the selected slot starts.',
-        required: true
-      },
-      {
-        id: 'policy-media',
-        title: 'Photos & recap',
-        description: 'Highlights may be shared privately with attendees after the event.',
-        required: false
-      }
-    ];
-  }
-
-  private buildSyntheticCheckoutPricing(
-    basePrice: number,
-    slotTemplates: readonly AppTypes.EventSlotTemplate[] = []
-  ): AppTypes.PricingConfig {
-    const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
-    pricing.enabled = true;
-    pricing.basePrice = basePrice;
-    pricing.minPrice = Math.max(0, basePrice - 12);
-    pricing.maxPrice = basePrice + 48;
-    pricing.currency = 'USD';
-    pricing.chargeType = 'per_attendee';
-    pricing.audience.enabled = false;
-    pricing.audience.promoCodes = [];
-    if (slotTemplates.length > 0) {
-      pricing.slotPricingEnabled = true;
-      pricing.slotOverrides = slotTemplates.map((slot, index) => ({
-        id: `${slot.id}-override`,
-        slotId: slot.id,
-        label: `Slot ${index + 1}`,
-        startAt: slot.startAt,
-        endAt: slot.endAt,
-        price: basePrice + (index * 6),
-        currency: 'USD'
-      }));
-    } else {
-      pricing.slotPricingEnabled = false;
-      pricing.slotOverrides = [];
-    }
-    return pricing;
-  }
-
-  private buildSyntheticCheckoutSubEvents(options: {
-    sourceId: string;
-    firstSlotStartAt: string;
-    firstSlotEndAt: string;
-    includePaidOptional: boolean;
-  }): AppTypes.SubEventFormItem[] {
-    const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
-    const addOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
-    addOnPricing.enabled = true;
-    addOnPricing.basePrice = options.includePaidOptional ? 16 : 0;
-    addOnPricing.currency = 'USD';
-    addOnPricing.chargeType = 'per_booking';
-    addOnPricing.minPrice = options.includePaidOptional ? 12 : 0;
-    addOnPricing.maxPrice = options.includePaidOptional ? 24 : 0;
-
-    const transportPricing = PricingBuilder.createDefaultPricingConfig('subevent');
-    transportPricing.enabled = true;
-    transportPricing.basePrice = 8;
-    transportPricing.currency = 'USD';
-    transportPricing.chargeType = 'per_attendee';
-    transportPricing.minPrice = 6;
-    transportPricing.maxPrice = 12;
-
-    return [
-      {
-        id: `${options.sourceId}-main-session`,
-        name: 'Main Session',
-        description: 'Included in the event price and aligned to the selected slot.',
-        startAt: options.firstSlotStartAt,
-        endAt: options.firstSlotEndAt,
-        optional: false,
-        capacityMin: 0,
-        capacityMax: 24,
-        membersAccepted: 0,
-        membersPending: 0,
-        carsPending: 0,
-        accommodationPending: 0,
-        suppliesPending: 0,
-        pricing: includedPricing,
-        slotStartOffsetMinutes: 0,
-        slotDurationMinutes: 75
-      },
-      {
-        id: `${options.sourceId}-vip-lounge`,
-        name: options.includePaidOptional ? 'VIP Lounge Access' : 'Community Lounge Access',
-        description: options.includePaidOptional
-          ? 'Optional add-on with a separate basket line and room request support.'
-          : 'Optional free add-on for the free slot flow.',
-        startAt: options.firstSlotStartAt,
-        endAt: options.firstSlotEndAt,
-        optional: true,
-        capacityMin: 0,
-        capacityMax: 10,
-        membersAccepted: 0,
-        membersPending: 0,
-        carsPending: 0,
-        accommodationPending: 0,
-        suppliesPending: 0,
-        accommodationCapacityMin: 0,
-        accommodationCapacityMax: options.includePaidOptional ? 4 : 0,
-        pricing: addOnPricing,
-        slotStartOffsetMinutes: 20,
-        slotDurationMinutes: 45
-      },
-      {
-        id: `${options.sourceId}-ride-share`,
-        name: 'Ride-share Pickup',
-        description: 'Optional transport add-on so the checkout can show an asset-style request too.',
-        startAt: options.firstSlotStartAt,
-        endAt: options.firstSlotEndAt,
-        optional: true,
-        capacityMin: 0,
-        capacityMax: 12,
-        membersAccepted: 0,
-        membersPending: 0,
-        carsPending: 0,
-        accommodationPending: 0,
-        suppliesPending: 0,
-        carsCapacityMin: 0,
-        carsCapacityMax: 3,
-        pricing: options.includePaidOptional ? transportPricing : includedPricing,
-        slotStartOffsetMinutes: 0,
-        slotDurationMinutes: 20
-      }
-    ];
-  }
-
-  private buildFeaturedFriendsOnlyEvents(
-    userById: Map<string, { initials: string; city: string }>
-  ): Record<string, ActivityEventSeedItem[]> {
-    const buildItem = (
-      userId: string,
-      id: string,
-      title: string,
-      shortDescription: string,
-      startAt: string,
-      endAt: string,
-      topics: string[]
-    ): ActivityEventSeedItem => {
-      const user = userById.get(userId);
-      const start = new Date(startAt);
-      const end = new Date(endAt);
-      return {
-        id,
-        avatar: user?.initials ?? AppUtils.initialsFromText(title),
-        title,
-        shortDescription,
-        timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
-        activity: 2,
-        isAdmin: false,
-        creatorUserId: userId,
-        startAt,
-        endAt,
-        distanceKm: 4,
-        visibility: 'Friends only',
-        blindMode: 'Open Event',
-        imageUrl: `https://picsum.photos/seed/${id}/1200/700`,
-        sourceLink: `https://example.com/events/${id}`,
-        location: user?.city ? `${user.city} · Friends Circle` : 'Friends Circle',
-        capacityMin: 6,
-        capacityMax: 14,
-        topics,
-        rating: 8.4,
-        boost: 96
-      };
-    };
-
-    return {
-      u2: [
-        buildItem(
-          'u2',
-          'fx-u2-1',
-          'Friends Circle Supper',
-          'Small-table meetup for close connections and plus-ones.',
-          '2026-03-17T18:30:00',
-          '2026-03-17T21:30:00',
-          ['#StreetFood', '#GoingOut']
-        )
-      ],
-      u3: [
-        buildItem(
-          'u3',
-          'fx-u3-1',
-          'Studio Friends Jam',
-          'Invite-only creative session with music and critique rounds.',
-          '2026-03-17T19:30:00',
-          '2026-03-17T22:00:00',
-          ['#Music', '#Creativity']
-        )
-      ],
-      u4: [
-        buildItem(
-          'u4',
-          'fx-u4-1',
-          'Friends Wellness Walk',
-          'Relaxed sunset walk for friends of friends from recent events.',
-          '2026-03-17T20:00:00',
-          '2026-03-17T22:00:00',
-          ['#Meditation', '#Spirituality']
-        )
-      ]
-    };
-  }
-
-  private mergeSeededRecords(
-    current: ActivityEventRecordCollection,
-    seeded: ActivityEventRecordCollection
-  ): { table: ActivityEventRecordCollection; changed: boolean } {
-    const nextById: Record<string, ActivityEventRecord> = { ...current.byId };
-    const seededRecordKeys = new Set(seeded.ids);
-    const nextIds = current.ids.filter(recordKey => {
-      const currentRecord = current.byId[recordKey];
-      if (!currentRecord) {
-        return false;
-      }
-      if (this.isGeneratedSlotRecord(currentRecord)) {
-        delete nextById[recordKey];
-        return false;
-      }
-      if (seededRecordKeys.has(recordKey) || !this.isObsoleteSyntheticSeededRecord(currentRecord)) {
-        return true;
-      }
-      delete nextById[recordKey];
-      return false;
-    });
-    let changed = false;
-
-    if (nextIds.length !== current.ids.length) {
-      changed = true;
-    }
-
-    for (const recordKey of seeded.ids) {
-      const seededRecord = seeded.byId[recordKey];
-      if (!seededRecord) {
-        continue;
-      }
-      const currentRecord = current.byId[recordKey];
-      if (!currentRecord) {
-        nextById[recordKey] = LocalEventsRepositoryBuilder.cloneRecord(seededRecord);
-        nextIds.push(recordKey);
-        changed = true;
-        continue;
-      }
-      const mergedRecord = this.mergeSeededRecord(currentRecord, seededRecord);
-      if (JSON.stringify(currentRecord) !== JSON.stringify(mergedRecord)) {
-        nextById[recordKey] = mergedRecord;
-        changed = true;
-      }
-    }
-
-    return {
-      table: {
-        byId: nextById,
-        ids: nextIds
-      },
-      changed
-    };
-  }
-
-  private isObsoleteSyntheticSeededRecord(record: ActivityEventRecord): boolean {
-    return record.type === 'events' && record.id.startsWith('ex-');
-  }
-
-  private mergeSeededRecord(current: ActivityEventRecord, seeded: ActivityEventRecord): ActivityEventRecord {
-    const creatorUserId = this.resolveSeededCreatorUserId(current, seeded);
-    const creatorChanged = creatorUserId !== current.creatorUserId;
-    const shouldPreferSeededSyntheticIdentity = current.id.startsWith('ex-');
-    const shouldPreferSeededVisibility = current.id.startsWith('ex-');
-    const shouldPreferSeededTopics = current.id.startsWith('ex-');
-    const shouldPreferSeededSchedule = shouldPreferSeededSyntheticIdentity
-      || this.hasSeededScheduleChanged(current, seeded);
-    const topics = this.normalizeTopics(current.topics ?? []);
-
-    return {
-      ...current,
-      avatar: shouldPreferSeededSyntheticIdentity ? seeded.avatar : current.avatar,
-      title: shouldPreferSeededSyntheticIdentity ? seeded.title : current.title,
-      subtitle: shouldPreferSeededSyntheticIdentity ? seeded.subtitle : current.subtitle,
-      timeframe: shouldPreferSeededSchedule ? seeded.timeframe : current.timeframe,
-      creatorUserId,
-      creatorName: creatorChanged || !current.creatorName?.trim() ? seeded.creatorName : current.creatorName,
-      creatorInitials: creatorChanged || !current.creatorInitials?.trim() ? seeded.creatorInitials : current.creatorInitials,
-      creatorGender: current.creatorGender === 'woman' || current.creatorGender === 'man'
-        ? current.creatorGender
-        : seeded.creatorGender,
-      creatorCity: current.creatorCity?.trim() || seeded.creatorCity,
-      visibility: shouldPreferSeededVisibility
-        ? seeded.visibility
-        : this.normalizeVisibility(current.visibility, seeded.visibility),
-      blindMode: this.normalizeBlindMode(current.blindMode, seeded.blindMode),
-      startAtIso: shouldPreferSeededSchedule ? seeded.startAtIso : (current.startAtIso?.trim() || seeded.startAtIso),
-      endAtIso: shouldPreferSeededSchedule ? seeded.endAtIso : (current.endAtIso?.trim() || seeded.endAtIso),
-      distanceKm: Number.isFinite(current.distanceKm) ? current.distanceKm : seeded.distanceKm,
-      imageUrl: current.imageUrl?.trim() || seeded.imageUrl,
-      sourceLink: current.sourceLink?.trim() || seeded.sourceLink,
-      location: current.location?.trim() || seeded.location,
-      locationCoordinates: this.normalizeLocationCoordinates(current.locationCoordinates)
-        ?? this.normalizeLocationCoordinates(seeded.locationCoordinates),
-      capacityMin: this.normalizeCount(current.capacityMin) ?? seeded.capacityMin,
-      capacityMax: this.normalizeCount(current.capacityMax) ?? seeded.capacityMax,
-      capacityTotal: this.normalizeCount(current.capacityTotal) ?? seeded.capacityTotal,
-      autoInviter: shouldPreferSeededSchedule
-        ? seeded.autoInviter
-        : (typeof current.autoInviter === 'boolean' ? current.autoInviter : seeded.autoInviter),
-      frequency: shouldPreferSeededSchedule ? seeded.frequency : (current.frequency?.trim() || seeded.frequency),
-      ticketing: shouldPreferSeededSchedule
-        ? seeded.ticketing
-        : (typeof current.ticketing === 'boolean' ? current.ticketing : seeded.ticketing),
-      pricing: shouldPreferSeededSchedule
-        ? (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)
-        : (current.pricing
-            ? PricingBuilder.clonePricingConfig(current.pricing)
-            : (seeded.pricing ? PricingBuilder.clonePricingConfig(seeded.pricing) : null)),
-      policies: shouldPreferSeededSchedule
-        ? EventEditorBuilder.cloneEventEditorPolicies(seeded.policies ?? [])
-        : EventEditorBuilder.cloneEventEditorPolicies(current.policies ?? seeded.policies ?? []),
-      slotsEnabled: shouldPreferSeededSchedule
-        ? seeded.slotsEnabled
-        : (typeof current.slotsEnabled === 'boolean' ? current.slotsEnabled : seeded.slotsEnabled),
-      slotTemplates: shouldPreferSeededSchedule
-        ? EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? [])
-        : (current.slotTemplates ?? []).length > 0
-        ? EventEditorBuilder.cloneEventEditorSlotTemplates(current.slotTemplates ?? [])
-        : EventEditorBuilder.cloneEventEditorSlotTemplates(seeded.slotTemplates ?? []),
-      parentEventId: current.parentEventId ?? seeded.parentEventId ?? null,
-      slotTemplateId: current.slotTemplateId ?? seeded.slotTemplateId ?? null,
-      generated: typeof current.generated === 'boolean' ? current.generated : seeded.generated,
-      eventType: current.eventType ?? seeded.eventType ?? 'main',
-      nextSlot: current.nextSlot ? { ...current.nextSlot } : (seeded.nextSlot ? { ...seeded.nextSlot } : null),
-      upcomingSlots: (current.upcomingSlots ?? seeded.upcomingSlots ?? []).map(item => ({ ...item })),
-      isAdmin: current.isAdmin,
-      acceptedMembers: this.normalizeCount(current.acceptedMembers) ?? seeded.acceptedMembers,
-      pendingMembers: this.normalizeCount(current.pendingMembers) ?? seeded.pendingMembers,
-      topics: shouldPreferSeededTopics
-        ? [...seeded.topics]
-        : (topics.length > 0 ? topics : [...seeded.topics]),
-      subEvents: shouldPreferSeededSchedule
-        ? this.cloneSubEvents(seeded.subEvents)
-        : (this.cloneSubEvents(current.subEvents) ?? this.cloneSubEvents(seeded.subEvents)),
-      subEventsDisplayMode: shouldPreferSeededSchedule
-        ? (seeded.subEventsDisplayMode
-          ?? (this.cloneSubEvents(seeded.subEvents)?.length
-            ? LocalEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(seeded.subEvents)!)
-            : 'Casual'))
-        : (current.subEventsDisplayMode
-        ?? seeded.subEventsDisplayMode
-        ?? (this.cloneSubEvents(current.subEvents)?.length
-          ? LocalEventSeedBuilder.inferredSubEventsDisplayMode(this.cloneSubEvents(current.subEvents)!)
-          : 'Casual')),
-      rating: Number.isFinite(current.rating) ? Number(current.rating) : seeded.rating,
-      boost: Number.isFinite(current.boost) ? Number(current.boost) : seeded.boost,
-      affinity: Number.isFinite(current.affinity)
-        ? Math.max(0, Math.trunc(Number(current.affinity)))
-        : seeded.affinity
-    };
-  }
-
-  private hasSeededScheduleChanged(current: ActivityEventRecord, seeded: ActivityEventRecord): boolean {
-    return current.timeframe !== seeded.timeframe
-      || current.startAtIso !== seeded.startAtIso
-      || current.endAtIso !== seeded.endAtIso
-      || `${current.frequency ?? ''}` !== `${seeded.frequency ?? ''}`
-      || current.ticketing !== seeded.ticketing
-      || current.autoInviter !== seeded.autoInviter
-      || current.slotsEnabled !== seeded.slotsEnabled
-      || JSON.stringify(current.slotTemplates ?? []) !== JSON.stringify(seeded.slotTemplates ?? [])
-      || JSON.stringify(current.subEvents ?? []) !== JSON.stringify(seeded.subEvents ?? [])
-      || JSON.stringify(current.policies ?? []) !== JSON.stringify(seeded.policies ?? [])
-      || JSON.stringify(current.pricing ?? null) !== JSON.stringify(seeded.pricing ?? null);
-  }
-
-  private resolveSeededCreatorUserId(current: ActivityEventRecord, seeded: ActivityEventRecord): string {
-    const currentCreatorUserId = current.creatorUserId?.trim() ?? '';
-    if (!currentCreatorUserId) {
-      return seeded.creatorUserId;
-    }
-    if (!current.isAdmin && current.type !== 'hosting' && currentCreatorUserId === current.userId && seeded.creatorUserId !== current.userId) {
-      return seeded.creatorUserId;
-    }
-    return currentCreatorUserId;
-  }
-
-  private normalizeVisibility(
-    value: ActivityEventRecord['visibility'] | undefined,
-    fallback: ActivityEventRecord['visibility']
-  ): ActivityEventRecord['visibility'] {
-    if (value === 'Public' || value === 'Friends only' || value === 'Invitation only') {
-      return value;
-    }
-    return fallback;
-  }
-
-  private normalizeBlindMode(
-    value: ActivityEventRecord['blindMode'] | undefined,
-    fallback: ActivityEventRecord['blindMode']
-  ): ActivityEventRecord['blindMode'] {
-    if (value === 'Open Event' || value === 'Blind Event') {
-      return value;
-    }
-    return fallback;
-  }
-
   private materializeSlotRecords(): void {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const preferredParents = this.computePreferredEventRecords(table)
@@ -2778,7 +2039,7 @@ export class LocalEventsRepository {
     for (const parent of preferredParents) {
       const generatedRecords = this.buildGeneratedSlotRecordsForParent(parent, table);
       for (const record of generatedRecords) {
-        const recordKey = LocalEventsRepositoryBuilder.buildRecordKey(record.userId, record.type, record.id);
+        const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
         const current = nextById[recordKey];
         if (!current) {
           nextById[recordKey] = record;
@@ -2813,7 +2074,7 @@ export class LocalEventsRepository {
       return [];
     }
 
-    const scheduleAnchorMs = LocalSeedScheduleBuilder.anchorDate().getTime();
+    const scheduleAnchorMs = ScheduleDateBuilder.anchorDate().getTime();
     const dayMs = 24 * 60 * 60 * 1000;
     const horizonStart = new Date(Math.max(parentStart.getTime(), scheduleAnchorMs - dayMs));
     const horizonEnd = new Date(Math.min(parentEnd.getTime(), scheduleAnchorMs + (45 * dayMs)));

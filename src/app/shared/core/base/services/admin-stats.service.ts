@@ -10,7 +10,7 @@ import type {
   AdminStatsRevenueTimelinePointDto,
   AdminStatsSegmentDto,
   AdminStatsTimelinePointDto
-} from '../../../../admin/models/admin-stats.model';
+} from '../models';
 import { HttpAdminStatsService } from '../../http/services/admin-stats.service';
 import { LocalAdminStatsService } from '../../local/services/admin-stats.service';
 import { BaseRouteModeService } from './base-route-mode.service';

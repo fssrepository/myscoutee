@@ -6,7 +6,7 @@ import type {
   AdminParamsHistoryDto,
   AdminParamsHistoryItemDto,
   AdminParamsStateDto
-} from '../../../../admin/models/admin-params.model';
+} from '../../base/models';
 import { LocalAdminParamsRepository } from '../repositories/admin-params.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 

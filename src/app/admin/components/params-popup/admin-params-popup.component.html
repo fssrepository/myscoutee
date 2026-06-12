@@ -121,43 +121,14 @@
                 @if (field.valueType === 'text') {
                   @if (textFieldOptions(field); as options) {
                     @if (options.length) {
-                      <div class="admin-params-select-wrap" [class.is-open]="textFieldSelectOpen(field)">
-                        <button
-                          type="button"
-                          class="admin-params-select-btn"
-                          [disabled]="saving() || field.readOnly === true"
-                          [attr.aria-expanded]="textFieldSelectOpen(field)"
-                          (click)="toggleTextFieldSelect(field, $event)"
-                        >
-                          <span>{{ textFieldOptionLabel(field) | i18n }}</span>
-                          <mat-icon>expand_more</mat-icon>
-                        </button>
-                        @if (textFieldSelectOpen(field)) {
-                          <span class="admin-params-select-backdrop" (click)="closeTextFieldSelect($event)"></span>
-                          <div class="admin-params-select-menu" role="listbox" [attr.aria-label]="(field.labelKey || field.label) | i18n: field.label">
-                            <div class="admin-params-select-sheet-head">
-                              <strong>{{ (field.labelKey || field.label) | i18n: field.label }}</strong>
-                              <button type="button" class="admin-params-select-sheet-close" (click)="closeTextFieldSelect($event)" [attr.aria-label]="'admin.params.close.options' | i18n">
-                                <mat-icon>close</mat-icon>
-                              </button>
-                            </div>
-                            @for (option of options; track option.value) {
-                              <button
-                                type="button"
-                                class="admin-params-select-option"
-                                role="option"
-                                [class.is-selected]="textFieldOptionSelected(field, option)"
-                                [attr.aria-selected]="textFieldOptionSelected(field, option)"
-                                (click)="selectTextFieldOption(field, option, $event)"
-                              >
-                                <span>{{ (option.labelKey || option.label) | i18n: option.label }}</span>
-                                @if (textFieldOptionSelected(field, option)) {
-                                  <mat-icon>check</mat-icon>
-                                }
-                              </button>
-                            }
-                          </div>
-                        }
+                      <div class="admin-params-select-wrap">
+                        <app-menu
+                          kind="select"
+                          [title]="textFieldSelectTitle(field)"
+                          [trigger]="textFieldSelectTrigger(field)"
+                          [items]="textFieldSelectItems(field)"
+                          (itemSelect)="onTextFieldSelect($event)"
+                        ></app-menu>
                       </div>
                     } @else {
                       <input type="text" [(ngModel)]="field.textValue" [disabled]="field.readOnly === true" />

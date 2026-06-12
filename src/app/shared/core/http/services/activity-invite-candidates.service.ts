@@ -1,16 +1,33 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
-import type { ActivityInviteCandidatesQuery } from '../../base/interfaces/activity-invite.interface';
-import { HttpActivityInviteCandidatesRepository } from '../repositories/activity-invite-candidates.repository';
+import { environment } from '../../../../../environments/environment';
+import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity-invite.interface';
+import type { ActivityMemberEntry } from '../../contracts/activity-member.interface';
 
 @Injectable({
   providedIn: 'root'
 })
-export class HttpActivityInviteCandidatesService {
-  private readonly activityInviteCandidatesRepository = inject(HttpActivityInviteCandidatesRepository);
+export class HttpActivityInviteCandidatesService implements IActivityInviteCandidatesService {
+  private readonly http = inject(HttpClient);
+  private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<AppTypes.ActivityMemberEntry[]> {
-    return this.activityInviteCandidatesRepository.queryCandidates(query);
+  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]> {
+    try {
+      const response = await this.http
+        .post<ActivityMemberEntry[] | null>(
+          `${this.apiBaseUrl}/activities/events/invite-candidates`,
+          {
+            activeUserId: query.activeUserId,
+            ownerId: query.owner.ownerId,
+            ownerType: query.owner.ownerType,
+            sort: query.sort
+          }
+        )
+        .toPromise();
+      return Array.isArray(response) ? response.map(entry => ({ ...entry })) : [];
+    } catch {
+      return [];
+    }
   }
 }

@@ -1,17 +1,21 @@
 <ng-template #resourceItemTemplate let-card>
   <app-info-card
     [card]="resourceInfoCard(card)"
+    [useSharedMenu]="true"
     (mediaStartClick)="openResourceCardMap(card)"
     (mediaEndClick)="openResourceCardBadgeDetails(card)"
     (menuAction)="onResourceCardMenuAction(card, $event)"
+    (menuRequest)="openResourceInfoCardMenu(card, $event)"
   ></app-info-card>
 </ng-template>
 
 <ng-template #assetExploreItemTemplate let-card let-groupLabel="groupLabel">
   <app-info-card
     [card]="assetExploreInfoCard(card, { groupLabel })"
+    [useSharedMenu]="true"
     (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
     (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
+    (menuRequest)="openAssetExploreInfoCardMenu(card, $event)"
   ></app-info-card>
 </ng-template>
 
@@ -42,122 +46,22 @@
       <div class="experience-popup assets-popup subevent-assets-popup">
         @if (!host.standaloneResourceAssetView() && !host.assetExploreOnly()) {
           <div class="experience-toolbar assets-toolbar">
-          @if (!isMobileResourceFilterSheetViewport()) {
-            <div
-              class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-              [ngClass]="host.resourceTypeClass(host.resourceFilter())"
-              [class.asset-filter-open]="resourceFilterOpen"
-              >
-              <mat-select
-                #subEventResourceFilterSelect="matSelect"
-                [ngModel]="host.resourceFilter()"
-                (ngModelChange)="host.selectResourceFilter($event)"
-                (openedChange)="onResourceFilterOpenedChange($event, subEventResourceFilterSelect)"
-                [panelWidth]="host.resourceFilterPanelWidth()"
-                disableOptionCentering
-                panelClass="selector-options-panel profile-bottom-sheet-panel assets-filter-options-panel subevent-resource-options-panel"
-                >
-                <mat-select-trigger>
-                  <span class="status-option-content">
-                    <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
-                    <span>{{ host.resourceTypeLabel(host.resourceFilter()).toLowerCase() }}</span>
-                  </span>
-                </mat-select-trigger>
-                @for (option of host.resourceFilterOptions(); track option) {
-                  <mat-option
-                    [value]="option"
-                    class="status-option"
-                    [ngClass]="host.resourceTypeClass(option)"
-                    >
-                    <span class="status-option-content">
-                      <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
-                      <span>{{ host.resourceTypeLabel(option).toLowerCase() }}</span>
-                      @if (host.resourceFilterCount(option) > 0) {
-                        <span class="rate-filter-count-badge">{{ host.resourceFilterCount(option) | counterBadge }}</span>
-                      }
-                    </span>
-                  </mat-option>
-                }
-              </mat-select>
-              @if (host.resourceFilterCount(host.resourceFilter()) > 0) {
-                <span class="rate-filter-count-badge rate-filter-trigger-badge">
-                  {{ host.resourceFilterCount(host.resourceFilter()) | counterBadge }}
-                </span>
-              }
-            </div>
-          } @else {
-            <div class="popup-mobile-filter-picker subevent-resource-mobile-filter-picker">
-              <button
-                type="button"
-                class="profile-status-select-wrap selector-like experience-filter-select assets-compact-select"
-                [ngClass]="host.resourceTypeClass(host.resourceFilter())"
-                (click)="openMobileResourceFilterSelector($event)"
-                aria-label="Open asset filter"
-                >
-                <span class="status-option-content">
-                  <mat-icon [class]="host.resourceTypeClass(host.resourceFilter())">{{ host.resourceTypeIcon(host.resourceFilter()) }}</mat-icon>
-                  <span>{{ host.resourceTypeLabel(host.resourceFilter()).toLowerCase() }}</span>
-                </span>
-                <mat-icon>expand_more</mat-icon>
-                @if (host.resourceFilterCount(host.resourceFilter()) > 0) {
-                  <span class="rate-filter-count-badge rate-filter-trigger-badge">
-                    {{ host.resourceFilterCount(host.resourceFilter()) | counterBadge }}
-                  </span>
-                }
-              </button>
-              @if (showMobileResourceFilterPicker) {
-                <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel subevent-resource-mobile-filter-panel">
-                  @for (option of host.resourceFilterOptions(); track option) {
-                    <button
-                      type="button"
-                      class="popup-filter-option activities-view-option"
-                      [ngClass]="[host.resourceTypeClass(option), option === host.resourceFilter() ? 'active' : '']"
-                      (click)="selectMobileResourceFilter(option, $event)"
-                      >
-                      <mat-icon [class]="host.resourceTypeClass(option)">{{ host.resourceTypeIcon(option) }}</mat-icon>
-                      <span>{{ host.resourceTypeLabel(option).toLowerCase() }}</span>
-                      @if (host.resourceFilterCount(option) > 0) {
-                        <span class="rate-filter-count-badge">{{ host.resourceFilterCount(option) | counterBadge }}</span>
-                      }
-                    </button>
-                  }
-                </div>
-              }
-            </div>
-          }
+          <app-menu
+            class="subevent-resource-filter-menu"
+            kind="select"
+            [trigger]="resourceFilterMenuTrigger()"
+            [items]="resourceFilterMenuItems()"
+            (itemSelect)="onEventResourceMenuSelect($event)"
+          ></app-menu>
 
           <div class="subevent-assets-toolbar-actions">
-            <div class="subevent-assets-quick-actions">
-              <button
-                type="button"
-                class="popup-header-add-btn subevent-assets-quick-actions-trigger"
-                [class.is-open]="showQuickActionsMenu"
-                (click)="toggleQuickActionsMenu($event)"
-                aria-label="Open sub-event asset actions"
-                >
-                <mat-icon>add</mat-icon>
-              </button>
-              @if (showQuickActionsMenu) {
-                <div class="popup-filter-panel activities-view-picker-panel subevent-assets-quick-actions-panel">
-                  <button
-                    type="button"
-                    class="popup-filter-option activities-view-option subevent-assets-quick-action-option subevent-assets-quick-action-option-assign"
-                    (click)="openAssignQuickAction($event)"
-                    >
-                    <mat-icon>assignment_ind</mat-icon>
-                    <span>Assign</span>
-                  </button>
-                  <button
-                    type="button"
-                    class="popup-filter-option activities-view-option subevent-assets-quick-action-option subevent-assets-quick-action-option-explore"
-                    (click)="openExploreQuickAction($event)"
-                    >
-                    <mat-icon>explore</mat-icon>
-                    <span>Explore</span>
-                  </button>
-                </div>
-              }
-            </div>
+            <app-menu
+              class="subevent-assets-quick-actions"
+              kind="select"
+              [trigger]="quickActionsMenuTrigger()"
+              [items]="quickActionsMenuItems()"
+              (itemSelect)="onEventResourceMenuSelect($event)"
+            ></app-menu>
           </div>
           </div>
 
@@ -826,33 +730,13 @@
           <p class="popup-subtitle">{{ explore.subtitle }}</p>
         </div>
         <div class="event-explore-header-controls asset-explore-header-controls">
-          <div class="event-explore-order-picker asset-explore-order-picker">
-            <button
-              type="button"
-              class="popup-view-fab event-explore-order-trigger asset-explore-order-trigger"
-              [ngClass]="assetExploreOrderClass()"
-              (click)="toggleAssetExploreOrderPicker($event)"
-              aria-label="Open asset explore order"
-            >
-              <mat-icon [class]="assetExploreOrderClass()">{{ assetExploreOrderIcon() }}</mat-icon>
-              <span>{{ assetExploreOrderLabel() }}</span>
-            </button>
-            @if (showAssetExploreOrderPicker) {
-              <div class="activities-view-picker-panel asset-explore-order-panel">
-                @for (option of assetExploreOrderOptions; track option.key) {
-                  <button
-                    type="button"
-                    class="activities-view-option"
-                    [ngClass]="assetExploreOrderClass(option.key)"
-                    (click)="selectAssetExploreOrder(option.key, $event)"
-                  >
-                    <mat-icon [class]="assetExploreOrderClass(option.key)">{{ option.icon }}</mat-icon>
-                    <span>{{ option.label }}</span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="event-explore-order-picker asset-explore-order-picker"
+            kind="select"
+            [trigger]="assetExploreOrderMenuTrigger()"
+            [items]="assetExploreOrderMenuItems()"
+            (itemSelect)="onEventResourceMenuSelect($event)"
+          ></app-menu>
         </div>
         <button type="button" class="popup-close" (click)="host.closeExplorePopup($event)" aria-label="Close asset explore">
           <mat-icon>close</mat-icon>
@@ -862,65 +746,13 @@
       <div class="popup-body popup-body-members asset-explore-shell-body">
         <div class="asset-explore-popup-screen">
           <div class="asset-explore-filter-bar popup-filter-bar">
-            @if (!isMobileResourceFilterSheetViewport()) {
-              <div
-                class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select popup-filter-no-badge activities-filter-no-badge asset-explore-category-field"
-                [ngClass]="assetExploreCategoryClass(explore.category)"
-              >
-                <mat-select
-                  [ngModel]="explore.categoryDisplay"
-                  (ngModelChange)="host.selectAssetExploreCategory($event)"
-                  disableOptionCentering
-                  panelClass="selector-options-panel profile-bottom-sheet-panel subevent-resource-options-panel asset-type-options-panel"
-                >
-                  <mat-select-trigger>
-                    <span class="status-option-content">
-                      <mat-icon [class]="assetExploreCategoryClass(explore.category)">{{ assetExploreCategoryIcon(explore.category) }}</mat-icon>
-                      <span>{{ assetExploreCategoryLabel(explore.categoryDisplay) }}</span>
-                    </span>
-                  </mat-select-trigger>
-                  @for (option of explore.categoryOptions; track option) {
-                    <mat-option [value]="option" class="status-option" [ngClass]="assetExploreCategoryClass(option)">
-                      <span class="status-option-content">
-                        <mat-icon [class]="assetExploreCategoryClass(option)">{{ assetExploreCategoryIcon(option) }}</mat-icon>
-                        <span>{{ assetExploreCategoryLabel(option) }}</span>
-                      </span>
-                    </mat-option>
-                  }
-                </mat-select>
-              </div>
-            } @else {
-              <div class="popup-mobile-filter-picker asset-explore-mobile-category-picker">
-                <button
-                  type="button"
-                  class="profile-status-select-wrap selector-like experience-filter-select popup-compact-select activities-compact-select popup-filter-no-badge activities-filter-no-badge asset-explore-category-field"
-                  [ngClass]="assetExploreCategoryClass(explore.category)"
-                  (click)="toggleAssetExploreCategoryPicker($event)"
-                  aria-label="Open asset explore category"
-                >
-                  <span class="status-option-content">
-                    <mat-icon [class]="assetExploreCategoryClass(explore.category)">{{ assetExploreCategoryIcon(explore.category) }}</mat-icon>
-                    <span>{{ assetExploreCategoryLabel(explore.categoryDisplay) }}</span>
-                  </span>
-                  <mat-icon>expand_more</mat-icon>
-                </button>
-                @if (showAssetExploreCategoryPicker) {
-                  <div class="popup-filter-panel popup-mobile-filter-panel activities-view-picker-panel asset-explore-mobile-category-panel">
-                    @for (option of explore.categoryOptions; track option) {
-                      <button
-                        type="button"
-                        class="popup-filter-option activities-view-option"
-                        [ngClass]="[assetExploreCategoryClass(option), option === explore.category ? 'active' : '']"
-                        (click)="selectMobileAssetExploreCategory(option, $event)"
-                      >
-                        <mat-icon [class]="assetExploreCategoryClass(option)">{{ assetExploreCategoryIcon(option) }}</mat-icon>
-                        <span>{{ assetExploreCategoryLabel(option) }}</span>
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
-            }
+            <app-menu
+              class="asset-explore-category-menu"
+              kind="select"
+              [trigger]="assetExploreCategoryMenuTrigger(explore)"
+              [items]="assetExploreCategoryMenuItems(explore)"
+              (itemSelect)="onEventResourceMenuSelect($event)"
+            ></app-menu>
 
             <mat-form-field appearance="fill" class="asset-explore-date-range-field experience-date-range-field asset-explore-date-range-pill" subscriptSizing="dynamic">
               <mat-date-range-input
@@ -1338,3 +1170,8 @@
     </div>
   </section>
 }
+
+<app-menu-outlet
+  scope="event-resource"
+  (itemSelect)="onEventResourceMenuSelect($event)"
+></app-menu-outlet>

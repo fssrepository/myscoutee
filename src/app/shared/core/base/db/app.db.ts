@@ -28,7 +28,7 @@ import type {
   ContactMethodDraft,
   ContactMethodType,
   StoredContact
-} from '../models/contact.model';
+} from '../../contracts/contact.interface';
 import {
   type AppStorageScope,
   APP_STORAGE_SCOPE,

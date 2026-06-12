@@ -46,7 +46,6 @@ export class OwnedAssetsPopupFacadeService {
   private assetCardsRef: AppTypes.AssetCard[] = [];
   private activePopupFilter: AppTypes.AssetFilterType | null = null;
   private activeOwnerUserId = '';
-  private itemActionMenu: { id: string; title: string; openUp: boolean } | null = null;
   private readonly runtimeHooks: OwnedAssetsRuntimeHooks[] = [];
   private pendingPersistSnapshot: AppTypes.AssetCard[] | null = null;
   private pendingPersistOwnerUserId = '';
@@ -119,7 +118,6 @@ export class OwnedAssetsPopupFacadeService {
     this.isAssetDeletePending = false;
     this.pendingAssetDeleteLabelValue = '';
     this.pendingAssetDeleteErrorValue = '';
-    this.itemActionMenu = null;
     this.cancelScheduledPersist();
     this.touchUiState();
     if (!normalizedUserId) {
@@ -374,7 +372,6 @@ export class OwnedAssetsPopupFacadeService {
     this.isAssetDeletePending = false;
     this.pendingAssetDeleteLabelValue = '';
     this.pendingAssetDeleteErrorValue = '';
-    this.itemActionMenu = null;
     this.assetPopupState.resetTicketState();
     this.clearAssetsExplanationContext();
     this.assetPopupState.setPrimaryVisible(false);
@@ -395,7 +392,6 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   openAssetForm(card?: AppTypes.AssetCard): void {
-    this.itemActionMenu = null;
     if (card) {
       void this.openAssetFormForEdit(card);
       return;
@@ -774,35 +770,9 @@ export class OwnedAssetsPopupFacadeService {
     this.openGoogleMapsSearch(AssetCardBuilder.primaryLocation(card));
   }
 
-  toggleAssetItemActionMenu(card: AppTypes.AssetCard, event: Event): void {
-    event.stopPropagation();
-    if (this.itemActionMenu?.id === card.id) {
-      this.itemActionMenu = null;
-      return;
-    }
-    this.itemActionMenu = {
-      id: card.id,
-      title: card.title,
-      openUp: this.shouldOpenInlineItemMenuUp(event)
-    };
-  }
-
-  closeAssetItemActionMenu(): void {
-    this.itemActionMenu = null;
-  }
-
-  isAssetItemActionMenuOpen(card: AppTypes.AssetCard): boolean {
-    return this.itemActionMenu?.id === card.id;
-  }
-
-  isAssetItemActionMenuOpenUp(card: AppTypes.AssetCard): boolean {
-    return this.itemActionMenu?.id === card.id && this.itemActionMenu.openUp;
-  }
-
   runAssetItemEditAction(card: AppTypes.AssetCard, event?: Event): void {
     event?.stopPropagation();
     this.openAssetForm(card);
-    this.itemActionMenu = null;
   }
 
   runAssetItemDeleteAction(card: AppTypes.AssetCard, event?: Event): void {
@@ -811,7 +781,6 @@ export class OwnedAssetsPopupFacadeService {
     this.pendingAssetDeleteLabelValue = `Delete ${card.title}?`;
     this.pendingAssetDeleteErrorValue = '';
     this.isAssetDeletePending = false;
-    this.itemActionMenu = null;
     this.touchUiState();
   }
 
@@ -1193,23 +1162,6 @@ export class OwnedAssetsPopupFacadeService {
     if (value && value.startsWith('blob:')) {
       URL.revokeObjectURL(value);
     }
-  }
-
-  private shouldOpenInlineItemMenuUp(event: Event): boolean {
-    if (this.isMobileView() || typeof window === 'undefined') {
-      return false;
-    }
-    const trigger = event.currentTarget as HTMLElement | null;
-    const actionWrap = (trigger?.closest('.experience-item-actions') as HTMLElement | null) ?? trigger;
-    if (!actionWrap) {
-      return false;
-    }
-    const rect = actionWrap.getBoundingClientRect();
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
-    const estimatedMenuHeight = 248;
-    const spaceBelow = viewportHeight - rect.bottom;
-    const spaceAbove = rect.top;
-    return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
   private areAssetCardListsEqual(

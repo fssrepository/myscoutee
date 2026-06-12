@@ -16,13 +16,15 @@ import { AppLocationService } from './shared/core/base/services/app-location.ser
 import { FirebaseMessagingService } from './shared/core/base/services/firebase-messaging.service';
 import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core';
+import { DemoBootstrapSelectorComponent } from './shared/ui';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
     NavigatorComponent,
-    AppInstallPromptComponent
+    AppInstallPromptComponent,
+    DemoBootstrapSelectorComponent
   ],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },

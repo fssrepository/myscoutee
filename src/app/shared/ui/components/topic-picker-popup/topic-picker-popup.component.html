@@ -9,8 +9,6 @@
         <div class="popup-title">
           <h2>{{ title }}</h2>
         </div>
-      </div>
-      <div class="popup-body popup-body-friends-picker popup-body-topic-picker">
         @if (selected.length > 0) {
           <div class="friends-picker-chip-row">
             @for (topic of selected; track topic) {
@@ -26,29 +24,45 @@
             }
           </div>
         }
-        <div class="values-selector-popup">
-          @for (group of groups; track group) {
-            <div class="values-selector-group">
-              <div class="social-proof-section-head" [class]="group.toneClass">
-                <span class="section-tag">{{ group.icon }} {{ group.shortTitle }}</span>
-                <span class="section-line"></span>
-              </div>
-              <div class="social-proof-chip-list">
-                @for (option of group.options; track option) {
-                  <button
-                    type="button"
-                    class="values-selected-chip values-option-chip"
-                    [class.active]="isSelected(option)"
-                    [ngClass]="topicToneClass(option)"
-                    (click)="toggleOption(option, $event)"
-                    >
-                    {{ topicLabel(option) }}
-                  </button>
-                }
+      </div>
+      <div class="popup-body popup-body-friends-picker popup-body-topic-picker">
+        @if (activeGroup(); as activeGroup) {
+          <section class="topic-picker-panel" [ngClass]="activeGroup.toneClass">
+            <div class="topic-picker-tabs" role="tablist" aria-label="Topic categories">
+              @for (group of groups; track group; let index = $index) {
+                <button
+                  type="button"
+                  class="topic-picker-tab"
+                  [class.is-active]="isActiveGroup(index)"
+                  [ngClass]="group.toneClass"
+                  role="tab"
+                  [attr.aria-selected]="isActiveGroup(index)"
+                  (click)="selectGroup(index, $event)"
+                  >
+                  <span class="topic-picker-tab-icon" aria-hidden="true">{{ group.icon }}</span>
+                  <span class="topic-picker-tab-label">{{ group.shortTitle }}</span>
+                </button>
+              }
+            </div>
+            <div class="values-selector-popup topic-picker-option-panel" [ngClass]="activeGroup.toneClass">
+              <div class="values-selector-group">
+                <div class="social-proof-chip-list">
+                  @for (option of activeGroup.options; track option) {
+                    <button
+                      type="button"
+                      class="values-selected-chip values-option-chip"
+                      [class.active]="isSelected(option)"
+                      [ngClass]="topicToneClass(option)"
+                      (click)="toggleOption(option, $event)"
+                      >
+                      {{ topicLabel(option) }}
+                    </button>
+                  }
+                </div>
               </div>
             </div>
-          }
-        </div>
+          </section>
+        }
       </div>
     </div>
   </section>

@@ -9,6 +9,8 @@ export {
   type ActivityMembersSyncState,
   type AdminNavigatorRequest,
   type ConnectivityState,
+  type DemoBootstrapSelectorMode,
+  type DemoBootstrapSelectorState,
   type LoadState,
   type LoadStatus,
   type NavigatorActivitiesRequest,
@@ -35,11 +37,6 @@ export { ExplanationGuideService } from './base/services/explanation-guide.servi
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { MediaService } from './base/services/media.service';
-export {
-  AdminBootstrapService,
-  type AdminBootstrapMenuSeedState,
-  type AdminBootstrapStoresSeed
-} from './base/services/admin-bootstrap.service';
 export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
 export {
   AdminParamsService,
@@ -112,3 +109,4 @@ export * from './base/converters';
 export * from './base/formatters';
 export * from './base/interfaces';
 export * from './base/models';
+export * from './seed';

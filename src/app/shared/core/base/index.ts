@@ -5,7 +5,7 @@ export * from './formatters';
 export * from './guards';
 export * from './models';
 export { AppMemoryDb, LocalMemoryDb, HttpMemoryDb } from './db';
-export { BaseUsersRatingsRepository } from './repositories/users-ratings.repository';
+export { RateOutboxRepository } from './repositories/rate-outbox.repository';
 export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
 export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
 export {
@@ -24,11 +24,6 @@ export { TermsPolicyService, type TermsPolicyOpenOptions } from './services/term
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
-export {
-  AdminBootstrapService,
-  type AdminBootstrapMenuSeedState,
-  type AdminBootstrapStoresSeed
-} from './services/admin-bootstrap.service';
 export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
 export {
   AdminParamsService,

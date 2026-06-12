@@ -92,7 +92,7 @@ export class ActivitiesPopupToolbarController {
   activitiesPrimaryFilterCount(filter: AppTypes.ActivitiesPrimaryFilter): number {
     if (filter === 'rates') { return this.gameBadge; }
     if (filter === 'chats') { return this.chatBadge; }
-    if (filter === 'events') { return this.allEventsScopeBadge; }
+    if (filter === 'events') { return this.eventsBadge; }
     return 0;
   }
 

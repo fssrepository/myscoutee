@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { AdminDashboardDto } from '../../../../admin/models/admin-dashboard.model';
+import type { AdminDashboardDto } from '../../base/models';
 
 @Injectable({
   providedIn: 'root'

@@ -1,4 +1,4 @@
-import type { RateRecord } from '../../../../../shared/core/base/models/rate.model';
+import type { RateRecord } from '../../../../../shared/core/contracts/rate.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 
 export function matchesActivitiesRateFilter(

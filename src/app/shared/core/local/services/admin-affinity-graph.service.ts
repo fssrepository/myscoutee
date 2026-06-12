@@ -30,7 +30,4 @@ export class LocalAdminAffinityGraphService {
     }
   }
 
-  async buildAndWriteGraphSnapshot(): Promise<AdminAffinityGraphDto> {
-    return await this.repository.buildAndWriteGraphSnapshot();
-  }
 }

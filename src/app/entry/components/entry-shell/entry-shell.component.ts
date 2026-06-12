@@ -1,13 +1,10 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 
 import {
-  AppContext,
+  AppPopupContext,
   LandingContentService,
   PrivacyPolicyService,
-  USERS_LOAD_CONTEXT_KEY,
   UsersService,
-  type BootstrapProcessStage,
-  type UserSelectorListItemDto,
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -16,10 +13,10 @@ import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { I18nService } from '../../../shared/core';
+import { SeedStaticContentService } from '../../../shared/core/seed';
 import type { InfoCardData } from '../../../shared/ui';
 import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
 import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';
-import { EntryDemoUserSelectorComponent } from '../entry-demo-user-selector/entry-demo-user-selector.component';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 
@@ -36,7 +33,6 @@ export interface EntryDemoUserSelectionEvent {
     EntryLandingComponent,
     PrivacyPolicyPopupComponent,
     TermsPolicyComponent,
-    EntryDemoUserSelectorComponent,
     EntryFirebaseAuthPopupComponent,
     ConfirmationDialogComponent
   ],
@@ -53,9 +49,10 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly landingContent = inject(LandingContentService);
+  private readonly staticContentSeed = inject(SeedStaticContentService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly i18n = inject(I18nService);
   private usersServiceRef: UsersService | null = null;
@@ -85,17 +82,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected entryAuthLocationRequiredLabel = 'Allow location';
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
-  protected showUserSelector = false;
-  protected demoSelectorUsers: UserSelectorListItemDto[] = [];
-  protected demoSelectorLoading = false;
-  protected demoSelectorLoadingProgress = 0;
-  protected demoSelectorLoadingLabel = 'Preparing demo data';
-  protected demoSelectorLoadingStage: BootstrapProcessStage = 'selector';
-  protected demoSelectorErrorMessage = '';
-  protected demoSelectorSubmitting = false;
-  protected demoSelectorSelectedUserId = '';
   protected showFirebaseAuthPopup = false;
-  private demoSelectorRequestToken = 0;
   private landingContentRequestToken = 0;
   private landingLoginAvailability: UserLocationEligibilityResponseDto | null = null;
   private locationEligibilityResolvedFromCoordinates = false;
@@ -137,14 +124,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected onGlobalEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
     if (keyboardEvent.defaultPrevented) {
-      return;
-    }
-    if (this.showUserSelector) {
-      keyboardEvent.stopPropagation();
-      if (this.demoSelectorSubmitting) {
-        return;
-      }
-      this.closeDemoUserSelectorPopup();
       return;
     }
     if (this.showFirebaseAuthPopup) {
@@ -202,56 +181,11 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.showFirebaseAuthPopup = false;
   }
 
-  protected closeDemoUserSelectorPopup(): void {
-    if (this.demoSelectorSubmitting) {
-      return;
-    }
-    this.demoSelectorRequestToken += 1;
-    this.showUserSelector = false;
-    this.demoSelectorLoading = false;
-    this.demoSelectorLoadingProgress = 0;
-    this.demoSelectorLoadingLabel = 'Preparing demo data';
-    this.demoSelectorLoadingStage = 'selector';
-    this.demoSelectorErrorMessage = '';
-    this.demoSelectorSubmitting = false;
-    this.demoSelectorSelectedUserId = '';
-  }
-
-  protected onSelectDemoUser(userId: string): void {
-    if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
-      return;
-    }
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    const selectedUser = this.demoSelectorUsers.find(user => user.id.trim() === normalizedUserId) ?? null;
-    if (selectedUser && this.isNewDemoProfile(selectedUser)) {
-      this.emitDemoUserSelection(normalizedUserId, this.demoSelectorRequestToken);
-      return;
-    }
-    const requestToken = this.demoSelectorRequestToken;
-    this.demoSelectorSubmitting = true;
-    this.demoSelectorSelectedUserId = normalizedUserId;
-    this.demoSelectorLoading = true;
-    this.demoSelectorLoadingProgress = 0;
-    this.demoSelectorLoadingLabel = 'Preparing demo session';
-    this.demoSelectorLoadingStage = 'session';
-    void this.prepareSelectedDemoUser(normalizedUserId, requestToken);
-  }
-
   protected onRequestFirebaseAuth(request: AppTypes.FirebaseAuthRequest): void {
     if (this.firebaseAuthIsBusy) {
       return;
     }
     this.firebaseAuthRequested.emit(request);
-  }
-
-  protected retryDemoUserSelectorPopup(): void {
-    if (this.demoSelectorLoading || this.demoSelectorSubmitting) {
-      return;
-    }
-    this.openDemoUserSelectorPopup();
   }
 
   protected openEntryConsentPopup(viewOnly = false): void {
@@ -315,14 +249,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
     this.syncLandingLoginAvailability(null, 'reset');
-    this.showUserSelector = false;
-    this.demoSelectorLoading = false;
-    this.demoSelectorLoadingProgress = 0;
-    this.demoSelectorLoadingLabel = 'Preparing demo data';
-    this.demoSelectorLoadingStage = 'selector';
-    this.demoSelectorErrorMessage = '';
-    this.demoSelectorSubmitting = false;
-    this.demoSelectorSelectedUserId = '';
     this.showFirebaseAuthPopup = false;
     void this.loadEntryContent();
   }
@@ -388,169 +314,18 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   }
 
   private openDemoUserSelectorPopup(): void {
-    const requestToken = ++this.demoSelectorRequestToken;
-    this.showUserSelector = true;
-    this.demoSelectorUsers = [];
-    this.demoSelectorLoading = true;
-    this.demoSelectorLoadingProgress = 0;
-    this.demoSelectorLoadingLabel = 'Preparing demo data';
-    this.demoSelectorLoadingStage = 'selector';
-    this.demoSelectorErrorMessage = '';
-    this.demoSelectorSubmitting = false;
-    this.demoSelectorSelectedUserId = '';
-    void this.loadDemoSelectorUsers(requestToken);
-  }
-
-  private async loadDemoSelectorUsers(requestToken: number): Promise<void> {
-    await this.waitForPopupPaint();
-    if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-      return;
-    }
-
-    try {
-      const users = await this.usersService.loadAvailableDemoUsers(undefined, state => {
-        if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-          return;
-        }
-        this.commitDemoSelectorState(() => {
-          this.demoSelectorLoadingProgress = state.percent;
-          this.demoSelectorLoadingLabel = state.label;
-          this.demoSelectorLoadingStage = state.stage;
+    this.popupCtx.openDemoBootstrapSelector({
+      mode: 'member',
+      onSelect: userId => new Promise<boolean>(resolve => {
+        this.ngZone.run(() => {
+          this.demoUserSelected.emit({
+            userId,
+            complete: () => resolve(true),
+            fail: () => resolve(false)
+          });
         });
-      });
-      const loadState = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY);
-      const selectorErrorMessage = users.length === 0
-        && (loadState.status === 'timeout' || loadState.status === 'error')
-        ? (loadState.error?.trim() || 'Unable to load demo users right now.')
-        : '';
-      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-        return;
-      }
-      this.commitDemoSelectorState(() => {
-        this.demoSelectorUsers = users;
-        this.demoSelectorErrorMessage = selectorErrorMessage;
-        this.demoSelectorLoadingProgress = selectorErrorMessage ? 0 : 100;
-        this.demoSelectorLoadingLabel = selectorErrorMessage ? 'Retry demo selector' : 'Demo data ready';
-        this.demoSelectorLoadingStage = selectorErrorMessage ? 'selector' : 'ready';
-      });
-      if (selectorErrorMessage) {
-        this.commitDemoSelectorState(() => {
-          this.demoSelectorLoading = false;
-        });
-        return;
-      }
-      await this.waitForLoaderCompletionBeat();
-      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-        return;
-      }
-      this.commitDemoSelectorState(() => {
-        this.demoSelectorLoading = false;
-      });
-    } catch {
-      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-        return;
-      }
-      this.commitDemoSelectorState(() => {
-        this.demoSelectorLoading = false;
-        this.demoSelectorErrorMessage = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY).error?.trim()
-          || 'Unable to load demo users right now.';
-      });
-    }
-  }
-
-  private async prepareSelectedDemoUser(userId: string, requestToken: number): Promise<void> {
-    await this.waitForPopupPaint();
-    if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-      return;
-    }
-
-    try {
-      await this.usersService.prepareDemoUserSession(userId, state => {
-        if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-          return;
-        }
-        this.commitDemoSelectorState(() => {
-          this.demoSelectorLoadingProgress = state.percent;
-          this.demoSelectorLoadingLabel = state.label;
-          this.demoSelectorLoadingStage = state.stage;
-        });
-      });
-      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-        return;
-      }
-      this.commitDemoSelectorState(() => {
-        this.demoSelectorLoadingProgress = 100;
-        this.demoSelectorLoadingLabel = 'Demo session ready';
-        this.demoSelectorLoadingStage = 'sessionReady';
-      });
-      await this.waitForLoaderCompletionBeat();
-      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-        return;
-      }
-      const normalizedUserId = userId.trim();
-      this.emitDemoUserSelection(normalizedUserId, requestToken);
-    } catch {
-      if (!this.isCurrentDemoSelectorRequest(requestToken)) {
-        return;
-      }
-      this.resetDemoUserSelectionFailure();
-    }
-  }
-
-  private emitDemoUserSelection(userId: string, requestToken: number): void {
-    this.ngZone.run(() => {
-      this.demoUserSelected.emit({
-        userId,
-        complete: () => {
-          if (this.isCurrentDemoSelectorRequest(requestToken)) {
-            this.completeDemoUserSelection();
-          }
-        },
-        fail: () => {
-          if (this.isCurrentDemoSelectorRequest(requestToken)) {
-            this.resetDemoUserSelectionFailure();
-          }
-        }
-      });
+      })
     });
-  }
-
-  private resetDemoUserSelectionFailure(): void {
-    this.commitDemoSelectorState(() => {
-      this.demoSelectorLoading = false;
-      this.demoSelectorSubmitting = false;
-      this.demoSelectorSelectedUserId = '';
-      this.demoSelectorLoadingProgress = 0;
-      this.demoSelectorLoadingLabel = 'Preparing demo data';
-      this.demoSelectorLoadingStage = 'selector';
-    });
-  }
-
-  private isNewDemoProfile(user: UserSelectorListItemDto): boolean {
-    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
-    const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
-    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
-    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
-    return statusText === 'new'
-      || statusText === 'new profile'
-      || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
-  }
-
-  private isCurrentDemoSelectorRequest(requestToken: number): boolean {
-    return this.showUserSelector && this.demoSelectorRequestToken === requestToken;
-  }
-
-  private completeDemoUserSelection(): void {
-    this.demoSelectorRequestToken += 1;
-    this.showUserSelector = false;
-    this.demoSelectorLoading = false;
-    this.demoSelectorSubmitting = false;
-    this.demoSelectorSelectedUserId = '';
-    this.demoSelectorLoadingProgress = 0;
-    this.demoSelectorLoadingLabel = 'Preparing demo data';
-    this.demoSelectorLoadingStage = 'selector';
-    this.demoSelectorErrorMessage = '';
-    this.changeDetectorRef.markForCheck();
   }
 
   private async requestCurrentLocation(): Promise<LocationCoordinates | null> {
@@ -760,6 +535,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.startLandingArticlesLoadingWindow();
     this.entryContentLoadPromise = (async () => {
       try {
+        if (this.landingContent.usesLocalContent()) {
+          await this.staticContentSeed.ensureReady();
+        }
         const displayState = await this.landingContent.loadDisplayState();
         this.ngZone.run(() => {
           if (requestToken !== this.landingContentRequestToken) {

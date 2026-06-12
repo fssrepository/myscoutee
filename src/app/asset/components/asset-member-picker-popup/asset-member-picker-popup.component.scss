@@ -147,12 +147,8 @@
   filter: none;
 }
 
-.asset-member-picker-popup-shell .friends-picker-sort {
-  position: relative;
-}
-
-.asset-member-picker-popup-shell .friends-picker-sort .popup-view-fab {
-  cursor: pointer;
+.asset-member-picker-popup-shell .asset-member-picker-sort-menu {
+  width: max-content;
 }
 
 .asset-member-picker-popup-shell .asset-member-picker-confirm-error {

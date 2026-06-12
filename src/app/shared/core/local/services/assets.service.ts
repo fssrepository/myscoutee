@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import { LocalAssetBuilder } from '../builders';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
+import { AssetDefaultsBuilder } from '../../base/builders';
 
 @Injectable({
   providedIn: 'root'
@@ -84,7 +84,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
       title: `${type} · ${parsed.hostname.replace(/^www\./, '')}`,
       subtitle: parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.slice(1).replace(/[-_/]+/g, ' ') : 'Imported preview',
       details: `Preview imported from ${parsed.hostname}. You can adjust the details before saving.`,
-      imageUrl: LocalAssetBuilder.defaultAssetImage(type, seed)
+      imageUrl: AssetDefaultsBuilder.defaultAssetImage(type, seed)
     };
   }
 

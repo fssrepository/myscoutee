@@ -36,21 +36,6 @@
   (closeRequested)="closeEntryTermsPopup()"
 ></app-terms-policy>
 
-<app-entry-demo-user-selector
-  [open]="showUserSelector"
-  [loading]="demoSelectorLoading"
-  [loadingProgress]="demoSelectorLoadingProgress"
-  [loadingLabel]="demoSelectorLoadingLabel"
-  [loadingStage]="demoSelectorLoadingStage"
-  [errorMessage]="demoSelectorErrorMessage"
-  [submitting]="demoSelectorSubmitting"
-  [users]="demoSelectorUsers"
-  [selectedUserId]="demoSelectorSelectedUserId"
-  (closeRequested)="closeDemoUserSelectorPopup()"
-  (retryRequested)="retryDemoUserSelectorPopup()"
-  (userSelected)="onSelectDemoUser($event)"
-></app-entry-demo-user-selector>
-
 <app-entry-firebase-auth-popup
   [open]="showFirebaseAuthPopup"
   [busy]="firebaseAuthIsBusy"

@@ -7,15 +7,15 @@ import {
   HelpCenterService,
   SessionService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
+  type AdminBootstrapProcessState,
+  type AdminDashboardDto,
   type AdminModerationUserPatch,
+  type AdminReportedUserDto,
+  type AdminUserDto,
   type UserDto,
   type UserSelectorListItemDto
 } from '../../shared/core';
 import { APP_STORAGE_KEYS } from '../../shared/core/base/storage-scope';
-import type { AdminDashboardDto } from '../models/admin-dashboard.model';
-import type { AdminReportedUserDto } from '../models/admin-moderation.model';
-import type { AdminUserDto } from '../models/admin-profile.model';
-import type { AdminBootstrapProcessState } from '../models/admin-shell.model';
 import { AdminShellService } from './admin-shell.service';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
@@ -52,12 +52,6 @@ export class AdminWorkspaceService {
     const normalized = this.normalizeDashboard(dashboard);
     this.dashboardRef.set(normalized);
     this.activateAdminProfile(normalized);
-  }
-
-  async prepareDemoAdminSelector(
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<UserSelectorListItemDto[]> {
-    return await this.workspaceData.prepareAdminSelector(onProgress);
   }
 
   patchModerationUser(patch: AdminModerationUserPatch | null | undefined): AdminReportedUserDto | null {

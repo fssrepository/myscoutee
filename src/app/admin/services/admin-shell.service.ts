@@ -1,8 +1,26 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { AppPopupContext } from '../../shared/core';
-import type { AdminPopupKind } from '../models/admin-shell.model';
-import type { AdminReportedUserDto, AdminReportDto } from '../models/admin-moderation.model';
+import {
+  AppPopupContext,
+  type AdminReportedUserDto,
+  type AdminReportDto
+} from '../../shared/core';
+
+export type AdminPopupKind =
+  | 'reports'
+  | 'feedback'
+  | 'chat'
+  | 'chat-review'
+  | 'warn-chat'
+  | 'profile'
+  | 'help-editor'
+  | 'idea-editor'
+  | 'notifications'
+  | 'params'
+  | 'stats'
+  | 'affinity-graph'
+  | 'monitoring'
+  | 'item-preview';
 
 @Injectable({
   providedIn: 'root'

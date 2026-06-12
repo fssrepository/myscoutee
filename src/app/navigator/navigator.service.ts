@@ -23,7 +23,6 @@ import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 
 export interface NavigatorMenuUiState {
   open: boolean;
-  settingsOpen: boolean;
 }
 
 export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
@@ -85,7 +84,6 @@ export class NavigatorService {
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
-  private readonly settingsMenuOpenRef = signal(false);
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
   private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
   private readonly deletedAccountReactivationPendingRef = signal(false);
@@ -118,8 +116,7 @@ export class NavigatorService {
   readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
-    open: this.menuOpenRef(),
-    settingsOpen: this.settingsMenuOpenRef()
+    open: this.menuOpenRef()
   }));
   readonly navigatorCoveredByAssetPopup = computed(() => this.assetPopupService.visible());
 
@@ -483,7 +480,6 @@ export class NavigatorService {
 
   closeMenu(): void {
     this.menuOpenRef.set(false);
-    this.settingsMenuOpenRef.set(false);
   }
 
   toggleMenu(): void {
@@ -529,14 +525,6 @@ export class NavigatorService {
     this.profileViewTargetRef.set(null);
   }
 
-  closeSettingsMenu(): void {
-    this.settingsMenuOpenRef.set(false);
-  }
-
-  toggleSettingsMenu(): void {
-    this.settingsMenuOpenRef.update(open => !open);
-  }
-
   openSettingsPopup(popup: NavigatorSettingsPopup): void {
     if (popup !== 'report-user') {
       this.reportUserContextRef.set(null);
@@ -548,7 +536,6 @@ export class NavigatorService {
       void this.termsPolicy.prepareOpen();
     }
     this.settingsPopupRef.set(popup);
-    this.closeSettingsMenu();
   }
 
   closeSettingsPopup(): void {

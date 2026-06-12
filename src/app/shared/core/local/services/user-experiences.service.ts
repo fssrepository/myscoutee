@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { UserExperiencesPersistenceService } from '../../base/interfaces/experience.interface';
-import type { ExperienceEntry } from '../../base/models/profile.model';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
+import { LocalProfileExperiencesMapper } from '../mappers';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 
@@ -14,11 +15,15 @@ export class LocalUserExperiencesService extends LocalRouteDelayService implemen
 
   async queryUserExperiences(userId: string): Promise<ExperienceEntry[]> {
     await this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE);
-    return this.repository.queryUserExperiences(userId);
+    return LocalProfileExperiencesMapper.cloneEntries(this.repository.queryUserExperienceRecords(userId));
   }
 
   async saveUserExperiences(userId: string, entries: readonly ExperienceEntry[]): Promise<ExperienceEntry[]> {
     await this.waitForRouteDelay(LocalUserExperiencesService.EXPERIENCES_ROUTE);
-    return this.repository.replaceUserExperiences(userId, entries);
+    const savedEntries = this.repository.replaceUserExperienceRecords(
+      userId,
+      LocalProfileExperiencesMapper.toEntries(entries)
+    );
+    return LocalProfileExperiencesMapper.cloneEntries(savedEntries);
   }
 }

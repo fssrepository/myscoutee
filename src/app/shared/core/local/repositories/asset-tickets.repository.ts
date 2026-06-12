@@ -2,20 +2,23 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { LocalEventsRepository } from './events.repository';
-import { HttpAssetTicketsRepository } from '../../http/repositories/asset-tickets.repository';
+import { LocalAssetTicketsMapper } from '../mappers/asset-tickets.mapper';
 
 @Injectable({
   providedIn: 'root'
 })
-export class LocalAssetTicketsRepository extends HttpAssetTicketsRepository {
+export class LocalAssetTicketsRepository {
   private readonly eventsRepository = inject(LocalEventsRepository);
 
-  override peekTicketCountByUser(userId: string): number {
-    return this.buildTicketRows(this.ticketRecordsByUser(userId)).length;
+  peekTicketCountByUser(userId: string): number {
+    return LocalAssetTicketsMapper.toTicketRows(this.ticketRecordsByUser(userId)).length;
   }
 
-  override async queryTicketPage(query: AppTypes.AssetTicketPageQuery): Promise<AppTypes.AssetTicketPageResult> {
-    return this.pageRows(this.buildTicketRows(this.ticketRecordsByUser(query.userId)), query);
+  async queryTicketPage(query: AppTypes.AssetTicketPageQuery): Promise<AppTypes.AssetTicketPageResult> {
+    return LocalAssetTicketsMapper.pageRows(
+      LocalAssetTicketsMapper.toTicketRows(this.ticketRecordsByUser(query.userId)),
+      query
+    );
   }
 
   private ticketRecordsByUser(userId: string) {

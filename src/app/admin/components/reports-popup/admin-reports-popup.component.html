@@ -116,52 +116,12 @@
                 [class.has-member-image]="memberImageUrl(item.user)"
                 (click)="openSharedUrl(reportMemberUrl(item), $event)"
                 >
-                <button
-                  type="button"
-                  class="admin-report-member-menu-btn"
-                  (click)="toggleReportDetailMenu($event)"
-                  aria-label="Member moderation actions"
-                  >
-                  <mat-icon>more_horiz</mat-icon>
-                </button>
-                @if (reportDetailMenuOpen) {
-                  <div class="admin-report-member-menu" (click)="$event.stopPropagation()">
-                    @if (isUserBlocked(item.user)) {
-                      <button type="button" (click)="unblockUser(item.user, $event)">
-                        <mat-icon>lock_open</mat-icon>
-                        <span>Unblock user</span>
-                      </button>
-                      <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
-                        <mat-icon>forum</mat-icon>
-                        <span>View chat</span>
-                        @if (supportChatUnread(item.user) > 0) {
-                          <span class="card-badge admin-blocked-menu-item-badge">{{ supportChatUnread(item.user) }}</span>
-                        }
-                      </button>
-                    } @else if (hasSupportChat(item.user)) {
-                      <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
-                        <mat-icon>forum</mat-icon>
-                        <span>View chat</span>
-                        @if (supportChatUnread(item.user) > 0) {
-                          <span class="card-badge admin-blocked-menu-item-badge">{{ supportChatUnread(item.user) }}</span>
-                        }
-                      </button>
-                      <button type="button" class="danger" (click)="blockUser(item.user)">
-                        <mat-icon>block</mat-icon>
-                        <span>Block user</span>
-                      </button>
-                    } @else {
-                      <button type="button" (click)="warnUser(item.user)">
-                        <mat-icon>chat</mat-icon>
-                        <span>Warn in chat</span>
-                      </button>
-                      <button type="button" class="danger" (click)="blockUser(item.user)">
-                        <mat-icon>block</mat-icon>
-                        <span>Block user</span>
-                      </button>
-                    }
-                  </div>
-                }
+                <app-menu
+                  class="admin-report-member-menu-wrap"
+                  kind="button-row"
+                  [model]="reportDetailActionsMenuModel(item.user)"
+                  (itemSelect)="onReportActionsMenuSelect($event)"
+                ></app-menu>
                 <div class="admin-report-member-image-card">
                   <span class="admin-member-card-status" aria-hidden="true">
                     <mat-icon>{{ isUserBlocked(item.user) ? 'person_off' : 'person' }}</mat-icon>
@@ -256,32 +216,12 @@
               <strong>{{ memberCardTitle(item.user) }}</strong>
               <small>{{ memberDescription(item.user) }}</small>
             </span>
-            <button
-              type="button"
-              class="admin-report-member-menu-btn admin-blocked-user-menu-btn"
-              (click)="toggleBlockedUserMenu(item.user, $event)"
-              aria-label="Blocked user actions"
-              >
-              <mat-icon>more_horiz</mat-icon>
-              @if (supportChatUnread(item.user) > 0) {
-                <span class="card-badge admin-blocked-user-menu-badge">{{ supportChatUnread(item.user) }}</span>
-              }
-            </button>
-            @if (isBlockedUserMenuOpen(item.user)) {
-              <div class="admin-report-member-menu admin-blocked-user-menu" (click)="$event.stopPropagation()">
-                <button type="button" (click)="unblockUser(item.user, $event)">
-                  <mat-icon>lock_open</mat-icon>
-                  <span>Unblock user</span>
-                </button>
-                <button type="button" (click)="viewBlockedUserChat(item.user, $event)">
-                  <mat-icon>forum</mat-icon>
-                  <span>View chat</span>
-                  @if (supportChatUnread(item.user) > 0) {
-                    <span class="card-badge admin-blocked-menu-item-badge">{{ supportChatUnread(item.user) }}</span>
-                  }
-                </button>
-              </div>
-            }
+            <app-menu
+              class="admin-report-member-menu-wrap admin-blocked-user-menu-wrap"
+              kind="button-row"
+              [model]="blockedUserActionsMenuModel(item.user)"
+              (itemSelect)="onReportActionsMenuSelect($event)"
+            ></app-menu>
           </article>
         </ng-template>
       </div>

@@ -70,6 +70,7 @@
                         type="button"
                         class="personality-trait-pill"
                         [class.is-active]="index === vm.hostTraitIndex"
+                        [ngClass]="item.toneClass"
                         (click)="selectHostTrait(index)"
                         matRipple
                         [matRippleColor]="'rgba(84, 112, 176, 0.16)'"
@@ -175,6 +176,7 @@
                         type="button"
                         class="personality-trait-pill"
                         [class.is-active]="index === vm.memberTraitIndex"
+                        [ngClass]="item.toneClass"
                         (click)="selectMemberTrait(index)"
                         matRipple
                         [matRippleColor]="'rgba(84, 112, 176, 0.16)'"

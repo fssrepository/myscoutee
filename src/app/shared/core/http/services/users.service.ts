@@ -13,7 +13,6 @@ import type {
   UserMenuCountersDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
-  UserImpressionsSectionDto,
   UserReportUserSubmitRequestDto,
   UserService,
   UserSubmitActionResponseDto,
@@ -23,6 +22,7 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
 import type { LocationCoordinates } from '../../base/interfaces/location.interface';
 import { AppContext } from '../../base/context';
+import { UserRealtimeSnapshotConverter } from '../../base/converters';
 import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -177,15 +177,7 @@ export class HttpUsersService implements UserService {
       if (!response || !response.counters) {
         return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
       }
-      return {
-        userId: (response.userId ?? normalizedUserId).trim() || normalizedUserId,
-        counters: this.normalizeRealtimeCounters(response.counters),
-        impressions: this.cloneImpressions(response.impressions),
-        cursor: typeof response.cursor === 'string' ? response.cursor.trim() : null,
-        serverTsIso: typeof response.serverTsIso === 'string'
-          ? response.serverTsIso
-          : new Date().toISOString()
-      };
+      return UserRealtimeSnapshotConverter.snapshot(response, normalizedUserId, cursor);
     } catch (error) {
       if (this.isTimeoutError(error, 'User realtime request timeout.')) {
         throw error;
@@ -392,7 +384,7 @@ export class HttpUsersService implements UserService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: this.cloneImpressions(user.impressions),
+      impressions: UserRealtimeSnapshotConverter.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
@@ -541,31 +533,6 @@ export class HttpUsersService implements UserService {
     });
   }
 
-  private cloneImpressionsSection(section?: UserImpressionsSectionDto): UserImpressionsSectionDto | undefined {
-    if (!section) {
-      return undefined;
-    }
-    return {
-      ...section,
-      vibeBadges: [...(section.vibeBadges ?? [])],
-      personalityBadges: [...(section.personalityBadges ?? [])],
-      personalityTraits: (section.personalityTraits ?? []).map(trait => ({
-        ...trait
-      })),
-      categoryBadges: [...(section.categoryBadges ?? [])]
-    };
-  }
-
-  private cloneImpressions(impressions?: UserImpressionsDto): UserImpressionsDto | undefined {
-    if (!impressions) {
-      return undefined;
-    }
-    return {
-      host: this.cloneImpressionsSection(impressions.host),
-      member: this.cloneImpressionsSection(impressions.member)
-    };
-  }
-
   private buildInitialMenuCounterOverrides(
     user: UserDto,
     overrides?: UserMenuCountersDto | null
@@ -626,126 +593,9 @@ export class HttpUsersService implements UserService {
     if (!byIdResponse.user) {
       return null;
     }
-    const user = byIdResponse.user;
-    return {
-      userId: normalizedUserId,
-      counters: this.normalizeRealtimeCounters({
-        game: user.activities.game,
-        chat: user.activities.chat,
-        invitations: user.activities.invitations,
-        events: user.activities.events,
-        hosting: user.activities.hosting,
-        cars: Math.max(0, Math.trunc(Number(user.activities.cars) || 0)),
-        accommodation: Math.max(0, Math.trunc(Number(user.activities.accommodation) || 0)),
-        supplies: Math.max(0, Math.trunc(Number(user.activities.supplies) || 0)),
-        tickets: Math.max(0, Math.trunc(Number(user.activities.tickets) || 0)),
-        contacts: Math.max(0, Math.trunc(Number(user.activities.contacts) || 0)),
-        feedback: Math.max(0, Math.trunc(Number(user.activities.feedback) || 0)),
-        event: user.activities.event,
-        asset: user.activities.asset,
-        eventFeedback: user.activities.eventFeedback,
-        adminJobs: Math.max(0, Math.trunc(Number(user.activities.adminJobs) || 0)),
-        adminMetrics: Math.max(0, Math.trunc(Number(user.activities.adminMetrics) || 0))
-      }),
-      impressions: this.cloneImpressions(user.impressions),
-      cursor,
-      serverTsIso: new Date().toISOString()
-    };
-  }
-
-  private normalizeRealtimeCounters(counters: UserRealtimeCountersDto): UserRealtimeCountersDto {
-    const normalize = (value: unknown): number | undefined => {
-      if (!Number.isFinite(value)) {
-        return undefined;
-      }
-      return Math.max(0, Math.trunc(Number(value)));
-    };
-    const normalized: UserRealtimeCountersDto = {};
-    const game = normalize(counters.game);
-    const chat = normalize(counters.chat);
-    const invitations = normalize(counters.invitations);
-    const events = normalize(counters.events);
-    const hosting = normalize(counters.hosting);
-    const cars = normalize(counters.cars);
-    const accommodation = normalize(counters.accommodation);
-    const supplies = normalize(counters.supplies);
-    const tickets = normalize(counters.tickets);
-    const contacts = normalize(counters.contacts);
-    const feedback = normalize(counters.feedback);
-    const adminJobs = normalize(counters.adminJobs);
-    const adminMetrics = normalize(counters.adminMetrics);
-    if (game !== undefined) {
-      normalized.game = game;
-    }
-    if (chat !== undefined) {
-      normalized.chat = chat;
-    }
-    if (invitations !== undefined) {
-      normalized.invitations = invitations;
-    }
-    if (events !== undefined) {
-      normalized.events = events;
-    }
-    if (hosting !== undefined) {
-      normalized.hosting = hosting;
-    }
-    if (cars !== undefined) {
-      normalized.cars = cars;
-    }
-    if (accommodation !== undefined) {
-      normalized.accommodation = accommodation;
-    }
-    if (supplies !== undefined) {
-      normalized.supplies = supplies;
-    }
-    if (tickets !== undefined) {
-      normalized.tickets = tickets;
-    }
-    if (contacts !== undefined) {
-      normalized.contacts = contacts;
-    }
-    if (feedback !== undefined) {
-      normalized.feedback = feedback;
-    }
-    if (adminJobs !== undefined) {
-      normalized.adminJobs = adminJobs;
-    }
-    if (adminMetrics !== undefined) {
-      normalized.adminMetrics = adminMetrics;
-    }
-    normalized.impressionsHostChanged = counters.impressionsHostChanged === true;
-    normalized.impressionsMemberChanged = counters.impressionsMemberChanged === true;
-    if (counters.event) {
-      normalized.event = {
-        all: normalize(counters.event.all) ?? 0,
-        active: normalize(counters.event.active) ?? 0,
-        pending: normalize(counters.event.pending) ?? 0,
-        invitations: normalize(counters.event.invitations) ?? 0,
-        hosting: normalize(counters.event.hosting) ?? 0,
-        drafts: normalize(counters.event.drafts) ?? 0,
-        trash: normalize(counters.event.trash) ?? 0
-      };
-    }
-
-    if (counters.asset) {
-      normalized.asset = {
-        cars: normalize(counters.asset.cars) ?? 0,
-        accommodation: normalize(counters.asset.accommodation) ?? 0,
-        supplies: normalize(counters.asset.supplies) ?? 0,
-        tickets: normalize(counters.asset.tickets) ?? 0
-      };
-    }
-
-    if (counters.eventFeedback) {
-      normalized.eventFeedback = {
-        ownEvents: normalize(counters.eventFeedback.ownEvents) ?? 0,
-        pending: normalize(counters.eventFeedback.pending) ?? 0,
-        feedbacked: normalize(counters.eventFeedback.feedbacked) ?? 0,
-        removed: normalize(counters.eventFeedback.removed) ?? 0
-      };
-    }
-
-    return normalized;
+    return UserRealtimeSnapshotConverter.snapshotFromUser(byIdResponse.user, cursor, {
+      userId: normalizedUserId
+    });
   }
 
   private postAbortable<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T | null> {

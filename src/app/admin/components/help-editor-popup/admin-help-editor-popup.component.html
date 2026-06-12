@@ -1,7 +1,7 @@
 @if (admin.activePopup() === 'help-editor') {
   <section class="app-popup">
     <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor" (click)="closeDocumentMenu($event); closeLanguageMenu($event)">
+    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor">
       <div class="popup-header">
         <div class="popup-title">
           <h2>{{ editorTitle() }}</h2>
@@ -15,104 +15,12 @@
           </p>
         </div>
         <div class="help-editor-header-actions">
-          <div class="help-editor-document-menu-wrap">
-            <button
-              type="button"
-              class="help-editor-document-menu-btn"
-              [disabled]="loading() || isAnyActionPending()"
-              [attr.aria-expanded]="documentMenuOpen"
-              aria-haspopup="menu"
-              data-motion="none"
-              (click)="toggleDocumentMenu($event)"
-              >
-              <mat-icon>{{ documentIcon(documentKind) }}</mat-icon>
-              <span>{{ uiDocumentLabel() }}</span>
-              <mat-icon class="help-editor-document-menu-caret">expand_more</mat-icon>
-            </button>
-            @if (documentMenuOpen) {
-              <div class="help-editor-document-menu" role="menu" (click)="$event.stopPropagation()">
-                @if (!explanationMenuOpen) {
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    [class.is-active]="documentKind === 'help'"
-                    [attr.aria-checked]="documentKind === 'help'"
-                    [disabled]="loading() || isAnyActionPending()"
-                    data-motion="none"
-                    (click)="selectDocumentKind('help', $event)"
-                    >
-                    <mat-icon>help_outline</mat-icon>
-                    <span>{{ uiText('Help') }}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    [class.is-active]="documentKind === 'privacy'"
-                    [attr.aria-checked]="documentKind === 'privacy'"
-                    [disabled]="loading() || isAnyActionPending()"
-                    data-motion="none"
-                    (click)="selectDocumentKind('privacy', $event)"
-                    >
-                    <mat-icon>policy</mat-icon>
-                    <span>{{ uiText('Privacy') }}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    [class.is-active]="documentKind === 'terms'"
-                    [attr.aria-checked]="documentKind === 'terms'"
-                    [disabled]="loading() || isAnyActionPending()"
-                    data-motion="none"
-                    (click)="selectDocumentKind('terms', $event)"
-                    >
-                    <mat-icon>rule</mat-icon>
-                    <span>{{ uiText('Terms') }}</span>
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    class="help-editor-document-menu-branch"
-                    [class.is-active]="documentKind === 'explanation'"
-                    [disabled]="loading() || isAnyActionPending()"
-                    data-motion="none"
-                    (click)="openExplanationMenu($event)"
-                    >
-                    <mat-icon>tips_and_updates</mat-icon>
-                    <span>{{ uiText('Explanations') }}</span>
-                    <mat-icon class="help-editor-document-menu-arrow">chevron_right</mat-icon>
-                  </button>
-                } @else {
-                  <div class="help-editor-document-menu-subhead">
-                    <button type="button" class="help-editor-document-menu-round-btn" data-motion="none" (click)="closeExplanationMenu($event)" aria-label="Back to content menu">
-                      <mat-icon>arrow_back</mat-icon>
-                    </button>
-                    <span>{{ uiText('Explanations') }}</span>
-                    <button type="button" class="help-editor-document-menu-round-btn is-primary" data-motion="none" (click)="createExplanationItem($event)" aria-label="Create explanation popup">
-                      <mat-icon>add</mat-icon>
-                    </button>
-                  </div>
-                  @for (surface of explainableSurfaces(); track surface.key) {
-                    <button
-                      type="button"
-                      role="menuitemradio"
-                      class="help-editor-document-menu-surface"
-                      [class.is-active]="documentKind === 'explanation' && selectedExplanationContextKey === surface.key"
-                      [attr.aria-checked]="documentKind === 'explanation' && selectedExplanationContextKey === surface.key"
-                      [disabled]="loading() || isAnyActionPending()"
-                      data-motion="none"
-                      (click)="selectExplanationSurface(surface, $event)"
-                      >
-                      <mat-icon>{{ surface.icon }}</mat-icon>
-                      <span>
-                        <strong data-i18n-ignore>{{ explanationMenuItemLabel(surface) }}</strong>
-                        <small>{{ surface.label }} · {{ explanationMenuItemMeta(surface) }}</small>
-                      </span>
-                    </button>
-                  }
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="help-editor-document-menu-wrap"
+            kind="button-row"
+            [model]="documentMenuModel()"
+            (itemSelect)="onDocumentMenuSelect($event)"
+          ></app-menu>
           <button
             type="button"
             class="help-editor-icon-btn"
@@ -128,44 +36,12 @@
           </button>
         </div>
         <div class="help-editor-language-row" aria-label="Content language" data-i18n-ignore>
-          <div class="help-editor-language-menu-wrap">
-            <button
-              type="button"
-              class="help-editor-language-menu-btn"
-              [disabled]="loading() || isAnyActionPending()"
-              [attr.aria-expanded]="languageMenuOpen"
-              aria-haspopup="menu"
-              data-motion="none"
-              (click)="toggleLanguageMenu($event)"
-              >
-              <span class="help-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(selectedContentLang) }}</span>
-              <span>{{ selectedContentLanguageLabel() }}</span>
-              <mat-icon class="help-editor-language-menu-caret">expand_more</mat-icon>
-            </button>
-            @if (languageMenuOpen) {
-              <div class="help-editor-language-menu" role="menu" (click)="$event.stopPropagation()">
-                @for (language of contentLanguages(); track language.lang) {
-                  <button
-                    type="button"
-                    role="menuitemradio"
-                    [class.is-active]="selectedContentLang === language.lang"
-                    [attr.aria-checked]="selectedContentLang === language.lang"
-                    [disabled]="loading() || isAnyActionPending()"
-                    data-motion="none"
-                    (click)="selectContentLanguage(language.lang, $event)"
-                    >
-                    <span class="help-editor-language-option-label">
-                      <span class="help-editor-language-flag" aria-hidden="true">{{ contentLanguageFlag(language.lang) }}</span>
-                      <span>{{ language.label }}</span>
-                    </span>
-                    @if (selectedContentLang === language.lang) {
-                      <mat-icon class="help-editor-language-check">check</mat-icon>
-                    }
-                  </button>
-                }
-              </div>
-            }
-          </div>
+          <app-menu
+            class="help-editor-language-menu-wrap"
+            kind="button-row"
+            [model]="languageMenuModel()"
+            (itemSelect)="onLanguageMenuSelect($event)"
+          ></app-menu>
         </div>
       </div>
 

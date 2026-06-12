@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminDashboardDto } from '../../../../admin/models/admin-dashboard.model';
-import type { AdminUserDto } from '../../../../admin/models/admin-profile.model';
 import { HttpAdminModerationService } from '../../http/services/admin-moderation.service';
 import { LocalAdminModerationService } from '../../local/services/admin-moderation.service';
+import type { AdminDashboardDto, AdminUserDto } from '../models';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export interface AdminModerationUserPatch {

@@ -2,9 +2,24 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger
+} from '../../../shared/ui';
 
 export type EventSubeventLeaderboardMode = 'Score' | 'Fifa';
+
+type EventSubeventLeaderboardMemberMenu =
+  | 'score-member'
+  | 'home-member'
+  | 'away-member';
+
+type EventSubeventLeaderboardMenuContext = {
+  menu: EventSubeventLeaderboardMemberMenu;
+  memberId: string;
+};
 
 export interface EventSubeventLeaderboardGroup {
   key: string;
@@ -79,7 +94,7 @@ export interface EventSubeventLeaderboardFifaRow {
 @Component({
   selector: 'app-event-subevent-leaderboard-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, MatSelectModule],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent],
   templateUrl: './event-subevent-leaderboard-popup.component.html',
   styleUrls: ['./event-subevent-leaderboard-popup.component.scss']
 })
@@ -139,6 +154,47 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
     return index;
   }
 
+  protected leaderboardMemberMenuTrigger(menu: EventSubeventLeaderboardMemberMenu): AppMenuTrigger {
+    return {
+      label: this.leaderboardMemberLabel(this.leaderboardMemberMenuSelectedId(menu)),
+      icon: 'person',
+      palette: 'blue',
+      ariaLabel: 'Select member',
+      shape: 'field'
+    };
+  }
+
+  protected leaderboardMemberMenuItems(menu: EventSubeventLeaderboardMemberMenu): readonly AppMenuItem<string, EventSubeventLeaderboardMenuContext>[] {
+    const selectedId = this.leaderboardMemberMenuSelectedId(menu);
+    return this.currentEntryMembers().map(member => ({
+      id: `${menu}-${member.id}`,
+      label: member.name,
+      icon: 'person',
+      kind: 'radio',
+      active: member.id === selectedId,
+      context: { menu, memberId: member.id }
+    }));
+  }
+
+  protected onLeaderboardMenuSelect(event: AppMenuItemSelectEvent<string, EventSubeventLeaderboardMenuContext>): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+
+    switch (context.menu) {
+      case 'score-member':
+        this.form.memberId = context.memberId;
+        break;
+      case 'home-member':
+        this.onEntryHomeMemberChange(context.memberId);
+        break;
+      case 'away-member':
+        this.onEntryAwayMemberChange(context.memberId);
+        break;
+    }
+  }
+
   protected isGroupOpen(groupKey: string): boolean {
     return this.openGroups[groupKey] === true;
   }
@@ -171,6 +227,23 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
 
   protected entryGroupLabel(): string {
     return this.currentEntryGroup()?.title ?? 'Group';
+  }
+
+  private leaderboardMemberMenuSelectedId(menu: EventSubeventLeaderboardMemberMenu): string {
+    switch (menu) {
+      case 'home-member':
+        return this.form.homeMemberId;
+      case 'away-member':
+        return this.form.awayMemberId;
+      case 'score-member':
+      default:
+        return this.form.memberId;
+    }
+  }
+
+  private leaderboardMemberLabel(memberId: string): string {
+    const member = this.currentEntryMembers().find(entry => entry.id === memberId);
+    return member?.name ?? 'Select member';
   }
 
   protected currentEntryMembers(): EventSubeventLeaderboardMember[] {
