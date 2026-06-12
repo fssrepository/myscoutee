@@ -2065,8 +2065,10 @@
   }
 
   .entry-hero-cta .entry-cta {
+    height: 44px;
     min-height: 44px;
     min-width: 0;
+    box-sizing: border-box;
     padding: 0.3rem 0.54rem;
     font-size: clamp(0.72rem, 3vw, 0.78rem);
     line-height: 1.12;
