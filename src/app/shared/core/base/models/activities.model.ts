@@ -1,11 +1,11 @@
-import type { LocationCoordinates } from '../interfaces/location.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { PopupHeaderLookup } from './popup.model';
 import type { ChatRecord } from './chat.model';
 import type { AssetCard, AssetType } from './asset.model';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerType
-} from '../../contracts/activity-member.interface';
+} from '../../contracts/activity.interface';
 import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {

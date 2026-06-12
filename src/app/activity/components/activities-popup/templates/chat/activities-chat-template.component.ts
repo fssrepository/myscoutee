@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type { ChatRecord } from '../../../../../shared/core/base/models/chat.model';
-import type { UserDto } from '../../../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type { ActivityEventRecord } from '../../../../../shared/core/base/models/events.model';
 import {

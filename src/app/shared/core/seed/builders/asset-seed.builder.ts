@@ -1,5 +1,5 @@
 import type * as AppTypes from '../../base/models';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { PricingBuilder } from '../../base/builders/pricing.builder';
 
 export class SeedAssetBuilder {

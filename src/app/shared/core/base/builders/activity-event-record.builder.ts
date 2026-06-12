@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../interfaces/user.interface';
-import type { LocationCoordinates } from '../interfaces';
+import type { UserDto } from '../../contracts/user.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import type {
   ActivityEventRecord,
   ActivityEventRepositoryItemType

@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,

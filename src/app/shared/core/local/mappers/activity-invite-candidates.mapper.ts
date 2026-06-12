@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { ActivityInviteCandidatesQuery } from '../../contracts/activity-invite.interface';
-import type { ActivityMemberEntry } from '../../contracts/activity-member.interface';
+import type { ActivityInviteCandidatesQuery } from '../../contracts/activity.interface';
+import type { ActivityMemberEntry } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
 
 export interface LocalActivityInviteCandidateRecord {

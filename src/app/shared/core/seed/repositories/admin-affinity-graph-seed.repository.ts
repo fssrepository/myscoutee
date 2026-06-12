@@ -1,16 +1,18 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { UserRateRecord } from '../../base/interfaces/game.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserRateRecord } from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   AdminAffinityGraphDto,
   AdminAffinityGraphEdgeDto,
   AdminAffinityGraphNodeDto
-} from '../../base/interfaces/admin-affinity-graph.interface';
-import { ADMIN_AFFINITY_GRAPH_STORE_KEY } from '../../base/interfaces/admin-affinity-graph.interface';
+} from '../../contracts/admin.interface';
 import { LocalMemoryDb } from '../../base/db';
 import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../../base/models/users.model';
+import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 import { SeedUserBuilder } from '../builders';
+
+const ADMIN_AFFINITY_GRAPH_STORE_KEY = APP_INDEXED_DB_KEYS.adminAffinityGraph;
 
 @Injectable({
   providedIn: 'root'

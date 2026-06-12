@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../models';
 
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city'>;

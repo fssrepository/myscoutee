@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminAffinityGraphDto } from '../../base/interfaces/admin-affinity-graph.interface';
+import type { AdminAffinityGraphDto } from '../../contracts/admin.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { LocalAdminAffinityGraphRepository } from '../repositories/admin-affinity-graph.repository';
 

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { LocalMemoryDb } from '../../base/db';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   type ActivityMemberRecord

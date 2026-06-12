@@ -12,8 +12,8 @@ import type {
   UserGameCardsQueryResponse,
   UserGameDataService,
   UserGameFilterPreferencesDto
-} from '../../base/interfaces/game.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+} from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 
 @Injectable({
   providedIn: 'root'

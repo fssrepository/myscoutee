@@ -1,6 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,

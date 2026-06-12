@@ -1,6 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
-import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../contracts/user.interface';
 import type { HelpCenterRevision, HelpCenterState } from '../models';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';

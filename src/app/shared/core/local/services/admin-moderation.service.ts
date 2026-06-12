@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminUserDto } from '../../base/models';
+import type { AdminUserDto } from '../../contracts/admin.interface';
 import type {
   AdminModerationActionResult,
   AdminModerationUserPatch

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity-invite.interface';
-import type { ActivityMemberEntry } from '../../contracts/activity-member.interface';
+import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity.interface';
+import type { ActivityMemberEntry } from '../../contracts/activity.interface';
 import { LocalActivityInviteCandidatesMapper } from '../mappers';
 import { LocalActivityInviteCandidatesRepository } from '../repositories/activity-invite-candidates.repository';
 

@@ -5,8 +5,8 @@ import type {
   UserRateOutboxRecord,
   UserRateRecord,
   UserRatesSyncResult
-} from '../interfaces/game.interface';
-import type { RateRecord } from '../../contracts/rate.interface';
+} from '../../contracts/activity.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
 import { HttpRatesService } from '../../http/services/rates.service';
 import { LocalRatesRepository } from '../../local/repositories/rates.repository';
 import { RateOutboxRepository } from '../repositories/rate-outbox.repository';

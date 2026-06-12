@@ -5,7 +5,7 @@ import type {
   ActivityRateRecordQueryResult,
   UserRateOutboxRecord,
   UserRateRecord
-} from '../interfaces/game.interface';
+} from '../../contracts/activity.interface';
 import { ASSETS_TABLE_NAME } from '../models/assets.model';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../models/activity-members.model';
 import { ACTIVITY_RESOURCES_TABLE_NAME } from '../models/activity-resources.model';

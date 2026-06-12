@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 
 export class UserProfileStateBuilder {
   private static readonly EMPTY_ONBOARDING_USER_ID = 'u-onboarding';

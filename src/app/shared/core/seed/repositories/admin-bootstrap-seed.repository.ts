@@ -1,15 +1,15 @@
 import { Location } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   AdminChatMessageDto,
   AdminHelpTarget,
+  AdminMonitoringStateDto,
   AdminModerationStore,
+  AdminNotificationCenterState,
   AdminUserDto
-} from '../../base/models';
-import type { AdminMonitoringStateDto } from '../../base/models/admin-monitoring.model';
-import type { AdminNotificationCenterState } from '../../base/models/admin-notification.model';
+} from '../../contracts/admin.interface';
 import type { ChatPopupMessage, ChatRecord } from '../../base/models/chat.model';
 import type { ChatThreadRecord } from '../../base/models/chats.model';
 import {

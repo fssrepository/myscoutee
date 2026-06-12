@@ -1,5 +1,5 @@
 import type * as AppTypes from '.';
-import type { LocationCoordinates } from '../interfaces';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import { APP_INDEXED_DB_KEYS } from '../storage-scope';
 
 export const EVENTS_TABLE_NAME = APP_INDEXED_DB_KEYS.events;

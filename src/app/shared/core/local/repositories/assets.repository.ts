@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder, UserProfileStateBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { LocalMemoryDb } from '../../base/db';
 import { LocalAssetsMapper } from '../mappers/assets.mapper';
 import { LocalUsersRepository } from './users.repository';

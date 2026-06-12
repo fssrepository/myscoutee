@@ -18,9 +18,9 @@ import type {
   UserSubmitActionResponseDto,
   UserService,
   UsersListQueryResponse
-} from '../interfaces/user.interface';
-import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
-import type { LocationCoordinates } from '../interfaces/location.interface';
+} from '../../contracts/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import { UserRealtimeSnapshotConverter } from '../converters';
 import { BaseRouteModeService } from './base-route-mode.service';
 

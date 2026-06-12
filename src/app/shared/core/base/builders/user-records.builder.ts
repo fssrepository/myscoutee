@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
-import type { UserSelectorListItemDto, UserDto } from '../interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { UserSelectorListItemDto, UserDto } from '../../contracts/user.interface';
 import { UserMenuCountersBuilder } from './user-menu-counters.builder';
 
 interface UserRecordsActivitySources {

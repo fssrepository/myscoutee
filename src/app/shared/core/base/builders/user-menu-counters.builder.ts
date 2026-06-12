@@ -1,4 +1,4 @@
-import type { UserDto, UserMenuCountersDto } from '../interfaces/user.interface';
+import type { UserDto, UserMenuCountersDto } from '../../contracts/user.interface';
 import { ScheduleDateBuilder } from './schedule-date.builder';
 
 export class UserMenuCountersBuilder {

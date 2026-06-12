@@ -8,7 +8,7 @@ import {
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
 import type * as AppTypes from '../../../shared/core/base/models';
-import type { LocationCoordinates } from '../../../shared/core/base/interfaces/location.interface';
+import type { LocationCoordinates } from '../../../shared/core/contracts/user.interface';
 import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';

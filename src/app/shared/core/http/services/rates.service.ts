@@ -5,13 +5,13 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateRecord } from '../../contracts/rate.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
 import type {
   ActivityRatePageResult,
   UserRateRecord,
   UserRatesSyncResult
-} from '../../base/interfaces/game.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+} from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 
 @Injectable({

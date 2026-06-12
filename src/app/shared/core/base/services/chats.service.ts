@@ -4,7 +4,7 @@ import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../../core/base/models';
 import type { ChatRecord } from '../models/chat.model';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { PageResult } from '../../../ui';
 import { buildActivityChatRows } from '../converters';
 import type { ChatThreadRecord } from '../models/chats.model';

@@ -8,8 +8,8 @@ import type {
   UserGameCardsQueryRequest,
   UserGameCardsQueryResponse,
   UserGameDataService
-} from '../../base/interfaces/game.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+} from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 

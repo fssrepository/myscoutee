@@ -2,8 +2,8 @@ import type {
   UserGameFilterPreferencesDto,
   UserRateOutboxRecord,
   UserRateRecord
-} from '../interfaces/game.interface';
-import type { UserDto } from '../interfaces/user.interface';
+} from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { APP_INDEXED_DB_KEYS } from '../storage-scope';
 
 export const USERS_TABLE_NAME = APP_INDEXED_DB_KEYS.users;

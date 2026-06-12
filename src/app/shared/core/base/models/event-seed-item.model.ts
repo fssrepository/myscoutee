@@ -1,4 +1,4 @@
-import type { LocationCoordinates } from '../interfaces/location.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import type {
   EventPolicyItem,
   EventRecordKind,

@@ -9,11 +9,11 @@ import type {
   UserGameCardsStackSnapshot,
   UserGameDataService,
   UserGameMode
-} from '../interfaces/game.interface';
+} from '../../contracts/activity.interface';
 import { LocalGameService } from '../../local';
 import { LocalRatesRepository } from '../../local/repositories/rates.repository';
 import { HttpGameService } from '../../http';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { RateOutboxService } from './rate-outbox.service';
 

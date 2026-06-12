@@ -10,7 +10,7 @@ import type {
   AdminMonitoringNodeKind,
   AdminMonitoringStateDto,
   AdminMonitoringTone
-} from '../models/admin-monitoring.model';
+} from '../../contracts/admin.interface';
 import { HttpAdminMonitoringService } from '../../http/services/admin-monitoring.service';
 import { LocalAdminMonitoringService } from '../../local/services/admin-monitoring.service';
 import { BaseRouteModeService } from './base-route-mode.service';

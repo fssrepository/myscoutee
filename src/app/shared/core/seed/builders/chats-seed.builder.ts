@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { ChatPopupMessage } from '../../base/models/chat.model';
 import type { ChatRecord } from '../../base/models/chat.model';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../base/models/chats.model';
 import type { ActivityEventRecord } from '../../base/models/events.model';
 import { SeedEventBuilder } from './event-seed.builder';

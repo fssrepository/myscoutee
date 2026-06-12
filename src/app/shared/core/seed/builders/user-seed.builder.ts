@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../../base/interfaces/user.interface';
-import type { LocationCoordinates } from '../../base/interfaces';
+import type { UserDto } from '../../contracts/user.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 
 

@@ -2,9 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { ActivityInviteCandidatesQuery } from '../../contracts/activity-invite.interface';
+import type { ActivityInviteCandidatesQuery } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import type { RateRecord } from '../../contracts/rate.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
 import type { LocalActivityInviteCandidateRecord } from '../mappers';
 import { LocalContactsRepository } from './contacts.repository';
 import { LocalRatesRepository } from './rates.repository';

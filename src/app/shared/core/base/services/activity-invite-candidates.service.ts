@@ -4,7 +4,7 @@ import type * as AppTypes from '../../../core/base/models';
 import type {
   IActivityInviteCandidatesService,
   ActivityInviteOwnerContext
-} from '../../contracts/activity-invite.interface';
+} from '../../contracts/activity.interface';
 import { LocalActivityInviteCandidatesService } from '../../local/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';

@@ -9,7 +9,7 @@ import type {
   AdminParamsHistoryItemDto,
   AdminParamsSectionDto,
   AdminParamsStateDto
-} from '../models';
+} from '../../contracts/admin.interface';
 import { HttpAdminParamsService } from '../../http/services/admin-params.service';
 import { LocalAdminParamsService } from '../../local/services/admin-params.service';
 import { BaseRouteModeService } from './base-route-mode.service';

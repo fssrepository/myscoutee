@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../base/db';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../base/models/assets.model';
 import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';

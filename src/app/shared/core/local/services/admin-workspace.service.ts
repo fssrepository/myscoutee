@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import type { UserDto, UserSelectorListItemDto } from '../../base/interfaces';
+import type { UserDto, UserSelectorListItemDto } from '../../contracts/user.interface';
 import type {
   AdminChatMessageDto,
   AdminDashboardDto,
@@ -9,7 +9,7 @@ import type {
   AdminReportDto,
   AdminReportedUserDto,
   AdminUserDto
-} from '../../base/models';
+} from '../../contracts/admin.interface';
 import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';

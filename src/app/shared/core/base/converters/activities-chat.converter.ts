@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type { ChatRecord } from '../models/chat.model';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 
 interface BuildActivityChatRowsOptions {
   users: readonly UserDto[];

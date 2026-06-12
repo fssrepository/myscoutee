@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminMonitoringStateDto } from '../../base/models/admin-monitoring.model';
+import type { AdminMonitoringStateDto } from '../../contracts/admin.interface';
 import { LocalAdminMonitoringRepository } from '../repositories/admin-monitoring.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 

@@ -4,7 +4,7 @@ import type {
   UserImpressionsSectionDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto
-} from '../../base/interfaces/user.interface';
+} from '../../contracts/user.interface';
 
 type LocalRealtimeCounterKey =
   | 'game'

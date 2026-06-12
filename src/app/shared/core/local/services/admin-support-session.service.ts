@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ChatMessageMutation, ChatPopupMessage, ChatRecord } from '../../base/models/chat.model';
 import type { ChatThreadRecord } from '../../base/models/chats.model';
 import { LocalChatsRepository } from '../repositories/chats.repository';

@@ -12,7 +12,7 @@ import type {
   AdminNotificationScheduleSlot,
   AdminNotificationTimingMode,
   AdminNotificationTriggerKind
-} from '../models/admin-notification.model';
+} from '../../contracts/admin.interface';
 import { HttpAdminNotificationsService } from '../../http/services/admin-notifications.service';
 import {
   LocalAdminNotificationsService,

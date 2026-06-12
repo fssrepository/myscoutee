@@ -7,7 +7,7 @@ export * from './models';
 export { AppMemoryDb, LocalMemoryDb, HttpMemoryDb } from './db';
 export { RateOutboxRepository } from './repositories/rate-outbox.repository';
 export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
-export type { UserGameCardsStackSnapshot } from './interfaces/game.interface';
+export type { UserGameCardsStackSnapshot } from '../contracts/activity.interface';
 export {
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY,
@@ -75,4 +75,3 @@ export {
   SessionService,
   type AppSession
 } from './services/session.service';
-export * from './interfaces';

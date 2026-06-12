@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { UserLocationEligibilityResponseDto } from '../../base/interfaces';
+import type { UserLocationEligibilityResponseDto } from '../../contracts/user.interface';
 import type { LandingContentState } from '../../base/models';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { LocalHelpCenterService } from './help-center.service';

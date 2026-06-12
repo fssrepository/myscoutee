@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { AdminStatsDashboardDto } from '../../base/models';
+import type { AdminStatsDashboardDto } from '../../contracts/admin.interface';
 import { LocalAdminStatsRepository } from '../repositories/admin-stats.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 

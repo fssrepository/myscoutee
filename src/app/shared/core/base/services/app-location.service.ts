@@ -4,8 +4,8 @@ import { Router } from '@angular/router';
 
 import { HttpUsersService } from '../../http';
 import { AppContext } from '../context';
-import type { LocationCoordinates } from '../interfaces/location.interface';
-import type { UserDto } from '../interfaces/user.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { UsersService } from './users.service';
 import { SessionService } from './session.service';
 import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';

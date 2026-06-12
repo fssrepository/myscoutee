@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../../base/models';
 import {
   BootstrapProcessService,

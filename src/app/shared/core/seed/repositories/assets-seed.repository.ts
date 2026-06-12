@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import { AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
 import { LocalMemoryDb } from '../../base/db';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../../base/models';
 import {
   ASSETS_TABLE_NAME,

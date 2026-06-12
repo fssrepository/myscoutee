@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ExperienceEntry, ProfileStatus } from '../../contracts/profile.interface';
 import { profileOnboardingDraftStorageKey } from '../storage-scope';
 

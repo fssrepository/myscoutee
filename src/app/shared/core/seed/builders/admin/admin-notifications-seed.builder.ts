@@ -7,7 +7,7 @@ import type {
   AdminNotificationTemplateOption,
   AdminNotificationTimingMode,
   AdminNotificationTriggerKind
-} from '../../../base/models/admin-notification.model';
+} from '../../../contracts/admin.interface';
 
 const ADMIN_NOTIFICATION_INTERVAL_UNIT = {
   seconds: 'seconds',

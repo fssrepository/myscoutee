@@ -2,7 +2,7 @@ import { AppUtils } from '../../../app-utils';
 import { EventFeedbackBuilder } from '../../base/builders';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 import type { ActivityEventSeedItem } from '../../base/models/event-seed-item.model';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   EventFeedbackCard,
   EventFeedbackOption,

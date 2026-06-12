@@ -5,9 +5,9 @@ import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 import type * as AppTypes from '../../../core/base/models';
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem, ActivityInvitationSeedItem } from '../../base/models/event-seed-item.model';
-import type { LocationCoordinates } from '../../base/interfaces';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import type {
   ActivityEventRecord,
   ActivityEventRecordCollection,

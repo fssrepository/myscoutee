@@ -2,8 +2,8 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { LocalMemoryDb } from '../../base/db';
-import type { UserDto } from '../../base/interfaces/user.interface';
-import type { UserRateRecord } from '../../base/interfaces/game.interface';
+import type { UserDto } from '../../contracts/user.interface';
+import type { UserRateRecord } from '../../contracts/activity.interface';
 import {
   USER_RATES_TABLE_NAME,
   USERS_TABLE_NAME,

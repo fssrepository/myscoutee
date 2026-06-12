@@ -16,15 +16,6 @@ export * from './activities-ui.model';
 export * from './activities.model';
 export * from './share-token.model';
 export * from './idea-post.model';
-export * from './admin-notification.model';
-export * from './admin-monitoring.model';
-export * from './admin-dashboard.model';
-export * from './admin-help.model';
-export * from './admin-moderation.model';
-export * from './admin-params.model';
-export * from './admin-profile.model';
-export * from './admin-stats.model';
-export * from './admin-workspace.model';
 export * from './activity-members.model';
 export * from './activity-resources.model';
 export * from './assets.model';
@@ -50,7 +41,7 @@ export type {
   ActivityMembersSummary,
   ActivityMemberStatus,
   ActivityPendingSource
-} from '../../contracts/activity-member.interface';
+} from '../../contracts/activity.interface';
 export type {
   ContactFormValue,
   ContactListFilters,
@@ -78,4 +69,4 @@ export type {
   RateRecordDirection,
   RateRecordMode,
   RateRecordSocialContext
-} from '../../contracts/rate.interface';
+} from '../../contracts/activity.interface';

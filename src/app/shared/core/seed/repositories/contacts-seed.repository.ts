@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { LocalMemoryDb } from '../../base/db';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { CONTACTS_TABLE_NAME } from '../../base/models/contacts.model';
 
 const DEMO_CONTACT_OWNER_USER_ID = 'bf057de7c586eede7e84bdc7';

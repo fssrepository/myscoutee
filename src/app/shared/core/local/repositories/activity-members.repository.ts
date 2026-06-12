@@ -4,8 +4,8 @@ import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary
 } from '../../../core/base/models';
-import type { UserDto } from '../../base/interfaces/user.interface';
-import type { UserGameMode, UserGameSocialCard } from '../../base/interfaces/game.interface';
+import type { UserDto } from '../../contracts/user.interface';
+import type { UserGameMode, UserGameSocialCard } from '../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../base/db';
 import type { ActivityEventRecord } from '../../base/models/events.model';
 import { EVENTS_TABLE_NAME } from '../../base/models/events.model';

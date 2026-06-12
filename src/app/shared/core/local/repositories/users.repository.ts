@@ -1,7 +1,7 @@
 import { computed, Injectable, inject } from '@angular/core';
 
-import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
-import type { UserSelectorListItemDto, UserDto } from '../../base/interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { UserSelectorListItemDto, UserDto } from '../../contracts/user.interface';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,

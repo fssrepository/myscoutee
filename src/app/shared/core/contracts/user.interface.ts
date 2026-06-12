@@ -1,6 +1,10 @@
-import type { UserGameFilterPreferencesDto } from './game.interface';
-import type { LocationCoordinates } from './location.interface';
+import type { UserGameFilterPreferencesDto } from './activity.interface';
 import type { ProfileDetailFormGroup } from './profile.interface';
+
+export interface LocationCoordinates {
+  latitude: number;
+  longitude: number;
+}
 
 export interface UserPersonalityTraitDto {
   id: string;

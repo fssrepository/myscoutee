@@ -5,7 +5,7 @@ import { AppUtils } from '../../../app-utils';
 import { ActivityMembersBuilder } from '../../base/builders/activity-members.builder';
 import { toActivityEventRow } from '../../base/converters/activities-event.converter';
 import { LocalMemoryDb } from '../../base/db';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../../base/models';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,

@@ -1,5 +1,90 @@
-import type { RateRecord } from './rate.interface';
 import type { UserDto } from './user.interface';
+
+export type ActivityMemberStatus = 'pending' | 'accepted' | 'disqualified';
+export type ActivityPendingSource = 'admin' | 'member' | null;
+export type ActivityInviteSort = 'recent' | 'relevant';
+export type ActivityMemberRequestKind = 'invite' | 'join' | 'waitlist' | 'waitlist-invite' | null;
+export type ActivityMemberRole = 'Admin' | 'Member' | 'Manager';
+export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group' | 'asset';
+
+export interface ActivityMemberEntry {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: 'woman' | 'man';
+  city: string;
+  statusText: string;
+  role: ActivityMemberRole;
+  status: ActivityMemberStatus;
+  pendingSource: ActivityPendingSource;
+  requestKind: ActivityMemberRequestKind;
+  invitedByActiveUser: boolean;
+  invitedByUserId?: string | null;
+  metAtIso: string;
+  actionAtIso: string;
+  metWhere: string;
+  avatarUrl: string;
+  profile?: UserDto | null;
+}
+
+export interface ActivityMemberOwnerRef {
+  ownerType: ActivityMemberOwnerType;
+  ownerId: string;
+}
+
+export interface ActivityMembersSummary {
+  ownerType: ActivityMemberOwnerType;
+  ownerId: string;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  acceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+}
+
+export interface ActivityInviteOwnerContext {
+  ownerId: string;
+  ownerType: ActivityMemberOwnerType;
+  title: string;
+  subtitle: string;
+  detail: string;
+  dateIso: string;
+  distanceKm: number;
+  sourceType: 'events' | 'hosting';
+  isAdmin: boolean;
+}
+
+export interface ActivityInviteCandidatesQuery {
+  activeUserId: string;
+  owner: ActivityInviteOwnerContext;
+  existingMemberUserIds: readonly string[];
+  sort: ActivityInviteSort;
+}
+
+export interface IActivityInviteCandidatesService {
+  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]>;
+}
+
+export type RateRecordMode = 'individual' | 'pair';
+export type RateRecordDirection = 'given' | 'received' | 'mutual' | 'met';
+export type RateRecordSocialContext = 'separated-friends' | 'friends-in-common';
+
+export interface RateRecord {
+  id: string;
+  userId: string;
+  secondaryUserId?: string;
+  mode: RateRecordMode;
+  direction: RateRecordDirection;
+  socialContext?: RateRecordSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven: number;
+  scoreReceived: number;
+  eventName: string;
+  happenedAt: string;
+  distanceMetersExact?: number;
+}
 
 export interface UserGameCardsStackSnapshot {
   filterCount: number | null;

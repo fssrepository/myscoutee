@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import type { LocationCoordinates } from '../../base/interfaces/location.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { CountryPartition } from '../../base/models/country-partitions.model';
 
 const DEMO_COUNTRY_PARTITIONS: readonly CountryPartition[] = [

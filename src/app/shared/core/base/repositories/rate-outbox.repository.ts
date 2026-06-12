@@ -9,8 +9,8 @@ import type {
   UserRateOutboxRecord,
   UserRateRecord,
   UserRatesSyncResult
-} from '../interfaces/game.interface';
-import type { RateRecord } from '../../contracts/rate.interface';
+} from '../../contracts/activity.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
 import {
   USER_RATES_OUTBOX_TABLE_NAME
 } from '../models/users.model';

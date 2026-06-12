@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { AdminDashboardDto, AdminUserDto } from '../../base/models';
+import type { AdminDashboardDto, AdminUserDto } from '../../contracts/admin.interface';
 import type { AdminModerationActionResult } from '../../base/services/admin-moderation.service';
 
 @Injectable({

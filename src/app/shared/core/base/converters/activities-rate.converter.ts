@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { RateRecord } from '../../contracts/rate.interface';
-import type { UserDto } from '../interfaces/user.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
 import { formatActivityMonthDayLabel } from '../formatters';
 

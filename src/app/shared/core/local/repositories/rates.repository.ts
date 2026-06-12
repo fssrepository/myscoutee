@@ -2,14 +2,14 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import { UserRatesBuilder, UserProfileStateBuilder } from '../../base/builders';
-import type { RateRecord } from '../../contracts/rate.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   ActivityRateRecordQuery,
   UserGameMode,
   UserRateRecord,
   UserRatesSyncResult
-} from '../../base/interfaces/game.interface';
+} from '../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../base/db';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 import {

@@ -6,7 +6,7 @@ import type {
   AdminParamFieldDto,
   AdminParamsHistoryDto,
   AdminParamsStateDto
-} from '../../base/models';
+} from '../../contracts/admin.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 const ADMIN_PARAMS_LOAD_ROUTE = '/admin/params';

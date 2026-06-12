@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { UserExperiencesPersistenceService } from '../../base/interfaces/experience.interface';
+import type { UserExperiencesPersistenceService } from '../../contracts/profile.interface';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { LocalProfileExperiencesMapper } from '../mappers';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';

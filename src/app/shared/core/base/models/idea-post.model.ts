@@ -1,5 +1,5 @@
 import type { HelpCenterState } from './popup.model';
-import type { UserLocationEligibilityResponseDto } from '../interfaces/user.interface';
+import type { UserLocationEligibilityResponseDto } from '../../contracts/user.interface';
 
 export interface IdeaPost {
   id: string;

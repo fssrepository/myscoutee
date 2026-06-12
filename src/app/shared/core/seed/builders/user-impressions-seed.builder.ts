@@ -6,7 +6,7 @@ import type {
   UserImpressionsDto,
   UserImpressionsSectionDto,
   UserPersonalityTraitDto
-} from '../../base/interfaces/user.interface';
+} from '../../contracts/user.interface';
 
 export class SeedUserImpressionsBuilder {
   private static readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;

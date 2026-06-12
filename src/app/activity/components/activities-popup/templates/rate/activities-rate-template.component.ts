@@ -1,8 +1,8 @@
 
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
-import type { RateRecord } from '../../../../../shared/core/contracts/rate.interface';
-import type { UserDto } from '../../../../../shared/core/base/interfaces/user.interface';
+import type { RateRecord } from '../../../../../shared/core/contracts/activity.interface';
+import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   PairCardComponent,

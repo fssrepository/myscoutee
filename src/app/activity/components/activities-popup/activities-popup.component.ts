@@ -16,8 +16,8 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { RateRecord } from '../../../shared/core/contracts/rate.interface';
-import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
+import type { RateRecord } from '../../../shared/core/contracts/activity.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivitiesEventDisplaySync } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';

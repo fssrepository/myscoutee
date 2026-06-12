@@ -5,7 +5,7 @@ import type {
   UserExperienceImportDraft,
   UserExperienceImportResult,
   UserExperiencesPersistenceService
-} from '../interfaces/experience.interface';
+} from '../../contracts/profile.interface';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ExperienceDocumentImportService } from './experience-document-import.service';

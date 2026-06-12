@@ -3,7 +3,6 @@ import type {
   ActivitiesPrimaryFilter,
   ActivitiesSecondaryFilter,
   ActivitiesView,
-  AdminNotificationScheduleFrequency,
   AssetFilterType,
   AssetCategory,
   AssetType,
@@ -27,6 +26,7 @@ import type {
   TournamentLeaderboardType,
   ValuesOptionGroup
 } from './core/base/models';
+import type { AdminNotificationScheduleFrequency } from './core/contracts/admin.interface';
 import { GDPR_CONTENT } from './gdpr-data';
 
 interface PersonalityTraitCatalogEntry {

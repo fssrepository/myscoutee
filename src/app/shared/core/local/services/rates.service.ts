@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateRecord } from '../../contracts/rate.interface';
-import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../base/interfaces/game.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
+import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRatesRepository } from '../repositories/rates.repository';

@@ -13,7 +13,7 @@ import type {
   ExperienceImportProgressState,
   ExperienceImportStatistics,
   UserExperienceImportDraft
-} from '../../../shared/core/base/interfaces/experience.interface';
+} from '../../../shared/core/contracts/profile.interface';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';

@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
-import type { RateRecord } from '../../contracts/rate.interface';
-import type { UserRateRecord } from '../../base/interfaces/game.interface';
+import type { RateRecord } from '../../contracts/activity.interface';
+import type { UserRateRecord } from '../../contracts/activity.interface';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 
 type RateUserRef = {

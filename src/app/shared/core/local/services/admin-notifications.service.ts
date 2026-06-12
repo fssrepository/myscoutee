@@ -5,7 +5,7 @@ import type {
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
   AdminNotificationRunResult
-} from '../../base/models/admin-notification.model';
+} from '../../contracts/admin.interface';
 import { LocalAdminNotificationsRepository } from '../repositories/admin-notifications.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 

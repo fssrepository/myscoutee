@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type { HelpCenterState, LandingContentState } from '../../base/models';
-import type { UserLocationEligibilityResponseDto } from '../../base/interfaces/user.interface';
+import type { UserLocationEligibilityResponseDto } from '../../contracts/user.interface';
 import { HttpHelpCenterService } from './help-center.service';
 import { HttpIdeaPostsService } from './idea-posts.service';
 

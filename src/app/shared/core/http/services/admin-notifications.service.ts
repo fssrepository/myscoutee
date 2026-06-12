@@ -7,7 +7,7 @@ import type {
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
   AdminNotificationRunResult
-} from '../../base/models/admin-notification.model';
+} from '../../contracts/admin.interface';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 

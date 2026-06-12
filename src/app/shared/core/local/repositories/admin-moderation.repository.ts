@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppMemoryDb } from '../../base/db';
-import type { AdminModerationStore } from '../../base/models';
+import type { AdminModerationStore } from '../../contracts/admin.interface';
 import { APP_INDEXED_DB_KEYS } from '../../base/storage-scope';
 
 @Injectable({

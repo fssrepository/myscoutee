@@ -7,7 +7,7 @@ import type {
   AdminMonitoringNodeKind,
   AdminMonitoringStateDto,
   AdminMonitoringTone
-} from '../../../base/models/admin-monitoring.model';
+} from '../../../contracts/admin.interface';
 
 export class AdminMonitoringSeedBuilder {
   static buildDefaultMonitoringState(): AdminMonitoringStateDto {

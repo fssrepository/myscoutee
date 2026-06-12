@@ -8,7 +8,7 @@ import type {
   EventExploreFeedFilters
 } from '../../../core/base/models';
 import type { ChatRecord } from '../models/chat.model';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
   buildActivityEventRows,

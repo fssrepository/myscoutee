@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ActivityEventRecord } from '../../base/models/events.model';
 import type { AssetCard } from '../../base/models/asset.model';
 

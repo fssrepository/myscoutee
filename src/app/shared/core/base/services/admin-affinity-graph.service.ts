@@ -9,7 +9,7 @@ import {
   type AdminAffinityGraphNeighborhoodDto,
   type AdminAffinityGraphNodeDto,
   type AdminAffinityGraphTileDto
-} from '../interfaces/admin-affinity-graph.interface';
+} from '../../contracts/admin.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { I18nService } from './i18n.service';
 import { LocalAdminAffinityGraphService } from '../../local/services/admin-affinity-graph.service';

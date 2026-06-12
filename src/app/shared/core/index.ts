@@ -107,6 +107,6 @@ export {
 export * from './base/builders';
 export * from './base/converters';
 export * from './base/formatters';
-export * from './base/interfaces';
+export type * from './contracts';
 export * from './base/models';
 export * from './seed';

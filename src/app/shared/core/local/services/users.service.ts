@@ -15,9 +15,9 @@ import type {
   UserService,
   UserSubmitActionResponseDto,
   UsersListQueryResponse
-} from '../../base/interfaces/user.interface';
-import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
-import type { LocationCoordinates } from '../../base/interfaces/location.interface';
+} from '../../contracts/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 import {
   LocalUserRealtimeSnapshotBuilder,
   type LocalUserRealtimeSnapshotState

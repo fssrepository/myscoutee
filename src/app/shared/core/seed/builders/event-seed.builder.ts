@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../base/models';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem } from '../../base/models/event-seed-item.model';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 

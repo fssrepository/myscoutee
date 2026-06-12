@@ -26,7 +26,7 @@ import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { EventEditorBuilder } from '../../../core/base/builders';
 import { PricingBuilder } from '../../../core/base/builders/pricing.builder';
 import { USERS_TABLE_NAME } from '../../base/models/users.model';
-import type { LocationCoordinates } from '../../base/interfaces';
+import type { LocationCoordinates } from '../../contracts/user.interface';
 
 interface ActivityEventActivitiesCursor {
   id: string;

@@ -3,8 +3,8 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
-import type { ProfileViewData } from '../../base/interfaces/profile.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { ProfileViewData } from '../../contracts/profile.interface';
+import type { UserDto } from '../../contracts/user.interface';
 
 interface ContactsSaveRequest {
   userId: string;
