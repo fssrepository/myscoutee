@@ -38,13 +38,6 @@ export class SeedAdminStoreRepository {
     stores: SeedAdminStores<TModeration, TNotification, TMonitoring, TStats, TParams>
   ): Promise<SeedAdminMenuCounterState<TNotification, TMonitoring>> {
     await Promise.all([
-      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules),
-      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminMonitoring),
-      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminStats),
-      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminParams),
-      this.memoryDb.deleteIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration)
-    ]);
-    await Promise.all([
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration, stores.moderation),
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminNotificationRules, stores.notificationCenter),
       this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminMonitoring, stores.monitoring),
