@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
@@ -9,19 +8,18 @@ import {
   AssetDefaultsBuilder,
   EventsService,
   SessionService,
-  UsersService,
   type BootstrapProcessStage,
   type BootstrapProcessState,
-  type UserSelectorListItemDto,
   type ShareTokenResolvedItem
 } from '../../../shared/core';
 import type { AssetCard } from '../../../shared/core/base/models';
-import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
+import { SeedDemoBootstrapService } from '../../../shared/core/seed';
+import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
-  imports: [CommonModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [DemoBootstrapSelectorComponent],
   templateUrl: './admin-help-session-page.component.html',
   styleUrl: './admin-help-session-page.component.scss'
 })
@@ -30,7 +28,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
-  private readonly usersService = inject(UsersService);
+  private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly popupCtx = inject(AppPopupContext);
@@ -40,9 +38,10 @@ export class AdminHelpSessionPageComponent implements OnInit {
   protected sessionLoading = true;
   protected sessionSubmitting = false;
   protected loadingProgress = 0;
-  protected loadingLabel = 'Preparing shared support user';
+  protected loadingLabel = 'Preparing demo data';
   protected loadingStage: BootstrapProcessStage = 'selector';
   protected error = '';
+  protected selectedUserId = '';
 
   async ngOnInit(): Promise<void> {
     await this.openSharedUserView();
@@ -54,7 +53,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
     this.sessionSubmitting = false;
     this.loadingProgress = 0;
     this.loadingStage = 'selector';
-    this.loadingLabel = 'Preparing shared support user';
+    this.loadingLabel = 'Preparing demo data';
+    this.selectedUserId = '';
     await this.openSharedUserView();
   }
 
@@ -69,9 +69,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
       return;
     }
     const useLocalHelpSession = this.workspaceData.shouldUseLocalAdminHelpSession;
-    const demoUsersPromise = useLocalHelpSession
-      ? this.loadLocalSupportUsers()
-      : Promise.resolve<UserSelectorListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
       this.fail('This support link expired or is no longer available.');
@@ -79,19 +76,19 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
+    this.selectedUserId = userId;
     if (useLocalHelpSession) {
-      const users = await demoUsersPromise;
-      const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
-      if (!selectedUser) {
-        this.fail('This shared support user is not available locally.');
-        return;
-      }
       await this.prepareSharedUserSession(userId, targetUrl);
       return;
     }
     this.loadingProgress = 100;
     this.loadingStage = 'sessionReady';
-    this.loadingLabel = 'Opening MyScoutee as the user sees it';
+    this.loadingLabel = 'Demo session ready';
+    const session = this.sessionService.startDemoSession(userId);
+    if (!session) {
+      this.fail('Unable to open selected demo user.');
+      return;
+    }
     await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
   }
 
@@ -124,63 +121,32 @@ export class AdminHelpSessionPageComponent implements OnInit {
     });
   }
 
-  protected loadingPosition(): number {
-    const progress = Number(this.loadingProgress);
-    if (!Number.isFinite(progress)) {
-      return 0;
-    }
-    return Math.max(0, Math.min(1, progress / 100));
-  }
-
-  private async loadLocalSupportUsers(): Promise<UserSelectorListItemDto[]> {
-    this.commitSelectorState(() => {
-      this.sessionSubmitting = false;
-      this.sessionLoading = true;
-      this.loadingProgress = 0;
-      this.loadingStage = 'selector';
-      this.loadingLabel = 'Loading local support users';
-    });
-    await this.waitForPopupPaint();
-
-    const users = await this.usersService.loadAvailableDemoUsers(undefined, state => this.applyProgress(state));
-    this.commitSelectorState(() => {
-      this.loadingProgress = 100;
-      this.loadingStage = 'ready';
-      this.loadingLabel = 'Local support user ready';
-    });
-    await this.waitForLoaderCompletionBeat();
-
-    return users;
-  }
-
   private async prepareSharedUserSession(userId: string, targetUrl: string): Promise<void> {
     this.commitSelectorState(() => {
       this.sessionSubmitting = true;
       this.sessionLoading = true;
       this.loadingProgress = 0;
       this.loadingStage = 'session';
-      this.loadingLabel = 'Preparing shared user session';
+      this.loadingLabel = 'Preparing demo session';
     });
     await this.waitForPopupPaint();
 
     try {
-      await this.usersService.prepareDemoUserSession(userId, state => this.applyProgress(state));
+      await this.seedBootstrap.ensureUserReady(userId, 'member', state => this.applyProgress(state));
       this.commitSelectorState(() => {
         this.loadingProgress = 100;
         this.loadingStage = 'sessionReady';
-        this.loadingLabel = 'Shared user session ready';
+        this.loadingLabel = 'Demo session ready';
       });
       await this.waitForLoaderCompletionBeat();
-      this.sessionService.startDemoSession(userId);
-      await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl));
+      const session = this.sessionService.startDemoSession(userId);
+      if (!session) {
+        this.fail('Unable to open selected demo user.');
+        return;
+      }
+      await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
     } catch {
-      this.commitSelectorState(() => {
-        this.sessionLoading = false;
-        this.sessionSubmitting = false;
-        this.loadingProgress = 0;
-        this.loadingStage = 'selector';
-        this.loadingLabel = 'Preparing shared support user';
-      });
+      this.fail('Unable to open selected demo user.');
     }
   }
 

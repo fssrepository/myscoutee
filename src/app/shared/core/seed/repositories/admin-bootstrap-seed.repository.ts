@@ -72,7 +72,7 @@ export class SeedAdminBootstrapRepository {
     this.chatsSeed.seedDefaults();
   }
 
-  async seedDemoAdminProfiles(): Promise<void> {
+  async seedDemoAdminUsers(): Promise<void> {
     for (const admin of [
       this.resolveDemoAdmin('admin-demo-ava'),
       this.resolveDemoAdmin('admin-demo-noel')

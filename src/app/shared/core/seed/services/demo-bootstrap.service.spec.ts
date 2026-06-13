@@ -91,6 +91,46 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables.indexOf(ASSETS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_RESOURCES_TABLE_NAME));
   });
 
+  it('seeds common collections before admin-specific support data', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+
+    await bootstrap.ensureDemoSelectorReady('admin');
+
+    const state = memoryDb.read();
+    expect(state[USERS_TABLE_NAME].ids).toContain('u1');
+    expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
+    expect(state[USERS_TABLE_NAME].byId.u1?.admin).not.toBe(true);
+    expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
+    expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
+    expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
+    expect(state[EVENTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[ASSETS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[ACTIVITY_RESOURCES_TABLE_NAME].ids.length).toBeGreaterThan(0);
+  });
+
+  it('adds admin-specific support data after member common collections without reseeding common tables', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+
+    await bootstrap.ensureDemoSelectorReady('member');
+    tableWriteSpy.mockClear();
+
+    await bootstrap.ensureDemoSelectorReady('admin');
+
+    const state = memoryDb.read();
+    const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
+    expect(state[USERS_TABLE_NAME].ids).toContain('u1');
+    expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
+    expect(state[USERS_TABLE_NAME].byId.u1?.admin).not.toBe(true);
+    expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
+    expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
+    expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
+    expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
+    expect(flushedTables).not.toContain(ACTIVITY_RESOURCES_TABLE_NAME);
+    expect(flushedTables).toContain(USERS_TABLE_NAME);
+    expect(flushedTables).toContain(CHATS_TABLE_NAME);
+  });
+
   it('preboot static content seed does not clear unrelated demo tables', async () => {
     memoryDb.write(state => ({
       ...state,

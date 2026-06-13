@@ -64,6 +64,8 @@ export class SeedDemoBootstrapService {
   private selectorReady = false;
   private adminSelectorPromise: Promise<void> | null = null;
   private adminSelectorReady = false;
+  private commonCollectionsPromise: Promise<void> | null = null;
+  private commonCollectionsReady = false;
   private readonly readyUserIds = new Set<string>();
   private lastProcessState: BootstrapProcessState = {
     percent: 0,
@@ -121,7 +123,18 @@ export class SeedDemoBootstrapService {
     }
 
     await this.ensureDemoSelectorReady(mode, onProgress);
+    await this.ensureUserSessionReady(normalizedUserId, onProgress);
+  }
 
+  async ensureUserSessionReady(
+    userId: string,
+    onProgress?: BootstrapProcessListener
+  ): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      this.emitSessionReady(onProgress);
+      return;
+    }
     const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
     const alreadyReady = this.readyUserIds.has(normalizedUserId);
     let contextualChatsChanged = false;
@@ -156,16 +169,96 @@ export class SeedDemoBootstrapService {
       return;
     }
 
+    await this.usersSeed.whenReady();
+
+    await this.runBootstrapStep('selector');
+    await this.ensureCommonDemoCollectionsReady();
+    await this.runBootstrapStep('indexedDb');
+
+    this.selectorReady = true;
+    this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async ensureAdminSelectorReady(onProgress?: BootstrapProcessListener): Promise<void> {
+    if (onProgress) {
+      this.listeners.add(onProgress);
+      onProgress(this.lastProcessState);
+    }
+
+    if (this.adminSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+      return;
+    }
+
+    if (!this.adminSelectorPromise) {
+      this.adminSelectorPromise = this.runAdminBootstrap().finally(() => {
+        this.adminSelectorPromise = null;
+      });
+    }
+
+    try {
+      await this.adminSelectorPromise;
+    } finally {
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+    }
+  }
+
+  private async runAdminBootstrap(): Promise<void> {
+    if (this.adminSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      return;
+    }
+
+    await this.adminSeed.whenUsersReady();
+
+    await this.runBootstrapStep('selector');
+    await this.ensureCommonDemoCollectionsReady();
+    await this.runBootstrapStep('helpCenter', async () => {
+      await this.adminSeed.seedHelpCenter();
+      await this.flushBootstrapTables([HELP_CENTER_TABLE_NAME]);
+    });
+    await this.runBootstrapStep('ideaPosts', async () => {
+      await this.adminSeed.seedIdeaPosts();
+      await this.flushBootstrapTables([IDEA_POSTS_TABLE_NAME]);
+    });
+    await this.seedAdminSpecificCollections();
+    await this.runBootstrapStep('affinityGraph', () => this.adminSeed.buildAndWriteAffinityGraphSnapshot());
+    await this.runBootstrapStep('indexedDb');
+
+    this.selectorReady = true;
+    this.adminSelectorReady = true;
+    this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async ensureCommonDemoCollectionsReady(): Promise<void> {
+    if (this.commonCollectionsReady) {
+      return;
+    }
+    if (!this.commonCollectionsPromise) {
+      this.commonCollectionsPromise = this.seedCommonDemoCollections()
+        .then(() => {
+          this.commonCollectionsReady = true;
+        })
+        .finally(() => {
+          this.commonCollectionsPromise = null;
+        });
+    }
+    await this.commonCollectionsPromise;
+  }
+
+  private async seedCommonDemoCollections(): Promise<void> {
     this.registry.clear();
     try {
-      await this.usersSeed.whenReady();
-
       let seededUsers: readonly UserDto[] = [];
       let seededUserIds: readonly string[] = [];
       let assetsByUserId: Map<string, AppTypes.AssetCard[]> = new Map();
       const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;
 
-      await this.runBootstrapStep('selector');
       await this.runBootstrapStep('chats', async () => {
         this.chatsSeed.seedDefaults();
         await this.flushBootstrapTables([CHATS_TABLE_NAME]);
@@ -213,93 +306,26 @@ export class SeedDemoBootstrapService {
         this.activityResourcesSeed.seedDefaults(ownerUserIds(), sourceRecordsByUserId, assetsByUserId);
         await this.flushBootstrapTables([ACTIVITY_RESOURCES_TABLE_NAME, ASSETS_TABLE_NAME]);
       });
-      await this.runBootstrapStep('indexedDb');
-
-      this.selectorReady = true;
-      this.emitProgress(bootstrapProcessStep('ready'));
     } finally {
       this.registry.clear();
     }
   }
 
-  private async ensureAdminSelectorReady(onProgress?: BootstrapProcessListener): Promise<void> {
-    if (onProgress) {
-      this.listeners.add(onProgress);
-      onProgress(this.lastProcessState);
-    }
-
-    if (this.adminSelectorReady) {
-      this.emitProgress(bootstrapProcessStep('ready'));
-      if (onProgress) {
-        this.listeners.delete(onProgress);
-      }
-      return;
-    }
-
-    if (!this.adminSelectorPromise) {
-      this.adminSelectorPromise = this.runAdminBootstrap().finally(() => {
-        this.adminSelectorPromise = null;
-      });
-    }
-
-    try {
-      await this.adminSelectorPromise;
-    } finally {
-      if (onProgress) {
-        this.listeners.delete(onProgress);
-      }
-    }
-  }
-
-  private async runAdminBootstrap(): Promise<void> {
-    if (this.adminSelectorReady) {
-      this.emitProgress(bootstrapProcessStep('ready'));
-      return;
-    }
-
-    this.registry.clear();
-    try {
-      await this.adminSeed.whenUsersReady();
-
-      let seededUsers: readonly UserDto[] = [];
-
-      await this.runBootstrapStep('selector');
-      await this.runBootstrapStep('helpCenter', async () => {
-        await this.adminSeed.seedHelpCenter();
-        await this.flushBootstrapTables([HELP_CENTER_TABLE_NAME]);
-      });
-      await this.runBootstrapStep('ideaPosts', async () => {
-        await this.adminSeed.seedIdeaPosts();
-        await this.flushBootstrapTables([IDEA_POSTS_TABLE_NAME]);
-      });
-      await this.runBootstrapStep('users', () => {
-        seededUsers = this.adminSeed.seedUsers();
-        this.registry.registerUsers(seededUsers);
-      });
-      await this.runBootstrapStep('ratings', async () => {
-        this.adminSeed.seedUserRatings(seededUsers);
-        await this.flushBootstrapTables([USER_RATES_TABLE_NAME]);
-      });
-      await this.runBootstrapStep('chats', () => this.adminSeed.seedChats());
-      await this.runBootstrapStep('assets', () => this.adminSeed.seedDemoAdminProfiles());
-      const seedState = await this.runBootstrapStep('feedback', () => this.adminSeed.seedDemoAdminStores());
-      await this.runBootstrapStep('contacts', async () => {
-        await this.adminSeed.seedDemoAdminMenuCounters(seedState);
-        await this.flushBootstrapTables([USERS_TABLE_NAME]);
-      });
-      await this.runBootstrapStep('activityMembers', async () => {
-        await this.adminSeed.seedDemoAdminSupport('admin-demo-ava');
-        await this.adminSeed.seedDemoAdminSupport('admin-demo-noel');
-        await this.flushBootstrapTables([CHATS_TABLE_NAME, SHARE_TOKENS_TABLE_NAME]);
-      });
-      await this.runBootstrapStep('affinityGraph', () => this.adminSeed.buildAndWriteAffinityGraphSnapshot());
-      await this.runBootstrapStep('indexedDb');
-
-      this.adminSelectorReady = true;
-      this.emitProgress(bootstrapProcessStep('ready'));
-    } finally {
-      this.registry.clear();
-    }
+  private async seedAdminSpecificCollections(): Promise<void> {
+    await this.runBootstrapStep('adminUsers', async () => {
+      await this.adminSeed.seedDemoAdminUsers();
+      await this.flushBootstrapTables([USERS_TABLE_NAME]);
+    });
+    await this.runBootstrapStep('adminWorkspaceData', async () => {
+      const seedState = await this.adminSeed.seedDemoAdminStores();
+      await this.adminSeed.seedDemoAdminMenuCounters(seedState);
+      await this.flushBootstrapTables([USERS_TABLE_NAME]);
+    });
+    await this.runBootstrapStep('adminHelpLinks', async () => {
+      await this.adminSeed.seedDemoAdminSupport('admin-demo-ava');
+      await this.adminSeed.seedDemoAdminSupport('admin-demo-noel');
+      await this.flushBootstrapTables([CHATS_TABLE_NAME, SHARE_TOKENS_TABLE_NAME]);
+    });
   }
 
   private async runBootstrapStep<T = void>(
