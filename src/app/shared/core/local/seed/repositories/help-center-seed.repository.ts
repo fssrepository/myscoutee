@@ -3,7 +3,7 @@ import type { HelpCenterTable } from '../../source/entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 
 import type { HelpCenterAuditEntry, HelpCenterDocumentKind, HelpCenterRevision } from '../../../contracts';
 import { HelpCenterContentBuilder } from '../../../base/builders';

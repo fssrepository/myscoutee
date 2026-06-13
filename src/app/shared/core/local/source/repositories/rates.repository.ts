@@ -12,7 +12,7 @@ import { UserProfileStateBuilder } from '../../../base/builders';
 import type { ActivityRateDTO } from '../../../base/dto';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserGameMode, UserRatesSyncResult } from '../../../contracts/activity.interface';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { RateOutboxRepository } from '../../../base/repositories/rate-outbox.repository';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import { LocalUserRatesMapper } from '../mappers';

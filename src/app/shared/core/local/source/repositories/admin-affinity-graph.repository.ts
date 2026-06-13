@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { AdminAffinityGraphDto } from '../../../contracts/admin.interface';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 const ADMIN_AFFINITY_GRAPH_STORE_KEY = APP_INDEXED_DB_KEYS.adminAffinityGraph;

@@ -4,7 +4,7 @@ import { AppUtils } from '../../../../app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder, UserProfileStateBuilder } from '../../../base/builders';
 import type * as AppTypes from '../../../base/models';
 import type { UserDto } from '../../../contracts/user.interface';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 import { LocalUsersRepository } from './users.repository';
 import {

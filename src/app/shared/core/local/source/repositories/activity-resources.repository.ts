@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type * as AppTypes from '../../../base/models';
 import { LocalActivityResourcesMapper } from '../mappers';
 import {

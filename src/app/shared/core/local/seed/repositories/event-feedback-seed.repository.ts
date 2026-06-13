@@ -3,7 +3,7 @@ import type { EventFeedbackPersistedState } from '../../source/entity/event.enti
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../../source/entity/activity.entity';
 import type { ActivityEventSeedItem } from '../entity';

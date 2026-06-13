@@ -5,7 +5,7 @@ import { Injectable, inject } from '@angular/core';
 import type { UserRateRecord } from '../../source/entity/rate.entity';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { AdminAffinityGraphDto, AdminAffinityGraphEdgeDto, AdminAffinityGraphNodeDto } from '../../../contracts/admin.interface';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 import { SeedUserBuilder } from '../builders';

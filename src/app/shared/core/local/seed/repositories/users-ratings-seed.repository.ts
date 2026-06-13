@@ -4,7 +4,7 @@ import type { UserRatesRecordCollection } from '../../source/entity/rate.entity'
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRateRecord } from '../../source/entity/rate.entity';
 

@@ -7,7 +7,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { LocalUserRatesMapper } from '../../local/source/mappers/rate.mapper';
-import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../../local/common/db';
+import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../../common/app.db';
 import { resolveRouteConfig } from '../config';
 import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
 import type { ActivityRateDTO } from '../dto';

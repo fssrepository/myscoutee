@@ -6,7 +6,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { activityChatContextFilterKey } from '../../../base/converters';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { LocalChatThreadMapper } from '../mappers';

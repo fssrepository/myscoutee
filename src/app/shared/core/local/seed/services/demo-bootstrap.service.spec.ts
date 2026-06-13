@@ -7,7 +7,7 @@ import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { appMemoryDbStorageKey, demoActiveUserStorageKey, scopedSessionStorageKey } from '../../../common/storage-scope';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';

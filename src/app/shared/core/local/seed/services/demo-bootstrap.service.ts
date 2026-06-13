@@ -9,7 +9,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
 import type * as AppTypes from '../../../base/models';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';
 

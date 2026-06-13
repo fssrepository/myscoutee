@@ -2,7 +2,7 @@ import { IDEA_POSTS_TABLE_NAME } from '../entity/content.entity';
 import type { IdeaPostsTable } from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 
 
 @Injectable({

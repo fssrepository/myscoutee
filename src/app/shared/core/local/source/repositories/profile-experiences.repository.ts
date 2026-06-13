@@ -2,7 +2,7 @@ import { PROFILE_EXPERIENCES_TABLE_NAME } from '../entity/profile.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { ExperienceEntry } from '../../../contracts/profile.interface';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 
 import { LocalProfileExperiencesMapper } from '../mappers';
 

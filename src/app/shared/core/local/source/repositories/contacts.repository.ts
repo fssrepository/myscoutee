@@ -2,7 +2,7 @@ import { CONTACTS_TABLE_NAME } from '../entity/profile.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { StoredContact } from '../../../contracts/contact.interface';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 
 import { LocalContactsMapper } from '../mappers';
 

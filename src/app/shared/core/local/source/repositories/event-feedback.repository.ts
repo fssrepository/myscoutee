@@ -3,7 +3,7 @@ import { EVENT_FEEDBACK_TABLE_NAME } from '../entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { EventFeedbackReceivedEventDto, EventFeedbackNoteRequestDto, EventFeedbackStateDto, EventFeedbackSubmitRequestDto } from '../../../contracts/activity.interface';
 
 

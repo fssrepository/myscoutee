@@ -6,7 +6,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../../app-utils';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { LocalChatThreadMapper } from '../../source/mappers';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';

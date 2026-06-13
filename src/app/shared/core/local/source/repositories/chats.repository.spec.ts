@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { LocalChatsRepository } from './chats.repository';

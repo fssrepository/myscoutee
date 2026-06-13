@@ -1,7 +1,7 @@
 import { SHARE_TOKENS_TABLE_NAME, type ShareTokenRecord } from '../entity/sharing.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../common/db';
+import { LocalMemoryDb } from '../../../common/app.db';
 import type { ShareTokenCreateRequest, ShareTokenResolvedItem } from '../../../contracts/share.interface';
 
 import { LocalEventsRepository } from './events.repository';
