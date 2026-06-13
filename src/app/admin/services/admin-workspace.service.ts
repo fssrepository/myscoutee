@@ -47,7 +47,12 @@ export class AdminWorkspaceService {
   }
 
   prepareSelectedAdminSession(adminUserId: string): void {
-    this.workspaceData.prepareSelectedAdminSession(adminUserId);
+    const normalizedAdminUserId = adminUserId.trim();
+    if (!normalizedAdminUserId) {
+      return;
+    }
+    this.workspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
+    this.persistAdminSession(normalizedAdminUserId);
   }
 
   applyDashboard(dashboard: AdminDashboardDto): void {

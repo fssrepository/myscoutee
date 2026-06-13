@@ -243,18 +243,16 @@ export class DemoBootstrapSelectorComponent {
         this.users = users;
         this.errorMessage = selectorErrorMessage;
         this.loadingUserList = false;
-        this.loadingProgress = selectorErrorMessage ? 0 : 100;
-        this.loadingLabel = selectorErrorMessage ? 'Retry demo selector' : 'Demo data ready';
-        this.loadingStage = selectorErrorMessage ? 'selector' : 'ready';
+        if (selectorErrorMessage) {
+          this.loadingProgress = 0;
+          this.loadingLabel = 'Retry demo selector';
+          this.loadingStage = 'selector';
+        }
       });
       if (selectorErrorMessage) {
         this.commit(() => {
           this.loading = false;
         });
-        return;
-      }
-      await this.waitForLoaderCompletionBeat();
-      if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
       this.commit(() => {
