@@ -1,14 +1,12 @@
-<app-demo-bootstrap-selector
-  [open]="true"
-  [title]="'Demo felhasználó választása'"
-  [subtitle]="'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.'"
-  [loading]="sessionLoading"
-  [loadingProgress]="loadingProgress"
-  [loadingLabel]="loadingLabel"
-  [loadingStage]="loadingStage"
-  [errorMessage]="error"
-  [submitting]="sessionSubmitting"
-  [selectedUserId]="selectedUserId"
-  (closeRequested)="goAdmin()"
-  (retryRequested)="retry()"
-></app-demo-bootstrap-selector>
+@if (error) {
+  <app-demo-bootstrap-selector
+    [open]="true"
+    [title]="'Demo felhasználó választása'"
+    [subtitle]="'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.'"
+    [errorMessage]="error"
+    (closeRequested)="goAdmin()"
+    (retryRequested)="retry()"
+  ></app-demo-bootstrap-selector>
+} @else {
+  <app-demo-bootstrap-selector></app-demo-bootstrap-selector>
+}

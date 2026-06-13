@@ -256,6 +256,23 @@ export class DemoBootstrapSelectorComponent {
         });
         return;
       }
+      const autoSelectUserId = `${request.autoSelectUserId ?? ''}`.trim();
+      if (autoSelectUserId) {
+        const autoSelectedUser = users.find(user => user.id.trim() === autoSelectUserId) ?? null;
+        if (!autoSelectedUser) {
+          this.commit(() => {
+            this.loading = false;
+            this.loadingUserList = false;
+            this.loadingProgress = 0;
+            this.loadingLabel = 'Retry demo selector';
+            this.loadingStage = 'selector';
+            this.errorMessage = 'Unable to open selected demo user.';
+          });
+          return;
+        }
+        this.selectContextUser(autoSelectUserId);
+        return;
+      }
       this.commit(() => {
         this.loading = false;
       });

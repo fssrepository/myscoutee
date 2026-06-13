@@ -42,6 +42,7 @@ export interface DemoBootstrapSelectorState {
   mode: DemoBootstrapSelectorMode;
   title?: string;
   subtitle?: string;
+  autoSelectUserId?: string;
   users?: readonly UserSelectorListItemDto[];
   onSelect: (userId: string) => boolean | Promise<boolean>;
   onClose?: () => void;
@@ -106,6 +107,7 @@ export class AppPopupContext {
     mode: DemoBootstrapSelectorMode;
     title?: string;
     subtitle?: string;
+    autoSelectUserId?: string;
     users?: readonly UserSelectorListItemDto[];
     onSelect: (userId: string) => boolean | Promise<boolean>;
     onClose?: () => void;
@@ -115,6 +117,7 @@ export class AppPopupContext {
       mode: payload.mode === 'admin' ? 'admin' : 'member',
       title: payload.title?.trim() || undefined,
       subtitle: payload.subtitle?.trim() || undefined,
+      autoSelectUserId: payload.autoSelectUserId?.trim() || undefined,
       users: payload.users?.map(user => ({ ...user })),
       onSelect: payload.onSelect,
       onClose: payload.onClose

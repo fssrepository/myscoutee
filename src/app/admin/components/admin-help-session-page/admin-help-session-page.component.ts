@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import {
@@ -8,12 +8,9 @@ import {
   AssetDefaultsBuilder,
   EventsService,
   SessionService,
-  type BootstrapProcessStage,
-  type BootstrapProcessState,
   type ShareTokenResolvedItem
 } from '../../../shared/core';
 import type { AssetCard } from '../../../shared/core/base/models';
-import { SeedDemoBootstrapService } from '../../../shared/core/seed';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 
 @Component({
@@ -28,20 +25,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
-  private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly changeDetectorRef = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
 
-  protected sessionLoading = true;
-  protected sessionSubmitting = false;
-  protected loadingProgress = 0;
-  protected loadingLabel = 'Preparing demo data';
-  protected loadingStage: BootstrapProcessStage = 'selector';
   protected error = '';
-  protected selectedUserId = '';
 
   async ngOnInit(): Promise<void> {
     await this.openSharedUserView();
@@ -49,12 +37,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   protected async retry(): Promise<void> {
     this.error = '';
-    this.sessionLoading = true;
-    this.sessionSubmitting = false;
-    this.loadingProgress = 0;
-    this.loadingStage = 'selector';
-    this.loadingLabel = 'Preparing demo data';
-    this.selectedUserId = '';
     await this.openSharedUserView();
   }
 
@@ -68,7 +50,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
       this.fail('This support link is missing its token.');
       return;
     }
-    const useLocalHelpSession = this.workspaceData.shouldUseLocalAdminHelpSession;
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
       this.fail('This support link expired or is no longer available.');
@@ -76,20 +57,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
-    this.selectedUserId = userId;
-    if (useLocalHelpSession) {
-      await this.prepareSharedUserSession(userId, targetUrl);
-      return;
-    }
-    this.loadingProgress = 100;
-    this.loadingStage = 'sessionReady';
-    this.loadingLabel = 'Demo session ready';
-    const session = this.sessionService.startDemoSession(userId);
-    if (!session) {
-      this.fail('Unable to open selected demo user.');
-      return;
-    }
-    await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
+    this.openSharedUserSelector(userId, targetUrl);
   }
 
   private resolveTokenFromRoute(): string {
@@ -113,75 +81,51 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return await this.workspaceData.resolveAdminHelpToken(token, value => this.resolveDemoAdminHelpToken(value));
   }
 
-  private applyProgress(state: BootstrapProcessState): void {
-    this.commitSelectorState(() => {
-      this.loadingProgress = state.percent;
-      this.loadingLabel = state.label;
-      this.loadingStage = state.stage;
+  private openSharedUserSelector(userId: string, targetUrl: string): void {
+    this.popupCtx.openDemoBootstrapSelector({
+      mode: 'member',
+      title: 'Demo felhasználó választása',
+      subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
+      autoSelectUserId: userId,
+      onSelect: selectedUserId => this.openSelectedSharedUser(selectedUserId, targetUrl),
+      onClose: () => {
+        void this.goAdmin();
+      }
     });
   }
 
-  private async prepareSharedUserSession(userId: string, targetUrl: string): Promise<void> {
-    this.commitSelectorState(() => {
-      this.sessionSubmitting = true;
-      this.sessionLoading = true;
-      this.loadingProgress = 0;
-      this.loadingStage = 'session';
-      this.loadingLabel = 'Preparing demo session';
-    });
-    await this.waitForPopupPaint();
-
-    try {
-      await this.seedBootstrap.ensureUserReady(userId, 'member', state => this.applyProgress(state));
-      this.commitSelectorState(() => {
-        this.loadingProgress = 100;
-        this.loadingStage = 'sessionReady';
-        this.loadingLabel = 'Demo session ready';
-      });
-      await this.waitForLoaderCompletionBeat();
-      const session = this.sessionService.startDemoSession(userId);
-      if (!session) {
-        this.fail('Unable to open selected demo user.');
-        return;
+  private openSelectedSharedUser(userId: string, targetUrl: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.sessionService.startDemoSession(normalizedUserId, {
+      supportContext: {
+        kind: 'admin-support',
+        targetUrl: this.safeTargetUrl(targetUrl)
       }
-      await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
-    } catch {
-      this.fail('Unable to open selected demo user.');
+    })) {
+      return false;
     }
+    void this.navigateToSharedTargetAfterSelectorClose(normalizedUserId, targetUrl);
+    return true;
+  }
+
+  private async navigateToSharedTargetAfterSelectorClose(userId: string, targetUrl: string): Promise<void> {
+    await this.waitForDemoSelectorClose();
+    await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
   }
 
   private fail(message: string): void {
+    this.popupCtx.closeDemoBootstrapSelector();
     this.error = message;
-    this.sessionLoading = false;
-    this.sessionSubmitting = false;
-    this.loadingProgress = 0;
-    this.loadingStage = 'selector';
-    this.loadingLabel = 'Support link unavailable';
   }
 
-  private commitSelectorState(update: () => void): void {
-    this.ngZone.run(() => {
-      update();
-      this.changeDetectorRef.detectChanges();
-    });
-  }
-
-  private waitForPopupPaint(): Promise<void> {
+  private waitForDemoSelectorClose(): Promise<void> {
     return new Promise(resolve => {
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            setTimeout(resolve, 80);
-          });
-        });
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
         return;
       }
-      setTimeout(resolve, 80);
+      setTimeout(resolve, 0);
     });
-  }
-
-  private waitForLoaderCompletionBeat(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 240));
   }
 
   private resolveDemoAdminHelpToken(token: string): ShareTokenResolvedItem | null {

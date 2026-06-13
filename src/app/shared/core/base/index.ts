@@ -73,5 +73,6 @@ export { RatesService } from './services/rates.service';
 export { UserExperiencesService } from './services/user-experiences.service';
 export {
   SessionService,
-  type AppSession
+  type AppSession,
+  type SupportSessionContext
 } from './services/session.service';

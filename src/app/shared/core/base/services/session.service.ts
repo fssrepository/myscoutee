@@ -7,8 +7,13 @@ import { AppContext } from '../context';
 import { APP_STORAGE_KEYS } from '../storage-scope';
 import { FirebaseAuthService } from './firebase-auth.service';
 
+export interface SupportSessionContext {
+  kind: 'admin-support';
+  targetUrl?: string;
+}
+
 export type AppSession =
-  | { kind: 'demo'; userId: string }
+  | { kind: 'demo'; userId: string; supportContext?: SupportSessionContext }
   | { kind: 'firebase'; profile: FirebaseAuthProfileDto };
 
 @Injectable({
@@ -62,14 +67,18 @@ export class SessionService {
     return nextSession;
   }
 
-  startDemoSession(userId: string): AppSession | null {
+  startDemoSession(
+    userId: string,
+    options: { supportContext?: SupportSessionContext } = {}
+  ): AppSession | null {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
     }
     const session: AppSession = {
       kind: 'demo',
-      userId: normalizedUserId
+      userId: normalizedUserId,
+      supportContext: this.normalizeSupportContext(options.supportContext)
     };
     localStorage.setItem(SessionService.DEMO_ACTIVE_USER_KEY, normalizedUserId);
     this.persistSession(session);
@@ -180,7 +189,10 @@ export class SessionService {
       if (parsed.kind === 'demo' && typeof parsed.userId === 'string' && parsed.userId.trim().length > 0) {
         return {
           kind: 'demo',
-          userId: parsed.userId.trim()
+          userId: parsed.userId.trim(),
+          supportContext: this.normalizeSupportContext(
+            (parsed as { supportContext?: Partial<SupportSessionContext> }).supportContext
+          )
         };
       }
       if (
@@ -206,5 +218,18 @@ export class SessionService {
     } catch {
       return null;
     }
+  }
+
+  private normalizeSupportContext(
+    context: Partial<SupportSessionContext> | null | undefined
+  ): SupportSessionContext | undefined {
+    if (context?.kind !== 'admin-support') {
+      return undefined;
+    }
+    const targetUrl = `${context.targetUrl ?? ''}`.trim();
+    return {
+      kind: 'admin-support',
+      targetUrl: targetUrl || undefined
+    };
   }
 }

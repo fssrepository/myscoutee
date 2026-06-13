@@ -102,7 +102,8 @@ export {
 } from './base/services/users.service';
 export {
   SessionService,
-  type AppSession
+  type AppSession,
+  type SupportSessionContext
 } from './base/services/session.service';
 export * from './base/builders';
 export * from './base/converters';
