@@ -16,12 +16,17 @@
 .activity-members-popup-shell .app-popup-panel.popup-panel-members {
   position: relative;
   min-height: calc(100vh - 1.2rem);
+  min-height: calc(100dvh - 1.2rem);
   height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
   max-height: calc(100vh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
 }
 
 .activity-members-popup-shell.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-members {
+  height: calc(100vh - 1.2rem);
   height: calc(100dvh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
 }
 

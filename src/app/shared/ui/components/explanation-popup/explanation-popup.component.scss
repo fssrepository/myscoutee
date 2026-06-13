@@ -23,7 +23,9 @@
   position: relative;
   z-index: 1;
   width: min(1080px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
   height: calc(100dvh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.64);
@@ -38,7 +40,9 @@
 }
 
 .explanation-popup__panel--loading {
+  height: calc(100vh - 1.2rem);
   height: calc(100dvh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
 }
 

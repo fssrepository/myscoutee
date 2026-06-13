@@ -15,7 +15,9 @@
 
 .asset-member-picker-popup-shell .popup-panel-friends-picker.popup-panel-friends-picker-members {
   width: min(1080px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
   height: calc(100dvh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
 }
 
