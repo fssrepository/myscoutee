@@ -141,6 +141,8 @@ export interface UserSelectorListItemDto {
   deletedAtIso?: string | null;
 }
 
+export type UserSelectorRole = 'member' | 'admin';
+
 export interface UserDto {
   id: string;
   name: string;
@@ -241,7 +243,7 @@ export interface UserSubmitActionResponseDto {
 }
 
 export interface UserService {
-  queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse>;
+  queryAvailableDemoUsers(requestTimeoutMs?: number, selectorRole?: UserSelectorRole): Promise<UsersListQueryResponse>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;

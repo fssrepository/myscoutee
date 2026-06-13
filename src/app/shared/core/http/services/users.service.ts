@@ -14,6 +14,7 @@ import type {
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
   UserReportUserSubmitRequestDto,
+  UserSelectorRole,
   UserService,
   UserSubmitActionResponseDto,
   UsersListQueryResponse,
@@ -49,6 +50,7 @@ export class HttpUsersService implements UserService {
 
   async queryAvailableDemoUsers(
     requestTimeoutMs?: number,
+    selectorRole: UserSelectorRole = 'member',
     _onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UsersListQueryResponse> {
     type HttpDemoUserListEntry = Partial<UserDto> & Partial<UserSelectorListItemDto> & {
@@ -57,7 +59,11 @@ export class HttpUsersService implements UserService {
     const response = await this.routeDelay.withRequestTimeout(
       HttpUsersService.DEMO_USERS_ROUTE,
       this.http
-        .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
+        .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`, {
+          params: {
+            role: selectorRole
+          }
+        })
         .toPromise(),
       'Users request timeout.',
       requestTimeoutMs

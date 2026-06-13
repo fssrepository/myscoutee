@@ -8,7 +8,7 @@ export class AdminProfileSeedBuilder {
       name: admin.name,
       age: 0,
       birthday: '',
-      city: 'Admin',
+      city: admin.id.includes('noel') ? 'Trust desk' : 'Safety desk',
       height: '',
       physique: '',
       languages: ['English'],
@@ -23,6 +23,7 @@ export class AdminProfileSeedBuilder {
       about: `${admin.about ?? ''}`.trim() || 'Reviews reports, feedback, and support chats.',
       images: [...(admin.images?.length ? admin.images : this.demoAdminImages(admin.id))],
       profileStatus: 'public',
+      admin: true,
       activities: {
         game: 0,
         chat: 0,

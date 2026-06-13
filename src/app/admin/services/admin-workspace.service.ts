@@ -6,6 +6,8 @@ import {
   AdminWorkspaceDataService,
   HelpCenterService,
   SessionService,
+  UsersService,
+  UserRecordsBuilder,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type AdminBootstrapProcessState,
   type AdminDashboardDto,
@@ -28,6 +30,7 @@ export class AdminWorkspaceService {
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly sessionService = inject(SessionService);
+  private readonly usersService = inject(UsersService);
   private readonly shell = inject(AdminShellService);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
@@ -38,7 +41,6 @@ export class AdminWorkspaceService {
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
-  readonly adminUsers = this.workspaceData.adminUsers;
 
   get isFirebaseAdminMode(): boolean {
     return this.workspaceData.isFirebaseAdminMode;
@@ -126,7 +128,8 @@ export class AdminWorkspaceService {
     if (!adminId) {
       return null;
     }
-    return this.adminUsers().find(user => user.id === adminId) ?? null;
+    const user = this.usersService.peekCachedUserById(adminId);
+    return user ? UserRecordsBuilder.toDemoUserListItem(user) : null;
   }
 
   async bootstrapAdmin(

@@ -77,22 +77,28 @@ export class SeedAdminBootstrapRepository {
       this.resolveDemoAdmin('admin-demo-ava'),
       this.resolveDemoAdmin('admin-demo-noel')
     ]) {
+      const seededAdmin = AdminProfileSeedBuilder.buildDemoAdminUser(admin);
       const existing = this.findUser(admin.id);
       if (existing) {
         const seededImages = this.demoAdminImages(admin.id);
         const existingImages = existing.images ?? [];
-        if (
-          seededImages.length > 0
-          && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)))
-        ) {
+        const shouldRefreshImages = seededImages.length > 0
+          && (existingImages.length === 0 || existingImages.some(image => this.isLegacyDemoAdminImage(image)));
+        const shouldRefreshAdminFields = existing.admin !== true
+          || `${existing.city ?? ''}`.trim().length === 0
+          || `${existing.hostTier ?? ''}`.trim().toLowerCase() !== 'admin';
+        if (shouldRefreshAdminFields || shouldRefreshImages) {
           await this.saveUser({
             ...existing,
-            images: seededImages
+            admin: true,
+            city: `${existing.city ?? ''}`.trim() || seededAdmin.city,
+            hostTier: `${existing.hostTier ?? ''}`.trim().toLowerCase() === 'admin' ? existing.hostTier : seededAdmin.hostTier,
+            images: shouldRefreshImages ? seededImages : existingImages
           });
         }
         continue;
       }
-      await this.saveUser(AdminProfileSeedBuilder.buildDemoAdminUser(admin));
+      await this.saveUser(seededAdmin);
     }
   }
 

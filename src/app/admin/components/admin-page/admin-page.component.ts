@@ -192,7 +192,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       mode: 'admin',
       title: 'Select admin user',
       subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',
-      users: this.workspace.adminUsers(),
       onSelect: adminUserId => this.openSelectedAdmin(adminUserId)
     });
   }

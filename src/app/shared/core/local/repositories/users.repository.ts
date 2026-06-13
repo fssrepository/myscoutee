@@ -1,7 +1,7 @@
 import { computed, Injectable, inject } from '@angular/core';
 
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
-import type { UserSelectorListItemDto, UserDto } from '../../contracts/user.interface';
+import type { UserSelectorListItemDto, UserSelectorRole, UserDto } from '../../contracts/user.interface';
 import {
   USER_FILTER_PREFERENCES_TABLE_NAME,
   USERS_TABLE_NAME,
@@ -30,10 +30,18 @@ export class LocalUsersRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  queryAvailableDemoUsers(): UserSelectorListItemDto[] {
+  queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): UserSelectorListItemDto[] {
     return this.queryAllUsers()
+      .filter(user => this.matchesSelectorRole(user, selectorRole))
       .sort((left, right) => this.compareSelectableDemoUsers(left, right))
       .map(user => UserRecordsBuilder.toDemoUserListItem(user));
+  }
+
+  private matchesSelectorRole(user: UserDto, selectorRole: UserSelectorRole): boolean {
+    const adminUser = user.admin === true
+      || `${user.id ?? ''}`.trim().startsWith('admin-demo-')
+      || `${user.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
+    return selectorRole === 'admin' ? adminUser : !adminUser;
   }
 
   private compareSelectableDemoUsers(left: UserDto, right: UserDto): number {

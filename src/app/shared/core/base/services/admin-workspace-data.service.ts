@@ -25,8 +25,6 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
   private readonly shareTokens = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
 
-  readonly adminUsers = this.localService.adminUsers;
-
   get isFirebaseAdminMode(): boolean {
     return environment.firebaseLoginEnabled === true;
   }

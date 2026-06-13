@@ -12,6 +12,7 @@ import type {
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
+  UserSelectorRole,
   UserService,
   UserSubmitActionResponseDto,
   UsersListQueryResponse
@@ -50,21 +51,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   async queryAvailableDemoUsers(
     _requestTimeoutMs?: number,
-    onProgress?: (state: BootstrapProcessState) => void
+    selectorRole: UserSelectorRole = 'member',
+    _onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UsersListQueryResponse> {
-    onProgress?.({
-      percent: 98,
-      label: 'Loading demo users',
-      stage: 'indexedDb'
-    });
     await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
-    onProgress?.({
-      percent: 100,
-      label: 'Demo data ready',
-      stage: 'ready'
-    });
     return {
-      users: this.usersRepository.queryAvailableDemoUsers()
+      users: this.usersRepository.queryAvailableDemoUsers(selectorRole)
     };
   }
 

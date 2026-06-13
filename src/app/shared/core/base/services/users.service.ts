@@ -7,6 +7,7 @@ import { HttpUsersService } from '../../http';
 import type { BootstrapProcessState } from './bootstrap.service';
 import type {
   UserSelectorListItemDto,
+  UserSelectorRole,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
@@ -37,6 +38,7 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
 interface RoutedUserService extends UserService {
   queryAvailableDemoUsers(
     requestTimeoutMs?: number,
+    selectorRole?: UserSelectorRole,
     onProgress?: (state: BootstrapProcessState) => void
   ): Promise<UsersListQueryResponse>;
   prepareUserSession(userId: string, onProgress?: (state: BootstrapProcessState) => void): Promise<void>;
@@ -123,12 +125,13 @@ export class UsersService extends BaseRouteModeService {
 
   async loadAvailableDemoUsers(
     requestTimeoutMs?: number,
-    onProgress?: (state: BootstrapProcessState) => void
+    onProgress?: (state: BootstrapProcessState) => void,
+    selectorRole: UserSelectorRole = 'member'
   ): Promise<UserSelectorListItemDto[]> {
     this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
 
     try {
-      const response = await this.userSelectorService.queryAvailableDemoUsers(requestTimeoutMs, onProgress);
+      const response = await this.userSelectorService.queryAvailableDemoUsers(requestTimeoutMs, selectorRole, onProgress);
 
       this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
       return response.users;

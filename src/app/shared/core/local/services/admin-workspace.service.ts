@@ -1,6 +1,6 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 
-import type { UserDto, UserSelectorListItemDto } from '../../contracts/user.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type {
   AdminChatMessageDto,
   AdminDashboardDto,
@@ -22,25 +22,6 @@ const ADMIN_WORKSPACE_LOAD_ROUTE = '/admin/workspace';
 export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   private readonly moderationRepository = inject(LocalAdminModerationRepository);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
-
-  readonly adminUsers = signal<UserSelectorListItemDto[]>([
-    {
-      id: 'admin-demo-ava',
-      name: 'Ava',
-      city: 'Safety desk',
-      initials: 'AM',
-      gender: 'woman',
-      profileStatus: 'public'
-    },
-    {
-      id: 'admin-demo-noel',
-      name: 'Noel Safety',
-      city: 'Trust desk',
-      initials: 'NS',
-      gender: 'man',
-      profileStatus: 'public'
-    }
-  ]).asReadonly();
 
   async loadDashboard(adminUserId?: string): Promise<AdminDashboardDto> {
     const read = this.readDashboard(adminUserId);
