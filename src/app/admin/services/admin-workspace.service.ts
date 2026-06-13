@@ -11,6 +11,7 @@ import {
   USER_BY_ID_LOAD_CONTEXT_KEY,
   type AdminBootstrapProcessState,
   type AdminDashboardDto,
+  type AdminFeedbackDto,
   type AdminModerationUserPatch,
   type AdminReportedUserDto,
   type AdminUserDto,
@@ -167,6 +168,31 @@ export class AdminWorkspaceService {
     }
   }
 
+  async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
+    const users = (await this.workspaceData.loadReportedUsers(this.currentAdminUserId())).map(user =>
+      this.normalizeReportedUser(user)
+    );
+    this.patchDashboard({ reportedUsers: users });
+    return users;
+  }
+
+  async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {
+    const users = (await this.workspaceData.loadBlockedUsers(this.currentAdminUserId())).map(user =>
+      this.normalizeReportedUser(user, true)
+    );
+    this.patchDashboard({ blockedUsers: users });
+    return users;
+  }
+
+  async loadFeedback(): Promise<AdminFeedbackDto[]> {
+    const feedback = (await this.workspaceData.loadFeedback(this.currentAdminUserId())).map(item => ({
+      ...item,
+      userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
+    }));
+    this.patchDashboard({ feedback });
+    return feedback;
+  }
+
   clearAdminSession(): void {
     this.dashboardRef.set(null);
     this.shell.clear();
@@ -216,6 +242,23 @@ export class AdminWorkspaceService {
         userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
       }))
     };
+  }
+
+  private patchDashboard(patch: Partial<Pick<AdminDashboardDto, 'reportedUsers' | 'blockedUsers' | 'feedback'>>): void {
+    const dashboard = this.dashboardRef();
+    if (!dashboard) {
+      return;
+    }
+    const nextDashboard = {
+      ...dashboard,
+      ...patch
+    };
+    this.dashboardRef.set(nextDashboard);
+    this.activateAdminProfile(nextDashboard);
+  }
+
+  private currentAdminUserId(): string | undefined {
+    return this.dashboardRef()?.activeAdmin.id ?? this.readStoredAdminId() ?? undefined;
   }
 
   private normalizeReportedUser(user: AdminReportedUserDto, blockedFallback = false): AdminReportedUserDto {

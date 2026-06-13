@@ -15,6 +15,9 @@ import { LocalAdminSupportSessionService } from './admin-support-session.service
 import { LocalRouteDelayService } from './route-delay.service';
 
 const ADMIN_WORKSPACE_LOAD_ROUTE = '/admin/workspace';
+const ADMIN_REPORTS_LOAD_ROUTE = '/admin/reports';
+const ADMIN_BLOCKED_USERS_LOAD_ROUTE = '/admin/reports/blocked-users';
+const ADMIN_FEEDBACK_LOAD_ROUTE = '/admin/feedback';
 
 @Injectable({
   providedIn: 'root'
@@ -24,11 +27,31 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   private readonly supportSession = inject(LocalAdminSupportSessionService);
 
   async loadDashboard(adminUserId?: string): Promise<AdminDashboardDto> {
-    const read = this.readDashboard(adminUserId);
-    const delay = this.waitForRouteDelay(ADMIN_WORKSPACE_LOAD_ROUTE);
+    return await this.loadDashboardSlice(adminUserId, ADMIN_WORKSPACE_LOAD_ROUTE, dashboard => dashboard);
+  }
+
+  async loadReportedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
+    return await this.loadDashboardSlice(adminUserId, ADMIN_REPORTS_LOAD_ROUTE, dashboard => dashboard.reportedUsers);
+  }
+
+  async loadBlockedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
+    return await this.loadDashboardSlice(adminUserId, ADMIN_BLOCKED_USERS_LOAD_ROUTE, dashboard => dashboard.blockedUsers);
+  }
+
+  async loadFeedback(adminUserId?: string): Promise<AdminFeedbackDto[]> {
+    return await this.loadDashboardSlice(adminUserId, ADMIN_FEEDBACK_LOAD_ROUTE, dashboard => dashboard.feedback);
+  }
+
+  private async loadDashboardSlice<T>(
+    adminUserId: string | undefined,
+    route: string,
+    select: (dashboard: AdminDashboardDto) => T
+  ): Promise<T> {
+    const read = this.readDashboard(adminUserId).then(select);
+    const delay = this.waitForRouteDelay(route);
     try {
-      const [dashboard] = await Promise.all([read, delay]);
-      return dashboard;
+      const [value] = await Promise.all([read, delay]);
+      return value;
     } catch (error) {
       await delay.catch(() => undefined);
       throw error;

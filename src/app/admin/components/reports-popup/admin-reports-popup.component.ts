@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Location } from '@angular/common';
 import { Component, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
@@ -143,7 +143,7 @@ export class AdminReportsPopupComponent {
 
   protected readonly reportsSmartListLoadPage: SmartListLoadPage<AdminReportListItem, AdminReportListFilters> = (
     query
-  ) => of(this.loadReportsPage(query));
+  ) => from(this.loadReportsPage(query));
 
   protected readonly blockedUsersSmartListConfig: SmartListConfig<AdminBlockedUserListItem, AdminBlockedUserListFilters> = {
     pageSize: 12,
@@ -171,7 +171,7 @@ export class AdminReportsPopupComponent {
 
   protected readonly blockedUsersSmartListLoadPage: SmartListLoadPage<AdminBlockedUserListItem, AdminBlockedUserListFilters> = (
     query
-  ) => of(this.loadBlockedUsersPage(query));
+  ) => from(this.loadBlockedUsersPage(query));
 
   protected selectUser(user: AdminReportedUserDto): void {
     const firstReport = user.reports[0];
@@ -410,7 +410,11 @@ export class AdminReportsPopupComponent {
   }
 
   protected reportRows(): AdminReportListItem[] {
-    return (this.workspace.dashboard()?.reportedUsers ?? []).flatMap(user =>
+    return this.reportRowsForUsers(this.workspace.dashboard()?.reportedUsers ?? []);
+  }
+
+  private reportRowsForUsers(users: readonly AdminReportedUserDto[]): AdminReportListItem[] {
+    return users.flatMap(user =>
       user.reports.map(report => this.buildReportListItem(user, report))
     ).sort((first, second) =>
       Date.parse(second.report.createdDate) - Date.parse(first.report.createdDate)
@@ -724,8 +728,8 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private loadReportsPage(query: ListQuery<AdminReportListFilters>): PageResult<AdminReportListItem> {
-    const rows = this.reportRows();
+  private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
+    const rows = this.reportRowsForUsers(await this.workspace.loadReportedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -736,8 +740,8 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private loadBlockedUsersPage(query: ListQuery<AdminBlockedUserListFilters>): PageResult<AdminBlockedUserListItem> {
-    const rows = this.blockedUserRows();
+  private async loadBlockedUsersPage(query: ListQuery<AdminBlockedUserListFilters>): Promise<PageResult<AdminBlockedUserListItem>> {
+    const rows = this.blockedUserRowsForUsers(await this.workspace.loadBlockedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -749,7 +753,11 @@ export class AdminReportsPopupComponent {
   }
 
   private blockedUserRows(): AdminBlockedUserListItem[] {
-    return this.blockedUsers().map(user => ({
+    return this.blockedUserRowsForUsers(this.blockedUsers());
+  }
+
+  private blockedUserRowsForUsers(users: readonly AdminReportedUserDto[]): AdminBlockedUserListItem[] {
+    return users.map(user => ({
       id: user.userId,
       user,
       row: this.buildBlockedUserActivityRow(user)

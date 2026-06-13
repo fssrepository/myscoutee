@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, TemplateRef, ViewChild, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
@@ -81,7 +81,7 @@ export class AdminFeedbackPopupComponent {
 
   protected readonly feedbackSmartListLoadPage: SmartListLoadPage<AdminFeedbackListItem, AdminFeedbackListFilters> = (
     query
-  ) => of(this.loadFeedbackPage(query));
+  ) => from(this.loadFeedbackPage(query));
 
   protected selectFeedback(item: AdminFeedbackListItem): void {
     this.feedbackDetail = item.feedback;
@@ -152,8 +152,8 @@ export class AdminFeedbackPopupComponent {
     });
   }
 
-  private loadFeedbackPage(query: ListQuery<AdminFeedbackListFilters>): PageResult<AdminFeedbackListItem> {
-    const rows = [...(this.workspace.dashboard()?.feedback ?? [])].sort((first, second) =>
+  private async loadFeedbackPage(query: ListQuery<AdminFeedbackListFilters>): Promise<PageResult<AdminFeedbackListItem>> {
+    const rows = [...(await this.workspace.loadFeedback())].sort((first, second) =>
       Date.parse(second.createdDate) - Date.parse(first.createdDate)
     ).map(feedback => ({
       id: feedback.id,
