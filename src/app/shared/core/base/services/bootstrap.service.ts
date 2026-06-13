@@ -8,6 +8,7 @@ export type BootstrapProcessStage =
   | 'events'
   | 'users'
   | 'contacts'
+  | 'profileExperiences'
   | 'feedback'
   | 'ratings'
   | 'affinityGraph'
@@ -45,6 +46,7 @@ export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'events', percent: 22, label: 'Loading events' },
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
   { stage: 'contacts', percent: 40, label: 'Preparing contacts' },
+  { stage: 'profileExperiences', percent: 43, label: 'Preparing profile experiences' },
   { stage: 'feedback', percent: 46, label: 'Preparing event feedback' },
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
   { stage: 'assets', percent: 64, label: 'Preparing owned assets' },

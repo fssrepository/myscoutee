@@ -1,12 +1,20 @@
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { LocalMemoryDb } from '../../base/db';
 import { appMemoryDbStorageKey, demoActiveUserStorageKey, scopedSessionStorageKey } from '../../base/storage-scope';
 import type { IdeaPostDto } from '../../contracts/content.interface';
 import { EVENTS_TABLE_NAME, type ActivityEventRecord } from '../../base/models/events.model';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../base/models/activity-members.model';
+import { ACTIVITY_RESOURCES_TABLE_NAME } from '../../base/models/activity-resources.model';
+import { ASSETS_TABLE_NAME } from '../../base/models/assets.model';
+import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
+import { CONTACTS_TABLE_NAME } from '../../base/models/contacts.model';
+import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';
+import { HELP_CENTER_TABLE_NAME } from '../../base/models/help-center.model';
 import { IDEA_POSTS_TABLE_NAME } from '../../base/models/idea-posts.model';
-import { USERS_TABLE_NAME } from '../../base/models/users.model';
+import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experiences.model';
+import { USER_RATES_TABLE_NAME, USERS_TABLE_NAME } from '../../base/models/users.model';
 import {
   SeedDemoBootstrapService,
   SeedAdminAffinityGraphRepository,
@@ -28,6 +36,7 @@ describe('Demo bootstrap seeding', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     localStorage.removeItem(scopedSessionStorageKey('http'));
     TestBed.resetTestingModule();
   });
@@ -55,26 +64,31 @@ describe('Demo bootstrap seeding', () => {
     }
   });
 
-  it('flushes seeded demo tables to IndexedDB, not only the outbox', async () => {
-    const usersSeed = TestBed.inject(SeedUsersRepository);
-    const eventsSeed = TestBed.inject(SeedEventsRepository);
+  it('flushes member bootstrap tables per step without a broad IndexedDB flush', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+    const broadFlushSpy = vi.spyOn(memoryDb, 'flushToIndexedDb');
 
-    usersSeed.seedDefaults();
-    eventsSeed.seedDefaults();
-    expect(memoryDb.read()[USERS_TABLE_NAME].ids.length).toBeGreaterThan(0);
-    expect(memoryDb.read()[EVENTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
-    await memoryDb.writeIndexedDbTableEntry('probeSimple', { ids: ['probe'] });
-    const probeSimple = await memoryDb.readIndexedDbTableEntry<{ ids: string[] }>('probeSimple');
-    if ((probeSimple?.ids.length ?? 0) === 0) {
-      return;
-    }
-    await memoryDb.flushToIndexedDb();
+    await bootstrap.ensureDemoSelectorReady('member');
 
-    const storedUsers = await memoryDb.readIndexedDbTableEntry<{ ids: string[] }>(USERS_TABLE_NAME);
-    const storedEvents = await memoryDb.readIndexedDbTableEntry<{ ids: string[] }>(EVENTS_TABLE_NAME);
-
-    expect(storedUsers?.ids.length ?? 0).toBeGreaterThan(0);
-    expect(storedEvents?.ids.length ?? 0).toBeGreaterThan(0);
+    const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
+    expect(broadFlushSpy).not.toHaveBeenCalled();
+    expect(flushedTables).not.toContain(HELP_CENTER_TABLE_NAME);
+    expect(flushedTables).not.toContain(IDEA_POSTS_TABLE_NAME);
+    expect(flushedTables).toContain(CHATS_TABLE_NAME);
+    expect(flushedTables).toContain(USERS_TABLE_NAME);
+    expect(flushedTables).toContain(CONTACTS_TABLE_NAME);
+    expect(flushedTables).toContain(PROFILE_EXPERIENCES_TABLE_NAME);
+    expect(flushedTables).toContain(EVENT_FEEDBACK_TABLE_NAME);
+    expect(flushedTables).toContain(USER_RATES_TABLE_NAME);
+    expect(flushedTables).toContain(ACTIVITY_MEMBERS_TABLE_NAME);
+    expect(flushedTables).toContain(EVENTS_TABLE_NAME);
+    expect(flushedTables).toContain(ACTIVITY_RESOURCES_TABLE_NAME);
+    expect(flushedTables).toContain(ASSETS_TABLE_NAME);
+    expect(flushedTables.filter(tableName => tableName === EVENTS_TABLE_NAME).length).toBe(1);
+    expect(flushedTables.indexOf(EVENTS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_MEMBERS_TABLE_NAME));
+    expect(flushedTables.filter(tableName => tableName === ASSETS_TABLE_NAME).length).toBe(1);
+    expect(flushedTables.indexOf(ASSETS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_RESOURCES_TABLE_NAME));
   });
 
   it('preboot static content seed does not clear unrelated demo tables', async () => {

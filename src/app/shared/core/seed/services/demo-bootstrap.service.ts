@@ -2,6 +2,23 @@ import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../../base/models';
+import { LocalMemoryDb } from '../../base/db';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../base/models/activity-members.model';
+import { ACTIVITY_RESOURCES_TABLE_NAME } from '../../base/models/activity-resources.model';
+import { ASSETS_TABLE_NAME } from '../../base/models/assets.model';
+import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
+import { CONTACTS_TABLE_NAME } from '../../base/models/contacts.model';
+import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';
+import { EVENTS_TABLE_NAME } from '../../base/models/events.model';
+import { HELP_CENTER_TABLE_NAME } from '../../base/models/help-center.model';
+import { IDEA_POSTS_TABLE_NAME } from '../../base/models/idea-posts.model';
+import { PROFILE_EXPERIENCES_TABLE_NAME } from '../../base/models/profile-experiences.model';
+import { SHARE_TOKENS_TABLE_NAME } from '../../base/models/share-tokens.model';
+import {
+  USER_FILTER_PREFERENCES_TABLE_NAME,
+  USER_RATES_TABLE_NAME,
+  USERS_TABLE_NAME
+} from '../../base/models/users.model';
 import {
   BootstrapProcessService,
   bootstrapProcessStep,
@@ -17,8 +34,6 @@ import { SeedAdminBootstrapRepository } from '../repositories/admin-bootstrap-se
 import { SeedContactsRepository } from '../repositories/contacts-seed.repository';
 import { SeedEventFeedbackRepository } from '../repositories/event-feedback-seed.repository';
 import { SeedEventsRepository } from '../repositories/events-seed.repository';
-import { SeedHelpCenterRepository } from '../repositories/help-center-seed.repository';
-import { SeedIdeaPostsRepository } from '../repositories/idea-posts-seed.repository';
 import { SeedProfileExperiencesRepository } from '../repositories/profile-experiences-seed.repository';
 import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.repository';
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
@@ -32,6 +47,7 @@ export type SeedDemoBootstrapMode = 'member' | 'admin';
 export class SeedDemoBootstrapService {
   private readonly process = inject(BootstrapProcessService);
   private readonly registry = inject(SeedBootstrapRegistryService);
+  private readonly memoryDb = inject(LocalMemoryDb);
   private readonly adminSeed = inject(SeedAdminBootstrapRepository);
   private readonly chatsSeed = inject(SeedChatsRepository);
   private readonly eventsSeed = inject(SeedEventsRepository);
@@ -42,8 +58,6 @@ export class SeedDemoBootstrapService {
   private readonly activityMembersSeed = inject(SeedActivityMembersRepository);
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
-  private readonly helpCenterSeed = inject(SeedHelpCenterRepository);
-  private readonly ideaPostsSeed = inject(SeedIdeaPostsRepository);
   private readonly contactsSeed = inject(SeedContactsRepository);
 
   private selectorPromise: Promise<void> | null = null;
@@ -101,51 +115,39 @@ export class SeedDemoBootstrapService {
     onProgress?: BootstrapProcessListener
   ): Promise<void> {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      onProgress?.(bootstrapProcessStep('sessionReady'));
-      return;
-    }
-
-    if (mode === 'admin') {
-      onProgress?.(bootstrapProcessStep('sessionReady'));
+    if (!normalizedUserId || mode === 'admin') {
+      this.emitSessionReady(onProgress);
       return;
     }
 
     await this.ensureDemoSelectorReady(mode, onProgress);
 
     const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
+    const alreadyReady = this.readyUserIds.has(normalizedUserId);
+    let contextualChatsChanged = false;
 
-    if (this.readyUserIds.has(normalizedUserId)) {
-      const activityCountersChanged = this.usersSeed.stampSeededActivityCountsForUser(normalizedUserId);
-      const impressionsChanged = this.usersSeed.stampSeededImpressionsForUser(normalizedUserId);
-      if (filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
-        onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
-        await this.usersSeed.flushToIndexedDb();
-        await this.process.waitForUiYield();
-      }
-      onProgress?.(bootstrapProcessStep('sessionReady'));
-      return;
+    if (!alreadyReady) {
+      onProgress?.(bootstrapProcessStep('session'));
+      await this.process.waitForUiYield();
+
+      onProgress?.(bootstrapProcessStep('sessionChats'));
+      await this.process.waitForUiYield();
+      contextualChatsChanged = this.chatsSeed.seedContextualRecordsForUser(
+        normalizedUserId,
+        this.eventsSeed.queryItemsByUser(normalizedUserId)
+      );
     }
 
-    onProgress?.(bootstrapProcessStep('session'));
-    await this.process.waitForUiYield();
-
-    onProgress?.(bootstrapProcessStep('sessionChats'));
-    await this.process.waitForUiYield();
-    const contextualChatsChanged = this.chatsSeed.seedContextualRecordsForUser(
-      normalizedUserId,
-      this.eventsSeed.queryItemsByUser(normalizedUserId)
-    );
     const activityCountersChanged = this.usersSeed.stampSeededActivityCountsForUser(normalizedUserId);
     const impressionsChanged = this.usersSeed.stampSeededImpressionsForUser(normalizedUserId);
-    if (contextualChatsChanged || filterPreferencesChanged || activityCountersChanged || impressionsChanged) {
-      onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
-      await this.usersSeed.flushToIndexedDb();
-      await this.process.waitForUiYield();
-    }
+    await this.flushSessionTablesIfChanged(onProgress, {
+      filterPreferencesChanged,
+      activityCountersChanged,
+      impressionsChanged,
+      contextualChatsChanged
+    });
 
-    this.readyUserIds.add(normalizedUserId);
-    onProgress?.(bootstrapProcessStep('sessionReady'));
+    this.emitSessionReady(onProgress, alreadyReady ? undefined : normalizedUserId);
   }
 
   private async runMemberBootstrap(): Promise<void> {
@@ -164,44 +166,54 @@ export class SeedDemoBootstrapService {
       const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;
 
       await this.runBootstrapStep('selector');
-      await this.runBootstrapStep('helpCenter', async () => {
-        await this.initOptionalHelpCenter();
+      await this.runBootstrapStep('chats', async () => {
+        this.chatsSeed.seedDefaults();
+        await this.flushBootstrapTables([CHATS_TABLE_NAME]);
       });
-      await this.runBootstrapStep('ideaPosts', async () => { await this.ideaPostsSeed.seedDefaults(); });
-      await this.runBootstrapStep('chats', () => this.chatsSeed.seedDefaults());
       await this.runBootstrapStep('events', () => this.eventsSeed.seedDefaults());
-      await this.runBootstrapStep('users', () => {
+      await this.runBootstrapStep('users', async () => {
         seededUsers = this.usersSeed.seedDefaults();
         seededUserIds = seededUsers
           .map(user => user.id.trim())
           .filter(userId => userId.length > 0);
         this.registry.registerUsers(seededUsers);
+        await this.flushBootstrapTables([USERS_TABLE_NAME]);
       });
-      await this.runBootstrapStep('contacts', () => {
+      await this.runBootstrapStep('contacts', async () => {
         this.contactsSeed.seedDefaultContacts(seededUsers);
+        await this.flushBootstrapTables([CONTACTS_TABLE_NAME]);
       });
-      this.profileExperiencesSeed.seedDefaults();
-      await this.runBootstrapStep('feedback', () => {
+      await this.runBootstrapStep('profileExperiences', async () => {
+        this.profileExperiencesSeed.seedDefaults();
+        await this.flushBootstrapTables([PROFILE_EXPERIENCES_TABLE_NAME]);
+      });
+      await this.runBootstrapStep('feedback', async () => {
         const eventItemsByUserId = this.eventsSeed.queryEventItemsByUsers(seededUserIds);
         const itemsByUserId = this.eventsSeed.queryItemsByUsers(seededUserIds);
         this.registry.registerEventsByUserId(itemsByUserId);
         this.eventFeedbackSeed.seedDefaults(seededUsers, eventItemsByUserId, itemsByUserId);
+        await this.flushBootstrapTables([EVENT_FEEDBACK_TABLE_NAME]);
       });
-      await this.runBootstrapStep('ratings', () => this.usersRatingsSeed.seedDefaults(seededUsers));
+      await this.runBootstrapStep('ratings', async () => {
+        this.usersRatingsSeed.seedDefaults(seededUsers);
+        await this.flushBootstrapTables([USER_RATES_TABLE_NAME]);
+      });
       await this.runBootstrapStep('assets', () => {
         assetsByUserId = this.assetsSeed.seedDefaults(ownerUserIds(), seededUsers);
         this.registry.registerAssetsByUserId(assetsByUserId);
       });
-      await this.runBootstrapStep('activityMembers', () => {
+      await this.runBootstrapStep('activityMembers', async () => {
         this.activityMembersSeed.seedDefaults(ownerUserIds(), assetsByUserId, seededUsers);
+        await this.flushBootstrapTables([ACTIVITY_MEMBERS_TABLE_NAME, EVENTS_TABLE_NAME]);
       });
-      await this.runBootstrapStep('activityResources', () => {
+      await this.runBootstrapStep('activityResources', async () => {
         const sourceRecordsByUserId = this.registry.getEventsByUserId().size > 0
           ? new Map(this.registry.getEventsByUserId())
           : this.eventsSeed.queryItemsByUsers(seededUserIds);
         this.activityResourcesSeed.seedDefaults(ownerUserIds(), sourceRecordsByUserId, assetsByUserId);
+        await this.flushBootstrapTables([ACTIVITY_RESOURCES_TABLE_NAME, ASSETS_TABLE_NAME]);
       });
-      await this.runBootstrapStep('indexedDb', () => this.usersSeed.flushToIndexedDb());
+      await this.runBootstrapStep('indexedDb');
 
       this.selectorReady = true;
       this.emitProgress(bootstrapProcessStep('ready'));
@@ -252,23 +264,36 @@ export class SeedDemoBootstrapService {
       let seededUsers: readonly UserDto[] = [];
 
       await this.runBootstrapStep('selector');
-      await this.runBootstrapStep('helpCenter', () => this.adminSeed.seedHelpCenter());
-      await this.runBootstrapStep('ideaPosts', () => this.adminSeed.seedIdeaPosts());
+      await this.runBootstrapStep('helpCenter', async () => {
+        await this.adminSeed.seedHelpCenter();
+        await this.flushBootstrapTables([HELP_CENTER_TABLE_NAME]);
+      });
+      await this.runBootstrapStep('ideaPosts', async () => {
+        await this.adminSeed.seedIdeaPosts();
+        await this.flushBootstrapTables([IDEA_POSTS_TABLE_NAME]);
+      });
       await this.runBootstrapStep('users', () => {
         seededUsers = this.adminSeed.seedUsers();
         this.registry.registerUsers(seededUsers);
       });
-      await this.runBootstrapStep('ratings', () => this.adminSeed.seedUserRatings(seededUsers));
+      await this.runBootstrapStep('ratings', async () => {
+        this.adminSeed.seedUserRatings(seededUsers);
+        await this.flushBootstrapTables([USER_RATES_TABLE_NAME]);
+      });
       await this.runBootstrapStep('chats', () => this.adminSeed.seedChats());
       await this.runBootstrapStep('assets', () => this.adminSeed.seedDemoAdminProfiles());
       const seedState = await this.runBootstrapStep('feedback', () => this.adminSeed.seedDemoAdminStores());
-      await this.runBootstrapStep('contacts', () => this.adminSeed.seedDemoAdminMenuCounters(seedState));
+      await this.runBootstrapStep('contacts', async () => {
+        await this.adminSeed.seedDemoAdminMenuCounters(seedState);
+        await this.flushBootstrapTables([USERS_TABLE_NAME]);
+      });
       await this.runBootstrapStep('activityMembers', async () => {
         await this.adminSeed.seedDemoAdminSupport('admin-demo-ava');
         await this.adminSeed.seedDemoAdminSupport('admin-demo-noel');
+        await this.flushBootstrapTables([CHATS_TABLE_NAME, SHARE_TOKENS_TABLE_NAME]);
       });
       await this.runBootstrapStep('affinityGraph', () => this.adminSeed.buildAndWriteAffinityGraphSnapshot());
-      await this.runBootstrapStep('indexedDb', () => this.usersSeed.flushToIndexedDb());
+      await this.runBootstrapStep('indexedDb');
 
       this.adminSelectorReady = true;
       this.emitProgress(bootstrapProcessStep('ready'));
@@ -277,19 +302,70 @@ export class SeedDemoBootstrapService {
     }
   }
 
-  private async initOptionalHelpCenter(): Promise<void> {
-    try {
-      await this.helpCenterSeed.seedDefaults();
-    } catch {
-      // Help, privacy, and explanation content should never block demo user bootstrap.
-    }
-  }
-
   private async runBootstrapStep<T = void>(
     stage: BootstrapProcessStage,
     work?: () => T | Promise<T>
   ): Promise<T> {
     return await this.process.runStep(bootstrapProcessStep(stage), state => this.emitProgress(state), work);
+  }
+
+  private async flushBootstrapTables(tableNames: readonly string[]): Promise<void> {
+    const uniqueTableNames = [...new Set(tableNames.map(tableName => tableName.trim()).filter(Boolean))];
+    if (uniqueTableNames.length === 0) {
+      return;
+    }
+    const state = this.memoryDb.read() as Record<string, unknown>;
+    for (const tableName of uniqueTableNames) {
+      await this.memoryDb.writeIndexedDbTableEntry(tableName, state[tableName]);
+    }
+    await this.process.waitForUiYield();
+  }
+
+  private async flushSessionTablesIfChanged(
+    onProgress: BootstrapProcessListener | undefined,
+    options: {
+      filterPreferencesChanged: boolean;
+      activityCountersChanged: boolean;
+      impressionsChanged: boolean;
+      contextualChatsChanged: boolean;
+    }
+  ): Promise<void> {
+    const tableNames = this.sessionFlushTables(options);
+    if (tableNames.length === 0) {
+      return;
+    }
+    onProgress?.(bootstrapProcessStep('sessionIndexedDb'));
+    await this.flushBootstrapTables(tableNames);
+  }
+
+  private emitSessionReady(
+    onProgress: BootstrapProcessListener | undefined,
+    readyUserId?: string
+  ): void {
+    const normalizedReadyUserId = `${readyUserId ?? ''}`.trim();
+    if (normalizedReadyUserId) {
+      this.readyUserIds.add(normalizedReadyUserId);
+    }
+    onProgress?.(bootstrapProcessStep('sessionReady'));
+  }
+
+  private sessionFlushTables(options: {
+    filterPreferencesChanged: boolean;
+    activityCountersChanged: boolean;
+    impressionsChanged: boolean;
+    contextualChatsChanged: boolean;
+  }): string[] {
+    const tableNames: string[] = [];
+    if (options.filterPreferencesChanged) {
+      tableNames.push(USER_FILTER_PREFERENCES_TABLE_NAME);
+    }
+    if (options.activityCountersChanged || options.impressionsChanged) {
+      tableNames.push(USERS_TABLE_NAME);
+    }
+    if (options.contextualChatsChanged) {
+      tableNames.push(CHATS_TABLE_NAME);
+    }
+    return tableNames;
   }
 
   private emitProgress(state: BootstrapProcessState): void {

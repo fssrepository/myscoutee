@@ -34,10 +34,6 @@ export class SeedUsersRepository {
     await this.memoryDb.whenReady();
   }
 
-  async flushToIndexedDb(): Promise<void> {
-    await this.memoryDb.flushToIndexedDb();
-  }
-
   queryUserById(userId: string): UserDto | null {
     const normalizedUserId = `${userId ?? ''}`.trim();
     if (!normalizedUserId) {
