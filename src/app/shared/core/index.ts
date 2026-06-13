@@ -18,7 +18,6 @@ export {
   type NavigatorEventFeedbackRequest,
   type UserImpressionChangeFlags
 } from './base/context';
-export { restrictedAreaGuard } from './base/guards';
 export {
   ActivitiesService,
   type ActivitiesEventDisplaySync
@@ -107,7 +106,6 @@ export {
 } from './base/services/session.service';
 export * from './base/builders';
 export * from './base/converters';
-export * from './base/formatters';
 export type * from './contracts';
 export * from './base/models';
 export * from './local/seed';

@@ -3,10 +3,10 @@ import type * as AppTypes from '../../shared/core/base/models';
 import type * as ActivityContracts from '../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
-import { EventFeedbackBuilder } from '../../shared/core/base/builders';
 import { EventsService } from '../../shared/core/base';
 import { AppContext, type UserDto } from '../../shared/core';
-import type { ActivityEventSeedItem } from '../../shared/core/base/models/event-seed-item.model';
+import { SeedEventFeedbackBuilder } from '../../shared/core/local/seed/builders';
+import type { ActivityEventSeedItem } from '../../shared/core/local/seed/entity';
 import type { EventFeedbackListFilter } from '../../shared/core/common/constants';
 import type { EventFeedbackPersistedState } from '../../shared/core/local/source/entity/event.entity';
 
@@ -1130,7 +1130,7 @@ export class EventFeedbackPopupStateService {
   private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
     const source = this.sourceRef();
     if (!source) return [];
-    return EventFeedbackBuilder.buildEventFeedbackCards({
+    return SeedEventFeedbackBuilder.buildEventFeedbackCards({
       eventItems: source.eventItems,
       users: source.users,
       activeUser: source.activeUser,

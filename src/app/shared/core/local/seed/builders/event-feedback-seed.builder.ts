@@ -1,9 +1,8 @@
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityMemberRole } from '../../../common/constants';
-import { EventFeedbackBuilder } from '../../../base/builders';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
-import type { ActivityEventSeedItem } from '../../../base/models/event-seed-item.model';
+import type { ActivityEventSeedItem } from '../entity';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { EventFeedbackCard, EventFeedbackOption, EventFeedbackTraitOption } from '../../../base/models';
 import type { SubmittedEventFeedbackAnswer } from '../../../contracts/activity.interface';
@@ -22,7 +21,75 @@ export class SeedEventFeedbackBuilder {
     attendeeRejoinOptions: EventFeedbackOption[];
     personalityTraitOptions: EventFeedbackTraitOption[];
   }): EventFeedbackCard[] {
-    return EventFeedbackBuilder.buildEventFeedbackCards(options);
+    const nowMs = Date.now();
+    const eventCards: EventFeedbackCard[] = [];
+    for (const item of options.eventItems) {
+      if (item.isAdmin) {
+        continue;
+      }
+      const startMs = this.eventStartAtMs(item.id, options.eventDatesById);
+      if (startMs === null || nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
+        continue;
+      }
+      const eventLabel = this.eventFeedbackWhenLabel(item.id, options.eventDatesById);
+      const host = this.feedbackHostUserForEvent(item, options.users, options.activeUser);
+      const attendees = this.feedbackAttendeesForEvent(item, host.id, options.users, options.activeUser.id);
+      eventCards.push({
+        id: `feedback-event-${item.id}`,
+        eventId: item.id,
+        kind: 'event',
+        targetUserId: host.id,
+        targetRole: 'Admin',
+        icon: 'event_available',
+        imageUrl: options.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-card-${item.id}/1200/700`,
+        toneClass: 'feedback-card-tone-event feedback-role-admin',
+        heading: item.title,
+        subheading: `${eventLabel} · ${item.shortDescription}`,
+        identityTitle: `${host.name} · Host`,
+        identitySubtitle: `Admin · ${host.city}`,
+        identityStatusClass: 'member-status-admin',
+        identityStatusIcon: 'admin_panel_settings',
+        questionPrimary: `How did ${item.title} feel for you overall?`,
+        questionSecondary: `What should ${host.name} improve next time?`,
+        primaryOptions: options.eventOverallOptions,
+        secondaryOptions: options.hostImproveOptions,
+        traitQuestion: `Which traits describe ${host.name} best as the event creator?`,
+        traitOptions: options.personalityTraitOptions,
+        selectedTraitIds: [],
+        answerPrimary: '',
+        answerSecondary: ''
+      });
+      for (const attendee of attendees) {
+        const attendeeRole = this.feedbackRoleForAttendee(item.id, attendee.id);
+        eventCards.push({
+          id: `feedback-attendee-${item.id}-${attendee.id}`,
+          eventId: item.id,
+          kind: 'attendee',
+          attendeeUserId: attendee.id,
+          targetUserId: attendee.id,
+          targetRole: attendeeRole,
+          icon: 'groups',
+          imageUrl: AppUtils.firstImageUrl(attendee.images),
+          toneClass: `feedback-card-tone-attendee ${this.feedbackRoleToneClass(attendeeRole)}`,
+          heading: `${attendee.name} · ${item.title}`,
+          subheading: `Attendee feedback · ${eventLabel}`,
+          identityTitle: `${attendee.name}, ${attendee.age}`,
+          identitySubtitle: `${attendeeRole} · ${attendee.city}`,
+          identityStatusClass: this.feedbackRoleStatusClass(attendeeRole),
+          identityStatusIcon: this.feedbackRoleStatusIcon(attendeeRole),
+          questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
+          questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
+          primaryOptions: options.attendeeCollabOptions,
+          secondaryOptions: options.attendeeRejoinOptions,
+          traitQuestion: `Which personality traits best matched ${attendee.name} in this event?`,
+          traitOptions: options.personalityTraitOptions,
+          selectedTraitIds: [],
+          answerPrimary: '',
+          answerSecondary: ''
+        });
+      }
+    }
+    return eventCards;
   }
 
   static buildSeededSubmittedState(options: {

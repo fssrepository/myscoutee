@@ -8,7 +8,7 @@ import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ActivityEventSeedItem, ActivityHostingSeedItem, ActivityInvitationSeedItem } from '../../../base/models/event-seed-item.model';
+import type { ActivityEventSeedItem, ActivityHostingSeedItem, ActivityInvitationSeedItem } from '../entity';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../../contracts/activity.interface';
 

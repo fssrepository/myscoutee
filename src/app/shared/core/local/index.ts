@@ -8,7 +8,7 @@ export type { ContactsMemorySchema, ProfileExperiencesMemorySchema } from './sou
 export { ASSETS_TABLE_NAME, type AssetRecord, type AssetsMemorySchema } from './source/entity/asset.entity';
 export { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersMemorySchema, type ActivityResourcesMemorySchema, type ActivitySubEventResourceRecord } from './source/entity/activity.entity';
 
-export { type CountryPartition, type CountryPartitionBounds } from '../base/models/country-partitions.model';
+export { type CountryPartition, type CountryPartitionBounds } from './source/entity/country-partition.entity';
 export { type ActivityEventRecord } from '../contracts/activity.interface';
 
 

@@ -1,4 +1,4 @@
-import type { LocationCoordinates } from '../../contracts/user.interface';
+import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type {
   EventBlindMode,
   EventPolicyItem,
@@ -7,9 +7,9 @@ import type {
   EventSlotTemplate,
   SubEventFormItem,
   SubEventsDisplayMode
-} from '../../contracts/event.interface';
-import type { ActivityPendingReason, EventVisibility } from '../../common/constants';
-import type { PricingConfig } from '../../contracts/pricing.interface';
+} from '../../../contracts/event.interface';
+import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
+import type { PricingConfig } from '../../../contracts/pricing.interface';
 
 export interface ActivityInvitationSeedItem {
   id: string;

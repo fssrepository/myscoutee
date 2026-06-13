@@ -6,11 +6,12 @@ import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../base/db';
 import type { UserDto } from '../../../contracts/user.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../../source/entity/activity.entity';
-import type { ActivityEventSeedItem } from '../../../base/models/event-seed-item.model';
+import type { ActivityEventSeedItem } from '../entity';
 
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventFeedbackBuilder } from '../builders';
+import { ActivityEventSeedMapper } from '../mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -42,7 +43,7 @@ export class SeedEventFeedbackRepository {
         continue;
       }
       const seededRecords = SeedEventFeedbackBuilder.buildSeededPersistedStates({
-        eventItems: eventRecords.map(record => this.toDemoEventSeedItem(record)),
+        eventItems: eventRecords.map(record => ActivityEventSeedMapper.fromActivityEventRecord(record, { avatar: record.creatorInitials })),
         users,
         activeUser,
         eventDatesById: Object.fromEntries(eventRecords.map(record => [record.id, record.startAtIso])),
@@ -231,7 +232,7 @@ export class SeedEventFeedbackRepository {
     const pendingMemberUserIds = (summary.pendingMemberUserIds ?? [])
       .filter(userId => !acceptedMemberUserIds.includes(userId));
     return {
-      ...this.toDemoEventSeedItem(record),
+      ...ActivityEventSeedMapper.fromActivityEventRecord(record, { avatar: record.creatorInitials }),
       activity: 0,
       isAdmin: false,
       acceptedMembers: Math.max(record.acceptedMembers, acceptedMemberUserIds.length),
@@ -267,36 +268,5 @@ export class SeedEventFeedbackRepository {
       hash |= 0;
     }
     return Math.abs(hash);
-  }
-
-  private toDemoEventSeedItem(record: ActivityEventRecord): ActivityEventSeedItem {
-    return {
-      id: record.id,
-      avatar: record.creatorInitials,
-      title: record.title,
-      shortDescription: record.subtitle,
-      timeframe: record.timeframe,
-      activity: record.activity,
-      isAdmin: record.isAdmin,
-      creatorUserId: record.creatorUserId,
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
-      distanceKm: record.distanceKm,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      capacityTotal: record.capacityTotal,
-      visibility: record.visibility,
-      blindMode: record.blindMode,
-      imageUrl: record.imageUrl,
-      sourceLink: record.sourceLink,
-      location: record.location,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      ticketing: record.ticketing,
-      topics: [...record.topics],
-      rating: record.rating,
-      boost: record.boost,
-      published: record.published
-    };
   }
 }

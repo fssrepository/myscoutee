@@ -1,0 +1,56 @@
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import type { ActivityEventSeedItem } from '../entity';
+
+export class ActivityEventSeedMapper {
+  static fromActivityEventRecord(
+    record: ActivityEventRecord,
+    options: { avatar?: string } = {}
+  ): ActivityEventSeedItem {
+    return {
+      id: record.id,
+      avatar: options.avatar ?? record.avatar,
+      title: record.title,
+      shortDescription: record.subtitle,
+      timeframe: record.timeframe,
+      activity: record.activity,
+      isAdmin: record.isAdmin,
+      creatorUserId: record.creatorUserId,
+      creatorName: record.creatorName,
+      startAt: record.startAtIso,
+      endAt: record.endAtIso,
+      distanceKm: record.distanceKm,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      pendingReason: record.pendingReason,
+      visibility: record.visibility,
+      blindMode: record.blindMode,
+      imageUrl: record.imageUrl,
+      sourceLink: record.sourceLink,
+      location: record.location,
+      locationCoordinates: record.locationCoordinates ? { ...record.locationCoordinates } : undefined,
+      capacityMin: record.capacityMin,
+      capacityMax: record.capacityMax,
+      autoInviter: record.autoInviter,
+      frequency: record.frequency,
+      pricing: record.pricing,
+      policies: record.policies ? [...record.policies] : undefined,
+      slotsEnabled: record.slotsEnabled,
+      slotTemplates: record.slotTemplates ? [...record.slotTemplates] : undefined,
+      parentEventId: record.parentEventId,
+      slotTemplateId: record.slotTemplateId,
+      generated: record.generated,
+      eventType: record.eventType,
+      nextSlot: record.nextSlot,
+      upcomingSlots: record.upcomingSlots ? [...record.upcomingSlots] : undefined,
+      topics: [...record.topics],
+      subEvents: record.subEvents ? [...record.subEvents] : undefined,
+      subEventsDisplayMode: record.subEventsDisplayMode,
+      rating: record.rating,
+      boost: record.boost,
+      affinity: record.affinity,
+      ticketing: record.ticketing,
+      published: record.published
+    };
+  }
+}

@@ -3,8 +3,7 @@ import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import type { RateRecord } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
-import { formatActivityMonthDayLabel } from '../formatters';
+import { formatActivityMonthDayLabel, type ImageCardData, type ImageCardPerson, type PairCardSlot } from '../../../ui';
 
 interface BuildActivityRateRowsOptions {
   activeUserId: string;

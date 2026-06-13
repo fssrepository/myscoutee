@@ -27,3 +27,9 @@ export {
   type SeedDemoBootstrapMode
 } from './services/demo-bootstrap.service';
 export { SeedStaticContentService } from './services/static-content.service';
+export type {
+  ActivityEventSeedItem,
+  ActivityHostingSeedItem,
+  ActivityInvitationSeedItem
+} from './entity';
+export { ActivityEventSeedMapper } from './mappers';

@@ -2,6 +2,7 @@ export * from './activity.entity';
 export * from './asset.entity';
 export * from './chat.entity';
 export * from './content.entity';
+export * from './country-partition.entity';
 export * from './event.entity';
 export * from './profile.entity';
 export * from './rate.entity';

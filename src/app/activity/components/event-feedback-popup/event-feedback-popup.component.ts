@@ -7,7 +7,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
 import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
-import type { ActivityEventSeedItem } from '../../../shared/core/base/models/event-seed-item.model';
+import type { ActivityEventSeedItem } from '../../../shared/core/local/seed/entity';
+import { ActivityEventSeedMapper } from '../../../shared/core/local/seed/mappers';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -384,13 +385,13 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   public get eventItems(): ActivityEventSeedItem[] {
     return this.uniqueEventRecords()
       .filter(record => record.type === 'events' && !record.isTrashed && !record.isInvitation && !record.isAdmin)
-      .map(record => this.toDemoEventSeedItem(record));
+      .map(record => ActivityEventSeedMapper.fromActivityEventRecord(record));
   }
 
   public get ownedEventItems(): ActivityEventSeedItem[] {
     return this.uniqueEventRecords()
       .filter(record => !record.isTrashed && !record.isInvitation && !!record.isAdmin)
-      .map(record => this.toDemoEventSeedItem(record));
+      .map(record => ActivityEventSeedMapper.fromActivityEventRecord(record));
   }
 
   private get fallbackUsers(): UserDto[] {
@@ -1066,42 +1067,5 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       default:
         return 'No pending events yet. New items appear about 2 hours after event start.';
     }
-  }
-
-  private toDemoEventSeedItem(record: ActivityEventRecord): ActivityEventSeedItem {
-    return {
-      id: record.id,
-      avatar: record.avatar,
-      title: record.title,
-      shortDescription: record.subtitle,
-      timeframe: record.timeframe,
-      activity: record.activity,
-      isAdmin: record.isAdmin,
-      creatorUserId: record.creatorUserId,
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
-      distanceKm: record.distanceKm,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      capacityTotal: record.capacityTotal,
-      visibility: record.visibility,
-      blindMode: record.blindMode,
-      imageUrl: record.imageUrl,
-      sourceLink: record.sourceLink,
-      location: record.location,
-      locationCoordinates: record.locationCoordinates ? { ...record.locationCoordinates } : undefined,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      autoInviter: record.autoInviter,
-      frequency: record.frequency,
-      topics: [...record.topics],
-      subEvents: record.subEvents ? [...record.subEvents] : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode,
-      rating: record.rating,
-      boost: record.boost,
-      affinity: record.affinity,
-      ticketing: record.ticketing,
-      published: record.published
-    };
   }
 }
