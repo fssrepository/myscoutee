@@ -5,18 +5,18 @@ import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder, UserProfileStat
 import type * as AppTypes from '../../../core/base/models';
 import type { UserDto } from '../../contracts/user.interface';
 import { LocalMemoryDb } from '../../base/db';
-import { LocalAssetsMapper } from '../mappers/assets.mapper';
+import { LocalAssetsMapper } from '../mappers/asset.mapper';
 import { LocalUsersRepository } from './users.repository';
 import {
   ASSETS_TABLE_NAME,
   type AssetRecord,
   type AssetsRecordCollection
-} from '../../base/models/assets.model';
+} from '../entity/asset.entity';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   type ActivityMemberRecord,
   type ActivityMembersRecordCollection
-} from '../../base/models/activity-members.model';
+} from '../entity/activity.entity';
 
 @Injectable({
   providedIn: 'root'

@@ -4,13 +4,13 @@ import { AppUtils } from '../../../app-utils';
 import { ActivityResourceBuilder } from '../../base/builders';
 import { LocalMemoryDb } from '../../base/db';
 import type * as AppTypes from '../../base/models';
-import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../base/models/activity-members.model';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../local/entity/activity.entity';
 import {
   ACTIVITY_RESOURCES_TABLE_NAME,
   type ActivityResourcesRecordCollection,
   type ActivitySubEventResourceRecord
-} from '../../base/models/activity-resources.model';
-import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../base/models/assets.model';
+} from '../../local/entity/activity.entity';
+import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../local/entity/asset.entity';
 import { EVENTS_TABLE_NAME, type ActivityEventRecord } from '../../base/models/events.model';
 import { SeedScheduleBuilder, SeedUserBuilder } from '../builders';
 

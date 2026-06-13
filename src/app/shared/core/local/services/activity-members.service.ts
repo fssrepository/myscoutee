@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
-import type { ActivityMemberRecord } from '../../base/models/activity-members.model';
+import type { ActivityMemberRecord } from '../entity/activity.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';

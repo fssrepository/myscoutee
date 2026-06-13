@@ -6,9 +6,11 @@ import type {
   UserRateOutboxRecord,
   UserRateRecord
 } from '../../contracts/activity.interface';
-import { ASSETS_TABLE_NAME } from '../models/assets.model';
-import { ACTIVITY_MEMBERS_TABLE_NAME } from '../models/activity-members.model';
-import { ACTIVITY_RESOURCES_TABLE_NAME } from '../models/activity-resources.model';
+import { ASSETS_TABLE_NAME } from '../../local/entity/asset.entity';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  ACTIVITY_RESOURCES_TABLE_NAME
+} from '../../local/entity/activity.entity';
 import { CHATS_TABLE_NAME } from '../models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
 import { EVENTS_TABLE_NAME } from '../models/events.model';

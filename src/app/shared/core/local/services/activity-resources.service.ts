@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from './route-delay.service';
 import type * as AppTypes from '../../../core/base/models';
+import type { ActivitySubEventResourceRecord } from '../entity/activity.entity';
 import { LocalActivityResourcesMapper } from '../mappers';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
@@ -45,7 +46,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return savedRecord ? this.toState(savedRecord) : null;
   }
 
-  private toState(record: import('../../base/models/activity-resources.model').ActivitySubEventResourceRecord): AppTypes.ActivitySubEventResourceState | null {
+  private toState(record: ActivitySubEventResourceRecord): AppTypes.ActivitySubEventResourceState | null {
     const assets = this.assetsRepository.peekOwnedAssetsByUser(record.assetOwnerUserId);
     return LocalActivityResourcesMapper.toState(record, assets);
   }

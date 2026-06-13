@@ -6,7 +6,7 @@ import type { UserDto } from '../../contracts/user.interface';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   type ActivityMemberRecord
-} from '../../base/models/activity-members.model';
+} from '../../local/entity/activity.entity';
 import type { ActivityEventSeedItem } from '../../base/models/event-seed-item.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';
 import type {

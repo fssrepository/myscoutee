@@ -14,7 +14,7 @@ import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   type ActivityMemberRecord,
   type ActivityMembersRecordCollection
-} from '../../base/models/activity-members.model';
+} from '../entity/activity.entity';
 import { UserProfileStateBuilder } from '../../base/builders';
 import { LocalUsersRepository } from './users.repository';
 

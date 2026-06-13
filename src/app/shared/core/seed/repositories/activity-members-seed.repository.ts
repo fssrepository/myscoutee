@@ -11,8 +11,8 @@ import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   type ActivityMemberRecord,
   type ActivityMembersRecordCollection
-} from '../../base/models/activity-members.model';
-import { ASSETS_TABLE_NAME, type AssetRecord } from '../../base/models/assets.model';
+} from '../../local/entity/activity.entity';
+import { ASSETS_TABLE_NAME, type AssetRecord } from '../../local/entity/asset.entity';
 import {
   EVENTS_TABLE_NAME,
   type ActivityEventRecord,

@@ -20,7 +20,7 @@ import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   type ActivityMemberRecord,
   type ActivityMembersRecordCollection
-} from '../../base/models/activity-members.model';
+} from '../entity/activity.entity';
 import type * as AppTypes from '../../../core/base/models';
 import type { ActivitiesEventSyncPayload } from '../../../core/base/models';
 import { EventEditorBuilder } from '../../../core/base/builders';

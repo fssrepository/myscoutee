@@ -14,7 +14,7 @@ import { LocalMemoryDb } from '../../base/db';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
-} from '../../base/models/activity-members.model';
+} from '../entity/activity.entity';
 import {
   type UserRatesRecordCollection,
   USER_RATES_TABLE_NAME,

@@ -7,7 +7,7 @@ import {
   ACTIVITY_RESOURCES_TABLE_NAME,
   type ActivityResourcesRecordCollection,
   type ActivitySubEventResourceRecord
-} from '../../base/models/activity-resources.model';
+} from '../entity/activity.entity';
 
 @Injectable({
   providedIn: 'root'

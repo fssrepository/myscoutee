@@ -1,6 +1,8 @@
-import type { AssetsMemorySchema } from './assets.model';
-import type { ActivityMembersMemorySchema } from './activity-members.model';
-import type { ActivityResourcesMemorySchema } from './activity-resources.model';
+import type {
+  ActivityMembersMemorySchema,
+  ActivityResourcesMemorySchema,
+  AssetsMemorySchema
+} from '../../local/entity';
 import type { ChatsMemorySchema } from './chats.model';
 import type { EventFeedbackMemorySchema } from './event-feedback.model';
 import type { ActivityEventsMemorySchema } from './events.model';

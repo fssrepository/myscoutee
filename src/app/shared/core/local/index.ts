@@ -1,6 +1,12 @@
-export { ASSETS_TABLE_NAME, type AssetRecord, type AssetsMemorySchema } from '../base/models/assets.model';
-export { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersMemorySchema } from '../base/models/activity-members.model';
-export { ACTIVITY_RESOURCES_TABLE_NAME, type ActivitySubEventResourceRecord, type ActivityResourcesMemorySchema } from '../base/models/activity-resources.model';
+export { ASSETS_TABLE_NAME, type AssetRecord, type AssetsMemorySchema } from './entity/asset.entity';
+export {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  ACTIVITY_RESOURCES_TABLE_NAME,
+  type ActivityMemberRecord,
+  type ActivityMembersMemorySchema,
+  type ActivityResourcesMemorySchema,
+  type ActivitySubEventResourceRecord
+} from './entity/activity.entity';
 export { CHATS_TABLE_NAME, type ChatThreadRecord, type ChatsMemorySchema } from '../base/models/chats.model';
 export { type CountryPartition, type CountryPartitionBounds } from '../base/models/country-partitions.model';
 export { EVENTS_TABLE_NAME, type ActivityEventRecord, type ActivityEventsMemorySchema } from '../base/models/events.model';

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../base/db';
 import type { UserDto } from '../../contracts/user.interface';
-import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../base/models/assets.model';
+import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../local/entity/asset.entity';
 import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';
 import { EVENTS_TABLE_NAME, type ActivityEventRecord } from '../../base/models/events.model';

@@ -3,9 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../../base/models';
 import { LocalMemoryDb } from '../../base/db';
-import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../base/models/activity-members.model';
-import { ACTIVITY_RESOURCES_TABLE_NAME } from '../../base/models/activity-resources.model';
-import { ASSETS_TABLE_NAME } from '../../base/models/assets.model';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  ACTIVITY_RESOURCES_TABLE_NAME
+} from '../../local/entity/activity.entity';
+import { ASSETS_TABLE_NAME } from '../../local/entity/asset.entity';
 import { CHATS_TABLE_NAME } from '../../base/models/chats.model';
 import { CONTACTS_TABLE_NAME } from '../../base/models/contacts.model';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../../base/models/event-feedback.model';

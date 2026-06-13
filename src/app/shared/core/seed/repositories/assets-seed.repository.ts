@@ -9,7 +9,7 @@ import {
   ASSETS_TABLE_NAME,
   type AssetRecord,
   type AssetsRecordCollection
-} from '../../base/models/assets.model';
+} from '../../local/entity/asset.entity';
 import { UserProfileStateBuilder } from '../../base/builders';
 import { SeedAssetBuilder, SeedScheduleBuilder } from '../builders';
 

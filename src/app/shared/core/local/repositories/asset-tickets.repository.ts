@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { LocalEventsRepository } from './events.repository';
-import { LocalAssetTicketsMapper } from '../mappers/asset-tickets.mapper';
+import { LocalAssetTicketsMapper } from '../mappers/asset.mapper';
 
 @Injectable({
   providedIn: 'root'
