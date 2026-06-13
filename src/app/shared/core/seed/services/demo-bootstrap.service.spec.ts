@@ -99,7 +99,7 @@ describe('Demo bootstrap seeding', () => {
     const state = memoryDb.read();
     expect(state[USERS_TABLE_NAME].ids).toContain('u1');
     expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
-    expect(state[USERS_TABLE_NAME].byId.u1?.admin).not.toBe(true);
+    expect(state[USERS_TABLE_NAME].byId['u1']?.admin).not.toBe(true);
     expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
     expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
     expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
@@ -121,7 +121,7 @@ describe('Demo bootstrap seeding', () => {
     const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
     expect(state[USERS_TABLE_NAME].ids).toContain('u1');
     expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
-    expect(state[USERS_TABLE_NAME].byId.u1?.admin).not.toBe(true);
+    expect(state[USERS_TABLE_NAME].byId['u1']?.admin).not.toBe(true);
     expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
     expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
     expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
