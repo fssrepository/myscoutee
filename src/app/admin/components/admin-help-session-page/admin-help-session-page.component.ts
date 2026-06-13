@@ -11,6 +11,7 @@ import {
   type ShareTokenResolvedItem
 } from '../../../shared/core';
 import type { AssetCardDTO } from '../../../shared/core/base/dto';
+import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 
 @Component({
@@ -271,7 +272,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return parsed.pathname || '/game';
   }
 
-  private buildSupportFallbackAsset(assetType: 'Car' | 'Accommodation' | 'Supplies', parsed: URL): AssetCardDTO | undefined {
+  private buildSupportFallbackAsset(assetType: AssetType, parsed: URL): AssetCardDTO | undefined {
     const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
     if (!assetId) {
       return undefined;
@@ -312,11 +313,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return Math.max(0, Math.trunc(Number(parsed.searchParams.get(key)) || 0));
   }
 
-  private defaultSupportAssetCity(assetType: 'Car' | 'Accommodation' | 'Supplies'): string {
+  private defaultSupportAssetCity(assetType: AssetType): string {
     return assetType === 'Supplies' ? 'Austin' : '';
   }
 
-  private defaultSupportAssetImage(assetType: 'Car' | 'Accommodation' | 'Supplies', seed: string): string {
+  private defaultSupportAssetImage(assetType: AssetType, seed: string): string {
     const flavor = assetType === 'Car'
       ? 'road'
       : assetType === 'Accommodation'
@@ -347,7 +348,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
   }
 
-  private toAssetFilter(value: string | null): 'Car' | 'Accommodation' | 'Supplies' | null {
+  private toAssetFilter(value: string | null): AssetType | null {
     switch (`${value ?? ''}`.trim()) {
       case 'Car':
         return 'Car';

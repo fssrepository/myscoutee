@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../contracts/user.interface';
-import type { HelpCenterRevision, HelpCenterState } from '../models';
+import type { HelpCenterRevision, HelpCenterState } from '../../contracts';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey =

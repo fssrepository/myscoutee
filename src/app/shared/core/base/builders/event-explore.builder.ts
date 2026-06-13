@@ -1,7 +1,8 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../contracts';
 import type { CardRenderState, InfoCardData, InfoCardMenuAction } from '../../../ui';
-import type { ActivityEventRecord } from '../models/events.model';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
 import type * as AppConstants from '../../common/constants';
@@ -87,7 +88,7 @@ export class EventExploreBuilder {
 
   static buildGroupLabel(
     record: ActivityEventRecord,
-    view: AppTypes.EventExploreView
+    view: ContractTypes.EventExploreView
   ): string {
     if (view === 'distance') {
       const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
@@ -232,7 +233,7 @@ export class EventExploreBuilder {
     return 'public';
   }
 
-  private static blindModeIcon(mode: AppTypes.EventBlindMode): string {
+  private static blindModeIcon(mode: ContractTypes.EventBlindMode): string {
     if (mode === 'Open Event') {
       return 'groups';
     }

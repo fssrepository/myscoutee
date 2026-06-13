@@ -17,7 +17,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/core';
 import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
-import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuTriggerComponent,
   CounterBadgePipe,

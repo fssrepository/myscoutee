@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../core/base/models';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
+import type { AuthMode } from '../../common/constants';
 import { AppContext } from '../context';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { FirebaseAuthService } from './firebase-auth.service';
@@ -36,7 +36,7 @@ export class SessionService {
     const current = this.sessionRef();
     return current?.kind === 'firebase' ? current.profile : null;
   });
-  readonly authMode: AppTypes.AuthMode = environment.firebaseLoginEnabled ? 'firebase' : 'selector';
+  readonly authMode: AuthMode = environment.firebaseLoginEnabled ? 'firebase' : 'selector';
 
   constructor() {
     this.syncActiveUserIdWithSession(this.sessionRef());

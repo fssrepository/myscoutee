@@ -3,7 +3,7 @@ import type { ActivityEventRecordCollection } from '../../source/entity/event.en
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../base/db';
-import { type ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventsBuilder } from '../builders';
 
 @Injectable({

@@ -1,5 +1,5 @@
 import type { SubmittedEventFeedbackAnswer } from '../../../contracts/activity.interface';
-import type { ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 export const EVENT_FEEDBACK_TABLE_NAME = APP_INDEXED_DB_KEYS.eventFeedback;

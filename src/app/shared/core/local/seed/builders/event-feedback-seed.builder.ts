@@ -1,5 +1,6 @@
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
 import { AppUtils } from '../../../../app-utils';
+import type { ActivityMemberRole } from '../../../common/constants';
 import { EventFeedbackBuilder } from '../../../base/builders';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 import type { ActivityEventSeedItem } from '../../../base/models/event-seed-item.model';
@@ -321,7 +322,7 @@ export class SeedEventFeedbackBuilder {
     return picked;
   }
 
-  private static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): 'Admin' | 'Manager' | 'Member' {
+  private static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): ActivityMemberRole {
     const seed = AppUtils.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
     if (seed % 11 === 0) {
       return 'Admin';
@@ -332,7 +333,7 @@ export class SeedEventFeedbackBuilder {
     return 'Member';
   }
 
-  private static feedbackRoleToneClass(role: 'Admin' | 'Manager' | 'Member'): string {
+  private static feedbackRoleToneClass(role: ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'feedback-role-admin';
     }
@@ -342,7 +343,7 @@ export class SeedEventFeedbackBuilder {
     return 'feedback-role-member';
   }
 
-  private static feedbackRoleStatusClass(role: 'Admin' | 'Manager' | 'Member'): string {
+  private static feedbackRoleStatusClass(role: ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'member-status-admin';
     }
@@ -352,7 +353,7 @@ export class SeedEventFeedbackBuilder {
     return 'member-status-member';
   }
 
-  private static feedbackRoleStatusIcon(role: 'Admin' | 'Manager' | 'Member'): string {
+  private static feedbackRoleStatusIcon(role: ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'admin_panel_settings';
     }

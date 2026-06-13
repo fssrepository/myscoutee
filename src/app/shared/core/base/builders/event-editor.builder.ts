@@ -1,13 +1,14 @@
 import type * as AppTypes from '../models';
-import type { ActivityEventRecord } from '../models/events.model';
+import type * as ContractTypes from '../../contracts';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { AppUtils } from '../../../app-utils';
 import { EventEditorConverter } from '../converters/event-editor.converter';
 import { PricingBuilder } from './pricing.builder';
 
 export class EventEditorBuilder {
   static cloneEventEditorPolicies(
-    items: readonly AppTypes.EventPolicyItem[]
-  ): AppTypes.EventPolicyItem[] {
+    items: readonly ContractTypes.EventPolicyItem[]
+  ): ContractTypes.EventPolicyItem[] {
     return items.map(item => ({
       id: `${item.id ?? ''}`.trim(),
       title: `${item.title ?? ''}`.trim(),
@@ -17,7 +18,7 @@ export class EventEditorBuilder {
   }
 
   static buildCreatedEventEditorId(
-    target: AppTypes.EventEditorTarget,
+    target: ContractTypes.EventEditorTarget,
     timestampMs = Date.now()
   ): string {
     return target === 'hosting' ? `h${timestampMs}` : `e${timestampMs}`;
@@ -34,8 +35,8 @@ export class EventEditorBuilder {
   }
 
   static cloneEventEditorSlotTemplates(
-    items: readonly AppTypes.EventSlotTemplate[]
-  ): AppTypes.EventSlotTemplate[] {
+    items: readonly ContractTypes.EventSlotTemplate[]
+  ): ContractTypes.EventSlotTemplate[] {
     return items.map(item => ({
       id: `${item.id ?? ''}`.trim(),
       startAt: `${item.startAt ?? ''}`.trim(),
@@ -90,7 +91,7 @@ export class EventEditorBuilder {
 
   static normalizedEventEditorCapacityRange(
     form: Pick<AppTypes.EventEditorDraftForm, 'capacityMin' | 'capacityMax'>
-  ): AppTypes.EventCapacityRange {
+  ): ContractTypes.EventCapacityRange {
     const min = this.normalizedEventEditorCapacityValueWithFloor(form.capacityMin, 0);
     const maxCandidate = this.normalizedEventEditorCapacityValueWithFloor(form.capacityMax, 0);
     const max = min !== null && maxCandidate !== null
@@ -115,7 +116,7 @@ export class EventEditorBuilder {
 
   static buildPersistedEventEditorSubEvents(
     items: readonly AppTypes.EventEditorSubEventItem[]
-  ): AppTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventFormItem[] {
     return items.map((item, index) => {
       const rawItem = item as AppTypes.EventEditorSubEventItem & Record<string, unknown>;
       const capacityMin = Math.max(0, Math.trunc(Number(item.capacityMin) || 0));
@@ -210,8 +211,8 @@ export class EventEditorBuilder {
   }
 
   static buildPersistedEventEditorSlotTemplates(
-    items: readonly AppTypes.EventSlotTemplate[]
-  ): AppTypes.EventSlotTemplate[] {
+    items: readonly ContractTypes.EventSlotTemplate[]
+  ): ContractTypes.EventSlotTemplate[] {
     return items.map((item, index) => {
       if (item.closed === true) {
         return {
@@ -247,8 +248,8 @@ export class EventEditorBuilder {
   }
 
   static buildPersistedEventEditorPolicies(
-    items: readonly AppTypes.EventPolicyItem[]
-  ): AppTypes.EventPolicyItem[] {
+    items: readonly ContractTypes.EventPolicyItem[]
+  ): ContractTypes.EventPolicyItem[] {
     return items
       .map((item, index) => ({
         id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
@@ -280,9 +281,9 @@ export class EventEditorBuilder {
 
   static buildEventEditorSyncPayload(params: {
     eventId: string;
-    target: AppTypes.EventEditorTarget;
+    target: ContractTypes.EventEditorTarget;
     form: AppTypes.EventEditorDraftForm;
-    subEventsDisplayMode: AppTypes.SubEventsDisplayMode;
+    subEventsDisplayMode: ContractTypes.SubEventsDisplayMode;
     acceptedMembers: number;
     pendingMembers: number;
     capacityTotal: number;
@@ -296,7 +297,7 @@ export class EventEditorBuilder {
     } | null;
     acceptedMemberUserIds: readonly string[];
     pendingMemberUserIds: readonly string[];
-  }): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
+  }): Omit<ContractTypes.ActivitiesEventSyncPayload, 'syncKey'> {
     return {
       id: params.eventId,
       target: params.target,

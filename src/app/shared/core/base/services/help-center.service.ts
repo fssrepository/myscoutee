@@ -8,7 +8,7 @@ import type {
   HelpCenterState,
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
-} from '../models';
+} from '../../contracts';
 import { AppContext } from '../context/app.context';
 import { BaseRouteModeService } from './base-route-mode.service';
 

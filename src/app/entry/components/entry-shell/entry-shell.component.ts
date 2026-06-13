@@ -7,7 +7,6 @@ import {
   UsersService,
   type UserLocationEligibilityResponseDto
 } from '../../../shared/core';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
@@ -15,6 +14,7 @@ import type {
   FirebaseAuthRequestDto,
   LocationCoordinates
 } from '../../../shared/core/contracts/user.interface';
+import type { AuthMode } from '../../../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -65,7 +65,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private loginEligibilityBusy = false;
   private entryContentLoadPromise: Promise<void> | null = null;
 
-  @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
+  @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() firebaseAuthIsBusy = false;
   @Input() firebaseAuthMessage = '';

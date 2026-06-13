@@ -2,12 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type {
-  ActivitiesFeedFilters,
-  ActivitiesPageRequest,
-  EventExploreFeedFilters
-} from '../../../core/base/models';
-import type { ChatRecord } from '../models/chat.model';
+import type * as ContractTypes from '../../contracts';
+import type { ActivitiesFeedFilters, ActivitiesPageRequest, EventExploreFeedFilters } from '../../contracts';
+import type { ChatRecord } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
@@ -17,7 +14,7 @@ import {
   toActivitiesPageRequest
 } from '../converters';
 import { AppContext } from '../context';
-import type { ActivityEventRecord } from '../models/events.model';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
@@ -25,7 +22,7 @@ import { SessionService } from './session.service';
 import { UsersService } from './users.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
-export interface ActivitiesEventDisplaySync extends AppTypes.ActivitiesEventSyncPayload {
+export interface ActivitiesEventDisplaySync extends ContractTypes.ActivitiesEventSyncPayload {
   displayRecord: ActivityEventRecord;
   displayRow: AppTypes.ActivityListRow;
 }
@@ -78,7 +75,7 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   async saveActivitiesEventSync(
-    payload: Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'>,
+    payload: Omit<ContractTypes.ActivitiesEventSyncPayload, 'syncKey'>,
     options: {
       activeUserId?: string | null;
     } = {}
@@ -194,7 +191,7 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
-  private normalizeEventExploreOrder(value: unknown): AppTypes.EventExploreOrder {
+  private normalizeEventExploreOrder(value: unknown): ContractTypes.EventExploreOrder {
     return value === 'past-events'
       || value === 'nearby'
       || value === 'most-relevant'
@@ -203,7 +200,7 @@ export class ActivitiesService extends BaseRouteModeService {
       : 'upcoming';
   }
 
-  private normalizeEventExploreView(value: unknown): AppTypes.EventExploreView {
+  private normalizeEventExploreView(value: unknown): ContractTypes.EventExploreView {
     return value === 'distance' ? 'distance' : 'day';
   }
 
@@ -320,7 +317,7 @@ export class ActivitiesService extends BaseRouteModeService {
       : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
   }
 
-  private isCalendarActivitiesView(view: AppTypes.ActivitiesView): boolean {
+  private isCalendarActivitiesView(view: ContractTypes.ActivitiesView): boolean {
     return view === 'week' || view === 'month';
   }
 

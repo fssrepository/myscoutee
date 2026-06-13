@@ -1,9 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
-import type {
-  ActivitiesEventSyncPayload,
-  SubEventLeaderboardState
-} from '../../../base/models';
+import type { ActivitiesEventSyncPayload } from '../../../contracts';
+import type { ActivityPendingReason } from '../../../common/constants';
+import type { SubEventLeaderboardState } from '../../../contracts/event.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -24,7 +23,7 @@ import type {
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
   ActivityEventRepositoryItemType
-} from '../../../base/models/events.model';
+} from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -200,7 +199,7 @@ export class LocalEventsService extends LocalRouteDelayService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
-      pendingReason?: 'approval' | 'waitlist' | null;
+      pendingReason?: ActivityPendingReason;
     } = {}
   ): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);

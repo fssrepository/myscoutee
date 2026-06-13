@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../../core/contracts';
 import { PricingSlotPanelComponent } from '../pricing-slot-panel';
 
 import type * as AppConstants from '../../../core/common/constants';
@@ -23,7 +24,7 @@ interface PricingPreviewState {
   timeNotes: string[];
 }
 
-type PricingScopedRule = AppTypes.PricingDemandRule | AppTypes.PricingTimeRule;
+type PricingScopedRule = ContractTypes.PricingDemandRule | ContractTypes.PricingTimeRule;
 
 interface RuleScopePickerState {
   kind: 'demand' | 'time';
@@ -53,12 +54,12 @@ interface RuleScopePickerState {
 export class PricingEditorComponent implements OnChanges {
   private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
 
-  @Input() pricing: AppTypes.PricingConfig | null | undefined = null;
-  @Output() readonly pricingChange = new EventEmitter<AppTypes.PricingConfig>();
+  @Input() pricing: ContractTypes.PricingConfig | null | undefined = null;
+  @Output() readonly pricingChange = new EventEmitter<ContractTypes.PricingConfig>();
 
   @Input() context: 'event' | 'asset' | 'subevent' = 'event';
   @Input() presentation: 'inline' | 'popup-summary' = 'inline';
-  @Input() slotCatalog: readonly AppTypes.PricingSlotReference[] = [];
+  @Input() slotCatalog: readonly ContractTypes.PricingSlotReference[] = [];
   @Input() readOnly = false;
   @Input() title = 'Pricing';
   @Input() subtitle = '';
@@ -66,7 +67,7 @@ export class PricingEditorComponent implements OnChanges {
   @Input() showPreview: boolean | null = null;
   @Input() allowSlotFeatures: boolean | null = null;
 
-  protected workingPricing: AppTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
+  protected workingPricing: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
   protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
   protected readonly taxModeOptions: readonly AppConstants.PricingTaxMode[] = ['excluded', 'included'];
@@ -394,17 +395,17 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onDemandRuleThresholdChange(rule: AppTypes.PricingDemandRule, value: number | string): void {
+  protected onDemandRuleThresholdChange(rule: ContractTypes.PricingDemandRule, value: number | string): void {
     rule.capacityFilledPercent = this.parsePercent(value) ?? rule.capacityFilledPercent;
     this.emitPricing();
   }
 
-  protected onDemandRuleActionValueChange(rule: AppTypes.PricingDemandRule, value: number | string): void {
+  protected onDemandRuleActionValueChange(rule: ContractTypes.PricingDemandRule, value: number | string): void {
     rule.action.value = this.parseMoney(value) ?? 0;
     this.emitPricing();
   }
 
-  protected onDemandRuleScopeChange(rule: AppTypes.PricingDemandRule, scope: AppConstants.PricingRuleScope): void {
+  protected onDemandRuleScopeChange(rule: ContractTypes.PricingDemandRule, scope: AppConstants.PricingRuleScope): void {
     rule.appliesTo = scope;
     if (scope === 'all_slots') {
       rule.slotIds = [];
@@ -412,25 +413,25 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onDemandRuleSlotIdsChange(rule: AppTypes.PricingDemandRule, value: string[] | null | undefined): void {
+  protected onDemandRuleSlotIdsChange(rule: ContractTypes.PricingDemandRule, value: string[] | null | undefined): void {
     rule.slotIds = Array.isArray(value) ? value.map(item => `${item}`.trim()).filter(item => item.length > 0) : [];
     this.emitPricing();
   }
 
-  protected onTimeRuleOffsetChange(rule: AppTypes.PricingTimeRule, value: number | string): void {
+  protected onTimeRuleOffsetChange(rule: ContractTypes.PricingTimeRule, value: number | string): void {
     rule.offsetValue = this.parseInteger(value);
     this.emitPricing();
   }
 
-  protected timeRuleRangeStartDate(rule: AppTypes.PricingTimeRule): Date | null {
+  protected timeRuleRangeStartDate(rule: ContractTypes.PricingTimeRule): Date | null {
     return this.isoDateToDate(rule.specificDateStart);
   }
 
-  protected timeRuleRangeEndDate(rule: AppTypes.PricingTimeRule): Date | null {
+  protected timeRuleRangeEndDate(rule: ContractTypes.PricingTimeRule): Date | null {
     return this.isoDateToDate(rule.specificDateEnd);
   }
 
-  protected onTimeRuleRangeStartChange(rule: AppTypes.PricingTimeRule, value: Date | null): void {
+  protected onTimeRuleRangeStartChange(rule: ContractTypes.PricingTimeRule, value: Date | null): void {
     const normalized = this.dateToIsoDate(value);
     rule.specificDateStart = normalized;
     if (!normalized) {
@@ -444,7 +445,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onTimeRuleRangeEndChange(rule: AppTypes.PricingTimeRule, value: Date | null): void {
+  protected onTimeRuleRangeEndChange(rule: ContractTypes.PricingTimeRule, value: Date | null): void {
     const normalized = this.dateToIsoDate(value);
     rule.specificDateEnd = normalized;
     if (!normalized) {
@@ -458,7 +459,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onTimeRuleActionValueChange(rule: AppTypes.PricingTimeRule, value: number | string): void {
+  protected onTimeRuleActionValueChange(rule: ContractTypes.PricingTimeRule, value: number | string): void {
     rule.action.value = this.parseMoney(value) ?? 0;
     this.emitPricing();
   }
@@ -489,11 +490,11 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected cancellationRuleNeedsValue(rule: AppTypes.PricingCancellationRule): boolean {
+  protected cancellationRuleNeedsValue(rule: ContractTypes.PricingCancellationRule): boolean {
     return rule.refundKind === 'percent' || rule.refundKind === 'fixed_amount';
   }
 
-  protected cancellationRuleValueSuffix(rule: AppTypes.PricingCancellationRule): string {
+  protected cancellationRuleValueSuffix(rule: ContractTypes.PricingCancellationRule): string {
     if (rule.refundKind === 'percent') {
       return '%';
     }
@@ -503,13 +504,13 @@ export class PricingEditorComponent implements OnChanges {
     return 'Auto';
   }
 
-  protected onCancellationRuleOffsetChange(rule: AppTypes.PricingCancellationRule, value: number | string): void {
+  protected onCancellationRuleOffsetChange(rule: ContractTypes.PricingCancellationRule, value: number | string): void {
     rule.offsetValue = this.parseInteger(value);
     this.emitPricing();
   }
 
   protected onCancellationRuleRefundKindChange(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     value: AppConstants.PricingCancellationRefundKind
   ): void {
     rule.refundKind = value;
@@ -523,14 +524,14 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onCancellationRuleRefundValueChange(rule: AppTypes.PricingCancellationRule, value: number | string): void {
+  protected onCancellationRuleRefundValueChange(rule: ContractTypes.PricingCancellationRule, value: number | string): void {
     rule.refundValue = rule.refundKind === 'percent'
       ? this.parsePercent(value)
       : this.parseMoney(value);
     this.emitPricing();
   }
 
-  protected onTimeRuleScopeChange(rule: AppTypes.PricingTimeRule, scope: AppConstants.PricingRuleScope): void {
+  protected onTimeRuleScopeChange(rule: ContractTypes.PricingTimeRule, scope: AppConstants.PricingRuleScope): void {
     rule.appliesTo = scope;
     if (scope === 'all_slots') {
       rule.slotIds = [];
@@ -538,17 +539,17 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onTimeRuleSlotIdsChange(rule: AppTypes.PricingTimeRule, value: string[] | null | undefined): void {
+  protected onTimeRuleSlotIdsChange(rule: ContractTypes.PricingTimeRule, value: string[] | null | undefined): void {
     rule.slotIds = Array.isArray(value) ? value.map(item => `${item}`.trim()).filter(item => item.length > 0) : [];
     this.emitPricing();
   }
 
-  protected onPromoCodeTextChange(code: AppTypes.PricingPromoCode, value: string | null | undefined): void {
+  protected onPromoCodeTextChange(code: ContractTypes.PricingPromoCode, value: string | null | undefined): void {
     code.code = `${value ?? ''}`.trim().toUpperCase();
     this.emitPricing();
   }
 
-  protected onPromoCodeActionValueChange(code: AppTypes.PricingPromoCode, value: number | string): void {
+  protected onPromoCodeActionValueChange(code: ContractTypes.PricingPromoCode, value: number | string): void {
     code.action.value = this.parseMoney(value) ?? 0;
     this.emitPricing();
   }
@@ -558,7 +559,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onSlotOverridesChange(overrides: AppTypes.PricingSlotOverride[]): void {
+  protected onSlotOverridesChange(overrides: ContractTypes.PricingSlotOverride[]): void {
     this.workingPricing.slotOverrides = overrides.map(item => ({ ...item }));
     this.emitPricing();
   }
@@ -682,7 +683,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected slotScopeWindowLabel(slot: AppTypes.PricingSlotReference): string {
+  protected slotScopeWindowLabel(slot: ContractTypes.PricingSlotReference): string {
     const start = this.formatSlotTime(slot.startAt);
     const end = this.formatSlotTime(slot.endAt);
     if (!start && !end) {
@@ -888,8 +889,8 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private normalizePricingWithCapabilities(
-    value: AppTypes.PricingConfig | null | undefined
-  ): AppTypes.PricingConfig {
+    value: ContractTypes.PricingConfig | null | undefined
+  ): ContractTypes.PricingConfig {
     return PricingBuilder.normalizePricingConfig(value, {
       context: this.context,
       slotCatalog: this.resolvedAllowSlotFeatures ? this.slotCatalog : [],
@@ -915,7 +916,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  private createDefaultDemandRule(): AppTypes.PricingDemandRule {
+  private createDefaultDemandRule(): ContractTypes.PricingDemandRule {
     return {
       id: this.nextId('demand-rule'),
       operator: 'gte',
@@ -929,7 +930,7 @@ export class PricingEditorComponent implements OnChanges {
     };
   }
 
-  private createDefaultTimeRule(): AppTypes.PricingTimeRule {
+  private createDefaultTimeRule(): ContractTypes.PricingTimeRule {
     return {
       id: this.nextId('time-rule'),
       trigger: 'days_before_start',
@@ -945,7 +946,7 @@ export class PricingEditorComponent implements OnChanges {
     };
   }
 
-  private createDefaultCancellationRule(): AppTypes.PricingCancellationRule {
+  private createDefaultCancellationRule(): ContractTypes.PricingCancellationRule {
     return {
       id: this.nextId('cancellation-rule'),
       offsetUnit: 'days',
@@ -1041,7 +1042,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private matchesDemandRule(
-    rule: AppTypes.PricingDemandRule,
+    rule: ContractTypes.PricingDemandRule,
     capacityFilledPercent: number,
     activeSlotId: string | null
   ): boolean {
@@ -1057,7 +1058,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private matchesTimeRule(
-    rule: AppTypes.PricingTimeRule,
+    rule: ContractTypes.PricingTimeRule,
     hoursUntilStart: number,
     activeSlotId: string | null
   ): boolean {
@@ -1083,7 +1084,7 @@ export class PricingEditorComponent implements OnChanges {
     return hoursUntilStart <= (offset * 24);
   }
 
-  private applyRuleAction(price: number, action: AppTypes.PricingAction): number {
+  private applyRuleAction(price: number, action: ContractTypes.PricingAction): number {
     const value = Math.max(0, Number(action.value) || 0);
     switch (action.kind) {
       case 'decrease_percent':
@@ -1119,11 +1120,11 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  private describeDemandRule(rule: AppTypes.PricingDemandRule): string {
+  private describeDemandRule(rule: ContractTypes.PricingDemandRule): string {
     return `Demand rule active: when capacity filled is ${rule.operator === 'lte' ? '<=' : '>='} ${rule.capacityFilledPercent}%, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
   }
 
-  private describeTimeRule(rule: AppTypes.PricingTimeRule): string {
+  private describeTimeRule(rule: ContractTypes.PricingTimeRule): string {
     if (rule.trigger === 'specific_date') {
       const start = `${rule.specificDateStart ?? ''}`.trim();
       const end = `${rule.specificDateEnd ?? ''}`.trim();
@@ -1153,7 +1154,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  private describeAction(action: AppTypes.PricingAction): string {
+  private describeAction(action: ContractTypes.PricingAction): string {
     const value = Math.max(0, Number(action.value) || 0);
     switch (action.kind) {
       case 'decrease_percent':

@@ -9,7 +9,7 @@ import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../../so
 import type { ActivityEventSeedItem } from '../../../base/models/event-seed-item.model';
 
 
-import type { ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventFeedbackBuilder } from '../builders';
 
 @Injectable({

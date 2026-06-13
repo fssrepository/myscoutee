@@ -13,7 +13,7 @@ import type {
   HelpCenterState,
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
-} from '../../base/models';
+} from '../../contracts';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 @Injectable({

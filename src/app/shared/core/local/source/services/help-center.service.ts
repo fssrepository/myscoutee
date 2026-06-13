@@ -2,7 +2,16 @@ import type { HelpCenterTable } from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import type { HelpCenterAuditEntry, HelpCenterDocumentKind, HelpCenterRevision, HelpCenterRevisionSaveRequest, HelpCenterSection, HelpCenterState, PrivacyConsentRecord, PrivacyConsentSaveRequest } from '../../../base/models';
+import type {
+  HelpCenterAuditEntry,
+  HelpCenterDocumentKind,
+  HelpCenterRevision,
+  HelpCenterRevisionSaveRequest,
+  HelpCenterSection,
+  HelpCenterState,
+  PrivacyConsentRecord,
+  PrivacyConsentSaveRequest
+} from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
 import { HelpCenterContentBuilder } from '../../../base/builders';
 

@@ -4,12 +4,13 @@ import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../base/models';
+import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../base/db';
 import { activityChatContextFilterKey } from '../../../base/converters';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { ChatThreadBuilder } from '../../common/builders';
-import type { ChatRecord } from '../../../base/models/chat.model';
+import type { ChatRecord } from '../../../contracts/chat.interface';
 
 
 import type * as ActivityContracts from '../../../contracts/activity.interface';
@@ -30,7 +31,7 @@ export class LocalChatsRepository {
 
   queryActivitiesChatPage(
     userId: string,
-    request: AppTypes.ActivitiesPageRequest
+    request: ContractTypes.ActivitiesPageRequest
   ): { items: ChatThreadRecord[]; total: number; nextCursor: string | null } {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
@@ -87,7 +88,7 @@ export class LocalChatsRepository {
     return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
   }
 
-  querySupportCaseItemsForAdmin(userId: string, filter: AppTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
+  querySupportCaseItemsForAdmin(userId: string, filter: ContractTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
     const normalizedUserId = userId.trim();
     return this.querySupportCaseRecordsForAdmin(normalizedUserId, filter)
       .map(record => ChatThreadBuilder.cloneRecord(record, { includeMessages: false }));
@@ -95,7 +96,7 @@ export class LocalChatsRepository {
 
   private querySupportCaseRecordsForAdmin(
     normalizedUserId: string,
-    filter: AppTypes.SupportCaseFilter = 'all'
+    filter: ContractTypes.SupportCaseFilter = 'all'
   ): ChatThreadRecord[] {
     if (!this.isDemoAdminUser(normalizedUserId)) {
       return [];
@@ -125,7 +126,7 @@ export class LocalChatsRepository {
       }));
   }
 
-  queryChatMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
+  queryChatMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     return record ? ChatThreadBuilder.cloneMessages(record.messages ?? []).map(message => ({
       ...message,
@@ -133,7 +134,7 @@ export class LocalChatsRepository {
     })) : [];
   }
 
-  appendChatMessage(chat: ChatRecord, message: AppTypes.ChatPopupMessage): AppTypes.ChatPopupMessage | null {
+  appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatPopupMessage): ContractTypes.ChatPopupMessage | null {
     const record = this.resolveChatRecord(chat);
     if (!record) {
       return null;
@@ -172,7 +173,7 @@ export class LocalChatsRepository {
     return messageClone;
   }
 
-  upsertSupportChatMessage(chat: ChatThreadRecord, message: AppTypes.ChatPopupMessage, unreadForOwner: boolean): void {
+  upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatPopupMessage, unreadForOwner: boolean): void {
     const sourceId = `${chat.id ?? ''}`.trim();
     const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
     if (!sourceId || !ownerUserId) {
@@ -219,8 +220,8 @@ export class LocalChatsRepository {
   updateChatMessage(
     chat: ChatRecord,
     messageId: string,
-    mutation: AppTypes.ChatMessageMutation
-  ): AppTypes.ChatPopupMessage | null {
+    mutation: ContractTypes.ChatMessageMutation
+  ): ContractTypes.ChatPopupMessage | null {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!record || !normalizedMessageId) {
@@ -231,7 +232,7 @@ export class LocalChatsRepository {
     const actorInitials = 'ME';
     const actorGender: 'woman' | 'man' = 'man';
     const nowIso = new Date().toISOString();
-    let updatedMessage: AppTypes.ChatPopupMessage | null = null;
+    let updatedMessage: ContractTypes.ChatPopupMessage | null = null;
     const recordKey = ChatThreadBuilder.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
@@ -277,7 +278,7 @@ export class LocalChatsRepository {
     return updatedMessage ? ChatThreadBuilder.cloneMessages([updatedMessage])[0] ?? null : null;
   }
 
-  updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): ChatThreadRecord | null {
+  updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId) {
       return null;
@@ -342,7 +343,7 @@ export class LocalChatsRepository {
 
   private queryUserRecordsForPage(
     userId: string,
-    request: AppTypes.ActivitiesPageRequest
+    request: ContractTypes.ActivitiesPageRequest
   ): ChatThreadRecord[] {
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
     return table.ids
@@ -355,19 +356,19 @@ export class LocalChatsRepository {
 
   private matchesChatContextFilter(
     record: ChatRecord,
-    filter: AppTypes.ActivitiesChatContextFilter
+    filter: ContractTypes.ActivitiesChatContextFilter
   ): boolean {
     return filter === 'all' || activityChatContextFilterKey(record) === filter;
   }
 
-  private matchesSupportCaseFilter(record: ChatRecord, filter: AppTypes.SupportCaseFilter | undefined): boolean {
+  private matchesSupportCaseFilter(record: ChatRecord, filter: ContractTypes.SupportCaseFilter | undefined): boolean {
     const normalizedFilter = this.normalizeSupportCaseFilter(filter ?? 'all');
     return normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter;
   }
 
   private sortChatPageRecords(
     records: readonly ChatThreadRecord[],
-    request: AppTypes.ActivitiesPageRequest
+    request: ContractTypes.ActivitiesPageRequest
   ): ChatThreadRecord[] {
     const direction = request.direction === 'asc' ? 1 : -1;
     const sorted = [...records];
@@ -394,7 +395,7 @@ export class LocalChatsRepository {
     return unread * 10 + memberCount;
   }
 
-  private resolvePageStartIndex(request: AppTypes.ActivitiesPageRequest, pageSize: number): number {
+  private resolvePageStartIndex(request: ContractTypes.ActivitiesPageRequest, pageSize: number): number {
     const cursorIndex = Number(request.cursor);
     if (Number.isFinite(cursorIndex)) {
       return Math.max(0, Math.trunc(cursorIndex));
@@ -424,7 +425,7 @@ export class LocalChatsRepository {
     return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
   }
 
-  private normalizeSupportCaseFilter(filter: AppTypes.SupportCaseFilter): AppTypes.SupportCaseFilter {
+  private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): ContractTypes.SupportCaseFilter {
     return filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
@@ -446,10 +447,10 @@ export class LocalChatsRepository {
   }
 
   private nextSupportCaseState(
-    action: AppTypes.SupportCaseAction,
+    action: ContractTypes.SupportCaseAction,
     actor: { id: string; name: string; initials: string }
   ): {
-    status: AppTypes.SupportCaseStatus;
+    status: ContractTypes.SupportCaseStatus;
     assigneeUserId: string | null;
     assigneeName: string | null;
     assigneeInitials: string | null;
@@ -583,7 +584,7 @@ export class LocalChatsRepository {
     return record;
   }
 
-  private buildInitialServiceMessages(chat: ChatRecord): AppTypes.ChatPopupMessage[] {
+  private buildInitialServiceMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId.startsWith('c-support-blocked-')) {
       return [];
@@ -605,7 +606,7 @@ export class LocalChatsRepository {
     }];
   }
 
-  private chatAttachmentSummary(message: AppTypes.ChatPopupMessage): string {
+  private chatAttachmentSummary(message: ContractTypes.ChatPopupMessage): string {
     const firstAttachment = message.attachments?.[0];
     if (!firstAttachment) {
       return '';
@@ -623,8 +624,8 @@ export class LocalChatsRepository {
   }
 
   private applyMessageMutation(
-    message: AppTypes.ChatPopupMessage,
-    mutation: AppTypes.ChatMessageMutation,
+    message: ContractTypes.ChatPopupMessage,
+    mutation: ContractTypes.ChatMessageMutation,
     actor: {
       actorId: string;
       actorName: string;
@@ -632,7 +633,7 @@ export class LocalChatsRepository {
       actorGender: 'woman' | 'man';
       nowIso: string;
     }
-  ): AppTypes.ChatPopupMessage {
+  ): ContractTypes.ChatPopupMessage {
     if (mutation.deleted === true) {
       return {
         ...message,
@@ -690,11 +691,11 @@ export class LocalChatsRepository {
     return message;
   }
 
-  private latestMessage(messages: readonly AppTypes.ChatPopupMessage[]): AppTypes.ChatPopupMessage | null {
+  private latestMessage(messages: readonly ContractTypes.ChatPopupMessage[]): ContractTypes.ChatPopupMessage | null {
     return [...messages].sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso))[0] ?? null;
   }
 
-  private deletedMessageSummary(message: AppTypes.ChatPopupMessage): string {
+  private deletedMessageSummary(message: ContractTypes.ChatPopupMessage): string {
     return message.deletedAtIso ? `${message.deletedByName || message.sender} deleted a message` : '';
   }
 }

@@ -1,11 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type {
-  ActivitiesEventSyncPayload,
-  EventFeedbackCard,
-  EventFeedbackEventCard,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+import type { ActivitiesEventSyncPayload } from '../../contracts';
+import type { EventFeedbackCard, EventFeedbackEventCard } from '../../../core/base/models';
+import type { SubEventLeaderboardState } from '../../contracts/event.interface';
+import type { ActivityPendingReason } from '../../common/constants';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -24,7 +22,7 @@ import type {
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
   ActivityEventRepositoryItemType
-} from '../models/events.model';
+} from '../../contracts/activity.interface';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -176,7 +174,7 @@ export class EventsService extends BaseRouteModeService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
-      pendingReason?: 'approval' | 'waitlist' | null;
+      pendingReason?: ActivityPendingReason;
     } = {}
   ): Promise<ActivityEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);

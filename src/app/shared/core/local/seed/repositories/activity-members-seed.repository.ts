@@ -12,7 +12,7 @@ import type { UserDto } from '../../../contracts/user.interface';
 import type * as AppTypes from '../../../base/models';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
-import { type ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
 import { SeedEventBuilder, SeedEventsBuilder, SeedScheduleBuilder, SeedUserBuilder } from '../builders';
 import type { ActivityMemberOwnerRef } from '../../../contracts/activity.interface';

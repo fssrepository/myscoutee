@@ -1,7 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 
 import type { EventCheckoutSelection } from '../../core/contracts/activity.interface';
-import type { ActivityEventRecord } from '../../core/base/models/events.model';
+import type { ActivityEventRecord } from '../../core/contracts/activity.interface';
+import type { ActivityPendingReason } from '../../core/common/constants';
 
 export interface EventCheckoutDialogConfig {
   mode: 'join' | 'invitation';
@@ -9,7 +10,7 @@ export interface EventCheckoutDialogConfig {
   record: ActivityEventRecord;
   requiresApprovalBeforePayment?: boolean;
   approvalGranted?: boolean;
-  pendingReason?: 'approval' | 'waitlist' | null;
+  pendingReason?: ActivityPendingReason;
   title?: string | null;
   subtitle?: string | null;
   confirmLabel?: string | null;
@@ -27,7 +28,7 @@ export interface EventCheckoutDialogState {
   record: ActivityEventRecord;
   requiresApprovalBeforePayment: boolean;
   approvalGranted: boolean;
-  pendingReason: 'approval' | 'waitlist' | null;
+  pendingReason: ActivityPendingReason;
   title: string;
   subtitle: string;
   confirmLabel: string;

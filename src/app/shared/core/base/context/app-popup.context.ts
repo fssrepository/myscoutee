@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 import type { UserSelectorListItemDto } from '../../contracts/user.interface';
-import type { ActivityMemberOwnerType } from '../../common/constants';
+import type { ActivityMemberOwnerType, AssetFilterType } from '../../common/constants';
 import type { ActivityMemberEntry } from '../../contracts/activity.interface';
 import type { ActivitiesNavigationRequest } from '../models/activities.model';
 
@@ -24,7 +24,7 @@ export interface NavigatorActivitiesRequest {
 
 export interface NavigatorAssetRequest {
   updatedMs: number;
-  assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket';
+  assetFilter: AssetFilterType;
 }
 
 export interface NavigatorEventFeedbackRequest {
@@ -142,7 +142,7 @@ export class AppPopupContext {
     });
   }
 
-  openNavigatorAssetRequest(assetFilter: 'Car' | 'Accommodation' | 'Supplies' | 'Ticket'): void {
+  openNavigatorAssetRequest(assetFilter: AssetFilterType): void {
     this._navigatorAssetRequest.set({
       updatedMs: Date.now(),
       assetFilter

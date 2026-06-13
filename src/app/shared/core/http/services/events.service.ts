@@ -4,10 +4,9 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
-import type {
-  ActivitiesEventSyncPayload,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+import type { ActivitiesEventSyncPayload } from '../../contracts';
+import type { ActivityPendingReason } from '../../common/constants';
+import type { SubEventLeaderboardState } from '../../contracts/event.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -26,7 +25,7 @@ import type {
   ActivityEventRecord,
   ActivityEventScopeFilter,
   ActivityEventRepositoryItemType
-} from '../../base/models/events.model';
+} from '../../contracts/activity.interface';
 
 interface HttpEventsFilterRequest {
   userId: string;
@@ -330,7 +329,7 @@ export class HttpEventsService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
-      pendingReason?: 'approval' | 'waitlist' | null;
+      pendingReason?: ActivityPendingReason;
     } = {}
   ): Promise<ActivityEventRecord | null> {
     const normalizedUserId = userId.trim();

@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { toActivityEventRow } from '../../base/converters/activities-event.converter';
-import type { ActivityEventRecord } from '../../base/models/events.model';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
 import type * as AppDTOs from '../../base/dto';

@@ -34,6 +34,7 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
@@ -147,8 +148,8 @@ export interface AssetExploreBorrowDialogViewState {
   totalAmount: number;
   currency: string;
   bookingStartAtIso: string;
-  cancellationPolicy: AppTypes.PricingCancellationPolicy | null;
-  policies: AppTypes.EventPolicyItem[];
+  cancellationPolicy: ContractTypes.PricingCancellationPolicy | null;
+  policies: ContractTypes.EventPolicyItem[];
   acceptedPolicyIds: string[];
   payable: boolean;
   paymentStep: boolean;
@@ -171,7 +172,7 @@ export interface AssignedAssetJoinDialogViewState {
   currency: string;
   shareLabel: string;
   shareHint: string;
-  policies: AppTypes.EventPolicyItem[];
+  policies: ContractTypes.EventPolicyItem[];
   acceptedPolicyIds: string[];
   submitLabel: string;
   busyLabel: string;
@@ -651,7 +652,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return `${view.source?.imageUrl ?? view.card.imageUrl ?? ''}`.trim();
   }
 
-  protected assetViewPolicies(view: ResourceAssetViewState): readonly AppTypes.EventPolicyItem[] {
+  protected assetViewPolicies(view: ResourceAssetViewState): readonly ContractTypes.EventPolicyItem[] {
     return view.source?.policies ?? [];
   }
 
@@ -663,15 +664,15 @@ export class EventResourcePopupComponent implements DoCheck {
     return Math.max(0, this.assetViewPolicies(view).length - this.assetViewRequiredPoliciesCount(view));
   }
 
-  protected assetViewPolicyRequirementLabel(policy: AppTypes.EventPolicyItem): string {
+  protected assetViewPolicyRequirementLabel(policy: ContractTypes.EventPolicyItem): string {
     return policy.required === false ? 'Optional' : 'Required';
   }
 
-  protected assetViewPolicyMetaLabel(policy: AppTypes.EventPolicyItem): string {
+  protected assetViewPolicyMetaLabel(policy: ContractTypes.EventPolicyItem): string {
     return policy.required === false ? 'Optional policy' : 'Required approval';
   }
 
-  protected assetViewPolicyPreview(policy: AppTypes.EventPolicyItem): string {
+  protected assetViewPolicyPreview(policy: ContractTypes.EventPolicyItem): string {
     const description = policy.description.trim();
     if (description.length > 0) {
       return description;
@@ -1168,11 +1169,11 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected assetExploreBorrowCancellationRules(
     dialog: AssetExploreBorrowDialogViewState
-  ): AppTypes.PricingCancellationRule[] {
+  ): ContractTypes.PricingCancellationRule[] {
     return dialog.cancellationPolicy?.rules ?? [];
   }
 
-  protected assetExploreBorrowCancellationRuleWindowLabel(rule: AppTypes.PricingCancellationRule): string {
+  protected assetExploreBorrowCancellationRuleWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
     const value = Math.max(0, Number(rule.offsetValue) || 0);
     const unit = rule.offsetUnit === 'hours'
       ? (value === 1 ? 'hour' : 'hours')
@@ -1185,7 +1186,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected assetExploreBorrowCancellationRuleRefundLabel(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     currency = 'USD'
   ): string {
     if (rule.refundKind === 'full') {
@@ -1202,13 +1203,13 @@ export class EventResourcePopupComponent implements DoCheck {
 
   private assetExploreBorrowApplicableCancellationRule(
     dialog: AssetExploreBorrowDialogViewState
-  ): AppTypes.PricingCancellationRule | null {
+  ): ContractTypes.PricingCancellationRule | null {
     const bookingStart = AppUtils.isoLocalDateTimeToDate(dialog.bookingStartAtIso);
     if (!bookingStart) {
       return null;
     }
 
-    let bestRule: AppTypes.PricingCancellationRule | null = null;
+    let bestRule: ContractTypes.PricingCancellationRule | null = null;
     let bestDeadlineMs = Number.NEGATIVE_INFINITY;
     for (const rule of this.assetExploreBorrowCancellationRules(dialog)) {
       const deadlineMs = this.assetExploreBorrowCancellationRuleDeadlineMs(rule, bookingStart);
@@ -1224,7 +1225,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreBorrowCancellationRuleDeadlineMs(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     bookingStart: Date
   ): number {
     const deadline = new Date(bookingStart.getTime());
@@ -1247,7 +1248,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreBorrowCancellationRefundAmount(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     totalAmount: number
   ): number {
     if (rule.refundKind === 'full') {
@@ -1263,7 +1264,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreBorrowDescribeCancellationRule(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     currency: string
   ): string {
     return `${this.assetExploreBorrowCancellationRuleRefundLabel(rule, currency)} when cancelled at least ${this.assetExploreBorrowCancellationRuleWindowLabel(rule)}.`;

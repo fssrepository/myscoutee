@@ -3,10 +3,11 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../shared/app-utils';
-import type { ChatRecord } from '../../../../../shared/core/base/models/chat.model';
+import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
-import type { ActivityEventRecord } from '../../../../../shared/core/base/models/events.model';
+import type * as ContractTypes from '../../../../../shared/core/contracts';
+import type { ActivityEventRecord } from '../../../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
   CounterBadgePipe,
@@ -39,7 +40,7 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
   @Input() adminServiceMode = false;
 
   @Output() readonly rowClick = new EventEmitter<Event>();
-  @Output() readonly supportCaseAction = new EventEmitter<AppTypes.SupportCaseAction>();
+  @Output() readonly supportCaseAction = new EventEmitter<ContractTypes.SupportCaseAction>();
 
   protected data: ActivitiesChatTemplateData | null = null;
 
@@ -84,7 +85,7 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
     };
   }
 
-  protected supportCaseMenuItems(): readonly AppMenuItem<string, { action: AppTypes.SupportCaseAction }>[] {
+  protected supportCaseMenuItems(): readonly AppMenuItem<string, { action: ContractTypes.SupportCaseAction }>[] {
     return this.supportCaseActions().map(item => ({
       id: `support-case-action:${item.action}`,
       label: item.labelKey,
@@ -95,7 +96,7 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
     }));
   }
 
-  protected onSupportCaseMenuSelect(event: AppMenuItemSelectEvent<string, { action: AppTypes.SupportCaseAction }>): void {
+  protected onSupportCaseMenuSelect(event: AppMenuItemSelectEvent<string, { action: ContractTypes.SupportCaseAction }>): void {
     const action = event.context?.action;
     if (!action) {
       return;
@@ -103,7 +104,7 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
     this.supportCaseAction.emit(action);
   }
 
-  protected supportCaseActions(): Array<{ action: AppTypes.SupportCaseAction; labelKey: string; icon: string; tone: string }> {
+  protected supportCaseActions(): Array<{ action: ContractTypes.SupportCaseAction; labelKey: string; icon: string; tone: string }> {
     const status = this.data?.supportCaseStatus ?? 'pending';
     if (status === 'solved' || status === 'blocked') {
       return [
@@ -162,7 +163,7 @@ export class ActivitiesChatsController {
   private get eventDistanceById() { return this.host.eventDistanceById as Record<string, number>; }
   private get eventEditorService() { return this.host.eventEditorService; }
   private get eventItems() { return this.host.eventItems as ActivityEventRecord[]; }
-  private get eventSubEventsById() { return this.host.eventSubEventsById as Record<string, AppTypes.SubEventFormItem[]>; }
+  private get eventSubEventsById() { return this.host.eventSubEventsById as Record<string, ContractTypes.SubEventFormItem[]>; }
   private get hostingDatesById() { return this.host.hostingDatesById as Record<string, string>; }
   private get hostingDistanceById() { return this.host.hostingDistanceById as Record<string, number>; }
   private get hostingItems() { return this.host.hostingItems as ActivityEventRecord[]; }
@@ -171,7 +172,7 @@ export class ActivitiesChatsController {
   private activityPendingMemberCount(row: AppTypes.ActivityListRow): number { return this.host.activityPendingMemberCount(row); }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private defaultEventStartIso(): string { return this.host.defaultEventStartIso(); }
-  public chatChannelType(item: ChatRecord): AppTypes.ChatChannelType {
+  public chatChannelType(item: ChatRecord): ContractTypes.ChatChannelType {
     if (
       item.channelType === 'mainEvent'
       || item.channelType === 'optionalSubEvent'
@@ -210,7 +211,7 @@ export class ActivitiesChatsController {
 
   private contextualSubEventPendingTotal(
     ownerId: string,
-    subEvent: AppTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventFormItem,
     includeMembers = true
   ): number {
     this.syncSubEventAssetBadgeCounts(ownerId, subEvent, 'Car');
@@ -242,7 +243,7 @@ export class ActivitiesChatsController {
     );
   }
 
-  private syncSubEventAssetBadgeCounts(ownerId: string, subEvent: AppTypes.SubEventFormItem, type: AppConstants.AssetType): void {
+  private syncSubEventAssetBadgeCounts(ownerId: string, subEvent: ContractTypes.SubEventFormItem, type: AppConstants.AssetType): void {
     const state = this.subEventResourceState(ownerId, subEvent.id);
     const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, this.assetCards);
     const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, this.assetCards);
@@ -431,7 +432,7 @@ export class ActivitiesChatsController {
     };
   }
 
-  private chatEventSubEvents(eventId: string): AppTypes.SubEventFormItem[] {
+  private chatEventSubEvents(eventId: string): ContractTypes.SubEventFormItem[] {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return [];
@@ -439,7 +440,7 @@ export class ActivitiesChatsController {
     return this.sortSubEventsByStartAsc(this.cloneSubEvents(this.eventSubEventsById[normalizedEventId] ?? []));
   }
 
-  private chatSubEventForItem(item: ChatRecord): AppTypes.SubEventFormItem | null {
+  private chatSubEventForItem(item: ChatRecord): ContractTypes.SubEventFormItem | null {
     const eventId = this.normalizeLocationValue(item.eventId).trim();
     const subEventId = this.normalizeLocationValue(item.subEventId).trim();
     if (!eventId || !subEventId) {
@@ -448,7 +449,7 @@ export class ActivitiesChatsController {
     return this.chatEventSubEvents(eventId).find(subEvent => subEvent.id === subEventId) ?? null;
   }
 
-  private cloneSubEvents(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+  private cloneSubEvents(items: ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] {
     return items.map(item => ({
       ...item,
       location: this.normalizeLocationValue(item.location),
@@ -460,7 +461,7 @@ export class ActivitiesChatsController {
     return typeof value === 'string' ? value : '';
   }
 
-  private sortSubEventsByStartAsc(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+  private sortSubEventsByStartAsc(items: ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] {
     const source = this.cloneSubEvents(items);
     return source
       .map((item, index) => ({
@@ -479,7 +480,7 @@ export class ActivitiesChatsController {
       .map(entry => entry.item);
   }
 
-  private cloneSubEventGroups(groups: AppTypes.SubEventGroupItem[] | undefined): AppTypes.SubEventGroupItem[] {
+  private cloneSubEventGroups(groups: ContractTypes.SubEventGroupItem[] | undefined): ContractTypes.SubEventGroupItem[] {
     if (!groups || groups.length === 0) {
       return [];
     }
@@ -489,18 +490,18 @@ export class ActivitiesChatsController {
     }));
   }
 
-  private subEventGroupsForStage(item: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
+  private subEventGroupsForStage(item: ContractTypes.SubEventFormItem): ContractTypes.SubEventGroupItem[] {
     return this.reconcileTournamentGroupsForStage(item, this.cloneSubEventGroups(item.groups));
   }
 
-  private normalizedSubEventGroupSource(group: Partial<AppTypes.SubEventGroupItem> | undefined): 'manual' | 'generated' {
+  private normalizedSubEventGroupSource(group: Partial<ContractTypes.SubEventGroupItem> | undefined): 'manual' | 'generated' {
     return group?.source === 'generated' ? 'generated' : 'manual';
   }
 
   private reconcileTournamentGroupsForStage(
-    item: AppTypes.SubEventFormItem,
-    sourceGroups: AppTypes.SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
-  ): AppTypes.SubEventGroupItem[] {
+    item: ContractTypes.SubEventFormItem,
+    sourceGroups: ContractTypes.SubEventGroupItem[] = this.cloneSubEventGroups(item.groups)
+  ): ContractTypes.SubEventGroupItem[] {
     const normalizedGroups = sourceGroups.map(group => ({
       ...group,
       source: this.normalizedSubEventGroupSource(group)
@@ -655,7 +656,7 @@ export class ActivitiesChatsController {
     this.activitiesContext.openEventChat(chat);
   }
 
-  public activityChatContextFilterKey(item: ChatRecord): AppTypes.ActivitiesChatContextFilter | null {
+  public activityChatContextFilterKey(item: ChatRecord): ContractTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
     if (channelType === 'mainEvent') {
       return 'event';

@@ -9,6 +9,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { AppUtils } from '../../../shared/app-utils';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -66,7 +67,7 @@ export interface EventSubeventStageFormModel {
   startAt: string;
   endAt: string;
   optional: boolean;
-  pricing?: AppTypes.PricingConfig | null;
+  pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
   tournamentGroupCapacityMin?: number;

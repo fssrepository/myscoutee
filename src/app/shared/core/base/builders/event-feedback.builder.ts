@@ -1,10 +1,7 @@
 import { AppUtils } from '../../../app-utils';
+import type { ActivityMemberRole } from '../../common/constants';
 import type { UserDto } from '../../contracts/user.interface';
-import type {
-  EventFeedbackCard,
-  EventFeedbackOption,
-  EventFeedbackTraitOption
-} from '../models';
+import type { EventFeedbackCard, EventFeedbackOption, EventFeedbackTraitOption } from '../models';
 import type { ActivityEventSeedItem } from '../models/event-seed-item.model';
 
 export class EventFeedbackBuilder {
@@ -166,7 +163,7 @@ export class EventFeedbackBuilder {
     return picked;
   }
 
-  private static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): 'Admin' | 'Manager' | 'Member' {
+  private static feedbackRoleForAttendee(eventId: string, attendeeUserId: string): ActivityMemberRole {
     const seed = AppUtils.hashText(`feedback-role:${eventId}:${attendeeUserId}`);
     if (seed % 11 === 0) {
       return 'Admin';
@@ -177,7 +174,7 @@ export class EventFeedbackBuilder {
     return 'Member';
   }
 
-  private static feedbackRoleToneClass(role: 'Admin' | 'Manager' | 'Member'): string {
+  private static feedbackRoleToneClass(role: ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'feedback-role-admin';
     }
@@ -187,7 +184,7 @@ export class EventFeedbackBuilder {
     return 'feedback-role-member';
   }
 
-  private static feedbackRoleStatusClass(role: 'Admin' | 'Manager' | 'Member'): string {
+  private static feedbackRoleStatusClass(role: ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'member-status-admin';
     }
@@ -197,7 +194,7 @@ export class EventFeedbackBuilder {
     return 'member-status-member';
   }
 
-  private static feedbackRoleStatusIcon(role: 'Admin' | 'Manager' | 'Member'): string {
+  private static feedbackRoleStatusIcon(role: ActivityMemberRole): string {
     if (role === 'Admin') {
       return 'admin_panel_settings';
     }

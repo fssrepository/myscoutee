@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
 import type { AdminChatMessageDto, AdminHelpTarget, AdminMonitoringStateDto, AdminModerationStore, AdminNotificationCenterState, AdminUserDto } from '../../../contracts/admin.interface';
-import type { ChatPopupMessage, ChatRecord } from '../../../base/models/chat.model';
+import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
 
 import { AdminHelpSeedBuilder, AdminModerationSeedBuilder, AdminMonitoringSeedBuilder, AdminNotificationsSeedBuilder, AdminParamsSeedBuilder, AdminProfileSeedBuilder, AdminStatsSeedBuilder } from '../builders/admin';
 import { SeedChatsRepository } from './chats-seed.repository';

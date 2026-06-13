@@ -4,6 +4,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 import type { RateRecord } from '../../../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
+import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   PairCardComponent,
   type CardProfileViewData,
@@ -255,10 +256,10 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 interface ActivitiesRatesControllerDeps {
   getUsers: () => readonly UserDto[];
   getActiveUserGender: () => 'woman' | 'man';
-  getActivitiesPrimaryFilter: () => AppTypes.ActivitiesPrimaryFilter;
-  getActivitiesRateFilter: () => AppTypes.RateFilterKey;
+  getActivitiesPrimaryFilter: () => ContractTypes.ActivitiesPrimaryFilter;
+  getActivitiesRateFilter: () => ContractTypes.RateFilterKey;
   getActivitiesRateSocialBadgeEnabled: () => boolean;
-  getActivitiesRateSocialBadgeEnabledForFilter: (filter: AppTypes.RateFilterKey) => boolean;
+  getActivitiesRateSocialBadgeEnabledForFilter: (filter: ContractTypes.RateFilterKey) => boolean;
   getFilteredActivityRows: () => readonly AppTypes.ActivityListRow[];
   getRateItems: () => readonly RateRecord[];
   getSmartListCursorItem: () => AppTypes.ActivityListRow | null;
@@ -618,7 +619,7 @@ export class ActivitiesRatesController {
     this.setSelectedRateId(currentRow.id);
   }
 
-  matchesFilter(item: RateRecord, filter: AppTypes.RateFilterKey): boolean {
+  matchesFilter(item: RateRecord, filter: ContractTypes.RateFilterKey): boolean {
     return matchesActivitiesRateFilter(
       item,
       filter,
@@ -631,7 +632,7 @@ export class ActivitiesRatesController {
     return displayedActivitiesRateDirection(item, this.deps.getActivityRateDirectionOverrideById());
   }
 
-  commitPendingDirectionOverrides(targetFilter?: AppTypes.RateFilterKey): void {
+  commitPendingDirectionOverrides(targetFilter?: ContractTypes.RateFilterKey): void {
     const pendingById = this.pendingActivityRateDirectionOverrideById();
     const directionOverrides = this.deps.getActivityRateDirectionOverrideById();
     for (const [itemId, pendingDirection] of collectPendingActivitiesRateDirectionOverrides(

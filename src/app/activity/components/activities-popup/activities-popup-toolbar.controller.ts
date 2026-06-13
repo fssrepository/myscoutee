@@ -1,26 +1,27 @@
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 type ActivitiesToolbarHost = any;
 
 export class ActivitiesPopupToolbarController {
   constructor(private readonly host: ActivitiesToolbarHost) {}
 
   private get activitiesPrimaryFilters() { return this.host.activitiesPrimaryFilters as typeof this.host.activitiesPrimaryFilters; }
-  private get activitiesPrimaryFilter() { return this.host.activitiesPrimaryFilter as AppTypes.ActivitiesPrimaryFilter; }
+  private get activitiesPrimaryFilter() { return this.host.activitiesPrimaryFilter as ContractTypes.ActivitiesPrimaryFilter; }
   private get activitiesEventScopeFilters() { return this.host.activitiesEventScopeFilters as typeof this.host.activitiesEventScopeFilters; }
-  private get activitiesEventScope() { return this.host.activitiesEventScope as AppTypes.ActivitiesEventScope; }
+  private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private get activitiesChatContextFilters() { return this.host.activitiesChatContextFilters as typeof this.host.activitiesChatContextFilters; }
-  private get activitiesChatContextFilter() { return this.host.activitiesChatContextFilter as AppTypes.ActivitiesChatContextFilter; }
+  private get activitiesChatContextFilter() { return this.host.activitiesChatContextFilter as ContractTypes.ActivitiesChatContextFilter; }
   private get activitiesSecondaryFilters() { return this.host.activitiesSecondaryFilters as typeof this.host.activitiesSecondaryFilters; }
-  private get activitiesSecondaryFilter() { return this.host.activitiesSecondaryFilter as AppTypes.ActivitiesSecondaryFilter; }
-  private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as AppTypes.HostingPublicationFilter; }
-  private get activitiesRateFilter() { return this.host.activitiesRateFilter as AppTypes.RateFilterKey; }
+  private get activitiesSecondaryFilter() { return this.host.activitiesSecondaryFilter as ContractTypes.ActivitiesSecondaryFilter; }
+  private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
+  private get activitiesRateFilter() { return this.host.activitiesRateFilter as ContractTypes.RateFilterKey; }
   private get activitiesRateSocialBadgeEnabled() { return this.host.activitiesRateSocialBadgeEnabled as boolean; }
   private set activitiesRateSocialBadgeEnabled(value: boolean) { this.host.activitiesRateSocialBadgeEnabled = value; }
   private get activitiesIndividualRateSocialBadgeEnabled() { return this.host.activitiesIndividualRateSocialBadgeEnabled as boolean; }
   private set activitiesIndividualRateSocialBadgeEnabled(value: boolean) { this.host.activitiesIndividualRateSocialBadgeEnabled = value; }
   private get activitiesPairRateSocialBadgeEnabled() { return this.host.activitiesPairRateSocialBadgeEnabled as boolean; }
   private set activitiesPairRateSocialBadgeEnabled(value: boolean) { this.host.activitiesPairRateSocialBadgeEnabled = value; }
-  private get activitiesView() { return this.host.activitiesView as AppTypes.ActivitiesView; }
+  private get activitiesView() { return this.host.activitiesView as ContractTypes.ActivitiesView; }
   private get activitiesViewOptions() { return this.host.activitiesViewOptions as typeof this.host.activitiesViewOptions; }
   private get activitiesRates() { return this.host.activitiesRates; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
@@ -65,7 +66,7 @@ export class ActivitiesPopupToolbarController {
   private chatItemsForActivities() { return this.host.chatItemsForActivities(); }
   private activityChatContextFilterKey(item: any) { return this.host.activityChatContextFilterKey(item); }
   private activitiesEventScopeLabel(): string { return this.host.activitiesEventScopeLabel(); }
-  private effectiveActivitiesSecondaryFilter(): AppTypes.ActivitiesSecondaryFilter { return this.host.effectiveActivitiesSecondaryFilter(); }
+  private effectiveActivitiesSecondaryFilter(): ContractTypes.ActivitiesSecondaryFilter { return this.host.effectiveActivitiesSecondaryFilter(); }
   private resetActivitiesScroll(): void { this.host.resetActivitiesScroll(); }
   private syncActivitiesSmartListQuery(): void { this.host.syncActivitiesSmartListQuery(); }
   private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void { this.host.openActivityRowInEventModule(row, readOnly); }
@@ -78,8 +79,8 @@ export class ActivitiesPopupToolbarController {
     return this.activitiesPrimaryFilters.find((o: any) => o.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
   }
 
-  activitiesPrimaryFilterClass(filter: AppTypes.ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
-    const map: Record<AppTypes.ActivitiesPrimaryFilter, string> = {
+  activitiesPrimaryFilterClass(filter: ContractTypes.ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
+    const map: Record<ContractTypes.ActivitiesPrimaryFilter, string> = {
       chats: 'activity-filter-chat',
       invitations: 'activity-filter-invitations',
       events: 'activity-filter-events',
@@ -89,7 +90,7 @@ export class ActivitiesPopupToolbarController {
     return map[filter] ?? 'activity-filter-chat';
   }
 
-  activitiesPrimaryFilterCount(filter: AppTypes.ActivitiesPrimaryFilter): number {
+  activitiesPrimaryFilterCount(filter: ContractTypes.ActivitiesPrimaryFilter): number {
     if (filter === 'rates') { return this.gameBadge; }
     if (filter === 'chats') { return this.chatBadge; }
     if (filter === 'events') { return this.eventsBadge; }
@@ -108,7 +109,7 @@ export class ActivitiesPopupToolbarController {
     return this.activitiesEventScopeFilters.find((option: any) => option.key === this.activitiesEventScope)?.icon ?? 'event';
   }
 
-  activitiesEventScopeClass(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): string {
+  activitiesEventScopeClass(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): string {
     if (scope === 'trash') {
       return 'activity-filter-trash';
     }
@@ -124,7 +125,7 @@ export class ActivitiesPopupToolbarController {
     return 'activity-filter-events';
   }
 
-  activitiesEventScopeCount(scope: AppTypes.ActivitiesEventScope = this.activitiesEventScope): number {
+  activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
     if (scope === 'all') {
       return this.allEventsScopeBadge;
     }
@@ -183,8 +184,8 @@ export class ActivitiesPopupToolbarController {
     return this.activitiesChatContextFilters.find((o: any) => o.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
   }
 
-  activitiesChatContextFilterClass(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
-    const map: Record<AppTypes.ActivitiesChatContextFilter, string> = {
+  activitiesChatContextFilterClass(filter: ContractTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
+    const map: Record<ContractTypes.ActivitiesChatContextFilter, string> = {
       all: 'chat-context-filter-all',
       event: 'chat-context-filter-event',
       subEvent: 'chat-context-filter-sub-event',
@@ -194,11 +195,11 @@ export class ActivitiesPopupToolbarController {
     return map[filter] ?? 'chat-context-filter-all';
   }
 
-  activitiesSecondaryFilterClass(_filter: AppTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
+  activitiesSecondaryFilterClass(_filter: ContractTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
     return 'activity-filter-secondary';
   }
 
-  activitiesChatContextFilterCount(filter: AppTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
+  activitiesChatContextFilterCount(filter: ContractTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
     if (this.activitiesPrimaryFilter !== 'chats') { return 0; }
     return this.chatItemsForActivities().filter((item: any) => {
       if (filter === 'all') { return true; }
@@ -218,7 +219,7 @@ export class ActivitiesPopupToolbarController {
     return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
   }
 
-  activitiesSecondaryFilterOptionLabel(filter: AppTypes.ActivitiesSecondaryFilter): string {
+  activitiesSecondaryFilterOptionLabel(filter: ContractTypes.ActivitiesSecondaryFilter): string {
     if (filter === 'recent') {
       return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
     }
@@ -236,7 +237,7 @@ export class ActivitiesPopupToolbarController {
     return `${group} · ${label}`;
   }
 
-  rateFilterOptionLabel(key: AppTypes.RateFilterKey): string {
+  rateFilterOptionLabel(key: ContractTypes.RateFilterKey): string {
     return this.rateFilterLabelForKey(key);
   }
 
@@ -251,8 +252,8 @@ export class ActivitiesPopupToolbarController {
     return label;
   }
 
-  activitiesRateFilterIcon(key: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
-    const icons: Record<AppTypes.RateFilterKey, string> = {
+  activitiesRateFilterIcon(key: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
+    const icons: Record<ContractTypes.RateFilterKey, string> = {
       'individual-given': 'north_east',
       'individual-received': 'south_west',
       'individual-mutual': 'sync_alt',
@@ -263,11 +264,11 @@ export class ActivitiesPopupToolbarController {
     return icons[key] ?? 'star';
   }
 
-  activitiesRateFilterClass(_filter: AppTypes.RateFilterKey = this.activitiesRateFilter): string {
+  activitiesRateFilterClass(_filter: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
     return 'activity-filter-rates';
   }
 
-  rateFilterOptionClass(key: AppTypes.RateFilterKey): string {
+  rateFilterOptionClass(key: ContractTypes.RateFilterKey): string {
     return `rate-filter-item-${key}`;
   }
 
@@ -275,7 +276,7 @@ export class ActivitiesPopupToolbarController {
     return this.rateSocialGroupForLabel(label) === 'pair';
   }
 
-  rateFilterCount(filter: AppTypes.RateFilterKey): number {
+  rateFilterCount(filter: ContractTypes.RateFilterKey): number {
     return this.rateItems.filter((item: any) => this.activitiesRates.matchesFilter(item, filter)).length;
   }
 
@@ -357,11 +358,11 @@ export class ActivitiesPopupToolbarController {
     this.cdr.markForCheck();
   }
 
-  private rateFilterLabelForKey(key: AppTypes.RateFilterKey): string {
+  private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
     return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
   }
 
-  private rateGroupLabelKeyForKey(key: AppTypes.RateFilterKey): string {
+  private rateGroupLabelKeyForKey(key: ContractTypes.RateFilterKey): string {
     return key.startsWith('individual')
       ? 'activity.rates.group.preferences'
       : 'activity.rates.group.suggestions';
@@ -417,13 +418,13 @@ export class ActivitiesPopupToolbarController {
       && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
   }
 
-  availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
+  availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
     return this.isEventActivitiesPrimaryFilter()
       ? this.activitiesSecondaryFilters.filter((option: any) => option.key !== 'relevant')
       : this.activitiesSecondaryFilters;
   }
 
-  selectActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
+  selectActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): void {
     if (this.activitiesPrimaryFilter === 'rates' || filter === 'rates') {
       this.activitiesRates.commitPendingDirectionOverrides();
     }
@@ -458,8 +459,8 @@ export class ActivitiesPopupToolbarController {
     this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
   }
 
-  selectActivitiesEventScope(scope: AppTypes.ActivitiesEventScope): void {
-    const currentScope = this.activitiesContext.activitiesEventScope() as AppTypes.ActivitiesEventScope;
+  selectActivitiesEventScope(scope: ContractTypes.ActivitiesEventScope): void {
+    const currentScope = this.activitiesContext.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
     if (!this.isEventActivitiesPrimaryFilter() || currentScope === scope) {
       this.showActivitiesEventScopePicker = false;
       return;
@@ -475,7 +476,7 @@ export class ActivitiesPopupToolbarController {
     this.cdr.markForCheck();
   }
 
-  selectActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
+  selectActivitiesChatContextFilter(filter: ContractTypes.ActivitiesChatContextFilter): void {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return;
     }
@@ -489,7 +490,7 @@ export class ActivitiesPopupToolbarController {
     this.cdr.markForCheck();
   }
 
-  selectHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {
+  selectHostingPublicationFilter(filter: ContractTypes.HostingPublicationFilter): void {
     if (!this.isHostingPublicationFilterVisible() || this.hostingPublicationFilter === filter) {
       return;
     }
@@ -498,7 +499,7 @@ export class ActivitiesPopupToolbarController {
     this.cdr.markForCheck();
   }
 
-  selectActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
+  selectActivitiesSecondaryFilter(filter: ContractTypes.ActivitiesSecondaryFilter): void {
     const normalizedFilter = this.isEventActivitiesPrimaryFilter() && filter === 'relevant'
       ? 'recent'
       : filter;
@@ -516,8 +517,8 @@ export class ActivitiesPopupToolbarController {
     this.cdr.markForCheck();
   }
 
-  selectActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
-    const currentFilter = this.activitiesContext.activitiesRateFilter() as AppTypes.RateFilterKey;
+  selectActivitiesRateFilter(filter: ContractTypes.RateFilterKey): void {
+    const currentFilter = this.activitiesContext.activitiesRateFilter() as ContractTypes.RateFilterKey;
     if (currentFilter === filter) {
       this.showActivitiesPrimaryPicker = false;
       this.showActivitiesEventScopePicker = false;
@@ -568,7 +569,7 @@ export class ActivitiesPopupToolbarController {
     this.activitiesContext.toggleActivitiesSecondaryPicker();
   }
 
-  setActivitiesView(view: AppTypes.ActivitiesView, event?: Event): void {
+  setActivitiesView(view: ContractTypes.ActivitiesView, event?: Event): void {
     event?.stopPropagation();
     if (this.activitiesPrimaryFilter === 'rates') {
       this.activitiesRates.commitPendingDirectionOverrides();
@@ -660,7 +661,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   requestOpenEventEditor(): void {
-    const target: AppTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter()
+    const target: ContractTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter()
       ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
       : 'events';
     this.showActivitiesQuickActionsMenu = false;

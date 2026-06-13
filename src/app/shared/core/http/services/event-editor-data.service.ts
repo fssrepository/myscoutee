@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventRecord } from '../../base/models/events.model';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { HttpActivityMembersService } from './activity-members.service';
 import { HttpEventsService } from './events.service';
 import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';

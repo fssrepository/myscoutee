@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesPageRequest } from '../../../base/models';
+import type { ActivitiesPageRequest } from '../../../contracts';
 import type { RateRecord } from '../../../contracts/activity.interface';
 import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';

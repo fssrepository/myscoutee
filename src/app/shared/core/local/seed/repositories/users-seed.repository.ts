@@ -10,7 +10,7 @@ import type { UserDto } from '../../../contracts/user.interface';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 
 
-import { type ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
 import { UserFilterPreferencesBuilder, UserProfileStateBuilder, UserRecordsBuilder } from '../../../base/builders';
 import { SeedUserBuilder, SeedUserImpressionsBuilder } from '../builders';

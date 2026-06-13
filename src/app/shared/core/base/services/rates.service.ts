@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesPageRequest } from '../../../core/base/models';
+import type { ActivitiesPageRequest } from '../../contracts';
 import type { RateRecord } from '../../contracts/activity.interface';
 import type { ActivityRatePageResult } from '../../contracts/activity.interface';
 import { LocalRatesService } from '../../local';

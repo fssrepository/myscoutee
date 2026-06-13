@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../../app-utils';
 import type * as AppTypes from '../../../base/models';
+import type * as ContractTypes from '../../../contracts';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem } from '../../../base/models/event-seed-item.model';
 import type { UserDto } from '../../../contracts/user.interface';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
@@ -49,7 +50,7 @@ export class SeedEventBuilder {
   static seededEventCapacityRange(
     eventId: string,
     activityCapacityById: Record<string, string>
-  ): AppTypes.EventCapacityRange {
+  ): ContractTypes.EventCapacityRange {
     const source = activityCapacityById[eventId];
     if (source) {
       const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
@@ -72,12 +73,12 @@ export class SeedEventBuilder {
       activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
       hostingDatesById: Record<string, string>;
       eventDatesById: Record<string, string>;
-      eventCapacityById: Record<string, AppTypes.EventCapacityRange>;
+      eventCapacityById: Record<string, ContractTypes.EventCapacityRange>;
       activityCapacityById: Record<string, string>;
       defaultStartIso: string;
       activeUserId: string;
     }
-  ): AppTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventFormItem[] {
     const dateSource = options.activityDateTimeRangeById[source.id];
     const fallbackStartIso = options.isHosting
       ? (options.hostingDatesById[source.id] ?? options.defaultStartIso)
@@ -102,7 +103,7 @@ export class SeedEventBuilder {
     return this.buildSeededCasualSubEvents(source, startMs, endMs, seed, options.activeUserId, eventMax);
   }
 
-  static inferredSubEventsDisplayMode(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventsDisplayMode {
+  static inferredSubEventsDisplayMode(items: readonly ContractTypes.SubEventFormItem[]): ContractTypes.SubEventsDisplayMode {
     if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
       return 'Tournament';
     }
@@ -116,12 +117,12 @@ export class SeedEventBuilder {
     seed: number,
     activeUserId: string,
     eventMax: number
-  ): AppTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventFormItem[] {
     const count = 2 + (seed % 3);
     const totalMs = Math.max(2 * 60 * 60 * 1000, endMs - startMs);
     const slotMs = Math.max(45 * 60 * 1000, Math.floor(totalMs / count));
     const names = ['Kickoff', 'Main Session', 'Side Activity', 'Wrap-up'];
-    const items: AppTypes.SubEventFormItem[] = [];
+    const items: ContractTypes.SubEventFormItem[] = [];
     for (let index = 0; index < count; index += 1) {
       const optional = index > 0 && ((seed + index) % 2 === 0);
       const stageStartMs = startMs + (index * slotMs);
@@ -158,19 +159,19 @@ export class SeedEventBuilder {
     seed: number,
     activeUserId: string,
     eventMax: number
-  ): AppTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventFormItem[] {
     const stageNames = ['Qualifiers', 'Semifinals', 'Finals'];
     const stageCount = 3;
     const totalMs = Math.max(3 * 60 * 60 * 1000, endMs - startMs);
     const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
-    const items: AppTypes.SubEventFormItem[] = [];
+    const items: ContractTypes.SubEventFormItem[] = [];
     const startReviewScenario = (seed % 6) === 0;
     const finishedScenario = source.id === 'h1' || (seed % 7) === 0;
 
     for (let index = 0; index < stageCount; index += 1) {
       const groupCount = Math.max(1, 4 >> index);
       const basePerGroupMax = Math.max(2, Math.ceil(Math.max(2, eventMax) / Math.max(1, groupCount * (index + 1))));
-      const groups: AppTypes.SubEventGroupItem[] = [];
+      const groups: ContractTypes.SubEventGroupItem[] = [];
       for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
         const groupMax = Math.max(2, basePerGroupMax - (groupIndex % 2));
         const groupMin = Math.max(0, Math.floor(groupMax * 0.6));
@@ -229,7 +230,7 @@ export class SeedEventBuilder {
     return this.sortSubEventsByStartAsc(items);
   }
 
-  private static sortSubEventsByStartAsc(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+  private static sortSubEventsByStartAsc(items: readonly ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] {
     return [...items].sort((a, b) => AppUtils.toSortableDate(a.startAt) - AppUtils.toSortableDate(b.startAt));
   }
 
@@ -244,7 +245,7 @@ export class SeedEventBuilder {
     return Math.max(0, Math.trunc(parsed));
   }
 
-  private static groupCapacityTotals(groups: readonly AppTypes.SubEventGroupItem[]): { min: number; max: number } {
+  private static groupCapacityTotals(groups: readonly ContractTypes.SubEventGroupItem[]): { min: number; max: number } {
     let min = 0;
     let max = 0;
     for (const group of groups) {

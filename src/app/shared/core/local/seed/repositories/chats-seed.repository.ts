@@ -7,9 +7,9 @@ import { AppUtils } from '../../../../app-utils';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { ChatThreadBuilder } from '../../common/builders';
 import { LocalMemoryDb } from '../../../base/db';
-import type { ChatPopupMessage, ChatRecord } from '../../../base/models/chat.model';
+import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
 
-import type { ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
 import { SeedChatsBuilder } from '../builders';
 

@@ -1,6 +1,6 @@
 import type { EventVisibility } from '../../common/constants';
-import type { EventBlindMode, EventPolicyItem, EventSlotTemplate, SubEventsDisplayMode } from './event.model';
-import type { PricingConfig } from './pricing.model';
+import type { EventBlindMode, EventPolicyItem, EventSlotTemplate, SubEventsDisplayMode } from '../../contracts/event.interface';
+import type { PricingConfig } from '../../contracts/pricing.interface';
 
 export interface EventEditorSubEventGroupItem {
   id?: string;

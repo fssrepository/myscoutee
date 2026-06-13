@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalLandingContentService } from '../../local/source/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
-import type { LandingContentState } from '../models';
+import type { LandingContentState } from '../../contracts';
 import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { IdeaPostsService } from './idea-posts.service';

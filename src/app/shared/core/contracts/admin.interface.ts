@@ -1,3 +1,4 @@
+import type { AssetType } from '../common/constants';
 import type { UserDto } from './user.interface';
 
 export interface AdminUserDto {
@@ -330,7 +331,7 @@ export interface AdminHelpTargetDto {
   attachmentId: string;
   attachmentType: 'link' | 'event' | 'asset';
   attachmentEntityId: string;
-  assetType?: 'Car' | 'Accommodation' | 'Supplies' | null;
+  assetType?: AssetType | null;
   title: string;
   subtitle: string;
   description: string;

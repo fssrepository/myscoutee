@@ -7,6 +7,7 @@ import { EventFeedbackBuilder } from '../../shared/core/base/builders';
 import { EventsService } from '../../shared/core/base';
 import { AppContext, type UserDto } from '../../shared/core';
 import type { ActivityEventSeedItem } from '../../shared/core/base/models/event-seed-item.model';
+import type { EventFeedbackListFilter } from '../../shared/core/common/constants';
 import type { EventFeedbackPersistedState } from '../../shared/core/local/source/entity/event.entity';
 
 export interface EventFeedbackPopupSource {
@@ -93,7 +94,7 @@ export class EventFeedbackPopupStateService {
 
   public readonly eventFeedbackCards = signal<AppTypes.EventFeedbackCard[]>([]);
   public readonly eventFeedbackIndex = signal<number>(0);
-  public readonly eventFeedbackListFilter = signal<AppTypes.EventFeedbackListFilter>('pending');
+  public readonly eventFeedbackListFilter = signal<EventFeedbackListFilter>('pending');
   public readonly eventFeedbackListSubmitMessage = signal<string>('');
   public readonly selectedEventFeedbackEventId = signal<string | null>(null);
   public readonly selectedOrganizerEventFeedbackEventId = signal<string | null>(null);
@@ -121,7 +122,7 @@ export class EventFeedbackPopupStateService {
   public readonly eventFeedbackAttendeeCollabOptions = APP_STATIC_DATA.eventFeedbackAttendeeCollabOptions;
   public readonly eventFeedbackAttendeeRejoinOptions = APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions;
   public readonly eventFeedbackPersonalityTraitOptions = APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions;
-  public readonly eventFeedbackListFilters: Array<{ key: AppTypes.EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
+  public readonly eventFeedbackListFilters: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> = APP_STATIC_DATA.eventFeedbackListFilters;
 
   public openPopup(): void {
     this.eventFeedbackListFilter.set('pending');
@@ -148,7 +149,7 @@ export class EventFeedbackPopupStateService {
     this.selectedOrganizerEventFeedbackEventId.set(null);
   }
 
-  public selectEventFeedbackListFilter(filter: AppTypes.EventFeedbackListFilter, event?: Event): void {
+  public selectEventFeedbackListFilter(filter: EventFeedbackListFilter, event?: Event): void {
     event?.stopPropagation();
     this.eventFeedbackListFilter.set(filter);
     this.selectedOrganizerEventFeedbackEventId.set(null);
@@ -974,7 +975,7 @@ export class EventFeedbackPopupStateService {
       });
   });
 
-  public eventFeedbackFilterCount(filter: AppTypes.EventFeedbackListFilter): number {
+  public eventFeedbackFilterCount(filter: EventFeedbackListFilter): number {
     switch (filter) {
       case 'own-events':
         return this.eventFeedbackCounterValue('ownEvents');

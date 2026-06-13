@@ -1,13 +1,15 @@
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type {
+  EventBlindMode,
   EventPolicyItem,
   EventRecordKind,
   EventSlotOccurrence,
   EventSlotTemplate,
-  PricingConfig,
   SubEventFormItem,
   SubEventsDisplayMode
-} from '.';
+} from '../../contracts/event.interface';
+import type { ActivityPendingReason, EventVisibility } from '../../common/constants';
+import type { PricingConfig } from '../../contracts/pricing.interface';
 
 export interface ActivityInvitationSeedItem {
   id: string;
@@ -26,7 +28,7 @@ export interface ActivityInvitationSeedItem {
   capacityMax?: number | null;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
-  pendingReason?: 'approval' | 'waitlist' | null;
+  pendingReason?: ActivityPendingReason;
   startAt?: string;
   endAt?: string;
   distanceKm?: number;
@@ -57,9 +59,9 @@ export interface ActivityEventSeedItem {
   capacityTotal?: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
-  pendingReason?: 'approval' | 'waitlist' | null;
-  visibility?: 'Public' | 'Friends only' | 'Invitation only';
-  blindMode?: 'Open Event' | 'Blind Event';
+  pendingReason?: ActivityPendingReason;
+  visibility?: EventVisibility;
+  blindMode?: EventBlindMode;
   imageUrl?: string;
   sourceLink?: string;
   location?: string;

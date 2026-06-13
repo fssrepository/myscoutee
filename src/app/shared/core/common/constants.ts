@@ -1,9 +1,16 @@
+// Entry
+export const AUTH_MODES = ['selector', 'firebase'] as const;
+export type AuthMode = typeof AUTH_MODES[number];
+
 // Activity
 export const ACTIVITY_MEMBER_STATUSES = ['pending', 'accepted', 'disqualified'] as const;
 export type ActivityMemberStatus = typeof ACTIVITY_MEMBER_STATUSES[number];
 
 export const ACTIVITY_PENDING_SOURCES = ['admin', 'member', null] as const;
 export type ActivityPendingSource = typeof ACTIVITY_PENDING_SOURCES[number];
+
+export const ACTIVITY_PENDING_REASONS = ['approval', 'waitlist', null] as const;
+export type ActivityPendingReason = typeof ACTIVITY_PENDING_REASONS[number];
 
 export const ACTIVITY_INVITE_SORTS = ['recent', 'relevant'] as const;
 export type ActivityInviteSort = typeof ACTIVITY_INVITE_SORTS[number];
@@ -60,6 +67,9 @@ export type AssetLifecycleStatus = typeof ASSET_LIFECYCLE_STATUSES[number];
 // Event
 export const EVENT_VISIBILITIES = ['Public', 'Friends only', 'Invitation only'] as const;
 export type EventVisibility = typeof EVENT_VISIBILITIES[number];
+
+export const EVENT_FEEDBACK_LIST_FILTERS = ['own-events', 'pending', 'feedbacked', 'removed'] as const;
+export type EventFeedbackListFilter = typeof EVENT_FEEDBACK_LIST_FILTERS[number];
 
 // Pricing
 export const PRICING_MODES = ['fixed', 'demand-based', 'time-based', 'hybrid'] as const;

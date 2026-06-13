@@ -1,10 +1,10 @@
 import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../source/entity/chat.entity';
 import { AppUtils } from '../../../../app-utils';
-import type { ChatPopupMessage } from '../../../base/models/chat.model';
-import type { ChatRecord } from '../../../base/models/chat.model';
+import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatRecord } from '../../../contracts/chat.interface';
 import type { UserDto } from '../../../contracts/user.interface';
 
-import type { ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventBuilder } from './event-seed.builder';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';

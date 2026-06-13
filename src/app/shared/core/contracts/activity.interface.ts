@@ -1,13 +1,294 @@
-import type { UserDto } from './user.interface';
+import type { ActivitiesChatContextFilter, SupportCaseFilter } from './chat.interface';
+import type {
+  EventBlindMode,
+  EventEditorTarget,
+  EventPolicyItem,
+  EventRecordKind,
+  EventSlotOccurrence,
+  EventSlotTemplate,
+  SubEventFormItem,
+  SubEventsDisplayMode
+} from './event.interface';
+import type { PricingConfig } from './pricing.interface';
+import type { LocationCoordinates, UserDto } from './user.interface';
 import type {
   ActivityInviteSort,
   ActivityMemberOwnerType,
   ActivityMemberRequestKind,
   ActivityMemberRole,
   ActivityMemberStatus,
+  ActivityPendingReason,
   ActivityPendingSource,
+  AssetType,
+  EventVisibility,
   UserGender
 } from '../common/constants';
+
+export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
+export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
+export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
+export type HostingPublicationFilter = 'all' | 'drafts';
+export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
+export type EventExploreView = 'day' | 'distance';
+export type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
+export type RateFilterKey =
+  | 'individual-given'
+  | 'individual-received'
+  | 'individual-mutual'
+  | 'individual-met'
+  | 'pair-given'
+  | 'pair-received';
+
+export interface ActivitiesFeedFilters {
+  primaryFilter?: ActivitiesPrimaryFilter;
+  eventScopeFilter?: ActivitiesEventScope;
+  secondaryFilter?: ActivitiesSecondaryFilter;
+  chatContextFilter?: ActivitiesChatContextFilter;
+  hostingPublicationFilter?: HostingPublicationFilter;
+  rateFilter?: RateFilterKey;
+  rateSocialBadgeEnabled?: boolean;
+  adminServiceOnly?: boolean;
+  supportCaseFilter?: SupportCaseFilter;
+}
+
+export interface EventExploreFeedFilters {
+  userId: string;
+  order: EventExploreOrder;
+  view: EventExploreView;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  excludedSourceIds?: string[];
+}
+
+export interface ActivitiesEventSyncPayload {
+  id: string;
+  target: EventEditorTarget;
+  title: string;
+  shortDescription: string;
+  timeframe: string;
+  activity: number;
+  isAdmin: boolean;
+  startAt: string;
+  endAt?: string;
+  distanceKm: number;
+  imageUrl: string;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+  autoInviter?: boolean;
+  frequency?: string;
+  ticketing?: boolean;
+  pricing?: PricingConfig | null;
+  slotsEnabled?: boolean;
+  slotTemplates?: EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
+  nextSlot?: EventSlotOccurrence | null;
+  upcomingSlots?: EventSlotOccurrence[];
+  visibility?: EventVisibility;
+  blindMode?: EventBlindMode;
+  published?: boolean;
+  creatorUserId?: string;
+  creatorName?: string;
+  creatorInitials?: string;
+  creatorGender?: UserGender;
+  creatorCity?: string;
+  location?: string;
+  locationCoordinates?: LocationCoordinates;
+  sourceLink?: string;
+  policies?: EventPolicyItem[];
+  topics?: string[];
+  subEvents?: SubEventFormItem[];
+  subEventsDisplayMode?: SubEventsDisplayMode;
+  paymentSessionId?: string | null;
+}
+
+export interface ActivitiesPageRequest {
+  primaryFilter: ActivitiesPrimaryFilter;
+  eventScopeFilter?: ActivitiesEventScope;
+  secondaryFilter: ActivitiesSecondaryFilter;
+  chatContextFilter: ActivitiesChatContextFilter;
+  hostingPublicationFilter: HostingPublicationFilter;
+  rateFilter: RateFilterKey;
+  rateSocialBadgeEnabled?: boolean;
+  view: ActivitiesView;
+  page: number;
+  pageSize: number;
+  cursor?: string | null;
+  sort?: string;
+  direction?: 'asc' | 'desc';
+  groupBy?: string;
+  anchorDate?: string;
+  rangeStart?: string;
+  rangeEnd?: string;
+  adminServiceOnly?: boolean;
+  supportCaseFilter?: SupportCaseFilter;
+}
+
+export type ActivityEventScopeFilter = ActivitiesEventScope;
+export type ActivityEventRepositoryItemType = 'events' | 'hosting' | 'invitations';
+export type ActivityEventActivitiesSort = 'date' | 'distance' | 'relevance';
+export type ActivityEventStatus =
+  | 'A'
+  | 'H'
+  | 'INV'
+  | 'DR'
+  | 'T'
+  | 'UR'
+  | 'B'
+  | 'D'
+  | 'I'
+  | 'active'
+  | 'hosting'
+  | 'invitation'
+  | 'draft'
+  | 'trashed';
+
+export interface ActivityEventRecord {
+  id: string;
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  statusBeforeSuppression?: ActivityEventStatus | null;
+  avatar: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  unread: number;
+  activity: number;
+  isAdmin: boolean;
+  isInvitation: boolean;
+  isHosting: boolean;
+  isTrashed: boolean;
+  published: boolean;
+  trashedAtIso: string | null;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorGender: UserGender;
+  creatorCity: string;
+  visibility: EventVisibility;
+  blindMode: EventBlindMode;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  sourceLink: string;
+  location: string;
+  locationCoordinates: LocationCoordinates | null;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  autoInviter?: boolean;
+  frequency?: string;
+  ticketing: boolean;
+  pricing?: PricingConfig | null;
+  policies?: EventPolicyItem[];
+  slotsEnabled?: boolean;
+  slotTemplates?: EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
+  nextSlot?: EventSlotOccurrence | null;
+  upcomingSlots?: EventSlotOccurrence[];
+  acceptedMembers: number;
+  pendingMembers: number;
+  pendingReason?: ActivityPendingReason;
+  topics: string[];
+  subEvents?: SubEventFormItem[];
+  subEventsDisplayMode?: SubEventsDisplayMode;
+  rating: number;
+  boost: number;
+  affinity: number;
+}
+
+export interface ActivityEventListItem {
+  id: string;
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  avatar: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter?: string | null;
+  unread: number;
+  activity: number;
+  isAdmin: boolean;
+  isInvitation: boolean;
+  isHosting: boolean;
+  isTrashed: boolean;
+  published: boolean;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorCity: string;
+  visibility: EventVisibility;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  location: string;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  ticketing: boolean;
+  eventType?: EventRecordKind;
+  acceptedMembers: number;
+  pendingMembers: number;
+  pendingReason?: ActivityPendingReason;
+  topics: string[];
+  rating: number;
+  boost: number;
+  affinity: number;
+}
+
+export type ActivityEventCardRecord = ActivityEventRecord | ActivityEventListItem;
+
+export interface ActivityEventExploreQuery {
+  userId: string;
+  order: EventExploreOrder;
+  view: EventExploreView;
+  friendsOnly: boolean;
+  openSpotsOnly: boolean;
+  topic: string;
+  limit: number;
+  cursor?: string | null;
+  excludedSourceIds?: string[];
+}
+
+export interface ActivityEventExploreQueryResult {
+  records: ActivityEventRecord[];
+  total: number;
+  nextCursor: string | null;
+}
+
+export interface ActivityEventActivitiesQuery {
+  userId: string;
+  filter: ActivityEventScopeFilter;
+  hostingPublicationFilter?: HostingPublicationFilter;
+  secondaryFilter: ActivitiesSecondaryFilter;
+  sort: ActivityEventActivitiesSort;
+  view: ActivitiesView;
+  limit: number;
+  cursor?: string | null;
+  anchorDate?: string;
+  rangeStart?: string;
+  rangeEnd?: string;
+}
+
+export interface ActivityEventActivitiesListQueryResult {
+  records: ActivityEventListItem[];
+  total: number;
+  nextCursor: string | null;
+}
 
 export interface ActivityMemberEntry {
   id: string;
@@ -205,7 +486,7 @@ export interface ActivityRatePageResult {
 
 export interface EventCheckoutAssetSelection {
   subEventId: string;
-  resourceType: 'Car' | 'Accommodation' | 'Supplies';
+  resourceType: AssetType;
 }
 
 export interface EventCheckoutLineItem {
@@ -228,7 +509,7 @@ export interface EventCheckoutSelection {
   currency: string;
   paymentSessionId?: string | null;
   bookingConfirmed?: boolean;
-  pendingReason?: 'approval' | 'waitlist' | null;
+  pendingReason?: ActivityPendingReason;
 }
 
 export interface EventCheckoutRequest {
@@ -241,7 +522,7 @@ export interface EventCheckoutRequest {
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
-  pendingReason?: 'approval' | 'waitlist' | null;
+  pendingReason?: ActivityPendingReason;
 }
 
 export interface EventCheckoutSession {
@@ -259,7 +540,7 @@ export interface SubmittedEventFeedbackAnswer {
   eventId: string;
   kind: 'event' | 'attendee';
   targetUserId: string | null;
-  targetRole: 'Admin' | 'Manager' | 'Member';
+  targetRole: ActivityMemberRole;
   primaryValue: string;
   secondaryValue: string;
   personalityTraitIds: string[];
@@ -298,7 +579,7 @@ export interface EventFeedbackAnswerSubmitDto {
   cardId: string;
   kind: 'event' | 'attendee';
   targetUserId: string | null;
-  targetRole: 'Admin' | 'Manager' | 'Member';
+  targetRole: ActivityMemberRole;
   primaryValue: string;
   secondaryValue: string;
   personalityTraitIds: string[];

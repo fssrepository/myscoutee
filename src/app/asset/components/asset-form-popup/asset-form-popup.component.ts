@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import {
   AppMenuComponent,
@@ -63,8 +64,8 @@ export class AssetFormPopupComponent implements OnChanges {
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showPoliciesPopup = false;
   protected showPolicyEditorPopup = false;
-  protected workingPolicies: AppTypes.EventPolicyItem[] = [];
-  protected workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
+  protected workingPolicies: ContractTypes.EventPolicyItem[] = [];
+  protected workingPolicyDraft: ContractTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -253,7 +254,7 @@ export class AssetFormPopupComponent implements OnChanges {
     if (this.isLoading || !this.canSavePolicyDraft() || this.isSavePending) {
       return;
     }
-    const nextItem: AppTypes.EventPolicyItem = {
+    const nextItem: ContractTypes.EventPolicyItem = {
       id: this.workingPolicyDraft.id?.trim() || `policy-${Date.now()}`,
       title: this.workingPolicyDraft.title.trim(),
       description: this.workingPolicyDraft.description.trim(),
@@ -287,11 +288,11 @@ export class AssetFormPopupComponent implements OnChanges {
     return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
   }
 
-  protected policyCardMetaLabel(policy: AppTypes.EventPolicyItem): string {
+  protected policyCardMetaLabel(policy: ContractTypes.EventPolicyItem): string {
     return policy.required !== false ? 'Required approval' : 'Optional policy';
   }
 
-  protected policyCardPreview(policy: AppTypes.EventPolicyItem): string {
+  protected policyCardPreview(policy: ContractTypes.EventPolicyItem): string {
     const description = policy.description.trim();
     if (description.length > 0) {
       return description;
@@ -369,7 +370,7 @@ export class AssetFormPopupComponent implements OnChanges {
     this.assetForm.policies = this.clonePolicies(this.workingPolicies);
   }
 
-  private createEmptyPolicyDraft(): AppTypes.EventPolicyItem {
+  private createEmptyPolicyDraft(): ContractTypes.EventPolicyItem {
     return {
       id: `policy-${Date.now()}`,
       title: '',
@@ -378,7 +379,7 @@ export class AssetFormPopupComponent implements OnChanges {
     };
   }
 
-  private clonePolicies(items: readonly AppTypes.EventPolicyItem[]): AppTypes.EventPolicyItem[] {
+  private clonePolicies(items: readonly ContractTypes.EventPolicyItem[]): ContractTypes.EventPolicyItem[] {
     return items.map(item => ({
       id: `${item.id ?? ''}`.trim(),
       title: `${item.title ?? ''}`.trim(),

@@ -1,20 +1,6 @@
 import type { ImageCardData, InfoCardData, SingleRowData } from '../../../ui';
+import type { ActivitiesPrimaryFilter, RateFilterKey } from '../../contracts/activity.interface';
 import type { EventVisibility } from '../../common/constants';
-
-export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
-export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
-export type ActivitiesSecondaryFilter = 'recent' | 'relevant' | 'past';
-export type HostingPublicationFilter = 'all' | 'drafts';
-export type ActivitiesView = 'month' | 'week' | 'day' | 'distance';
-export type EventExploreView = 'day' | 'distance';
-export type EventExploreOrder = 'upcoming' | 'past-events' | 'nearby' | 'most-relevant' | 'top-rated';
-export type RateFilterKey =
-  | 'individual-given'
-  | 'individual-received'
-  | 'individual-mutual'
-  | 'individual-met'
-  | 'pair-given'
-  | 'pair-received';
 
 export type RateFilterEntry =
   | { kind: 'group'; label: string }

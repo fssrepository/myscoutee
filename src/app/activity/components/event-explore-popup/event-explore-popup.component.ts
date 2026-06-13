@@ -12,9 +12,11 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type { EventExploreFeedFilters } from '../../../shared/core/base/models';
+import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
+import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   ActivityMembersBuilder,
@@ -58,8 +60,8 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
-import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
-import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
@@ -69,8 +71,8 @@ type CheckoutDraftEntry = {
 };
 
 type EventExploreMenuContext =
-  | { menu: 'order'; order: AppTypes.EventExploreOrder }
-  | { menu: 'view'; view: AppTypes.EventExploreView }
+  | { menu: 'order'; order: ContractTypes.EventExploreOrder }
+  | { menu: 'view'; view: ContractTypes.EventExploreView }
   | { menu: 'topic-picker' }
   | {
       menu: 'info-card';
@@ -115,7 +117,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
-    (option): option is { key: AppTypes.EventExploreView; label: string; icon: string } =>
+    (option): option is { key: ContractTypes.EventExploreView; label: string; icon: string } =>
       option.key === 'day' || option.key === 'distance'
   );
   protected readonly topicFilterGroups = APP_STATIC_DATA.interestOptionGroups;
@@ -127,8 +129,8 @@ export class EventExplorePopupComponent {
   protected showTopicPicker = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
   protected showCheckoutDraftBasket = false;
-  protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
-  protected eventExploreView: AppTypes.EventExploreView = 'day';
+  protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
+  protected eventExploreView: ContractTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
@@ -334,7 +336,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectEventExploreOrder(order: AppTypes.EventExploreOrder, event?: Event): void {
+  protected selectEventExploreOrder(order: ContractTypes.EventExploreOrder, event?: Event): void {
     event?.stopPropagation();
     if (this.eventExploreOrder === order) {
       this.cdr.markForCheck();
@@ -345,7 +347,7 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected selectEventExploreView(view: AppTypes.EventExploreView, event?: Event): void {
+  protected selectEventExploreView(view: ContractTypes.EventExploreView, event?: Event): void {
     event?.stopPropagation();
     if (this.eventExploreView === view) {
       this.cdr.markForCheck();
@@ -575,23 +577,23 @@ export class EventExplorePopupComponent {
     }
   }
 
-  protected eventExploreOrderLabel(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderLabel(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
   }
 
-  protected eventExploreOrderIcon(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderIcon(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
   }
 
-  protected eventExploreCurrentViewLabel(view: AppTypes.EventExploreView = this.eventExploreView): string {
+  protected eventExploreCurrentViewLabel(view: ContractTypes.EventExploreView = this.eventExploreView): string {
     return this.eventExploreViewOptions.find(option => option.key === view)?.label ?? 'Day';
   }
 
-  protected eventExploreCurrentViewIcon(view: AppTypes.EventExploreView = this.eventExploreView): string {
+  protected eventExploreCurrentViewIcon(view: ContractTypes.EventExploreView = this.eventExploreView): string {
     return this.eventExploreViewOptions.find(option => option.key === view)?.icon ?? 'today';
   }
 
-  private eventExploreOrderPalette(order: AppTypes.EventExploreOrder): AppMenuPalette {
+  private eventExploreOrderPalette(order: ContractTypes.EventExploreOrder): AppMenuPalette {
     switch (order) {
       case 'upcoming':
         return 'blue';
@@ -606,7 +608,7 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private eventExploreViewPalette(view: AppTypes.EventExploreView): AppMenuPalette {
+  private eventExploreViewPalette(view: ContractTypes.EventExploreView): AppMenuPalette {
     return view === 'distance' ? 'teal' : 'blue';
   }
 
@@ -1062,7 +1064,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectEventExploreSlot(slot: AppTypes.EventSlotOccurrence): void {
+  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrence): void {
     const record = this.slotPickerRecord;
     if (!record) {
       return;
@@ -1093,7 +1095,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  protected slotPickerOccupancyLabel(slot: AppTypes.EventSlotOccurrence): string {
+  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrence): string {
     return `${slot.acceptedMembers} / ${slot.capacityTotal}`;
   }
 
@@ -1142,7 +1144,7 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private applyActivitiesEventSync(sync: AppTypes.ActivitiesEventSyncPayload): void {
+  private applyActivitiesEventSync(sync: ContractTypes.ActivitiesEventSyncPayload): void {
     const userJoinedEvent = false;
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
@@ -1705,7 +1707,7 @@ export class EventExplorePopupComponent {
   private buildJoinRequestEntry(
     record: ActivityEventRecord,
     accepted = false,
-    pendingReason: 'approval' | 'waitlist' | null = null
+    pendingReason: ActivityPendingReason = null
   ): ActivityContracts.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
@@ -1772,7 +1774,7 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private isEventExploreSlotFull(slot: AppTypes.EventSlotOccurrence): boolean {
+  private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrence): boolean {
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     if (capacityTotal <= 0) {
       return false;
@@ -1784,7 +1786,7 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord,
     members: readonly ActivityContracts.ActivityMemberEntry[],
     paymentSessionId: string | null = null
-  ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
+  ): Omit<ContractTypes.ActivitiesEventSyncPayload, 'syncKey'> {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
       members,

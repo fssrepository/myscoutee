@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { ChatRecord } from '../models/chat.model';
+import type * as ContractTypes from '../../contracts';
+import type { ChatRecord } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
 
 interface BuildActivityChatRowsOptions {
@@ -59,7 +60,7 @@ function toActivityChatRowWithResolvedOptions(
   };
 }
 
-export function normalizeActivityChatChannelType(item: Pick<ChatRecord, 'channelType'>): AppTypes.ChatChannelType {
+export function normalizeActivityChatChannelType(item: Pick<ChatRecord, 'channelType'>): ContractTypes.ChatChannelType {
   if (
     item.channelType === 'mainEvent'
     || item.channelType === 'optionalSubEvent'
@@ -73,7 +74,7 @@ export function normalizeActivityChatChannelType(item: Pick<ChatRecord, 'channel
 
 export function activityChatContextFilterKey(
   item: Pick<ChatRecord, 'channelType'>
-): AppTypes.ActivitiesChatContextFilter | null {
+): ContractTypes.ActivitiesChatContextFilter | null {
   const channelType = normalizeActivityChatChannelType(item);
   if (channelType === 'mainEvent') {
     return 'event';

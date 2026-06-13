@@ -4,23 +4,24 @@ import type {
   ActivitiesSecondaryFilter,
   ActivitiesView,
   EventBlindMode,
-  EventFeedbackListFilter,
-  EventFeedbackOption,
-  EventFeedbackTraitOption,
   EventExploreOrder,
-  ExplainableSurface,
-  HelpCenterRevision,
-  HelpCenterSection,
-  RateFilterEntry,
   RateFilterKey,
   SubEventsDisplayMode,
   TournamentLeaderboardType
+} from './core/contracts';
+import type { ExplainableSurface, HelpCenterRevision, HelpCenterSection } from './core/contracts';
+import type {
+  EventFeedbackOption,
+  EventFeedbackTraitOption,
+  RateFilterEntry
 } from './core/base/models';
+import { EVENT_FEEDBACK_LIST_FILTERS, EVENT_VISIBILITIES, SUB_EVENT_RESOURCE_FILTERS } from './core/common/constants';
 import type {
   AssetCategory,
   AssetFilterType,
   AssetType,
   DetailPrivacy,
+  EventFeedbackListFilter,
   EventVisibility,
   ProfileStatus,
   SubEventResourceFilter
@@ -757,9 +758,9 @@ const SCHEDULE_FREQUENCY_OPTIONS: Array<{ value: AdminNotificationScheduleFreque
   { value: 'yearly', labelKey: 'schedule.frequency.yearly' },
   { value: 'one-time', labelKey: 'schedule.frequency.one.time' }
 ];
-const EVENT_VISIBILITY_OPTIONS: EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
+const EVENT_VISIBILITY_OPTIONS: EventVisibility[] = [...EVENT_VISIBILITIES];
 const EVENT_BLIND_MODE_OPTIONS: EventBlindMode[] = ['Open Event', 'Blind Event'];
-const SUB_EVENT_RESOURCE_FILTER_OPTIONS: SubEventResourceFilter[] = ['Members', 'Car', 'Accommodation', 'Supplies'];
+const SUB_EVENT_RESOURCE_FILTER_OPTIONS: SubEventResourceFilter[] = [...SUB_EVENT_RESOURCE_FILTERS];
 const SUB_EVENT_RESOURCE_FILTER_LABELS: Record<SubEventResourceFilter, string> = {
   Members: 'Members',
   Car: 'Car',
@@ -822,12 +823,14 @@ const EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS: EventFeedbackOption[] = [
   { value: 'no', label: 'Not now', icon: 'do_not_disturb_alt', impressionTag: 'Attendee risk' },
   { value: 'context', label: 'Depends on role', icon: 'tune', impressionTag: 'Attendee role-fit' }
 ];
-const EVENT_FEEDBACK_LIST_FILTERS: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> = [
-  { key: 'own-events', label: 'Own Events', icon: 'stadium' },
-  { key: 'pending', label: 'Pending', icon: 'schedule' },
-  { key: 'feedbacked', label: 'Feedbacked', icon: 'task_alt' },
-  { key: 'removed', label: 'Removed', icon: 'delete_outline' }
-];
+const EVENT_FEEDBACK_LIST_FILTER_META: Record<EventFeedbackListFilter, { label: string; icon: string }> = {
+  'own-events': { label: 'Own Events', icon: 'stadium' },
+  pending: { label: 'Pending', icon: 'schedule' },
+  feedbacked: { label: 'Feedbacked', icon: 'task_alt' },
+  removed: { label: 'Removed', icon: 'delete_outline' }
+};
+const EVENT_FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: EventFeedbackListFilter; label: string; icon: string }> =
+  EVENT_FEEDBACK_LIST_FILTERS.map(key => ({ key, ...EVENT_FEEDBACK_LIST_FILTER_META[key] }));
 const DEFAULT_HELP_CENTER_DESCRIPTION = 'MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.';
 const DEFAULT_PRIVACY_CENTER_DESCRIPTION = 'Before continuing, please review and accept how your data is used in MyScoutee.';
 const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
@@ -2544,7 +2547,7 @@ export const APP_STATIC_DATA = {
   eventFeedbackAttendeeCollabOptions: EVENT_FEEDBACK_ATTENDEE_COLLAB_OPTIONS,
   eventFeedbackAttendeeRejoinOptions: EVENT_FEEDBACK_ATTENDEE_REJOIN_OPTIONS,
   eventFeedbackPersonalityTraitOptions: EVENT_FEEDBACK_PERSONALITY_TRAIT_OPTIONS,
-  eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTERS,
+  eventFeedbackListFilters: EVENT_FEEDBACK_LIST_FILTER_OPTIONS,
   helpCenterSections: HELP_CENTER_SECTIONS,
   helpCenterSectionsByLang: {
     en: HELP_CENTER_SECTIONS,

@@ -1,9 +1,10 @@
 import type { RateRecord } from '../../../../../shared/core/contracts/activity.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
+import type * as ContractTypes from '../../../../../shared/core/contracts';
 
 export function matchesActivitiesRateFilter(
   item: RateRecord,
-  filter: AppTypes.RateFilterKey,
+  filter: ContractTypes.RateFilterKey,
   socialBadgeEnabled: boolean,
   displayedDirection: (candidate: RateRecord) => RateRecord['direction']
 ): boolean {
@@ -49,14 +50,14 @@ export function pendingActivitiesRateDirectionAfterRating(
 }
 
 export function parseActivitiesRateFilterKey(
-  filter: AppTypes.RateFilterKey
+  filter: ContractTypes.RateFilterKey
 ): { mode: 'individual' | 'pair'; direction: RateRecord['direction'] } {
   const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateRecord['direction']];
   return { mode, direction };
 }
 
 export function collectPendingActivitiesRateDirectionOverrides(
-  targetFilter: AppTypes.RateFilterKey | undefined,
+  targetFilter: ContractTypes.RateFilterKey | undefined,
   pendingOverrides: Partial<Record<string, RateRecord['direction']>>,
   rateItems: readonly RateRecord[]
 ): Array<[string, RateRecord['direction']]> {

@@ -1,3 +1,5 @@
+import type { AssetType } from '../../../../common/constants';
+
 export interface AdminSeedUserDto {
   id: string;
   name: string;
@@ -64,7 +66,7 @@ export interface AdminSeedHelpTarget {
   attachmentId: string;
   attachmentType: 'link' | 'event' | 'asset';
   attachmentEntityId: string;
-  assetType?: 'Car' | 'Accommodation' | 'Supplies' | null;
+  assetType?: AssetType | null;
   title: string;
   subtitle: string;
   description: string;

@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventRecord } from '../models/events.model';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { LocalEventEditorDataService } from '../../local/source/services/event-editor-data.service';
 import { HttpEventEditorDataService } from '../../http/services/event-editor-data.service';
 import { BaseRouteModeService } from './base-route-mode.service';

@@ -3,8 +3,9 @@ import type { ChatThreadRecord } from '../entity/chat.entity';
 import { TestBed } from '@angular/core/testing';
 
 import type * as AppTypes from '../../../base/models';
+import type * as ContractTypes from '../../../contracts';
 import { LocalMemoryDb } from '../../../base/db';
-import type { ChatPopupMessage } from '../../../base/models/chat.model';
+import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { LocalChatsRepository } from './chats.repository';
 
@@ -120,8 +121,8 @@ describe('LocalChatsRepository chat pages', () => {
 });
 
 function pageRequest(
-  overrides: Partial<AppTypes.ActivitiesPageRequest> = {}
-): AppTypes.ActivitiesPageRequest {
+  overrides: Partial<ContractTypes.ActivitiesPageRequest> = {}
+): ContractTypes.ActivitiesPageRequest {
   return {
     primaryFilter: 'chats',
     secondaryFilter: 'recent',

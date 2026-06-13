@@ -2,8 +2,9 @@ import type { ChatThreadRecord } from '../entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../base/models';
+import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
-import type { ChatRecord } from '../../../base/models/chat.model';
+import type { ChatRecord } from '../../../contracts/chat.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -26,7 +27,7 @@ export class LocalChatsService extends LocalRouteDelayService {
 
   async querySupportCaseItemsForAdmin(
     userId: string,
-    filter: AppTypes.SupportCaseFilter = 'all'
+    filter: ContractTypes.SupportCaseFilter = 'all'
   ): Promise<ChatThreadRecord[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter);
@@ -34,7 +35,7 @@ export class LocalChatsService extends LocalRouteDelayService {
 
   async queryActivitiesChatPage(
     userId: string,
-    request: AppTypes.ActivitiesPageRequest,
+    request: ContractTypes.ActivitiesPageRequest,
     _cachedChatItems: readonly ChatRecord[] = []
   ): Promise<{ items: ChatThreadRecord[]; total: number; nextCursor?: string | null }> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
@@ -45,7 +46,7 @@ export class LocalChatsService extends LocalRouteDelayService {
     return this.chatsRepository.queryChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMessages(chat);
   }
@@ -55,17 +56,17 @@ export class LocalChatsService extends LocalRouteDelayService {
     return this.chatsRepository.queryChatMembers(chatId);
   }
 
-  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
   async sendChatMessageWithAttachments(
     chat: ChatRecord,
     text: string,
-    attachments: readonly AppTypes.ChatMessageAttachment[] = [],
+    attachments: readonly ContractTypes.ChatMessageAttachment[] = [],
     clientId?: string,
-    replyTo?: AppTypes.ChatPopupMessage['replyTo']
-  ): Promise<AppTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
+  ): Promise<ContractTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const trimmedText = text.trim();
     if (!trimmedText && attachments.length === 0) {
@@ -94,22 +95,22 @@ export class LocalChatsService extends LocalRouteDelayService {
   async updateChatMessage(
     chat: ChatRecord,
     messageId: string,
-    mutation: AppTypes.ChatMessageMutation
-  ): Promise<AppTypes.ChatPopupMessage | null> {
+    mutation: ContractTypes.ChatMessageMutation
+  ): Promise<ContractTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(
     _chat: ChatRecord,
-    _onMessage: (message: AppTypes.ChatPopupMessage) => void
+    _onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return () => {};
   }
 
   async watchChatEvents(
     _chat: ChatRecord,
-    _onEvent: (event: AppTypes.ChatLiveEvent) => void
+    _onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return () => {};
   }
@@ -122,7 +123,7 @@ export class LocalChatsService extends LocalRouteDelayService {
     return;
   }
 
-  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.updateSupportCase(chat, action);
   }

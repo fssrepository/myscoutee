@@ -5,7 +5,7 @@ import { Injectable, inject } from '@angular/core';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../base/db';
 
-import type { HelpCenterAuditEntry, HelpCenterDocumentKind, HelpCenterRevision } from '../../../base/models';
+import type { HelpCenterAuditEntry, HelpCenterDocumentKind, HelpCenterRevision } from '../../../contracts';
 import { HelpCenterContentBuilder } from '../../../base/builders';
 
 @Injectable({

@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppContext, HelpCenterService } from '../../../shared/core';
-import type { HelpCenterRevision } from '../../../shared/core/base/models';
+import type { HelpCenterRevision } from '../../../shared/core/contracts';
 import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
 import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';

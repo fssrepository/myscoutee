@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberOwnerRef, ActivityMembersSummary, UserGameMode, UserGameSocialCard } from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../base/db';
-import type { ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
 import { UserProfileStateBuilder } from '../../../base/builders';

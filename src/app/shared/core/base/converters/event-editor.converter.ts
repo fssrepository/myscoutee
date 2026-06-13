@@ -1,11 +1,12 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../models';
-import type { ActivityEventRecord } from '../models/events.model';
+import type * as ContractTypes from '../../contracts';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { PricingBuilder } from '../builders/pricing.builder';
 
 import type * as AppConstants from '../../common/constants';
 export class EventEditorConverter {
-  static normalizeEventEditorPolicies(value: unknown): AppTypes.EventPolicyItem[] {
+  static normalizeEventEditorPolicies(value: unknown): ContractTypes.EventPolicyItem[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -22,9 +23,9 @@ export class EventEditorConverter {
           title: title || `Policy ${index + 1}`,
           description,
           required: item['required'] !== false
-        } satisfies AppTypes.EventPolicyItem;
+        } satisfies ContractTypes.EventPolicyItem;
       })
-      .filter((item): item is AppTypes.EventPolicyItem => item !== null);
+      .filter((item): item is ContractTypes.EventPolicyItem => item !== null);
   }
 
   static normalizeEventEditorTextValue(value: unknown): string {
@@ -66,7 +67,7 @@ export class EventEditorConverter {
     return 'One-time';
   }
 
-  static normalizeEventEditorBlindMode(value: unknown): AppTypes.EventBlindMode {
+  static normalizeEventEditorBlindMode(value: unknown): ContractTypes.EventBlindMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
   }
@@ -122,9 +123,9 @@ export class EventEditorConverter {
     value: unknown,
     options: {
       context?: 'event' | 'asset' | 'subevent';
-      slotCatalog?: readonly AppTypes.PricingSlotReference[];
+      slotCatalog?: readonly ContractTypes.PricingSlotReference[];
     } = {}
-  ): AppTypes.PricingConfig {
+  ): ContractTypes.PricingConfig {
     return PricingBuilder.normalizePricingConfig(value, options);
   }
 
@@ -195,7 +196,7 @@ export class EventEditorConverter {
     return Math.max(0, Math.trunc(parsed));
   }
 
-  static normalizeEventEditorSlotTemplates(value: unknown): AppTypes.EventSlotTemplate[] {
+  static normalizeEventEditorSlotTemplates(value: unknown): ContractTypes.EventSlotTemplate[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -259,7 +260,7 @@ export class EventEditorConverter {
   static normalizeEventEditorSubEventsDisplayMode(
     value: unknown,
     subEvents: readonly AppTypes.EventEditorSubEventItem[] = []
-  ): AppTypes.SubEventsDisplayMode {
+  ): ContractTypes.SubEventsDisplayMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'tournament') {
       return 'Tournament';
@@ -293,7 +294,7 @@ export class EventEditorConverter {
 
   static toEventEditorSourceFromRecord(
     record: ActivityEventRecord,
-    target: AppTypes.EventEditorTarget
+    target: ContractTypes.EventEditorTarget
   ): Record<string, unknown> {
     const slotTemplates = this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []);
     return {
@@ -337,7 +338,7 @@ export class EventEditorConverter {
   static toEventEditorFallbackSource(
     row: AppTypes.ActivityListRow,
     readOnly: boolean,
-    target: AppTypes.EventEditorTarget
+    target: ContractTypes.EventEditorTarget
   ): Record<string, unknown> {
     const title = row.title;
     const description = row.subtitle;

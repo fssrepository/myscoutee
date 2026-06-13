@@ -7,10 +7,20 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../base/db';
 
 import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import { type ActivityEventActivitiesListQueryResult, type ActivityEventActivitiesQuery, type ActivityEventExploreQuery, type ActivityEventExploreQueryResult, type ActivityEventListItem, type ActivityEventRecord, type ActivityEventScopeFilter, type ActivityEventRepositoryItemType } from '../../../base/models/events.model';
+import type {
+  ActivityEventActivitiesListQueryResult,
+  ActivityEventActivitiesQuery,
+  ActivityEventExploreQuery,
+  ActivityEventExploreQueryResult,
+  ActivityEventListItem,
+  ActivityEventRecord,
+  ActivityEventScopeFilter,
+  ActivityEventRepositoryItemType
+} from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
 import type * as AppTypes from '../../../base/models';
-import type { ActivitiesEventSyncPayload } from '../../../base/models';
+import type * as ContractTypes from '../../../contracts';
+import type { ActivitiesEventSyncPayload } from '../../../contracts';
 import { EventEditorBuilder } from '../../../base/builders';
 import { PricingBuilder } from '../../../base/builders/pricing.builder';
 
@@ -188,7 +198,7 @@ export class LocalEventsRepository {
 
   private resolveStageActionTarget(action: string, reason?: string | null): {
     action: string;
-    nextStatus: AppTypes.TournamentStageStatus;
+    nextStatus: ContractTypes.TournamentStageStatus;
     reason: string;
   } | null {
     const normalizedAction = `${action ?? ''}`.trim();
@@ -211,7 +221,7 @@ export class LocalEventsRepository {
     }
   }
 
-  private canApplyStageAction(action: string, stages: readonly AppTypes.SubEventFormItem[], stageIndex: number): boolean {
+  private canApplyStageAction(action: string, stages: readonly ContractTypes.SubEventFormItem[], stageIndex: number): boolean {
     const stage = stages[stageIndex];
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
@@ -232,7 +242,7 @@ export class LocalEventsRepository {
     }
   }
 
-  private canReopenScores(stages: readonly AppTypes.SubEventFormItem[], stageIndex: number): boolean {
+  private canReopenScores(stages: readonly ContractTypes.SubEventFormItem[], stageIndex: number): boolean {
     const nextStage = stages[stageIndex + 1];
     if (!nextStage) {
       return true;
@@ -245,7 +255,7 @@ export class LocalEventsRepository {
   }
 
   private resolveStageIndex(
-    stages: readonly AppTypes.SubEventFormItem[],
+    stages: readonly ContractTypes.SubEventFormItem[],
     subEventId: string | null | undefined,
     fallbackIndex: number | null | undefined
   ): number {
@@ -260,7 +270,7 @@ export class LocalEventsRepository {
     return Number.isFinite(index) && index >= 0 && index < stages.length ? index : -1;
   }
 
-  private normalizeStageStatus(status: string | null | undefined): AppTypes.TournamentStageStatus {
+  private normalizeStageStatus(status: string | null | undefined): ContractTypes.TournamentStageStatus {
     const normalized = `${status ?? ''}`.trim().toUpperCase();
     if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
       return normalized;
@@ -639,7 +649,7 @@ export class LocalEventsRepository {
     return this.peekKnownItemById(normalizedUserId, normalizedSourceId);
   }
 
-  querySubEventLeaderboard(eventId: string, subEventId: string): AppTypes.SubEventLeaderboardState | null {
+  querySubEventLeaderboard(eventId: string, subEventId: string): ContractTypes.SubEventLeaderboardState | null {
     const normalizedEventId = eventId.trim();
     const normalizedSubEventId = subEventId.trim();
     if (!normalizedEventId || !normalizedSubEventId) {
@@ -1932,7 +1942,7 @@ export class LocalEventsRepository {
       .slice(0, 5)));
   }
 
-  private cloneSubEvents(items: readonly AppTypes.SubEventFormItem[] | undefined): AppTypes.SubEventFormItem[] | undefined {
+  private cloneSubEvents(items: readonly ContractTypes.SubEventFormItem[] | undefined): ContractTypes.SubEventFormItem[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1940,12 +1950,12 @@ export class LocalEventsRepository {
       ...item,
       location: typeof item.location === 'string' ? item.location : '',
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
         : []
     }));
   }
 
-  private localGeneratedGroups(stage: AppTypes.SubEventFormItem): AppTypes.SubEventGroupItem[] {
+  private localGeneratedGroups(stage: ContractTypes.SubEventFormItem): ContractTypes.SubEventGroupItem[] {
     const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
     const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
     const max = Math.max(min, Math.trunc(Number(stage.tournamentGroupCapacityMax ?? stage.capacityMax) || min));
@@ -1962,10 +1972,10 @@ export class LocalEventsRepository {
   }
 
   private materializeSubEventsForSlotOccurrence(
-    items: readonly AppTypes.SubEventFormItem[] | undefined,
+    items: readonly ContractTypes.SubEventFormItem[] | undefined,
     occurrenceStart: Date,
     occurrenceEnd: Date
-  ): AppTypes.SubEventFormItem[] | undefined {
+  ): ContractTypes.SubEventFormItem[] | undefined {
     const subEvents = this.cloneSubEvents(items);
     if (!subEvents?.length) {
       return subEvents;
@@ -2272,7 +2282,7 @@ export class LocalEventsRepository {
   private resolveUpcomingSlotOccurrences(
     parentEventId: string,
     table: ActivityEventRecordCollection
-  ): AppTypes.EventSlotOccurrence[] {
+  ): ContractTypes.EventSlotOccurrence[] {
     const nowMs = Date.now() - (60 * 60 * 1000);
     return table.ids
       .map(id => table.byId[id])

@@ -3,9 +3,10 @@ import type * as ActivityContracts from '../../../../../shared/core/contracts/ac
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
-import type { ChatRecord } from '../../../../../shared/core/base/models/chat.model';
-import type { ActivitiesEventSyncPayload } from '../../../../../shared/core/base/models';
+import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
+import type { ActivitiesEventSyncPayload } from '../../../../../shared/core/contracts';
 import type * as AppTypes from '../../../../../shared/core/base/models';
+import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   ActivityEventBuilder,
   ActivityMembersBuilder
@@ -96,8 +97,8 @@ export class ActivitiesEventsController {
 
   private get activeUser() { return this.host.activeUser as any; }
   private get activitiesContext() { return this.host.activitiesContext; }
-  private get activitiesEventScope() { return this.host.activitiesEventScope as AppTypes.ActivitiesEventScope; }
-  private set activitiesEventScope(value: AppTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
+  private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
+  private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
   private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberEntry[]>; }
@@ -113,7 +114,7 @@ export class ActivitiesEventsController {
   private get eventsService() { return this.host.eventsService; }
   private get hostingItems() { return this.host.hostingItems as ActivityEventRecordLike[]; }
   private set hostingItems(value: ActivityEventRecordLike[]) { this.host.hostingItems = value; }
-  private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as AppTypes.HostingPublicationFilter; }
+  private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get invitationItems() { return this.host.invitationItems as ActivityEventRecordLike[]; }
   private set invitationItems(value: ActivityEventRecordLike[]) { this.host.invitationItems = value; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
@@ -134,7 +135,7 @@ export class ActivitiesEventsController {
   private activityRowIdentity(row: AppTypes.ActivityListRow): string { return this.host.activityRowIdentity(row); }
   private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void { this.host.applyActivitiesEventSync(sync); }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
-  private cloneSyncedSubEventForms(items: AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] { return this.host.cloneSyncedSubEventForms(items); }
+  private cloneSyncedSubEventForms(items: ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] { return this.host.cloneSyncedSubEventForms(items); }
   private openActivityChat(chat: ChatRecord): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
@@ -757,10 +758,10 @@ export class ActivitiesEventsController {
   }
 
   private shouldUseCheckoutFlow(record: {
-    upcomingSlots?: AppTypes.EventSlotOccurrence[] | null;
-    policies?: AppTypes.EventPolicyItem[] | null;
-    subEvents?: AppTypes.SubEventFormItem[] | null;
-    pricing?: AppTypes.PricingConfig | null;
+    upcomingSlots?: ContractTypes.EventSlotOccurrence[] | null;
+    policies?: ContractTypes.EventPolicyItem[] | null;
+    subEvents?: ContractTypes.SubEventFormItem[] | null;
+    pricing?: ContractTypes.PricingConfig | null;
   }): boolean {
     if ((record?.upcomingSlots?.length ?? 0) > 0) {
       return true;
@@ -768,7 +769,7 @@ export class ActivitiesEventsController {
     if ((record?.policies?.length ?? 0) > 0) {
       return true;
     }
-    if ((record?.subEvents ?? []).some((item: AppTypes.SubEventFormItem) => item.optional)) {
+    if ((record?.subEvents ?? []).some((item: ContractTypes.SubEventFormItem) => item.optional)) {
       return true;
     }
     return Boolean(record?.pricing?.enabled && (Number(record?.pricing?.basePrice) || 0) > 0);
@@ -866,7 +867,7 @@ export class ActivitiesEventsController {
       this.chatCountValue(record?.capacityTotal ?? relatedSource.capacityTotal ?? relatedSource.capacityMax)
     );
     const selectedSlot = selection?.slotSourceId
-      ? (record?.upcomingSlots ?? []).find((item: AppTypes.EventSlotOccurrence) => item.id === selection.slotSourceId) ?? null
+      ? (record?.upcomingSlots ?? []).find((item: ContractTypes.EventSlotOccurrence) => item.id === selection.slotSourceId) ?? null
       : null;
 
     return {
@@ -892,12 +893,12 @@ export class ActivitiesEventsController {
         ticketing: record?.ticketing ?? relatedSource.ticketing,
         pricing: record?.pricing ?? relatedSource.pricing,
         policies: Array.isArray(record?.policies)
-          ? record.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
-          : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined),
+          ? record.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item }))
+          : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item })) : undefined),
         slotsEnabled: record?.slotsEnabled ?? relatedSource.slotsEnabled,
         slotTemplates: Array.isArray(record?.slotTemplates)
-          ? record.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
-          : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined),
+          ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item }))
+          : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item })) : undefined),
         parentEventId: record?.parentEventId ?? relatedSource.parentEventId,
         slotTemplateId: record?.slotTemplateId ?? relatedSource.slotTemplateId,
         generated: record?.generated ?? relatedSource.generated,
@@ -906,8 +907,8 @@ export class ActivitiesEventsController {
           ? { ...selectedSlot }
           : (record?.nextSlot ? { ...record.nextSlot } : (relatedSource.nextSlot ? { ...relatedSource.nextSlot } : undefined)),
         upcomingSlots: Array.isArray(record?.upcomingSlots)
-          ? record.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
-          : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
+          ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item }))
+          : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
         visibility: record?.visibility ?? relatedSource.visibility,
         blindMode: record?.blindMode ?? relatedSource.blindMode,
         published: record?.published ?? relatedSource.published ?? true,
@@ -1107,12 +1108,12 @@ export class ActivitiesEventsController {
       ticketing: record?.ticketing ?? source.ticketing,
       pricing: record?.pricing ?? source.pricing,
       policies: Array.isArray(record?.policies)
-        ? record.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item }))
-        : (Array.isArray(source.policies) ? source.policies.map((item: AppTypes.EventPolicyItem) => ({ ...item })) : undefined),
+        ? record.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item }))
+        : (Array.isArray(source.policies) ? source.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item })) : undefined),
       slotsEnabled: record?.slotsEnabled ?? source.slotsEnabled,
       slotTemplates: Array.isArray(record?.slotTemplates)
-        ? record.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item }))
-        : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: AppTypes.EventSlotTemplate) => ({ ...item })) : undefined),
+        ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item }))
+        : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item })) : undefined),
       parentEventId: record?.parentEventId ?? source.parentEventId,
       slotTemplateId: record?.slotTemplateId ?? source.slotTemplateId,
       generated: record?.generated ?? source.generated,
@@ -1121,8 +1122,8 @@ export class ActivitiesEventsController {
         ? { ...record.nextSlot }
         : (source.nextSlot ? { ...source.nextSlot } : undefined),
       upcomingSlots: Array.isArray(record?.upcomingSlots)
-        ? record.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item }))
-        : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
+        ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item }))
+        : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
       visibility: record?.visibility ?? source.visibility ?? row.visibility,
       blindMode: record?.blindMode ?? source.blindMode,
       published: record?.published ?? source.published ?? true,

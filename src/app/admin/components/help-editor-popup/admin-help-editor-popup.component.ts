@@ -13,7 +13,7 @@ import type {
   HelpCenterSectionPanelSpan,
   HelpCenterSection,
   HelpCenterState
-} from '../../../shared/core/base/models';
+} from '../../../shared/core/contracts';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {

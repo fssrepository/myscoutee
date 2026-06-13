@@ -1,5 +1,5 @@
 import type * as AppTypes from '../../../core/base/models';
-import type { ActivityEventCardRecord } from '../models/events.model';
+import type { ActivityEventCardRecord } from '../../contracts/activity.interface';
 import {
   ActivityEventInfoCardBuilder,
   type ActivityEventInfoCardOptions

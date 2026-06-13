@@ -1,5 +1,5 @@
 import type { ChatThreadRecord } from '../../source/entity/chat.entity';
-import type { ChatPopupMessage } from '../../../base/models/chat.model';
+import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 
 export class ChatThreadBuilder {

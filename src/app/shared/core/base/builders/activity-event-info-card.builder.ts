@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { ActivityEventCardRecord } from '../models/events.model';
+import type { ActivityEventCardRecord } from '../../contracts/activity.interface';
 import type * as AppTypes from '../models';
 import type {
   InfoCardData,

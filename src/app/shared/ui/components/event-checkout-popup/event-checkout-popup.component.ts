@@ -13,9 +13,10 @@ import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../../core/contracts';
 import type * as ActivityContracts from '../../../core/contracts/activity.interface';
 import { EventsService } from '../../../core/base/services/events.service';
-import type { ActivityEventRecord } from '../../../core/base/models/events.model';
+import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
 import { ProgressIndicatorComponent } from '../progress-indicator';
@@ -67,7 +68,7 @@ export class EventCheckoutPopupComponent {
 
   private renderedDialogId = 0;
   private checkoutSessionId: string | null = null;
-  private availableSlotsCache: AppTypes.EventSlotOccurrence[] = [];
+  private availableSlotsCache: ContractTypes.EventSlotOccurrence[] = [];
   private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
   private availableSlotDateKeySet = new Set<string>();
 
@@ -148,11 +149,11 @@ export class EventCheckoutPopupComponent {
     return dialog.record.timeframe || dialog.subtitle;
   }
 
-  protected availableSlots(): readonly AppTypes.EventSlotOccurrence[] {
+  protected availableSlots(): readonly ContractTypes.EventSlotOccurrence[] {
     return this.availableSlotsCache;
   }
 
-  protected selectedSlot(): AppTypes.EventSlotOccurrence | null {
+  protected selectedSlot(): ContractTypes.EventSlotOccurrence | null {
     if (!this.selectedSlotSourceId) {
       return null;
     }
@@ -163,7 +164,7 @@ export class EventCheckoutPopupComponent {
     return this.availableSlots().length > 0;
   }
 
-  protected optionalSubEvents(): AppTypes.SubEventFormItem[] {
+  protected optionalSubEvents(): ContractTypes.SubEventFormItem[] {
     return (this.dialog()?.record.subEvents ?? []).filter(item => item.optional);
   }
 
@@ -178,7 +179,7 @@ export class EventCheckoutPopupComponent {
     return this.availableSlotDateEntriesCache;
   }
 
-  protected filteredSlots(): AppTypes.EventSlotOccurrence[] {
+  protected filteredSlots(): ContractTypes.EventSlotOccurrence[] {
     const selectedDateKey = this.selectedSlotDateKey();
     const all = [...this.availableSlots()];
     if (!selectedDateKey) {
@@ -187,7 +188,7 @@ export class EventCheckoutPopupComponent {
     return all.filter(slot => this.slotDateKeyFromIso(slot.startAtIso) === selectedDateKey);
   }
 
-  protected pagedSlots(): AppTypes.EventSlotOccurrence[] {
+  protected pagedSlots(): ContractTypes.EventSlotOccurrence[] {
     const offset = this.slotPageIndex * EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS;
     return this.filteredSlots().slice(offset, offset + EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS);
   }
@@ -283,7 +284,7 @@ export class EventCheckoutPopupComponent {
     this.invalidateCheckoutDraft();
   }
 
-  protected policies(): AppTypes.EventPolicyItem[] {
+  protected policies(): ContractTypes.EventPolicyItem[] {
     return this.dialog()?.record.policies ?? [];
   }
 
@@ -422,7 +423,7 @@ export class EventCheckoutPopupComponent {
     };
   }
 
-  protected cancellationRules(): AppTypes.PricingCancellationRule[] {
+  protected cancellationRules(): ContractTypes.PricingCancellationRule[] {
     const dialog = this.dialog();
     if (!dialog) {
       return [];
@@ -435,7 +436,7 @@ export class EventCheckoutPopupComponent {
     return policy.rules;
   }
 
-  protected cancellationRuleWindowLabel(rule: AppTypes.PricingCancellationRule): string {
+  protected cancellationRuleWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
     const value = Math.max(0, Number(rule.offsetValue) || 0);
     const unit = rule.offsetUnit === 'hours'
       ? (value === 1 ? 'hour' : 'hours')
@@ -447,7 +448,7 @@ export class EventCheckoutPopupComponent {
     return `${value} ${unit} before start`;
   }
 
-  protected cancellationRuleRefundLabel(rule: AppTypes.PricingCancellationRule): string {
+  protected cancellationRuleRefundLabel(rule: ContractTypes.PricingCancellationRule): string {
     if (rule.refundKind === 'full') {
       return 'Full refund';
     }
@@ -566,7 +567,7 @@ export class EventCheckoutPopupComponent {
     return 'Send the request now. Payment unlocks in the basket after the event admin approves it.';
   }
 
-  protected slotCapacityLabel(slot: AppTypes.EventSlotOccurrence): string {
+  protected slotCapacityLabel(slot: ContractTypes.EventSlotOccurrence): string {
     return this.isSlotFull(slot)
       ? `${slot.acceptedMembers} / ${slot.capacityTotal} · full`
       : `${slot.acceptedMembers} / ${slot.capacityTotal}`;
@@ -659,15 +660,15 @@ export class EventCheckoutPopupComponent {
     return item.id;
   }
 
-  protected trackPolicy(_index: number, item: AppTypes.EventPolicyItem): string {
+  protected trackPolicy(_index: number, item: ContractTypes.EventPolicyItem): string {
     return item.id;
   }
 
-  protected trackOptionalSubEvent(_index: number, item: AppTypes.SubEventFormItem): string {
+  protected trackOptionalSubEvent(_index: number, item: ContractTypes.SubEventFormItem): string {
     return item.id;
   }
 
-  protected trackSlot(_index: number, item: AppTypes.EventSlotOccurrence): string {
+  protected trackSlot(_index: number, item: ContractTypes.EventSlotOccurrence): string {
     return item.id;
   }
 
@@ -756,10 +757,10 @@ export class EventCheckoutPopupComponent {
   }
 
   protected resolvePricing(
-    pricing: AppTypes.PricingConfig | null | undefined,
+    pricing: ContractTypes.PricingConfig | null | undefined,
     record: ActivityEventRecord,
     slotId: string | null,
-    slot: AppTypes.EventSlotOccurrence | null
+    slot: ContractTypes.EventSlotOccurrence | null
   ): PricingSnapshot {
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
     const normalized = PricingBuilder.compactPricingConfig(pricing, {
@@ -814,7 +815,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private matchesDemandRule(
-    rule: AppTypes.PricingDemandRule,
+    rule: ContractTypes.PricingDemandRule,
     capacityFilledPercent: number,
     slotId: string | null
   ): boolean {
@@ -828,7 +829,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private matchesTimeRule(
-    rule: AppTypes.PricingTimeRule,
+    rule: ContractTypes.PricingTimeRule,
     hoursUntilStart: number,
     slotId: string | null,
     comparisonIso: string
@@ -852,7 +853,7 @@ export class EventCheckoutPopupComponent {
     return hoursUntilStart <= dayWindowHours;
   }
 
-  private applyPricingAction(currentPrice: number, action: AppTypes.PricingAction): number {
+  private applyPricingAction(currentPrice: number, action: ContractTypes.PricingAction): number {
     const value = Number(action.value) || 0;
     if (action.kind === 'set_exact_price') {
       return Math.max(0, value);
@@ -883,16 +884,16 @@ export class EventCheckoutPopupComponent {
   }
 
   private resolveApplicableCancellationRule(
-    rules: readonly AppTypes.PricingCancellationRule[],
+    rules: readonly ContractTypes.PricingCancellationRule[],
     startAtIso: string
-  ): AppTypes.PricingCancellationRule | null {
+  ): ContractTypes.PricingCancellationRule | null {
     const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
     if (!start) {
       return null;
     }
 
     const now = Date.now();
-    let bestRule: AppTypes.PricingCancellationRule | null = null;
+    let bestRule: ContractTypes.PricingCancellationRule | null = null;
     let bestDeadlineMs = Number.POSITIVE_INFINITY;
     for (const rule of rules) {
       const deadline = this.cancellationRuleDeadlineMs(rule, start);
@@ -908,7 +909,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private cancellationRuleDeadlineMs(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     start: Date
   ): number | null {
     const value = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
@@ -930,7 +931,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private calculateCancellationRefundAmount(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     totalAmount: number
   ): number {
     const amount = Math.max(0, totalAmount);
@@ -946,7 +947,7 @@ export class EventCheckoutPopupComponent {
     return Math.round(amount * ((Math.max(0, Math.min(100, Number(rule.refundValue) || 0))) / 100) * 100) / 100;
   }
 
-  private describeCancellationRule(rule: AppTypes.PricingCancellationRule): string {
+  private describeCancellationRule(rule: ContractTypes.PricingCancellationRule): string {
     return `${this.cancellationRuleRefundLabel(rule)} when cancelled at least ${this.cancellationRuleWindowLabel(rule)}.`;
   }
 
@@ -1069,7 +1070,7 @@ export class EventCheckoutPopupComponent {
     this.clearCheckoutDraft();
   }
 
-  private rebuildSlotCaches(slots: readonly AppTypes.EventSlotOccurrence[]): void {
+  private rebuildSlotCaches(slots: readonly ContractTypes.EventSlotOccurrence[]): void {
     this.availableSlotsCache = [...slots].sort((left, right) => {
       const leftMs = AppUtils.isoLocalDateTimeToDate(left.startAtIso)?.getTime() ?? 0;
       const rightMs = AppUtils.isoLocalDateTimeToDate(right.startAtIso)?.getTime() ?? 0;
@@ -1110,7 +1111,7 @@ export class EventCheckoutPopupComponent {
       && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
   }
 
-  private isSlotFull(slot: AppTypes.EventSlotOccurrence): boolean {
+  private isSlotFull(slot: ContractTypes.EventSlotOccurrence): boolean {
     return Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0)) > 0
       && Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
   }

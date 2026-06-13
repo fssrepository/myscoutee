@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type {
   ActivityMemberOwnerRef,
   ActivityMembersSummary,
@@ -27,8 +27,9 @@ import type { ActivitiesEventDisplaySync } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
-import type { ActivitiesFeedFilters, ActivitiesEventSyncPayload } from '../../../shared/core/base/models';
+import type { ActivitiesFeedFilters, ActivitiesEventSyncPayload } from '../../../shared/core/contracts';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
   AppMenuDispatcher,
@@ -93,10 +94,7 @@ import {
   type ActivityCounters,
   type ActivityMembersSyncState
 } from '../../../shared/core';
-import type {
-  ActivityEventRecord,
-  ActivityEventRepositoryItemType
-} from '../../../shared/core/base/models/events.model';
+import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../../shared/core/contracts/activity.interface';
 import { I18nService } from '../../../shared/core';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
@@ -116,20 +114,20 @@ interface ActivitiesInfoCardMenuContext {
 }
 
 interface ActivitiesEventScopeOption {
-  key: AppTypes.ActivitiesEventScope;
+  key: ContractTypes.ActivitiesEventScope;
   label: string;
   icon: string;
 }
 
 type ActivitiesToolbarMenuContext =
-  | { menu: 'primary'; value: AppTypes.ActivitiesPrimaryFilter }
-  | { menu: 'event-scope'; value: AppTypes.ActivitiesEventScope }
-  | { menu: 'chat-context'; value: AppTypes.ActivitiesChatContextFilter }
-  | { menu: 'rate'; value: AppTypes.RateFilterKey }
+  | { menu: 'primary'; value: ContractTypes.ActivitiesPrimaryFilter }
+  | { menu: 'event-scope'; value: ContractTypes.ActivitiesEventScope }
+  | { menu: 'chat-context'; value: ContractTypes.ActivitiesChatContextFilter }
+  | { menu: 'rate'; value: ContractTypes.RateFilterKey }
   | { menu: 'rate-social'; value: string }
-  | { menu: 'secondary'; value: AppTypes.ActivitiesSecondaryFilter }
-  | { menu: 'view'; value: AppTypes.ActivitiesView }
-  | { menu: 'support-case'; value: AppTypes.SupportCaseFilter }
+  | { menu: 'secondary'; value: ContractTypes.ActivitiesSecondaryFilter }
+  | { menu: 'view'; value: ContractTypes.ActivitiesView }
+  | { menu: 'support-case'; value: ContractTypes.SupportCaseFilter }
   | { menu: 'quick-action'; value: 'explore' | 'create' };
 
 @Component({
@@ -271,8 +269,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityCapacityById: Record<string, string> = {};
   protected readonly activityPendingMembersById: Record<string, number> = {};
   protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
-  private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
-  protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
+  private readonly eventCapacityById: Record<string, ContractTypes.EventCapacityRange> = {};
+  protected readonly eventSubEventsById: Record<string, ContractTypes.SubEventFormItem[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
   private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
@@ -324,7 +322,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesSmartList?: SmartListComponent<AppTypes.ActivityListRow, ActivitiesSmartListFilters>;
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
-  protected readonly activitiesPrimaryFilters: Array<{ key: AppTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
+  protected readonly activitiesPrimaryFilters: Array<{ key: ContractTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
     { key: 'rates', label: 'Rates', icon: 'star' },
     { key: 'chats', label: 'Chats', icon: 'chat' },
     { key: 'events', label: 'Events', icon: 'event' }
@@ -338,22 +336,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
     { key: 'drafts', label: 'Drafts', icon: 'drafts' },
     { key: 'trash', label: 'Trash', icon: 'delete' }
   ];
-  protected readonly activitiesSecondaryFilters: Array<{ key: AppTypes.ActivitiesSecondaryFilter; label: string; icon: string }>
+  protected readonly activitiesSecondaryFilters: Array<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesSecondaryFilters];
-  protected readonly activitiesChatContextFilters: Array<{ key: AppTypes.ActivitiesChatContextFilter; label: string; icon: string }>
+  protected readonly activitiesChatContextFilters: Array<{ key: ContractTypes.ActivitiesChatContextFilter; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesChatContextFilters];
-  protected readonly activitiesSupportCaseFilters: Array<{ key: AppTypes.SupportCaseFilter; labelKey: string; icon: string }> = [
+  protected readonly activitiesSupportCaseFilters: Array<{ key: ContractTypes.SupportCaseFilter; labelKey: string; icon: string }> = [
     { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
     { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
     { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
     { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
     { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
   ];
-  protected readonly rateFilters: Array<{ key: AppTypes.RateFilterKey; label: string }>
+  protected readonly rateFilters: Array<{ key: ContractTypes.RateFilterKey; label: string }>
     = [...APP_STATIC_DATA.rateFilters];
   protected readonly rateFilterEntries: AppTypes.RateFilterEntry[]
     = [...APP_STATIC_DATA.rateFilterEntries];
-  protected readonly activitiesViewOptions: Array<{ key: AppTypes.ActivitiesView; label: string; icon: string }>
+  protected readonly activitiesViewOptions: Array<{ key: ContractTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];
   protected activitiesRateSocialBadgeEnabled = false;
   protected activitiesIndividualRateSocialBadgeEnabled = false;
@@ -366,14 +364,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
   // correctly without needing toSignal() everywhere in the template.
-  protected activitiesPrimaryFilter: AppTypes.ActivitiesPrimaryFilter        = 'chats';
-  protected activitiesEventScope: AppTypes.ActivitiesEventScope               = 'active-events';
-  protected activitiesChatContextFilter: AppTypes.ActivitiesChatContextFilter = 'all';
-  protected activitiesSupportCaseFilter: AppTypes.SupportCaseFilter           = 'all';
-  protected activitiesSecondaryFilter: AppTypes.ActivitiesSecondaryFilter    = 'recent';
-  protected hostingPublicationFilter: AppTypes.HostingPublicationFilter       = 'all';
-  protected activitiesRateFilter: AppTypes.RateFilterKey                     = 'individual-given';
-  protected activitiesView: AppTypes.ActivitiesView                          = 'day';
+  protected activitiesPrimaryFilter: ContractTypes.ActivitiesPrimaryFilter        = 'chats';
+  protected activitiesEventScope: ContractTypes.ActivitiesEventScope               = 'active-events';
+  protected activitiesChatContextFilter: ContractTypes.ActivitiesChatContextFilter = 'all';
+  protected activitiesSupportCaseFilter: ContractTypes.SupportCaseFilter           = 'all';
+  protected activitiesSecondaryFilter: ContractTypes.ActivitiesSecondaryFilter    = 'recent';
+  protected hostingPublicationFilter: ContractTypes.HostingPublicationFilter       = 'all';
+  protected activitiesRateFilter: ContractTypes.RateFilterKey                     = 'individual-given';
+  protected activitiesView: ContractTypes.ActivitiesView                          = 'day';
   protected showActivitiesViewPicker     = false;
   protected showActivitiesSecondaryPicker = false;
   protected showActivitiesPrimaryPicker = false;
@@ -506,7 +504,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesChats.getChatMemberCount(item);
   }
 
-  protected chatChannelType(item: ChatRecord): AppTypes.ChatChannelType {
+  protected chatChannelType(item: ChatRecord): ContractTypes.ChatChannelType {
     return this.activitiesChats.chatChannelType(item);
   }
 
@@ -514,7 +512,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesChats.chatItemsForActivities();
   }
 
-  protected activityChatContextFilterKey(item: ChatRecord): AppTypes.ActivitiesChatContextFilter | null {
+  protected activityChatContextFilterKey(item: ChatRecord): ContractTypes.ActivitiesChatContextFilter | null {
     return this.activitiesChats.activityChatContextFilterKey(item);
   }
 
@@ -618,17 +616,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
     // Sync service signal state → local properties so OnPush CD fires.
     effect(() => {
       const svc = this.activitiesContext;
-      this.activitiesPrimaryFilter       = svc.activitiesPrimaryFilter() as AppTypes.ActivitiesPrimaryFilter;
-      this.activitiesEventScope         = svc.activitiesEventScope() as AppTypes.ActivitiesEventScope;
-      this.activitiesChatContextFilter   = svc.activitiesChatContextFilter() as AppTypes.ActivitiesChatContextFilter;
-      this.activitiesSupportCaseFilter   = svc.activitiesSupportCaseFilter() as AppTypes.SupportCaseFilter;
-      this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as AppTypes.ActivitiesSecondaryFilter;
-      this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as AppTypes.HostingPublicationFilter;
-      this.activitiesRateFilter          = svc.activitiesRateFilter() as AppTypes.RateFilterKey;
+      this.activitiesPrimaryFilter       = svc.activitiesPrimaryFilter() as ContractTypes.ActivitiesPrimaryFilter;
+      this.activitiesEventScope         = svc.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
+      this.activitiesChatContextFilter   = svc.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;
+      this.activitiesSupportCaseFilter   = svc.activitiesSupportCaseFilter() as ContractTypes.SupportCaseFilter;
+      this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as ContractTypes.ActivitiesSecondaryFilter;
+      this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as ContractTypes.HostingPublicationFilter;
+      this.activitiesRateFilter          = svc.activitiesRateFilter() as ContractTypes.RateFilterKey;
       this.activitiesRateSocialBadgeEnabled = svc.activitiesRateSocialBadgeEnabled();
       this.activitiesIndividualRateSocialBadgeEnabled = svc.activitiesIndividualRateSocialBadgeEnabled();
       this.activitiesPairRateSocialBadgeEnabled = svc.activitiesPairRateSocialBadgeEnabled();
-      this.activitiesView                = svc.activitiesView() as AppTypes.ActivitiesView;
+      this.activitiesView                = svc.activitiesView() as ContractTypes.ActivitiesView;
       this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
       this.showActivitiesSecondaryPicker = svc.activitiesShowSecondaryPicker();
       this.activitiesStickyValue         = svc.activitiesStickyValue();
@@ -981,15 +979,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesContext.activitiesAdminServiceOnly();
   }
 
-  protected supportCaseFilterLabelKey(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+  protected supportCaseFilterLabelKey(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
     return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
   }
 
-  protected supportCaseFilterIcon(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+  protected supportCaseFilterIcon(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
     return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.icon ?? 'list';
   }
 
-  protected supportCaseFilterCount(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): number {
+  protected supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): number {
     const normalized = this.normalizeSupportCaseFilter(filter);
     const supportCases = this.chatItems.filter(chat => Boolean(chat.supportCaseStatus));
     if (normalized === 'all') {
@@ -998,7 +996,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
   }
 
-  protected supportCaseFilterClass(filter: AppTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+  protected supportCaseFilterClass(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
     return `support-case-filter-${filter === 'all' ? 'all' : filter}`;
   }
 
@@ -1311,7 +1309,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private activitiesPrimaryPalette(filter: AppTypes.ActivitiesPrimaryFilter): AppMenuPalette {
+  private activitiesPrimaryPalette(filter: ContractTypes.ActivitiesPrimaryFilter): AppMenuPalette {
     switch (filter) {
       case 'rates':
         return 'gold';
@@ -1327,7 +1325,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private activitiesEventScopePalette(scope: AppTypes.ActivitiesEventScope): AppMenuPalette {
+  private activitiesEventScopePalette(scope: ContractTypes.ActivitiesEventScope): AppMenuPalette {
     switch (scope) {
       case 'trash':
         return 'danger';
@@ -1347,7 +1345,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private activitiesChatContextPalette(filter: AppTypes.ActivitiesChatContextFilter): AppMenuPalette {
+  private activitiesChatContextPalette(filter: ContractTypes.ActivitiesChatContextFilter): AppMenuPalette {
     switch (filter) {
       case 'event':
         return 'orange';
@@ -1363,7 +1361,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private activitiesViewPalette(view: AppTypes.ActivitiesView): AppMenuPalette {
+  private activitiesViewPalette(view: ContractTypes.ActivitiesView): AppMenuPalette {
     switch (view) {
       case 'distance':
         return 'teal';
@@ -1377,7 +1375,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private activitiesSecondaryPalette(filter: AppTypes.ActivitiesSecondaryFilter): AppMenuPalette {
+  private activitiesSecondaryPalette(filter: ContractTypes.ActivitiesSecondaryFilter): AppMenuPalette {
     switch (filter) {
       case 'past':
         return 'slate';
@@ -1389,7 +1387,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private activitiesRatePalette(filter: AppTypes.RateFilterKey): AppMenuPalette {
+  private activitiesRatePalette(filter: ContractTypes.RateFilterKey): AppMenuPalette {
     switch (filter) {
       case 'individual-given':
         return 'pink';
@@ -1407,7 +1405,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
   }
 
-  private supportCasePalette(filter: AppTypes.SupportCaseFilter): AppMenuPalette {
+  private supportCasePalette(filter: ContractTypes.SupportCaseFilter): AppMenuPalette {
     switch (filter) {
       case 'pending':
         return 'amber';
@@ -1427,7 +1425,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesToolbar.isRateGroupSeparator(label) ? 'violet' : 'blue';
   }
 
-  protected selectActivitiesSupportCaseFilter(filter: AppTypes.SupportCaseFilter): void {
+  protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
     if (!this.isAdminServiceChatMode()) {
       return;
     }
@@ -1441,7 +1439,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private normalizeSupportCaseFilter(filter: AppTypes.SupportCaseFilter | AppTypes.SupportCaseStatus | null | undefined): AppTypes.SupportCaseFilter {
+  private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter | ContractTypes.SupportCaseStatus | null | undefined): ContractTypes.SupportCaseFilter {
     return filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
@@ -1455,7 +1453,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized;
   }
 
-  protected onSupportCaseAction(row: AppTypes.ActivityListRow, action: AppTypes.SupportCaseAction): void {
+  protected onSupportCaseAction(row: AppTypes.ActivityListRow, action: ContractTypes.SupportCaseAction): void {
     if (!this.isAdminServiceChatMode()) {
       return;
     }
@@ -1482,7 +1480,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private supportCaseActionDialogConfig(action: AppTypes.SupportCaseAction): {
+  private supportCaseActionDialogConfig(action: ContractTypes.SupportCaseAction): {
     titleKey: string;
     messageKey: string;
     confirmLabelKey: string;
@@ -1675,7 +1673,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private chatChannelTypeFromRowStatus(status: string): AppTypes.ChatChannelType | undefined {
+  private chatChannelTypeFromRowStatus(status: string): ContractTypes.ChatChannelType | undefined {
     return status === 'general'
       || status === 'mainEvent'
       || status === 'optionalSubEvent'
@@ -1685,7 +1683,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : undefined;
   }
 
-  private supportCaseStatusFromRowStatus(status: string): AppTypes.SupportCaseStatus | null {
+  private supportCaseStatusFromRowStatus(status: string): ContractTypes.SupportCaseStatus | null {
     return status === 'pending'
       || status === 'picked'
       || status === 'solved'
@@ -1818,9 +1816,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.eventVisibilityById[record.id] = record.visibility;
       this.eventCapacityById[record.id] = { min: record.capacityMin, max: record.capacityMax };
       if (Array.isArray(record.subEvents) && record.subEvents.length > 0) {
-        this.eventSubEventsById[record.id] = record.subEvents.map((item: AppTypes.SubEventFormItem) => ({
+        this.eventSubEventsById[record.id] = record.subEvents.map((item: ContractTypes.SubEventFormItem) => ({
           ...item,
-          groups: Array.isArray(item.groups) ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group })) : []
+          groups: Array.isArray(item.groups) ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group })) : []
         }));
       }
     }
@@ -2333,7 +2331,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesView === 'month' || this.activitiesView === 'week';
   }
 
-  protected effectiveActivitiesSecondaryFilter(): AppTypes.ActivitiesSecondaryFilter {
+  protected effectiveActivitiesSecondaryFilter(): ContractTypes.ActivitiesSecondaryFilter {
     return this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant'
       ? 'recent'
       : this.activitiesSecondaryFilter;
@@ -3051,7 +3049,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       nextSlot: sync.nextSlot ? { ...sync.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
       upcomingSlots: Array.isArray(sync.upcomingSlots)
         ? sync.upcomingSlots.map(item => ({ ...item }))
-        : (existing?.upcomingSlots ? existing.upcomingSlots.map((item: AppTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
+        : (existing?.upcomingSlots ? existing.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
       topics: Array.isArray(sync.topics) ? [...sync.topics] : [...(existing?.topics ?? [])],
       subEvents: Array.isArray(sync.subEvents)
         ? this.cloneSyncedSubEventForms(sync.subEvents)
@@ -3119,7 +3117,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Boolean((sync as ActivitiesEventDisplaySync).displayRecord && (sync as ActivitiesEventDisplaySync).displayRow);
   }
 
-  protected cloneSyncedSubEventForms(items: readonly AppTypes.SubEventFormItem[]): AppTypes.SubEventFormItem[] {
+  protected cloneSyncedSubEventForms(items: readonly ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] {
     return items.map(item => ({
       ...item,
       groups: Array.isArray(item.groups)
@@ -3129,8 +3127,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected cloneSyncedSlotTemplates(
-    items: readonly AppTypes.EventSlotTemplate[] | null | undefined
-  ): AppTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplate[] | null | undefined
+  ): ContractTypes.EventSlotTemplate[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }

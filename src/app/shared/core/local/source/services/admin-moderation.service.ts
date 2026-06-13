@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { AdminUserDto } from '../../../contracts/admin.interface';
 import type { AdminModerationActionResult, AdminModerationUserPatch } from '../../../base/services/admin-moderation.service';
-import type { ChatPopupMessage } from '../../../base/models/chat.model';
+import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';

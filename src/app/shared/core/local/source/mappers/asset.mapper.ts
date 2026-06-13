@@ -1,7 +1,7 @@
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import type * as AppTypes from '../../../base/models';
 import { toActivityEventRow } from '../../../base/converters/activities-event.converter';
-import type { ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { AssetRecord } from '../entity/asset.entity';
 
 import type * as AppDTOs from '../../../base/dto';

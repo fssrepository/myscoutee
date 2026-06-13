@@ -1,4 +1,4 @@
-import type { ChatPopupMessage, ChatRecord } from '../../../base/models/chat.model';
+import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 export const CHATS_TABLE_NAME = APP_INDEXED_DB_KEYS.chats;

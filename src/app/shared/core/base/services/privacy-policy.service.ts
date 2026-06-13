@@ -6,7 +6,7 @@ import type {
   HelpCenterState,
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
-} from '../models';
+} from '../../contracts';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';
 

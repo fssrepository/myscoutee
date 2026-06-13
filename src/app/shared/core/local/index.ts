@@ -9,7 +9,7 @@ export { ASSETS_TABLE_NAME, type AssetRecord, type AssetsMemorySchema } from './
 export { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersMemorySchema, type ActivityResourcesMemorySchema, type ActivitySubEventResourceRecord } from './source/entity/activity.entity';
 
 export { type CountryPartition, type CountryPartitionBounds } from '../base/models/country-partitions.model';
-export { type ActivityEventRecord } from '../base/models/events.model';
+export { type ActivityEventRecord } from '../contracts/activity.interface';
 
 
 

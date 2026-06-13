@@ -8,7 +8,7 @@ import type * as AppTypes from '../../../base/models';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ACTIVITY_RESOURCES_TABLE_NAME, type ActivityResourcesRecordCollection, type ActivitySubEventResourceRecord } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
-import { type ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedScheduleBuilder, SeedUserBuilder } from '../builders';
 
 import type * as AppDTOs from '../../../base/dto';

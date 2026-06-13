@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import type { EventCheckoutLineItem } from '../../core/contracts/activity.interface';
+import type { ActivityPendingReason } from '../../core/common/constants';
 import { APP_STORAGE_KEYS } from '../../core/common/storage-scope';
 
 export interface EventCheckoutDraft {
@@ -16,7 +17,7 @@ export interface EventCheckoutDraft {
   totalAmount: number;
   currency: string;
   checkoutSessionId: string | null;
-  pendingReason: 'approval' | 'waitlist' | null;
+  pendingReason: ActivityPendingReason;
   updatedAtMs: number;
 }
 

@@ -1,5 +1,5 @@
 import type { IdeaPostDto } from '../../../contracts/content.interface';
-import type { HelpCenterAuditEntry, HelpCenterRevision, PrivacyConsentRecord } from '../../../base/models/popup.model';
+import type { HelpCenterAuditEntry, HelpCenterRevision, PrivacyConsentRecord } from '../../../contracts/content.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 export const HELP_CENTER_TABLE_NAME = APP_INDEXED_DB_KEYS.helpCenter;

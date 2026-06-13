@@ -2,9 +2,10 @@ import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { ChatRecord } from '../models/chat.model';
+import type { ActivitiesPageRequest } from '../../contracts';
+import type { ChatRecord } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type { PageResult } from '../../../ui';
 import { buildActivityChatRows } from '../converters';
@@ -39,13 +40,13 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.peekChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
   async loadChatMessagesResult(
     chat: ChatRecord
-  ): Promise<PageResult<AppTypes.ChatPopupMessage, AppTypes.PopupHeaderContext>> {
+  ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppTypes.PopupHeaderContext>> {
     const items = await this.loadChatMessages(chat);
     return {
       items,
@@ -97,38 +98,38 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.queryChatMembers(normalizedChatId);
   }
 
-  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async sendChatMessageWithAttachments(
     chat: ChatRecord,
     text: string,
-    attachments: readonly AppTypes.ChatMessageAttachment[],
+    attachments: readonly ContractTypes.ChatMessageAttachment[],
     clientId?: string,
-    replyTo?: AppTypes.ChatPopupMessage['replyTo']
-  ): Promise<AppTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
+  ): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
   }
 
   async updateChatMessage(
     chat: ChatRecord,
     messageId: string,
-    mutation: AppTypes.ChatMessageMutation
-  ): Promise<AppTypes.ChatPopupMessage | null> {
+    mutation: ContractTypes.ChatMessageMutation
+  ): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(
     chat: ChatRecord,
-    onMessage: (message: AppTypes.ChatPopupMessage) => void
+    onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchChatEvents(
     chat: ChatRecord,
-    onEvent: (event: AppTypes.ChatLiveEvent) => void
+    onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatEvents(chat, onEvent);
   }
@@ -141,7 +142,7 @@ export class ChatsService extends BaseRouteModeService {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 
-  async updateSupportCase(chat: ChatRecord, action: AppTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
+  async updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
     return this.chatsService.updateSupportCase(chat, action);
   }
 

@@ -1,10 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import type {
-  ActivityEventRecord,
-  ActivityEventRepositoryItemType
-} from '../models/events.model';
+import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../contracts/activity.interface';
 import { PricingBuilder } from './pricing.builder';
 import { UserProfileStateBuilder } from './user-profile-state.builder';
 

@@ -5,16 +5,17 @@ import { SeedEventBuilder } from './event-seed.builder';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 import type * as AppTypes from '../../../base/models';
+import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem, ActivityInvitationSeedItem } from '../../../base/models/event-seed-item.model';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../../base/models/events.model';
+import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../../contracts/activity.interface';
 
 const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50)
   .filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id));
 
-function buildCheckoutDemoPolicies(): AppTypes.EventPolicyItem[] {
+function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyItem[] {
   return [
     {
       id: 'policy-checkin-window',
@@ -39,8 +40,8 @@ function buildCheckoutDemoPolicies(): AppTypes.EventPolicyItem[] {
 
 function buildCheckoutDemoPricing(
   basePrice: number,
-  slotTemplates: readonly AppTypes.EventSlotTemplate[] = []
-): AppTypes.PricingConfig {
+  slotTemplates: readonly ContractTypes.EventSlotTemplate[] = []
+): ContractTypes.PricingConfig {
   const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
   pricing.enabled = true;
   pricing.basePrice = basePrice;
@@ -73,7 +74,7 @@ function buildCheckoutDemoSubEvents(options: {
   firstSlotStartAt: string;
   firstSlotEndAt: string;
   includePaidOptional: boolean;
-}): AppTypes.SubEventFormItem[] {
+}): ContractTypes.SubEventFormItem[] {
   const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   paidAddOnPricing.enabled = options.includePaidOptional;
@@ -652,13 +653,13 @@ interface ActivityEventSeedOverrides {
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   topics?: string[];
-  pricing?: AppTypes.PricingConfig | null;
-  policies?: AppTypes.EventPolicyItem[];
+  pricing?: ContractTypes.PricingConfig | null;
+  policies?: ContractTypes.EventPolicyItem[];
   slotsEnabled?: boolean;
-  slotTemplates?: AppTypes.EventSlotTemplate[];
+  slotTemplates?: ContractTypes.EventSlotTemplate[];
   generated?: boolean;
-  subEvents?: AppTypes.SubEventFormItem[];
-  subEventsDisplayMode?: AppTypes.SubEventsDisplayMode;
+  subEvents?: ContractTypes.SubEventFormItem[];
+  subEventsDisplayMode?: ContractTypes.SubEventsDisplayMode;
   rating?: number;
   boost?: number;
   affinity?: number;
@@ -1584,7 +1585,7 @@ export class SeedEventsBuilder {
     endAtIso: string,
     activeUserId: string,
     capacityRange: { min: number; max: number }
-  ): AppTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventFormItem[] {
     const source = {
       id: record.id,
       avatar: AppUtils.initialsFromText(record.title),
@@ -1682,7 +1683,7 @@ export class SeedEventsBuilder {
       .filter(userId => userId.length > 0)));
   }
 
-  private static cloneSubEvents(items: readonly AppTypes.SubEventFormItem[] | undefined): AppTypes.SubEventFormItem[] | undefined {
+  private static cloneSubEvents(items: readonly ContractTypes.SubEventFormItem[] | undefined): ContractTypes.SubEventFormItem[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1691,12 +1692,12 @@ export class SeedEventsBuilder {
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
         : []
     }));
   }
 
-  private static clonePolicies(items: readonly AppTypes.EventPolicyItem[] | undefined): AppTypes.EventPolicyItem[] | undefined {
+  private static clonePolicies(items: readonly ContractTypes.EventPolicyItem[] | undefined): ContractTypes.EventPolicyItem[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1720,7 +1721,7 @@ export class SeedEventsBuilder {
     startAtIso: string;
     endAtIso: string;
     frequency?: string | null;
-    slotTemplates?: readonly AppTypes.EventSlotTemplate[] | null;
+    slotTemplates?: readonly ContractTypes.EventSlotTemplate[] | null;
   }): string {
     const startAt = this.parseSeedDateTime(options.startAtIso);
     const endAt = this.parseSeedDateTime(options.endAtIso);
@@ -1770,8 +1771,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneRebasedSlotTemplates(
-    items: readonly AppTypes.EventSlotTemplate[] | undefined
-  ): AppTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplate[] | undefined
+  ): ContractTypes.EventSlotTemplate[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1784,8 +1785,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneRebasedSubEvents(
-    items: readonly AppTypes.SubEventFormItem[] | undefined
-  ): AppTypes.SubEventFormItem[] | undefined {
+    items: readonly ContractTypes.SubEventFormItem[] | undefined
+  ): ContractTypes.SubEventFormItem[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1796,12 +1797,12 @@ export class SeedEventsBuilder {
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? this.rebasePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: AppTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
         : []
     }));
   }
 
-  private static rebasePricingConfig(value: AppTypes.PricingConfig): AppTypes.PricingConfig {
+  private static rebasePricingConfig(value: ContractTypes.PricingConfig): ContractTypes.PricingConfig {
     const pricing = PricingBuilder.clonePricingConfig(value);
     pricing.slotOverrides = (pricing.slotOverrides ?? []).map(item => ({
       ...item,
@@ -1812,8 +1813,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneSlotTemplates(
-    items: readonly AppTypes.EventSlotTemplate[] | undefined
-  ): AppTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplate[] | undefined
+  ): ContractTypes.EventSlotTemplate[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }

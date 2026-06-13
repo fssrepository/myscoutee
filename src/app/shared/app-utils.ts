@@ -1,4 +1,5 @@
-import type { ActivitiesView, ActivityListRow } from './core/base/models';
+import type { ActivitiesView } from './core/contracts';
+import type { ActivityListRow } from './core/base/models';
 import type { AssetMemberRequestDTO } from './core/base/dto';
 import type { UserDto } from './core/contracts/user.interface';
 

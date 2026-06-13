@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../contracts';
 import type { RateRecord } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
@@ -8,9 +9,9 @@ import { formatActivityMonthDayLabel } from '../formatters';
 interface BuildActivityRateRowsOptions {
   activeUserId: string;
   users: readonly UserDto[];
-  filter: AppTypes.RateFilterKey;
-  secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
-  view: AppTypes.ActivitiesView;
+  filter: ContractTypes.RateFilterKey;
+  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter;
+  view: ContractTypes.ActivitiesView;
   directionOverrides?: Partial<Record<string, RateRecord['direction']>>;
   preserveOrder?: boolean;
 }
@@ -224,7 +225,7 @@ function buildDisplayImageUrls(images: readonly string[] | undefined, count: num
 
 function matchesRateFilter(
   item: RateRecord,
-  filter: AppTypes.RateFilterKey,
+  filter: ContractTypes.RateFilterKey,
   directionOverrides?: Partial<Record<string, RateRecord['direction']>>
 ): boolean {
   const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', RateRecord['direction']];

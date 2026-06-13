@@ -10,7 +10,7 @@ import { vi } from 'vitest';
 import { LocalMemoryDb } from '../../../base/db';
 import { appMemoryDbStorageKey, demoActiveUserStorageKey, scopedSessionStorageKey } from '../../../common/storage-scope';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
-import { type ActivityEventRecord } from '../../../base/models/events.model';
+import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';
 

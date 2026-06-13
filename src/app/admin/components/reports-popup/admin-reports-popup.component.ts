@@ -27,7 +27,7 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
-import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';

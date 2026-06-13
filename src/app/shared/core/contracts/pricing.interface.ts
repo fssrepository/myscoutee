@@ -9,7 +9,7 @@ import type {
   PricingRuleScope,
   PricingTaxMode,
   PricingTimeRuleTrigger
-} from '../../common/constants';
+} from '../common/constants';
 
 export interface PricingAction {
   kind: PricingRuleActionKind;

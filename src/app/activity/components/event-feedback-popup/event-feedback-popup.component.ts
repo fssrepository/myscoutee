@@ -25,18 +25,19 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
-import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
 import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
 interface EventFeedbackListFilters {
-  filter: AppTypes.EventFeedbackListFilter;
+  filter: EventFeedbackListFilter;
   userId: string;
 }
 
 type EventFeedbackMenuContext = {
   menu: 'filter';
-  filter: AppTypes.EventFeedbackListFilter;
+  filter: EventFeedbackListFilter;
 } | {
   menu: 'info-card';
   item: AppTypes.EventFeedbackEventCard;
@@ -289,7 +290,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
   }
 
-  private eventFeedbackFilterPalette(filter: AppTypes.EventFeedbackListFilter): AppMenuPalette {
+  private eventFeedbackFilterPalette(filter: EventFeedbackListFilter): AppMenuPalette {
     switch (filter) {
       case 'feedbacked':
         return 'green';
@@ -883,7 +884,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   private eventFeedbackGroupLabel(
     item: AppTypes.EventFeedbackEventCard,
-    filter: AppTypes.EventFeedbackListFilter
+    filter: EventFeedbackListFilter
   ): string {
     const timestampMs = this.eventFeedbackGroupTimestampMs(item, filter);
     if (!timestampMs || Number.isNaN(timestampMs)) {
@@ -899,7 +900,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   private eventFeedbackGroupTimestampMs(
     item: AppTypes.EventFeedbackEventCard,
-    filter: AppTypes.EventFeedbackListFilter
+    filter: EventFeedbackListFilter
   ): number | null {
     switch (filter) {
       case 'feedbacked':
@@ -1053,7 +1054,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     return typeof window === 'undefined' ? 1280 : window.innerWidth;
   }
 
-  private eventFeedbackEmptyDescription(filter: AppTypes.EventFeedbackListFilter): string {
+  private eventFeedbackEmptyDescription(filter: EventFeedbackListFilter): string {
     switch (filter) {
       case 'own-events':
         return 'No own events yet. Hosted events with received feedback will show here.';

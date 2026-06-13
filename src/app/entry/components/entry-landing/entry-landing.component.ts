@@ -4,7 +4,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
 
-import type * as AppTypes from '../../../shared/core/base/models';
+import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import {
@@ -57,7 +57,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  @Input({ required: true }) authMode: AppTypes.AuthMode = 'selector';
+  @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() articlesLoading = false;
   @Input() articlesLoadingDurationMs = 3000;

@@ -30,7 +30,7 @@ import {
 } from '../../../shared/ui';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 
 interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
   activities: ActivityCounters;

@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import type * as AppTypes from '../models';
+import type * as ContractTypes from '../../contracts';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
@@ -238,7 +239,7 @@ export class ActivityResourceBuilder {
   }
 
   static resourceAcceptedCount(
-    subEvent: AppTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventFormItem,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assets: readonly AppDTOs.AssetCardDTO[]
@@ -265,7 +266,7 @@ export class ActivityResourceBuilder {
   }
 
   static resourcePendingCount(
-    subEvent: AppTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventFormItem,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assets: readonly AppDTOs.AssetCardDTO[]
@@ -289,7 +290,7 @@ export class ActivityResourceBuilder {
   }
 
   static resourceCapacityBounds(
-    subEvent: AppTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventFormItem,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assets: readonly AppDTOs.AssetCardDTO[],
