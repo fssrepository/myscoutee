@@ -9,7 +9,7 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../base/db';
 import { activityChatContextFilterKey } from '../../../base/converters';
 import { UserProfileStateBuilder } from '../../../base/builders';
-import { ChatThreadBuilder } from '../../common/builders';
+import { LocalChatThreadMapper } from '../mappers';
 import type { ChatRecord } from '../../../contracts/chat.interface';
 
 
@@ -63,7 +63,7 @@ export class LocalChatsRepository {
     return {
       items: sorted
         .slice(startIndex, endIndex)
-        .map(record => ChatThreadBuilder.cloneRecord(record, { includeMessages: false })),
+        .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false })),
       total: sorted.length,
       nextCursor: endIndex < sorted.length ? String(endIndex) : null
     };
@@ -91,7 +91,7 @@ export class LocalChatsRepository {
   querySupportCaseItemsForAdmin(userId: string, filter: ContractTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
     const normalizedUserId = userId.trim();
     return this.querySupportCaseRecordsForAdmin(normalizedUserId, filter)
-      .map(record => ChatThreadBuilder.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
   }
 
   private querySupportCaseRecordsForAdmin(
@@ -128,7 +128,7 @@ export class LocalChatsRepository {
 
   queryChatMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    return record ? ChatThreadBuilder.cloneMessages(record.messages ?? []).map(message => ({
+    return record ? LocalChatThreadMapper.cloneMessages(record.messages ?? []).map(message => ({
       ...message,
       readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
     })) : [];
@@ -139,11 +139,11 @@ export class LocalChatsRepository {
     if (!record) {
       return null;
     }
-    const messageClone = ChatThreadBuilder.cloneMessages([message])[0] ?? null;
+    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
     if (!messageClone) {
       return null;
     }
-    const recordKey = ChatThreadBuilder.buildRecordKey(record.ownerUserId, record.id);
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
@@ -162,7 +162,7 @@ export class LocalChatsRepository {
               lastSenderId: messageClone.senderAvatar.id,
               dateIso: messageClone.sentAtIso,
               messages: [
-                ...ChatThreadBuilder.cloneMessages(existingRecord.messages ?? []),
+                ...LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []),
                 messageClone
               ]
             }
@@ -179,8 +179,8 @@ export class LocalChatsRepository {
     if (!sourceId || !ownerUserId) {
       return;
     }
-    const recordKey = ChatThreadBuilder.buildRecordKey(ownerUserId, sourceId);
-    const messageClone = ChatThreadBuilder.cloneMessages([message])[0] ?? null;
+    const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId);
+    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
     if (!messageClone) {
       return;
     }
@@ -193,7 +193,7 @@ export class LocalChatsRepository {
         ...chat,
         unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
         messages: [
-          ...ChatThreadBuilder.cloneMessages(existingMessages).map(item => ({
+          ...LocalChatThreadMapper.cloneMessages(existingMessages).map(item => ({
             ...item,
             readBy: item.readBy
               .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
@@ -233,14 +233,14 @@ export class LocalChatsRepository {
     const actorGender: 'woman' | 'man' = 'man';
     const nowIso = new Date().toISOString();
     let updatedMessage: ContractTypes.ChatPopupMessage | null = null;
-    const recordKey = ChatThreadBuilder.buildRecordKey(record.ownerUserId, record.id);
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
       if (!existingRecord) {
         return currentState;
       }
-      const nextMessages = ChatThreadBuilder.cloneMessages(existingRecord.messages ?? []).map(message => {
+      const nextMessages = LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []).map(message => {
         if (message.id !== normalizedMessageId) {
           return message;
         }
@@ -275,7 +275,7 @@ export class LocalChatsRepository {
         }
       };
     });
-    return updatedMessage ? ChatThreadBuilder.cloneMessages([updatedMessage])[0] ?? null : null;
+    return updatedMessage ? LocalChatThreadMapper.cloneMessages([updatedMessage])[0] ?? null : null;
   }
 
   updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
@@ -325,7 +325,7 @@ export class LocalChatsRepository {
         }
       };
     });
-    return updated ? ChatThreadBuilder.cloneRecord(updated, { includeMessages: false }) : null;
+    return updated ? LocalChatThreadMapper.cloneRecord(updated, { includeMessages: false }) : null;
   }
 
   private queryUserRecords(userId: string): ChatThreadRecord[] {
@@ -338,7 +338,7 @@ export class LocalChatsRepository {
       .map(id => table.byId[id])
       .filter((record): record is ChatThreadRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => ChatThreadBuilder.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
   }
 
   private queryUserRecordsForPage(
@@ -528,7 +528,7 @@ export class LocalChatsRepository {
       ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
       : '';
     if (ownerUserId) {
-      const record = table.byId[ChatThreadBuilder.buildRecordKey(ownerUserId, sourceId)];
+      const record = table.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
       if (record) {
         return record;
       }
@@ -553,7 +553,7 @@ export class LocalChatsRepository {
     if (!normalizedOwnerUserId || !sourceId) {
       return null;
     }
-    const recordKey = ChatThreadBuilder.buildRecordKey(normalizedOwnerUserId, sourceId);
+    const recordKey = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, sourceId);
     const existing = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey];
     if (existing) {
       return existing;

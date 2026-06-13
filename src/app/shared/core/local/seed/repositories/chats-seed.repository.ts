@@ -5,7 +5,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import { UserProfileStateBuilder } from '../../../base/builders';
-import { ChatThreadBuilder } from '../../common/builders';
+import { LocalChatThreadMapper } from '../../source/mappers';
 import { LocalMemoryDb } from '../../../base/db';
 import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
 
@@ -70,7 +70,7 @@ export class SeedChatsRepository {
       if (existing && Array.isArray(existing.messages) && existing.messages.length > 0) {
         continue;
       }
-      nextById[id] = ChatThreadBuilder.cloneRecord(seededRecord);
+      nextById[id] = LocalChatThreadMapper.cloneRecord(seededRecord);
       if (!existing) {
         nextIds.push(id);
       }
@@ -99,12 +99,12 @@ export class SeedChatsRepository {
       .map(id => table.byId[id])
       .filter((record): record is ChatThreadRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => ChatThreadBuilder.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
   }
 
   queryChatMessages(chat: ChatRecord): ChatPopupMessage[] {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    return record ? ChatThreadBuilder.cloneMessages(record.messages ?? []) : [];
+    return record ? LocalChatThreadMapper.cloneMessages(record.messages ?? []) : [];
   }
 
   appendChatMessage(chat: ChatRecord, message: ChatPopupMessage): ChatPopupMessage | null {
@@ -112,11 +112,11 @@ export class SeedChatsRepository {
     if (!record) {
       return null;
     }
-    const messageClone = ChatThreadBuilder.cloneMessages([message])[0] ?? null;
+    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
     if (!messageClone) {
       return null;
     }
-    const recordKey = ChatThreadBuilder.buildRecordKey(record.ownerUserId, record.id);
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
@@ -135,7 +135,7 @@ export class SeedChatsRepository {
               lastSenderId: messageClone.senderAvatar.id,
               dateIso: messageClone.sentAtIso,
               messages: [
-                ...ChatThreadBuilder.cloneMessages(existingRecord.messages ?? []),
+                ...LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []),
                 messageClone
               ]
             }
@@ -156,7 +156,7 @@ export class SeedChatsRepository {
     if (!record || !normalizedMessageId) {
       return null;
     }
-    const recordKey = ChatThreadBuilder.buildRecordKey(record.ownerUserId, record.id);
+    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     let updatedMessage: ChatPopupMessage | null = null;
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
@@ -164,7 +164,7 @@ export class SeedChatsRepository {
       if (!existingRecord) {
         return currentState;
       }
-      const nextMessages = ChatThreadBuilder.cloneMessages(existingRecord.messages ?? []).map(message => {
+      const nextMessages = LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []).map(message => {
         if (message.id !== normalizedMessageId) {
           return message;
         }
@@ -197,7 +197,7 @@ export class SeedChatsRepository {
         }
       };
     });
-    return updatedMessage ? ChatThreadBuilder.cloneMessages([updatedMessage])[0] ?? null : null;
+    return updatedMessage ? LocalChatThreadMapper.cloneMessages([updatedMessage])[0] ?? null : null;
   }
 
   private isSupportCaseRecord(record: ChatRecord): boolean {
@@ -217,7 +217,7 @@ export class SeedChatsRepository {
       ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
       : '';
     if (ownerUserId) {
-      const record = table.byId[ChatThreadBuilder.buildRecordKey(ownerUserId, sourceId)];
+      const record = table.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
       if (record) {
         return record;
       }
@@ -242,7 +242,7 @@ export class SeedChatsRepository {
     if (!normalizedOwnerUserId || !sourceId) {
       return null;
     }
-    const recordKey = ChatThreadBuilder.buildRecordKey(normalizedOwnerUserId, sourceId);
+    const recordKey = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, sourceId);
     const existing = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey];
     if (existing) {
       return existing;

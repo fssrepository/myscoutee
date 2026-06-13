@@ -1,8 +1,8 @@
-import type { ChatThreadRecord } from '../../source/entity/chat.entity';
 import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatThreadRecord } from '../entity/chat.entity';
 
 
-export class ChatThreadBuilder {
+export class LocalChatThreadMapper {
   static cloneRecord(record: ChatThreadRecord, options: { includeMessages?: boolean } = {}): ChatThreadRecord {
     return {
       ...record,
