@@ -217,6 +217,7 @@ export class DemoBootstrapSelectorComponent {
             this.loadingStage = state.stage;
           });
         });
+        await this.waitForPhaseReadyBlink();
       }
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
@@ -435,5 +436,9 @@ export class DemoBootstrapSelectorComponent {
 
   private waitForLoaderCompletionBeat(): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, 240));
+  }
+
+  private waitForPhaseReadyBlink(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 500));
   }
 }
