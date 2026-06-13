@@ -1,19 +1,13 @@
+import { USER_RATES_OUTBOX_TABLE_NAME } from '../../local/source/entity/rate.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { UserRatesBuilder } from '../builders/user-rates.builder';
 import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../db';
 import { resolveRouteConfig } from '../config';
-import type {
-  UserGameMode,
-  UserRateOutboxRecord,
-  UserRateRecord,
-  UserRatesSyncResult
-} from '../../contracts/activity.interface';
+import type { UserGameMode, UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../contracts/activity.interface';
 import type { RateRecord } from '../../contracts/activity.interface';
-import {
-  USER_RATES_OUTBOX_TABLE_NAME
-} from '../models/users.model';
+
 import { SessionService } from '../services/session.service';
 
 @Injectable({

@@ -8,7 +8,7 @@ import type {
 } from '../../contracts/activity.interface';
 import type { RateRecord } from '../../contracts/activity.interface';
 import { HttpRatesService } from '../../http/services/rates.service';
-import { LocalRatesRepository } from '../../local/repositories/rates.repository';
+import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';
 import { RateOutboxRepository } from '../repositories/rate-outbox.repository';
 import { BaseRouteModeService } from './base-route-mode.service';
 

@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { LocalLandingContentService } from '../../local/services/landing-content.service';
+import { LocalLandingContentService } from '../../local/source/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
 import type { LandingContentState } from '../models';
 import type { InfoCardData } from '../../../ui';

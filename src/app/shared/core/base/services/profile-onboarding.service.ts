@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 
 import type { UserDto } from '../../contracts/user.interface';
-import type { ExperienceEntry, ProfileStatus } from '../../contracts/profile.interface';
-import { profileOnboardingDraftStorageKey } from '../storage-scope';
+import type { ProfileStatus } from '../../common/constants';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
+import { profileOnboardingDraftStorageKey } from '../../common/storage-scope';
 
 export type ProfileOnboardingStepId =
   | 'basics'

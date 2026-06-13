@@ -4,6 +4,7 @@ import type { CardRenderState, InfoCardData, InfoCardMenuAction } from '../../..
 import type { ActivityEventRecord } from '../models/events.model';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
+import type * as AppConstants from '../../common/constants';
 type TopicToneGroup = {
   toneClass: string;
   options: readonly string[];
@@ -221,7 +222,7 @@ export class EventExploreBuilder {
     return '';
   }
 
-  private static visibilityIcon(visibility: AppTypes.EventVisibility): string {
+  private static visibilityIcon(visibility: AppConstants.EventVisibility): string {
     if (visibility === 'Friends only') {
       return 'groups';
     }

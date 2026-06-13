@@ -15,11 +15,11 @@ import type {
   FirebaseAuthRequestDto,
   LocationCoordinates
 } from '../../../shared/core/contracts/user.interface';
-import { APP_STORAGE_KEYS } from '../../../shared/core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { I18nService } from '../../../shared/core';
-import { SeedStaticContentService } from '../../../shared/core/seed';
+import { SeedStaticContentService } from '../../../shared/core/local/seed';
 import type { InfoCardData } from '../../../shared/ui';
 import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
 import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';

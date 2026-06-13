@@ -42,15 +42,16 @@ import {
 import { NavigatorService } from '../../../navigator';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 
+import type * as AppConstants from '../../../shared/core/common/constants';
 interface ActivityInviteFilters {
   ownerId?: string;
-  sort?: ActivityContracts.ActivityInviteSort;
+  sort?: AppConstants.ActivityInviteSort;
   fallbackTitle?: string;
 }
 
 type AssetMemberPickerMenuContext = {
   menu: 'invite-sort';
-  sort: ActivityContracts.ActivityInviteSort;
+  sort: AppConstants.ActivityInviteSort;
 };
 
 @Component({
@@ -81,8 +82,8 @@ export class AssetMemberPickerPopupComponent {
   protected isOpen = false;
   protected title = 'Invite members';
   protected ownerId = '';
-  protected ownerType: ActivityContracts.ActivityMemberOwnerType = 'event';
-  protected inviteSort: ActivityContracts.ActivityInviteSort = 'recent';
+  protected ownerType: AppConstants.ActivityMemberOwnerType = 'event';
+  protected inviteSort: AppConstants.ActivityInviteSort = 'recent';
   protected selectedUserIds: string[] = [];
   protected inviteSmartListQuery: Partial<ListQuery<ActivityInviteFilters>> = {};
   protected confirmErrorMessage = '';
@@ -239,7 +240,7 @@ export class AssetMemberPickerPopupComponent {
     this.selectInviteSort(context.sort);
   }
 
-  private selectInviteSort(sort: ActivityContracts.ActivityInviteSort): void {
+  private selectInviteSort(sort: AppConstants.ActivityInviteSort): void {
     if (this.isConfirmPending) {
       return;
     }
@@ -383,7 +384,7 @@ export class AssetMemberPickerPopupComponent {
     };
   }
 
-  private sortLocalCandidates(sort: ActivityContracts.ActivityInviteSort): ActivityContracts.ActivityMemberEntry[] {
+  private sortLocalCandidates(sort: AppConstants.ActivityInviteSort): ActivityContracts.ActivityMemberEntry[] {
     const candidates = this.localCandidates.map(candidate => ({ ...candidate }));
     if (sort === 'relevant') {
       return candidates;
@@ -467,7 +468,7 @@ export class AssetMemberPickerPopupComponent {
   private mergeInviteCandidates(
     persistedMembers: readonly ActivityContracts.ActivityMemberEntry[],
     candidates: readonly ActivityContracts.ActivityMemberEntry[],
-    sort: ActivityContracts.ActivityInviteSort
+    sort: AppConstants.ActivityInviteSort
   ): ActivityContracts.ActivityMemberEntry[] {
     const mergedByUserId = new Map<string, ActivityContracts.ActivityMemberEntry>();
     if (this.ownerType !== 'asset') {

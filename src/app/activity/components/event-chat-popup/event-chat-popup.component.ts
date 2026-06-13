@@ -40,6 +40,8 @@ import {
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
 
+import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppConstants from '../../../shared/core/common/constants';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -72,7 +74,7 @@ type SelectedChatActionTone =
   | 'popup-chat-context-btn-tone-optional'
   | 'popup-chat-context-btn-tone-group';
 
-type SelectedChatResourceType = 'Members' | AppTypes.AssetType;
+type SelectedChatResourceType = 'Members' | AppConstants.AssetType;
 
 type ChatMenuContext =
   | { menu: 'chat-context'; control: AppTypes.PopupHeaderControl }
@@ -137,7 +139,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
   private resolvedChatEventRecord: ActivityEventRecord | null = null;
   private resolvedChatEventRecordKey = '';
-  private resolvedChatResourceState: AppTypes.ActivitySubEventResourceState | null = null;
+  private resolvedChatResourceState: AppDTOs.ActivitySubEventResourceStateDTO | null = null;
   private resolvedChatResourceStateKey = '';
   protected typingIndicators: AppTypes.ChatTypingIndicator[] = [];
   protected voiceComposerOpen = false;
@@ -2055,7 +2057,7 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  private assetAttachmentToViewCard(attachment: AppTypes.ChatMessageAttachment): AppTypes.AssetCard | undefined {
+  private assetAttachmentToViewCard(attachment: AppTypes.ChatMessageAttachment): AppDTOs.AssetCardDTO | undefined {
     const assetId = `${attachment.entityId ?? ''}`.trim();
     const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car';
     if (!assetId) {
@@ -2085,7 +2087,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private normalizeAttachmentAssetType(value: unknown): AppTypes.AssetType | null {
+  private normalizeAttachmentAssetType(value: unknown): AppConstants.AssetType | null {
     return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
   }
 
@@ -3848,7 +3850,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolveSelectedChatResourceState(
     ownerId: string,
     subEventId: string
-  ): AppTypes.ActivitySubEventResourceState | null {
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     const resourceKey = `${ownerId}:${subEventId}`;
     if (this.resolvedChatResourceStateKey === resourceKey) {
       return ActivityResourceBuilder.cloneState(this.resolvedChatResourceState);
@@ -3860,8 +3862,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private syncSubEventResourceCounts(
     subEvent: AppTypes.SubEventFormItem,
-    state: AppTypes.ActivitySubEventResourceState | null,
-    assetCards: readonly AppTypes.AssetCard[]
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null,
+    assetCards: readonly AppDTOs.AssetCardDTO[]
   ): AppTypes.SubEventFormItem {
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assetCards);
@@ -3894,7 +3896,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private flattenAssetCards(assetCardsByType: AppTypes.SubEventAssetCardsByType): AppTypes.AssetCard[] {
+  private flattenAssetCards(assetCardsByType: AppTypes.SubEventAssetCardsByType): AppDTOs.AssetCardDTO[] {
     return (['Car', 'Accommodation', 'Supplies'] as const)
       .flatMap(type => assetCardsByType[type] ?? []);
   }
@@ -3996,7 +3998,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resourceAcceptedCount(
     subEvent: AppTypes.SubEventFormItem,
     state: SelectedChatNavigationState,
-    type: AppTypes.AssetType
+    type: AppConstants.AssetType
   ): number {
     return ActivityResourceBuilder.resourceAcceptedCount(
       subEvent,
@@ -4062,7 +4064,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return type === 'Accommodation' ? 'Property' : type;
   }
 
-  private firstAvailableAssetType(): AppTypes.AssetType | null {
+  private firstAvailableAssetType(): AppConstants.AssetType | null {
     const state = this.selectedChatNavigationState;
     if (!state) {
       return null;

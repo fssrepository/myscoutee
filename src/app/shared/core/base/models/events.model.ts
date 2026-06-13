@@ -1,8 +1,7 @@
 import type * as AppTypes from '.';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import { APP_INDEXED_DB_KEYS } from '../storage-scope';
 
-export const EVENTS_TABLE_NAME = APP_INDEXED_DB_KEYS.events;
+import type * as AppConstants from '../../common/constants';
 
 export type ActivityEventScopeFilter =
   | 'all'
@@ -55,7 +54,7 @@ export interface ActivityEventRecord {
   creatorInitials: string;
   creatorGender: 'woman' | 'man';
   creatorCity: string;
-  visibility: AppTypes.EventVisibility;
+  visibility: AppConstants.EventVisibility;
   blindMode: AppTypes.EventBlindMode;
   startAtIso: string;
   endAtIso: string;
@@ -112,7 +111,7 @@ export interface ActivityEventListItem {
   creatorName: string;
   creatorInitials: string;
   creatorCity: string;
-  visibility: AppTypes.EventVisibility;
+  visibility: AppConstants.EventVisibility;
   startAtIso: string;
   endAtIso: string;
   distanceKm: number;
@@ -171,10 +170,3 @@ export interface ActivityEventActivitiesListQueryResult {
   total: number;
   nextCursor: string | null;
 }
-
-export interface ActivityEventRecordCollection {
-  byId: Record<string, ActivityEventRecord>;
-  ids: string[];
-}
-
-export type ActivityEventsMemorySchema = Record<typeof EVENTS_TABLE_NAME, ActivityEventRecordCollection>;

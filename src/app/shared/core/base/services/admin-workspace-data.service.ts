@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { HttpAdminWorkspaceService } from '../../http/services/admin-workspace.service';
-import { LocalAdminWorkspaceService } from '../../local/services/admin-workspace.service';
+import { LocalAdminWorkspaceService } from '../../local/source/services/admin-workspace.service';
 import type {
   AdminBootstrapProcessState,
   AdminDashboardDto,

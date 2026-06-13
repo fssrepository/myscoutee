@@ -23,7 +23,7 @@ import type {
   FirebaseAuthRequestDto,
   FirebaseEmailAuthMode
 } from '../../contracts/user.interface';
-import { APP_STORAGE_KEYS } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 
 export interface FirebaseAuthSignInResult {
   profile: FirebaseAuthProfileDto | null;

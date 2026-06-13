@@ -40,33 +40,35 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 
+import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppConstants from '../../../shared/core/common/constants';
 interface AssetTicketListFilters {
   userId?: string;
-  order?: AppTypes.AssetTicketOrder;
+  order?: AppConstants.AssetTicketOrder;
 }
 
 interface OwnedAssetListFilters {
   userId?: string;
-  type?: AppTypes.AssetType;
+  type?: AppConstants.AssetType;
   refreshToken?: number;
 }
 
 type AssetSupplyRequestFilter = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
-type AssetSupplyRequestRowAction = Extract<AppTypes.AssetRequestAction, 'accept' | 'remove' | 'makeManager'>;
+type AssetSupplyRequestRowAction = Extract<AppConstants.AssetRequestAction, 'accept' | 'remove' | 'makeManager'>;
 
 interface AssetSupplyRequestRow extends SingleRowData {
-  status: AppTypes.AssetRequestStatus | 'assigned';
+  status: AppConstants.AssetRequestStatus | 'assigned';
   menuActions?: readonly AssetSupplyRequestRowAction[];
 }
 
 type AssetPopupMenuContext =
-  | { menu: 'ticket-order'; order: AppTypes.AssetTicketOrder }
-  | { menu: 'asset-filter'; filter: AppTypes.AssetFilterType }
+  | { menu: 'ticket-order'; order: AppConstants.AssetTicketOrder }
+  | { menu: 'asset-filter'; filter: AppConstants.AssetFilterType }
   | { menu: 'supply-request-filter'; filter: AssetSupplyRequestFilter }
   | { menu: 'supply-request-action'; row: AssetSupplyRequestRow; action: AssetSupplyRequestRowAction }
   | {
       menu: 'asset-info-card';
-      assetCard: AppTypes.AssetCard;
+      assetCard: AppDTOs.AssetCardDTO;
       card: InfoCardData;
       action: InfoCardResolvedMenuAction;
     };
@@ -138,13 +140,13 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   private ticketSmartListQueryKey = '';
   private ticketSmartListQueryRevision = 0;
   @ViewChild('assetSmartList')
-  private assetSmartList?: SmartListComponent<AppTypes.AssetCard, OwnedAssetListFilters>;
+  private assetSmartList?: SmartListComponent<AppDTOs.AssetCardDTO, OwnedAssetListFilters>;
 
   protected readonly assetSmartListLoadPage = (query: ListQuery<OwnedAssetListFilters>) =>
     from(this.loadOwnedAssetSmartListPage(query));
   protected readonly ticketSmartListLoadPage = (query: ListQuery<AssetTicketListFilters>) =>
     from(this.loadTicketSmartListPage(query));
-  protected readonly assetSmartListConfig: SmartListConfig<AppTypes.AssetCard, OwnedAssetListFilters> = {
+  protected readonly assetSmartListConfig: SmartListConfig<AppDTOs.AssetCardDTO, OwnedAssetListFilters> = {
     pageSize: 18,
     defaultView: 'list',
     emptyLabel: query => this.assetFacade.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
@@ -256,7 +258,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   }
 
   protected ownedAssetInfoCard(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: { groupLabel?: string | null; selectMode?: boolean; selected?: boolean; selectDisabled?: boolean } = {}
   ) {
     return this.assetFacade.ownedAssetInfoCard(card, options);
@@ -267,7 +269,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return !!host && host.isSubEventAssetAssignPopup() && host.isSubEventAssetAssignCardSelected(cardId);
   }
 
-  protected onOwnedAssetInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
+  protected onOwnedAssetInfoCardMenuAction(card: AppDTOs.AssetCardDTO, event: InfoCardMenuActionEvent): void {
     if (this.isBasketMode()) {
       return;
     }
@@ -499,7 +501,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     await this.promoteSupplyRequestRowToManager(row, event);
   }
 
-  private assetFilterPalette(filter: AppTypes.AssetFilterType): AppMenuPalette {
+  private assetFilterPalette(filter: AppConstants.AssetFilterType): AppMenuPalette {
     if (filter === 'Accommodation') {
       return 'green';
     }
@@ -526,7 +528,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
-  private openOwnedAssetShareDialog(card: AppTypes.AssetCard): void {
+  private openOwnedAssetShareDialog(card: AppDTOs.AssetCardDTO): void {
     void this.shareTokensService.createToken({
       kind: 'asset',
       entityId: card.id,
@@ -546,7 +548,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     });
   }
 
-  protected onOwnedAssetMediaEndClick(card: AppTypes.AssetCard, selectMode: boolean): void {
+  protected onOwnedAssetMediaEndClick(card: AppDTOs.AssetCardDTO, selectMode: boolean): void {
     if (!selectMode) {
       this.openSupplyRequestList(card);
       return;
@@ -554,7 +556,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.assetPopup.host()?.toggleSubEventAssetAssignCard(card.id);
   }
 
-  protected openSupplyRequestList(card: AppTypes.AssetCard, event?: Event): void {
+  protected openSupplyRequestList(card: AppDTOs.AssetCardDTO, event?: Event): void {
     event?.stopPropagation();
     if (this.isBasketMode()) {
       return;
@@ -574,7 +576,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.appMenuDispatcher.close();
   }
 
-  protected selectedSupplyAsset(): AppTypes.AssetCard | null {
+  protected selectedSupplyAsset(): AppDTOs.AssetCardDTO | null {
     const assetId = `${this.selectedSupplyAssetId ?? ''}`.trim();
     if (!assetId) {
       return null;
@@ -623,7 +625,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return request ? this.supplyRequestInventoryLabel(request) : '';
   }
 
-  protected isSupplyRequestRowBusy(row: AssetSupplyRequestRow, action: AppTypes.AssetRequestAction): boolean {
+  protected isSupplyRequestRowBusy(row: AssetSupplyRequestRow, action: AppConstants.AssetRequestAction): boolean {
     return this.supplyRequestBusyKey === `${row.id}:${action}`;
   }
 
@@ -658,12 +660,12 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
-  protected supplyRequestQuantity(request: AppTypes.AssetMemberRequest): number {
+  protected supplyRequestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
     const raw = Number(request.booking?.quantity);
     return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1;
   }
 
-  protected supplyRequestReservationLabel(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestReservationLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     const quantityLabel = this.supplyRequestQuantityLabel(request);
     if (this.isAssignedSupplyRequest(request)) {
       return this.translateTemplate('asset.requests.reservation.assigned', 'Assigned {quantity}', {
@@ -680,14 +682,14 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     });
   }
 
-  protected supplyRequestEventLabel(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestEventLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     return [
       `${request.booking?.eventTitle ?? ''}`.trim(),
       `${request.booking?.subEventTitle ?? ''}`.trim()
     ].filter(Boolean).join(' · ');
   }
 
-  protected supplyRequestScheduleLabel(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestScheduleLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     const start = this.parseIsoDate(request.booking?.startAtIso);
     const end = this.parseIsoDate(request.booking?.endAtIso);
     if (start && end) {
@@ -700,7 +702,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return `${request.booking?.slotLabel ?? ''}`.trim();
   }
 
-  protected supplyRequestDisplayNote(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestDisplayNote(request: AppDTOs.AssetMemberRequestDTO): string {
     const note = `${request.note ?? ''}`.trim();
     if (!note || this.isSystemSupplyRequestNote(note)) {
       return '';
@@ -708,7 +710,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return note;
   }
 
-  protected supplyRequestInventoryLabel(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestInventoryLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     const quantityLabel = this.supplyRequestQuantityLabel(request);
     const total = this.selectedSupplyTotalQuantity();
     if (total <= 0) {
@@ -729,7 +731,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     });
   }
 
-  protected supplyRequestInventoryBadgeLabel(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestInventoryBadgeLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     const quantityLabel = this.supplyRequestQuantityLabel(request);
     const total = this.selectedSupplyTotalQuantity();
     if (total <= 0) {
@@ -750,7 +752,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     });
   }
 
-  protected supplyRequestInventoryState(request: AppTypes.AssetMemberRequest): 'available' | 'empty' | 'over' | 'unset' {
+  protected supplyRequestInventoryState(request: AppDTOs.AssetMemberRequestDTO): 'available' | 'empty' | 'over' | 'unset' {
     const total = this.selectedSupplyTotalQuantity();
     if (total <= 0) {
       return 'unset';
@@ -765,7 +767,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return 'available';
   }
 
-  protected supplyRequestStatusLabel(request: AppTypes.AssetMemberRequest): string {
+  protected supplyRequestStatusLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     if (this.isAssignedSupplyRequest(request)) {
       return 'asset.requests.status.assigned';
     }
@@ -779,20 +781,20 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return row.status === 'accepted' ? 'asset.requests.status.borrowed' : 'asset.requests.status.pending';
   }
 
-  protected isSupplyRequestBusy(request: AppTypes.AssetMemberRequest, action: AppTypes.AssetRequestAction): boolean {
+  protected isSupplyRequestBusy(request: AppDTOs.AssetMemberRequestDTO, action: AppConstants.AssetRequestAction): boolean {
     return this.supplyRequestBusyKey === `${request.id}:${action}`;
   }
 
-  protected hasSupplyRequestActions(request: AppTypes.AssetMemberRequest): boolean {
+  protected hasSupplyRequestActions(request: AppDTOs.AssetMemberRequestDTO): boolean {
     return (request.status === 'pending' && !this.isAssignedSupplyRequest(request))
       || this.canPromoteSupplyRequestToManager(request);
   }
 
-  protected canPromoteSupplyRequestToManager(request: AppTypes.AssetMemberRequest): boolean {
+  protected canPromoteSupplyRequestToManager(request: AppDTOs.AssetMemberRequestDTO): boolean {
     return (request.menuActions ?? []).includes('makeManager');
   }
 
-  protected async approveSupplyRequest(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
+  protected async approveSupplyRequest(request: AppDTOs.AssetMemberRequestDTO, event: Event): Promise<void> {
     event.stopPropagation();
     const asset = this.selectedSupplyAsset();
     if (!asset || request.status !== 'pending') {
@@ -807,7 +809,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
-  protected async rejectSupplyRequest(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
+  protected async rejectSupplyRequest(request: AppDTOs.AssetMemberRequestDTO, event: Event): Promise<void> {
     event.stopPropagation();
     const asset = this.selectedSupplyAsset();
     if (!asset) {
@@ -822,7 +824,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     }
   }
 
-  protected async promoteSupplyRequestToManager(request: AppTypes.AssetMemberRequest, event: Event): Promise<void> {
+  protected async promoteSupplyRequestToManager(request: AppDTOs.AssetMemberRequestDTO, event: Event): Promise<void> {
     event.stopPropagation();
     const asset = this.selectedSupplyAsset();
     if (!asset || !this.canPromoteSupplyRequestToManager(request)) {
@@ -844,11 +846,11 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return 'asset.requests.empty.no.activity';
   }
 
-  private isAssignedSupplyRequest(request: AppTypes.AssetMemberRequest): boolean {
+  private isAssignedSupplyRequest(request: AppDTOs.AssetMemberRequestDTO): boolean {
     return request.requestKind === 'manual';
   }
 
-  private supplyRequestsForFilter(filter: AssetSupplyRequestFilter): AppTypes.AssetMemberRequest[] {
+  private supplyRequestsForFilter(filter: AssetSupplyRequestFilter): AppDTOs.AssetMemberRequestDTO[] {
     const requests = [...(this.selectedSupplyAsset()?.requests ?? [])];
     const ordered = requests.sort((left, right) => {
       const leftOrder = this.supplyRequestBucketOrder(left);
@@ -869,7 +871,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return ordered;
   }
 
-  private toSupplyRequestRow(request: AppTypes.AssetMemberRequest): AssetSupplyRequestRow {
+  private toSupplyRequestRow(request: AppDTOs.AssetMemberRequestDTO): AssetSupplyRequestRow {
     const eventLabel = this.supplyRequestEventLabel(request);
     const scheduleLabel = this.supplyRequestScheduleLabel(request);
     const note = this.supplyRequestDisplayNote(request);
@@ -887,7 +889,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     };
   }
 
-  private supplyRequestMenuActions(request: AppTypes.AssetMemberRequest): readonly AssetSupplyRequestRowAction[] {
+  private supplyRequestMenuActions(request: AppDTOs.AssetMemberRequestDTO): readonly AssetSupplyRequestRowAction[] {
     if (request.status === 'pending' && !this.isAssignedSupplyRequest(request)) {
       return this.canPromoteSupplyRequestToManager(request)
         ? ['accept', 'makeManager', 'remove']
@@ -896,11 +898,11 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return this.canPromoteSupplyRequestToManager(request) ? ['makeManager'] : [];
   }
 
-  private supplyRequestForRow(row: AssetSupplyRequestRow): AppTypes.AssetMemberRequest | null {
+  private supplyRequestForRow(row: AssetSupplyRequestRow): AppDTOs.AssetMemberRequestDTO | null {
     return (this.selectedSupplyAsset()?.requests ?? []).find(request => request.id === row.id) ?? null;
   }
 
-  private supplyRequestBucketOrder(request: AppTypes.AssetMemberRequest): number {
+  private supplyRequestBucketOrder(request: AppDTOs.AssetMemberRequestDTO): number {
     if (request.status === 'pending' && !this.isAssignedSupplyRequest(request)) {
       return 0;
     }
@@ -910,14 +912,14 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return 2;
   }
 
-  private toSupplyRequestSortTime(request: AppTypes.AssetMemberRequest): number {
+  private toSupplyRequestSortTime(request: AppDTOs.AssetMemberRequestDTO): number {
     const parsed = this.parseIsoDate(request.requestedAtIso)
       ?? this.parseIsoDate(request.booking?.startAtIso)
       ?? this.parseIsoDate(request.booking?.endAtIso);
     return parsed ? parsed.getTime() : 0;
   }
 
-  private selectedSupplyRemainingQuantityForRequest(request: AppTypes.AssetMemberRequest): number {
+  private selectedSupplyRemainingQuantityForRequest(request: AppDTOs.AssetMemberRequestDTO): number {
     const overlappingCommitted = (this.selectedSupplyAsset()?.requests ?? [])
       .filter(other => this.isCommittedSupplyRequest(other))
       .filter(other => this.isSupplyRequestTimeOverlap(request, other))
@@ -926,13 +928,13 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return this.selectedSupplyTotalQuantity() - overlappingCommitted - pendingCurrentQuantity;
   }
 
-  private isCommittedSupplyRequest(request: AppTypes.AssetMemberRequest): boolean {
+  private isCommittedSupplyRequest(request: AppDTOs.AssetMemberRequestDTO): boolean {
     return request.status === 'accepted' || this.isAssignedSupplyRequest(request);
   }
 
   private isSupplyRequestTimeOverlap(
-    left: AppTypes.AssetMemberRequest,
-    right: AppTypes.AssetMemberRequest
+    left: AppDTOs.AssetMemberRequestDTO,
+    right: AppDTOs.AssetMemberRequestDTO
   ): boolean {
     if (left.id === right.id) {
       return true;
@@ -957,7 +959,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return true;
   }
 
-  private requestTimeWindowKey(request: AppTypes.AssetMemberRequest): string {
+  private requestTimeWindowKey(request: AppDTOs.AssetMemberRequestDTO): string {
     return [
       `${request.booking?.eventId ?? ''}`.trim(),
       `${request.booking?.subEventId ?? ''}`.trim(),
@@ -966,7 +968,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     ].filter(Boolean).join('|');
   }
 
-  private supplyRequestQuantityLabel(request: AppTypes.AssetMemberRequest): string {
+  private supplyRequestQuantityLabel(request: AppDTOs.AssetMemberRequestDTO): string {
     const quantity = this.supplyRequestQuantity(request);
     return this.translateTemplate(
       quantity === 1 ? 'asset.requests.quantity.one' : 'asset.requests.quantity.many',
@@ -1023,14 +1025,14 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return this.parseIsoDate(value)?.getTime() ?? null;
   }
 
-  protected openOwnedAssetMap(card: AppTypes.AssetCard): void {
+  protected openOwnedAssetMap(card: AppDTOs.AssetCardDTO): void {
     if (!this.assetFacade.canOpenOwnedAssetMap(card)) {
       return;
     }
     this.ownedAssets.openAssetMap(card);
   }
 
-  protected onAssetFilterChange(filter: AppTypes.AssetFilterType): void {
+  protected onAssetFilterChange(filter: AppConstants.AssetFilterType): void {
     if (this.isBasketMode()) {
       return;
     }
@@ -1059,7 +1061,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.assetPopup.updateTicketListState(change);
   }
 
-  protected onAssetSmartListStateChange(change: SmartListStateChange<AppTypes.AssetCard, OwnedAssetListFilters>): void {
+  protected onAssetSmartListStateChange(change: SmartListStateChange<AppDTOs.AssetCardDTO, OwnedAssetListFilters>): void {
     this.assetListVisibleCount = change.items.length;
     this.assetListReady = !change.initialLoading;
     if (!this.assetListReady || this.ownedAssets.isTicketPopup()) {
@@ -1177,7 +1179,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return this.appCtx.activeUserId().trim();
   }
 
-  private currentAssetSmartListType(): AppTypes.AssetType {
+  private currentAssetSmartListType(): AppConstants.AssetType {
     const currentFilter = this.ownedAssets.assetFilter;
     return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
   }
@@ -1247,7 +1249,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.syncVisibleOwnedAssetCards(cards, previousCardCount);
   }
 
-  private syncVisibleOwnedAssetCards(cards: AppTypes.AssetCard[], previousCardCount: number): void {
+  private syncVisibleOwnedAssetCards(cards: AppDTOs.AssetCardDTO[], previousCardCount: number): void {
     if (!this.assetListReady || !this.assetSmartList) {
       return;
     }
@@ -1265,7 +1267,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     });
   }
 
-  private orderedOwnedAssetCards(type: AppTypes.AssetType): AppTypes.AssetCard[] {
+  private orderedOwnedAssetCards(type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
     const selectedAssetIds = this.isBasketMode()
       ? new Set((this.assetPopup.host()?.selectedSubEventAssetAssignChips() ?? []).map(card => card.id.trim()).filter(Boolean))
       : null;
@@ -1306,7 +1308,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   private async loadOwnedAssetSmartListPage(
     query: ListQuery<OwnedAssetListFilters>
-  ): Promise<{ items: AppTypes.AssetCard[]; total: number }> {
+  ): Promise<{ items: AppDTOs.AssetCardDTO[]; total: number }> {
     const userId = query.filters?.userId?.trim() || this.activeUserId();
     const type = query.filters?.type;
     if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
@@ -1326,7 +1328,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     };
   }
 
-  private cloneOwnedAsset(card: AppTypes.AssetCard): AppTypes.AssetCard {
+  private cloneOwnedAsset(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],

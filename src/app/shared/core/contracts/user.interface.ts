@@ -1,4 +1,8 @@
 import type { UserGameFilterPreferencesDto } from './activity.interface';
+import type {
+  ProfileStatus,
+  UserGender
+} from '../common/constants';
 import type { ProfileDetailFormGroup } from './profile.interface';
 
 export interface LocationCoordinates {
@@ -133,7 +137,7 @@ export interface UserSelectorListItemDto {
   name: string;
   city: string;
   initials: string;
-  gender: 'woman' | 'man';
+  gender: UserGender;
   statusText?: string;
   completion?: number;
   profileFormVersion?: number;
@@ -154,7 +158,7 @@ export interface UserDto {
   languages: string[];
   horoscope: string;
   initials: string;
-  gender: 'woman' | 'man';
+  gender: UserGender;
   statusText: string;
   hostTier: string;
   traitLabel: string;
@@ -168,8 +172,8 @@ export interface UserDto {
   images?: string[];
   profileDetails?: ProfileDetailFormGroup[];
   impressions?: UserImpressionsDto;
-  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted' | 'onboarding';
-  previousProfileStatus?: UserDto['profileStatus'] | null;
+  profileStatus: ProfileStatus;
+  previousProfileStatus?: ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
   activities: {

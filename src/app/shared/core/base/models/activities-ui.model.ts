@@ -1,5 +1,5 @@
 import type { ImageCardData, InfoCardData, SingleRowData } from '../../../ui';
-import type { EventVisibility } from './event.model';
+import type { EventVisibility } from '../../common/constants';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';

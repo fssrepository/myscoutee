@@ -12,6 +12,7 @@ import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
 import { PricingSlotPanelComponent } from '../pricing-slot-panel';
 
+import type * as AppConstants from '../../../core/common/constants';
 interface PricingPreviewState {
   basePrice: number;
   slotOverridePrice: number | null;
@@ -27,7 +28,7 @@ type PricingScopedRule = AppTypes.PricingDemandRule | AppTypes.PricingTimeRule;
 interface RuleScopePickerState {
   kind: 'demand' | 'time';
   ruleId: string;
-  appliesTo: AppTypes.PricingRuleScope;
+  appliesTo: AppConstants.PricingRuleScope;
   slotIds: string[];
 }
 
@@ -68,16 +69,16 @@ export class PricingEditorComponent implements OnChanges {
   protected workingPricing: AppTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
   protected readonly currencyOptions = ['USD', 'EUR', 'GBP', 'CZK'];
-  protected readonly taxModeOptions: readonly AppTypes.PricingTaxMode[] = ['excluded', 'included'];
-  protected readonly roundingOptions: readonly AppTypes.PricingRoundingMode[] = ['none', 'whole', 'half'];
-  protected readonly demandOperatorOptions: readonly AppTypes.PricingDemandOperator[] = ['gte', 'lte'];
-  protected readonly actionKindOptions: readonly AppTypes.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
-  protected readonly ruleScopeOptions: readonly AppTypes.PricingRuleScope[] = ['all_slots', 'selected_slots'];
-  protected readonly timeTriggerOptions: readonly AppTypes.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
-  protected readonly cancellationUnitOptions: readonly AppTypes.PricingCancellationUnit[] = ['hours', 'days', 'weeks', 'months'];
-  protected readonly cancellationRefundKindOptions: readonly AppTypes.PricingCancellationRefundKind[] = ['percent', 'fixed_amount', 'full', 'none'];
+  protected readonly taxModeOptions: readonly AppConstants.PricingTaxMode[] = ['excluded', 'included'];
+  protected readonly roundingOptions: readonly AppConstants.PricingRoundingMode[] = ['none', 'whole', 'half'];
+  protected readonly demandOperatorOptions: readonly AppConstants.PricingDemandOperator[] = ['gte', 'lte'];
+  protected readonly actionKindOptions: readonly AppConstants.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
+  protected readonly ruleScopeOptions: readonly AppConstants.PricingRuleScope[] = ['all_slots', 'selected_slots'];
+  protected readonly timeTriggerOptions: readonly AppConstants.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
+  protected readonly cancellationUnitOptions: readonly AppConstants.PricingCancellationUnit[] = ['hours', 'days', 'weeks', 'months'];
+  protected readonly cancellationRefundKindOptions: readonly AppConstants.PricingCancellationRefundKind[] = ['percent', 'fixed_amount', 'full', 'none'];
   protected readonly soldOutLabelOptions = ['Show "Sold Out"', 'Hide from list', 'Show "Waitlist"'];
-  protected resolvedChargeTypeOptions: readonly AppTypes.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
+  protected resolvedChargeTypeOptions: readonly AppConstants.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
   protected resolvedAllowSlotFeatures = true;
   protected resolvedShowAudienceSection = true;
   protected resolvedShowPreview = true;
@@ -113,7 +114,7 @@ export class PricingEditorComponent implements OnChanges {
 
 
 
-  protected actionLabel(action: AppTypes.PricingRuleActionKind): string {
+  protected actionLabel(action: AppConstants.PricingRuleActionKind): string {
     switch (action) {
       case 'decrease_percent':
         return 'Decrease by %';
@@ -124,7 +125,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected chargeTypeLabel(chargeType: AppTypes.PricingChargeType): string {
+  protected chargeTypeLabel(chargeType: AppConstants.PricingChargeType): string {
     switch (chargeType) {
       case 'per_booking':
         return 'Per booking';
@@ -139,7 +140,7 @@ export class PricingEditorComponent implements OnChanges {
     return this.context === 'asset' ? 'Charge Basis' : 'Charge Type';
   }
 
-  protected roundingLabel(rounding: AppTypes.PricingRoundingMode): string {
+  protected roundingLabel(rounding: AppConstants.PricingRoundingMode): string {
     switch (rounding) {
       case 'whole':
         return 'Whole number';
@@ -150,19 +151,19 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected taxModeLabel(mode: AppTypes.PricingTaxMode): string {
+  protected taxModeLabel(mode: AppConstants.PricingTaxMode): string {
     return mode === 'included' ? 'Included' : 'Excluded';
   }
 
-  protected operatorLabel(operator: AppTypes.PricingDemandOperator): string {
+  protected operatorLabel(operator: AppConstants.PricingDemandOperator): string {
     return operator === 'lte' ? '<=' : '>=';
   }
 
-  protected ruleScopeLabel(scope: AppTypes.PricingRuleScope): string {
+  protected ruleScopeLabel(scope: AppConstants.PricingRuleScope): string {
     return scope === 'selected_slots' ? 'Selected slots' : 'All slots';
   }
 
-  protected timeTriggerLabel(trigger: AppTypes.PricingTimeRuleTrigger): string {
+  protected timeTriggerLabel(trigger: AppConstants.PricingTimeRuleTrigger): string {
     switch (trigger) {
       case 'hours_before_start':
         return 'Before event start by hours';
@@ -403,7 +404,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onDemandRuleScopeChange(rule: AppTypes.PricingDemandRule, scope: AppTypes.PricingRuleScope): void {
+  protected onDemandRuleScopeChange(rule: AppTypes.PricingDemandRule, scope: AppConstants.PricingRuleScope): void {
     rule.appliesTo = scope;
     if (scope === 'all_slots') {
       rule.slotIds = [];
@@ -462,7 +463,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected cancellationUnitLabel(unit: AppTypes.PricingCancellationUnit): string {
+  protected cancellationUnitLabel(unit: AppConstants.PricingCancellationUnit): string {
     switch (unit) {
       case 'hours':
         return 'Hours before start';
@@ -475,7 +476,7 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  protected cancellationRefundKindLabel(kind: AppTypes.PricingCancellationRefundKind): string {
+  protected cancellationRefundKindLabel(kind: AppConstants.PricingCancellationRefundKind): string {
     switch (kind) {
       case 'fixed_amount':
         return 'Fixed refund';
@@ -509,7 +510,7 @@ export class PricingEditorComponent implements OnChanges {
 
   protected onCancellationRuleRefundKindChange(
     rule: AppTypes.PricingCancellationRule,
-    value: AppTypes.PricingCancellationRefundKind
+    value: AppConstants.PricingCancellationRefundKind
   ): void {
     rule.refundKind = value;
     if (value === 'percent') {
@@ -529,7 +530,7 @@ export class PricingEditorComponent implements OnChanges {
     this.emitPricing();
   }
 
-  protected onTimeRuleScopeChange(rule: AppTypes.PricingTimeRule, scope: AppTypes.PricingRuleScope): void {
+  protected onTimeRuleScopeChange(rule: AppTypes.PricingTimeRule, scope: AppConstants.PricingRuleScope): void {
     rule.appliesTo = scope;
     if (scope === 'all_slots') {
       rule.slotIds = [];
@@ -613,7 +614,7 @@ export class PricingEditorComponent implements OnChanges {
     return `${rule.slotIds.length} slots selected`;
   }
 
-  protected currentRuleScopeDraftMode(): AppTypes.PricingRuleScope {
+  protected currentRuleScopeDraftMode(): AppConstants.PricingRuleScope {
     return this.ruleScopePickerState?.appliesTo ?? 'all_slots';
   }
 
@@ -621,7 +622,7 @@ export class PricingEditorComponent implements OnChanges {
     return [...(this.ruleScopePickerState?.slotIds ?? [])];
   }
 
-  protected selectRuleScopeDraftMode(scope: AppTypes.PricingRuleScope, event?: Event): void {
+  protected selectRuleScopeDraftMode(scope: AppConstants.PricingRuleScope, event?: Event): void {
     event?.stopPropagation();
     if (!this.ruleScopePickerState) {
       return;
@@ -876,8 +877,8 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  private resolveChargeTypeOptions(): readonly AppTypes.PricingChargeType[] {
-    const base: AppTypes.PricingChargeType[] = this.context === 'asset'
+  private resolveChargeTypeOptions(): readonly AppConstants.PricingChargeType[] {
+    const base: AppConstants.PricingChargeType[] = this.context === 'asset'
       ? ['per_booking', 'per_attendee']
       : ['per_attendee', 'per_booking'];
     if (this.resolvedAllowSlotFeatures) {

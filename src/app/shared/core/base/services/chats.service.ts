@@ -1,3 +1,4 @@
+import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
@@ -7,7 +8,7 @@ import type { ChatRecord } from '../models/chat.model';
 import type { UserDto } from '../../contracts/user.interface';
 import type { PageResult } from '../../../ui';
 import { buildActivityChatRows } from '../converters';
-import type { ChatThreadRecord } from '../models/chats.model';
+
 import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';

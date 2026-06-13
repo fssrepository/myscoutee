@@ -7,6 +7,8 @@ import { toActivityEventRow } from '../../base/converters/activities-event.conve
 import type { ActivityEventRecord } from '../../base/models/events.model';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
+import type * as AppDTOs from '../../base/dto';
+import type * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
@@ -20,7 +22,7 @@ export class HttpAssetTicketsService {
     return this.peekTicketRowsByUser(userId).length;
   }
 
-  async queryTicketPage(query: AppTypes.AssetTicketPageQuery): Promise<AppTypes.AssetTicketPageResult> {
+  async queryTicketPage(query: AppDTOs.AssetTicketPageQueryDTO): Promise<AppDTOs.AssetTicketPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -88,8 +90,8 @@ export class HttpAssetTicketsService {
 
   private pageRows(
     rows: readonly AppTypes.ActivityListRow[],
-    query: AppTypes.AssetTicketPageQuery
-  ): AppTypes.AssetTicketPageResult {
+    query: AppDTOs.AssetTicketPageQueryDTO
+  ): AppDTOs.AssetTicketPageResultDTO {
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const orderedRows = [...rows].sort((left, right) => this.toSortableDate(left.dateIso) - this.toSortableDate(right.dateIso));
@@ -108,7 +110,7 @@ export class HttpAssetTicketsService {
     return rows.map(row => ({ ...row }));
   }
 
-  private matchesTicketOrder(row: AppTypes.ActivityListRow, order: AppTypes.AssetTicketOrder): boolean {
+  private matchesTicketOrder(row: AppTypes.ActivityListRow, order: AppConstants.AssetTicketOrder): boolean {
     const isPast = this.resolveTicketEndTimestamp(row) < Date.now();
     return order === 'past' ? isPast : !isPast;
   }

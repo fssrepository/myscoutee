@@ -7,7 +7,7 @@ import type {
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
 } from '../models';
-import { APP_STORAGE_KEYS } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';
 
 export interface PrivacyPolicyOpenOptions {

@@ -1,47 +1,18 @@
+import { CHATS_TABLE_NAME } from '../../local/source/entity/chat.entity';
+import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../local/source/entity/event.entity';
+import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../local/source/entity/content.entity';
+import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../local/source/entity/profile.entity';
+import { SHARE_TOKENS_TABLE_NAME } from '../../local/source/entity/sharing.entity';
+import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME } from '../../local/source/entity/rate.entity';
+import { USERS_TABLE_NAME } from '../../local/source/entity/user.entity';
+import { ASSETS_TABLE_NAME } from '../../local/source/entity/asset.entity';
+import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../local/source/entity/activity.entity';
+import type { AppMemorySchema } from '../../local/common/memory.schema';
 import { Injectable, signal } from '@angular/core';
 
-import type {
-  ActivityRateRecordQuery,
-  ActivityRateRecordQueryResult,
-  UserRateOutboxRecord,
-  UserRateRecord
-} from '../../contracts/activity.interface';
-import { ASSETS_TABLE_NAME } from '../../local/entity/asset.entity';
-import {
-  ACTIVITY_MEMBERS_TABLE_NAME,
-  ACTIVITY_RESOURCES_TABLE_NAME
-} from '../../local/entity/activity.entity';
-import { CHATS_TABLE_NAME } from '../models/chats.model';
-import { EVENT_FEEDBACK_TABLE_NAME } from '../models/event-feedback.model';
-import { EVENTS_TABLE_NAME } from '../models/events.model';
-import { HELP_CENTER_TABLE_NAME } from '../models/help-center.model';
-import { IDEA_POSTS_TABLE_NAME } from '../models/idea-posts.model';
-import { CONTACTS_TABLE_NAME } from '../models/contacts.model';
-import { PROFILE_EXPERIENCES_TABLE_NAME } from '../models/profile-experiences.model';
-import { SHARE_TOKENS_TABLE_NAME } from '../models/share-tokens.model';
-import type { AppMemorySchema } from '../models/memory.model';
-import {
-  USER_FILTER_PREFERENCES_TABLE_NAME,
-  USERS_TABLE_NAME,
-  USER_RATES_TABLE_NAME,
-  USER_RATES_OUTBOX_TABLE_NAME
-} from '../models/users.model';
-import type {
-  ContactMethodDraft,
-  ContactMethodType,
-  StoredContact
-} from '../../contracts/contact.interface';
-import {
-  type AppStorageScope,
-  APP_STORAGE_SCOPE,
-  APP_SCOPED_INDEXED_DB_VERSION,
-  APP_I18N_BUNDLES_STORE,
-  APP_TABLES_STORE,
-  appMemoryDbStorageKey,
-  appScopedIndexedDbName,
-  createAppScopedObjectStores,
-  removeScopedStorageEntries
-} from '../storage-scope';
+import type { ActivityRateRecordQuery, ActivityRateRecordQueryResult, UserRateOutboxRecord, UserRateRecord } from '../../contracts/activity.interface';
+import type { ContactMethodDraft, ContactMethodType, StoredContact } from '../../contracts/contact.interface';
+import { type AppStorageScope, APP_STORAGE_SCOPE, APP_SCOPED_INDEXED_DB_VERSION, APP_I18N_BUNDLES_STORE, APP_TABLES_STORE, appMemoryDbStorageKey, appScopedIndexedDbName, createAppScopedObjectStores, removeScopedStorageEntries } from '../../common/storage-scope';
 
 interface ActivityRateCursorPayload {
   id: string;

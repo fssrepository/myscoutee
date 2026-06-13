@@ -22,6 +22,8 @@ import {
   type ActivitiesChatTemplateData
 } from './activities-chat-template.builder';
 
+import type * as AppDTOs from '../../../../../shared/core/base/dto';
+import type * as AppConstants from '../../../../../shared/core/common/constants';
 @Component({
   selector: 'app-activities-chat-template',
   standalone: true,
@@ -153,7 +155,7 @@ export class ActivitiesChatsController {
   private get activitiesService() { return this.host.activitiesService; }
   private get activityResourcesService() { return this.host.activityResourcesService; }
   private get appCtx() { return this.host.appCtx; }
-  private get assetCards() { return this.host.assetCards as AppTypes.AssetCard[]; }
+  private get assetCards() { return this.host.assetCards as AppDTOs.AssetCardDTO[]; }
   private get cdr() { return this.host.cdr; }
   private get chatItems() { return this.host.chatItems as ChatRecord[]; }
   private get eventDatesById() { return this.host.eventDatesById as Record<string, string>; }
@@ -224,14 +226,14 @@ export class ActivitiesChatsController {
   private subEventResourceState(
     ownerId: string,
     subEventId: string
-  ): AppTypes.ActivitySubEventResourceState | null {
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     return this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, this.currentAssetOwnerUserId());
   }
 
   private resolveSubEventAssignedAssetIds(
     ownerId: string,
     subEventId: string,
-    type: AppTypes.AssetType
+    type: AppConstants.AssetType
   ): string[] {
     return ActivityResourceBuilder.resolveAssignedAssetIds(
       this.subEventResourceState(ownerId, subEventId),
@@ -240,7 +242,7 @@ export class ActivitiesChatsController {
     );
   }
 
-  private syncSubEventAssetBadgeCounts(ownerId: string, subEvent: AppTypes.SubEventFormItem, type: AppTypes.AssetType): void {
+  private syncSubEventAssetBadgeCounts(ownerId: string, subEvent: AppTypes.SubEventFormItem, type: AppConstants.AssetType): void {
     const state = this.subEventResourceState(ownerId, subEvent.id);
     const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, this.assetCards);
     const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, this.assetCards);

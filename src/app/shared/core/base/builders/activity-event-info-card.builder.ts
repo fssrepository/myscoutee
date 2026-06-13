@@ -6,6 +6,7 @@ import type {
   InfoCardMenuAction
 } from '../../../ui';
 
+import type * as AppConstants from '../../common/constants';
 export interface ActivityEventInfoCardOptions {
   activeUserId?: string | null;
   groupLabel?: string | null;
@@ -255,7 +256,7 @@ export class ActivityEventInfoCardBuilder {
     return 'event';
   }
 
-  private static visibilityIcon(option: AppTypes.EventVisibility): string {
+  private static visibilityIcon(option: AppConstants.EventVisibility): string {
     switch (option) {
       case 'Public':
         return 'public';

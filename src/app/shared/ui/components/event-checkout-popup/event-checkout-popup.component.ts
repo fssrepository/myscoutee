@@ -20,6 +20,7 @@ import { EventCheckoutDraftService } from '../../services/event-checkout-draft.s
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 
+import type * as AppConstants from '../../../core/common/constants';
 type PricingSnapshot = {
   amount: number;
   currency: string;
@@ -863,7 +864,7 @@ export class EventCheckoutPopupComponent {
     return Math.max(0, currentPrice * (1 + percent));
   }
 
-  private applyRounding(price: number, rounding: AppTypes.PricingRoundingMode): number {
+  private applyRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
     if (rounding === 'whole') {
       return Math.round(price);
     }

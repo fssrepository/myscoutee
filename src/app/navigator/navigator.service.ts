@@ -8,7 +8,6 @@ import {
   SessionService,
   TermsPolicyService,
   UsersService,
-  type ActivityMemberOwnerType,
   type ActivityCounters,
   type EntryConsentStateDto,
   type HelpCenterRevision,
@@ -17,7 +16,8 @@ import {
   type UserImpressionsSectionDto,
   type UserRealtimeLongPollResponseDto
 } from '../shared/core';
-import { APP_STORAGE_KEYS } from '../shared/core/base/storage-scope';
+import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
+import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 

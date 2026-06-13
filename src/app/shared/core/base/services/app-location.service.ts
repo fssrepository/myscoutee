@@ -9,7 +9,7 @@ import type { UserDto } from '../../contracts/user.interface';
 import { UsersService } from './users.service';
 import { SessionService } from './session.service';
 import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';
-import { appLocationStorageKey } from '../storage-scope';
+import { appLocationStorageKey } from '../../common/storage-scope';
 
 @Injectable({
   providedIn: 'root'

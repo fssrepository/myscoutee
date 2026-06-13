@@ -1,5 +1,6 @@
 import type * as AppTypes from '../models';
 
+import type * as AppConstants from '../../common/constants';
 export class PricingBuilder {
   static createDefaultPricingConfig(
     context: 'event' | 'asset' | 'subevent' = 'event'
@@ -36,7 +37,7 @@ export class PricingBuilder {
   }
 
   static createSamplePricingConfig(
-    mode: AppTypes.PricingMode = 'hybrid'
+    mode: AppConstants.PricingMode = 'hybrid'
   ): AppTypes.PricingConfig {
     return {
       enabled: true,
@@ -158,7 +159,7 @@ export class PricingBuilder {
       context?: 'event' | 'asset' | 'subevent';
       slotCatalog?: readonly AppTypes.PricingSlotReference[];
       allowSlotFeatures?: boolean;
-      allowedChargeTypes?: readonly AppTypes.PricingChargeType[];
+      allowedChargeTypes?: readonly AppConstants.PricingChargeType[];
       preserveEmptyPromoCodes?: boolean;
     } = {}
   ): AppTypes.PricingConfig {
@@ -257,7 +258,7 @@ export class PricingBuilder {
       context?: 'event' | 'asset' | 'subevent';
       slotCatalog?: readonly AppTypes.PricingSlotReference[];
       allowSlotFeatures?: boolean;
-      allowedChargeTypes?: readonly AppTypes.PricingChargeType[];
+      allowedChargeTypes?: readonly AppConstants.PricingChargeType[];
     } = {}
   ): AppTypes.PricingConfig {
     return this.normalizePricingConfig(pricing, {
@@ -357,8 +358,8 @@ export class PricingBuilder {
   private static allowedChargeTypesForContext(
     context: 'event' | 'asset' | 'subevent',
     allowSlotFeatures: boolean,
-    override?: readonly AppTypes.PricingChargeType[]
-  ): readonly AppTypes.PricingChargeType[] {
+    override?: readonly AppConstants.PricingChargeType[]
+  ): readonly AppConstants.PricingChargeType[] {
     const normalizedOverride = (override ?? []).filter((value, index, source) =>
       (value === 'per_attendee' || value === 'per_booking' || value === 'per_slot')
       && source.indexOf(value) === index
@@ -369,7 +370,7 @@ export class PricingBuilder {
         : normalizedOverride.filter(value => value !== 'per_slot');
     }
 
-    const defaults: AppTypes.PricingChargeType[] = context === 'asset'
+    const defaults: AppConstants.PricingChargeType[] = context === 'asset'
       ? ['per_booking', 'per_attendee']
       : ['per_attendee', 'per_booking'];
     if (allowSlotFeatures) {
@@ -378,7 +379,7 @@ export class PricingBuilder {
     return defaults;
   }
 
-  private static sanitizeRuleScope<T extends { appliesTo: AppTypes.PricingRuleScope; slotIds: string[] }>(
+  private static sanitizeRuleScope<T extends { appliesTo: AppConstants.PricingRuleScope; slotIds: string[] }>(
     rule: T,
     slotCatalogIds: ReadonlySet<string>,
     allowSlotFeatures: boolean
@@ -584,14 +585,14 @@ export class PricingBuilder {
     return this.normalizeText(value).toUpperCase().slice(0, 8);
   }
 
-  private static normalizeCancellationUnit(value: unknown): AppTypes.PricingCancellationUnit | null {
+  private static normalizeCancellationUnit(value: unknown): AppConstants.PricingCancellationUnit | null {
     const normalized = this.normalizeText(value);
     return normalized === 'hours' || normalized === 'days' || normalized === 'weeks' || normalized === 'months'
       ? normalized
       : null;
   }
 
-  private static normalizeCancellationRefundKind(value: unknown): AppTypes.PricingCancellationRefundKind | null {
+  private static normalizeCancellationRefundKind(value: unknown): AppConstants.PricingCancellationRefundKind | null {
     const normalized = this.normalizeText(value);
     return normalized === 'percent'
       || normalized === 'fixed_amount'
@@ -640,7 +641,7 @@ export class PricingBuilder {
     return rule;
   }
 
-  private static normalizeMode(value: unknown): AppTypes.PricingMode {
+  private static normalizeMode(value: unknown): AppConstants.PricingMode {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'demand-based' || normalized === 'demand') {
       return 'demand-based';
@@ -654,7 +655,7 @@ export class PricingBuilder {
     return 'fixed';
   }
 
-  private static normalizeTaxMode(value: unknown): AppTypes.PricingTaxMode | null {
+  private static normalizeTaxMode(value: unknown): AppConstants.PricingTaxMode | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'included') {
       return 'included';
@@ -665,7 +666,7 @@ export class PricingBuilder {
     return null;
   }
 
-  private static normalizeChargeType(value: unknown): AppTypes.PricingChargeType | null {
+  private static normalizeChargeType(value: unknown): AppConstants.PricingChargeType | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'per_booking' || normalized === 'booking') {
       return 'per_booking';
@@ -679,7 +680,7 @@ export class PricingBuilder {
     return null;
   }
 
-  private static normalizeRounding(value: unknown): AppTypes.PricingRoundingMode | null {
+  private static normalizeRounding(value: unknown): AppConstants.PricingRoundingMode | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'whole' || normalized === 'whole_number') {
       return 'whole';
@@ -693,7 +694,7 @@ export class PricingBuilder {
     return null;
   }
 
-  private static normalizeActionKind(value: unknown): AppTypes.PricingRuleActionKind | null {
+  private static normalizeActionKind(value: unknown): AppConstants.PricingRuleActionKind | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'set_exact_price' || normalized === 'exact_price') {
       return 'set_exact_price';
@@ -707,7 +708,7 @@ export class PricingBuilder {
     return null;
   }
 
-  private static normalizeRuleScope(value: unknown): AppTypes.PricingRuleScope | null {
+  private static normalizeRuleScope(value: unknown): AppConstants.PricingRuleScope | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'selected_slots' || normalized === 'selected') {
       return 'selected_slots';
@@ -718,7 +719,7 @@ export class PricingBuilder {
     return null;
   }
 
-  private static normalizeDemandOperator(value: unknown): AppTypes.PricingDemandOperator | null {
+  private static normalizeDemandOperator(value: unknown): AppConstants.PricingDemandOperator | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'lte' || normalized === '<=' || normalized === 'lt') {
       return 'lte';
@@ -729,7 +730,7 @@ export class PricingBuilder {
     return null;
   }
 
-  private static normalizeTimeTrigger(value: unknown): AppTypes.PricingTimeRuleTrigger | null {
+  private static normalizeTimeTrigger(value: unknown): AppConstants.PricingTimeRuleTrigger | null {
     const normalized = this.normalizeText(value).toLowerCase();
     if (normalized === 'hours_before_start' || normalized === 'hours') {
       return 'hours_before_start';

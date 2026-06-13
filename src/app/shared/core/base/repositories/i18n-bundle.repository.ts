@@ -6,7 +6,7 @@ import {
   APP_SCOPED_INDEXED_DB_VERSION,
   createAppScopedObjectStores,
   scopedStorageKey
-} from '../storage-scope';
+} from '../../common/storage-scope';
 
 export interface StoredI18nBundle {
   lang: string;

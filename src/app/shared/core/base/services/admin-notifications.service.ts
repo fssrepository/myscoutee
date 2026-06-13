@@ -17,7 +17,7 @@ import { HttpAdminNotificationsService } from '../../http/services/admin-notific
 import {
   LocalAdminNotificationsService,
   type LocalAdminNotificationDelayOptions
-} from '../../local/services/admin-notifications.service';
+} from '../../local/source/services/admin-notifications.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 

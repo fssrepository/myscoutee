@@ -1,7 +1,8 @@
 import type { UserDto } from './user.interface';
-
-export type ProfileStatus = 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted' | 'onboarding';
-export type DetailPrivacy = 'Public' | 'Friends' | 'Hosts' | 'Private';
+import type {
+  DetailPrivacy,
+  ProfileStatus
+} from '../common/constants';
 
 export interface ProfileDetailFormRow {
   labelKey: string;

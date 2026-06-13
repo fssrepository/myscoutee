@@ -18,7 +18,7 @@ import {
   type UserDto,
   type UserSelectorListItemDto
 } from '../../shared/core';
-import { APP_STORAGE_KEYS } from '../../shared/core/base/storage-scope';
+import { APP_STORAGE_KEYS } from '../../shared/core/common/storage-scope';
 import { AdminShellService } from './admin-shell.service';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;

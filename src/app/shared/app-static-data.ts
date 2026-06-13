@@ -3,31 +3,33 @@ import type {
   ActivitiesPrimaryFilter,
   ActivitiesSecondaryFilter,
   ActivitiesView,
-  AssetFilterType,
-  AssetCategory,
-  AssetType,
   EventBlindMode,
   EventFeedbackListFilter,
   EventFeedbackOption,
   EventFeedbackTraitOption,
   EventExploreOrder,
-  EventVisibility,
   ExplainableSurface,
   HelpCenterRevision,
   HelpCenterSection,
   RateFilterEntry,
   RateFilterKey,
-  SubEventResourceFilter,
   SubEventsDisplayMode,
   TournamentLeaderboardType
 } from './core/base/models';
+import type {
+  AssetCategory,
+  AssetFilterType,
+  AssetType,
+  DetailPrivacy,
+  EventVisibility,
+  ProfileStatus,
+  SubEventResourceFilter
+} from './core/common/constants';
 import type { AdminNotificationScheduleFrequency } from './core/contracts/admin.interface';
 import { GDPR_CONTENT } from './gdpr-data';
 import type {
-  DetailPrivacy,
   ExperienceEntry,
   InterestOptionGroup,
-  ProfileStatus,
   ValuesOptionGroup
 } from './core/contracts/profile.interface';
 

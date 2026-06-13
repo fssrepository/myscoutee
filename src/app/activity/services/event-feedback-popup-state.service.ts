@@ -7,6 +7,7 @@ import { EventFeedbackBuilder } from '../../shared/core/base/builders';
 import { EventsService } from '../../shared/core/base';
 import { AppContext, type UserDto } from '../../shared/core';
 import type { ActivityEventSeedItem } from '../../shared/core/base/models/event-seed-item.model';
+import type { EventFeedbackPersistedState } from '../../shared/core/local/source/entity/event.entity';
 
 export interface EventFeedbackPopupSource {
   eventItems: ActivityEventSeedItem[];
@@ -739,9 +740,9 @@ export class EventFeedbackPopupStateService {
   }
 
   private clonePersistedAnswersByCardId(
-    answersByCardId: AppTypes.EventFeedbackPersistedState['answersByCardId'] | ActivityContracts.EventFeedbackStateDto['answersByCardId']
-  ): AppTypes.EventFeedbackPersistedState['answersByCardId'] {
-    const next: AppTypes.EventFeedbackPersistedState['answersByCardId'] = {};
+    answersByCardId: EventFeedbackPersistedState['answersByCardId'] | ActivityContracts.EventFeedbackStateDto['answersByCardId']
+  ): EventFeedbackPersistedState['answersByCardId'] {
+    const next: EventFeedbackPersistedState['answersByCardId'] = {};
     const source = (answersByCardId ?? {}) as Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>;
     for (const [cardId, answer] of Object.entries(source)) {
       const normalizedCardId = cardId.trim();

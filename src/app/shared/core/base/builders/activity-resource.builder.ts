@@ -4,6 +4,8 @@ import type * as AppTypes from '../models';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
+import type * as AppDTOs from '../dto';
+import type * as AppConstants from '../../common/constants';
 export interface ActivitySubEventResourceInfoCardOptions {
   groupLabel?: string | null;
   canOpenMap?: boolean;
@@ -18,7 +20,7 @@ export interface ActivitySubEventResourceInfoCardOptions {
 
 export class ActivityResourceBuilder {
   static buildSubEventResourceInfoCard(
-    card: AppTypes.SubEventResourceCard,
+    card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardOptions
   ): InfoCardData {
     return {
@@ -47,17 +49,17 @@ export class ActivityResourceBuilder {
     };
   }
 
-  static ownerKey(ref: AppTypes.ActivitySubEventResourceStateRef): string {
+  static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}`;
   }
 
-  static recordId(ref: AppTypes.ActivitySubEventResourceStateRef): string {
+  static recordId(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}:${ref.subEventId}`;
   }
 
   static createEmptyState(
-    ref: AppTypes.ActivitySubEventResourceStateRef
-  ): AppTypes.ActivitySubEventResourceState {
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceStateDTO {
     return {
       ownerId: ref.ownerId.trim(),
       subEventId: ref.subEventId.trim(),
@@ -70,8 +72,8 @@ export class ActivityResourceBuilder {
   }
 
   static cloneState(
-    state: AppTypes.ActivitySubEventResourceState | null | undefined
-  ): AppTypes.ActivitySubEventResourceState | null {
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     if (!state) {
       return null;
     }
@@ -89,9 +91,9 @@ export class ActivityResourceBuilder {
   }
 
   static normalizeState(
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    fallbackRef?: AppTypes.ActivitySubEventResourceStateRef | null
-  ): AppTypes.ActivitySubEventResourceState | null {
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    fallbackRef?: AppDTOs.ActivitySubEventResourceStateRefDTO | null
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     const fallback = fallbackRef ? this.createEmptyState(fallbackRef) : null;
     if (!state && !fallback) {
       return null;
@@ -116,9 +118,9 @@ export class ActivityResourceBuilder {
   }
 
   static cloneAssetAssignmentIds(
-    source: AppTypes.ActivitySubEventAssetAssignmentIds | null | undefined
-  ): AppTypes.ActivitySubEventAssetAssignmentIds {
-    const next: AppTypes.ActivitySubEventAssetAssignmentIds = {};
+    source: AppDTOs.ActivitySubEventAssetAssignmentIdsDTO | null | undefined
+  ): AppDTOs.ActivitySubEventAssetAssignmentIdsDTO {
+    const next: AppDTOs.ActivitySubEventAssetAssignmentIdsDTO = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const ids = Array.isArray(source?.[type]) ? source?.[type] : [];
       const normalizedIds = Array.from(new Set(ids
@@ -132,15 +134,15 @@ export class ActivityResourceBuilder {
   }
 
   static cloneAssetSettingsByType(
-    source: AppTypes.ActivitySubEventAssetSettingsByType | null | undefined
-  ): AppTypes.ActivitySubEventAssetSettingsByType {
-    const next: AppTypes.ActivitySubEventAssetSettingsByType = {};
+    source: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO | null | undefined
+  ): AppDTOs.ActivitySubEventAssetSettingsByTypeDTO {
+    const next: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const rawMap = source?.[type];
       if (!rawMap || typeof rawMap !== 'object') {
         continue;
       }
-      const normalizedMap: Record<string, AppTypes.SubEventAssignedAssetSettings> = {};
+      const normalizedMap: Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> = {};
       for (const [assetId, settings] of Object.entries(rawMap)) {
         const normalizedAssetId = `${assetId ?? ''}`.trim();
         if (!normalizedAssetId || !settings) {
@@ -161,9 +163,9 @@ export class ActivityResourceBuilder {
   }
 
   static cloneSupplyContributionEntriesByAssetId(
-    source: AppTypes.ActivitySubEventSupplyContributionsByAssetId | null | undefined
-  ): AppTypes.ActivitySubEventSupplyContributionsByAssetId {
-    const next: AppTypes.ActivitySubEventSupplyContributionsByAssetId = {};
+    source: AppDTOs.ActivitySubEventSupplyContributionsByAssetIdDTO | null | undefined
+  ): AppDTOs.ActivitySubEventSupplyContributionsByAssetIdDTO {
+    const next: AppDTOs.ActivitySubEventSupplyContributionsByAssetIdDTO = {};
     if (!source || typeof source !== 'object') {
       return next;
     }
@@ -189,9 +191,9 @@ export class ActivityResourceBuilder {
   }
 
   static cloneFallbackAssetCardsByType(
-    source: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> | null | undefined
-  ): Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> {
-    const next: Partial<Record<AppTypes.AssetType, AppTypes.AssetCard[]>> = {};
+    source: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | null | undefined
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = source?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
@@ -203,9 +205,9 @@ export class ActivityResourceBuilder {
   }
 
   static resolveAssignedAssetIds(
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    type: AppTypes.AssetType,
-    assets: readonly AppTypes.AssetCard[]
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    type: AppConstants.AssetType,
+    assets: readonly AppDTOs.AssetCardDTO[]
   ): string[] {
     const eligibleIds = this.resolveAvailableAssetCards(type, state, assets).map(card => card.id);
     const eligible = new Set(eligibleIds);
@@ -214,18 +216,18 @@ export class ActivityResourceBuilder {
   }
 
   static resolveAssignedAssetSettings(
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    type: AppTypes.AssetType
-  ): Record<string, AppTypes.SubEventAssignedAssetSettings> {
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    type: AppConstants.AssetType
+  ): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
     return {
       ...(state?.assetSettingsByType?.[type] ?? {})
     };
   }
 
   static resolveSupplyContributionEntries(
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assetId: string
-  ): AppTypes.SubEventSupplyContributionEntry[] {
+  ): AppDTOs.SubEventSupplyContributionEntryDTO[] {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
       return [];
@@ -237,9 +239,9 @@ export class ActivityResourceBuilder {
 
   static resourceAcceptedCount(
     subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    assets: readonly AppTypes.AssetCard[]
+    type: AppConstants.AssetType,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    assets: readonly AppDTOs.AssetCardDTO[]
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
@@ -264,9 +266,9 @@ export class ActivityResourceBuilder {
 
   static resourcePendingCount(
     subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    assets: readonly AppTypes.AssetCard[]
+    type: AppConstants.AssetType,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    assets: readonly AppDTOs.AssetCardDTO[]
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
@@ -288,9 +290,9 @@ export class ActivityResourceBuilder {
 
   static resourceCapacityBounds(
     subEvent: AppTypes.SubEventFormItem,
-    type: AppTypes.AssetType,
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    assets: readonly AppTypes.AssetCard[],
+    type: AppConstants.AssetType,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    assets: readonly AppDTOs.AssetCardDTO[],
     accepted: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {
@@ -322,30 +324,30 @@ export class ActivityResourceBuilder {
   }
 
   static buildSeededState(
-    ref: AppTypes.ActivitySubEventResourceStateRef,
-    assets: readonly AppTypes.AssetCard[]
-  ): AppTypes.ActivitySubEventResourceState {
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
+    assets: readonly AppDTOs.AssetCardDTO[]
+  ): AppDTOs.ActivitySubEventResourceStateDTO {
     return this.createEmptyState(ref);
   }
 
   private static resolveAssignedCards(
-    type: AppTypes.AssetType,
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    assets: readonly AppTypes.AssetCard[]
-  ): AppTypes.AssetCard[] {
+    type: AppConstants.AssetType,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    assets: readonly AppDTOs.AssetCardDTO[]
+  ): AppDTOs.AssetCardDTO[] {
     const assignedIds = this.resolveAssignedAssetIds(state, type, assets);
     const availableCards = this.resolveAvailableAssetCards(type, state, assets);
     return assignedIds
       .map(id => availableCards.find(card => card.id === id && card.type === type) ?? null)
-      .filter((card): card is AppTypes.AssetCard => card !== null);
+      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
   }
 
   private static resolveAvailableAssetCards(
-    type: AppTypes.AssetType,
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
-    assets: readonly AppTypes.AssetCard[]
-  ): AppTypes.AssetCard[] {
-    const nextById = new Map<string, AppTypes.AssetCard>();
+    type: AppConstants.AssetType,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
+    assets: readonly AppDTOs.AssetCardDTO[]
+  ): AppDTOs.AssetCardDTO[] {
+    const nextById = new Map<string, AppDTOs.AssetCardDTO>();
     for (const card of assets) {
       if (card.type !== type) {
         continue;
@@ -361,7 +363,7 @@ export class ActivityResourceBuilder {
     return [...nextById.values()];
   }
 
-  static isSubEventManualAssignmentRequest(request: AppTypes.AssetMemberRequest, subEventId: string): boolean {
+  static isSubEventManualAssignmentRequest(request: AppDTOs.AssetMemberRequestDTO, subEventId: string): boolean {
     const normalizedSubEventId = subEventId.trim();
     return (
       request.requestKind === 'manual'
@@ -370,7 +372,7 @@ export class ActivityResourceBuilder {
     );
   }
 
-  static assetRequestSyncSignature(request: AppTypes.AssetMemberRequest): string {
+  static assetRequestSyncSignature(request: AppDTOs.AssetMemberRequestDTO): string {
     return JSON.stringify({
       id: request.id,
       userId: request.userId ?? '',
@@ -381,7 +383,7 @@ export class ActivityResourceBuilder {
     });
   }
 
-  private static cloneAssetCard(card: AppTypes.AssetCard): AppTypes.AssetCard {
+  private static cloneAssetCard(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
@@ -409,14 +411,14 @@ export class ActivityResourceBuilder {
       .filter(route => route.length > 0);
   }
 
-  private static resourceTypeIcon(type: AppTypes.SubEventResourceFilter): string {
+  private static resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string {
     return type === 'Members'
       ? 'groups'
       : AssetDefaultsBuilder.assetTypeIcon(type);
   }
 
   private static resourceMediaStart(
-    card: AppTypes.SubEventResourceCard,
+    card: AppDTOs.SubEventResourceCardDTO,
     canOpenMap: boolean
   ): NonNullable<InfoCardData['mediaStart']> | null {
     if (!canOpenMap) {
@@ -432,7 +434,7 @@ export class ActivityResourceBuilder {
   }
 
   private static resourceMenuActions(
-    card: AppTypes.SubEventResourceCard,
+    card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardOptions
   ): readonly InfoCardMenuAction[] {
     const actions: InfoCardMenuAction[] = ['viewAsset'];

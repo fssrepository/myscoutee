@@ -15,10 +15,12 @@ import {
   type AppMenuTrigger
 } from '../../../shared/ui';
 
+import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppConstants from '../../../shared/core/common/constants';
 type AssetFormMenuContext =
-  | { menu: 'visibility'; visibility: AppTypes.EventVisibility }
-  | { menu: 'type'; type: AppTypes.AssetType }
-  | { menu: 'category'; category: AppTypes.AssetCategory };
+  | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
+  | { menu: 'type'; type: AppConstants.AssetType }
+  | { menu: 'category'; category: AppConstants.AssetCategory };
 
 @Component({
   selector: 'app-asset-form-popup',
@@ -37,24 +39,24 @@ type AssetFormMenuContext =
 export class AssetFormPopupComponent implements OnChanges {
   @Input() visible = false;
   @Input() title = '';
-  @Input({ required: true }) assetForm!: Omit<AppTypes.AssetCard, 'id' | 'requests'>;
+  @Input({ required: true }) assetForm!: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>;
   @Input() canSave = false;
   @Input() isLoading = false;
   @Input() isSavePending = false;
   @Input() sourceRefreshEnabled = false;
-  @Input() assetFormVisibility: AppTypes.EventVisibility = 'Invitation only';
-  @Input() assetTypeOptions: readonly AppTypes.AssetType[] = [];
-  @Input() assetVisibilityOptions: readonly AppTypes.EventVisibility[] = [];
+  @Input() assetFormVisibility: AppConstants.EventVisibility = 'Invitation only';
+  @Input() assetTypeOptions: readonly AppConstants.AssetType[] = [];
+  @Input() assetVisibilityOptions: readonly AppConstants.EventVisibility[] = [];
   @Input() assetFormRouteStops: string[] = [];
   @Input() isEventEditorReadOnly = false;
-  @Input({ required: true }) assetTypeClass!: (type: AppTypes.AssetFilterType) => string;
-  @Input({ required: true }) assetTypeIcon!: (type: AppTypes.AssetFilterType) => string;
-  @Input({ required: true }) assetTypeLabel!: (type: AppTypes.AssetFilterType) => string;
-  @Input({ required: true }) eventVisibilityClass!: (option: AppTypes.EventVisibility) => string;
-  @Input({ required: true }) visibilityIcon!: (option: AppTypes.EventVisibility) => string;
+  @Input({ required: true }) assetTypeClass!: (type: AppConstants.AssetFilterType) => string;
+  @Input({ required: true }) assetTypeIcon!: (type: AppConstants.AssetFilterType) => string;
+  @Input({ required: true }) assetTypeLabel!: (type: AppConstants.AssetFilterType) => string;
+  @Input({ required: true }) eventVisibilityClass!: (option: AppConstants.EventVisibility) => string;
+  @Input({ required: true }) visibilityIcon!: (option: AppConstants.EventVisibility) => string;
   @Input({ required: true }) close!: () => void;
   @Input({ required: true }) save!: () => void | Promise<void>;
-  @Input({ required: true }) setAssetFormVisibility!: (option: AppTypes.EventVisibility) => void;
+  @Input({ required: true }) setAssetFormVisibility!: (option: AppConstants.EventVisibility) => void;
   @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
   @Input({ required: true }) openAssetFormRouteStopMap!: (index: number, event?: Event) => void;
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
@@ -179,23 +181,23 @@ export class AssetFormPopupComponent implements OnChanges {
     this.assetForm.category = context.category;
   }
 
-  protected assetCategoryOptions(): AppTypes.AssetCategory[] {
+  protected assetCategoryOptions(): AppConstants.AssetCategory[] {
     return AssetDefaultsBuilder.assetCategoryOptions(this.assetForm.type);
   }
 
-  protected assetCategoryClass(category: AppTypes.AssetCategory | null | undefined): string {
+  protected assetCategoryClass(category: AppConstants.AssetCategory | null | undefined): string {
     return AssetDefaultsBuilder.assetCategoryClass(category, this.assetForm.type);
   }
 
-  protected assetCategoryIcon(category: AppTypes.AssetCategory | null | undefined): string {
+  protected assetCategoryIcon(category: AppConstants.AssetCategory | null | undefined): string {
     return AssetDefaultsBuilder.assetCategoryIcon(category, this.assetForm.type);
   }
 
-  protected assetCategoryLabel(category: AppTypes.AssetCategory | null | undefined): string {
+  protected assetCategoryLabel(category: AppConstants.AssetCategory | null | undefined): string {
     return AssetDefaultsBuilder.assetCategoryLabel(category);
   }
 
-  protected onAssetTypeChange(type: AppTypes.AssetType): void {
+  protected onAssetTypeChange(type: AppConstants.AssetType): void {
     this.assetForm.type = type;
     this.assetForm.category = AssetDefaultsBuilder.normalizeCategory(type, this.assetForm.category);
     this.assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(type, this.assetForm.routes);
@@ -316,7 +318,7 @@ export class AssetFormPopupComponent implements OnChanges {
     return this.assetForm?.type === 'Accommodation';
   }
 
-  private visibilityPalette(option: AppTypes.EventVisibility): AppMenuPalette {
+  private visibilityPalette(option: AppConstants.EventVisibility): AppMenuPalette {
     if (option === 'Public') {
       return 'blue';
     }
@@ -326,7 +328,7 @@ export class AssetFormPopupComponent implements OnChanges {
     return 'orange';
   }
 
-  private assetTypePalette(type: AppTypes.AssetFilterType): AppMenuPalette {
+  private assetTypePalette(type: AppConstants.AssetFilterType): AppMenuPalette {
     if (type === 'Accommodation') {
       return 'green';
     }
@@ -339,7 +341,7 @@ export class AssetFormPopupComponent implements OnChanges {
     return 'blue';
   }
 
-  private assetCategoryPalette(category: AppTypes.AssetCategory | null | undefined): AppMenuPalette {
+  private assetCategoryPalette(category: AppConstants.AssetCategory | null | undefined): AppMenuPalette {
     const className = this.assetCategoryClass(category);
     if (className.includes('accommodation') || className.includes('property')) {
       return 'green';

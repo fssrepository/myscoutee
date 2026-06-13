@@ -1,4 +1,4 @@
-import type { SubmittedEventFeedbackAnswer } from '../../contracts/activity.interface';
+import type { EventVisibility } from '../../common/constants';
 import type { PricingConfig } from './pricing.model';
 
 export interface EventPolicyItem {
@@ -49,17 +49,6 @@ export interface EventFeedbackCard {
   answerSecondary: string;
 }
 
-export interface EventFeedbackPersistedState {
-  id: string;
-  userId: string;
-  eventId: string;
-  removed: boolean;
-  submittedAtIso: string | null;
-  removedAtIso?: string | null;
-  organizerNote: string;
-  answersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
-}
-
 export type EventFeedbackListFilter = 'own-events' | 'pending' | 'feedbacked' | 'removed';
 
 export interface EventFeedbackEventCard {
@@ -94,7 +83,6 @@ export type TournamentLeaderboardType = 'Score' | 'Fifa';
 export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
 export type EventEditorMode = 'edit' | 'create';
 export type EventEditorTarget = 'events' | 'hosting';
-export type EventVisibility = 'Public' | 'Friends only' | 'Invitation only';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
 export type EventRecordKind = 'main' | 'slot';
 

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivityEventRecord } from '../models/events.model';
-import { LocalEventEditorDataService } from '../../local/services/event-editor-data.service';
+import { LocalEventEditorDataService } from '../../local/source/services/event-editor-data.service';
 import { HttpEventEditorDataService } from '../../http/services/event-editor-data.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import type { ActivityMembersSummary } from '../../contracts/activity.interface';

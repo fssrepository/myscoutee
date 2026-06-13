@@ -12,7 +12,7 @@ import type {
   AdminMonitoringTone
 } from '../../contracts/admin.interface';
 import { HttpAdminMonitoringService } from '../../http/services/admin-monitoring.service';
-import { LocalAdminMonitoringService } from '../../local/services/admin-monitoring.service';
+import { LocalAdminMonitoringService } from '../../local/source/services/admin-monitoring.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 

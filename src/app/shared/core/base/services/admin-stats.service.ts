@@ -12,7 +12,7 @@ import type {
   AdminStatsTimelinePointDto
 } from '../../contracts/admin.interface';
 import { HttpAdminStatsService } from '../../http/services/admin-stats.service';
-import { LocalAdminStatsService } from '../../local/services/admin-stats.service';
+import { LocalAdminStatsService } from '../../local/source/services/admin-stats.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';

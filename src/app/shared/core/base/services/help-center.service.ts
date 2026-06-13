@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { LocalHelpCenterService } from '../../local/services/help-center.service';
+import { LocalHelpCenterService } from '../../local/source/services/help-center.service';
 import { HttpHelpCenterService } from '../../http/services/help-center.service';
 import type {
   HelpCenterDocumentKind,

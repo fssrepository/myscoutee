@@ -3,10 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData } from '../../../ui';
 import { AssetInfoCardBuilder } from '../builders';
-import { LocalAssetsService } from '../../local/services/assets.service';
+import { LocalAssetsService } from '../../local/source/services/assets.service';
 import { HttpAssetsService } from '../../http/services/assets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
+import type * as AppDTOs from '../dto';
+import type * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
@@ -19,15 +21,15 @@ export class AssetsService extends BaseRouteModeService {
     return this.resolveRouteService('/assets', this.localAssetsService, this.httpAssetsService);
   }
 
-  peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
+  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetCardDTO[] {
     return this.assetsService.peekOwnedAssetsByUser(userId);
   }
 
-  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetCardDTO | null {
     return this.assetsService.peekOwnedAssetById(userId, assetId);
   }
 
-  async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -35,7 +37,7 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.queryOwnedAssetsByUser(normalizedUserId);
   }
 
-  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -44,7 +46,7 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.loadFullOwnedAssetById(normalizedUserId, normalizedAssetId);
   }
 
-  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetCardDTO[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -55,11 +57,11 @@ export class AssetsService extends BaseRouteModeService {
     });
   }
 
-  async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
+  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetCardDTO): Promise<AppDTOs.AssetCardDTO> {
     return this.assetsService.saveOwnedAsset(userId, asset);
   }
 
-  async replaceOwnedAssets(userId: string, assets: readonly AppTypes.AssetCard[]): Promise<AppTypes.AssetCard[]> {
+  async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetCardDTO[]): Promise<AppDTOs.AssetCardDTO[]> {
     return this.assetsService.replaceOwnedAssets(userId, assets);
   }
 
@@ -67,16 +69,16 @@ export class AssetsService extends BaseRouteModeService {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
     return this.assetsService.takeOverOwnedAsset(userId, assetId);
   }
 
-  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppTypes.AssetCard | null> {
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetCardDTO | null> {
     return this.assetsService.makeAssetManager(userId, assetId, targetUserId);
   }
 
   exploreAssetInfoCard(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: {
       groupLabel?: string | null;
       availabilityLabel: string;
@@ -89,9 +91,9 @@ export class AssetsService extends BaseRouteModeService {
 
   async refreshAssetSourcePreview(
     userId: string,
-    type: AppTypes.AssetType,
+    type: AppConstants.AssetType,
     sourceLink: string
-  ): Promise<AppTypes.AssetSourcePreview | null> {
+  ): Promise<AppDTOs.AssetSourcePreviewDTO | null> {
     return this.assetsService.refreshAssetSourcePreview(userId, type, sourceLink);
   }
 }

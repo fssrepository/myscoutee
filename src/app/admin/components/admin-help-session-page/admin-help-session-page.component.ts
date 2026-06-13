@@ -10,7 +10,7 @@ import {
   SessionService,
   type ShareTokenResolvedItem
 } from '../../../shared/core';
-import type { AssetCard } from '../../../shared/core/base/models';
+import type { AssetCardDTO } from '../../../shared/core/base/dto';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 
 @Component({
@@ -271,7 +271,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return parsed.pathname || '/game';
   }
 
-  private buildSupportFallbackAsset(assetType: 'Car' | 'Accommodation' | 'Supplies', parsed: URL): AssetCard | undefined {
+  private buildSupportFallbackAsset(assetType: 'Car' | 'Accommodation' | 'Supplies', parsed: URL): AssetCardDTO | undefined {
     const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
     if (!assetId) {
       return undefined;

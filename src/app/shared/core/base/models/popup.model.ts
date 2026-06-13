@@ -1,4 +1,4 @@
-import type { AssetType } from './asset.model';
+import type { AssetType } from '../../common/constants';
 import type { SubEventFormItem } from './event.model';
 
 export type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';

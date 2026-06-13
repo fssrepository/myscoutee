@@ -6,7 +6,7 @@ import { environment } from '../../../../../environments/environment';
 import { AppContext } from '../context';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { PwaService } from './pwa.service';
-import { APP_STORAGE_KEYS } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 
 @Injectable({
   providedIn: 'root'

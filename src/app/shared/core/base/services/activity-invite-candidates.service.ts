@@ -4,7 +4,7 @@ import type {
   IActivityInviteCandidatesService,
   ActivityInviteOwnerContext
 } from '../../contracts/activity.interface';
-import { LocalActivityInviteCandidatesService } from '../../local/services/activity-invite-candidates.service';
+import { LocalActivityInviteCandidatesService } from '../../local/source/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';
 import { AppContext } from '../context';
@@ -13,6 +13,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
+import type * as AppConstants from '../../common/constants';
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
 
 @Injectable({
@@ -42,9 +43,9 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
 
   async queryCandidatesByOwner(
     ownerId: string,
-    sort: ActivityContracts.ActivityInviteSort,
+    sort: AppConstants.ActivityInviteSort,
     fallbackTitle = 'Event',
-    ownerType: ActivityContracts.ActivityMemberOwnerType = 'event',
+    ownerType: AppConstants.ActivityMemberOwnerType = 'event',
     existingMemberUserIds: readonly string[] = []
   ): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const activeUserId = this.activeUserId();
@@ -71,7 +72,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   async applyInvites(
     ownerId: string,
     selectedCandidates: readonly ActivityContracts.ActivityMemberEntry[],
-    ownerType: ActivityContracts.ActivityMemberOwnerType = 'event'
+    ownerType: AppConstants.ActivityMemberOwnerType = 'event'
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
     const activeUserId = this.activeUserId();
@@ -158,7 +159,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     };
   }
 
-  private ownerTypeLabel(ownerType: ActivityContracts.ActivityMemberOwnerType): string {
+  private ownerTypeLabel(ownerType: AppConstants.ActivityMemberOwnerType): string {
     if (ownerType === 'asset') {
       return 'Asset';
     }

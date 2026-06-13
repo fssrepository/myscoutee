@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { UserByIdQueryResponse } from '../../contracts/user.interface';
-import { offlineCacheTicketsStorageKey, offlineCacheUserStorageKey } from '../storage-scope';
+import { offlineCacheTicketsStorageKey, offlineCacheUserStorageKey } from '../../common/storage-scope';
 
 interface CachedTicketPagePayload {
   items: readonly AppTypes.ActivityListRow[];

@@ -42,8 +42,9 @@ import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
+import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
-  | { menu: 'visibility'; visibility: AppTypes.EventVisibility }
+  | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'frequency'; frequency: string }
   | { menu: 'topic'; topic: string };
 
@@ -263,7 +264,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   workingPolicyDraft: AppTypes.EventPolicyItem = this.createEmptyPolicyDraft();
   editingPolicyDraftIndex: number | null = null;
 
-  readonly visibilityOptions: AppTypes.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
+  readonly visibilityOptions: AppConstants.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'];
 
   close(): void {
@@ -608,7 +609,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     void this.runImmediateSave();
   }
 
-  selectVisibility(option: AppTypes.EventVisibility, event?: Event): void {
+  selectVisibility(option: AppConstants.EventVisibility, event?: Event): void {
     event?.stopPropagation();
     if (this.eventStructureReadOnly()) {
       return;

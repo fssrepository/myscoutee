@@ -1,4 +1,4 @@
-import type { AssetType } from './asset.model';
+import type { AssetType } from '../../common/constants';
 
 export type ChatUserGender = 'woman' | 'man' | 'deleted';
 

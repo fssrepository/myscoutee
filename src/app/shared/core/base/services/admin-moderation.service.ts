@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { HttpAdminModerationService } from '../../http/services/admin-moderation.service';
-import { LocalAdminModerationService } from '../../local/services/admin-moderation.service';
+import { LocalAdminModerationService } from '../../local/source/services/admin-moderation.service';
 import type { AdminDashboardDto, AdminUserDto } from '../../contracts/admin.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 

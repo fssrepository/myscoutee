@@ -14,7 +14,7 @@ import {
   type DemoBootstrapSelectorState,
   type UserSelectorListItemDto
 } from '../../../core';
-import { SeedDemoBootstrapService } from '../../../core/seed';
+import { SeedDemoBootstrapService } from '../../../core/local/seed';
 
 @Component({
   selector: 'app-demo-bootstrap-selector',

@@ -1,13 +1,15 @@
-export type PricingMode = 'fixed' | 'demand-based' | 'time-based' | 'hybrid';
-export type PricingTaxMode = 'excluded' | 'included';
-export type PricingChargeType = 'per_attendee' | 'per_booking' | 'per_slot';
-export type PricingRoundingMode = 'none' | 'whole' | 'half';
-export type PricingRuleActionKind = 'increase_percent' | 'decrease_percent' | 'set_exact_price';
-export type PricingRuleScope = 'all_slots' | 'selected_slots';
-export type PricingDemandOperator = 'gte' | 'lte';
-export type PricingTimeRuleTrigger = 'days_before_start' | 'hours_before_start' | 'specific_date';
-export type PricingCancellationUnit = 'hours' | 'days' | 'weeks' | 'months';
-export type PricingCancellationRefundKind = 'percent' | 'fixed_amount' | 'full' | 'none';
+import type {
+  PricingCancellationRefundKind,
+  PricingCancellationUnit,
+  PricingChargeType,
+  PricingDemandOperator,
+  PricingMode,
+  PricingRoundingMode,
+  PricingRuleActionKind,
+  PricingRuleScope,
+  PricingTaxMode,
+  PricingTimeRuleTrigger
+} from '../../common/constants';
 
 export interface PricingAction {
   kind: PricingRuleActionKind;

@@ -12,7 +12,7 @@ import {
 } from '../../contracts/admin.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { I18nService } from './i18n.service';
-import { LocalAdminAffinityGraphService } from '../../local/services/admin-affinity-graph.service';
+import { LocalAdminAffinityGraphService } from '../../local/source/services/admin-affinity-graph.service';
 import {
   HttpAdminAffinityGraphService,
   type AdminAffinityGraphRangeParams,

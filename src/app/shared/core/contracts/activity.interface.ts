@@ -1,18 +1,20 @@
 import type { UserDto } from './user.interface';
-
-export type ActivityMemberStatus = 'pending' | 'accepted' | 'disqualified';
-export type ActivityPendingSource = 'admin' | 'member' | null;
-export type ActivityInviteSort = 'recent' | 'relevant';
-export type ActivityMemberRequestKind = 'invite' | 'join' | 'waitlist' | 'waitlist-invite' | null;
-export type ActivityMemberRole = 'Admin' | 'Member' | 'Manager';
-export type ActivityMemberOwnerType = 'event' | 'subEvent' | 'group' | 'asset';
+import type {
+  ActivityInviteSort,
+  ActivityMemberOwnerType,
+  ActivityMemberRequestKind,
+  ActivityMemberRole,
+  ActivityMemberStatus,
+  ActivityPendingSource,
+  UserGender
+} from '../common/constants';
 
 export interface ActivityMemberEntry {
   id: string;
   userId: string;
   name: string;
   initials: string;
-  gender: 'woman' | 'man';
+  gender: UserGender;
   city: string;
   statusText: string;
   role: ActivityMemberRole;
@@ -115,7 +117,7 @@ export interface UserGameFilterPreferencesDto {
   values?: string[];
   physiques?: string[];
   languages?: string[];
-  genders?: Array<'woman' | 'man'>;
+  genders?: UserGender[];
   horoscopes?: string[];
   traitLabels?: string[];
   smoking?: string[];
@@ -278,7 +280,7 @@ export interface EventFeedbackReceivedEntryDto {
   viewerUserId: string;
   viewerName: string;
   viewerInitials: string;
-  viewerGender: 'woman' | 'man';
+  viewerGender: UserGender;
   viewerImageUrl: string;
   eventId: string;
   submittedAtIso: string;

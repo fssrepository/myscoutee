@@ -1,11 +1,12 @@
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { PopupHeaderLookup } from './popup.model';
 import type { ChatRecord } from './chat.model';
-import type { AssetCard, AssetType } from './asset.model';
+import type { AssetType } from '../../common/constants';
+import type { AssetCardDTO } from '../dto';
 import type {
-  ActivityMemberEntry,
-  ActivityMemberOwnerType
+  ActivityMemberEntry
 } from '../../contracts/activity.interface';
+import type { ActivityMemberOwnerType } from '../../common/constants';
 import type { ActivitiesChatContextFilter, ChatChannelType, SupportCaseFilter } from './chat.model';
 import type { ActivitiesEventScope, ActivitiesPrimaryFilter, ActivitiesSecondaryFilter, ActivitiesView, ActivityListRow, HostingPublicationFilter, RateFilterKey } from './activities-ui.model';
 import type {
@@ -15,13 +16,13 @@ import type {
   EventRecordKind,
   EventSlotOccurrence,
   EventSlotTemplate,
-  EventVisibility,
   SubEventFormItem
 } from './event.model';
+import type { EventVisibility } from '../../common/constants';
 import type { PricingConfig } from './pricing.model';
 
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
-export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCard[]>>;
+export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCardDTO[]>>;
 
 export interface ActivitiesFeedFilters {
   primaryFilter?: ActivitiesPrimaryFilter;
@@ -47,7 +48,7 @@ export interface EventExploreFeedFilters {
 
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
-  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCard }
+  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCardDTO }
   | {
       type: 'chatResource';
       ownerId?: string;

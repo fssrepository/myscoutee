@@ -11,7 +11,7 @@ import type {
   AdminParamsStateDto
 } from '../../contracts/admin.interface';
 import { HttpAdminParamsService } from '../../http/services/admin-params.service';
-import { LocalAdminParamsService } from '../../local/services/admin-params.service';
+import { LocalAdminParamsService } from '../../local/source/services/admin-params.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 const ADMIN_PARAMS_ROUTE = '/admin/params';

@@ -7,9 +7,11 @@ import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService, type ActivityCounterKey } from '../shared/core';
 
+import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AppConstants from '../shared/core/common/constants';
 export interface OwnedAssetsRuntimeHooks {
   onAssetsChanged?(): void;
-  onAssetCreated?(card: AppTypes.AssetCard): void;
+  onAssetCreated?(card: AppDTOs.AssetCardDTO): void;
   onAssetDeleted?(cardId: string): void;
   onAssetFormClosed?(): void;
 }
@@ -28,26 +30,26 @@ export class OwnedAssetsPopupFacadeService {
   private readonly assetListLoadingRef = signal(false);
   private readonly uiRevisionRef = signal(0);
 
-  readonly assetTypeOptions: AppTypes.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
-  readonly assetFilterOptions: AppTypes.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
-  readonly assetVisibilityOptions: AppTypes.EventVisibility[] = APP_STATIC_DATA.eventVisibilityOptions;
+  readonly assetTypeOptions: AppConstants.AssetType[] = APP_STATIC_DATA.assetTypeOptions;
+  readonly assetFilterOptions: AppConstants.AssetFilterType[] = APP_STATIC_DATA.assetFilterOptions;
+  readonly assetVisibilityOptions: AppConstants.EventVisibility[] = APP_STATIC_DATA.eventVisibilityOptions;
 
-  assetFilter: AppTypes.AssetFilterType = 'Car';
+  assetFilter: AppConstants.AssetFilterType = 'Car';
   showAssetForm = false;
   editingAssetId: string | null = null;
   isAssetFormLoading = false;
   isAssetFormSavePending = false;
   pendingAssetDeleteCardId: string | null = null;
   isAssetDeletePending = false;
-  assetForm: Omit<AppTypes.AssetCard, 'id' | 'requests'> = AssetCardBuilder.buildEmptyAssetForm('Car');
-  assetFormVisibility: AppTypes.EventVisibility = 'Public';
+  assetForm: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> = AssetCardBuilder.buildEmptyAssetForm('Car');
+  assetFormVisibility: AppConstants.EventVisibility = 'Public';
   readonly assetSourcePreviewAvailable = environment.activitiesDataSource === 'http';
 
-  private assetCardsRef: AppTypes.AssetCard[] = [];
-  private activePopupFilter: AppTypes.AssetFilterType | null = null;
+  private assetCardsRef: AppDTOs.AssetCardDTO[] = [];
+  private activePopupFilter: AppConstants.AssetFilterType | null = null;
   private activeOwnerUserId = '';
   private readonly runtimeHooks: OwnedAssetsRuntimeHooks[] = [];
-  private pendingPersistSnapshot: AppTypes.AssetCard[] | null = null;
+  private pendingPersistSnapshot: AppDTOs.AssetCardDTO[] | null = null;
   private pendingPersistOwnerUserId = '';
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
   private pendingAssetImageFile: File | null = null;
@@ -67,11 +69,11 @@ export class OwnedAssetsPopupFacadeService {
   readonly assetListLoading = this.assetListLoadingRef.asReadonly();
   readonly uiRevision = this.uiRevisionRef.asReadonly();
 
-  get assetCards(): AppTypes.AssetCard[] {
+  get assetCards(): AppDTOs.AssetCardDTO[] {
     return this.assetCardsRef;
   }
 
-  set assetCards(cards: AppTypes.AssetCard[]) {
+  set assetCards(cards: AppDTOs.AssetCardDTO[]) {
     this.applyAssetCards(cards, { persist: true, reloadList: false });
   }
 
@@ -88,7 +90,7 @@ export class OwnedAssetsPopupFacadeService {
     this.runtimeHooks.push(hooks);
   }
 
-  initialize(cards: AppTypes.AssetCard[]): void {
+  initialize(cards: AppDTOs.AssetCardDTO[]): void {
     this.applyAssetCards(cards, { persist: false, reloadList: false });
   }
 
@@ -145,7 +147,7 @@ export class OwnedAssetsPopupFacadeService {
     return '248px';
   }
 
-  filteredAssetCards(): AppTypes.AssetCard[] {
+  filteredAssetCards(): AppDTOs.AssetCardDTO[] {
     if (this.assetFilter === 'Ticket') {
       return [];
     }
@@ -182,7 +184,7 @@ export class OwnedAssetsPopupFacadeService {
   async applyAssetRequestAction(
     assetId: string,
     requestId: string,
-    action: AppTypes.AssetRequestAction
+    action: AppConstants.AssetRequestAction
   ): Promise<void> {
     const normalizedAssetId = assetId.trim();
     const normalizedRequestId = requestId.trim();
@@ -220,7 +222,7 @@ export class OwnedAssetsPopupFacadeService {
         return true;
       });
 
-    const nextCard: AppTypes.AssetCard = {
+    const nextCard: AppDTOs.AssetCardDTO = {
       ...existing,
       quantity: nextQuantity,
       routes: [...(existing.routes ?? [])],
@@ -280,19 +282,19 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
-  assetTypeIcon(type: AppTypes.AssetFilterType): string {
+  assetTypeIcon(type: AppConstants.AssetFilterType): string {
     return AssetDefaultsBuilder.assetTypeIcon(type);
   }
 
-  assetTypeClass(type: AppTypes.AssetFilterType): string {
+  assetTypeClass(type: AppConstants.AssetFilterType): string {
     return AssetDefaultsBuilder.assetTypeClass(type);
   }
 
-  assetTypeLabel(type: AppTypes.AssetFilterType): string {
+  assetTypeLabel(type: AppConstants.AssetFilterType): string {
     return AssetDefaultsBuilder.assetTypeLabel(type);
   }
 
-  assetFilterCount(type: AppTypes.AssetFilterType): number {
+  assetFilterCount(type: AppConstants.AssetFilterType): number {
     const ownerUserId = this.resolveContextOwnerUserId();
     const source = this.appCtx.getUserProfile(ownerUserId);
     const activeUser = source ?? this.appCtx.activeUserProfile();
@@ -321,19 +323,19 @@ export class OwnedAssetsPopupFacadeService {
     return Math.max(0, Math.trunc(numericValue));
   }
 
-  eventVisibilityClass(option: AppTypes.EventVisibility): string {
+  eventVisibilityClass(option: AppConstants.EventVisibility): string {
     return AssetDefaultsBuilder.eventVisibilityClass(option);
   }
 
-  visibilityIcon(option: AppTypes.EventVisibility): string {
+  visibilityIcon(option: AppConstants.EventVisibility): string {
     return AssetDefaultsBuilder.visibilityIcon(option);
   }
 
-  assetCategoryOptions(type: AppTypes.AssetType = this.assetForm.type): AppTypes.AssetCategory[] {
+  assetCategoryOptions(type: AppConstants.AssetType = this.assetForm.type): AppConstants.AssetCategory[] {
     return AssetDefaultsBuilder.assetCategoryOptions(type);
   }
 
-  setAssetFormVisibility(option: AppTypes.EventVisibility): void {
+  setAssetFormVisibility(option: AppConstants.EventVisibility): void {
     if (this.isAssetFormLoading || this.isAssetFormSavePending) {
       return;
     }
@@ -350,7 +352,7 @@ export class OwnedAssetsPopupFacadeService {
     return isNarrowViewport && hasCoarsePointer;
   }
 
-  openPopup(filter: AppTypes.AssetFilterType): void {
+  openPopup(filter: AppConstants.AssetFilterType): void {
     this.assetFilter = filter;
     this.activePopupFilter = filter;
     this.closeAssetForm();
@@ -378,7 +380,7 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
-  selectAssetFilter(filter: AppTypes.AssetFilterType): void {
+  selectAssetFilter(filter: AppConstants.AssetFilterType): void {
     this.assetFilter = filter;
     this.activePopupFilter = filter;
     if (filter === 'Ticket') {
@@ -391,7 +393,7 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
-  openAssetForm(card?: AppTypes.AssetCard): void {
+  openAssetForm(card?: AppDTOs.AssetCardDTO): void {
     if (card) {
       void this.openAssetFormForEdit(card);
       return;
@@ -409,7 +411,7 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
-  private async openAssetFormForEdit(card: AppTypes.AssetCard): Promise<void> {
+  private async openAssetFormForEdit(card: AppDTOs.AssetCardDTO): Promise<void> {
     const generation = ++this.assetFormLoadGeneration;
     const ownerUserId = this.resolveOwnerUserId();
     this.showAssetForm = true;
@@ -461,7 +463,7 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
-  private applyAssetFormFromCard(card: AppTypes.AssetCard): void {
+  private applyAssetFormFromCard(card: AppDTOs.AssetCardDTO): void {
     const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
     const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
     this.editingAssetId = card.id;
@@ -604,7 +606,7 @@ export class OwnedAssetsPopupFacadeService {
       const imageUrl = AssetCardBuilder.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl);
       const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
       const category = AssetDefaultsBuilder.normalizeCategory(this.assetForm.type, this.assetForm.category);
-      const payload: Omit<AppTypes.AssetCard, 'id' | 'requests'> = {
+      const payload: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> = {
         type: this.assetForm.type,
         title,
         subtitle: this.assetForm.subtitle.trim(),
@@ -630,12 +632,12 @@ export class OwnedAssetsPopupFacadeService {
           { context: 'asset', allowSlotFeatures: false }
         )
       };
-      const resolvedVisibility: AppTypes.EventVisibility = this.assetFormVisibility;
+      const resolvedVisibility: AppConstants.EventVisibility = this.assetFormVisibility;
 
       if (this.editingAssetId) {
         const editingAssetId = this.editingAssetId;
         const existing = this.assetCardsRef.find(card => card.id === editingAssetId);
-        const nextCard: AppTypes.AssetCard = {
+        const nextCard: AppDTOs.AssetCardDTO = {
           id: editingAssetId,
           ...payload,
           visibility: resolvedVisibility,
@@ -665,7 +667,7 @@ export class OwnedAssetsPopupFacadeService {
           : Promise.resolve();
         await persistPromise;
       } else {
-        const nextCard: AppTypes.AssetCard = {
+        const nextCard: AppDTOs.AssetCardDTO = {
           id: assetId,
           ...payload,
           visibility: resolvedVisibility,
@@ -758,11 +760,11 @@ export class OwnedAssetsPopupFacadeService {
     return normalizedUrl;
   }
 
-  canOpenAssetMap(card: AppTypes.AssetCard): boolean {
+  canOpenAssetMap(card: AppDTOs.AssetCardDTO): boolean {
     return AssetCardBuilder.canOpenMap(card);
   }
 
-  openAssetMap(card: AppTypes.AssetCard, event?: Event): void {
+  openAssetMap(card: AppDTOs.AssetCardDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.canOpenAssetMap(card)) {
       return;
@@ -770,12 +772,12 @@ export class OwnedAssetsPopupFacadeService {
     this.openGoogleMapsSearch(AssetCardBuilder.primaryLocation(card));
   }
 
-  runAssetItemEditAction(card: AppTypes.AssetCard, event?: Event): void {
+  runAssetItemEditAction(card: AppDTOs.AssetCardDTO, event?: Event): void {
     event?.stopPropagation();
     this.openAssetForm(card);
   }
 
-  runAssetItemDeleteAction(card: AppTypes.AssetCard, event?: Event): void {
+  runAssetItemDeleteAction(card: AppDTOs.AssetCardDTO, event?: Event): void {
     event?.stopPropagation();
     this.pendingAssetDeleteCardId = card.id;
     this.pendingAssetDeleteLabelValue = `Delete ${card.title}?`;
@@ -834,7 +836,7 @@ export class OwnedAssetsPopupFacadeService {
     }
     const nextStatus = this.restoredAssetStatus(current);
     const ownerName = this.appCtx.activeUserProfile()?.name?.trim() || current.ownerName;
-    const nextCard: AppTypes.AssetCard = {
+    const nextCard: AppDTOs.AssetCardDTO = {
       ...current,
       ownerUserId,
       ownerName,
@@ -860,7 +862,7 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     const resolvedStatus = this.normalizeAssetStatus(savedCard.status);
-    const reconciledCard: AppTypes.AssetCard = {
+    const reconciledCard: AppDTOs.AssetCardDTO = {
       ...nextCard,
       ...savedCard,
       ownerUserId: savedCard.ownerUserId ?? ownerUserId,
@@ -901,7 +903,7 @@ export class OwnedAssetsPopupFacadeService {
     }
   }
 
-  private activeAssetType(): AppTypes.AssetType {
+  private activeAssetType(): AppConstants.AssetType {
     if (this.assetFilter === 'Accommodation') {
       return 'Accommodation';
     }
@@ -911,12 +913,12 @@ export class OwnedAssetsPopupFacadeService {
     return 'Car';
   }
 
-  private normalizeAssetMediaLinks(cards: readonly AppTypes.AssetCard[]): AppTypes.AssetCard[] {
+  private normalizeAssetMediaLinks(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
     return AssetCardBuilder.normalizeAssetMediaCards(cards);
   }
 
   public applyAssetCards(
-    cards: readonly AppTypes.AssetCard[],
+    cards: readonly AppDTOs.AssetCardDTO[],
     options: { persist?: boolean; reloadList?: boolean } = {}
   ): void {
     const nextCards = this.normalizeAssetMediaLinks(cards.map(card => ({
@@ -954,13 +956,13 @@ export class OwnedAssetsPopupFacadeService {
     return 'Unable to delete asset right now.';
   }
 
-  private restoredAssetStatus(card: AppTypes.AssetCard): string {
+  private restoredAssetStatus(card: AppDTOs.AssetCardDTO): string {
     return 'A';
   }
 
   private restoredTakeOverMenuActions(
-    current: AppTypes.AssetCard,
-    savedCard: AppTypes.AssetCard | null | undefined
+    current: AppDTOs.AssetCardDTO,
+    savedCard: AppDTOs.AssetCardDTO | null | undefined
   ): string[] {
     const savedStatus = this.normalizeAssetStatus(savedCard?.status);
     const savedActions = (savedCard?.menuActions ?? [])
@@ -976,7 +978,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private assetFilterCounterKey(
-    type: AppTypes.AssetFilterType
+    type: AppConstants.AssetFilterType
   ): Extract<ActivityCounterKey, 'cars' | 'accommodation' | 'supplies' | 'tickets'> | null {
     switch (type) {
       case 'Car':
@@ -1014,7 +1016,7 @@ export class OwnedAssetsPopupFacadeService {
     }
   }
 
-  private assetExplanationContextForFilter(filter: AppTypes.AssetFilterType): string {
+  private assetExplanationContextForFilter(filter: AppConstants.AssetFilterType): string {
     switch (filter) {
       case 'Accommodation':
         return 'assets.accommodation';
@@ -1165,8 +1167,8 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private areAssetCardListsEqual(
-    left: readonly AppTypes.AssetCard[],
-    right: readonly AppTypes.AssetCard[]
+    left: readonly AppDTOs.AssetCardDTO[],
+    right: readonly AppDTOs.AssetCardDTO[]
   ): boolean {
     if (left.length !== right.length) {
       return false;
@@ -1174,7 +1176,7 @@ export class OwnedAssetsPopupFacadeService {
     return left.every((card, index) => this.assetCardSignature(card) === this.assetCardSignature(right[index]));
   }
 
-  private assetCardSignature(card: AppTypes.AssetCard | null | undefined): string {
+  private assetCardSignature(card: AppDTOs.AssetCardDTO | null | undefined): string {
     if (!card) {
       return '';
     }
@@ -1226,7 +1228,7 @@ export class OwnedAssetsPopupFacadeService {
     ].join('||');
   }
 
-  private cloneAssetRequest(request: AppTypes.AssetMemberRequest): AppTypes.AssetMemberRequest {
+  private cloneAssetRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
     return {
       ...request,
       booking: request.booking
@@ -1238,7 +1240,7 @@ export class OwnedAssetsPopupFacadeService {
     };
   }
 
-  private assetRequestQuantity(request: AppTypes.AssetMemberRequest): number {
+  private assetRequestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
     return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 0));
   }
 }

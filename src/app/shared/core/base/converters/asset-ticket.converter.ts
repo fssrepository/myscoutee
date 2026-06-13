@@ -2,13 +2,14 @@ import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../models';
 
+import type * as AppDTOs from '../dto';
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city'>;
 
 export class AssetTicketConverter {
   static toTicketScanPayload(
     row: AppTypes.ActivityListRow,
     holder: TicketPerson | null = null
-  ): AppTypes.TicketScanPayload {
+  ): AppDTOs.TicketScanPayloadDTO {
     const issuedAtIso = `${row.startAt ?? row.dateIso}`.trim() || row.dateIso;
     const userId = holder?.id?.trim() || '';
     const userName = holder?.name?.trim() || 'Ticket Holder';

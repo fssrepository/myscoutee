@@ -1,4 +1,5 @@
-import type { ActivitiesView, ActivityListRow, AssetMemberRequest } from './core/base/models';
+import type { ActivitiesView, ActivityListRow } from './core/base/models';
+import type { AssetMemberRequestDTO } from './core/base/dto';
 import type { UserDto } from './core/contracts/user.interface';
 
 export class AppUtils {
@@ -231,7 +232,7 @@ export class AppUtils {
     return users.find(user => this.normalizeText(user.name) === target);
   }
 
-  static resolveAssetRequestUserId(request: AssetMemberRequest, users: UserDto[]): string {
+  static resolveAssetRequestUserId(request: AssetMemberRequestDTO, users: UserDto[]): string {
     if (request.userId) {
       return request.userId;
     }

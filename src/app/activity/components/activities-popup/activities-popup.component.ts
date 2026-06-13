@@ -100,6 +100,8 @@ import type {
 import { I18nService } from '../../../shared/core';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
+import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppConstants from '../../../shared/core/common/constants';
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
@@ -268,7 +270,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityImageById: Record<string, string> = {};
   protected readonly activityCapacityById: Record<string, string> = {};
   protected readonly activityPendingMembersById: Record<string, number> = {};
-  protected readonly eventVisibilityById: Record<string, AppTypes.EventVisibility> = {};
+  protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, AppTypes.EventCapacityRange> = {};
   protected readonly eventSubEventsById: Record<string, AppTypes.SubEventFormItem[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
@@ -283,7 +285,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
 
-  protected get assetCards(): AppTypes.AssetCard[] {
+  protected get assetCards(): AppDTOs.AssetCardDTO[] {
     return this.ownedAssets.assetCards;
   }
 

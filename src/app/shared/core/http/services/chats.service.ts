@@ -1,3 +1,4 @@
+import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
@@ -10,9 +11,11 @@ import { activityChatContextFilterKey } from '../../base/converters';
 import { AppContext } from '../../base/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';
-import type { ChatThreadRecord } from '../../base/models/chats.model';
+
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
+import type * as AppDTOs from '../../base/dto';
+import type * as AppConstants from '../../common/constants';
 interface HttpChatSummaryDto {
   id: string;
   avatar: string;
@@ -96,7 +99,7 @@ interface HttpChatMessageAttachmentDto {
   type: AppTypes.ChatMessageAttachmentType;
   title: string;
   entityId?: string | null;
-  assetType?: AppTypes.AssetType | null;
+  assetType?: AppConstants.AssetType | null;
   ownerUserId?: string | null;
   status?: AppTypes.ChatMessageAttachment['status'];
   unavailableReason?: string | null;
@@ -952,7 +955,7 @@ export class HttpChatsService {
     };
   }
 
-  private normalizeAssetType(value: unknown): AppTypes.AssetType | null {
+  private normalizeAssetType(value: unknown): AppConstants.AssetType | null {
     return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
   }
 

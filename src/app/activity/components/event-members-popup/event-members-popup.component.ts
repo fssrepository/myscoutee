@@ -36,7 +36,8 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
-import type { ActivityMemberOwnerRef, ActivityMemberOwnerType } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 interface MembersSmartListFilters {

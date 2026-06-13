@@ -2,10 +2,11 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import { AppContext } from '../context';
-import { LocalActivityMembersService } from '../../local/services/activity-members.service';
+import { LocalActivityMembersService } from '../../local/source/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
 import { BaseRouteModeService } from './base-route-mode.service';
-import type { ActivityMemberOwnerRef, ActivityMemberOwnerType, ActivityMembersSummary } from '../../contracts/activity.interface';
+import type { ActivityMemberOwnerType } from '../../common/constants';
+import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({

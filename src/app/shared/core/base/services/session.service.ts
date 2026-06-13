@@ -4,7 +4,7 @@ import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import { AppContext } from '../context';
-import { APP_STORAGE_KEYS } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 export interface SupportSessionContext {

@@ -16,6 +16,7 @@ import {
   type InfoCardMenuActionEvent
 } from '../../../../../shared/ui';
 
+import type * as AppConstants from '../../../../../shared/core/common/constants';
 @Component({
   selector: 'app-activities-event-template',
   standalone: true,
@@ -144,7 +145,7 @@ export class ActivitiesEventsController {
   private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
   private activityMemberUserIdsByStatus(
     members: readonly ActivityContracts.ActivityMemberEntry[],
-    status: ActivityContracts.ActivityMemberStatus
+    status: AppConstants.ActivityMemberStatus
   ): string[] {
     return this.uniqueUserIds(
       members

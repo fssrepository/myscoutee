@@ -1,6 +1,6 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import { LocalIdeaPostsService } from '../../local/services/idea-posts.service';
+import { LocalIdeaPostsService } from '../../local/source/services/idea-posts.service';
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
 import type { IdeaArticleDetailDto, IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';

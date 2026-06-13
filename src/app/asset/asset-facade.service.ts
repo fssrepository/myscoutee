@@ -12,6 +12,8 @@ import {
 } from '../shared/core';
 import type { InfoCardData } from '../shared/ui';
 
+import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AppConstants from '../shared/core/common/constants';
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
 
 @Injectable({
@@ -37,21 +39,21 @@ export class AssetFacadeService {
   }
 
   ownedAssetInfoCard(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: { groupLabel?: string | null; selectMode?: boolean; selected?: boolean; selectDisabled?: boolean } = {}
   ): InfoCardData {
     return AssetInfoCardBuilder.buildOwnedAssetInfoCard(card, options);
   }
 
-  ownedAssetEmptyLabel(type: AppTypes.AssetType): string {
+  ownedAssetEmptyLabel(type: AppConstants.AssetType): string {
     return AssetDefaultsBuilder.ownedAssetEmptyLabel(type);
   }
 
-  ownedAssetEmptyDescription(type: AppTypes.AssetType): string {
+  ownedAssetEmptyDescription(type: AppConstants.AssetType): string {
     return AssetDefaultsBuilder.ownedAssetEmptyDescription(type);
   }
 
-  canOpenOwnedAssetMap(card: AppTypes.AssetCard): boolean {
+  canOpenOwnedAssetMap(card: AppDTOs.AssetCardDTO): boolean {
     return AssetCardBuilder.canOpenMap(card);
   }
 
@@ -59,7 +61,7 @@ export class AssetFacadeService {
     return AssetInfoCardBuilder.buildTicketGroupLabel(dateIso);
   }
 
-  createTicketScanPayload(row: AppTypes.ActivityListRow): AppTypes.TicketScanPayload {
+  createTicketScanPayload(row: AppTypes.ActivityListRow): AppDTOs.TicketScanPayloadDTO {
     const activeUser = this.resolveActiveTicketHolder();
     return AssetTicketConverter.toTicketScanPayload(row, activeUser ?? {
       id: this.currentActiveUserId(),
@@ -69,11 +71,11 @@ export class AssetFacadeService {
     });
   }
 
-  ticketPayloadAvatarUrl(payload: AppTypes.TicketScanPayload | null): string {
+  ticketPayloadAvatarUrl(payload: AppDTOs.TicketScanPayloadDTO | null): string {
     return AssetInfoCardBuilder.resolveTicketPayloadAvatarUrl(this.ticketPayloadUser(payload));
   }
 
-  ticketPayloadInitials(payload: AppTypes.TicketScanPayload): string {
+  ticketPayloadInitials(payload: AppDTOs.TicketScanPayloadDTO): string {
     return AssetInfoCardBuilder.resolveTicketPayloadInitials(payload, this.ticketPayloadUser(payload));
   }
 
@@ -103,7 +105,7 @@ export class AssetFacadeService {
     });
   }
 
-  private ticketPayloadUser(payload: AppTypes.TicketScanPayload | null): TicketPerson | null {
+  private ticketPayloadUser(payload: AppDTOs.TicketScanPayloadDTO | null): TicketPerson | null {
     const normalizedUserId = payload?.holderUserId?.trim() ?? '';
     if (!normalizedUserId) {
       return null;

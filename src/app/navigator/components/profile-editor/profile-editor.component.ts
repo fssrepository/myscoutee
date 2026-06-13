@@ -34,15 +34,16 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { NavigatorService } from '../../navigator.service';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
+import type * as AppConstants from '../../../shared/core/common/constants';
 type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
 type ProfileEditorMenuId = string;
 
 type ProfileEditorMenuContext =
-  | { kind: 'profileStatus'; value: ProfileContracts.ProfileStatus }
+  | { kind: 'profileStatus'; value: AppConstants.ProfileStatus }
   | { kind: 'physique'; value: string }
   | { kind: 'detailValue'; groupIndex: number; rowIndex: number; value: string }
-  | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: ProfileContracts.DetailPrivacy }
-  | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: ProfileContracts.DetailPrivacy }
+  | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppConstants.DetailPrivacy }
+  | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppConstants.DetailPrivacy }
   | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
   | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
   | { kind: 'experienceQuickAction'; action: 'create' | 'upload' };
@@ -56,7 +57,7 @@ interface ProfileFormState {
   physique: string;
   languages: string[];
   horoscope: string;
-  profileStatus: ProfileContracts.ProfileStatus;
+  profileStatus: AppConstants.ProfileStatus;
   about: string;
 }
 
@@ -147,7 +148,7 @@ export class ProfileEditorComponent {
   protected valuesSelectorSelected: string[] = [];
   protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
   protected interestSelectorSelected: string[] = [];
-  protected experienceVisibility: Record<'workspace' | 'school', ProfileContracts.DetailPrivacy> = {
+  protected experienceVisibility: Record<'workspace' | 'school', AppConstants.DetailPrivacy> = {
     workspace: 'Public',
     school: 'Public'
   };
@@ -744,7 +745,7 @@ export class ProfileEditorComponent {
     return this.experienceImportDialog.statistics.countsByType[type] ?? 0;
   }
 
-  protected profileStatusClass(value: ProfileContracts.ProfileStatus = this.profileForm.profileStatus): string {
+  protected profileStatusClass(value: AppConstants.ProfileStatus = this.profileForm.profileStatus): string {
     switch (value) {
       case 'public':
         return 'status-public';
@@ -767,7 +768,7 @@ export class ProfileEditorComponent {
     };
   }
 
-  protected getProfileStatusIcon(value: ProfileContracts.ProfileStatus = this.profileForm.profileStatus): string {
+  protected getProfileStatusIcon(value: AppConstants.ProfileStatus = this.profileForm.profileStatus): string {
     switch (value) {
       case 'public':
         return 'public';
@@ -1012,7 +1013,7 @@ export class ProfileEditorComponent {
     return `profile-detail-privacy-${groupIndex}-${rowIndex}`;
   }
 
-  protected experienceVisibilityValue(type: 'workspace' | 'school'): ProfileContracts.DetailPrivacy {
+  protected experienceVisibilityValue(type: 'workspace' | 'school'): AppConstants.DetailPrivacy {
     return this.experienceVisibility[type];
   }
 
@@ -1335,7 +1336,7 @@ export class ProfileEditorComponent {
     return iconPool[Math.abs(hash) % iconPool.length];
   }
 
-  protected privacyStatusClass(value: ProfileContracts.DetailPrivacy): string {
+  protected privacyStatusClass(value: AppConstants.DetailPrivacy): string {
     switch (value) {
       case 'Public':
         return 'status-public';
@@ -1348,7 +1349,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected privacyStatusIcon(value: ProfileContracts.DetailPrivacy): string {
+  protected privacyStatusIcon(value: AppConstants.DetailPrivacy): string {
     switch (value) {
       case 'Public':
         return 'public';
@@ -1913,7 +1914,7 @@ export class ProfileEditorComponent {
     return bestTone;
   }
 
-  private privacyMenuTrigger(value: ProfileContracts.DetailPrivacy, ariaLabel: string): AppMenuTrigger {
+  private privacyMenuTrigger(value: AppConstants.DetailPrivacy, ariaLabel: string): AppMenuTrigger {
     return {
       icon: this.privacyStatusIcon(value),
       closeIcon: 'close',
@@ -1924,7 +1925,7 @@ export class ProfileEditorComponent {
     };
   }
 
-  private profileStatusPalette(value: ProfileContracts.ProfileStatus): AppMenuPalette {
+  private profileStatusPalette(value: AppConstants.ProfileStatus): AppMenuPalette {
     switch (value) {
       case 'public':
         return 'green';
@@ -1940,7 +1941,7 @@ export class ProfileEditorComponent {
     }
   }
 
-  private privacyPalette(value: ProfileContracts.DetailPrivacy): AppMenuPalette {
+  private privacyPalette(value: AppConstants.DetailPrivacy): AppMenuPalette {
     switch (value) {
       case 'Public':
         return 'green';
@@ -2017,7 +2018,7 @@ export class ProfileEditorComponent {
     }, 280);
   }
 
-  private isDetailPrivacy(value: string): value is ProfileContracts.DetailPrivacy {
+  private isDetailPrivacy(value: string): value is AppConstants.DetailPrivacy {
     return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
 

@@ -3,6 +3,7 @@ import type * as AppTypes from '../models';
 import type { ActivityEventRecord } from '../models/events.model';
 import { PricingBuilder } from '../builders/pricing.builder';
 
+import type * as AppConstants from '../../common/constants';
 export class EventEditorConverter {
   static normalizeEventEditorPolicies(value: unknown): AppTypes.EventPolicyItem[] {
     if (!Array.isArray(value)) {
@@ -34,7 +35,7 @@ export class EventEditorConverter {
     return `${value ?? ''}`.trim();
   }
 
-  static normalizeEventEditorVisibility(value: unknown): AppTypes.EventVisibility {
+  static normalizeEventEditorVisibility(value: unknown): AppConstants.EventVisibility {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'private' || normalized.includes('friend')) {
       return 'Friends only';

@@ -11,7 +11,7 @@ import type {
   UserGameMode
 } from '../../contracts/activity.interface';
 import { LocalGameService } from '../../local';
-import { LocalRatesRepository } from '../../local/repositories/rates.repository';
+import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';
 import { HttpGameService } from '../../http';
 import type { UserDto } from '../../contracts/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';

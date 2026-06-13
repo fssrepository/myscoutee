@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ShareTokenCreateRequest, ShareTokenResolvedItem } from '../../contracts/share.interface';
-import { LocalShareTokensService } from '../../local/services/share-tokens.service';
+import { LocalShareTokensService } from '../../local/source/services/share-tokens.service';
 import { HttpShareTokensService } from '../../http/services/share-tokens.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 

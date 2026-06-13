@@ -4,10 +4,11 @@ import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData } from '../../../ui';
 import { AppContext } from '../context';
 import { ActivityResourceBuilder, type ActivitySubEventResourceInfoCardOptions } from '../builders';
-import { LocalActivityResourcesService } from '../../local/services/activity-resources.service';
+import { LocalActivityResourcesService } from '../../local/source/services/activity-resources.service';
 import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
+import type * as AppDTOs from '../dto';
 @Injectable({
   providedIn: 'root'
 })
@@ -33,7 +34,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
     ownerId: string | null | undefined,
     subEventId: string | null | undefined,
     assetOwnerUserId: string | null | undefined = this.activeAssetOwnerUserId()
-  ): AppTypes.ActivitySubEventResourceState | null {
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     const ref = this.normalizeRef(ownerId, subEventId, assetOwnerUserId);
     if (!ref) {
       return null;
@@ -45,7 +46,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
     ownerId: string | null | undefined,
     subEventId: string | null | undefined,
     assetOwnerUserId: string | null | undefined = this.activeAssetOwnerUserId()
-  ): Promise<AppTypes.ActivitySubEventResourceState | null> {
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     const ref = this.normalizeRef(ownerId, subEventId, assetOwnerUserId);
     if (!ref) {
       return null;
@@ -54,9 +55,9 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState | null | undefined,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     signal?: AbortSignal
-  ): Promise<AppTypes.ActivitySubEventResourceState | null> {
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     if (!state) {
       return null;
     }
@@ -73,7 +74,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   subEventResourceInfoCard(
-    card: AppTypes.SubEventResourceCard,
+    card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardOptions
   ): InfoCardData {
     return ActivityResourceBuilder.buildSubEventResourceInfoCard(card, options);
@@ -83,7 +84,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
     ownerId: string | null | undefined,
     subEventId: string | null | undefined,
     assetOwnerUserId: string | null | undefined
-  ): AppTypes.ActivitySubEventResourceStateRef | null {
+  ): AppDTOs.ActivitySubEventResourceStateRefDTO | null {
     const normalizedOwnerId = this.normalizeId(ownerId);
     const normalizedSubEventId = this.normalizeId(subEventId);
     const normalizedAssetOwnerUserId = this.normalizeId(assetOwnerUserId);

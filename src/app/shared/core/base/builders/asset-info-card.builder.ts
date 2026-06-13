@@ -6,6 +6,8 @@ import { AssetCardBuilder } from './asset-card.builder';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { AssetTicketConverter } from '../converters/asset-ticket.converter';
 
+import type * as AppDTOs from '../dto';
+import type * as AppConstants from '../../common/constants';
 type TicketPerson = Pick<UserDto, 'initials' | 'images'>;
 
 export class AssetInfoCardBuilder {
@@ -45,7 +47,7 @@ export class AssetInfoCardBuilder {
   }
 
   static buildOwnedAssetInfoCard(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: {
       groupLabel?: string | null;
       selectMode?: boolean;
@@ -91,7 +93,7 @@ export class AssetInfoCardBuilder {
   }
 
   static buildExploreAssetInfoCard(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: {
       groupLabel?: string | null;
       availabilityLabel: string;
@@ -166,7 +168,7 @@ export class AssetInfoCardBuilder {
   }
 
   static resolveTicketPayloadInitials(
-    payload: AppTypes.TicketScanPayload,
+    payload: AppDTOs.TicketScanPayloadDTO,
     user: TicketPerson | null
   ): string {
     if (user?.initials?.trim()) {
@@ -213,7 +215,7 @@ export class AssetInfoCardBuilder {
     return 'public';
   }
 
-  private static ticketVisibility(row: AppTypes.ActivityListRow): AppTypes.EventVisibility {
+  private static ticketVisibility(row: AppTypes.ActivityListRow): AppConstants.EventVisibility {
     const visibility = row.visibility;
     if (visibility === 'Friends only' || visibility === 'Invitation only') {
       return visibility;
@@ -236,20 +238,20 @@ export class AssetInfoCardBuilder {
     return AppUtils.initialsFromText(row.title);
   }
 
-  private static ownedAssetMetaLine(card: AppTypes.AssetCard, fallbackSubtitle: string): string {
+  private static ownedAssetMetaLine(card: AppDTOs.AssetCardDTO, fallbackSubtitle: string): string {
     const subtitle = card.subtitle.trim() || fallbackSubtitle.trim();
     const city = card.city.trim();
     return [AssetDefaultsBuilder.assetTypeLabel(card.type), subtitle, city].filter(Boolean).join(' · ');
   }
 
-  private static assetExploreVisibility(card: AppTypes.AssetCard): AppTypes.EventVisibility {
+  private static assetExploreVisibility(card: AppDTOs.AssetCardDTO): AppConstants.EventVisibility {
     if (card.visibility === 'Friends only' || card.visibility === 'Invitation only') {
       return card.visibility;
     }
     return 'Public';
   }
 
-  private static assetExploreVisibilityIcon(visibility: AppTypes.EventVisibility): string {
+  private static assetExploreVisibilityIcon(visibility: AppConstants.EventVisibility): string {
     if (visibility === 'Friends only') {
       return 'groups';
     }
@@ -260,7 +262,7 @@ export class AssetInfoCardBuilder {
   }
 
   private static assetExploreVisibilityTone(
-    visibility: AppTypes.EventVisibility
+    visibility: AppConstants.EventVisibility
   ): NonNullable<InfoCardData['leadingIcon']>['tone'] {
     if (visibility === 'Friends only') {
       return 'friends';
@@ -271,7 +273,7 @@ export class AssetInfoCardBuilder {
     return 'public';
   }
 
-  private static assetExploreOwnerAvatarTone(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']>['tone'] {
+  private static assetExploreOwnerAvatarTone(card: AppDTOs.AssetCardDTO): NonNullable<InfoCardData['mediaStart']>['tone'] {
     return `tone-${(AppUtils.hashText(`${card.ownerUserId ?? card.id}:${card.ownerName ?? card.title}`) % 8) + 1}` as NonNullable<InfoCardData['mediaStart']>['tone'];
   }
 
@@ -291,7 +293,7 @@ export class AssetInfoCardBuilder {
     return actions;
   }
 
-  private static assetExplorePriceLabel(card: AppTypes.AssetCard): string {
+  private static assetExplorePriceLabel(card: AppDTOs.AssetCardDTO): string {
     const amount = this.assetExplorePriceAmount(card);
     const currency = card.pricing?.currency || 'USD';
     if (amount <= 0) {
@@ -308,14 +310,14 @@ export class AssetInfoCardBuilder {
     }
   }
 
-  private static assetExplorePriceAmount(card: AppTypes.AssetCard): number {
+  private static assetExplorePriceAmount(card: AppDTOs.AssetCardDTO): number {
     if (!card.pricing?.enabled) {
       return 0;
     }
     return Math.max(0, Number(card.pricing.basePrice) || 0);
   }
 
-  private static assetExplorePolicyLabel(card: AppTypes.AssetCard): string {
+  private static assetExplorePolicyLabel(card: AppDTOs.AssetCardDTO): string {
     const count = (card.policies ?? []).length;
     if (count <= 0) {
       return 'No policy';
@@ -323,7 +325,7 @@ export class AssetInfoCardBuilder {
     return count === 1 ? '1 policy' : `${count} policies`;
   }
 
-  private static ownedAssetMediaStart(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaStart']> | null {
+  private static ownedAssetMediaStart(card: AppDTOs.AssetCardDTO): NonNullable<InfoCardData['mediaStart']> | null {
     if (!AssetCardBuilder.canOpenMap(card)) {
       return null;
     }
@@ -336,7 +338,7 @@ export class AssetInfoCardBuilder {
     };
   }
 
-  private static ownedAssetMenuActions(card: AppTypes.AssetCard): readonly InfoCardMenuAction[] {
+  private static ownedAssetMenuActions(card: AppDTOs.AssetCardDTO): readonly InfoCardMenuAction[] {
     const configuredActions = (card.menuActions ?? [])
       .map(action => `${action ?? ''}`.trim())
       .filter(action => action.length > 0);
@@ -346,7 +348,7 @@ export class AssetInfoCardBuilder {
     return ['shareAsset', 'editAsset', 'delete'];
   }
 
-  private static ownedAssetMediaEnd(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']> | null {
+  private static ownedAssetMediaEnd(card: AppDTOs.AssetCardDTO): NonNullable<InfoCardData['mediaEnd']> | null {
     const statusLabel = this.assetStatusBadgeLabel(card);
     if (statusLabel) {
       return {
@@ -370,7 +372,7 @@ export class AssetInfoCardBuilder {
     };
   }
 
-  private static assetStatusCode(card: AppTypes.AssetCard): string {
+  private static assetStatusCode(card: AppDTOs.AssetCardDTO): string {
     const status = `${card.status ?? ''}`.trim();
     switch (status) {
       case 'active':
@@ -392,7 +394,7 @@ export class AssetInfoCardBuilder {
     }
   }
 
-  private static assetStatusBadgeLabel(card: AppTypes.AssetCard): string | null {
+  private static assetStatusBadgeLabel(card: AppDTOs.AssetCardDTO): string | null {
     switch (this.assetStatusCode(card)) {
       case 'UR':
         return 'Under Review';
@@ -409,7 +411,7 @@ export class AssetInfoCardBuilder {
     }
   }
 
-  private static assetStatusSurfaceTone(card: AppTypes.AssetCard): InfoCardData['surfaceTone'] {
+  private static assetStatusSurfaceTone(card: AppDTOs.AssetCardDTO): InfoCardData['surfaceTone'] {
     switch (this.assetStatusCode(card)) {
       case 'UR':
         return 'review';
@@ -425,7 +427,7 @@ export class AssetInfoCardBuilder {
     }
   }
 
-  private static assetStatusOverlayTone(card: AppTypes.AssetCard): NonNullable<InfoCardData['mediaEnd']>['tone'] {
+  private static assetStatusOverlayTone(card: AppDTOs.AssetCardDTO): NonNullable<InfoCardData['mediaEnd']>['tone'] {
     switch (this.assetStatusCode(card)) {
       case 'UR':
         return 'review';

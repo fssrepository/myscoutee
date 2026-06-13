@@ -5,10 +5,12 @@ import type { ActivityListRow } from '../models';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
-  ActivityMemberStatus,
   ActivityMembersSummary,
-  ActivityPendingSource
 } from '../../contracts/activity.interface';
+import type {
+  ActivityMemberStatus,
+  ActivityPendingSource
+} from '../../common/constants';
 
 export class ActivityMembersBuilder {
   static activityCapacityTotal(
