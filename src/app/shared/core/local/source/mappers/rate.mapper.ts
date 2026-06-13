@@ -1,8 +1,8 @@
-import type { UserRateRecord } from '../../contracts/activity.interface';
-import type { RateRecord } from '../../contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../base/dto';
+import type { UserRateRecord } from '../entity/rate.entity';
 
-export class UserRatesBuilder {
-  static toActivityRateRecord(ownerUserId: string, item: RateRecord): UserRateRecord {
+export class LocalUserRatesMapper {
+  static toUserRateRecord(ownerUserId: string, item: ActivityRateDTO): UserRateRecord {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
     const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
@@ -51,7 +51,7 @@ export class UserRatesBuilder {
     };
   }
 
-  static toRateRecord(record: UserRateRecord): RateRecord | null {
+  static toActivityRateDTO(record: UserRateRecord): ActivityRateDTO | null {
     const direction = record.displayDirection;
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!direction || !ownerUserId) {
@@ -146,7 +146,7 @@ export class UserRatesBuilder {
 
   private static resolvePairSocialContext(
     record: UserRateRecord
-  ): RateRecord['socialContext'] {
+  ): ActivityRateDTO['socialContext'] {
     return record.socialContext;
   }
 

@@ -1,13 +1,66 @@
-import type {
-  UserGameFilterPreferencesDto,
-  UserRateOutboxRecord,
-  UserRateRecord
-} from '../../../contracts/activity.interface';
+import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 export const USER_RATES_TABLE_NAME = APP_INDEXED_DB_KEYS.userRates;
 export const USER_RATES_OUTBOX_TABLE_NAME = APP_INDEXED_DB_KEYS.userRatesOutbox;
 export const USER_FILTER_PREFERENCES_TABLE_NAME = APP_INDEXED_DB_KEYS.userFilterPreferences;
+
+export interface UserRateRecord {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  rate: number;
+  mode: 'single' | 'pair';
+  createdAtIso: string;
+  updatedAtIso: string;
+  ownerUserId?: string;
+  displayId?: string;
+  displayDirection?: 'given' | 'received' | 'mutual' | 'met';
+  socialContext?: 'separated-friends' | 'friends-in-common';
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven?: number;
+  scoreReceived?: number;
+  eventName?: string;
+  happenedAtIso?: string;
+  distanceMetersExact?: number;
+}
+
+export type ActivityRateRecordSort = 'happenedAt' | 'distance' | 'relevance';
+
+export interface ActivityRateRecordQuery {
+  ownerUserId: string;
+  mode: 'single' | 'pair';
+  displayDirection: 'given' | 'received' | 'mutual' | 'met';
+  socialBadgeEnabled?: boolean;
+  sort: ActivityRateRecordSort;
+  sortDirection?: 'asc' | 'desc';
+  cursor?: string | null;
+  offset?: number;
+  limit?: number;
+  rangeStartIso?: string;
+  rangeEndIso?: string;
+}
+
+export interface ActivityRateRecordQueryResult {
+  records: UserRateRecord[];
+  total: number;
+  nextCursor?: string | null;
+}
+
+export interface UserRateOutboxRecord {
+  id: string;
+  rateId: string;
+  action: 'upsert';
+  payload: UserRateRecord;
+  status: 'pending' | 'synced' | 'failed';
+  retryCount: number;
+  queuedAtIso: string;
+  updatedAtIso: string;
+  lastTriedAtIso: string | null;
+  syncedAtIso: string | null;
+  lastError: string | null;
+}
 
 export interface UserRatesRecordCollection {
   byId: Record<string, UserRateRecord>;

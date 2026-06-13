@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
-import { type LoadStatus } from '../context';
-import { AppContext } from '../context';
+import { type LoadStatus } from '../../../ui/context';
+import { AppContext } from '../../../ui/context';
 import type {
   UserGameCardsDto,
   UserGameCardsQueryRequest,

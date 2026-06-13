@@ -1,7 +1,7 @@
 import { IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
 
 import { SeedIdeaPostsBuilder } from '../builders';

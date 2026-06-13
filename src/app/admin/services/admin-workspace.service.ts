@@ -1,23 +1,8 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 
-import {
-  AppContext,
-  AdminWorkspaceDataService,
-  HelpCenterService,
-  SessionService,
-  UsersService,
-  UserRecordsBuilder,
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  type AdminBootstrapProcessState,
-  type AdminDashboardDto,
-  type AdminFeedbackDto,
-  type AdminModerationUserPatch,
-  type AdminReportedUserDto,
-  type AdminUserDto,
-  type UserDto,
-  type UserSelectorListItemDto
-} from '../../shared/core';
+import { AppContext } from '../../shared/ui';
+import { AdminWorkspaceDataService, HelpCenterService, SessionService, UsersService, UserRecordsBuilder, USER_BY_ID_LOAD_CONTEXT_KEY, type AdminBootstrapProcessState, type AdminDashboardDto, type AdminFeedbackDto, type AdminModerationUserPatch, type AdminReportedUserDto, type AdminUserDto, type UserDto, type UserSelectorListItemDto } from '../../shared/core';
 import { APP_STORAGE_KEYS } from '../../shared/core/common/storage-scope';
 import { AdminShellService } from './admin-shell.service';
 

@@ -1,9 +1,9 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
-import type { RateRecord } from '../../contracts/activity.interface';
+import type { ActivityRateDTO } from '../dto';
 import type { UserDto } from '../../contracts/user.interface';
-import { formatActivityMonthDayLabel, type ImageCardData, type ImageCardPerson, type PairCardSlot } from '../../../ui';
+import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
 
 interface BuildActivityRateRowsOptions {
   activeUserId: string;
@@ -11,12 +11,20 @@ interface BuildActivityRateRowsOptions {
   filter: ContractTypes.RateFilterKey;
   secondaryFilter: ContractTypes.ActivitiesSecondaryFilter;
   view: ContractTypes.ActivitiesView;
-  directionOverrides?: Partial<Record<string, RateRecord['direction']>>;
+  directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>;
   preserveOrder?: boolean;
 }
 
+function formatActivityMonthDayLabel(isoValue: string | null | undefined): string {
+  const timestamp = isoValue ? Date.parse(isoValue) : Number.NaN;
+  if (!Number.isFinite(timestamp)) {
+    return 'Activity date';
+  }
+  return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(timestamp));
+}
+
 export function buildActivityRateRows(
-  items: readonly RateRecord[],
+  items: readonly ActivityRateDTO[],
   options: BuildActivityRateRowsOptions
 ): AppTypes.ActivityListRow[] {
   const rows = items
@@ -45,7 +53,7 @@ export function buildActivityRateRows(
 }
 
 function toActivityRateRow(
-  item: RateRecord,
+  item: ActivityRateDTO,
   options: BuildActivityRateRowsOptions
 ): AppTypes.ActivityListRow {
   const direction = displayedRateDirection(item, options.directionOverrides);
@@ -71,10 +79,10 @@ function toActivityRateRow(
 }
 
 function buildActivityRateImageCard(
-  item: RateRecord,
+  item: ActivityRateDTO,
   primaryUser: UserDto | null,
   options: BuildActivityRateRowsOptions,
-  displayedDirection: RateRecord['direction'],
+  displayedDirection: ActivityRateDTO['direction'],
   distanceMetersExact: number
 ): ImageCardData {
   return {
@@ -110,7 +118,7 @@ function buildActivityRateImageCard(
 }
 
 function buildSingleRateImageUrls(
-  item: RateRecord,
+  item: ActivityRateDTO,
   user: UserDto | null,
   activeUserId: string
 ): string[] {
@@ -121,7 +129,7 @@ function buildSingleRateImageUrls(
 }
 
 function buildPairRateDisplaySlots(
-  item: RateRecord,
+  item: ActivityRateDTO,
   options: BuildActivityRateRowsOptions
 ): PairCardSlot[] {
   return ([0, 1] as const).map(index => {
@@ -145,7 +153,7 @@ function buildPairRateDisplaySlots(
 }
 
 function buildPairSlotSlides(
-  item: RateRecord,
+  item: ActivityRateDTO,
   slot: 'woman' | 'man',
   user: UserDto
 ): PairCardSlot['slides'] {
@@ -159,7 +167,7 @@ function buildPairSlotSlides(
 }
 
 function resolvePrimaryRateUser(
-  item: RateRecord,
+  item: ActivityRateDTO,
   users: readonly UserDto[],
   activeUserId: string
 ): UserDto | null {
@@ -179,7 +187,7 @@ function resolvePairSlotUserById(
   return users.find(user => user.id === normalizedUserId) ?? null;
 }
 
-function resolvePairSlotLabel(item: RateRecord, index: 0 | 1): string {
+function resolvePairSlotLabel(item: ActivityRateDTO, index: 0 | 1): string {
   if (item.socialContext === 'friends-in-common') {
     return index === 0 ? 'Person' : 'Common friend';
   }
@@ -201,7 +209,7 @@ function toImageCardPerson(user: UserDto): ImageCardPerson {
 }
 
 function buildImageCardPairUsers(
-  item: RateRecord,
+  item: ActivityRateDTO,
   users: readonly UserDto[]
 ): ImageCardPerson[] {
   return [item.userId, item.secondaryUserId]
@@ -223,22 +231,22 @@ function buildDisplayImageUrls(images: readonly string[] | undefined, count: num
 }
 
 function matchesRateFilter(
-  item: RateRecord,
+  item: ActivityRateDTO,
   filter: ContractTypes.RateFilterKey,
-  directionOverrides?: Partial<Record<string, RateRecord['direction']>>
+  directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>
 ): boolean {
-  const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', RateRecord['direction']];
+  const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
   return item.mode === modeKey && displayedRateDirection(item, directionOverrides) === directionKey;
 }
 
 function displayedRateDirection(
-  item: RateRecord,
-  directionOverrides?: Partial<Record<string, RateRecord['direction']>>
-): RateRecord['direction'] {
+  item: ActivityRateDTO,
+  directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>
+): ActivityRateDTO['direction'] {
   return directionOverrides?.[item.id] ?? item.direction;
 }
 
-function rateOwnScore(item: RateRecord): number {
+function rateOwnScore(item: ActivityRateDTO): number {
   if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
     return normalizeRateScore(item.scoreGiven);
   }
@@ -249,7 +257,7 @@ function normalizeRateScore(value: number): number {
   return Math.min(10, Math.max(1, Math.round(value)));
 }
 
-function exactDistanceMeters(item: RateRecord): number {
+function exactDistanceMeters(item: ActivityRateDTO): number {
   if (Number.isFinite(item.distanceMetersExact)) {
     return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
   }

@@ -1,4 +1,5 @@
 import { Component, HostListener, OnDestroy, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
+import { AppPopupContext } from '../../../shared/ui';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,37 +9,11 @@ import { tap } from 'rxjs/operators';
 
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent,
-  AppMenuTriggerComponent,
-  ProgressIndicatorComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListLoadPage
+  AppMenuComponent, AppMenuTriggerComponent, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type SmartListConfig, type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import {
-  AppContext,
-  AppPopupContext,
-  ContactsService as ContactsDataService,
-  ExplanationGuideService,
-  UsersService,
-  type ActivityMemberEntry,
-  type ContactFormValue,
-  type ContactListFilters,
-  type ContactListItem,
-  type ContactMethodDraft,
-  type ContactMethodItem,
-  type ContactMethodOption,
-  type ContactMethodType,
-  type StoredContact,
-  type UserDto
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { ContactsService as ContactsDataService, ExplanationGuideService, UsersService, type ActivityMemberEntry, type ContactFormValue, type ContactListFilters, type ContactListItem, type ContactMethodDraft, type ContactMethodItem, type ContactMethodOption, type ContactMethodType, type StoredContact, type UserDto } from '../../../shared/core';
 import { NavigatorService } from '../../navigator.service';
 
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [

@@ -1,8 +1,8 @@
 import { Injectable, signal } from '@angular/core';
-import type { UserSelectorListItemDto } from '../../contracts/user.interface';
-import type { ActivityMemberOwnerType, AssetFilterType } from '../../common/constants';
-import type { ActivityMemberEntry } from '../../contracts/activity.interface';
-import type { ActivitiesNavigationRequest } from '../models/activities-ui.model';
+import type { UserSelectorListItemDto } from '../../core/contracts/user.interface';
+import type { ActivityMemberOwnerType, AssetFilterType } from '../../core/common/constants';
+import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
+import type { ActivitiesNavigationRequest } from '../../core/base/models/activities-ui.model';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;

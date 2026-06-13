@@ -10,6 +10,7 @@ import {
   effect,
   inject
 } from '@angular/core';
+import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
@@ -17,28 +18,10 @@ import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent,
-  BasketComponent,
-  LazyBgImageDirective,
-  ProgressIndicatorComponent,
-  SmartListComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuTrigger,
-  type BasketChip,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListItemTemplateContext,
-  type SmartListLoaders,
-  type SmartListStateChange
+  AppMenuComponent, BasketComponent, LazyBgImageDirective, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuTrigger, type BasketChip, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemTemplateContext, type SmartListLoaders, type SmartListStateChange
 } from '../../../shared/ui';
 import {
-  ActivityInviteCandidatesService,
-  ActivityMembersService,
-  AppContext,
-  AppPopupContext
-} from '../../../shared/core';
+  ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
 import { NavigatorService } from '../../../navigator';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 

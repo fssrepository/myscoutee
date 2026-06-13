@@ -349,26 +349,6 @@ export interface IActivityInviteCandidatesService {
   queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]>;
 }
 
-export type RateRecordMode = 'individual' | 'pair';
-export type RateRecordDirection = 'given' | 'received' | 'mutual' | 'met';
-export type RateRecordSocialContext = 'separated-friends' | 'friends-in-common';
-
-export interface RateRecord {
-  id: string;
-  userId: string;
-  secondaryUserId?: string;
-  mode: RateRecordMode;
-  direction: RateRecordDirection;
-  socialContext?: RateRecordSocialContext;
-  bridgeUserId?: string;
-  bridgeCount?: number;
-  scoreGiven: number;
-  scoreReceived: number;
-  eventName: string;
-  happenedAt: string;
-  distanceMetersExact?: number;
-}
-
 export interface UserGameCardsStackSnapshot {
   filterCount: number | null;
   cardUserIds: string[];
@@ -432,56 +412,6 @@ export interface UserGameCardsDto {
 
 export interface UserGameCardsQueryResponse {
   cards: UserGameCardsDto | null;
-}
-
-export interface UserRateRecord {
-  id: string;
-  fromUserId: string;
-  toUserId: string;
-  rate: number;
-  mode: 'single' | 'pair';
-  createdAtIso: string;
-  updatedAtIso: string;
-  ownerUserId?: string;
-  displayId?: string;
-  displayDirection?: 'given' | 'received' | 'mutual' | 'met';
-  socialContext?: 'separated-friends' | 'friends-in-common';
-  bridgeUserId?: string;
-  bridgeCount?: number;
-  scoreGiven?: number;
-  scoreReceived?: number;
-  eventName?: string;
-  happenedAtIso?: string;
-  distanceMetersExact?: number;
-}
-
-export type ActivityRateRecordSort = 'happenedAt' | 'distance' | 'relevance';
-
-export interface ActivityRateRecordQuery {
-  ownerUserId: string;
-  mode: 'single' | 'pair';
-  displayDirection: 'given' | 'received' | 'mutual' | 'met';
-  socialBadgeEnabled?: boolean;
-  sort: ActivityRateRecordSort;
-  sortDirection?: 'asc' | 'desc';
-  cursor?: string | null;
-  offset?: number;
-  limit?: number;
-  rangeStartIso?: string;
-  rangeEndIso?: string;
-}
-
-export interface ActivityRateRecordQueryResult {
-  records: UserRateRecord[];
-  total: number;
-  nextCursor?: string | null;
-}
-
-export interface ActivityRatePageResult {
-  items: RateRecord[];
-  total: number;
-  nextCursor?: string | null;
-  users?: UserDto[];
 }
 
 export interface EventCheckoutAssetSelection {
@@ -602,20 +532,6 @@ export interface EventFeedbackNoteRequestDto {
 export interface EventFeedbackToggleRequestDto {
   userId: string;
   eventId: string;
-}
-
-export interface UserRateOutboxRecord {
-  id: string;
-  rateId: string;
-  action: 'upsert';
-  payload: UserRateRecord;
-  status: 'pending' | 'synced' | 'failed';
-  retryCount: number;
-  queuedAtIso: string;
-  updatedAtIso: string;
-  lastTriedAtIso: string | null;
-  syncedAtIso: string | null;
-  lastError: string | null;
 }
 
 export interface UserGameDataService {

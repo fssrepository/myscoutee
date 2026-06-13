@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 
 import { HttpUsersService } from '../../http';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import { UsersService } from './users.service';

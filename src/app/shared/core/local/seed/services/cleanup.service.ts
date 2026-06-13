@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 
 @Injectable({
   providedIn: 'root'

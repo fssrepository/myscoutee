@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
-import { type LoadStatus } from '../context';
-import { AppContext, type ActivityCounters } from '../context';
+import { type LoadStatus } from '../../../ui/context';
+import { AppContext, type ActivityCounters } from '../../../ui/context';
 import { LocalUsersService } from '../../local';
 import { HttpUsersService } from '../../http';
 import type { BootstrapProcessState } from './bootstrap.service';

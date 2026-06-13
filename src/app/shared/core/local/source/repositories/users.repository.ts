@@ -7,7 +7,7 @@ import { computed, Injectable, inject } from '@angular/core';
 import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
 import type { UserSelectorListItemDto, UserSelectorRole, UserDto } from '../../../contracts/user.interface';
 
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 import { UserProfileStateBuilder, UserRecordsBuilder } from '../../../base/builders';
 
 

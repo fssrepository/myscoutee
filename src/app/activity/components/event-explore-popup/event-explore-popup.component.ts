@@ -8,6 +8,7 @@ import {
   effect,
   inject
 } from '@angular/core';
+import { AppContext, AppPopupContext, type ActivityMembersSyncState } from '../../../shared/ui';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
@@ -19,19 +20,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  ActivityMembersBuilder,
-  ActivityMembersService,
-  ActivitiesService,
-  AppContext,
-  AppPopupContext,
-  EventExploreBuilder,
-  EventsService,
-  type ActivityMembersSyncState,
-  GameService,
-  ShareTokensService,
-  UsersService,
-  type UserDto
-} from '../../../shared/core';
+  ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventExploreBuilder, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   AppMenuDispatcher,

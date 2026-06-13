@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,20 +8,14 @@ import { of } from 'rxjs';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import {
-  EventSubeventLeaderboardFifaMatch,
-  EventSubeventLeaderboardFifaRow,
-  EventSubeventLeaderboardGroup,
-  EventSubeventLeaderboardMember,
-  EventSubeventLeaderboardPopupComponent,
-  EventSubeventLeaderboardScoreEntry,
-  EventSubeventLeaderboardScoreRow
+  EventSubeventLeaderboardFifaMatch, EventSubeventLeaderboardFifaRow, EventSubeventLeaderboardGroup, EventSubeventLeaderboardMember, EventSubeventLeaderboardPopupComponent, EventSubeventLeaderboardScoreEntry, EventSubeventLeaderboardScoreRow
 } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsService } from '../../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {

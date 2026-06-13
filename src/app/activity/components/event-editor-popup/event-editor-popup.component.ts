@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 import { MatNativeDateModule } from '@angular/material/core';
+import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { Subscription } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
@@ -18,15 +19,7 @@ import { EventEditorConverter } from '../../../shared/core/base/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  ActivitiesService,
-  ActivityMembersService,
-  AppContext,
-  AppPopupContext,
-  EventEditorDataService,
-  ExplanationGuideService,
-  MediaService,
-  RouteIntervalSchedulerService
-} from '../../../shared/core';
+  ActivitiesService, ActivityMembersService, EventEditorDataService, ExplanationGuideService, MediaService, RouteIntervalSchedulerService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,

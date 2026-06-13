@@ -2,7 +2,7 @@ import { CONTACTS_TABLE_NAME } from '../../source/entity/profile.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../base/models';
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 import type { UserDto } from '../../../contracts/user.interface';
 
 import type * as ContactContracts from '../../../contracts/contact.interface';

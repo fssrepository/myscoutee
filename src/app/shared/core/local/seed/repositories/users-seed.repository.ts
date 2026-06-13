@@ -5,7 +5,7 @@ import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UsersRecordCollection } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 import type { UserDto } from '../../../contracts/user.interface';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 

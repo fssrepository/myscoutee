@@ -1,12 +1,7 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 
-import {
-  AppPopupContext,
-  LandingContentService,
-  PrivacyPolicyService,
-  UsersService,
-  type UserLocationEligibilityResponseDto
-} from '../../../shared/core';
+import { AppPopupContext } from '../../../shared/ui';
+import { LandingContentService, PrivacyPolicyService, UsersService, type UserLocationEligibilityResponseDto } from '../../../shared/core';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,

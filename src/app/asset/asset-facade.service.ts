@@ -1,15 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../shared/core/base/models';
-import {
-  AppContext,
-  AssetDefaultsBuilder,
-  AssetCardBuilder,
-  AssetInfoCardBuilder,
-  AssetTicketConverter,
-  UsersService,
-  type UserDto
-} from '../shared/core';
+import { AppContext } from '../shared/ui';
+import { AssetDefaultsBuilder, AssetCardBuilder, AssetInfoCardBuilder, AssetTicketConverter, UsersService, type UserDto } from '../shared/core';
 import type { InfoCardData } from '../shared/ui';
 
 import type * as AppDTOs from '../shared/core/base/dto';

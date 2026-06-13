@@ -4,11 +4,10 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
+import { AppPopupContext } from '../../../shared/ui';
 import { NavigatorComponent } from '../../../navigator';
 import {
-  SessionService,
-  AppPopupContext
-} from '../../../shared/core';
+  SessionService } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';

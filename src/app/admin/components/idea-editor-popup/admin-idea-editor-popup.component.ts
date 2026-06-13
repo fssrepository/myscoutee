@@ -5,7 +5,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext, IdeaPostsService, type IdeaArticleDetailDto, type IdeaPostDto, type IdeaPostSaveRequestDto } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { IdeaPostsService, type IdeaArticleDetailDto, type IdeaPostDto, type IdeaPostSaveRequestDto } from '../../../shared/core';
 import {
   INFO_CARD_AVAILABLE_ACTIONS,
   InfoCardComponent,

@@ -18,12 +18,13 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type {
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
-  RateRecord
+  ActivityMembersSummary
 } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../shared/core/base/dto';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivitiesEventDisplaySync } from '../../../shared/core';
+import { AppContext, AppPopupContext, type ActivityCounterKey, type ActivityCounters, type ActivityMembersSyncState } from '../../../shared/ui';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
@@ -31,29 +32,7 @@ import type { ActivitiesFeedFilters, ActivitiesEventSyncPayload } from '../../..
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuComponent,
-  AppMenuDispatcher,
-  type AppMenuBranch,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel,
-  type AppMenuPalette,
-  type AppMenuTrigger,
-  EventCheckoutPopupComponent,
-  I18nPipe,
-  type CardProfileViewData,
-  type InfoCardData,
-  SmartListComponent,
-  type InfoCardMenuActionEvent,
-  type InfoCardResolvedMenuAction,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListLoadContext,
-  type SmartListLoadPage,
-  type SmartListItemSelectEvent,
-  type SmartListPresentation,
-  type SmartListStateChange
+  AppMenuComponent, AppMenuDispatcher, type AppMenuBranch, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type InfoCardData, SmartListComponent, type InfoCardMenuActionEvent, type InfoCardResolvedMenuAction, type ListQuery, type PageResult, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
@@ -63,37 +42,16 @@ import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.co
 import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
-  ActivitiesChatTemplateComponent,
-  ActivitiesChatsController
+  ActivitiesChatTemplateComponent, ActivitiesChatsController
 } from './templates/chat/activities-chat-template.component';
 import {
-  ActivitiesEventTemplateComponent,
-  ActivitiesEventsController
+  ActivitiesEventTemplateComponent, ActivitiesEventsController
 } from './templates/event/activities-event-template.component';
 import {
-  ActivitiesRateTemplateComponent,
-  ActivitiesRatesController,
-  type ActivitiesRateTemplateContext
+  ActivitiesRateTemplateComponent, ActivitiesRatesController, type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import {
-  ActivityEventBuilder,
-  ActivityMembersBuilder,
-  ActivitiesService,
-  ActivityMembersService,
-  ActivityResourcesService,
-  AppContext,
-  AppPopupContext,
-  ChatsService,
-  EventsService,
-  ExplanationGuideService,
-  RatesService,
-  ShareTokensService,
-  toActivityChatRow,
-  UsersService,
-  type ActivityCounterKey,
-  type ActivityCounters,
-  type ActivityMembersSyncState
-} from '../../../shared/core';
+  ActivityEventBuilder, ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, ExplanationGuideService, RatesService, ShareTokensService, toActivityChatRow, UsersService } from '../../../shared/core';
 import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../../shared/core/contracts/activity.interface';
 import { I18nService } from '../../../shared/core';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
@@ -244,7 +202,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected eventItems: ActivityEventRecord[] = [];
   protected hostingItems: ActivityEventRecord[] = [];
   protected invitationItems: ActivityEventRecord[] = [];
-  protected rateItems: RateRecord[] = [];
+  protected rateItems: ActivityRateDTO[] = [];
 
   protected get chatBadge(): number { return this.activityCounterValue('chat'); }
   protected get eventsBadge(): number { return this.activityCounterValue('events'); }
@@ -477,8 +435,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityRateBlinkUntilByRowId: Record<string, number>                          = {};
   protected readonly activityRateBlinkTimeoutByRowId: Record<string, ReturnType<typeof setTimeout> | null> = {};
   protected readonly activityRateDraftById: Record<string, number>                                  = {};
-  protected readonly activityRateDirectionOverrideById: Partial<Record<string, RateRecord['direction']>> = {};
-  protected readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, RateRecord['direction']>> = {};
+  protected readonly activityRateDirectionOverrideById: Partial<Record<string, ActivityRateDTO['direction']>> = {};
+  protected readonly pendingActivityRateDirectionOverrideById: Partial<Record<string, ActivityRateDTO['direction']>> = {};
 
   protected lastRateIndicatorPulseRowId: string | null = null;
 

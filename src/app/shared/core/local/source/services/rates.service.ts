@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../contracts';
-import type { RateRecord } from '../../../contracts/activity.interface';
-import type { ActivityRatePageResult, ActivityRateRecordQuery } from '../../../contracts/activity.interface';
+import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../../base/dto';
+import type { ActivityRateRecordQuery } from '../entity/rate.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalRatesRepository } from '../repositories/rates.repository';
@@ -15,11 +15,11 @@ export class LocalRatesService extends LocalRouteDelayService {
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly ratesRepository = inject(LocalRatesRepository);
 
-  peekRateItemsByUser(userId: string): RateRecord[] {
+  peekRateItemsByUser(userId: string): ActivityRateDTO[] {
     return this.ratesRepository.peekRateItemsByUserId(userId);
   }
 
-  async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
+  async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {
     await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE);
     return this.ratesRepository.queryRateItemsByUserId(userId);
   }
@@ -28,7 +28,7 @@ export class LocalRatesService extends LocalRouteDelayService {
     userId: string,
     request: ActivitiesPageRequest,
     signal?: AbortSignal
-  ): Promise<ActivityRatePageResult> {
+  ): Promise<ActivityRatePageResultDTO> {
     await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE, signal);
     const ownerUserId = this.resolveDemoActivityUserId(userId);
     const page = await this.ratesRepository.queryActivityRateItemsPage(

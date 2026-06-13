@@ -1,17 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import { type ActivityCounterKey } from '../../../shared/ui';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import {
-  AppContext,
-  HelpCenterService,
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  USER_PROFILE_SAVE_CONTEXT_KEY,
-  type ActivityCounterKey,
-  type UserDto
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { HelpCenterService, USER_BY_ID_LOAD_CONTEXT_KEY, USER_PROFILE_SAVE_CONTEXT_KEY, type UserDto } from '../../../shared/core';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 

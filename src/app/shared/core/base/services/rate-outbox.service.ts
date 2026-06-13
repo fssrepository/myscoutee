@@ -1,12 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
-import type {
-  UserGameMode,
-  UserRateOutboxRecord,
-  UserRateRecord,
-  UserRatesSyncResult
-} from '../../contracts/activity.interface';
-import type { RateRecord } from '../../contracts/activity.interface';
+import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
+import type { ActivityRateDTO } from '../dto';
+import type { UserRateOutboxRecord, UserRateRecord } from '../../local/source/entity/rate.entity';
 import { HttpRatesService } from '../../http/services/rates.service';
 import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';
 import { RateOutboxRepository } from '../repositories/rate-outbox.repository';
@@ -58,9 +54,9 @@ export class RateOutboxService extends BaseRouteModeService {
 
   enqueueActivityRateOutbox(
     ownerUserId: string,
-    item: RateRecord,
+    item: ActivityRateDTO,
     rating: number,
-    direction?: RateRecord['direction'] | null
+    direction?: ActivityRateDTO['direction'] | null
   ): void {
     this.rateOutboxRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
   }
@@ -89,7 +85,7 @@ export class RateOutboxService extends BaseRouteModeService {
     this.rateOutboxRepository.applyUserRatesSyncResult(batch, result);
   }
 
-  mergePendingOutboxRateItems(userId: string, items: readonly RateRecord[]): RateRecord[] {
+  mergePendingOutboxRateItems(userId: string, items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
     return this.rateOutboxRepository.mergePendingOutboxRateItems(userId, items);
   }
 

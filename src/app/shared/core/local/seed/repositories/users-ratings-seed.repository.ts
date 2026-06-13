@@ -4,12 +4,13 @@ import type { UserRatesRecordCollection } from '../../source/entity/rate.entity'
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 import type { UserDto } from '../../../contracts/user.interface';
-import type { UserRateRecord } from '../../../contracts/activity.interface';
+import type { UserRateRecord } from '../../source/entity/rate.entity';
 
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { SeedUserBuilder, SeedUserRatesBuilder } from '../builders';
+import { LocalUserRatesMapper } from '../../source/mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -57,7 +58,7 @@ export class SeedUsersRatingsRepository {
           : SeedUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
         userCoverageRatio: SeedUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
       })
-        .map(item => SeedUserRatesBuilder.toActivityRateRecord(ownerUserId, item));
+        .map(item => LocalUserRatesMapper.toUserRateRecord(ownerUserId, item));
       if (records.length + ownerRecords.length > remainingBootstrapSlots) {
         break;
       }

@@ -1,12 +1,16 @@
-import { USER_RATES_OUTBOX_TABLE_NAME } from '../../local/source/entity/rate.entity';
+import {
+  USER_RATES_OUTBOX_TABLE_NAME,
+  type UserRateOutboxRecord,
+  type UserRateRecord
+} from '../../local/source/entity/rate.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import { UserRatesBuilder } from '../builders/user-rates.builder';
-import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../db';
+import { LocalUserRatesMapper } from '../../local/source/mappers/rate.mapper';
+import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../../local/common/db';
 import { resolveRouteConfig } from '../config';
-import type { UserGameMode, UserRateOutboxRecord, UserRateRecord, UserRatesSyncResult } from '../../contracts/activity.interface';
-import type { RateRecord } from '../../contracts/activity.interface';
+import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
+import type { ActivityRateDTO } from '../dto';
 
 import { SessionService } from '../services/session.service';
 
@@ -66,7 +70,7 @@ export class RateOutboxRepository {
       if (!payload || outboxRecord.status !== 'pending') {
         continue;
       }
-      const item = this.toRateRecord(payload);
+      const item = this.toActivityRateDTO(payload);
       if (!this.shouldExcludePendingItemFromHome(item)) {
         continue;
       }
@@ -108,7 +112,7 @@ export class RateOutboxRepository {
       ) {
         continue;
       }
-      const item = this.toRateRecord(payload);
+      const item = this.toActivityRateDTO(payload);
       if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
         continue;
       }
@@ -273,9 +277,9 @@ export class RateOutboxRepository {
 
   enqueueActivityRateOutbox(
     ownerUserId: string,
-    item: RateRecord,
+    item: ActivityRateDTO,
     rating: number,
-    direction?: RateRecord['direction'] | null
+    direction?: ActivityRateDTO['direction'] | null
   ): void {
     const nextRecord = this.buildNormalizedActivityRateRecord(ownerUserId, item, rating, direction);
     if (!nextRecord) {
@@ -310,7 +314,7 @@ export class RateOutboxRepository {
     const normalizedBridgeCount = normalizedSocialContext === 'friends-in-common' && Number.isFinite(Number(bridgeCount))
       ? Math.max(1, Math.trunc(Number(bridgeCount)))
       : undefined;
-    return UserRatesBuilder.toActivityRateRecord(normalizedRaterId, {
+    return LocalUserRatesMapper.toUserRateRecord(normalizedRaterId, {
       id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}`,
       userId: normalizedRatedUserId,
       mode: mode === 'pair' ? 'pair' : 'individual',
@@ -328,9 +332,9 @@ export class RateOutboxRepository {
 
   buildNormalizedActivityRateRecord(
     ownerUserId: string,
-    item: RateRecord,
+    item: ActivityRateDTO,
     rating: number,
-    direction?: RateRecord['direction'] | null
+    direction?: ActivityRateDTO['direction'] | null
   ): UserRateRecord | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedUserId = item.userId.trim();
@@ -341,7 +345,7 @@ export class RateOutboxRepository {
     if (!nextDirection) {
       return null;
     }
-    return UserRatesBuilder.toActivityRateRecord(normalizedOwnerUserId, {
+    return LocalUserRatesMapper.toUserRateRecord(normalizedOwnerUserId, {
       ...item,
       userId: normalizedUserId,
       secondaryUserId: item.secondaryUserId?.trim() || undefined,
@@ -385,7 +389,7 @@ export class RateOutboxRepository {
     }
     const [fromUserId, toUserId] = [normalizedFirstUserId, normalizedSecondUserId].sort((left, right) => left.localeCompare(right));
     const nowIso = new Date().toISOString();
-    return UserRatesBuilder.toActivityRateRecord(normalizedOwnerUserId, {
+    return LocalUserRatesMapper.toUserRateRecord(normalizedOwnerUserId, {
       id: `game-card-pair:${normalizedOwnerUserId}:${fromUserId}:${toUserId}`,
       userId: fromUserId,
       secondaryUserId: toUserId,
@@ -432,12 +436,12 @@ export class RateOutboxRepository {
     void this.memoryDb.flushToIndexedDb();
   }
 
-  mergePendingOutboxRateItems(userId: string, items: readonly RateRecord[]): RateRecord[] {
+  mergePendingOutboxRateItems(userId: string, items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
-    const itemsById = new Map<string, RateRecord>();
+    const itemsById = new Map<string, ActivityRateDTO>();
     for (const item of items) {
       const normalizedId = item.id.trim();
       if (!normalizedId) {
@@ -448,7 +452,7 @@ export class RateOutboxRepository {
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     for (const id of outboxTable.ids) {
       const record = outboxTable.byId[id];
-      const item = record?.payload ? this.toRateRecord(record.payload) : null;
+      const item = record?.payload ? this.toActivityRateDTO(record.payload) : null;
       if (!item?.id?.trim()) {
         continue;
       }
@@ -458,11 +462,11 @@ export class RateOutboxRepository {
       .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
   }
 
-  protected toRateRecord(record: UserRateRecord): RateRecord | null {
-    return UserRatesBuilder.toRateRecord(record);
+  protected toActivityRateDTO(record: UserRateRecord): ActivityRateDTO | null {
+    return LocalUserRatesMapper.toActivityRateDTO(record);
   }
 
-  protected normalizeRateDirection(direction: RateRecord['direction'] | string | null | undefined): RateRecord['direction'] | null {
+  protected normalizeRateDirection(direction: ActivityRateDTO['direction'] | string | null | undefined): ActivityRateDTO['direction'] | null {
     if (direction === 'given' || direction === 'received' || direction === 'mutual' || direction === 'met') {
       return direction;
     }
@@ -556,11 +560,11 @@ export class RateOutboxRepository {
       .filter(id => id.length > 0))];
   }
 
-  protected cloneRateItems(items: readonly RateRecord[]): RateRecord[] {
+  protected cloneRateItems(items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
     return items.map(item => ({ ...item }));
   }
 
-  private shouldExcludePendingItemFromHome(item: RateRecord | null): item is RateRecord {
+  private shouldExcludePendingItemFromHome(item: ActivityRateDTO | null): item is ActivityRateDTO {
     if (!item) {
       return false;
     }

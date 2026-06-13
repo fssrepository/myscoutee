@@ -1,21 +1,8 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { type ActivityCounters } from '../shared/ui';
 import { Router } from '@angular/router';
-import {
-  AppContext,
-  HelpCenterService,
-  PrivacyPolicyService,
-  RouteIntervalSchedulerService,
-  SessionService,
-  TermsPolicyService,
-  UsersService,
-  type ActivityCounters,
-  type EntryConsentStateDto,
-  type HelpCenterRevision,
-  type PrivacyConsentRecord,
-  type UserDto,
-  type UserImpressionsSectionDto,
-  type UserRealtimeLongPollResponseDto
-} from '../shared/core';
+import { AppContext } from '../shared/ui';
+import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevision, type PrivacyConsentRecord, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
 import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';

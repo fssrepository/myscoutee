@@ -3,7 +3,8 @@ import { Component, HostListener, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppContext, HelpCenterService } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { HelpCenterService } from '../../../shared/core';
 import type { HelpCenterRevision } from '../../../shared/core/contracts';
 import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
 import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';

@@ -1,16 +1,21 @@
-import type { UserRatesRecordCollection } from '../entity/rate.entity';
+import type {
+  ActivityRateRecordQuery,
+  UserRateRecord,
+  UserRatesRecordCollection
+} from '../entity/rate.entity';
 import { USER_RATES_TABLE_NAME } from '../entity/rate.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { UserRatesBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import type { RateRecord } from '../../../contracts/activity.interface';
+import { UserProfileStateBuilder } from '../../../base/builders';
+import type { ActivityRateDTO } from '../../../base/dto';
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ActivityRateRecordQuery, UserGameMode, UserRateRecord, UserRatesSyncResult } from '../../../contracts/activity.interface';
-import { LocalMemoryDb } from '../../../base/db';
+import type { UserGameMode, UserRatesSyncResult } from '../../../contracts/activity.interface';
+import { LocalMemoryDb } from '../../common/db';
 import { RateOutboxRepository } from '../../../base/repositories/rate-outbox.repository';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
+import { LocalUserRatesMapper } from '../mappers';
 
 
 @Injectable({
@@ -38,7 +43,7 @@ export class LocalRatesRepository {
       if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = UserRatesBuilder.toRateRecord(record);
+      const item = LocalUserRatesMapper.toActivityRateDTO(record);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -78,7 +83,7 @@ export class LocalRatesRepository {
       if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
-      const item = UserRatesBuilder.toRateRecord(record);
+      const item = LocalUserRatesMapper.toActivityRateDTO(record);
       if (!item || item.mode !== 'pair' || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -101,19 +106,19 @@ export class LocalRatesRepository {
       .join(':');
   }
 
-  queryActivityRateItemsByUserId(userId: string): RateRecord[] {
+  queryActivityRateItemsByUserId(userId: string): ActivityRateDTO[] {
     return this.buildRateItemsByUserId(userId);
   }
 
-  peekRateItemsByUserId(userId: string): RateRecord[] {
+  peekRateItemsByUserId(userId: string): ActivityRateDTO[] {
     return this.buildRateItemsByUserId(userId);
   }
 
-  async queryRateItemsByUserId(userId: string): Promise<RateRecord[]> {
+  async queryRateItemsByUserId(userId: string): Promise<ActivityRateDTO[]> {
     return this.buildRateItemsByUserId(userId);
   }
 
-  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: RateRecord[]; total: number; nextCursor?: string | null }> {
+  async queryActivityRateItemsPage(query: ActivityRateRecordQuery): Promise<{ items: ActivityRateDTO[]; total: number; nextCursor?: string | null }> {
     const normalizedOwnerUserId = query.ownerUserId.trim();
     if (!normalizedOwnerUserId) {
       return {
@@ -147,7 +152,7 @@ export class LocalRatesRepository {
     };
   }
 
-  private buildRateItemsByUserId(userId: string): RateRecord[] {
+  private buildRateItemsByUserId(userId: string): ActivityRateDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -176,14 +181,14 @@ export class LocalRatesRepository {
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
   }
 
-  private referencesEmptyOnboardingProfile(item: RateRecord): boolean {
+  private referencesEmptyOnboardingProfile(item: ActivityRateDTO): boolean {
     return UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.userId)
       || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
       || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
   private activityRateItemUsersAreVisible(
-    item: RateRecord,
+    item: ActivityRateDTO,
     ownerUserId: string,
     usersById: ReadonlyMap<string, UserDto>
   ): boolean {
@@ -210,7 +215,7 @@ export class LocalRatesRepository {
       .map(user => [user.id, user] as const));
   }
 
-  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
+  private buildDynamicRateItemsForUser(record: UserRateRecord, normalizedUserId: string): ActivityRateDTO[] {
     if (record.mode === 'pair') {
       return this.buildDynamicPairRateItemsForUser(record, normalizedUserId);
     }
@@ -218,7 +223,7 @@ export class LocalRatesRepository {
     return this.buildDynamicSingleRateItemsForUser(record, normalizedUserId);
   }
 
-  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
+  private buildDynamicSingleRateItemsForUser(record: UserRateRecord, normalizedUserId: string): ActivityRateDTO[] {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!ownerUserId) {
       return [];
@@ -265,7 +270,7 @@ export class LocalRatesRepository {
       return [];
     }
 
-    const participantDirection: RateRecord['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
+    const participantDirection: ActivityRateDTO['direction'] = record.displayDirection === 'met' ? 'met' : 'received';
     if (participantDirection === 'met' && (
       !this.didUsersMeetFromIndexedDb(normalizedUserId, ownerUserId)
       || !this.isFinishedMetActivity(happenedAt)
@@ -293,14 +298,14 @@ export class LocalRatesRepository {
     }];
   }
 
-  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): RateRecord[] {
+  private buildDynamicPairRateItemsForUser(record: UserRateRecord, normalizedUserId: string): ActivityRateDTO[] {
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     const pairUserIds = this.resolvePairUserIdsFromRecord(record);
     if (!ownerUserId || pairUserIds === null) {
       return [];
     }
 
-    const items: RateRecord[] = [];
+    const items: ActivityRateDTO[] = [];
     const pairSocialContext = this.resolveStoredPairSocialContext(record)
       ?? this.resolveDynamicPairSocialContext(ownerUserId, pairUserIds[0], pairUserIds[1]);
 
@@ -342,8 +347,8 @@ export class LocalRatesRepository {
     normalizedUserId: string,
     ownerUserId: string,
     pairUserIds: [string, string],
-    socialContext: RateRecord['socialContext'] | null
-  ): RateRecord | null {
+    socialContext: ActivityRateDTO['socialContext'] | null
+  ): ActivityRateDTO | null {
     const [firstUserId, secondUserId] = pairUserIds;
     if (
       firstUserId !== normalizedUserId
@@ -400,7 +405,7 @@ export class LocalRatesRepository {
     record: UserRateRecord,
     scoreGiven: number,
     scoreReceived: number
-  ): RateRecord['direction'] | null {
+  ): ActivityRateDTO['direction'] | null {
     if (record.displayDirection === 'met') {
       return 'met';
     }
@@ -429,7 +434,7 @@ export class LocalRatesRepository {
     ownerUserId: string,
     firstUserId: string,
     secondUserId: string
-  ): RateRecord['socialContext'] | null {
+  ): ActivityRateDTO['socialContext'] | null {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedFirstUserId = firstUserId.trim();
     const normalizedSecondUserId = secondUserId.trim();
@@ -453,11 +458,11 @@ export class LocalRatesRepository {
     return null;
   }
 
-  private resolveStoredPairSocialContext(record: UserRateRecord): RateRecord['socialContext'] | null {
+  private resolveStoredPairSocialContext(record: UserRateRecord): ActivityRateDTO['socialContext'] | null {
     return record.socialContext === 'separated-friends' ? 'separated-friends' : null;
   }
 
-  private resolveStoredSingleSocialContext(record: UserRateRecord): RateRecord['socialContext'] | null {
+  private resolveStoredSingleSocialContext(record: UserRateRecord): ActivityRateDTO['socialContext'] | null {
     return record.socialContext === 'friends-in-common' ? 'friends-in-common' : null;
   }
 
@@ -499,7 +504,7 @@ export class LocalRatesRepository {
     return false;
   }
 
-  private matchesDynamicRateRange(item: RateRecord, query: ActivityRateRecordQuery): boolean {
+  private matchesDynamicRateRange(item: ActivityRateDTO, query: ActivityRateRecordQuery): boolean {
     const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
     const rangeStartMs = query.rangeStartIso ? AppUtils.toSortableDate(query.rangeStartIso) : null;
     const rangeEndMs = query.rangeEndIso ? AppUtils.toSortableDate(query.rangeEndIso) : null;
@@ -517,7 +522,7 @@ export class LocalRatesRepository {
     return happenedAtMs <= 0 || happenedAtMs <= Date.now();
   }
 
-  private matchesDynamicSocialFilter(item: RateRecord, socialBadgeEnabled: boolean): boolean {
+  private matchesDynamicSocialFilter(item: ActivityRateDTO, socialBadgeEnabled: boolean): boolean {
     if (item.mode === 'individual') {
       const friendsInCommon = item.socialContext === 'friends-in-common';
       return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
@@ -529,7 +534,7 @@ export class LocalRatesRepository {
     return true;
   }
 
-  private compareDynamicRateItems(left: RateRecord, right: RateRecord, query: ActivityRateRecordQuery): number {
+  private compareDynamicRateItems(left: ActivityRateDTO, right: ActivityRateDTO, query: ActivityRateRecordQuery): number {
     if (query.sort === 'distance') {
       const distanceDelta = this.dynamicDistanceValue(left) - this.dynamicDistanceValue(right);
       if (distanceDelta !== 0) {
@@ -567,14 +572,14 @@ export class LocalRatesRepository {
     return 0;
   }
 
-  private dynamicDistanceValue(item: RateRecord): number {
+  private dynamicDistanceValue(item: ActivityRateDTO): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
     return 0;
   }
 
-  private dynamicRelevanceScore(item: RateRecord): number {
+  private dynamicRelevanceScore(item: ActivityRateDTO): number {
     const scoreGiven = Number.isFinite(item.scoreGiven)
       ? Math.max(0, Math.round(Number(item.scoreGiven)))
       : 0;
@@ -755,7 +760,7 @@ export class LocalRatesRepository {
     if (!ownerUserId) {
       return null;
     }
-    const item = UserRatesBuilder.toRateRecord(record);
+    const item = LocalUserRatesMapper.toActivityRateDTO(record);
     if (!item) {
       return null;
     }

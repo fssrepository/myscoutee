@@ -1,6 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
 
+import { AppContext, AppPopupContext } from '../../shared/ui';
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
@@ -10,16 +11,7 @@ import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../sh
 import type * as AppTypes from '../../shared/core/base/models';
 import type * as ContractTypes from '../../shared/core/contracts';
 import {
-  ActivityMembersService,
-  ActivityResourceBuilder,
-  ActivityResourcesService,
-  AppContext,
-  AppPopupContext,
-  AssetsService as SharedAssetsService,
-  EventsService,
-  UsersService,
-  type UserDto
-} from '../../shared/core';
+  ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AssetsService as SharedAssetsService, EventsService, UsersService, type UserDto } from '../../shared/core';
 import { ActivitiesPopupStateService } from './activities-popup-state.service';
 import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import { NavigatorService } from '../../navigator';

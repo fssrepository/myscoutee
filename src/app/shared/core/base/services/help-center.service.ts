@@ -9,7 +9,7 @@ import type {
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
 } from '../../contracts';
-import { AppContext } from '../context/app.context';
+import { AppContext } from '../../../ui/context/app.context';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';

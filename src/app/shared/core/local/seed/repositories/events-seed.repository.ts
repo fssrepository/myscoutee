@@ -2,7 +2,7 @@ import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMemoryDb } from '../../../base/db';
+import { LocalMemoryDb } from '../../common/db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventsBuilder } from '../builders';
 

@@ -9,14 +9,14 @@ import {
   type SingleCardData
 } from '../../../../../shared/ui';
 import type { ImageCardData, ImageCardDirection, ImageCardMode } from '../../../../../shared/ui';
-import type { RateRecord } from '../../../../../shared/core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../../../shared/core/base/dto';
 
 interface BuildActivitiesRateCardOptions {
   groupLabel?: string | null;
   presentation?: SingleCardData['presentation'] | PairCardData['presentation'];
   state?: SingleCardData['state'] | PairCardData['state'];
   badge: CardBadgeConfig;
-  displayedDirection: RateRecord['direction'];
+  displayedDirection: ActivityRateDTO['direction'];
   availableUsers: readonly RateCardPerson[];
   resolveUserById: (userId: string) => RateCardPerson | null;
   activeUserGender: 'woman' | 'man';
@@ -91,8 +91,8 @@ function distanceKmFromMeters(distanceMeters: number | null | undefined): number
 }
 
 function buildActivitiesRateCardStackClasses(
-  mode: RateRecord['mode'],
-  displayedDirection: RateRecord['direction']
+  mode: ActivityRateDTO['mode'],
+  displayedDirection: ActivityRateDTO['direction']
 ): string[] {
   return [
     mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
@@ -239,11 +239,11 @@ function toActivitiesRateCardPerson(
   };
 }
 
-function normalizeRateCardMode(value: ImageCardMode | null | undefined): RateRecord['mode'] {
+function normalizeRateCardMode(value: ImageCardMode | null | undefined): ActivityRateDTO['mode'] {
   return value === 'pair' ? 'pair' : 'individual';
 }
 
-function normalizeRateCardDirection(value: ImageCardDirection | null | undefined): RateRecord['direction'] {
+function normalizeRateCardDirection(value: ImageCardDirection | null | undefined): ActivityRateDTO['direction'] {
   return value === 'received' || value === 'mutual' || value === 'met' ? value : 'given';
 }
 

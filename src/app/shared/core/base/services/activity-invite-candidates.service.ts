@@ -7,7 +7,7 @@ import type {
 import { LocalActivityInviteCandidatesService } from '../../local/source/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
 import { ActivityMembersService } from './activity-members.service';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import { EventsService } from './events.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { AppUtils } from '../../../app-utils';

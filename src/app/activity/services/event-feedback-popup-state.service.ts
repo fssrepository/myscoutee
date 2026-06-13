@@ -4,7 +4,8 @@ import type * as ActivityContracts from '../../shared/core/contracts/activity.in
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { EventsService } from '../../shared/core/base';
-import { AppContext, type UserDto } from '../../shared/core';
+import { AppContext } from '../../shared/ui';
+import type { UserDto } from '../../shared/core';
 import { SeedEventFeedbackBuilder } from '../../shared/core/local/seed/builders';
 import type { ActivityEventSeedItem } from '../../shared/core/local/seed/entity';
 import type { EventFeedbackListFilter } from '../../shared/core/common/constants';

@@ -1,10 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 
-import {
-  AppPopupContext,
-  type AdminReportedUserDto,
-  type AdminReportDto
-} from '../../shared/core';
+import { AppPopupContext } from '../../shared/ui';
+import { type AdminReportedUserDto, type AdminReportDto } from '../../shared/core';
 
 export type AdminPopupKind =
   | 'reports'

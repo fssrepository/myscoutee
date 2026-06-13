@@ -3,7 +3,7 @@ import { Injectable, effect, inject } from '@angular/core';
 import { deleteToken, getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
 
 import { environment } from '../../../../../environments/environment';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import { FirebaseAuthService } from './firebase-auth.service';
 import { PwaService } from './pwa.service';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';

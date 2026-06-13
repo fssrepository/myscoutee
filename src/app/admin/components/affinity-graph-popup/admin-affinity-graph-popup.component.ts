@@ -1,10 +1,11 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminAffinityGraphService, AppContext } from '../../../shared/core';
+import { AdminAffinityGraphService } from '../../../shared/core';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components';
 

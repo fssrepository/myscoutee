@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import { LocalActivityMembersService } from '../../local/source/services/activity-members.service';
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
 import { BaseRouteModeService } from './base-route-mode.service';

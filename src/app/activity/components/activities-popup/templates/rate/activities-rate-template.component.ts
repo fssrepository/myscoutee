@@ -1,7 +1,7 @@
 
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
-import type { RateRecord } from '../../../../../shared/core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../../../shared/core/base/dto';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
@@ -49,15 +49,15 @@ export interface ActivitiesRateTemplateContext {
   getRateCardUsers: () => readonly RateCardPerson[];
   getRateCardUserById: (userId: string) => RateCardPerson | null;
   getActiveUserGender: () => 'woman' | 'man';
-  getRateItemById: (itemId: string) => RateRecord | null;
-  getDisplayedDirection: (item: RateRecord) => RateRecord['direction'];
+  getRateItemById: (itemId: string) => ActivityRateDTO | null;
+  getDisplayedDirection: (item: ActivityRateDTO) => ActivityRateDTO['direction'];
   isSelectedActivityRateRow: (row: AppTypes.ActivityListRow) => boolean;
   isActivityRateBlinking: (row: AppTypes.ActivityListRow) => boolean;
   getActivityRateDraftValue: (itemId: string) => number | undefined;
   normalizeRateScore: (value: number) => number;
-  hasOwnRating: (item: RateRecord) => boolean;
-  pairReceivedAverageScore: (item: RateRecord) => number;
-  rateOwnScore: (item: RateRecord) => number;
+  hasOwnRating: (item: ActivityRateDTO) => boolean;
+  pairReceivedAverageScore: (item: ActivityRateDTO) => number;
+  rateOwnScore: (item: ActivityRateDTO) => number;
   isFullscreenPaginationAnimating: () => boolean;
 }
 
@@ -231,14 +231,14 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     return this.isActivityRatePending(row, context) ? 'Add your rating' : 'Edit your rating';
   }
 
-  private rateItemForRow(row: AppTypes.ActivityListRow, context: ActivitiesRateTemplateContext): RateRecord | null {
+  private rateItemForRow(row: AppTypes.ActivityListRow, context: ActivitiesRateTemplateContext): ActivityRateDTO | null {
     return row.type === 'rates' ? context.getRateItemById(row.id) : null;
   }
 
   private displayedDirectionForRow(
     row: AppTypes.ActivityListRow,
     context: ActivitiesRateTemplateContext
-  ): RateRecord['direction'] {
+  ): ActivityRateDTO['direction'] {
     const item = this.rateItemForRow(row, context);
     if (item) {
       return context.getDisplayedDirection(item);
@@ -261,7 +261,7 @@ interface ActivitiesRatesControllerDeps {
   getActivitiesRateSocialBadgeEnabled: () => boolean;
   getActivitiesRateSocialBadgeEnabledForFilter: (filter: ContractTypes.RateFilterKey) => boolean;
   getFilteredActivityRows: () => readonly AppTypes.ActivityListRow[];
-  getRateItems: () => readonly RateRecord[];
+  getRateItems: () => readonly ActivityRateDTO[];
   getSmartListCursorItem: () => AppTypes.ActivityListRow | null;
   getActivitiesListScrollElement: () => HTMLElement | null;
   getPaginationHostElement: () => HTMLElement | null;
@@ -290,11 +290,11 @@ interface ActivitiesRatesControllerDeps {
   getActivityRateBlinkUntilByRowId: () => Record<string, number>;
   getActivityRateBlinkTimeoutByRowId: () => Record<string, ReturnType<typeof setTimeout> | null>;
   getActivityRateDraftById: () => Record<string, number>;
-  getActivityRateDirectionOverrideById: () => Partial<Record<string, RateRecord['direction']>>;
-  getPendingActivityRateDirectionOverrideById: () => Partial<Record<string, RateRecord['direction']>>;
+  getActivityRateDirectionOverrideById: () => Partial<Record<string, ActivityRateDTO['direction']>>;
+  getPendingActivityRateDirectionOverrideById: () => Partial<Record<string, ActivityRateDTO['direction']>>;
   setSelectedRateIdInContext: (value: string | null) => void;
   setFullscreenModeInContext: (value: boolean) => void;
-  recordActivityRate: (item: RateRecord, score: number, direction: RateRecord['direction']) => void;
+  recordActivityRate: (item: ActivityRateDTO, score: number, direction: ActivityRateDTO['direction']) => void;
   refreshRateCards: (rowId?: string | null) => void;
   markForCheck: () => void;
   runAfterNextPaint: (task: () => void) => void;
@@ -619,7 +619,7 @@ export class ActivitiesRatesController {
     this.setSelectedRateId(currentRow.id);
   }
 
-  matchesFilter(item: RateRecord, filter: ContractTypes.RateFilterKey): boolean {
+  matchesFilter(item: ActivityRateDTO, filter: ContractTypes.RateFilterKey): boolean {
     return matchesActivitiesRateFilter(
       item,
       filter,
@@ -628,7 +628,7 @@ export class ActivitiesRatesController {
     );
   }
 
-  displayedDirection(item: RateRecord): RateRecord['direction'] {
+  displayedDirection(item: ActivityRateDTO): ActivityRateDTO['direction'] {
     return displayedActivitiesRateDirection(item, this.deps.getActivityRateDirectionOverrideById());
   }
 
@@ -661,11 +661,11 @@ export class ActivitiesRatesController {
     return normalizeActivitiesRateScore(value);
   }
 
-  rateOwnScore(item: RateRecord): number {
+  rateOwnScore(item: ActivityRateDTO): number {
     return activitiesRateOwnScore(item);
   }
 
-  hasOwnRating(item: RateRecord): boolean {
+  hasOwnRating(item: ActivityRateDTO): boolean {
     return activitiesRateHasOwnRating(
       item,
       this.activityRateDraftById()[item.id],
@@ -673,7 +673,7 @@ export class ActivitiesRatesController {
     );
   }
 
-  pairReceivedAverageScore(item: RateRecord): number {
+  pairReceivedAverageScore(item: ActivityRateDTO): number {
     return activitiesPairReceivedAverageScore(
       item,
       this.deps.getRateItems(),
@@ -826,7 +826,7 @@ export class ActivitiesRatesController {
     );
   }
 
-  private pendingDirectionAfterRating(item: RateRecord): RateRecord['direction'] | null {
+  private pendingDirectionAfterRating(item: ActivityRateDTO): ActivityRateDTO['direction'] | null {
     return pendingActivitiesRateDirectionAfterRating(item, candidate => this.displayedDirection(candidate));
   }
 
@@ -874,11 +874,11 @@ export class ActivitiesRatesController {
     this.refreshRateCards();
   }
 
-  private rateItemForRow(row: AppTypes.ActivityListRow): RateRecord | null {
+  private rateItemForRow(row: AppTypes.ActivityListRow): ActivityRateDTO | null {
     return row.type === 'rates' ? this.rateItemById(row.id) : null;
   }
 
-  private rateItemById(itemId: string): RateRecord | null {
+  private rateItemById(itemId: string): ActivityRateDTO | null {
     const normalizedId = itemId.trim();
     if (!normalizedId) {
       return null;
@@ -899,7 +899,7 @@ export class ActivitiesRatesController {
     return this.deps.getActivityRateDraftById();
   }
 
-  private pendingActivityRateDirectionOverrideById(): Partial<Record<string, RateRecord['direction']>> {
+  private pendingActivityRateDirectionOverrideById(): Partial<Record<string, ActivityRateDTO['direction']>> {
     return this.deps.getPendingActivityRateDirectionOverrideById();
   }
 

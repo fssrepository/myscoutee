@@ -1,20 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
+import { AppPopupContext, type ActivityCounters, type UserImpressionChangeFlags } from '../../../shared/ui';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
-import {
-  AppContext,
-  AppPopupContext,
-  ExplanationGuideService,
-  HelpCenterService,
-  PrivacyPolicyService,
-  TermsPolicyService,
-  USER_PROFILE_SAVE_CONTEXT_KEY,
-  type ActivityCounters,
-  type UserDto,
-  type UserImpressionChangeFlags
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { ExplanationGuideService, HelpCenterService, PrivacyPolicyService, TermsPolicyService, USER_PROFILE_SAVE_CONTEXT_KEY, type UserDto } from '../../../shared/core';
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import {
   resolveHostTierIcon, resolveMemberImpressionTitle, resolveTraitIcon

@@ -3,13 +3,8 @@ import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import {
-  AppContext,
-  AdminModerationService as CoreAdminModerationService,
-  type AdminChatMessageDto,
-  type AdminModerationActionResult,
-  type AdminReportedUserDto
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { AdminModerationService as CoreAdminModerationService, type AdminChatMessageDto, type AdminModerationActionResult, type AdminReportedUserDto } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';

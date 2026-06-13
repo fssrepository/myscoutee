@@ -3,7 +3,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { FirebaseAuthService } from './firebase-auth.service';
 

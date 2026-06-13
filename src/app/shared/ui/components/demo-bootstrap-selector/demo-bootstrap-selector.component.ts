@@ -3,17 +3,11 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
+import { AppPopupContext, type DemoBootstrapSelectorState } from '../../../ui';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 import { I18nPipe } from '../../pipes';
-import {
-  AppContext,
-  AppPopupContext,
-  USERS_LOAD_CONTEXT_KEY,
-  UsersService,
-  type BootstrapProcessStage,
-  type DemoBootstrapSelectorState,
-  type UserSelectorListItemDto
-} from '../../../core';
+import { AppContext } from '../../../ui';
+import { USERS_LOAD_CONTEXT_KEY, UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
 import { SeedDemoBootstrapService } from '../../../core/local/seed';
 
 @Component({

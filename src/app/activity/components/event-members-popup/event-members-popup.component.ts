@@ -15,8 +15,9 @@ import { from } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import type { ActivityMembersSyncState } from '../../../shared/core';
-import { ActivityMembersService, AppContext, AppPopupContext, ChatsService, EventsService, UsersService } from '../../../shared/core';
+import type { ActivityMembersSyncState } from '../../../shared/ui';
+import { AppContext, AppPopupContext } from '../../../shared/ui';
+import { ActivityMembersService, ChatsService, EventsService, UsersService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuTriggerComponent,

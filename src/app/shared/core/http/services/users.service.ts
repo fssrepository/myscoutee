@@ -22,7 +22,7 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import { AppContext } from '../../base/context';
+import { AppContext } from '../../../ui/context';
 import { UserRealtimeSnapshotConverter } from '../../base/converters';
 import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';

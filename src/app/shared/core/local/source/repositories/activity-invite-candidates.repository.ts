@@ -4,7 +4,7 @@ import type * as AppTypes from '../../../base/models';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityInviteCandidatesQuery } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
-import type { RateRecord } from '../../../contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../base/dto';
 import type { LocalActivityInviteCandidateRecord } from '../mappers';
 import { LocalContactsRepository } from './contacts.repository';
 import { LocalRatesRepository } from './rates.repository';
@@ -97,8 +97,8 @@ export class LocalActivityInviteCandidatesRepository {
   private async queryMetRateItems(
     activeUserId: string,
     sort: AppConstants.ActivityInviteSort
-  ): Promise<RateRecord[]> {
-    const itemsById = new Map<string, RateRecord>();
+  ): Promise<ActivityRateDTO[]> {
+    const itemsById = new Map<string, ActivityRateDTO>();
     for (const socialBadgeEnabled of [false, true]) {
       const page = await this.ratesRepository.queryActivityRateItemsPage({
         ownerUserId: activeUserId,
@@ -116,7 +116,7 @@ export class LocalActivityInviteCandidatesRepository {
     return [...itemsById.values()];
   }
 
-  private normalizeRateItemAffinity(item: RateRecord): number {
+  private normalizeRateItemAffinity(item: ActivityRateDTO): number {
     const scoreGiven = Number.isFinite(Number(item.scoreGiven)) ? Math.max(0, Number(item.scoreGiven)) : 0;
     const scoreReceived = Number.isFinite(Number(item.scoreReceived)) ? Math.max(0, Number(item.scoreReceived)) : 0;
     const score = scoreGiven > 0 && scoreReceived > 0

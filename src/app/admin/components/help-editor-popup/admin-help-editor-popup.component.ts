@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext, HelpCenterService, I18nService } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { HelpCenterService, I18nService } from '../../../shared/core';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,

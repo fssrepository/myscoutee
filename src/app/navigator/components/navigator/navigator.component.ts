@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, Type, effect, inject, signal } from '@angular/core';
+import { AppPopupContext } from '../../../shared/ui';
 import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { EventFeedbackPopupStateService } from '../../../activity/services/event-feedback-popup-state.service';
 import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
-import { AppContext, AppPopupContext, ExplanationGuideService } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { ExplanationGuideService } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { AvatarBtnComponent } from '../avatar-btn/avatar-btn.component';
 import { NavigatorMenuComponent } from '../navigator-menu/navigator-menu.component';

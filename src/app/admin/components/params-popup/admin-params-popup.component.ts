@@ -1,18 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
-  AdminParamsService,
-  AppContext,
-  type AdminParamFieldDto,
-  type AdminParamOptionDto,
-  type AdminParamsHistoryDto,
-  type AdminParamsHistoryItemDto,
-  type AdminParamsSectionDto,
-  type AdminParamsStateDto
-} from '../../../shared/core';
+  AdminParamsService, type AdminParamFieldDto, type AdminParamOptionDto, type AdminParamsHistoryDto, type AdminParamsHistoryItemDto, type AdminParamsSectionDto, type AdminParamsStateDto } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import {
   AppMenuComponent,

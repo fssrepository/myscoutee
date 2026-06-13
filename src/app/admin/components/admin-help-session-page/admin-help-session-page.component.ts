@@ -1,15 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import {
-  AppPopupContext,
-  ActivitiesService,
-  AdminWorkspaceDataService,
-  AssetDefaultsBuilder,
-  EventsService,
-  SessionService,
-  type ShareTokenResolvedItem
-} from '../../../shared/core';
+import { AppPopupContext } from '../../../shared/ui';
+import { ActivitiesService, AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, type ShareTokenResolvedItem } from '../../../shared/core';
 import type { AssetCardDTO } from '../../../shared/core/base/dto';
 import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';

@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData } from '../../../ui';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import { ActivityResourceBuilder, type ActivitySubEventResourceInfoCardOptions } from '../builders';
 import { LocalActivityResourcesService } from '../../local/source/services/activity-resources.service';
 import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';

@@ -13,7 +13,7 @@ import {
   toActivityEventRow,
   toActivitiesPageRequest
 } from '../converters';
-import { AppContext } from '../context';
+import { AppContext } from '../../../ui/context';
 import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';

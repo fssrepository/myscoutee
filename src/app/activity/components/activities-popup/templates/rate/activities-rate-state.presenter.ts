@@ -1,12 +1,12 @@
-import type { RateRecord } from '../../../../../shared/core/contracts/activity.interface';
+import type { ActivityRateDTO } from '../../../../../shared/core/base/dto';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 
 export function matchesActivitiesRateFilter(
-  item: RateRecord,
+  item: ActivityRateDTO,
   filter: ContractTypes.RateFilterKey,
   socialBadgeEnabled: boolean,
-  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
+  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
 ): boolean {
   const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
   if (item.mode !== modeKey || displayedDirection(item) !== directionKey) {
@@ -23,16 +23,16 @@ export function matchesActivitiesRateFilter(
 }
 
 export function displayedActivitiesRateDirection(
-  item: RateRecord,
-  overrides: Partial<Record<string, RateRecord['direction']>>
-): RateRecord['direction'] {
+  item: ActivityRateDTO,
+  overrides: Partial<Record<string, ActivityRateDTO['direction']>>
+): ActivityRateDTO['direction'] {
   return overrides[item.id] ?? item.direction;
 }
 
 export function pendingActivitiesRateDirectionAfterRating(
-  item: RateRecord,
-  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
-): RateRecord['direction'] | null {
+  item: ActivityRateDTO,
+  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
+): ActivityRateDTO['direction'] | null {
   const direction = displayedDirection(item);
   if (item.mode === 'individual') {
     if (direction === 'given') {
@@ -51,18 +51,18 @@ export function pendingActivitiesRateDirectionAfterRating(
 
 export function parseActivitiesRateFilterKey(
   filter: ContractTypes.RateFilterKey
-): { mode: 'individual' | 'pair'; direction: RateRecord['direction'] } {
-  const [mode, direction] = filter.split('-') as ['individual' | 'pair', RateRecord['direction']];
+): { mode: 'individual' | 'pair'; direction: ActivityRateDTO['direction'] } {
+  const [mode, direction] = filter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
   return { mode, direction };
 }
 
 export function collectPendingActivitiesRateDirectionOverrides(
   targetFilter: ContractTypes.RateFilterKey | undefined,
-  pendingOverrides: Partial<Record<string, RateRecord['direction']>>,
-  rateItems: readonly RateRecord[]
-): Array<[string, RateRecord['direction']]> {
+  pendingOverrides: Partial<Record<string, ActivityRateDTO['direction']>>,
+  rateItems: readonly ActivityRateDTO[]
+): Array<[string, ActivityRateDTO['direction']]> {
   const target = targetFilter ? parseActivitiesRateFilterKey(targetFilter) : null;
-  const nextEntries: Array<[string, RateRecord['direction']]> = [];
+  const nextEntries: Array<[string, ActivityRateDTO['direction']]> = [];
   for (const [itemId, pendingDirection] of Object.entries(pendingOverrides)) {
     if (!pendingDirection) {
       continue;
@@ -95,7 +95,7 @@ export function normalizeActivitiesRateScore(value: number): number {
   return Math.min(10, Math.max(1, Math.round(value)));
 }
 
-export function activitiesRateOwnScore(item: RateRecord): number {
+export function activitiesRateOwnScore(item: ActivityRateDTO): number {
   if (Number.isFinite(item.scoreGiven) && item.scoreGiven > 0) {
     return normalizeActivitiesRateScore(item.scoreGiven);
   }
@@ -103,9 +103,9 @@ export function activitiesRateOwnScore(item: RateRecord): number {
 }
 
 export function activitiesRateHasOwnRating(
-  item: RateRecord,
+  item: ActivityRateDTO,
   draftedValue: number | undefined,
-  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
+  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
 ): boolean {
   if (Number.isFinite(draftedValue) && (draftedValue as number) > 0) {
     return true;
@@ -117,9 +117,9 @@ export function activitiesRateHasOwnRating(
 }
 
 export function activitiesPairReceivedAverageScore(
-  item: RateRecord,
-  rateItems: readonly RateRecord[],
-  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
+  item: ActivityRateDTO,
+  rateItems: readonly ActivityRateDTO[],
+  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
 ): number {
   const matching = rateItems.filter(candidate =>
     candidate.mode === 'pair'
@@ -136,17 +136,17 @@ export function activitiesPairReceivedAverageScore(
 }
 
 export function isActivitiesPairReceivedRateItem(
-  item: RateRecord,
-  displayedDirection: (candidate: RateRecord) => RateRecord['direction']
+  item: ActivityRateDTO,
+  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
 ): boolean {
   return item.mode === 'pair' && displayedDirection(item) === 'received';
 }
 
 export function activitiesRateOwnRatingValue(
-  item: RateRecord | null,
+  item: ActivityRateDTO | null,
   draftedValuesById: Record<string, number>,
-  displayedDirection: (candidate: RateRecord) => RateRecord['direction'],
-  rateItems: readonly RateRecord[]
+  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction'],
+  rateItems: readonly ActivityRateDTO[]
 ): number {
   if (!item) {
     return 0;
@@ -164,7 +164,7 @@ export function activitiesRateOwnRatingValue(
   return activitiesRateOwnScore(item);
 }
 
-function sameActivitiesRatePairUsers(left: RateRecord, right: RateRecord): boolean {
+function sameActivitiesRatePairUsers(left: ActivityRateDTO, right: ActivityRateDTO): boolean {
   const leftIds = [left.userId, left.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
   const rightIds = [right.userId, right.secondaryUserId ?? ''].filter(id => id.trim().length > 0).sort();
   return leftIds.length === rightIds.length && leftIds.every((id, index) => id === rightIds[index]);

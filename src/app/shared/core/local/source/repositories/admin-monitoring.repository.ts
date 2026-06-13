@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../../../base/db';
+import { AppMemoryDb } from '../../common/db';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 @Injectable({

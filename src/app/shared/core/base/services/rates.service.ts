@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../contracts';
-import type { RateRecord } from '../../contracts/activity.interface';
-import type { ActivityRatePageResult } from '../../contracts/activity.interface';
+import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../dto';
 import { LocalRatesService } from '../../local';
 import { HttpRatesService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -24,20 +23,20 @@ export class RatesService extends BaseRouteModeService {
 
   recordActivityRate(
     ownerUserId: string,
-    item: RateRecord,
+    item: ActivityRateDTO,
     rating: number,
-    direction?: RateRecord['direction'] | null
+    direction?: ActivityRateDTO['direction'] | null
   ): void {
     this.rateOutboxService.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
     this.gameService.resetUserGameCardsStack(ownerUserId);
     this.gameService.kickUserRatesOutboxSync();
   }
 
-  peekRateItemsByUser(userId: string): RateRecord[] {
+  peekRateItemsByUser(userId: string): ActivityRateDTO[] {
     return this.ratesService.peekRateItemsByUser(userId);
   }
 
-  async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
+  async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {
     return this.ratesService.queryRateItemsByUser(userId);
   }
 
@@ -45,7 +44,7 @@ export class RatesService extends BaseRouteModeService {
     userId: string,
     request: ActivitiesPageRequest,
     signal?: AbortSignal
-  ): Promise<ActivityRatePageResult> {
+  ): Promise<ActivityRatePageResultDTO> {
     return this.ratesService.queryActivitiesRatePage(userId, request, signal);
   }
 }

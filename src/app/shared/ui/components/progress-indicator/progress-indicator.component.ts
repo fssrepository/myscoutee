@@ -1,6 +1,6 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostBinding, Input, OnChanges, OnDestroy, SimpleChanges, inject, signal } from '@angular/core';
 
-import { AppContext } from '../../../core';
+import { AppContext } from '../../../ui';
 
 export type ProgressIndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type ProgressIndicatorPlacement = 'edge' | 'inline';

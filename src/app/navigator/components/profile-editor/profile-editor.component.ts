@@ -16,7 +16,8 @@ import type {
 } from '../../../shared/core/contracts/profile.interface';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
-import { AppContext, MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';

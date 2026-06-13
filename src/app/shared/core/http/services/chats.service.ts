@@ -9,7 +9,7 @@ import { AppUtils } from '../../../app-utils';
 import type { ChatRecord } from '../../contracts/chat.interface';
 import type { ActivitiesPageRequest } from '../../contracts';
 import { activityChatContextFilterKey } from '../../base/converters';
-import { AppContext } from '../../base/context';
+import { AppContext } from '../../../ui/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';
 

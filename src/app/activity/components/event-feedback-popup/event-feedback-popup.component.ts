@@ -2,11 +2,12 @@ import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, computed, eff
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatRippleModule } from '@angular/material/core';
+import { AppContext } from '../../../shared/ui';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
-import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
+import { ActivityMembersService, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
 import type { ActivityEventSeedItem } from '../../../shared/core/local/seed/entity';
 import { ActivityEventSeedMapper } from '../../../shared/core/local/seed/mappers';
 import {

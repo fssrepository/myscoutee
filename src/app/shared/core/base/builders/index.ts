@@ -17,5 +17,4 @@ export { ScheduleDateBuilder } from './schedule-date.builder';
 export { UserFilterPreferencesBuilder } from './user-filter-preferences.builder';
 export { UserMenuCountersBuilder } from './user-menu-counters.builder';
 export { UserProfileStateBuilder } from './user-profile-state.builder';
-export { UserRatesBuilder } from './user-rates.builder';
 export { UserRecordsBuilder } from './user-records.builder';

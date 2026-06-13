@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../db';
+import { AppMemoryDb } from '../../local/common/db';
 import type { ChatVoiceClip } from '../../contracts';
 import { chatVoiceClipTableKey } from '../../common/storage-scope';
 

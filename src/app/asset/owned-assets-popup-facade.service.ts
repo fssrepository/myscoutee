@@ -1,11 +1,13 @@
 import { Injectable, effect, inject, signal } from '@angular/core';
+import { type ActivityCounterKey } from '../shared/ui';
 import { environment } from '../../environments/environment';
 
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
 import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupStateService } from './asset-popup-state.service';
-import { AppContext, AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService, type ActivityCounterKey } from '../shared/core';
+import { AppContext } from '../shared/ui';
+import { AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService } from '../shared/core';
 
 import type * as AppDTOs from '../shared/core/base/dto';
 import type * as AppConstants from '../shared/core/common/constants';

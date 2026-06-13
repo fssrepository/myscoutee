@@ -1,7 +1,8 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
 import type * as AppTypes from '../shared/core/base/models';
-import { AppContext, AppPopupContext, AssetTicketsService } from '../shared/core';
+import { AppContext, AppPopupContext } from '../shared/ui';
+import { AssetTicketsService } from '../shared/core';
 import type { SmartListStateChange } from '../shared/ui';
 import { AssetFacadeService } from './asset-facade.service';
 import type { AssetPopupHost } from './asset-popup.host';

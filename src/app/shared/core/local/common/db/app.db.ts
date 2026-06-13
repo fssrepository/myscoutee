@@ -1,18 +1,25 @@
-import { CHATS_TABLE_NAME } from '../../local/source/entity/chat.entity';
-import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../local/source/entity/event.entity';
-import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../local/source/entity/content.entity';
-import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../local/source/entity/profile.entity';
-import { SHARE_TOKENS_TABLE_NAME } from '../../local/source/entity/sharing.entity';
-import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME } from '../../local/source/entity/rate.entity';
-import { USERS_TABLE_NAME } from '../../local/source/entity/user.entity';
-import { ASSETS_TABLE_NAME } from '../../local/source/entity/asset.entity';
-import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../local/source/entity/activity.entity';
-import type { AppMemorySchema } from '../../local/common/memory.schema';
+import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
+import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
+import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
+import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../source/entity/profile.entity';
+import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
+import {
+  USER_FILTER_PREFERENCES_TABLE_NAME,
+  USER_RATES_TABLE_NAME,
+  USER_RATES_OUTBOX_TABLE_NAME,
+  type ActivityRateRecordQuery,
+  type ActivityRateRecordQueryResult,
+  type UserRateOutboxRecord,
+  type UserRateRecord
+} from '../../source/entity/rate.entity';
+import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
+import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';
+import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
+import type { AppMemorySchema } from '../memory.schema';
 import { Injectable, signal } from '@angular/core';
 
-import type { ActivityRateRecordQuery, ActivityRateRecordQueryResult, UserRateOutboxRecord, UserRateRecord } from '../../contracts/activity.interface';
-import type { ContactMethodDraft, ContactMethodType, StoredContact } from '../../contracts/contact.interface';
-import { type AppStorageScope, APP_STORAGE_SCOPE, APP_SCOPED_INDEXED_DB_VERSION, APP_I18N_BUNDLES_STORE, APP_TABLES_STORE, appMemoryDbStorageKey, appScopedIndexedDbName, createAppScopedObjectStores, removeScopedStorageEntries } from '../../common/storage-scope';
+import type { ContactMethodDraft, ContactMethodType, StoredContact } from '../../../contracts/contact.interface';
+import { type AppStorageScope, APP_STORAGE_SCOPE, APP_SCOPED_INDEXED_DB_VERSION, APP_I18N_BUNDLES_STORE, APP_TABLES_STORE, appMemoryDbStorageKey, appScopedIndexedDbName, createAppScopedObjectStores, removeScopedStorageEntries } from '../../../common/storage-scope';
 
 interface ActivityRateCursorPayload {
   id: string;

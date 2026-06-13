@@ -7,13 +7,8 @@ import { from } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import {
-  AppContext,
-  AdminModerationService,
-  type AdminModerationActionResult,
-  type AdminReportedUserDto,
-  type AdminReportDto
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { AdminModerationService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,

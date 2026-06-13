@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { AppContext } from '../base/context';
+import { AppContext } from '../../ui/context';
 import { SessionService } from '../base/services/session.service';
 import { APP_STORAGE_KEYS } from '../common/storage-scope';
 
