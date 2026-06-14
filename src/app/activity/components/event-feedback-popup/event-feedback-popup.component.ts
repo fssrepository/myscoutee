@@ -432,18 +432,6 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     return EventFeedbackDeckConverter.infoCard(card);
   }
 
-  protected organizerEventFeedbackInfoCard(item: {
-    eventId: string;
-    title: string;
-    subtitle: string;
-    timeframe: string;
-    imageUrl: string;
-    responseCount: number;
-    noteCount: number;
-  }): InfoCardData {
-    return EventFeedbackInfoCardConverter.organizerEventFeedbackInfoCard(item);
-  }
-
   protected organizerEventFeedbackDetailInfoCard(item: {
     eventId: string;
     title: string;
@@ -453,7 +441,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     responseCount: number;
     noteCount: number;
   }): InfoCardData {
-    return EventFeedbackInfoCardConverter.organizerEventFeedbackDetailInfoCard(item);
+    return EventFeedbackInfoCardConverter.organizerEventFeedbackCard(item, { showAction: false });
   }
 
   protected openOrganizerEventFeedback(eventId: string): void {

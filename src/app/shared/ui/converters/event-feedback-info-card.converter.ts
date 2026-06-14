@@ -55,7 +55,7 @@ export class EventFeedbackInfoCardConverter {
     options: EventFeedbackInfoCardConverterOptions = {}
   ): InfoCardData {
     if (item.isOwnEvent) {
-      return this.organizerEventFeedbackInfoCard({
+      return this.organizerEventFeedbackCard({
         eventId: item.eventId,
         title: item.title,
         subtitle: item.subtitle,
@@ -111,20 +111,11 @@ export class EventFeedbackInfoCardConverter {
     })).filter(item => item.eventId.length > 0);
   }
 
-  static organizerEventFeedbackInfoCard(
-    item: EventFeedbackOrganizerInfoCardInput
-  ): InfoCardData {
-    return this.organizerEventFeedbackCardData(item, true);
-  }
-
-  static organizerEventFeedbackDetailInfoCard(item: EventFeedbackOrganizerInfoCardInput): InfoCardData {
-    return this.organizerEventFeedbackCardData(item, false);
-  }
-
-  private static organizerEventFeedbackCardData(
+  static organizerEventFeedbackCard(
     item: EventFeedbackOrganizerInfoCardInput,
-    showAction: boolean
+    options: { showAction?: boolean } = {}
   ): InfoCardData {
+    const showAction = options.showAction ?? true;
     return {
       id: item.eventId,
       status: 'own-event',
