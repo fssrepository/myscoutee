@@ -6,7 +6,12 @@ import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
-import type { ChatRecord } from '../../contracts/chat.interface';
+import type {
+  ActivitiesChatPageResultDTO,
+  ChatDTO,
+  ChatRecord
+} from '../../contracts/chat.interface';
+import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesPageRequest } from '../../contracts';
 import { activityChatContextFilterKey } from '../../base/converters';
 import { AppContext } from '../../../ui/context';
@@ -177,7 +182,7 @@ interface HttpChatSocketEventDto {
 @Injectable({
   providedIn: 'root'
 })
-export class HttpChatsService {
+export class HttpChatsService implements IChatsService {
   private static readonly SOCKET_RECONNECT_BASE_DELAY_MS = 750;
   private static readonly SOCKET_RECONNECT_MAX_DELAY_MS = 8000;
   private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 3000;
@@ -240,8 +245,8 @@ export class HttpChatsService {
   async queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
-    cachedChatItems: readonly ChatRecord[] = []
-  ): Promise<{ items: ChatThreadRecord[]; total: number; nextCursor?: string | null }> {
+    options: { chatItems?: readonly ChatRecord[] } = {}
+  ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
@@ -298,11 +303,14 @@ export class HttpChatsService {
           ? response.nextCursor.trim()
           : null
       };
-      return this.shouldUseCachedActivitiesChatPage(page, normalizedUserId, cachedChatItems)
-        ? this.buildCachedActivitiesChatPage(normalizedUserId, request, cachedChatItems)
+      const resultPage = this.shouldUseCachedActivitiesChatPage(page, normalizedUserId, options.chatItems ?? [])
+        ? this.buildCachedActivitiesChatPage(normalizedUserId, request, options.chatItems ?? [])
         : page;
+      return this.toActivitiesChatPageDTO(resultPage);
     } catch {
-      return this.buildCachedActivitiesChatPage(normalizedUserId, request, cachedChatItems);
+      return this.toActivitiesChatPageDTO(
+        this.buildCachedActivitiesChatPage(normalizedUserId, request, options.chatItems ?? [])
+      );
     }
   }
 
@@ -661,6 +669,44 @@ export class HttpChatsService {
       supportCaseAssigneeInitials: item.supportCaseAssigneeInitials ?? null,
       supportCaseUpdatedAtIso: item.supportCaseUpdatedAtIso ?? null,
       ownerUserId
+    };
+  }
+
+  private toActivitiesChatPageDTO(page: {
+    items: readonly ChatThreadRecord[];
+    total: number;
+    nextCursor?: string | null;
+  }): ActivitiesChatPageResultDTO {
+    return {
+      items: page.items.map(item => this.toChatDTO(item)),
+      total: Math.max(0, Math.trunc(Number(page.total) || 0)),
+      nextCursor: page.nextCursor ?? null
+    };
+  }
+
+  private toChatDTO(item: ChatThreadRecord): ChatDTO {
+    return {
+      id: item.id,
+      avatar: item.avatar,
+      title: item.title,
+      lastMessage: item.lastMessage,
+      lastSenderId: item.lastSenderId,
+      memberIds: [...(item.memberIds ?? [])],
+      unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
+      dateIso: item.dateIso,
+      distanceKm: item.distanceKm,
+      distanceMetersExact: item.distanceMetersExact,
+      channelType: item.channelType,
+      serviceContext: item.serviceContext,
+      eventId: item.eventId,
+      subEventId: item.subEventId,
+      groupId: item.groupId,
+      supportCaseStatus: item.supportCaseStatus ?? null,
+      supportCaseAssigneeUserId: item.supportCaseAssigneeUserId ?? null,
+      supportCaseAssigneeName: item.supportCaseAssigneeName ?? null,
+      supportCaseAssigneeInitials: item.supportCaseAssigneeInitials ?? null,
+      supportCaseUpdatedAtIso: item.supportCaseUpdatedAtIso ?? null,
+      ownerUserId: item.ownerUserId
     };
   }
 

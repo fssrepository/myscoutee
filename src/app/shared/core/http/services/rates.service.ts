@@ -5,8 +5,9 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../contracts';
-import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../base/dto';
+import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
 import type { UserRatesSyncResult } from '../../contracts/activity.interface';
+import type { IRatesService } from '../../contracts/activity.interface';
 import type { UserRateRecord } from '../../local/source/entity/rate.entity';
 import type { UserDto } from '../../contracts/user.interface';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
@@ -14,7 +15,7 @@ import { RateOutboxRepository } from '../../base/repositories/rate-outbox.reposi
 @Injectable({
   providedIn: 'root'
 })
-export class HttpRatesService {
+export class HttpRatesService implements IRatesService {
   private static readonly USER_RATES_SYNC_ROUTE = '/user-rates/sync';
   private static readonly USER_RATES_ROUTE = '/activities/rates';
   private static readonly USER_RATES_PAGE_ROUTE = '/activities/rates/page';

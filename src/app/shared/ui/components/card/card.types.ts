@@ -225,7 +225,7 @@ export interface InfoCardFooterChip {
   toneClass?: string | null;
 }
 
-export interface DisplayData<TDetailRecord = unknown> {
+export interface DisplayData<TEagerDetail = unknown> {
   id: string;
   status?: string | null;
   dateIso?: string | null;
@@ -235,10 +235,10 @@ export interface DisplayData<TDetailRecord = unknown> {
   menuActions?: readonly InfoCardMenuAction[];
   ownerId?: string | null;
   ownerUserId?: string | null;
-  detailRecord?: TDetailRecord | null;
+  eagerDetail?: TEagerDetail | null;
 }
 
-export interface InfoCardData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
+export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   status?: string | null;
   groupLabel?: string | null;
   title: string;
@@ -277,7 +277,7 @@ export interface ImageCardPerson {
   profile?: unknown | null;
 }
 
-export interface ImageCardData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
+export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   title: string;
   subtitle?: string | null;
   detail?: string | null;
@@ -306,7 +306,7 @@ export interface ImageCardData<TDetailRecord = unknown> extends DisplayData<TDet
   scoreReceived?: number | null;
 }
 
-export interface SingleRowData<TDetailRecord = unknown> extends DisplayData<TDetailRecord> {
+export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   title: string;
   subtitle?: string | null;
   detail?: string | null;

@@ -1,4 +1,9 @@
-import type { ActivitiesChatContextFilter, SupportCaseFilter } from './chat.interface';
+import type {
+  ActivitiesChatContextFilter,
+  ActivitiesChatPageResultDTO,
+  ChatRecord,
+  SupportCaseFilter
+} from './chat.interface';
 import type {
   EventBlindMode,
   EventEditorTarget,
@@ -38,6 +43,57 @@ export type RateFilterKey =
   | 'individual-met'
   | 'pair-given'
   | 'pair-received';
+
+export type ActivityRateDTOMode = 'individual' | 'pair';
+export type ActivityRateDTODirection = 'given' | 'received' | 'mutual' | 'met';
+export type ActivityRateDTOSocialContext = 'separated-friends' | 'friends-in-common';
+
+export interface ActivityRateDTO {
+  id: string;
+  userId: string;
+  secondaryUserId?: string;
+  mode: ActivityRateDTOMode;
+  direction: ActivityRateDTODirection;
+  socialContext?: ActivityRateDTOSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven: number;
+  scoreReceived: number;
+  eventName: string;
+  happenedAt: string;
+  distanceMetersExact?: number;
+}
+
+export interface ActivityRatePageResultDTO {
+  items: ActivityRateDTO[];
+  total: number;
+  nextCursor?: string | null;
+  users?: UserDto[];
+}
+
+export interface IEventsService {
+  queryActivitiesEventDTOPage(
+    query: ActivityEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO>;
+}
+
+export interface IChatsService {
+  queryActivitiesChatPage(
+    userId: string,
+    request: ActivitiesPageRequest,
+    options?: { chatItems?: readonly ChatRecord[] }
+  ): Promise<ActivitiesChatPageResultDTO>;
+}
+
+export interface IRatesService {
+  queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]>;
+  queryActivitiesRatePage(
+    userId: string,
+    request: ActivitiesPageRequest,
+    signal?: AbortSignal
+  ): Promise<ActivityRatePageResultDTO>;
+}
 
 export interface ActivitiesFeedFilters {
   primaryFilter?: ActivitiesPrimaryFilter;
@@ -251,6 +307,75 @@ export interface ActivityEventListItem {
 }
 
 export type ActivityEventCardRecord = ActivityEventRecord | ActivityEventListItem;
+
+export type ActivityEventDTOType = ActivityEventRepositoryItemType;
+export type ActivityEventDTOStatus = ActivityEventStatus;
+
+export interface ActivityEventDTO {
+  id: string;
+  userId: string;
+  type: ActivityEventDTOType;
+  status?: ActivityEventDTOStatus;
+  statusBeforeSuppression?: ActivityEventDTOStatus | null;
+  avatar: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  unread: number;
+  activity: number;
+  isAdmin: boolean;
+  isInvitation: boolean;
+  isHosting: boolean;
+  isTrashed: boolean;
+  published: boolean;
+  trashedAtIso?: string | null;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorGender?: UserGender;
+  creatorCity: string;
+  visibility: EventVisibility;
+  blindMode?: EventBlindMode;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  sourceLink?: string;
+  location: string;
+  locationCoordinates?: LocationCoordinates | null;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  autoInviter?: boolean;
+  frequency?: string;
+  ticketing: boolean;
+  pricing?: PricingConfig | null;
+  policies?: EventPolicyItem[];
+  slotsEnabled?: boolean;
+  slotTemplates?: EventSlotTemplate[];
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
+  nextSlot?: EventSlotOccurrence | null;
+  upcomingSlots?: EventSlotOccurrence[];
+  acceptedMembers: number;
+  pendingMembers: number;
+  pendingReason?: ActivityPendingReason;
+  topics: string[];
+  subEvents?: SubEventFormItem[];
+  subEventsDisplayMode?: SubEventsDisplayMode;
+  rating: number;
+  boost: number;
+  affinity: number;
+}
+
+export interface ActivityEventPageResultDTO {
+  items: ActivityEventDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
 
 export interface ActivityEventExploreQuery {
   userId: string;

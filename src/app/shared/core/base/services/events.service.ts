@@ -18,18 +18,20 @@ import { HttpEventsService } from '../../http';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
   ActivityEventRepositoryItemType
 } from '../../contracts/activity.interface';
+import type { IEventsService } from '../../contracts/activity.interface';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class EventsService extends BaseRouteModeService {
+export class EventsService extends BaseRouteModeService implements IEventsService {
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
 
@@ -73,6 +75,16 @@ export class EventsService extends BaseRouteModeService {
       return this.localEventsService.queryActivitiesEventListPage(query, signal);
     }
     return this.httpEventsService.queryActivitiesEventListPage(query, signal);
+  }
+
+  async queryActivitiesEventDTOPage(
+    query: ActivityEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO> {
+    if (this.isLocalRouteEnabled('/activities/events')) {
+      return this.localEventsService.queryActivitiesEventDTOPage(query, signal);
+    }
+    return this.httpEventsService.queryActivitiesEventDTOPage(query, signal);
   }
 
   queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {

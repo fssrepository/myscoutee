@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../contracts';
-import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../dto';
+import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
+import type { IRatesService } from '../../contracts/activity.interface';
 import { LocalRatesService } from '../../local';
 import { HttpRatesService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -11,7 +12,7 @@ import { RateOutboxService } from './rate-outbox.service';
 @Injectable({
   providedIn: 'root'
 })
-export class RatesService extends BaseRouteModeService {
+export class RatesService extends BaseRouteModeService implements IRatesService {
   private readonly localRatesService = inject(LocalRatesService);
   private readonly httpRatesService = inject(HttpRatesService);
   private readonly gameService = inject(GameService);

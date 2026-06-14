@@ -5,10 +5,9 @@ import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../contracts';
-import type { ChatRecord } from '../../contracts/chat.interface';
-import type { UserDto } from '../../contracts/user.interface';
+import type { ChatDTO, ChatRecord } from '../../contracts/chat.interface';
+import type { IChatsService } from '../../contracts/activity.interface';
 import type { PageResult } from '../../../ui';
-import { buildActivityChatRows } from '../converters';
 
 import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
@@ -20,7 +19,7 @@ import type * as ActivityContracts from '../../contracts/activity.interface';
 @Injectable({
   providedIn: 'root'
 })
-export class ChatsService extends BaseRouteModeService {
+export class ChatsService extends BaseRouteModeService implements IChatsService {
   private static readonly CHAT_ROUTE = '/activities/chats';
 
   private readonly localChatsService = inject(LocalChatsService);
@@ -290,17 +289,11 @@ export class ChatsService extends BaseRouteModeService {
     request: ActivitiesPageRequest,
     options: {
       chatItems?: readonly ChatRecord[];
-      users?: readonly UserDto[];
     } = {}
-  ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const users = options.users ?? this.usersService.peekCachedUsers();
-    const page = await this.chatsService.queryActivitiesChatPage(userId, request, options.chatItems);
-
+  ): Promise<PageResult<ChatDTO>> {
+    const page = await this.chatsService.queryActivitiesChatPage(userId, request, options);
     return {
-      items: buildActivityChatRows(page.items, {
-        users,
-        activeUserId: userId
-      }),
+      items: page.items,
       total: page.total,
       nextCursor: page.nextCursor ?? null
     };

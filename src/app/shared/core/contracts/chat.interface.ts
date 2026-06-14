@@ -132,6 +132,36 @@ export interface ChatRecord {
   supportCaseUpdatedAtIso?: string | null;
 }
 
+export interface ChatDTO {
+  id: string;
+  avatar: string;
+  title: string;
+  lastMessage: string;
+  lastSenderId: string;
+  memberIds: string[];
+  unread: number;
+  dateIso?: string;
+  distanceKm?: number;
+  distanceMetersExact?: number;
+  channelType?: ChatChannelType;
+  serviceContext?: 'event' | 'asset' | 'notification';
+  eventId?: string;
+  subEventId?: string;
+  groupId?: string;
+  supportCaseStatus?: SupportCaseStatus | null;
+  supportCaseAssigneeUserId?: string | null;
+  supportCaseAssigneeName?: string | null;
+  supportCaseAssigneeInitials?: string | null;
+  supportCaseUpdatedAtIso?: string | null;
+  ownerUserId?: string | null;
+}
+
+export interface ActivitiesChatPageResultDTO {
+  items: ChatDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
 export interface ChatVoiceClip {
   dataUrl: string;
   mimeType: string;

@@ -19,6 +19,8 @@ import type {
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventDTO,
+  ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventListItem,
@@ -26,6 +28,7 @@ import type {
   ActivityEventScopeFilter,
   ActivityEventRepositoryItemType
 } from '../../contracts/activity.interface';
+import type { IEventsService } from '../../contracts/activity.interface';
 
 interface HttpEventsFilterRequest {
   userId: string;
@@ -41,10 +44,16 @@ interface HttpEventsFilterRequest {
   rangeEnd?: string;
 }
 
+type HttpActivityEventPolicyDTO = NonNullable<ActivityEventDTO['policies']>[number];
+type HttpActivityEventSlotTemplateDTO = NonNullable<ActivityEventDTO['slotTemplates']>[number];
+type HttpActivityEventSlotOccurrenceDTO = NonNullable<ActivityEventDTO['upcomingSlots']>[number];
+type HttpActivityEventSubEventDTO = NonNullable<ActivityEventDTO['subEvents']>[number];
+type HttpActivityEventSubEventGroupDTO = NonNullable<HttpActivityEventSubEventDTO['groups']>[number];
+
 @Injectable({
   providedIn: 'root'
 })
-export class HttpEventsService {
+export class HttpEventsService implements IEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -124,6 +133,64 @@ export class HttpEventsService {
       }
       return {
         records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
+  async queryActivitiesEventDTOPage(
+    query: ActivityEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.requestWithAbort(
+        this.http.post<ActivityEventDTO[] | ActivityEventPageResultDTO | null>(
+          `${this.apiBaseUrl}/activities/events/filter`,
+          {
+            userId: normalizedUserId,
+            filter: query.filter,
+            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
+            secondaryFilter: query.secondaryFilter,
+            sort: query.sort,
+            view: query.view,
+            limit: query.limit,
+            cursor: query.cursor ?? null,
+            anchorDate: query.anchorDate,
+            rangeStart: query.rangeStart,
+            rangeEnd: query.rangeEnd
+          } satisfies HttpEventsFilterRequest
+        ),
+        signal
+      );
+      if (Array.isArray(response)) {
+        const items = this.cloneDTOs(response);
+        return {
+          items,
+          total: items.length,
+          nextCursor: null
+        };
+      }
+      const items = this.cloneDTOs(response?.items);
+      return {
+        items,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        items: [],
         total: 0,
         nextCursor: null
       };
@@ -641,6 +708,27 @@ export class HttpEventsService {
       } satisfies ActivityEventRecord;
       return normalizedRecord;
     });
+  }
+
+  private cloneDTOs(items: readonly ActivityEventDTO[] | null | undefined): ActivityEventDTO[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items.map(item => ({
+      ...item,
+      locationCoordinates: item.locationCoordinates ? { ...item.locationCoordinates } : item.locationCoordinates,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+      policies: (item.policies ?? []).map((policy: HttpActivityEventPolicyDTO) => ({ ...policy })),
+      slotTemplates: (item.slotTemplates ?? []).map((template: HttpActivityEventSlotTemplateDTO) => ({ ...template })),
+      nextSlot: item.nextSlot ? { ...item.nextSlot } : item.nextSlot,
+      upcomingSlots: (item.upcomingSlots ?? []).map((slot: HttpActivityEventSlotOccurrenceDTO) => ({ ...slot })),
+      topics: [...(item.topics ?? [])],
+      subEvents: (item.subEvents ?? []).map((subEvent: HttpActivityEventSubEventDTO) => ({
+        ...subEvent,
+        groups: (subEvent.groups ?? []).map((group: HttpActivityEventSubEventGroupDTO) => ({ ...group })),
+        pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : subEvent.pricing
+      }))
+    }));
   }
 
   private cloneListItems(records: ActivityEventListItem[] | null | undefined): ActivityEventListItem[] {

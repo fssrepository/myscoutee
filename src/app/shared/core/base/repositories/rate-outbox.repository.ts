@@ -10,7 +10,7 @@ import { LocalUserRatesMapper } from '../../local/source/mappers/rate.mapper';
 import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../../common/app.db';
 import { resolveRouteConfig } from '../config';
 import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
-import type { ActivityRateDTO } from '../dto';
+import type { ActivityRateDTO } from '../../contracts/activity.interface';
 
 import { SessionService } from '../services/session.service';
 

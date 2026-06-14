@@ -1,4 +1,4 @@
-import type { ActivityRateDTO } from '../../../../../shared/core/base/dto';
+import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 

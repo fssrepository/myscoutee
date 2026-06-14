@@ -1,7 +1,7 @@
 
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
-import type { ActivityRateDTO } from '../../../../../shared/core/base/dto';
+import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';

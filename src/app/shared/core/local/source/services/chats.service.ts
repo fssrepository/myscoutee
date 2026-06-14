@@ -4,17 +4,19 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
-import type { ChatRecord } from '../../../contracts/chat.interface';
+import type { ActivitiesChatPageResultDTO, ChatRecord } from '../../../contracts/chat.interface';
+import type { IChatsService } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalChatThreadMapper } from '../mappers';
 
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
 })
-export class LocalChatsService extends LocalRouteDelayService {
+export class LocalChatsService extends LocalRouteDelayService implements IChatsService {
   private static readonly CHAT_ROUTE = '/activities/chats';
 
   private readonly chatsRepository = inject(LocalChatsRepository);
@@ -36,10 +38,12 @@ export class LocalChatsService extends LocalRouteDelayService {
   async queryActivitiesChatPage(
     userId: string,
     request: ContractTypes.ActivitiesPageRequest,
-    _cachedChatItems: readonly ChatRecord[] = []
-  ): Promise<{ items: ChatThreadRecord[]; total: number; nextCursor?: string | null }> {
+    _options: { chatItems?: readonly ChatRecord[] } = {}
+  ): Promise<ActivitiesChatPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), request);
+    return LocalChatThreadMapper.toDTOPage(
+      this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), request)
+    );
   }
 
   peekChatItemsByUser(userId: string): ChatThreadRecord[] {

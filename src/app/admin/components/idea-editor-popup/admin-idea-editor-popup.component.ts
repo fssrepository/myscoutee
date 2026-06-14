@@ -1335,16 +1335,16 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected ideaCardPostId(card: IdeaInfoCard | null | undefined): string {
-    return `${card?.detailRecord?.id ?? ''}`.trim();
+    return `${card?.eagerDetail?.id ?? ''}`.trim();
   }
 
   private ideaCardSortValue(card: IdeaInfoCard): number {
-    const parsed = Date.parse(card.detailRecord?.sortAtIso ?? '');
+    const parsed = Date.parse(card.eagerDetail?.sortAtIso ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
   private ideaCardDayGroupLabel(card: IdeaInfoCard): string {
-    const parsed = Date.parse(card.detailRecord?.sortAtIso ?? '');
+    const parsed = Date.parse(card.eagerDetail?.sortAtIso ?? '');
     if (!Number.isFinite(parsed)) {
       return 'No date';
     }

@@ -111,7 +111,7 @@ export class IdeaPostsService extends BaseRouteModeService {
         { label: 'Read more', toneClass: 'entry-idea-read-chip' }
       ],
       clickable: true,
-      detailRecord: this.ideaArticleDetail(post, 'Fresh article')
+      eagerDetail: this.ideaArticleDetail(post, 'Fresh article')
     };
   }
 
@@ -167,7 +167,7 @@ export class IdeaPostsService extends BaseRouteModeService {
       menuTitle: null,
       footerChips: [],
       clickable: false,
-      detailRecord: this.ideaArticleDetail(post, 'No date')
+      eagerDetail: this.ideaArticleDetail(post, 'No date')
     };
   }
 

@@ -16,19 +16,22 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalActivityEventsMapper } from '../mappers';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
   ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
+import type { IEventsService } from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
 })
-export class LocalEventsService extends LocalRouteDelayService {
+export class LocalEventsService extends LocalRouteDelayService implements IEventsService {
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
@@ -74,6 +77,17 @@ export class LocalEventsService extends LocalRouteDelayService {
       ...query,
       userId: this.resolveDemoActivityUserId(query.userId)
     });
+  }
+
+  async queryActivitiesEventDTOPage(
+    query: ActivityEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE, signal);
+    return LocalActivityEventsMapper.toDTOPage(this.eventsRepository.queryActivitiesEventListPage({
+      ...query,
+      userId: this.resolveDemoActivityUserId(query.userId)
+    }));
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {

@@ -9,7 +9,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import { UserProfileStateBuilder } from '../../../base/builders';
-import type { ActivityRateDTO } from '../../../base/dto';
+import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserGameMode, UserRatesSyncResult } from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';

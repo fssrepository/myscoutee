@@ -4,7 +4,7 @@ import type * as AppTypes from '../../../base/models';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityInviteCandidatesQuery } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ActivityRateDTO } from '../../../base/dto';
+import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { LocalActivityInviteCandidateRecord } from '../mappers';
 import { LocalContactsRepository } from './contacts.repository';
 import { LocalRatesRepository } from './rates.repository';

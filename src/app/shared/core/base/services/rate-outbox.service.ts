@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
-import type { ActivityRateDTO } from '../dto';
+import type { ActivityRateDTO } from '../../contracts/activity.interface';
 import type { UserRateOutboxRecord, UserRateRecord } from '../../local/source/entity/rate.entity';
 import { HttpRatesService } from '../../http/services/rates.service';
 import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';

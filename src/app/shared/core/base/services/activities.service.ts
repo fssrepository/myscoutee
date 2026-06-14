@@ -4,17 +4,18 @@ import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import type { ActivitiesFeedFilters, ActivitiesPageRequest, EventExploreFeedFilters } from '../../contracts';
-import type { ChatRecord } from '../../contracts/chat.interface';
+import type { ChatDTO, ChatRecord } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
+  buildActivityChatRows,
   buildActivityEventRows,
   buildActivityRateRows,
   toActivityEventRow,
   toActivitiesPageRequest
 } from '../converters';
 import { AppContext } from '../../../ui/context';
-import type { ActivityEventRecord } from '../../contracts/activity.interface';
+import type { ActivityEventDTO, ActivityEventRecord, ActivityRateDTO } from '../../contracts/activity.interface';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
@@ -63,6 +64,62 @@ export class ActivitiesService extends BaseRouteModeService {
       items: result.records.map(record => this.cloneExploreRecord(record)),
       total: result.total,
       nextCursor: result.nextCursor
+    };
+  }
+
+  async loadActivityEvents(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { signal?: AbortSignal } = {}
+  ): Promise<PageResult<ActivityEventDTO>> {
+    const request = toActivitiesPageRequest(query);
+    const activeUserId = this.resolveActiveUserId();
+    const page = await this.eventsService.queryActivitiesEventDTOPage({
+      userId: activeUserId,
+      filter: request.eventScopeFilter ?? 'active-events',
+      hostingPublicationFilter: request.hostingPublicationFilter,
+      secondaryFilter: request.secondaryFilter,
+      sort: this.normalizeEventActivitiesSort(request.sort),
+      view: request.view,
+      limit: request.pageSize,
+      cursor: request.cursor ?? null,
+      anchorDate: request.anchorDate,
+      rangeStart: request.rangeStart,
+      rangeEnd: request.rangeEnd
+    }, options.signal);
+    if (this.isCalendarActivitiesView(request.view)) {
+      return this.paginateActivityEventDTOs(page.items, request);
+    }
+    return {
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor
+    };
+  }
+
+  async loadActivityChats(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { chatItems?: readonly ChatRecord[]; signal?: AbortSignal } = {}
+  ): Promise<PageResult<ChatDTO>> {
+    const request = toActivitiesPageRequest(query);
+    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
+      chatItems: options.chatItems
+    });
+  }
+
+  async loadActivityRates(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { signal?: AbortSignal } = {}
+  ): Promise<PageResult<ActivityRateDTO, { users: UserDto[] }>> {
+    const request = toActivitiesPageRequest(query);
+    const activeUserId = this.resolveActiveUserId();
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request, options.signal);
+    const users = this.resolveActivityUsers(page.users);
+    this.cacheActivityUsers(users);
+    return {
+      items: page.items.map(item => ({ ...item })),
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
+      context: { users }
     };
   }
 
@@ -148,10 +205,18 @@ export class ActivitiesService extends BaseRouteModeService {
     request: ActivitiesPageRequest,
     options: { chatItems?: readonly ChatRecord[] }
   ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
-      chatItems: options.chatItems,
-      users: this.resolveActivityUsers()
+    const activeUserId = this.resolveActiveUserId();
+    const page = await this.chatsService.queryActivitiesChatPage(activeUserId, request, {
+      chatItems: options.chatItems
     });
+    return {
+      items: buildActivityChatRows(page.items, {
+        users: this.resolveActivityUsers(),
+        activeUserId
+      }),
+      total: page.total,
+      nextCursor: page.nextCursor ?? null
+    };
   }
 
   private resolveActiveUserId(): string {
@@ -269,6 +334,28 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
+  private paginateActivityEventDTOs(
+    items: readonly ActivityEventDTO[],
+    request: ActivitiesPageRequest
+  ): PageResult<ActivityEventDTO> {
+    if (this.isCalendarActivitiesView(request.view)) {
+      const range = this.activitiesQueryRange(request);
+      const filteredItems = range
+        ? items.filter(item => this.doesActivityEventDTOOverlapRange(item, range.start, range.end))
+        : [...items];
+      return {
+        items: filteredItems,
+        total: filteredItems.length
+      };
+    }
+
+    const startIndex = request.page * request.pageSize;
+    return {
+      items: items.slice(startIndex, startIndex + request.pageSize),
+      total: items.length
+    };
+  }
+
   private activitiesQueryRange(request: ActivitiesPageRequest): { start: Date; end: Date } | null {
     const start = this.parseSmartListDate(request.rangeStart);
     const end = this.parseSmartListDate(request.rangeEnd);
@@ -283,6 +370,19 @@ export class ActivitiesService extends BaseRouteModeService {
 
   private doesActivityRowOverlapRange(row: AppTypes.ActivityListRow, start: Date, end: Date): boolean {
     const range = this.resolveActivityRowRange(row);
+    if (!range) {
+      return false;
+    }
+    return this.dateRangeOverlaps(
+      AppUtils.dateOnly(range.start),
+      AppUtils.dateOnly(range.end),
+      start,
+      end
+    );
+  }
+
+  private doesActivityEventDTOOverlapRange(item: ActivityEventDTO, start: Date, end: Date): boolean {
+    const range = this.resolveActivityEventDTORange(item);
     if (!range) {
       return false;
     }
@@ -309,6 +409,17 @@ export class ActivitiesService extends BaseRouteModeService {
     }
     const start = new Date(row.startAt ?? row.dateIso);
     const end = new Date(row.endAt ?? new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return null;
+    }
+    return end.getTime() > start.getTime()
+      ? { start, end }
+      : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
+  }
+
+  private resolveActivityEventDTORange(item: ActivityEventDTO): { start: Date; end: Date } | null {
+    const start = new Date(item.startAtIso);
+    const end = new Date(item.endAtIso || new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return null;
     }

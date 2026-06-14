@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
-import type { ActivityRateDTO } from '../dto';
+import type { ActivityRateDTO } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../../../ui';
 

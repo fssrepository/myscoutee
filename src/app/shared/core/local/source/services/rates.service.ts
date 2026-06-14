@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivitiesPageRequest } from '../../../contracts';
-import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../../base/dto';
+import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../../contracts/activity.interface';
+import type { IRatesService } from '../../../contracts/activity.interface';
 import type { ActivityRateRecordQuery } from '../entity/rate.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -10,7 +11,7 @@ import { LocalRatesRepository } from '../repositories/rates.repository';
 @Injectable({
   providedIn: 'root'
 })
-export class LocalRatesService extends LocalRouteDelayService {
+export class LocalRatesService extends LocalRouteDelayService implements IRatesService {
   private static readonly RATES_ROUTE = '/activities/rates';
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly ratesRepository = inject(LocalRatesRepository);

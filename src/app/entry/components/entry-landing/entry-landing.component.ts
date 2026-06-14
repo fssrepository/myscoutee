@@ -482,7 +482,7 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   }
 
   protected ideaCardDetail(card: InfoCardData | null | undefined): IdeaArticleDetailDto | null {
-    const detail = card?.detailRecord;
+    const detail = card?.eagerDetail;
     return this.isIdeaArticleDetail(detail) ? detail : null;
   }
 

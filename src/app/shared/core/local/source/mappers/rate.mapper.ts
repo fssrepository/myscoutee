@@ -1,4 +1,4 @@
-import type { ActivityRateDTO } from '../../../base/dto';
+import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserRateRecord } from '../entity/rate.entity';
 
 export class LocalUserRatesMapper {

@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../../app-utils';
-import type { ActivityRateDTO } from '../../../base/dto';
+import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserRateRecord } from '../../source/entity/rate.entity';
 import { LocalUserRatesMapper } from '../../source/mappers';
 import { SeedScheduleBuilder } from './seed-schedule.builder';

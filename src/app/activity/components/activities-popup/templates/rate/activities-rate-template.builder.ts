@@ -9,7 +9,7 @@ import {
   type SingleCardData
 } from '../../../../../shared/ui';
 import type { ImageCardData, ImageCardDirection, ImageCardMode } from '../../../../../shared/ui';
-import type { ActivityRateDTO } from '../../../../../shared/core/base/dto';
+import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
 
 interface BuildActivitiesRateCardOptions {
   groupLabel?: string | null;
