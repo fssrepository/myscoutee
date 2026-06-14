@@ -24,8 +24,7 @@ import type {
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventRecord,
-  ActivityEventRepositoryItemType
+  ActivityEventRecord
 } from '../../../contracts/activity.interface';
 import type { IEventsService } from '../../../contracts/activity.interface';
 
@@ -163,29 +162,29 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return record ? LocalActivityEventsMapper.toDTO(record) : null;
   }
 
-  async trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
+  async trashItem(userId: string, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventsRepository.trashItem(userId, type, sourceId);
+    this.eventsRepository.trashItem(userId, sourceId);
   }
 
-  async publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
+  async publishItem(userId: string, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventsRepository.publishItem(userId, type, sourceId);
+    this.eventsRepository.publishItem(userId, sourceId);
   }
 
-  async unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
+  async unpublishItem(userId: string, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventsRepository.unpublishItem(userId, type, sourceId);
+    this.eventsRepository.unpublishItem(userId, sourceId);
   }
 
-  async restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
+  async restoreItem(userId: string, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventsRepository.restoreItem(userId, type, sourceId);
+    this.eventsRepository.restoreItem(userId, sourceId);
   }
 
-  async takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
+  async takeOverItem(userId: string, sourceId: string): Promise<void> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventsRepository.takeOverItem(userId, type, sourceId);
+    this.eventsRepository.takeOverItem(userId, sourceId);
   }
 
   waitForEventMutationDelay(): Promise<void> {

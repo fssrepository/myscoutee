@@ -4,7 +4,6 @@ import type * as ContractTypes from '../../core/contracts';
 import type { EventForm } from '../models';
 
 export interface ActivityEventSaveConverterInput {
-  target: ContractTypes.EventEditorTarget;
   form: EventForm;
   memberSummary: {
     acceptedMembers: number;
@@ -27,7 +26,6 @@ export class ActivityEventSaveConverter {
 
     return {
       id: input.form.id,
-      target: input.target,
       title: input.form.title.trim(),
       shortDescription: input.form.description.trim(),
       timeframe: EventEditorBuilder.buildEventEditorTimeframeLabel(
@@ -64,7 +62,7 @@ export class ActivityEventSaveConverter {
       slotTemplates: hasSlots ? persistedSlotTemplates : [],
       visibility: input.form.visibility,
       blindMode: input.form.blindMode,
-      status: input.form.status ?? (input.target === 'hosting' ? 'DR' : 'A'),
+      status: input.form.status ?? 'DR',
       creatorUserId: input.form.creatorUserId ?? input.activeUserId ?? undefined,
       creatorName: input.form.creatorName ?? input.activeUserProfile?.name,
       creatorInitials: input.form.creatorInitials ?? input.activeUserProfile?.initials,

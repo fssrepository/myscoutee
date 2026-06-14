@@ -12,7 +12,6 @@ export class LocalActivityEventsMapper {
     return {
       id: record.id,
       userId: record.userId,
-      type: record.type,
       status: record.status,
       statusBeforeSuppression: 'statusBeforeSuppression' in record ? record.statusBeforeSuppression ?? null : undefined,
       adminIds: [...(record.adminIds ?? [])],

@@ -22,8 +22,7 @@ import type {
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventRecord,
-  ActivityEventRepositoryItemType
+  ActivityEventRecord
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
 import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
@@ -144,24 +143,24 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.trashItem(userId, type, sourceId);
+  trashItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.trashItem(userId, sourceId);
   }
 
-  publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.publishItem(userId, type, sourceId);
+  publishItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.publishItem(userId, sourceId);
   }
 
-  unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.unpublishItem(userId, type, sourceId);
+  unpublishItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.unpublishItem(userId, sourceId);
   }
 
-  restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.restoreItem(userId, type, sourceId);
+  restoreItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.restoreItem(userId, sourceId);
   }
 
-  takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.takeOverItem(userId, type, sourceId);
+  takeOverItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.takeOverItem(userId, sourceId);
   }
 
   waitForEventMutationDelay(): Promise<void> {

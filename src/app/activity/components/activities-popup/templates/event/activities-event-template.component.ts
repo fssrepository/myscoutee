@@ -590,7 +590,7 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivityTakeOver(row: AppTypes.ActivityListRow): Promise<void> {
-    await this.eventsService.takeOverItem(this.activeUser.id, row.type as any, row.id);
+    await this.eventsService.takeOverItem(this.activeUser.id, row.id);
     const nextStatus = this.restoredActivityStatus(row);
     this.hostingItems = this.hostingItems.map(item =>
       item.id === row.id ? { ...item, status: nextStatus } : item
@@ -623,7 +623,7 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivityPublish(row: AppTypes.ActivityListRow): Promise<void> {
-    await this.eventsService.publishItem(this.activeUser.id, row.type as any, row.id);
+    await this.eventsService.publishItem(this.activeUser.id, row.id);
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
     this.setActivityPublicationState(row.id, true);
 
@@ -640,7 +640,7 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivityUnpublish(row: AppTypes.ActivityListRow): Promise<void> {
-    await this.eventsService.unpublishItem(this.activeUser.id, row.type as any, row.id);
+    await this.eventsService.unpublishItem(this.activeUser.id, row.id);
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
@@ -901,7 +901,6 @@ export class ActivitiesEventsController {
     return {
       eventSaveDTO: {
         id: row.id,
-        target: 'events',
         title,
         shortDescription,
         timeframe,
@@ -1115,7 +1114,6 @@ export class ActivitiesEventsController {
 
     return {
       id: row.id,
-      target: 'events',
       title,
       shortDescription,
       timeframe,
@@ -1230,13 +1228,13 @@ export class ActivitiesEventsController {
 
   private async persistActivityRowTrash(row: AppTypes.ActivityListRow): Promise<void> {
     if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.trashItem(this.activeUser.id, row.type, row.id);
+      await this.eventsService.trashItem(this.activeUser.id, row.id);
     }
   }
 
   private async restoreActivityRow(row: AppTypes.ActivityListRow): Promise<void> {
     if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.restoreItem(this.activeUser.id, row.type, row.id);
+      await this.eventsService.restoreItem(this.activeUser.id, row.id);
     }
     this.unmarkActivityRowTrashed(row);
     this.removeVisibleActivityRow(row);

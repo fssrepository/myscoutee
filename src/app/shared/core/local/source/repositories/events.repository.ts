@@ -513,28 +513,28 @@ export class LocalEventsRepository {
     return this.peekKnownItemById(creatorUserId, normalizedId);
   }
 
-  trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.updateItemState(userId, type, sourceId, {
+  trashItem(userId: string, sourceId: string): void {
+    this.updateItemState(userId, sourceId, {
       status: 'T',
       isTrashed: true,
       trashedAtIso: new Date().toISOString()
     });
   }
 
-  publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.updateItemState(userId, type, sourceId, {
+  publishItem(userId: string, sourceId: string): void {
+    this.updateItemState(userId, sourceId, {
       status: 'A'
     });
   }
 
-  unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.updateItemState(userId, type, sourceId, {
+  unpublishItem(userId: string, sourceId: string): void {
+    this.updateItemState(userId, sourceId, {
       status: 'DR'
     });
   }
 
-  restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
-    this.updateItemState(userId, type, sourceId, {
+  restoreItem(userId: string, sourceId: string): void {
+    this.updateItemState(userId, sourceId, {
       status: 'A',
       statusBeforeSuppression: null,
       isTrashed: false,
@@ -542,7 +542,7 @@ export class LocalEventsRepository {
     });
   }
 
-  takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
+  takeOverItem(userId: string, sourceId: string): void {
     const normalizedSourceId = sourceId.trim();
     if (!normalizedSourceId) {
       return;
@@ -821,8 +821,8 @@ export class LocalEventsRepository {
     return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
 
-  isItemTrashed(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): boolean {
-    const record = this.findItem(userId, type, sourceId);
+  isItemTrashed(userId: string, sourceId: string): boolean {
+    const record = this.findItem(userId, sourceId);
     return record?.isTrashed === true;
   }
 
@@ -873,7 +873,6 @@ export class LocalEventsRepository {
 
   private updateItemState(
     userId: string,
-    type: ActivityEventRepositoryItemType,
     sourceId: string,
     updates: Partial<ActivityEventRecord>
   ): void {
@@ -881,7 +880,7 @@ export class LocalEventsRepository {
       const table = state[EVENTS_TABLE_NAME];
       const nextById = { ...table.byId };
       const nextIds = [...table.ids];
-      const recordKeys = this.resolveStateRecordKeysFromTable(table, userId, type, sourceId);
+      const recordKeys = this.resolveStateRecordKeysFromTable(table, userId, sourceId);
       let changed = false;
 
       for (const recordKey of recordKeys) {
@@ -900,10 +899,6 @@ export class LocalEventsRepository {
         return state;
       }
 
-      if (!changed) {
-        return state;
-      }
-
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
@@ -916,16 +911,14 @@ export class LocalEventsRepository {
 
   private resolveStateRecordKeys(
     userId: string,
-    type: ActivityEventRepositoryItemType,
     sourceId: string
   ): string[] {
-    return this.resolveStateRecordKeysFromTable(this.memoryDb.read()[EVENTS_TABLE_NAME], userId, type, sourceId);
+    return this.resolveStateRecordKeysFromTable(this.memoryDb.read()[EVENTS_TABLE_NAME], userId, sourceId);
   }
 
   private resolveStateRecordKeysFromTable(
     table: ActivityEventRecordCollection,
     userId: string,
-    _type: ActivityEventRepositoryItemType,
     sourceId: string
   ): string[] {
     const normalizedUserId = userId.trim();
@@ -945,10 +938,9 @@ export class LocalEventsRepository {
 
   private findItem(
     userId: string,
-    type: ActivityEventRepositoryItemType,
     sourceId: string
   ): ActivityEventRecord | null {
-    const recordKey = this.resolveRecordKey(userId, type, sourceId);
+    const recordKey = this.resolveRecordKey(userId, sourceId);
     if (!recordKey) {
       return null;
     }
@@ -958,7 +950,6 @@ export class LocalEventsRepository {
 
   private resolveRecordKey(
     userId: string,
-    type: ActivityEventRepositoryItemType,
     sourceId: string
   ): string | null {
     const normalizedUserId = userId.trim();
@@ -967,10 +958,6 @@ export class LocalEventsRepository {
       return null;
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
-    const directKey = ActivityEventRecordBuilder.buildRecordKey(normalizedUserId, type, normalizedSourceId);
-    if (table.byId[directKey]) {
-      return directKey;
-    }
     return table.ids.find(recordKey => {
       const record = table.byId[recordKey];
       return !!record
@@ -1538,7 +1525,7 @@ export class LocalEventsRepository {
       capacityTotal: number;
     }
   ): ActivityEventRecord {
-    const existing = this.findItem(context.userId, 'events', payload.id);
+    const existing = this.findItem(context.userId, payload.id);
     const visibility = payload.visibility ?? existing?.visibility ?? 'Public';
     const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);

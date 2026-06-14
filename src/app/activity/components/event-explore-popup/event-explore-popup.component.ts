@@ -1783,7 +1783,6 @@ export class EventExplorePopupComponent {
     );
     return {
       id: record.id,
-      target: 'events',
       title: record.title,
       shortDescription: record.subtitle,
       timeframe: record.timeframe,

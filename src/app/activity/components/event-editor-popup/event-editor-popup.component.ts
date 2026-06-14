@@ -1491,7 +1491,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.editorTarget = eventDTO.type === 'hosting' ? 'hosting' : target;
+      this.editorTarget = this.eventDTOBelongsToActiveAdmin(eventDTO) ? 'hosting' : target;
       this.editingEventId = eventDTO.id;
       this.openEventDTO(eventDTO, readOnly, this.editorTarget);
     } catch {
@@ -1553,7 +1553,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
 
     const saveDTO = ActivityEventSaveConverter.convert({
-      target: this.editorTarget,
       form: formForSync,
       memberSummary,
       activeUserId: activeUserId || null,
@@ -1690,6 +1689,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private activeUserId(): string {
     return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private eventDTOBelongsToActiveAdmin(eventDTO: ActivityEventDTO): boolean {
+    const activeUserId = this.activeUserId();
+    return !!activeUserId && (eventDTO.adminIds ?? []).includes(activeUserId);
   }
 
   private baseSlotTemplates(): ContractTypes.EventSlotTemplate[] {

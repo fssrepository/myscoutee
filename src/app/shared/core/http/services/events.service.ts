@@ -25,8 +25,7 @@ import type {
   ActivityEventExploreQueryResult,
   ActivityEventListItem,
   ActivityEventRecord,
-  ActivityEventScopeFilter,
-  ActivityEventRepositoryItemType
+  ActivityEventScopeFilter
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
 
@@ -322,24 +321,24 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
-  async trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/trash', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async trashItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/trash', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/publish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async publishItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/publish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async unpublishItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async restoreItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/restore', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async takeOverItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/take-over', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
   waitForEventMutationDelay(): Promise<void> {

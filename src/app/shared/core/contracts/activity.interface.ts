@@ -122,7 +122,6 @@ export interface EventExploreFeedFilters {
 
 export interface ActivityEventSaveDTO {
   id: string;
-  target: EventEditorTarget;
   title: string;
   shortDescription: string;
   timeframe: string;
@@ -311,13 +310,11 @@ export interface ActivityEventListItem {
 
 export type ActivityEventCardRecord = ActivityEventRecord | ActivityEventListItem;
 
-export type ActivityEventDTOType = ActivityEventRepositoryItemType;
 export type ActivityEventDTOStatus = ActivityEventStatus;
 
 export interface ActivityEventDTO {
   id: string;
   userId: string;
-  type: ActivityEventDTOType;
   status?: ActivityEventDTOStatus;
   statusBeforeSuppression?: ActivityEventDTOStatus | null;
   adminIds: string[];
