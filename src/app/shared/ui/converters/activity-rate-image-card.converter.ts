@@ -18,13 +18,14 @@ export class ActivityRateImageCardConverter {
     const primaryUser = this.resolvePrimaryUser(dto, options.users, options.activeUserId);
     const ownScore = this.rateOwnScore(dto);
     const distanceMetersExact = this.exactDistanceMeters(dto);
+    const sortScore = direction === 'mutual' ? ownScore + Math.max(dto.scoreReceived, 0) : ownScore;
 
     return {
       id: dto.id,
       status: direction,
       dateIso: dto.happenedAt ?? '',
       distanceMetersExact,
-      sortScore: direction === 'mutual' ? ownScore + Math.max(dto.scoreReceived, 0) : ownScore,
+      sortScore,
       title: primaryUser?.name ?? dto.userId,
       subtitle: '',
       detail: '',
