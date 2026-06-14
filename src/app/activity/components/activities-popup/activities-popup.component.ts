@@ -33,12 +33,17 @@ import type { ActivitiesFeedFilters, ActivityEventSaveDTO } from '../../../share
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuComponent, AppMenuDispatcher, type AppMenuBranch, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type InfoCardMenuActionEvent, type InfoCardResolvedMenuAction, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuComponent, AppMenuDispatcher, type AppMenuBranch, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type InfoCardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
   ActivityEventInfoCardConverter,
+  ActivityEventInfoCardMenuConverter,
   ActivityRateImageCardConverter
+} from '../../../shared/ui/converters';
+import type {
+  ActivityEventInfoCardMenuContext,
+  ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
@@ -92,11 +97,15 @@ interface ActivityPopupCardBase<TEagerDetail = unknown> {
   creatorInitials?: string | null;
   acceptedMembers?: number | null;
   pendingMembers?: number | null;
+  adminIds?: readonly string[];
+  acceptedMemberUserIds?: readonly string[];
+  pendingMemberUserIds?: readonly string[];
+  invitedMemberUserIds?: readonly string[];
+  pendingRequestMemberUserIds?: readonly string[];
   capacityTotal?: number | null;
   capacityMin?: number | null;
   capacityMax?: number | null;
   isTrashed?: boolean;
-  published?: boolean;
   memberCount?: number | null;
 }
 
@@ -119,13 +128,6 @@ type ActivityPopupCard<TEagerDetail = unknown> =
   | ActivityPopupEventCard<TEagerDetail>
   | ActivityPopupRateCard<TEagerDetail>
   | ActivityPopupChatCard<TEagerDetail>;
-
-interface ActivitiesInfoCardMenuContext {
-  menu: 'activity-event-card';
-  row: ActivityPopupCard;
-  card: InfoCardData;
-  action: InfoCardResolvedMenuAction;
-}
 
 interface ActivitiesEventScopeOption {
   key: ContractTypes.ActivitiesEventScope;
@@ -270,7 +272,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected get trashBadge(): number { return this.eventCounterValue('trash'); }
   protected get gameBadge(): number { return this.activityCounterValue('game'); }
 
-  protected publishedHostingIds: ReadonlySet<string> = new Set<string>();
+  protected activeHostingIds: ReadonlySet<string> = new Set<string>();
 
   protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = {};
 
@@ -467,7 +469,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return false;
       }
       return true;
-    }
+    },
+    menuItems: context => this.activitySmartListMenuItems(context)
   };
   protected readonly activitiesSmartListLoadPage: SmartListLoadPage<ActivityPopupCard, ActivitiesSmartListFilters>
     = (query, context) => from(this.loadActivitiesSmartListPage(query, context));
@@ -594,17 +597,42 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
   }
 
+  protected activitySmartListMenuItems(
+    context: SmartListMenuItemsContext<ActivityPopupCard, ActivitiesSmartListFilters>
+  ): readonly AppMenuItem<string, unknown>[] {
+    const subject = context.menu.context as ActivityEventInfoCardMenuSubject | undefined;
+    if (subject?.menu !== 'activity-event-card') {
+      return context.menu.items;
+    }
+    const activeUserId = this.appCtx.activeUserId().trim() || this.activeUser.id;
+    return ActivityEventInfoCardMenuConverter.convert(subject, {
+      activeUserId
+    });
+  }
+
   protected onActivityEventSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    const context = event.context as ActivitiesInfoCardMenuContext | undefined;
+    const context = event.context as ActivityEventInfoCardMenuContext | undefined;
     if (context?.menu !== 'activity-event-card') {
       return;
     }
-    this.onActivityEventInfoCardMenuAction(context.row, {
-      id: context.card.id,
+    const row = this.activityEventRowFromMenuSubject(context.subject);
+    if (!row) {
+      return;
+    }
+    this.onActivityEventInfoCardMenuAction(row, {
+      id: row.id,
       actionId: context.action.id,
       action: context.action,
-      card: context.card
+      card: row
     });
+  }
+
+  private activityEventRowFromMenuSubject(subject: ActivityEventInfoCardMenuSubject): ActivityPopupEventCard | null {
+    const row = this.visibleActivityRows.find(item => item.id === subject.id);
+    if (!row || (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations')) {
+      return null;
+    }
+    return row;
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
@@ -1676,7 +1704,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
       unread: Math.max(0, Math.trunc(Number(dto.activity) || 0)),
       metricScore: Math.max(0, Number(dto.boost) || 0),
-      isAdmin: dto.isAdmin,
+      isAdmin: this.activityEventDTOIsAdmin(dto),
       ownerId: dto.creatorUserId,
       ownerUserId: dto.creatorUserId,
       avatarInitials: dto.creatorInitials,
@@ -1688,11 +1716,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
       visibility: dto.visibility,
       acceptedMembers: dto.acceptedMembers,
       pendingMembers: dto.pendingMembers,
+      adminIds: [...(dto.adminIds ?? [])],
+      acceptedMemberUserIds: [...(dto.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(dto.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(dto.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(dto.pendingRequestMemberUserIds ?? [])],
       capacityTotal: dto.capacityTotal,
       capacityMin: dto.capacityMin,
       capacityMax: dto.capacityMax,
-      isTrashed: dto.isTrashed,
-      published: dto.published
+      isTrashed: this.activityEventSaveStatusCode(dto) === 'T'
     };
   }
 
@@ -1742,6 +1774,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       type: this.resolveActivityEventCardType(record),
       status: record.status,
       statusBeforeSuppression: 'statusBeforeSuppression' in record ? record.statusBeforeSuppression ?? null : undefined,
+      adminIds: [...(record.adminIds ?? [])],
       avatar: record.avatar,
       title: record.title,
       subtitle: record.subtitle,
@@ -1749,11 +1782,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       inviter: record.inviter ?? null,
       unread: record.unread,
       activity: record.activity,
-      isAdmin: record.isAdmin,
-      isInvitation: record.isInvitation,
-      isHosting: record.isHosting,
-      isTrashed: record.isTrashed,
-      published: record.published,
       trashedAtIso: 'trashedAtIso' in record ? record.trashedAtIso ?? null : undefined,
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
@@ -1995,9 +2023,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.invitationItems = normalizedRecords
         .filter(record => record.isInvitation);
     }
-    this.publishedHostingIds = new Set(
+    this.activeHostingIds = new Set(
       normalizedRecords
-        .filter(record => record.type === 'hosting' && record.published !== false)
+        .filter(record => record.type === 'hosting' && this.activityEventRecordStatusCode(record) === 'A')
         .map(record => record.id)
     );
     for (const record of normalizedRecords) {
@@ -2096,32 +2124,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resolveVisibleEventRowTypeFromSave(sync: ActivityEventSaveDTO): ActivityPopupCard['type'] | null {
-    const isPublishedLocally = this.publishedHostingIds.has(sync.id);
-    const existingPublished = this.hostingItems.find(item => item.id === sync.id)?.published
-      ?? this.eventItems.find(item => item.id === sync.id)?.published;
-    const isPublished = sync.published === false
-      ? false
-      : sync.published === true || isPublishedLocally || existingPublished !== false;
+    const isActiveLocally = this.activeHostingIds.has(sync.id);
+    const existingStatus = this.hostingItems.find(item => item.id === sync.id)?.status
+      ?? this.eventItems.find(item => item.id === sync.id)?.status;
+    const saveStatus = this.activityEventSaveStatusCode(sync);
+    const isPublished = saveStatus === 'A'
+      || (saveStatus !== 'DR' && (isActiveLocally || existingStatus === 'A'));
     const isPending = this.isPendingEventSave(sync);
     const isAccepted = this.isAcceptedEventSave(sync);
 
     if (this.activitiesEventScope === 'active-events') {
-      return !sync.isAdmin && isPublished && isAccepted ? 'events' : null;
+      return sync.target !== 'hosting' && isPublished && isAccepted ? 'events' : null;
     }
     if (this.activitiesEventScope === 'pending') {
-      return !sync.isAdmin && isPublished && isPending ? 'events' : null;
+      return sync.target !== 'hosting' && isPublished && isPending ? 'events' : null;
     }
     if (this.activitiesEventScope === 'my-events') {
       if (this.hostingPublicationFilter === 'drafts' && isPublished) {
         return null;
       }
-      return sync.isAdmin ? 'hosting' : null;
+      return sync.target === 'hosting' ? 'hosting' : null;
     }
     if (this.activitiesEventScope === 'drafts') {
-      return sync.isAdmin && !isPublished ? 'hosting' : null;
+      return sync.target === 'hosting' && !isPublished ? 'hosting' : null;
     }
     if (this.activitiesEventScope === 'all') {
-      return sync.isAdmin ? 'hosting' : (isAccepted || isPending ? 'events' : null);
+      return sync.target === 'hosting' ? 'hosting' : (isAccepted || isPending ? 'events' : null);
     }
     return null;
   }
@@ -2285,40 +2313,54 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private isTrashScopeEventRecord(item: ActivityEventRecord): boolean {
     const status = this.activityEventRecordStatusCode(item);
-    return status === 'T' || status === 'D' || status === 'I';
+    return status === 'T';
   }
 
   private activityEventRecordStatusCode(item: ActivityEventRecord): string {
     const status = `${item.status ?? ''}`.trim();
     switch (status) {
-      case 'active':
+      case 'A':
         return 'A';
-      case 'hosting':
-        return 'H';
-      case 'invitation':
-        return 'INV';
-      case 'draft':
+      case 'DR':
         return 'DR';
-      case 'trashed':
-      case 'trash':
+      case 'T':
         return 'T';
-      case 'under-review':
-      case 'under review':
+      case 'UR':
         return 'UR';
-      case 'blocked':
+      case 'B':
         return 'B';
-      case 'deleted':
+      case 'D':
         return 'D';
-      case 'inactive':
+      case 'I':
         return 'I';
       default:
-        return status || 'A';
+        return 'A';
     }
+  }
+
+  private activityEventSaveStatusCode(item: Pick<ActivityEventSaveDTO, 'status'>): ActivityEventRecord['status'] {
+    const status = `${item.status ?? ''}`.trim();
+    switch (status) {
+      case 'DR':
+      case 'T':
+      case 'UR':
+      case 'B':
+      case 'D':
+      case 'I':
+        return status;
+      default:
+        return 'A';
+    }
+  }
+
+  private activityEventDTOIsAdmin(item: ActivityEventDTO): boolean {
+    const activeUserId = this.activeUser?.id?.trim() ?? '';
+    return !!activeUserId && (item.adminIds ?? []).includes(activeUserId);
   }
 
   private isPendingEventSave(sync: ActivityEventSaveDTO): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
-    if (!activeUserId || sync.isAdmin) {
+    if (!activeUserId || sync.target === 'hosting') {
       return false;
     }
     if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
@@ -2329,7 +2371,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private isAcceptedEventSave(sync: ActivityEventSaveDTO): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
-    if (!activeUserId || sync.isAdmin) {
+    if (!activeUserId || sync.target === 'hosting') {
       return false;
     }
     if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
@@ -2427,7 +2469,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         isInvitation: false,
         isHosting: false,
         isTrashed: false,
-        published: true,
         trashedAtIso: null,
         creatorUserId: '',
         creatorName: '',
@@ -3042,7 +3083,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected isHostingPublished(id: string): boolean {
-    return this.publishedHostingIds.has(id);
+    return this.activeHostingIds.has(id);
   }
 
   private isInsideActivitiesFilterSurface(target: Element): boolean {
@@ -3071,7 +3112,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected applyActivityEventSave(sync: ActivityEventSaveMessage): void {
-    const shouldKeepMemberEventRecord = sync.target !== 'hosting' || sync.published !== false;
+    const saveStatus = this.activityEventSaveStatusCode(sync);
+    const shouldKeepMemberEventRecord = sync.target !== 'hosting' || saveStatus === 'A';
     let eventUpdated = false;
     let hostingUpdated = false;
 
@@ -3109,14 +3151,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.hostingDatesById[sync.id] = sync.startAt;
     this.eventDistanceById[sync.id] = sync.distanceKm;
     this.hostingDistanceById[sync.id] = sync.distanceKm;
-    if (sync.isAdmin || sync.target === 'hosting') {
-      const nextPublishedIds = new Set(this.publishedHostingIds);
-      if (sync.published === false) {
-        nextPublishedIds.delete(sync.id);
+    if (sync.target === 'hosting') {
+      const nextActiveIds = new Set(this.activeHostingIds);
+      if (saveStatus === 'A') {
+        nextActiveIds.add(sync.id);
       } else {
-        nextPublishedIds.add(sync.id);
+        nextActiveIds.delete(sync.id);
       }
-      this.publishedHostingIds = nextPublishedIds;
+      this.activeHostingIds = nextActiveIds;
     }
     if (sync.imageUrl.trim().length > 0) {
       this.activityImageById[sync.id] = sync.imageUrl;
@@ -3194,20 +3236,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const capacityTotal = Number.isFinite(Number(sync.capacityTotal))
       ? Math.max(acceptedMembers, Math.trunc(Number(sync.capacityTotal)))
       : Math.max(acceptedMembers, this.chatCountValue(existing?.capacityTotal ?? existing?.capacityMax));
-    const published = sync.published === false
-      ? false
-      : (this.publishedHostingIds.has(sync.id) ? true : (sync.published ?? existing?.published ?? type !== 'hosting'));
-    const fallbackStatus: ActivityEventRecord['status'] = type === 'hosting'
-      ? (published ? 'H' : 'DR')
-      : type === 'invitations'
-        ? 'INV'
-        : 'A';
-    const existingStatus = `${existing?.status ?? ''}`.trim();
-    const status = !published && type !== 'invitations'
+    const requestedStatus = this.activityEventSaveStatusCode(sync);
+    const existingStatus = existing ? this.activityEventRecordStatusCode(existing) : 'A';
+    const status: ActivityEventRecord['status'] = requestedStatus === 'DR'
       ? 'DR'
-      : existingStatus && existingStatus !== 'DR'
-        ? existing?.status
-        : fallbackStatus;
+      : existingStatus !== 'DR'
+        ? existingStatus as ActivityEventRecord['status']
+        : 'A';
     return {
       id: sync.id,
       userId: existing?.userId ?? this.activeUser.id,
@@ -3221,11 +3256,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       inviter: existing?.inviter ?? null,
       unread: existing?.unread ?? Math.max(0, Math.trunc(Number(sync.activity) || 0)),
       activity: sync.activity,
-      isAdmin: sync.isAdmin ?? existing?.isAdmin ?? type === 'hosting',
+      isAdmin: existing?.isAdmin ?? type === 'hosting',
       isInvitation: type === 'invitations',
       isHosting: type === 'hosting',
       isTrashed: existing?.isTrashed ?? false,
-      published,
       trashedAtIso: existing?.trashedAtIso ?? null,
       creatorUserId: sync.creatorUserId ?? existing?.creatorUserId ?? this.activeUser.id,
       creatorName: sync.creatorName ?? existing?.creatorName ?? sync.title,

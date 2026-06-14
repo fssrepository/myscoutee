@@ -29,7 +29,7 @@ import type {
       <app-menu
         [kind]="menu.kind"
         [title]="menu.title"
-        [items]="menu.items"
+        [items]="resolvedItems(menu)"
         [model]="menu.model"
         [groups]="menu.groups"
         [value]="menu.value"
@@ -54,6 +54,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
 
   private readonly dispatcher = inject(AppMenuDispatcher);
   @Input() scope = 'default';
+  @Input() items: readonly AppMenuItem<TId, TContext>[] | null = null;
 
   protected readonly activeMenu = computed(() => {
     const activeMenu = this.dispatcher.activeMenu();
@@ -180,6 +181,10 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return !this.isMobileMenu(menu);
   }
 
+  protected resolvedItems(menu: AppMenuDispatchState): readonly AppMenuItem[] {
+    return this.items ?? menu.items;
+  }
+
   private isMobileMenu(menu: AppMenuDispatchState): boolean {
     if (typeof window === 'undefined') {
       return false;
@@ -265,14 +270,15 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   }
 
   private visibleItems(menu: AppMenuDispatchState): readonly AppMenuItem[] {
-    if (menu.items.length > 0) {
-      return menu.items;
+    const items = this.resolvedItems(menu);
+    if (items.length > 0) {
+      return items;
     }
-    const items: AppMenuItem[] = [];
+    const fallbackItems: AppMenuItem[] = [];
     for (const branch of menu.model?.nodes ?? menu.groups) {
-      items.push(...(branch.children ?? branch.items ?? []));
+      fallbackItems.push(...(branch.children ?? branch.items ?? []));
     }
-    return items;
+    return fallbackItems;
   }
 
   private resolveLiveValue<T>(value: T | (() => T) | null | undefined): T | null | undefined {

@@ -70,19 +70,12 @@ export class SeedActivityMembersRepository {
     );
     const desiredOwners = new Map<string, ActivityMemberRecord[]>();
     const preferredEvents = this.computePreferredEventRecords(eventsTable);
-    const invitationPreviews = this.computeInvitationPreviewRecords(eventsTable);
     const explicitUserIdsByEventId = this.buildExplicitSeedMemberUserIdsByEventId();
 
     for (const eventRecord of preferredEvents) {
       this.setDesiredOwner(
         desiredOwners,
         this.buildSeededRecordsForEvent(eventRecord, users, usersById, explicitUserIdsByEventId)
-      );
-    }
-    for (const invitationRecord of invitationPreviews) {
-      this.setDesiredOwner(
-        desiredOwners,
-        this.buildSeededRecordsForEvent(invitationRecord, users, usersById, explicitUserIdsByEventId)
       );
     }
     this.setDesiredOwner(desiredOwners, this.buildSeededHomeSocialBridgeRecords(usersById));
@@ -244,16 +237,43 @@ export class SeedActivityMembersRepository {
     );
     const row = toActivityEventRow({
       ...record,
-      isInvitation: record.isInvitation,
-      type: record.isInvitation ? 'invitations' : record.type,
-      isAdmin: !record.isInvitation
+      isInvitation: false,
+      type: 'events',
+      isAdmin: this.isEventAdminRecord(record, record.userId)
     });
     const rowKey = `${row.type}:${row.id}`;
     const explicit = explicitUserIdsByEventId.get(record.id) ?? null;
     const userIds = this.seedMemberUserIdsForEventRecord(record, users, explicit);
+    const adminIds = this.normalizeMemberUserIds([record.creatorUserId, ...(record.adminIds ?? [])]);
+    const invitedUserIds = new Set(this.normalizeMemberUserIds(record.invitedMemberUserIds));
+    const pendingRequestUserIds = new Set(this.normalizeMemberUserIds(record.pendingRequestMemberUserIds));
     const entries = [
-      ...userIds.acceptedMemberUserIds.map(userId => this.toEntryForUserId(owner, row, rowKey, creator, userId, 'accepted', users, usersById)),
-      ...userIds.pendingMemberUserIds.map(userId => this.toEntryForUserId(owner, row, rowKey, creator, userId, 'pending', users, usersById))
+      ...userIds.acceptedMemberUserIds.map(userId => this.toEntryForUserId(
+        owner,
+        row,
+        rowKey,
+        creator,
+        userId,
+        'accepted',
+        users,
+        usersById,
+        { adminIds }
+      )),
+      ...userIds.pendingMemberUserIds.map(userId => this.toEntryForUserId(
+        owner,
+        row,
+        rowKey,
+        creator,
+        userId,
+        'pending',
+        users,
+        usersById,
+        {
+          adminIds,
+          pendingSource: pendingRequestUserIds.has(userId) && !invitedUserIds.has(userId) ? 'member' : 'admin',
+          requestKind: pendingRequestUserIds.has(userId) && !invitedUserIds.has(userId) ? 'join' : 'invite'
+        }
+      ))
     ];
     return entries.map(entry => this.toRecord(owner, entry));
   }
@@ -269,9 +289,7 @@ export class SeedActivityMembersRepository {
     const acceptedTarget = Math.max(0, this.normalizeMemberCount(record.acceptedMembers) ?? 0);
     const pendingTarget = Math.max(0, this.normalizeMemberCount(record.pendingMembers) ?? 0);
     const ownerUserId = record.userId.trim();
-    const seedActiveUserId = record.isInvitation
-      ? record.creatorUserId || ownerUserId
-      : ownerUserId || record.creatorUserId;
+    const seedActiveUserId = record.creatorUserId || ownerUserId;
     const seededMemberUserIds = SeedEventBuilder.seededEventMemberIds(
       record.id,
       Math.max(acceptedTarget + pendingTarget, acceptedTarget, 1),
@@ -284,11 +302,14 @@ export class SeedActivityMembersRepository {
       ? this.normalizeMemberUserIds(explicit.pending).filter(userId => !explicitAcceptedUserIds.includes(userId))
       : [];
 
-    const acceptedSource = explicit
+    const recordAcceptedUserIds = this.normalizeMemberUserIds(record.acceptedMemberUserIds);
+    const recordPendingUserIds = this.normalizeMemberUserIds(record.pendingMemberUserIds);
+
+    const acceptedSource = recordAcceptedUserIds.length > 0
+      ? recordAcceptedUserIds
+      : explicit
       ? [
-          ...(!record.isInvitation
-            && record.type === 'events'
-            && ownerUserId
+          ...(ownerUserId
             && !explicitPendingUserIds.includes(ownerUserId)
             && !explicitAcceptedUserIds.includes(ownerUserId)
               ? [ownerUserId]
@@ -296,19 +317,15 @@ export class SeedActivityMembersRepository {
           ...explicitAcceptedUserIds
         ]
       : this.normalizeMemberUserIds(seededMemberUserIds)
-          .filter(userId => !record.isInvitation || userId !== ownerUserId);
+          .filter(userId => userId !== ownerUserId);
 
-    const pendingSource = explicit
+    const pendingSource = recordPendingUserIds.length > 0
+      ? recordPendingUserIds
+      : explicit
       ? [
-          ...(record.isInvitation && ownerUserId && !explicitPendingUserIds.includes(ownerUserId)
-            ? [ownerUserId]
-            : []),
           ...explicitPendingUserIds
         ]
-      : [
-          ...(record.isInvitation && ownerUserId ? [ownerUserId] : []),
-          ...seededMemberUserIds
-        ];
+      : seededMemberUserIds;
 
     return {
       acceptedMemberUserIds: this.collectTargetMemberUserIds(
@@ -334,10 +351,18 @@ export class SeedActivityMembersRepository {
     userId: string,
     status: AppConstants.ActivityMemberStatus,
     users: readonly UserDto[],
-    usersById: ReadonlyMap<string, UserDto>
+    usersById: ReadonlyMap<string, UserDto>,
+    options: {
+      adminIds?: readonly string[];
+      pendingSource?: AppConstants.ActivityPendingSource;
+      requestKind?: AppConstants.ActivityMemberRequestKind;
+    } = {}
   ): ActivityContracts.ActivityMemberEntry {
     void owner;
     const user = this.resolveDemoUser(userId, users, usersById);
+    const isAdmin = this.normalizeMemberUserIds(options.adminIds).includes(user.id);
+    const pendingSource = status === 'accepted' ? null : options.pendingSource ?? 'admin';
+    const requestKind = status === 'accepted' ? null : options.requestKind ?? 'invite';
     const base = ActivityMembersBuilder.toActivityMemberEntry(
       user,
       row,
@@ -345,17 +370,20 @@ export class SeedActivityMembersRepository {
       creator.id,
       {
         status,
-        pendingSource: status === 'accepted' ? null : 'admin',
+        pendingSource,
         invitedByActiveUser: false
       },
       APP_STATIC_DATA.activityMemberMetPlaces
     );
     return {
       ...base,
-      role: user.id === creator.id ? 'Admin' : 'Member',
-      requestKind: status === 'accepted' ? null : 'invite',
-      pendingSource: status === 'accepted' ? null : 'admin',
-      statusText: status === 'accepted' ? base.statusText : 'Invitation pending.'
+      role: isAdmin ? 'Admin' : 'Member',
+      requestKind,
+      pendingSource,
+      statusText: status === 'accepted'
+        ? base.statusText
+        : (requestKind === 'join' ? 'Waiting for organizer approval.' : 'Invitation pending.'),
+      invitedByUserId: requestKind === 'invite' ? creator.id : null
     };
   }
 
@@ -516,11 +544,34 @@ export class SeedActivityMembersRepository {
       }
       const acceptedMembers = records.filter(record => record.status === 'accepted').length;
       const pendingMembers = records.filter(record => record.status === 'pending').length;
+      const acceptedMemberUserIds = this.normalizeMemberUserIds(records
+        .filter(record => record.status === 'accepted')
+        .map(record => record.userId));
+      const pendingMemberUserIds = this.normalizeMemberUserIds(records
+        .filter(record => record.status === 'pending')
+        .map(record => record.userId));
+      const invitedMemberUserIds = this.normalizeMemberUserIds(records
+        .filter(record => record.status === 'pending' && (record.pendingSource === 'admin' || record.requestKind === 'invite'))
+        .map(record => record.userId));
+      const pendingRequestMemberUserIds = this.normalizeMemberUserIds(records
+        .filter(record => record.status === 'pending' && (record.pendingSource === 'member' || record.requestKind === 'join'))
+        .map(record => record.userId));
+      const adminIds = this.normalizeMemberUserIds([
+        current.creatorUserId,
+        ...records
+          .filter(record => record.status === 'accepted' && record.role === 'Admin')
+          .map(record => record.userId)
+      ]);
       const capacityTotal = Math.max(acceptedMembers, current.capacityTotal);
       if (
         current.acceptedMembers === acceptedMembers
         && current.pendingMembers === pendingMembers
         && current.capacityTotal === capacityTotal
+        && this.sameUserIds(current.acceptedMemberUserIds, acceptedMemberUserIds)
+        && this.sameUserIds(current.pendingMemberUserIds, pendingMemberUserIds)
+        && this.sameUserIds(current.invitedMemberUserIds, invitedMemberUserIds)
+        && this.sameUserIds(current.pendingRequestMemberUserIds, pendingRequestMemberUserIds)
+        && this.sameUserIds(current.adminIds, adminIds)
       ) {
         continue;
       }
@@ -528,6 +579,11 @@ export class SeedActivityMembersRepository {
         ...current,
         acceptedMembers,
         pendingMembers,
+        acceptedMemberUserIds,
+        pendingMemberUserIds,
+        invitedMemberUserIds,
+        pendingRequestMemberUserIds,
+        adminIds,
         capacityTotal
       };
       changed = true;
@@ -542,7 +598,7 @@ export class SeedActivityMembersRepository {
     const preferredRecordByEventId = new Map<string, ActivityEventRecord>();
     for (const id of table.ids) {
       const record = table.byId[id];
-      if (!record || record.isInvitation) {
+      if (!record) {
         continue;
       }
       const current = preferredRecordByEventId.get(record.id);
@@ -551,21 +607,6 @@ export class SeedActivityMembersRepository {
       }
     }
     return [...preferredRecordByEventId.values()];
-  }
-
-  private computeInvitationPreviewRecords(table: ActivityEventRecordCollection): ActivityEventRecord[] {
-    const preferredRecordByInvitationId = new Map<string, ActivityEventRecord>();
-    for (const id of table.ids) {
-      const record = table.byId[id];
-      if (!record || !record.isInvitation) {
-        continue;
-      }
-      const current = preferredRecordByInvitationId.get(record.id);
-      if (!current || this.shouldPreferRecord(record, current)) {
-        preferredRecordByInvitationId.set(record.id, record);
-      }
-    }
-    return [...preferredRecordByInvitationId.values()];
   }
 
   private buildExplicitSeedMemberUserIdsByEventId(): Map<string, ExplicitSeedMemberUserIds> {
@@ -757,16 +798,21 @@ export class SeedActivityMembersRepository {
   }
 
   private shouldPreferRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
-    if (next.type === 'hosting' && current.type !== 'hosting') {
-      return true;
-    }
-    if (next.type !== 'hosting' && current.type === 'hosting') {
+    return next.acceptedMembers >= current.acceptedMembers;
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
       return false;
     }
-    if (next.isAdmin !== current.isAdmin) {
-      return next.isAdmin;
-    }
-    return next.acceptedMembers >= current.acceptedMembers;
+    return this.normalizeMemberUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
+  }
+
+  private sameUserIds(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {
+    const leftIds = this.normalizeMemberUserIds(left);
+    const rightIds = this.normalizeMemberUserIds(right);
+    return leftIds.length === rightIds.length && leftIds.every((userId, index) => userId === rightIds[index]);
   }
 
   private normalizeMemberUserIds(userIds: readonly string[] | undefined): string[] {

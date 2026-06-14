@@ -9,12 +9,17 @@ export class ActivityEventRecordBuilder {
   static cloneRecord(record: ActivityEventRecord): ActivityEventRecord {
     return {
       ...record,
+      adminIds: [...(record.adminIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
       subEvents: (record.subEvents ?? []).map(item => ({
         ...item,

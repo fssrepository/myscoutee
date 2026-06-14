@@ -1618,7 +1618,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.mode() === 'create') {
       return true;
     }
-    return this.editorTarget === 'hosting' && this.eventForm.published === false;
+    return this.editorTarget === 'hosting' && this.eventForm.status === 'DR';
   }
 
   private async runDraftAutosaveIfNeeded(): Promise<void> {
@@ -2149,7 +2149,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.editingEventId = form.id.trim() || this.editingEventId;
     this.pendingEventImageFile = null;
-    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && form.published !== false;
+    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && form.status === 'A';
     this.publishedCapacityMaxFloor = Math.max(0, Number(form.capacityMax ?? 0) || 0);
     this.eventForm = {
       ...form,

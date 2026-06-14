@@ -13,7 +13,8 @@ export class ActivityEventSeedMapper {
       shortDescription: record.subtitle,
       timeframe: record.timeframe,
       activity: record.activity,
-      isAdmin: record.isAdmin,
+      isAdmin: (record.adminIds ?? []).includes(record.userId) || record.creatorUserId === record.userId,
+      adminIds: [...(record.adminIds ?? [])],
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
       startAt: record.startAtIso,
@@ -49,8 +50,7 @@ export class ActivityEventSeedMapper {
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity,
-      ticketing: record.ticketing,
-      published: record.published
+      ticketing: record.ticketing
     };
   }
 }

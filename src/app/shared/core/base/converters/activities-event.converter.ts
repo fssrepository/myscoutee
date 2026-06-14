@@ -45,19 +45,11 @@ export function toActivityEventRow(
     capacityTotal: record.capacityTotal,
     capacityMin: record.capacityMin,
     capacityMax: record.capacityMax,
-    isTrashed: record.isTrashed,
-    published: record.published
+    isTrashed: record.isTrashed
   };
 }
 
 function resolveActivityEventRowType(record: ActivityEventCardRecord): AppTypes.ActivityListRow['type'] {
-  const status = normalizeEventStatusCode(record.status);
-  if (status === 'INV') {
-    return 'invitations';
-  }
-  if (status === 'H' || status === 'DR') {
-    return 'hosting';
-  }
   if (record.isInvitation || record.type === 'invitations') {
     return 'invitations';
   }
@@ -70,27 +62,21 @@ function resolveActivityEventRowType(record: ActivityEventCardRecord): AppTypes.
 function normalizeEventStatusCode(status: string | null | undefined): string {
   const normalized = `${status ?? ''}`.trim();
   switch (normalized) {
-    case 'active':
+    case 'A':
       return 'A';
-    case 'hosting':
-      return 'H';
-    case 'invitation':
-      return 'INV';
-    case 'draft':
+    case 'DR':
       return 'DR';
-    case 'trashed':
-    case 'trash':
+    case 'T':
       return 'T';
-    case 'under-review':
-    case 'under review':
+    case 'UR':
       return 'UR';
-    case 'blocked':
+    case 'B':
       return 'B';
-    case 'deleted':
+    case 'D':
       return 'D';
-    case 'inactive':
+    case 'I':
       return 'I';
     default:
-      return normalized || 'A';
+      return 'A';
   }
 }

@@ -6,8 +6,7 @@ import type {
   EventVisibility
 } from '../../core/common/constants';
 import type {
-  InfoCardData,
-  InfoCardMenuAction
+  InfoCardData
 } from '../components/card';
 
 export interface ActivityEventInfoCardConverterOptions {
@@ -21,9 +20,11 @@ export class ActivityEventInfoCardConverter {
     dto: ActivityEventDTO,
     options: ActivityEventInfoCardConverterOptions = {}
   ): InfoCardData {
+    const activeUserId = options.activeUserId ?? '';
     const status = this.statusCode(dto.status);
     const statusBadgeLabelKey = this.statusBadgeLabelKey(status);
-    const pending = this.isPending(dto, options.activeUserId ?? '');
+    const pending = this.isPending(dto, activeUserId);
+    const invited = this.isInvited(dto, activeUserId);
     const title = dto.title;
 
     return {
@@ -35,32 +36,32 @@ export class ActivityEventInfoCardConverter {
       ownerUserId: dto.creatorUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: this.surfaceTone(status, dto),
+      surfaceTone: this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
         this.dateRangeLabel(dto),
         ...this.locationMetaRows(dto)
       ],
-      description: dto.type === 'invitations'
+      description: invited
         ? dto.creatorName
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
       footerChips: this.footerChips(statusBadgeLabelKey, pending),
       leadingIcon: {
-        icon: this.leadingIcon(dto, status, pending)
+        icon: this.leadingIcon(dto, status, pending, activeUserId)
       },
       mediaStart: this.mediaStart(dto),
       mediaEnd: {
         variant: 'badge',
-        tone: this.mediaEndTone(status, dto),
+        tone: this.mediaEndTone(status, dto, activeUserId),
         label: statusBadgeLabelKey || this.capacityLabel(dto),
         ariaLabel: statusBadgeLabelKey || 'open.members',
         interactive: !statusBadgeLabelKey,
         pendingCount: statusBadgeLabelKey ? 0 : this.pendingMemberCount(dto)
       },
-      menuActions: this.menuActions(dto, options.activeUserId ?? ''),
+      hasMenuOptions: this.hasMenuOptions(dto),
       clickable: false,
       state: options.state ?? 'default'
     };
@@ -129,38 +130,32 @@ export class ActivityEventInfoCardConverter {
   }
 
   private static mediaStart(dto: ActivityEventDTO): InfoCardData['mediaStart'] {
-    if (dto.type !== 'events' && dto.type !== 'invitations') {
-      return null;
-    }
     return {
       variant: 'avatar',
-      label: dto.type === 'invitations'
-        ? AppUtils.initialsFromText(dto.inviter ?? dto.creatorName ?? dto.title)
-        : AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.title),
+      label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
       interactive: false
     };
   }
 
   private static isDraft(dto: ActivityEventDTO): boolean {
-    return dto.type === 'hosting' && (dto.published === false || this.statusCode(dto.status) === 'DR');
+    return this.statusCode(dto.status) === 'DR';
   }
 
   private static isPending(dto: ActivityEventDTO, activeUserId: string): boolean {
     if (this.isPendingReview(dto)) {
       return true;
     }
-    if (dto.type !== 'events') {
-      return false;
-    }
     const userId = activeUserId.trim();
     if (!userId) {
       return false;
     }
-    return dto.pendingReason === 'approval' || dto.pendingReason === 'waitlist';
+    return this.includesUserId(dto.pendingRequestMemberUserIds, userId)
+      || dto.pendingReason === 'approval'
+      || dto.pendingReason === 'waitlist';
   }
 
   private static isFull(dto: ActivityEventDTO): boolean {
-    return dto.type === 'events'
+    return this.statusCode(dto.status) === 'A'
       && dto.capacityTotal > 0
       && dto.acceptedMembers >= dto.capacityTotal;
   }
@@ -175,7 +170,8 @@ export class ActivityEventInfoCardConverter {
 
   private static surfaceTone(
     status: string,
-    dto: ActivityEventDTO
+    dto: ActivityEventDTO,
+    activeUserId: string
   ): InfoCardData['surfaceTone'] {
     switch (status) {
       case 'UR':
@@ -190,7 +186,10 @@ export class ActivityEventInfoCardConverter {
       case 'DR':
         return 'draft';
       default:
-        if (dto.type === 'hosting' && !this.isDraft(dto)) {
+        if (this.isInvited(dto, activeUserId)) {
+          return 'pending';
+        }
+        if (this.statusCode(dto.status) === 'A') {
           return 'published';
         }
         return 'default';
@@ -199,7 +198,8 @@ export class ActivityEventInfoCardConverter {
 
   private static mediaEndTone(
     status: string,
-    dto: ActivityEventDTO
+    dto: ActivityEventDTO,
+    activeUserId: string
   ): NonNullable<InfoCardData['mediaEnd']>['tone'] {
     switch (status) {
       case 'UR':
@@ -212,6 +212,9 @@ export class ActivityEventInfoCardConverter {
       case 'I':
         return 'inactive';
       default:
+        if (this.isInvited(dto, activeUserId)) {
+          return 'invitation';
+        }
         return this.isFull(dto) ? 'full' : 'default';
     }
   }
@@ -219,7 +222,8 @@ export class ActivityEventInfoCardConverter {
   private static leadingIcon(
     dto: ActivityEventDTO,
     status: string,
-    pending: boolean
+    pending: boolean,
+    activeUserId: string
   ): string {
     if (status === 'UR') {
       return 'pending_actions';
@@ -236,13 +240,10 @@ export class ActivityEventInfoCardConverter {
     if (pending) {
       return 'pending_actions';
     }
-    if (dto.type === 'hosting' || dto.type === 'events') {
-      return this.visibilityIcon(dto.visibility);
-    }
-    if (dto.type === 'invitations') {
+    if (this.isInvited(dto, activeUserId)) {
       return 'mail';
     }
-    return 'event';
+    return this.visibilityIcon(dto.visibility);
   }
 
   private static visibilityIcon(option: EventVisibility): string {
@@ -256,111 +257,11 @@ export class ActivityEventInfoCardConverter {
     }
   }
 
-  private static menuActions(dto: ActivityEventDTO, activeUserId: string): readonly InfoCardMenuAction[] {
+  private static hasMenuOptions(dto: ActivityEventDTO): boolean {
     if (this.isTrashed(dto)) {
-      return this.shouldRestore(dto) ? ['restore'] : [];
+      return this.shouldRestore(dto);
     }
-    const actions: InfoCardMenuAction[] = [];
-    if (this.shouldTakeOver(dto)) {
-      actions.push('takeOver');
-    }
-    if (this.shouldPublish(dto)) {
-      actions.push('publish');
-    }
-    if (this.shouldPrimaryAction(dto)) {
-      actions.push(this.primaryActionId(dto));
-    }
-    if (this.shouldView(dto)) {
-      actions.push('view');
-    }
-    if (dto.type === 'hosting' || dto.type === 'events' || dto.type === 'invitations') {
-      actions.push(this.serviceChatActionId(dto));
-      actions.push('shareEvent');
-    }
-    if (this.shouldUnpublish(dto)) {
-      actions.push('unpublish');
-    }
-    if (this.shouldReport(dto, activeUserId)) {
-      actions.push('reportOrganizer');
-    }
-    if (dto.type === 'invitations') {
-      actions.push('accept');
-    }
-    if (this.shouldSecondaryAction(dto)) {
-      actions.push(dto.type === 'events' ? 'leaveEvent' : dto.type === 'hosting' ? 'deleteEvent' : 'rejectInvitation');
-    }
-    return actions;
-  }
-
-  private static serviceChatActionId(dto: ActivityEventDTO): InfoCardMenuAction {
-    if (dto.type === 'hosting' && dto.isAdmin) {
-      return 'notifyParticipants';
-    }
-    if (dto.type === 'invitations') {
-      return 'askOrganizer';
-    }
-    return 'contactOrganizer';
-  }
-
-  private static primaryActionId(dto: ActivityEventDTO): InfoCardMenuAction {
-    if (dto.type === 'invitations') {
-      return 'viewInvitation';
-    }
-    return this.isDraft(dto) ? 'editEvent' : 'manageEvent';
-  }
-
-  private static shouldTakeOver(dto: ActivityEventDTO): boolean {
-    return this.statusCode(dto.status) === 'UR'
-      && dto.isAdmin === true
-      && (dto.type === 'hosting' || dto.type === 'events');
-  }
-
-  private static shouldPublish(dto: ActivityEventDTO): boolean {
-    return !this.isTrashed(dto)
-      && !this.isPendingReview(dto)
-      && dto.type === 'hosting'
-      && dto.isAdmin === true
-      && this.isDraft(dto);
-  }
-
-  private static shouldUnpublish(dto: ActivityEventDTO): boolean {
-    return !this.isTrashed(dto)
-      && !this.isPendingReview(dto)
-      && dto.type === 'hosting'
-      && dto.isAdmin === true
-      && !this.isDraft(dto);
-  }
-
-  private static shouldPrimaryAction(dto: ActivityEventDTO): boolean {
-    if (this.isTrashed(dto) || this.isPendingReview(dto)) {
-      return false;
-    }
-    if ((dto.type === 'hosting' || dto.type === 'events') && !dto.isAdmin) {
-      return false;
-    }
-    return true;
-  }
-
-  private static shouldView(dto: ActivityEventDTO): boolean {
-    return !this.isTrashed(dto) && (dto.type === 'hosting' || dto.type === 'events');
-  }
-
-  private static shouldReport(dto: ActivityEventDTO, activeUserId: string): boolean {
-    const creatorUserId = dto.creatorUserId.trim();
-    return !this.isTrashed(dto) && !!creatorUserId && creatorUserId !== activeUserId.trim();
-  }
-
-  private static shouldSecondaryAction(dto: ActivityEventDTO): boolean {
-    if (this.isTrashed(dto)) {
-      return false;
-    }
-    if (this.isPendingReview(dto) && dto.type !== 'events') {
-      return false;
-    }
-    if (dto.type === 'hosting' && !dto.isAdmin) {
-      return false;
-    }
-    return true;
+    return !!dto.id;
   }
 
   private static shouldRestore(dto: ActivityEventDTO): boolean {
@@ -374,7 +275,16 @@ export class ActivityEventInfoCardConverter {
 
   private static isTrashed(dto: ActivityEventDTO): boolean {
     const status = this.statusCode(dto.status);
-    return dto.isTrashed === true || status === 'T' || status === 'D' || status === 'I';
+    return status === 'T';
+  }
+
+  private static isInvited(dto: ActivityEventDTO, activeUserId: string): boolean {
+    return this.includesUserId(dto.invitedMemberUserIds, activeUserId);
+  }
+
+  private static includesUserId(userIds: readonly string[] | null | undefined, activeUserId: string): boolean {
+    const userId = activeUserId.trim();
+    return !!userId && (userIds ?? []).some(candidate => `${candidate ?? ''}`.trim() === userId);
   }
 
   private static statusBadgeLabelKey(status: string): string {
@@ -397,28 +307,22 @@ export class ActivityEventInfoCardConverter {
   private static statusCode(statusValue: string | null | undefined): string {
     const status = `${statusValue ?? ''}`.trim();
     switch (status) {
-      case 'active':
+      case 'A':
         return 'A';
-      case 'hosting':
-        return 'H';
-      case 'invitation':
-        return 'INV';
-      case 'draft':
+      case 'DR':
         return 'DR';
-      case 'trashed':
-      case 'trash':
+      case 'T':
         return 'T';
-      case 'under-review':
-      case 'under review':
+      case 'UR':
         return 'UR';
-      case 'blocked':
+      case 'B':
         return 'B';
-      case 'deleted':
+      case 'D':
         return 'D';
-      case 'inactive':
+      case 'I':
         return 'I';
       default:
-        return status || 'A';
+        return 'A';
     }
   }
 }

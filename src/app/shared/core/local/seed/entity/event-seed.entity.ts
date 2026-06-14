@@ -1,4 +1,5 @@
 import type { LocationCoordinates } from '../../../contracts/user.interface';
+import type { ActivityEventStatus } from '../../../contracts/activity.interface';
 import type {
   EventBlindMode,
   EventPolicyItem,
@@ -13,7 +14,7 @@ import type { PricingConfig } from '../../../contracts/pricing.interface';
 
 export interface ActivityInvitationSeedItem {
   id: string;
-  status?: string;
+  status?: ActivityEventStatus;
   avatar: string;
   inviter: string;
   description: string;
@@ -42,13 +43,14 @@ export interface ActivityInvitationSeedItem {
 
 export interface ActivityEventSeedItem {
   id: string;
-  status?: string;
+  status?: ActivityEventStatus;
   avatar: string;
   title: string;
   shortDescription: string;
   timeframe: string;
   activity: number;
-  isAdmin: boolean;
+  isAdmin?: boolean;
+  adminIds?: string[];
   creatorUserId?: string;
   creatorName?: string;
   startAt?: string;
@@ -87,9 +89,6 @@ export interface ActivityEventSeedItem {
   boost?: number;
   affinity?: number;
   ticketing?: boolean;
-  published?: boolean;
 }
 
-export interface ActivityHostingSeedItem extends Omit<ActivityEventSeedItem, 'isAdmin'> {
-  isAdmin?: boolean;
-}
+export interface ActivityHostingSeedItem extends ActivityEventSeedItem {}

@@ -155,7 +155,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
       dateIso: record.startAtIso,
       distanceKm: record.distanceKm,
       sourceType: record.type === 'hosting' ? 'hosting' : 'events',
-      isAdmin: record.isAdmin
+      isAdmin: record.isAdmin === true
     };
   }
 

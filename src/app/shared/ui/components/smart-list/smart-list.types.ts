@@ -3,6 +3,10 @@ import type {
   ProgressIndicatorPlacement,
   ProgressIndicatorTone
 } from '../progress-indicator';
+import type {
+  AppMenuDispatchState,
+  AppMenuItem
+} from '../menu';
 import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type ListDirection = 'asc' | 'desc';
@@ -183,6 +187,15 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
   currentViewMode: SmartListViewMode;
 }
 
+export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters = SmartListFilters> {
+  menu: AppMenuDispatchState<string, unknown>;
+  query: ListQuery<TFilters>;
+  items: readonly T[];
+}
+
+export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = SmartListFilters> =
+  (context: SmartListMenuItemsContext<T, TFilters>) => readonly AppMenuItem<string, unknown>[];
+
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   mobilePageSizeCap?: number | null;
@@ -205,6 +218,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   showStickyHeader?: boolean;
   showFirstGroupMarker?: boolean;
   showGroupMarker?: (context: SmartListGroupMarkerContext<T, TFilters>) => boolean;
+  menuItems?: SmartListMenuItemsResolver<T, TFilters>;
   loadTriggerEdge?: SmartListLoadTriggerEdge;
   mergeStrategy?: SmartListMergeStrategy;
   initialScrollAnchor?: SmartListInitialScrollAnchor;

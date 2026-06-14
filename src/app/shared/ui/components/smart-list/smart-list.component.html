@@ -386,7 +386,10 @@
     ></app-rating-star-bar>
   }
 
-  <app-menu-outlet (itemSelect)="onDispatchedMenuItemSelect($event)"></app-menu-outlet>
+  <app-menu-outlet
+    [items]="dispatchedMenuItems()"
+    (itemSelect)="onDispatchedMenuItemSelect($event)"
+  ></app-menu-outlet>
 </div>
 
 <ng-template #fullscreenEmptyState>

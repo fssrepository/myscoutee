@@ -34,11 +34,15 @@ export interface ActivityListItemBase<TEagerDetail = unknown> {
   creatorInitials?: string | null;
   acceptedMembers?: number | null;
   pendingMembers?: number | null;
+  adminIds?: readonly string[];
+  acceptedMemberUserIds?: readonly string[];
+  pendingMemberUserIds?: readonly string[];
+  invitedMemberUserIds?: readonly string[];
+  pendingRequestMemberUserIds?: readonly string[];
   capacityTotal?: number | null;
   capacityMin?: number | null;
   capacityMax?: number | null;
   isTrashed?: boolean;
-  published?: boolean;
   memberCount?: number | null;
 }
 

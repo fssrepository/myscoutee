@@ -256,6 +256,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   leadingIcon?: InfoCardLeadingIconConfig | null;
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
+  hasMenuOptions?: boolean;
   menuActions?: readonly InfoCardMenuAction[];
   menuTitle?: string | null;
   menuBadgeCount?: number | null;

@@ -1201,7 +1201,7 @@ export class EventExplorePopupComponent {
             : (existing.upcomingSlots ?? []).map(item => ({ ...item })),
           topics: Array.isArray(sync.topics) ? [...sync.topics] : [...existing.topics],
           ticketing: sync.ticketing ?? existing.ticketing,
-          published: sync.published ?? existing.published
+          status: sync.status ?? existing.status
         };
         this.eventExploreSmartList.replaceVisibleItems(currentItems);
         this.cdr.markForCheck();
@@ -1788,7 +1788,6 @@ export class EventExplorePopupComponent {
       shortDescription: record.subtitle,
       timeframe: record.timeframe,
       activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-      isAdmin: false,
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
@@ -1803,7 +1802,7 @@ export class EventExplorePopupComponent {
       ticketing: record.ticketing,
       visibility: record.visibility,
       blindMode: record.blindMode,
-      published: record.published,
+      status: record.status ?? 'A',
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,

@@ -317,31 +317,34 @@ export class SeedUsersRepository {
 
   private queryInvitationItemsByUser(userId: string): ReadonlyArray<{ unread: number }> {
     return this.queryUserEventRecords(userId)
-      .filter(record => record.type === 'invitations')
+      .filter(record => this.eventInvitedMemberUserIds(record).includes(userId.trim()))
       .filter(record => !record.isTrashed)
       .map(record => ({ unread: Math.max(0, Math.trunc(Number(record.unread) || 0)) }));
   }
 
   private queryHostingItemsByUser(userId: string): ReadonlyArray<{ activity: number }> {
     return this.queryUserEventRecords(userId)
-      .filter(record => record.type === 'hosting')
+      .filter(record => this.isEventAdminRecord(record, userId))
       .filter(record => !record.isTrashed)
-      .filter(record => record.isAdmin === true)
       .map(record => ({ activity: Math.max(0, Math.trunc(Number(record.activity) || 0)) }));
   }
 
   private countUpcomingActiveEventItemsByUser(userId: string): number {
     return this.queryUserEventRecords(userId)
-      .filter(record => record.type === 'events')
-      .filter(record => !record.isInvitation)
+      .filter(record => !this.isEventAdminRecord(record, userId))
+      .filter(record => !this.eventInvitedMemberUserIds(record).includes(userId.trim()))
       .filter(record => !record.isTrashed)
-      .filter(record => record.published !== false)
+      .filter(record => this.isPublishedEventStatus(record.status))
       .length;
+  }
+
+  private isPublishedEventStatus(status: ActivityEventRecord['status'] | null | undefined): boolean {
+    return `${status ?? 'A'}`.trim() === 'A';
   }
 
   private countTicketItemsByUser(userId: string): number {
     return this.queryUserEventRecords(userId)
-      .filter(record => !record.isInvitation)
+      .filter(record => !this.eventInvitedMemberUserIds(record).includes(userId.trim()))
       .filter(record => !record.isTrashed)
       .filter(record => record.ticketing === true)
       .length;
@@ -355,7 +358,11 @@ export class SeedUsersRepository {
     const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
     const nowMs = Date.now();
     return this.queryUserEventRecords(normalizedUserId).filter(item => {
-      if (item.isAdmin || item.type !== 'events' || item.isTrashed) {
+      if (
+        this.isEventAdminRecord(item, normalizedUserId)
+        || this.eventInvitedMemberUserIds(item).includes(normalizedUserId)
+        || item.isTrashed
+      ) {
         return false;
       }
       const startMs = new Date(item.startAtIso ?? '').getTime();
@@ -400,7 +407,38 @@ export class SeedUsersRepository {
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
-      .filter(record => record.userId === normalizedUserId);
+      .filter(record =>
+        this.isEventAdminRecord(record, normalizedUserId)
+        || this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)
+        || this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId)
+        || this.eventInvitedMemberUserIds(record).includes(normalizedUserId)
+      );
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    return this.normalizeUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
+  }
+
+  private eventAcceptedMemberUserIds(record: ActivityEventRecord): string[] {
+    return this.normalizeUserIds(record.acceptedMemberUserIds);
+  }
+
+  private eventInvitedMemberUserIds(record: ActivityEventRecord): string[] {
+    return this.normalizeUserIds(record.invitedMemberUserIds);
+  }
+
+  private eventPendingRequestMemberUserIds(record: ActivityEventRecord): string[] {
+    return this.normalizeUserIds(record.pendingRequestMemberUserIds);
+  }
+
+  private normalizeUserIds(userIds: readonly string[] | undefined): string[] {
+    return Array.from(new Set((userIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId.length > 0)));
   }
 
   private countOwnedAssetsByType(userId: string): {

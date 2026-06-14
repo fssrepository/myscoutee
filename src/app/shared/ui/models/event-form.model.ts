@@ -1,4 +1,5 @@
 import type { EventVisibility, UserGender } from '../../core/common/constants';
+import type { ActivityEventStatus } from '../../core/contracts/activity.interface';
 import type { EventBlindMode, EventPolicyItem, EventRecordKind, EventSlotTemplate, SubEventsDisplayMode } from '../../core/contracts/event.interface';
 import type { PricingConfig } from '../../core/contracts/pricing.interface';
 import type { LocationCoordinates } from '../../core/contracts/user.interface';
@@ -43,7 +44,7 @@ export interface EventForm {
   activity?: number;
   isAdmin?: boolean;
   distanceKm?: number;
-  published?: boolean;
+  status?: ActivityEventStatus;
   creatorUserId?: string;
   creatorName?: string;
   creatorInitials?: string;

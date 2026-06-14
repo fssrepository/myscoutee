@@ -248,11 +248,10 @@ export class SeedActivityResourcesRepository {
         const record = eventsTable.byId[id];
         if (
           !record
-          || record.userId !== userId
           || !record.id
           || (record.subEvents?.length ?? 0) === 0
           || record.isTrashed
-          || record.isInvitation
+          || !this.isEventAdminRecord(record, userId)
         ) {
           continue;
         }
@@ -267,19 +266,30 @@ export class SeedActivityResourcesRepository {
   }
 
   private shouldPreferParticipantSourceRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
-    if (next.type === 'hosting' && current.type !== 'hosting') {
-      return true;
-    }
-    if (next.type !== 'hosting' && current.type === 'hosting') {
-      return false;
-    }
-    if (next.isAdmin !== current.isAdmin) {
-      return next.isAdmin;
-    }
-    if (next.published !== current.published) {
-      return next.published;
+    const nextPublished = this.isPublishedEventStatus(next.status);
+    const currentPublished = this.isPublishedEventStatus(current.status);
+    if (nextPublished !== currentPublished) {
+      return nextPublished;
     }
     return next.activity >= current.activity;
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    return this.normalizeUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
+  }
+
+  private normalizeUserIds(userIds: readonly string[] | undefined): string[] {
+    return Array.from(new Set((userIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId.length > 0)));
+  }
+
+  private isPublishedEventStatus(status: ActivityEventRecord['status'] | null | undefined): boolean {
+    return `${status ?? 'A'}`.trim() === 'A';
   }
 
   private readOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetCardDTO[]> {

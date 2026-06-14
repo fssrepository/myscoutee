@@ -9,13 +9,13 @@ import type { SubEventFormItem } from '../../../contracts/event.interface';
 
 export class LocalActivityEventsMapper {
   static toDTO(record: ActivityEventCardRecord): ActivityEventDTO {
-    const type = this.resolveDTOType(record);
     return {
       id: record.id,
       userId: record.userId,
-      type,
+      type: record.type,
       status: record.status,
       statusBeforeSuppression: 'statusBeforeSuppression' in record ? record.statusBeforeSuppression ?? null : undefined,
+      adminIds: [...(record.adminIds ?? [])],
       avatar: record.avatar,
       title: record.title,
       subtitle: record.subtitle,
@@ -23,11 +23,6 @@ export class LocalActivityEventsMapper {
       inviter: record.inviter ?? null,
       unread: record.unread,
       activity: record.activity,
-      isAdmin: record.isAdmin,
-      isInvitation: record.isInvitation,
-      isHosting: record.isHosting,
-      isTrashed: record.isTrashed,
-      published: record.published,
       trashedAtIso: 'trashedAtIso' in record ? record.trashedAtIso ?? null : undefined,
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
@@ -63,6 +58,10 @@ export class LocalActivityEventsMapper {
       upcomingSlots: 'upcomingSlots' in record ? (record.upcomingSlots ?? []).map(item => ({ ...item })) : undefined,
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       pendingReason: record.pendingReason,
       topics: [...(record.topics ?? [])],
       subEvents: 'subEvents' in record ? this.cloneSubEvents(record.subEvents ?? []) : undefined,
@@ -83,16 +82,6 @@ export class LocalActivityEventsMapper {
       total: page.total,
       nextCursor: page.nextCursor
     };
-  }
-
-  private static resolveDTOType(record: ActivityEventCardRecord): ActivityEventDTO['type'] {
-    if (record.isInvitation || record.type === 'invitations') {
-      return 'invitations';
-    }
-    if (record.isHosting || record.type === 'hosting') {
-      return 'hosting';
-    }
-    return 'events';
   }
 
   private static cloneLocationCoordinates(

@@ -99,14 +99,13 @@ export class SeedEventFeedbackRepository {
     for (const user of users) {
       for (const record of itemsByUserId.get(user.id) ?? []) {
         const eventId = record.id?.trim() ?? '';
-        if (!eventId || record.isAdmin !== true || record.isInvitation || record.isTrashed) {
+        if (!eventId || !this.isEventAdminRecord(record, user.id) || record.isTrashed) {
           continue;
         }
         const current = hostedEventById.get(eventId);
         if (
           !current
-          || (current.type !== 'hosting' && record.type === 'hosting')
-          || (current.published === false && record.published !== false)
+          || (!this.isPublishedEventStatus(current.status) && this.isPublishedEventStatus(record.status))
         ) {
           hostedEventById.set(eventId, record);
         }
@@ -268,5 +267,23 @@ export class SeedEventFeedbackRepository {
       hash |= 0;
     }
     return Math.abs(hash);
+  }
+
+  private isPublishedEventStatus(status: ActivityEventRecord['status'] | null | undefined): boolean {
+    return `${status ?? 'A'}`.trim() === 'A';
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    return this.normalizeUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
+  }
+
+  private normalizeUserIds(userIds: readonly string[] | undefined): string[] {
+    return Array.from(new Set((userIds ?? [])
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId.length > 0)));
   }
 }

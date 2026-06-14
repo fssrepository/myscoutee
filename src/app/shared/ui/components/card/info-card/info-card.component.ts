@@ -304,6 +304,9 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected hasMenuActions(): boolean {
+    if (this.useSharedMenuTrigger && this.card?.hasMenuOptions === true) {
+      return true;
+    }
     return (this.card?.menuActions?.length ?? 0) > 0;
   }
 

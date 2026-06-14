@@ -92,7 +92,7 @@ export class SeedEventsRepository {
       invitationsByUser: SeedEventsBuilder.buildSeedInvitationItemsByUser(),
       eventsByUser: SeedEventsBuilder.buildSeedEventItemsByUser(),
       hostingByUser: SeedEventsBuilder.buildSeedHostingItemsByUser(),
-      publishedById: SeedEventsBuilder.buildSeedPublishedById()
+      statusById: SeedEventsBuilder.buildSeedStatusById()
     });
   }
 

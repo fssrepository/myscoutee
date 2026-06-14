@@ -59,11 +59,13 @@ export class LocalEventsRepository {
   }
 
   queryInvitationItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => record.isInvitation);
+    return this.queryUserRecords(userId).filter(record => this.isInvitationRecordForUser(record, userId));
   }
 
   queryEventItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => record.type === 'events');
+    return this.queryUserRecords(userId)
+      .filter(record => !this.isEventAdminRecord(record, userId))
+      .filter(record => !this.isInvitationRecordForUser(record, userId));
   }
 
   queryItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
@@ -76,17 +78,19 @@ export class LocalEventsRepository {
     return new Map(
       [...recordsByUserId.entries()].map(([userId, records]) => [
         userId,
-        records.filter(record => record.type === 'events')
+        records
+          .filter(record => !this.isEventAdminRecord(record, userId))
+          .filter(record => !this.isInvitationRecordForUser(record, userId))
       ])
     );
   }
 
   queryHostingItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => record.type === 'hosting');
+    return this.queryUserRecords(userId).filter(record => this.isEventAdminRecord(record, userId));
   }
 
   queryTrashedItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => this.isTrashScopeStatus(record));
+    return this.queryUserRecords(userId).filter(record => this.isTrashStatus(record));
   }
 
   private queryEventRecordsByFilter(
@@ -97,22 +101,21 @@ export class LocalEventsRepository {
     this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
     const memberEventItems = userItems
-      .filter(record => record.type === 'events')
-      .filter(record => record.isAdmin !== true)
-      .filter(record => !this.isTrashScopeStatus(record))
+      .filter(record => !this.isEventAdminRecord(record, userId))
+      .filter(record => !this.isInvitationRecordForUser(record, userId))
+      .filter(record => !this.isTrashStatus(record))
       .filter(record => this.isAcceptedEventRecord(record, userId) || this.isPendingEventRecord(record, userId));
     const pendingEventItems = memberEventItems
       .filter(record => this.isPendingEventRecord(record, userId) || this.isPendingReviewStatus(record));
     const activeEventItems = memberEventItems
       .filter(record => this.isAcceptedEventRecord(record, userId) && !this.isPendingReviewStatus(record));
     const invitationItems = userItems
-      .filter(record => record.isInvitation)
-      .filter(record => !this.isTrashScopeStatus(record));
+      .filter(record => this.isInvitationRecordForUser(record, userId))
+      .filter(record => !this.isTrashStatus(record));
     const myEventItems = userItems
-      .filter(record => record.type === 'hosting')
-      .filter(record => record.isAdmin)
-      .filter(record => !this.isTrashScopeStatus(record));
-    const draftItems = myEventItems.filter(record => record.published === false);
+      .filter(record => this.isEventAdminRecord(record, userId))
+      .filter(record => !this.isTrashStatus(record));
+    const draftItems = myEventItems.filter(record => this.isDraftStatus(record.status));
     const reviewItems = myEventItems.filter(record => this.isPendingReviewStatus(record));
 
     if (filter === 'all') {
@@ -131,20 +134,20 @@ export class LocalEventsRepository {
       return draftItems;
     }
     if (filter === 'trash') {
-      return userItems.filter(record => this.isTrashScopeStatus(record));
+      return userItems.filter(record => this.isTrashStatus(record));
     }
     return activeEventItems;
   }
 
   private isPendingEventRecord(record: ActivityEventRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
+    if (!normalizedUserId || this.isEventAdminRecord(record, normalizedUserId)) {
       return false;
     }
-    if (this.eventMemberUserIdsByStatus(record.id, 'accepted').includes(normalizedUserId)) {
+    if (this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)) {
       return false;
     }
-    return this.eventMemberUserIdsByStatus(record.id, 'pending').includes(normalizedUserId);
+    return this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId);
   }
 
   private isPendingReviewStatus(record: ActivityEventRecord): boolean {
@@ -152,12 +155,12 @@ export class LocalEventsRepository {
     return status === 'UR' || status === 'B';
   }
 
-  private isTrashScopeStatus(record: ActivityEventRecord): boolean {
+  private isTrashStatus(record: ActivityEventRecord): boolean {
     if (record.isTrashed) {
       return true;
     }
     const status = this.normalizeEventStatus(record.status);
-    return status === 'T' || status === 'D' || status === 'I';
+    return status === 'T';
   }
 
   private restoredStatusForRecord(record: ActivityEventRecord): ActivityEventRecord['status'] {
@@ -165,35 +168,37 @@ export class LocalEventsRepository {
     if (previous && !['UR', 'B', 'D', 'I', 'T'].includes(previous)) {
       return previous as ActivityEventRecord['status'];
     }
-    return record.type === 'hosting' ? 'H' : 'A';
+    return 'A';
   }
 
   private normalizeEventStatus(status: string | null | undefined): string {
     const normalized = `${status ?? ''}`.trim();
     switch (normalized) {
-      case 'active':
+      case 'A':
         return 'A';
-      case 'hosting':
-        return 'H';
-      case 'invitation':
-        return 'INV';
-      case 'draft':
+      case 'DR':
         return 'DR';
-      case 'trashed':
-      case 'trash':
+      case 'T':
         return 'T';
-      case 'under-review':
-      case 'under review':
+      case 'UR':
         return 'UR';
-      case 'blocked':
+      case 'B':
         return 'B';
-      case 'deleted':
+      case 'D':
         return 'D';
-      case 'inactive':
+      case 'I':
         return 'I';
       default:
-        return normalized || 'A';
+        return 'A';
     }
+  }
+
+  private isPublishedStatus(status: string | null | undefined): boolean {
+    return this.normalizeEventStatus(status) === 'A';
+  }
+
+  private isDraftStatus(status: string | null | undefined): boolean {
+    return this.normalizeEventStatus(status) === 'DR';
   }
 
   private resolveStageActionTarget(action: string, reason?: string | null): {
@@ -280,10 +285,10 @@ export class LocalEventsRepository {
 
   private isAcceptedEventRecord(record: ActivityEventRecord, userId: string): boolean {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || record.type !== 'events' || record.isAdmin === true) {
+    if (!normalizedUserId || this.isEventAdminRecord(record, normalizedUserId)) {
       return false;
     }
-    return this.eventMemberUserIdsByStatus(record.id, 'accepted').includes(normalizedUserId);
+    return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId);
   }
 
   queryActivitiesEventListPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesListQueryResult {
@@ -351,7 +356,6 @@ export class LocalEventsRepository {
       isInvitation: record.isInvitation,
       isHosting: record.isHosting,
       isTrashed: record.isTrashed,
-      published: record.published,
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,
@@ -369,6 +373,10 @@ export class LocalEventsRepository {
       eventType: record.eventType,
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       pendingReason: record.pendingReason,
       topics: [...record.topics],
       rating: record.rating,
@@ -478,8 +486,6 @@ export class LocalEventsRepository {
       payload,
       {
         userId: creatorUserId,
-        type: payload.target,
-        isHosting: payload.target === 'hosting',
         creatorName,
         creatorInitials,
         startAtIso,
@@ -495,14 +501,6 @@ export class LocalEventsRepository {
       const nextById = { ...table.byId };
       const nextIds = [...table.ids];
       this.upsertRecord(nextById, nextIds, baseRecord);
-      if (payload.target === 'hosting') {
-        this.upsertRecord(nextById, nextIds, {
-          ...baseRecord,
-          type: 'events',
-          isHosting: false
-        });
-      }
-      this.processDemoWaitlistForRecord(table, nextById, nextIds, normalizedId, true);
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
@@ -525,21 +523,19 @@ export class LocalEventsRepository {
 
   publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
     this.updateItemState(userId, type, sourceId, {
-      status: type === 'hosting' ? 'H' : 'A',
-      published: true
+      status: 'A'
     });
   }
 
   unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
     this.updateItemState(userId, type, sourceId, {
-      status: 'DR',
-      published: false
+      status: 'DR'
     });
   }
 
   restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): void {
     this.updateItemState(userId, type, sourceId, {
-      status: type === 'hosting' ? 'H' : 'A',
+      status: 'A',
       statusBeforeSuppression: null,
       isTrashed: false,
       trashedAtIso: null
@@ -566,8 +562,7 @@ export class LocalEventsRepository {
           status: restoredStatus,
           statusBeforeSuppression: null,
           isTrashed: false,
-          trashedAtIso: null,
-          published: restoredStatus !== 'DR'
+          trashedAtIso: null
         };
         changed = true;
       }
@@ -600,7 +595,7 @@ export class LocalEventsRepository {
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
       const preferred = this.computePreferredEventRecords(table)
-        .find(record => record.id === normalizedSourceId && !record.isInvitation);
+        .find(record => record.id === normalizedSourceId);
       const preferredSubEvents = this.cloneSubEvents(preferred?.subEvents) ?? [];
       const preferredIndex = this.resolveStageIndex(preferredSubEvents, request.subEventId, request.subEventIndex);
       if (!preferred || preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
@@ -613,7 +608,7 @@ export class LocalEventsRepository {
       let changed = false;
       for (const id of table.ids) {
         const current = table.byId[id];
-        if (!current || current.id !== normalizedSourceId || current.isInvitation) {
+        if (!current || current.id !== normalizedSourceId) {
           continue;
         }
         const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
@@ -657,7 +652,7 @@ export class LocalEventsRepository {
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const record = this.computePreferredEventRecords(table)
-      .find(item => item.id === normalizedEventId && !item.isInvitation);
+      .find(item => item.id === normalizedEventId);
     const subEvents = this.cloneSubEvents(record?.subEvents) ?? [];
     const stage = subEvents.find(item => `${item.id ?? ''}`.trim() === normalizedSubEventId) ?? null;
     if (!record || !stage) {
@@ -738,7 +733,7 @@ export class LocalEventsRepository {
     }
 
     const preferredRecord = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(record => record.id === normalizedSourceId && !record.isInvitation);
+      .find(record => record.id === normalizedSourceId);
     if (!preferredRecord) {
       return null;
     }
@@ -759,7 +754,7 @@ export class LocalEventsRepository {
       for (const joinedId of idsToJoin) {
         const current = eventTable.ids
           .map(recordKey => eventTable.byId[recordKey])
-          .find(record => record?.id === joinedId && !record.isInvitation);
+          .find(record => record?.id === joinedId);
         if (!current) {
           continue;
         }
@@ -787,23 +782,27 @@ export class LocalEventsRepository {
 
       for (const recordKey of table.ids) {
         const current = table.byId[recordKey];
-        if (!current || current.isInvitation || !idsToJoin.includes(current.id)) {
+        if (!current || !idsToJoin.includes(current.id)) {
           continue;
         }
         const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, current.id, 'accepted');
         const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, current.id, 'pending');
+        const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, current.id, member =>
+          member.status === 'pending' && this.isInvitationMember(member)
+        );
+        const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, current.id, member =>
+          member.status === 'pending' && !this.isInvitationMember(member)
+        );
         nextById[recordKey] = {
           ...current,
           acceptedMembers: acceptedMemberUserIds.length,
           pendingMembers: pendingMemberUserIds.length,
+          acceptedMemberUserIds,
+          pendingMemberUserIds,
+          invitedMemberUserIds,
+          pendingRequestMemberUserIds,
           capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
         };
-      }
-
-      if (accepted && !waitingList) {
-        for (const joinedId of idsToJoin) {
-          this.processDemoWaitlistForRecord(table, nextById, nextIds, joinedId, true, membersTable);
-        }
       }
 
       return {
@@ -817,7 +816,7 @@ export class LocalEventsRepository {
 
     this.materializeSlotRecords();
     const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(record => record.id === (normalizedSlotSourceId || normalizedSourceId) && !record.isInvitation)
+      .find(record => record.id === (normalizedSlotSourceId || normalizedSourceId))
       ?? preferredRecord;
     return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
@@ -829,7 +828,7 @@ export class LocalEventsRepository {
 
   countTicketItemsByUser(userId: string): number {
     return this.queryUserRecords(userId)
-      .filter(record => !record.isInvitation)
+      .filter(record => !this.isInvitationRecordForUser(record, userId))
       .filter(record => !record.isTrashed)
       .filter(record => record.ticketing === true)
       .length;
@@ -898,16 +897,7 @@ export class LocalEventsRepository {
       }
 
       if (!changed) {
-        const overlayRecord = this.buildUserStateOverlayRecord(table, userId, type, sourceId, updates);
-        if (!overlayRecord) {
-          return state;
-        }
-        const overlayKey = ActivityEventRecordBuilder.buildRecordKey(overlayRecord.userId, overlayRecord.type, overlayRecord.id);
-        nextById[overlayKey] = overlayRecord;
-        if (!nextIds.includes(overlayKey)) {
-          nextIds.push(overlayKey);
-        }
-        changed = true;
+        return state;
       }
 
       if (!changed) {
@@ -935,7 +925,7 @@ export class LocalEventsRepository {
   private resolveStateRecordKeysFromTable(
     table: ActivityEventRecordCollection,
     userId: string,
-    type: ActivityEventRepositoryItemType,
+    _type: ActivityEventRepositoryItemType,
     sourceId: string
   ): string[] {
     const normalizedUserId = userId.trim();
@@ -943,48 +933,14 @@ export class LocalEventsRepository {
     if (!normalizedUserId || !normalizedSourceId) {
       return [];
     }
-    const candidateTypes: ActivityEventRepositoryItemType[] = type === 'invitations'
-      ? ['invitations']
-      : ['events', 'hosting'];
-    return candidateTypes
-      .map(candidateType => ActivityEventRecordBuilder.buildRecordKey(normalizedUserId, candidateType, normalizedSourceId))
-      .filter((recordKey, index, recordKeys) => recordKeys.indexOf(recordKey) === index && Boolean(table.byId[recordKey]));
-  }
-
-  private buildUserStateOverlayRecord(
-    table: ActivityEventRecordCollection,
-    userId: string,
-    type: ActivityEventRepositoryItemType,
-    sourceId: string,
-    updates: Partial<ActivityEventRecord>
-  ): ActivityEventRecord | null {
-    if (type === 'invitations') {
-      return null;
-    }
-
-    const normalizedUserId = userId.trim();
-    const normalizedSourceId = sourceId.trim();
-    if (!normalizedUserId || !normalizedSourceId) {
-      return null;
-    }
-
-    const preferredRecord = this.computePreferredEventRecords(table)
-      .find(record => record.id === normalizedSourceId && !record.isInvitation);
-    if (!preferredRecord) {
-      return null;
-    }
-
-    const overlayType: ActivityEventRepositoryItemType = type === 'hosting' ? 'hosting' : 'events';
-    const baseRecord = ActivityEventRecordBuilder.cloneRecord(preferredRecord);
-    return {
-      ...baseRecord,
-      userId: normalizedUserId,
-      type: overlayType,
-      isAdmin: overlayType === 'hosting',
-      isHosting: overlayType === 'hosting',
-      isInvitation: false,
-      ...updates
-    };
+    return table.ids
+      .filter((recordKey, index, recordKeys) => recordKeys.indexOf(recordKey) === index)
+      .filter(recordKey => {
+        const record = table.byId[recordKey];
+        return !!record
+          && record.id === normalizedSourceId
+          && (this.isEventAdminRecord(record, normalizedUserId) || record.userId === normalizedUserId);
+      });
   }
 
   private findItem(
@@ -1015,13 +971,16 @@ export class LocalEventsRepository {
     if (table.byId[directKey]) {
       return directKey;
     }
-    if (type === 'hosting') {
-      const adminEventKey = ActivityEventRecordBuilder.buildRecordKey(normalizedUserId, 'events', normalizedSourceId);
-      if (table.byId[adminEventKey]?.isAdmin === true) {
-        return adminEventKey;
-      }
-    }
-    return null;
+    return table.ids.find(recordKey => {
+      const record = table.byId[recordKey];
+      return !!record
+        && record.id === normalizedSourceId
+        && (
+          this.isEventAdminRecord(record, normalizedUserId)
+          || record.userId === normalizedUserId
+          || this.hasTrackedUserParticipation(record, normalizedUserId)
+        );
+    }) ?? null;
   }
 
   private queryUserRecords(userId: string): ActivityEventRecord[] {
@@ -1106,7 +1065,7 @@ export class LocalEventsRepository {
 
   private buildMembershipProjectionRecord(userId: string, record: ActivityEventRecord): ActivityEventRecord {
     const normalizedUserId = userId.trim();
-    const pending = this.eventMemberUserIdsByStatus(record.id, 'pending').includes(normalizedUserId);
+    const pending = this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId);
     return {
       ...ActivityEventRecordBuilder.cloneRecord(record),
       userId,
@@ -1123,29 +1082,30 @@ export class LocalEventsRepository {
     userId: string,
     preferredRecord: ActivityEventRecord | undefined
   ): boolean {
-    if (record.type !== 'events' || record.isInvitation) {
+    if (this.isInvitationRecordForUser(record, userId)) {
       return true;
     }
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return false;
     }
-    if (record.creatorUserId === normalizedUserId || record.isAdmin === true) {
+    if (this.isEventAdminRecord(record, normalizedUserId)) {
       return true;
     }
     return this.hasTrackedUserParticipation(preferredRecord ?? record, normalizedUserId);
   }
 
   private hasTrackedUserParticipation(
-    record: Pick<ActivityEventRecord, 'id'>,
+    record: ActivityEventRecord,
     userId: string
   ): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return false;
     }
-    return this.eventMemberUserIdsByStatus(record.id, 'accepted').includes(normalizedUserId)
-      || this.eventMemberUserIdsByStatus(record.id, 'pending').includes(normalizedUserId);
+    return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)
+      || this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId)
+      || this.eventInvitedMemberUserIds(record).includes(normalizedUserId);
   }
 
   private isSetupRequiredDemoProfile(userId: string): boolean {
@@ -1164,7 +1124,7 @@ export class LocalEventsRepository {
 
     for (const id of table.ids) {
       const record = this.normalizePersistedEventRecord(table.byId[id]);
-      if (!record || record.isInvitation) {
+      if (!record) {
         continue;
       }
       const current = preferredRecordByEventId.get(record.id);
@@ -1177,14 +1137,10 @@ export class LocalEventsRepository {
   }
 
   private shouldPreferRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
-    if (next.type === 'hosting' && current.type !== 'hosting') {
-      return true;
-    }
-    if (next.type !== 'hosting' && current.type === 'hosting') {
-      return false;
-    }
-    if (next.isAdmin !== current.isAdmin) {
-      return next.isAdmin;
+    const nextActive = this.normalizeEventStatus(next.status) === 'A';
+    const currentActive = this.normalizeEventStatus(current.status) === 'A';
+    if (nextActive !== currentActive) {
+      return nextActive;
     }
     return next.acceptedMembers >= current.acceptedMembers;
   }
@@ -1501,7 +1457,7 @@ export class LocalEventsRepository {
   private exploreHasFriendGoing(record: ActivityEventRecord, activeUserId: string): boolean {
     return [
       record.creatorUserId,
-      ...this.eventMemberUserIdsByStatus(record.id, 'accepted')
+      ...this.eventAcceptedMemberUserIds(record)
     ].some(userId =>
       userId !== activeUserId && UserProfileStateBuilder.isFriendOfActiveUser(userId, activeUserId)
     );
@@ -1537,21 +1493,18 @@ export class LocalEventsRepository {
   }
 
   private shouldIncludeExploreRecord(record: ActivityEventRecord, activeUserId: string): boolean {
-    if (record.isTrashed || record.isInvitation) {
+    if (record.isTrashed || this.isInvitationRecordForUser(record, activeUserId)) {
       return false;
     }
-    if (this.normalizeEventStatus(record.status) !== 'A') {
-      return false;
-    }
-    if (record.published === false) {
+    if (!this.isPublishedStatus(record.status)) {
       return false;
     }
     if (record.creatorUserId === activeUserId) {
       return false;
     }
-    const acceptedMemberUserIds = this.eventMemberUserIdsByStatus(record.id, 'accepted');
-    const pendingMemberUserIds = this.eventMemberUserIdsByStatus(record.id, 'pending');
-    if (acceptedMemberUserIds.includes(activeUserId) || pendingMemberUserIds.includes(activeUserId)) {
+    const acceptedMemberUserIds = this.eventAcceptedMemberUserIds(record);
+    const pendingRequestMemberUserIds = this.eventPendingRequestMemberUserIds(record);
+    if (acceptedMemberUserIds.includes(activeUserId) || pendingRequestMemberUserIds.includes(activeUserId)) {
       return false;
     }
     if (record.visibility === 'Invitation only') {
@@ -1564,14 +1517,10 @@ export class LocalEventsRepository {
   }
 
   private shouldPreferExploreRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
-    if (next.type === 'hosting' && current.type !== 'hosting') {
-      return true;
-    }
-    if (next.type !== 'hosting' && current.type === 'hosting') {
-      return false;
-    }
-    if (next.published !== current.published) {
-      return next.published;
+    const nextPublished = this.isPublishedStatus(next.status);
+    const currentPublished = this.isPublishedStatus(current.status);
+    if (nextPublished !== currentPublished) {
+      return nextPublished;
     }
     return next.activity >= current.activity;
   }
@@ -1580,8 +1529,6 @@ export class LocalEventsRepository {
     payload: ActivityEventSaveDTO,
     context: {
       userId: string;
-      type: 'events' | 'hosting';
-      isHosting: boolean;
       creatorName: string;
       creatorInitials: string;
       startAtIso: string;
@@ -1591,8 +1538,8 @@ export class LocalEventsRepository {
       capacityTotal: number;
     }
   ): ActivityEventRecord {
-    const existing = this.findItem(context.userId, context.type, payload.id) ?? this.findItem(context.userId, 'events', payload.id);
-    const visibility = payload.visibility ?? existing?.visibility ?? (context.isHosting ? 'Invitation only' : 'Public');
+    const existing = this.findItem(context.userId, 'events', payload.id);
+    const visibility = payload.visibility ?? existing?.visibility ?? 'Public';
     const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
@@ -1605,11 +1552,20 @@ export class LocalEventsRepository {
       }),
       PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
     );
-    const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 35) / 10));
-    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${context.type}:${payload.id}:${payload.title}`) % 51));
+    const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${payload.id}:${payload.title}`) % 35) / 10));
+    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${payload.id}:${payload.title}`) % 51));
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
     const creator = usersTable.byId[context.userId] ?? null;
-    const acceptedUsers = this.eventMemberUserIdsByStatus(payload.id, 'accepted')
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, payload.id, 'accepted');
+    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, payload.id, 'pending');
+    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, payload.id, member =>
+      member.status === 'pending' && this.isInvitationMember(member)
+    );
+    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, payload.id, member =>
+      member.status === 'pending' && !this.isInvitationMember(member)
+    );
+    const acceptedUsers = acceptedMemberUserIds
       .map(userId => usersTable.byId[userId] ?? null);
     const affinity = ActivityEventRecordBuilder.resolveEventAffinity({
       id: payload.id,
@@ -1627,7 +1583,8 @@ export class LocalEventsRepository {
     return {
       id: payload.id,
       userId: context.userId,
-      type: context.type,
+      type: 'events',
+      status: this.normalizeEventStatus(payload.status ?? existing?.status) as ActivityEventRecord['status'],
       avatar: context.creatorInitials,
       title: payload.title,
       subtitle: payload.shortDescription,
@@ -1635,11 +1592,10 @@ export class LocalEventsRepository {
       inviter: null,
       unread: 0,
       activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      isAdmin: payload.isAdmin ?? existing?.isAdmin ?? context.isHosting,
+      isAdmin: existing?.isAdmin ?? true,
       isInvitation: false,
-      isHosting: context.isHosting,
+      isHosting: false,
       isTrashed: existing?.isTrashed ?? false,
-      published: context.isHosting ? (payload.published !== false) : true,
       trashedAtIso: existing?.trashedAtIso ?? null,
       creatorUserId: context.userId,
       creatorName: context.creatorName,
@@ -1676,6 +1632,10 @@ export class LocalEventsRepository {
       upcomingSlots: (payload.upcomingSlots ?? existing?.upcomingSlots ?? []).map(item => ({ ...item })),
       acceptedMembers: context.acceptedMembers,
       pendingMembers: context.pendingMembers,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
       topics,
       subEvents,
       subEventsDisplayMode: payload.subEventsDisplayMode
@@ -1684,90 +1644,6 @@ export class LocalEventsRepository {
       rating,
       boost,
       affinity
-    };
-  }
-
-  private processDemoWaitlistForRecord(
-    table: ActivityEventRecordCollection,
-    nextById: Record<string, ActivityEventRecord>,
-    nextIds: string[],
-    sourceId: string,
-    promoteSingle: boolean,
-    membersTable: ActivityMembersRecordCollection = this.normalizeActivityMembersCollection(
-      this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]
-    )
-  ): void {
-    const normalizedSourceId = sourceId.trim();
-    if (!normalizedSourceId) {
-      return;
-    }
-    const nextTable: ActivityEventRecordCollection = {
-      byId: nextById,
-      ids: nextIds
-    };
-    const preferredRecord = this.computePreferredEventRecords(nextTable)
-      .find(record => record.id === normalizedSourceId && !record.isInvitation);
-    if (!preferredRecord) {
-      return;
-    }
-    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedSourceId, 'accepted');
-    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedSourceId, 'pending')
-      .filter(userId => !acceptedMemberUserIds.includes(userId));
-    const capacityTotal = Math.max(0, this.normalizeCount(preferredRecord.capacityTotal) ?? 0);
-    if (capacityTotal <= 0 || pendingMemberUserIds.length === 0) {
-      return;
-    }
-
-    if (acceptedMemberUserIds.length >= capacityTotal) {
-      this.deleteDemoWaitlistInvitationRecords(table, nextById, nextIds, normalizedSourceId, pendingMemberUserIds);
-      return;
-    }
-
-    const pendingWithoutInvitation = pendingMemberUserIds.filter(userId =>
-      !nextById[ActivityEventRecordBuilder.buildRecordKey(userId, 'invitations', normalizedSourceId)]
-    );
-    const usersToInvite = promoteSingle
-      ? pendingWithoutInvitation.slice(0, 1)
-      : pendingWithoutInvitation;
-    for (const userId of usersToInvite) {
-      this.upsertRecord(nextById, nextIds, this.buildDemoWaitlistInvitationRecord(preferredRecord, userId));
-    }
-  }
-
-  private deleteDemoWaitlistInvitationRecords(
-    table: ActivityEventRecordCollection,
-    nextById: Record<string, ActivityEventRecord>,
-    nextIds: string[],
-    sourceId: string,
-    userIds: readonly string[]
-  ): void {
-    for (const userId of this.normalizeUserIds(userIds)) {
-      const recordKey = ActivityEventRecordBuilder.buildRecordKey(userId, 'invitations', sourceId);
-      if (!table.byId[recordKey] && !nextById[recordKey]) {
-        continue;
-      }
-      delete nextById[recordKey];
-      const index = nextIds.indexOf(recordKey);
-      if (index >= 0) {
-        nextIds.splice(index, 1);
-      }
-    }
-  }
-
-  private buildDemoWaitlistInvitationRecord(record: ActivityEventRecord, userId: string): ActivityEventRecord {
-    return {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
-      userId,
-      type: 'invitations',
-      status: 'INV',
-      inviter: record.creatorName,
-      unread: Math.max(1, record.unread),
-      isAdmin: false,
-      isInvitation: true,
-      isHosting: false,
-      isTrashed: false,
-      trashedAtIso: null,
-      published: true
     };
   }
 
@@ -1798,6 +1674,10 @@ export class LocalEventsRepository {
       ...record,
       acceptedMembers: this.normalizeCount(record.acceptedMembers) ?? 0,
       pendingMembers: this.normalizeCount(record.pendingMembers) ?? 0,
+      acceptedMemberUserIds: this.normalizeUserIds(record.acceptedMemberUserIds),
+      pendingMemberUserIds: this.normalizeUserIds(record.pendingMemberUserIds),
+      invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
+      pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
       policies: EventEditorBuilder.cloneEventEditorPolicies(record.policies ?? []),
       slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -1908,6 +1788,47 @@ export class LocalEventsRepository {
     );
   }
 
+  private eventAcceptedMemberUserIds(record: ActivityEventRecord): string[] {
+    const projected = this.normalizeUserIds(record.acceptedMemberUserIds);
+    return projected.length > 0 ? projected : this.eventMemberUserIdsByStatus(record.id, 'accepted');
+  }
+
+  private eventInvitedMemberUserIds(record: ActivityEventRecord): string[] {
+    const projected = this.normalizeUserIds(record.invitedMemberUserIds);
+    if (projected.length > 0) {
+      return projected;
+    }
+    const table = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    return this.eventMemberUserIdsByPredicate(table, record.id, member =>
+      member.status === 'pending' && this.isInvitationMember(member)
+    );
+  }
+
+  private eventPendingRequestMemberUserIds(record: ActivityEventRecord): string[] {
+    const projected = this.normalizeUserIds(record.pendingRequestMemberUserIds);
+    if (projected.length > 0) {
+      return projected;
+    }
+    const table = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    return this.eventMemberUserIdsByPredicate(table, record.id, member =>
+      member.status === 'pending' && !this.isInvitationMember(member)
+    );
+  }
+
+  private isInvitationRecordForUser(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    return !!normalizedUserId && this.eventInvitedMemberUserIds(record).includes(normalizedUserId);
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    return record.creatorUserId === normalizedUserId
+      || (record.adminIds ?? []).includes(normalizedUserId);
+  }
+
   private eventMemberUserIdsByStatusFromTable(
     table: ActivityMembersRecordCollection,
     eventId: string,
@@ -1924,6 +1845,31 @@ export class LocalEventsRepository {
       .map(record => `${record?.userId ?? ''}`.trim())
       .filter(Boolean);
     return this.normalizeUserIds(userIds);
+  }
+
+  private eventMemberUserIdsByPredicate(
+    table: ActivityMembersRecordCollection,
+    eventId: string,
+    predicate: (member: ActivityMemberRecord) => boolean
+  ): string[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    const ownerKey = `event:${normalizedEventId}`;
+    const userIds = (table?.idsByOwnerKey?.[ownerKey] ?? [])
+      .map(id => table?.byId?.[id])
+      .filter((record): record is ActivityMemberRecord => Boolean(record))
+      .filter(predicate)
+      .map(record => `${record.userId ?? ''}`.trim())
+      .filter(Boolean);
+    return this.normalizeUserIds(userIds);
+  }
+
+  private isInvitationMember(member: ActivityMemberRecord): boolean {
+    return member.pendingSource === 'admin'
+      || member.requestKind === 'invite'
+      || member.requestKind === 'waitlist-invite';
   }
 
   private normalizeUserIds(userIds: readonly string[] | null | undefined): string[] {
@@ -2121,6 +2067,7 @@ export class LocalEventsRepository {
           id: sourceId,
           userId: parent.creatorUserId || parent.userId,
           type: 'events',
+          status: parent.status,
           avatar: parent.avatar,
           title: parent.title,
           subtitle: parent.subtitle,
@@ -2132,7 +2079,6 @@ export class LocalEventsRepository {
           isInvitation: false,
           isHosting: false,
           isTrashed: false,
-          published: parent.published,
           trashedAtIso: null,
           creatorUserId: parent.creatorUserId,
           creatorName: parent.creatorName,
@@ -2209,6 +2155,7 @@ export class LocalEventsRepository {
         id: sourceId,
         userId: parent.creatorUserId || parent.userId,
         type: 'events',
+        status: parent.status,
         avatar: parent.avatar,
         title: parent.title,
         subtitle: parent.subtitle,
@@ -2220,7 +2167,6 @@ export class LocalEventsRepository {
         isInvitation: false,
         isHosting: false,
         isTrashed: false,
-        published: parent.published,
         trashedAtIso: null,
         creatorUserId: parent.creatorUserId,
         creatorName: parent.creatorName,

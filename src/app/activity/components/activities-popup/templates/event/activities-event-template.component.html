@@ -2,7 +2,7 @@
   <app-info-card
     [card]="card"
     [useSharedMenuTrigger]="true"
-    [sharedMenuContext]="{ menu: 'activity-event-card', row: row }"
+    [sharedMenuContext]="menuSubject"
     (mediaEndClick)="onMediaEndClick()"
     (menuAction)="onMenuAction($event)"
   ></app-info-card>

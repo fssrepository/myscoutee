@@ -127,7 +127,6 @@ export interface ActivityEventSaveDTO {
   shortDescription: string;
   timeframe: string;
   activity: number;
-  isAdmin: boolean;
   startAt: string;
   endAt?: string;
   distanceKm: number;
@@ -151,7 +150,7 @@ export interface ActivityEventSaveDTO {
   upcomingSlots?: EventSlotOccurrence[];
   visibility?: EventVisibility;
   blindMode?: EventBlindMode;
-  published?: boolean;
+  status?: ActivityEventStatus;
   creatorUserId?: string;
   creatorName?: string;
   creatorInitials?: string;
@@ -194,19 +193,12 @@ export type ActivityEventRepositoryItemType = 'events' | 'hosting' | 'invitation
 export type ActivityEventActivitiesSort = 'date' | 'distance' | 'relevance';
 export type ActivityEventStatus =
   | 'A'
-  | 'H'
-  | 'INV'
   | 'DR'
   | 'T'
   | 'UR'
   | 'B'
   | 'D'
-  | 'I'
-  | 'active'
-  | 'hosting'
-  | 'invitation'
-  | 'draft'
-  | 'trashed';
+  | 'I';
 
 export interface ActivityEventRecord {
   id: string;
@@ -214,6 +206,7 @@ export interface ActivityEventRecord {
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
   statusBeforeSuppression?: ActivityEventStatus | null;
+  adminIds?: string[];
   avatar: string;
   title: string;
   subtitle: string;
@@ -221,11 +214,10 @@ export interface ActivityEventRecord {
   inviter: string | null;
   unread: number;
   activity: number;
-  isAdmin: boolean;
-  isInvitation: boolean;
-  isHosting: boolean;
-  isTrashed: boolean;
-  published: boolean;
+  isAdmin?: boolean;
+  isInvitation?: boolean;
+  isHosting?: boolean;
+  isTrashed?: boolean;
   trashedAtIso: string | null;
   creatorUserId: string;
   creatorName: string;
@@ -259,6 +251,10 @@ export interface ActivityEventRecord {
   upcomingSlots?: EventSlotOccurrence[];
   acceptedMembers: number;
   pendingMembers: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  invitedMemberUserIds?: string[];
+  pendingRequestMemberUserIds?: string[];
   pendingReason?: ActivityPendingReason;
   topics: string[];
   subEvents?: SubEventFormItem[];
@@ -273,6 +269,7 @@ export interface ActivityEventListItem {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  adminIds?: string[];
   avatar: string;
   title: string;
   subtitle: string;
@@ -280,11 +277,10 @@ export interface ActivityEventListItem {
   inviter?: string | null;
   unread: number;
   activity: number;
-  isAdmin: boolean;
-  isInvitation: boolean;
-  isHosting: boolean;
-  isTrashed: boolean;
-  published: boolean;
+  isAdmin?: boolean;
+  isInvitation?: boolean;
+  isHosting?: boolean;
+  isTrashed?: boolean;
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
@@ -302,6 +298,10 @@ export interface ActivityEventListItem {
   eventType?: EventRecordKind;
   acceptedMembers: number;
   pendingMembers: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  invitedMemberUserIds?: string[];
+  pendingRequestMemberUserIds?: string[];
   pendingReason?: ActivityPendingReason;
   topics: string[];
   rating: number;
@@ -320,6 +320,7 @@ export interface ActivityEventDTO {
   type: ActivityEventDTOType;
   status?: ActivityEventDTOStatus;
   statusBeforeSuppression?: ActivityEventDTOStatus | null;
+  adminIds: string[];
   avatar: string;
   title: string;
   subtitle: string;
@@ -327,11 +328,6 @@ export interface ActivityEventDTO {
   inviter: string | null;
   unread: number;
   activity: number;
-  isAdmin: boolean;
-  isInvitation: boolean;
-  isHosting: boolean;
-  isTrashed: boolean;
-  published: boolean;
   trashedAtIso?: string | null;
   creatorUserId: string;
   creatorName: string;
@@ -365,6 +361,10 @@ export interface ActivityEventDTO {
   upcomingSlots?: EventSlotOccurrence[];
   acceptedMembers: number;
   pendingMembers: number;
+  acceptedMemberUserIds?: string[];
+  pendingMemberUserIds?: string[];
+  invitedMemberUserIds?: string[];
+  pendingRequestMemberUserIds?: string[];
   pendingReason?: ActivityPendingReason;
   topics: string[];
   subEvents?: SubEventFormItem[];

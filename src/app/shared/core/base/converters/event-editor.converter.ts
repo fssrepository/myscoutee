@@ -44,7 +44,7 @@ interface EventEditorFormInput {
   title: string;
   description: string;
   imageUrl: string;
-  published?: boolean;
+  status?: ContractTypes.ActivityEventStatus;
   visibility: AppConstants.EventVisibility;
   frequency: string;
   location: string;
@@ -386,7 +386,7 @@ export class EventEditorConverter {
       subEventsDisplayMode: record.subEventsDisplayMode,
       startAt: record.startAtIso,
       endAt: record.endAtIso,
-      published: record.published,
+      status: record.status ?? 'A',
       pendingMembersCount: record.pendingMembers,
       distanceKm: record.distanceKm,
       sourceLink: record.sourceLink,
@@ -429,7 +429,7 @@ export class EventEditorConverter {
       subEventsDisplayMode: 'Casual',
       startAt: row.startAt ?? row.dateIso,
       endAt: row.endAt ?? row.dateIso,
-      published: target === 'hosting' ? (row.published ?? true) : true,
+      status: row.status ?? 'A',
       pendingMembersCount: this.toEventEditorCapacityInputValue(
         row.pendingMembers
       ) ?? 0,

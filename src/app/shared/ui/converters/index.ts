@@ -8,6 +8,11 @@ export {
   type ActivityEventInfoCardConverterOptions
 } from './activity-event-info-card.converter';
 export {
+  ActivityEventInfoCardMenuConverter,
+  type ActivityEventInfoCardMenuContext,
+  type ActivityEventInfoCardMenuSubject
+} from './activity-event-info-card-menu.converter';
+export {
   ActivityEventSaveConverter,
   type ActivityEventSaveConverterInput
 } from './activity-event-save.converter';

@@ -36,7 +36,6 @@ export class ActivityEventSaveConverter {
         input.form.frequency
       ),
       activity: input.form.activity ?? 0,
-      isAdmin: input.form.isAdmin ?? (input.target === 'hosting'),
       startAt: input.form.startAt,
       endAt: input.form.endAt,
       distanceKm: input.form.distanceKm ?? 0,
@@ -65,9 +64,7 @@ export class ActivityEventSaveConverter {
       slotTemplates: hasSlots ? persistedSlotTemplates : [],
       visibility: input.form.visibility,
       blindMode: input.form.blindMode,
-      published: input.target === 'hosting'
-        ? (input.form.published ?? false)
-        : true,
+      status: input.form.status ?? (input.target === 'hosting' ? 'DR' : 'A'),
       creatorUserId: input.form.creatorUserId ?? input.activeUserId ?? undefined,
       creatorName: input.form.creatorName ?? input.activeUserProfile?.name,
       creatorInitials: input.form.creatorInitials ?? input.activeUserProfile?.initials,

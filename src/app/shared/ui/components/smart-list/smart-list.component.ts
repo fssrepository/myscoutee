@@ -34,6 +34,8 @@ import {
 import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
+  type AppMenuDispatchState,
+  type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../menu';
 import {
@@ -195,6 +197,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onDispatchedMenuItemSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     this.menuItemSelect.emit(event);
+  }
+
+  protected dispatchedMenuItems(): readonly AppMenuItem<string, unknown>[] | null {
+    const menu = this.itemMenuDispatcher.activeMenu() as AppMenuDispatchState<string, unknown> | null;
+    if (!menu) {
+      return null;
+    }
+    return this.config.menuItems?.({
+      menu,
+      query: this.currentQuery(),
+      items: this.items
+    }) ?? menu.items;
   }
 
   menuOpen(): boolean {

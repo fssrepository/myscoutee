@@ -614,17 +614,17 @@ const SEED_HOSTING_BY_USER: Record<string, ActivityHostingSeedItem[]> = {
   ]
 };
 
-const SEED_PUBLISHED_BY_ID: Record<string, boolean> = {
-  e1: true,
-  e4: true,
-  e5: true,
-  e7: false,
-  e10: true,
-  e11: false,
-  h1: true,
-  h2: true,
-  h3: false,
-  h4: false
+const SEED_STATUS_BY_ID: Record<string, ActivityEventRecord['status']> = {
+  e1: 'A',
+  e4: 'A',
+  e5: 'A',
+  e7: 'DR',
+  e10: 'A',
+  e11: 'DR',
+  h1: 'A',
+  h2: 'A',
+  h3: 'DR',
+  h4: 'DR'
 };
 
 
@@ -748,15 +748,15 @@ export class SeedEventsBuilder {
     );
   }
 
-  static buildSeedPublishedById(): Record<string, boolean> {
-    return { ...SEED_PUBLISHED_BY_ID };
+  static buildSeedStatusById(): Record<string, ActivityEventRecord['status']> {
+    return { ...SEED_STATUS_BY_ID };
   }
 
   static buildRecordCollection(options: {
     invitationsByUser: Record<string, readonly ActivityInvitationSeedItem[]>;
     eventsByUser: Record<string, readonly ActivityEventSeedItem[]>;
     hostingByUser: Record<string, readonly ActivityHostingSeedItem[]>;
-    publishedById?: Record<string, boolean>;
+    statusById?: Record<string, ActivityEventRecord['status']>;
   }): ActivityEventRecordCollection {
     const byId: Record<string, ActivityEventRecord> = {};
     const ids: string[] = [];
@@ -781,9 +781,9 @@ export class SeedEventsBuilder {
           isInvitation: true,
           isHosting: false,
           isTrashed: false,
-          published: true,
           trashedAtIso: null,
           creatorUserId,
+          adminIds: [creatorUserId],
           seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
@@ -809,9 +809,10 @@ export class SeedEventsBuilder {
           isInvitation: false,
           isHosting: false,
           isTrashed: false,
-          published: item.published ?? (options.publishedById?.[item.id] !== false),
+          status: item.status ?? options.statusById?.[item.id] ?? 'A',
           trashedAtIso: null,
           creatorUserId,
+          adminIds: item.adminIds ? [...item.adminIds] : undefined,
           seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
@@ -836,9 +837,10 @@ export class SeedEventsBuilder {
           isInvitation: false,
           isHosting: true,
           isTrashed: false,
-          published: item.published ?? (options.publishedById?.[item.id] !== false),
+          status: item.status ?? options.statusById?.[item.id] ?? 'A',
           trashedAtIso: null,
           creatorUserId: creatorUserIdByEventId.get(item.id) ?? userId,
+          adminIds: item.adminIds ? [...item.adminIds] : undefined,
           seed: this.extractSeedOverrides(item)
         });
         ids.push(recordKey);
@@ -855,7 +857,7 @@ export class SeedEventsBuilder {
       status: ActivityEventRecord['status'];
       statusBeforeSuppression: ActivityEventRecord['status'];
     }[] = [
-      { sourceId: 'h1', status: 'UR', statusBeforeSuppression: 'H' },
+      { sourceId: 'h1', status: 'UR', statusBeforeSuppression: 'A' },
       { sourceId: 'e13', status: 'B', statusBeforeSuppression: 'A' },
       { sourceId: 'e2', status: 'D', statusBeforeSuppression: 'A' },
       { sourceId: 'e14', status: 'I', statusBeforeSuppression: 'A' }
@@ -889,13 +891,89 @@ export class SeedEventsBuilder {
   private static rebalanceVisibleActiveEventParticipation(
     collection: ActivityEventRecordCollection
   ): ActivityEventRecordCollection {
+    const recordsByEventId = new Map<string, ActivityEventRecord[]>();
+    for (const id of collection.ids) {
+      const record = collection.byId[id];
+      if (!record?.id) {
+        continue;
+      }
+      const records = recordsByEventId.get(record.id) ?? [];
+      records.push(record);
+      recordsByEventId.set(record.id, records);
+    }
+
+    const byId: Record<string, ActivityEventRecord> = {};
+    const ids: string[] = [];
+    for (const records of recordsByEventId.values()) {
+      const canonical = this.buildCanonicalEventRecord(records);
+      const recordKey = this.buildRecordKey(canonical.userId, canonical.type, canonical.id);
+      byId[recordKey] = canonical;
+      ids.push(recordKey);
+    }
+
     return {
-      byId: { ...collection.byId },
-      ids: [...collection.ids]
+      byId,
+      ids
+    };
+  }
+
+  private static buildCanonicalEventRecord(records: readonly ActivityEventRecord[]): ActivityEventRecord {
+    const preferred = records.reduce((current, next) =>
+      this.shouldPreferParticipationCanonicalRecord(next, current) ? next : current
+    );
+    const creatorUserId = preferred.creatorUserId?.trim()
+      || records.find(record => record.creatorUserId?.trim())?.creatorUserId?.trim()
+      || preferred.userId.trim();
+    const adminIds = this.normalizeUserIds([
+      creatorUserId,
+      ...records.flatMap(record => record.adminIds ?? []),
+      ...records
+        .filter(record => record.isAdmin === true || record.isHosting === true || record.userId === record.creatorUserId)
+        .map(record => record.userId)
+    ]);
+    const acceptedMemberUserIds = this.normalizeUserIds([
+      ...records.flatMap(record => record.acceptedMemberUserIds ?? []),
+      ...adminIds
+    ]);
+    const invitedMemberUserIds = this.normalizeUserIds(records
+      .filter(record => record.isInvitation === true || record.type === 'invitations')
+      .flatMap(record => [
+        record.userId,
+        ...(record.pendingMemberUserIds ?? [])
+      ])
+    ).filter(userId => !acceptedMemberUserIds.includes(userId));
+    const pendingRequestMemberUserIds = this.normalizeUserIds(records
+      .filter(record => record.isInvitation !== true && record.type !== 'invitations')
+      .flatMap(record => record.pendingMemberUserIds ?? [])
+    ).filter(userId => !acceptedMemberUserIds.includes(userId) && !invitedMemberUserIds.includes(userId));
+    const pendingMemberUserIds = this.normalizeUserIds([...invitedMemberUserIds, ...pendingRequestMemberUserIds]);
+    const userId = adminIds[0] ?? creatorUserId;
+    return {
+      ...this.cloneRecord(preferred),
+      userId,
+      type: 'events',
+      isAdmin: true,
+      isInvitation: false,
+      isHosting: false,
+      adminIds,
+      creatorUserId: userId,
+      acceptedMembers: acceptedMemberUserIds.length,
+      pendingMembers: pendingMemberUserIds.length,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      capacityTotal: Math.max(preferred.capacityTotal, acceptedMemberUserIds.length)
     };
   }
 
   private static shouldPreferParticipationCanonicalRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
+    if (next.type === 'invitations' && current.type !== 'invitations') {
+      return false;
+    }
+    if (next.type !== 'invitations' && current.type === 'invitations') {
+      return true;
+    }
     if (next.type === 'hosting' && current.type !== 'hosting') {
       return true;
     }
@@ -903,7 +981,7 @@ export class SeedEventsBuilder {
       return false;
     }
     if (next.isAdmin !== current.isAdmin) {
-      return next.isAdmin;
+      return next.isAdmin === true;
     }
     return AppUtils.toSortableDate(next.startAtIso) < AppUtils.toSortableDate(current.startAtIso);
   }
@@ -911,6 +989,11 @@ export class SeedEventsBuilder {
   static cloneRecord(record: ActivityEventRecord): ActivityEventRecord {
     return {
       ...record,
+      adminIds: [...(record.adminIds ?? [])],
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
@@ -1010,9 +1093,10 @@ export class SeedEventsBuilder {
     | 'isInvitation'
     | 'isHosting'
     | 'isTrashed'
-    | 'published'
+    | 'status'
     | 'trashedAtIso'
     | 'creatorUserId'
+    | 'adminIds'
   > & {
     seed?: ActivityEventSeedOverrides;
   }): ActivityEventRecord {
@@ -1020,6 +1104,7 @@ export class SeedEventsBuilder {
     return {
       ...record,
       ...decorations,
+      adminIds: this.normalizeUserIds([...(record.adminIds ?? []), decorations.creatorUserId]),
       status: this.resolveLifecycleStatus(record),
       statusBeforeSuppression: null,
       timeframe: this.buildSeededTimeframeLabel({
@@ -1032,20 +1117,11 @@ export class SeedEventsBuilder {
     };
   }
 
-  private static resolveLifecycleStatus(record: Pick<ActivityEventRecord, 'type' | 'isInvitation' | 'isTrashed' | 'published'>): ActivityEventRecord['status'] {
+  private static resolveLifecycleStatus(record: Pick<ActivityEventRecord, 'status' | 'isTrashed'>): ActivityEventRecord['status'] {
     if (record.isTrashed) {
       return 'T';
     }
-    if (record.isInvitation || record.type === 'invitations') {
-      return 'INV';
-    }
-    if (record.published === false) {
-      return 'DR';
-    }
-    if (record.type === 'hosting') {
-      return 'H';
-    }
-    return 'A';
+    return record.status ?? 'A';
   }
 
   private static buildRecordDecorations(record: Pick<
@@ -1058,7 +1134,7 @@ export class SeedEventsBuilder {
     | 'activity'
     | 'isAdmin'
     | 'isInvitation'
-    | 'published'
+    | 'status'
     | 'creatorUserId'
     | 'timeframe'
   > & {
@@ -1079,7 +1155,7 @@ export class SeedEventsBuilder {
     | 'isInvitation'
     | 'isHosting'
     | 'isTrashed'
-    | 'published'
+    | 'status'
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
