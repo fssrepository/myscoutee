@@ -15,7 +15,6 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  type EventFeedbackInfoCardData,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
@@ -36,8 +35,7 @@ type EventFeedbackMenuContext = {
   filter: EventFeedbackListFilter;
 } | {
   menu: 'info-card';
-  item: AppTypes.EventFeedbackEventCard | null;
-  card: EventFeedbackInfoCardData;
+  card: InfoCardData;
   action: InfoCardResolvedMenuAction;
 };
 
@@ -177,12 +175,12 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   };
 
   protected eventFeedbackItemTemplateRef?: TemplateRef<
-    SmartListItemTemplateContext<EventFeedbackInfoCardData, EventFeedbackListFilters>
+    SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>
   >;
 
   @ViewChild('eventFeedbackItemTemplate', { read: TemplateRef })
   private set eventFeedbackItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<EventFeedbackInfoCardData, EventFeedbackListFilters>> | undefined
+    value: TemplateRef<SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>> | undefined
   ) {
     this.eventFeedbackItemTemplateRef = value;
   }
@@ -191,15 +189,15 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   private eventFeedbackViewportRef?: ElementRef<HTMLDivElement>;
 
   @ViewChild('eventFeedbackSmartList')
-  private eventFeedbackSmartList?: SmartListComponent<EventFeedbackInfoCardData, EventFeedbackListFilters>;
+  private eventFeedbackSmartList?: SmartListComponent<InfoCardData, EventFeedbackListFilters>;
 
   protected readonly eventFeedbackSmartListLoadPage: SmartListLoadPage<
-    EventFeedbackInfoCardData,
+    InfoCardData,
     EventFeedbackListFilters
   > = (query) => from(this.feedback.loadEventFeedbackPage(query));
 
   protected readonly eventFeedbackSmartListConfig: SmartListConfig<
-    EventFeedbackInfoCardData,
+    InfoCardData,
     EventFeedbackListFilters
   > = {
     pageSize: 12,
@@ -269,10 +267,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     if (context?.menu !== 'info-card') {
       return;
     }
-    if (!context.item) {
-      return;
-    }
-    this.onEventFeedbackCardMenuAction(context.item, {
+    this.onEventFeedbackCardMenuAction(context.card, {
       id: context.card.id,
       actionId: context.action.id,
       action: context.action,
@@ -348,8 +343,8 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     });
   }
 
-  protected onEventFeedbackCardPrimaryAction(card: EventFeedbackInfoCardData): void {
-    const item = card.eagerDetail ?? null;
+  protected onEventFeedbackCardPrimaryAction(card: InfoCardData): void {
+    const item = this.feedback.eventFeedbackItemById(card.id);
     if (!item) {
       return;
     }
@@ -363,7 +358,8 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     this.feedback.startEventFeedback(item);
   }
 
-  protected onEventFeedbackCardMenuAction(item: AppTypes.EventFeedbackEventCard | null, event: InfoCardMenuActionEvent): void {
+  protected onEventFeedbackCardMenuAction(card: InfoCardData, event: InfoCardMenuActionEvent): void {
+    const item = this.feedback.eventFeedbackItemById(card.id);
     if (!item) {
       return;
     }
@@ -638,11 +634,12 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   }
 
   private eventFeedbackGroupLabel(
-    item: EventFeedbackInfoCardData,
+    item: InfoCardData,
     filter: EventFeedbackListFilter
   ): string {
-    const timestampMs = item.eagerDetail
-      ? this.eventFeedbackGroupTimestampMs(item.eagerDetail, filter)
+    const detail = this.feedback.eventFeedbackItemById(item.id);
+    const timestampMs = detail
+      ? this.eventFeedbackGroupTimestampMs(detail, filter)
       : null;
     if (!timestampMs || Number.isNaN(timestampMs)) {
       return 'No date';

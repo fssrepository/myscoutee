@@ -8,10 +8,8 @@ import type {
 } from '../../core/contracts/activity.interface';
 import type { InfoCardData, InfoCardMenuAction } from '../components/card';
 
-export type EventFeedbackInfoCardData = InfoCardData<AppTypes.EventFeedbackEventCard>;
-
 export interface EventFeedbackPageViewModel {
-  items: EventFeedbackInfoCardData[];
+  items: InfoCardData[];
   total: number;
   allItems: AppTypes.EventFeedbackEventCard[];
   organizerItems: AppTypes.EventFeedbackEventCard[];
@@ -55,7 +53,7 @@ export class EventFeedbackInfoCardConverter {
   static convert(
     item: AppTypes.EventFeedbackEventCard,
     options: EventFeedbackInfoCardConverterOptions = {}
-  ): EventFeedbackInfoCardData {
+  ): InfoCardData {
     if (item.isOwnEvent) {
       return this.organizerEventFeedbackInfoCard({
         eventId: item.eventId,
@@ -65,7 +63,7 @@ export class EventFeedbackInfoCardConverter {
         imageUrl: item.imageUrl,
         responseCount: item.pendingCards,
         noteCount: 0
-      }, item);
+      });
     }
     const startAvailable = this.isEventFeedbackStartAvailable(item);
     const detailRows = item.isFeedbacked
@@ -91,8 +89,7 @@ export class EventFeedbackInfoCardConverter {
           : 'Event feedback unavailable'
       },
       menuActions: this.eventFeedbackMenuActions(item, options.hasOrganizerNote?.(item.eventId) === true),
-      clickable: false,
-      eagerDetail: { ...item }
+      clickable: false
     };
   }
 
@@ -115,10 +112,9 @@ export class EventFeedbackInfoCardConverter {
   }
 
   static organizerEventFeedbackInfoCard(
-    item: EventFeedbackOrganizerInfoCardInput,
-    eagerDetail?: AppTypes.EventFeedbackEventCard
-  ): EventFeedbackInfoCardData {
-    return this.organizerEventFeedbackCardData(item, true, eagerDetail);
+    item: EventFeedbackOrganizerInfoCardInput
+  ): InfoCardData {
+    return this.organizerEventFeedbackCardData(item, true);
   }
 
   static organizerEventFeedbackDetailInfoCard(item: EventFeedbackOrganizerInfoCardInput): InfoCardData {
@@ -127,11 +123,11 @@ export class EventFeedbackInfoCardConverter {
 
   private static organizerEventFeedbackCardData(
     item: EventFeedbackOrganizerInfoCardInput,
-    showAction: boolean,
-    eagerDetail?: AppTypes.EventFeedbackEventCard
-  ): EventFeedbackInfoCardData {
+    showAction: boolean
+  ): InfoCardData {
     return {
       id: item.eventId,
+      status: 'own-event',
       title: item.title,
       imageUrl: item.imageUrl,
       metaRows: [item.subtitle],
@@ -149,8 +145,7 @@ export class EventFeedbackInfoCardConverter {
           ariaLabel: `Open feedback details for ${item.title}`
         }
         : null,
-      clickable: false,
-      eagerDetail: eagerDetail ? { ...eagerDetail } : undefined
+      clickable: false
     };
   }
 

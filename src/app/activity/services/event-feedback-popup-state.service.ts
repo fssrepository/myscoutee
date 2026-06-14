@@ -8,8 +8,8 @@ import {
   AppContext,
   EventFeedbackDeckConverter,
   EventFeedbackInfoCardConverter,
-  type EventFeedbackInfoCardData,
   type EventFeedbackPageViewModel,
+  type InfoCardData,
   type ListQuery,
   type PageResult
 } from '../../shared/ui';
@@ -167,6 +167,17 @@ export class EventFeedbackPopupStateService {
     const userId = this.activeUserId();
     if (!userId) return false;
     return Boolean(this.organizerEventFeedbackNotesByUser()[userId]?.[eventId]?.trim());
+  }
+
+  public eventFeedbackItemById(eventId: string): AppTypes.EventFeedbackEventCard | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    return this.eventFeedbackVisibleItems().find(item => item.eventId === normalizedEventId)
+      ?? this.loadedEventFeedbackItems().find(item => item.eventId === normalizedEventId)
+      ?? this.organizerEventFeedbackCards().find(item => item.eventId === normalizedEventId)
+      ?? null;
   }
 
   public openOrganizerEventFeedback(eventId: string, event?: Event): void {
@@ -532,7 +543,7 @@ export class EventFeedbackPopupStateService {
 
   public async loadEventFeedbackPage(
     query: ListQuery<EventFeedbackListFilters>
-  ): Promise<PageResult<EventFeedbackInfoCardData>> {
+  ): Promise<PageResult<InfoCardData>> {
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const filter = query.filters?.filter ?? this.eventFeedbackListFilter();
@@ -1042,7 +1053,7 @@ export class EventFeedbackPopupStateService {
     }
   });
 
-  public readonly eventFeedbackVisibleInfoCards = computed<EventFeedbackInfoCardData[]>(() =>
+  public readonly eventFeedbackVisibleInfoCards = computed<InfoCardData[]>(() =>
     this.eventFeedbackVisibleItems().map(item =>
       EventFeedbackInfoCardConverter.convert(item, {
         hasOrganizerNote: eventId => this.hasEventFeedbackOrganizerNote(eventId)

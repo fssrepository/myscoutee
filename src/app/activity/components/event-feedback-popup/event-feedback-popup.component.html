@@ -36,16 +36,16 @@
             <ng-template #eventFeedbackItemTemplate let-item>
               <div
                 class="event-feedback-info-card-shell"
-                [class.is-feedbacked]="item.eagerDetail?.isFeedbacked"
-                [class.is-removed]="item.eagerDetail?.isRemoved"
-                [class.is-own-event]="item.eagerDetail?.isOwnEvent"
+                [class.is-feedbacked]="item.status === 'feedbacked'"
+                [class.is-removed]="item.status === 'removed'"
+                [class.is-own-event]="item.status === 'own-event'"
                 >
                 <app-info-card
                   [card]="item"
                   [useSharedMenuTrigger]="true"
-                  [sharedMenuContext]="{ menu: 'info-card', item: item.eagerDetail ?? null, card: item }"
+                  [sharedMenuContext]="{ menu: 'info-card', card: item }"
                   (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
-                  (menuAction)="onEventFeedbackCardMenuAction(item.eagerDetail ?? null, $event)"
+                  (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
                 ></app-info-card>
               </div>
             </ng-template>
