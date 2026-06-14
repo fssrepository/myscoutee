@@ -20,3 +20,11 @@ export {
   ActivityRateImageCardConverter,
   type ActivityRateImageCardConverterOptions
 } from './activity-rate-image-card.converter';
+export { EventFeedbackDeckConverter } from './event-feedback-deck.converter';
+export {
+  EventFeedbackInfoCardConverter,
+  type EventFeedbackInfoCardConverterOptions,
+  type EventFeedbackInfoCardData,
+  type EventFeedbackOrganizerInfoCardInput,
+  type EventFeedbackPageViewModel
+} from './event-feedback-info-card.converter';

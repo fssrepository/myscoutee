@@ -25,6 +25,7 @@ import type {
   ActivityPendingReason,
   ActivityPendingSource,
   AssetType,
+  EventFeedbackListFilter,
   EventVisibility,
   UserGender
 } from '../common/constants';
@@ -76,6 +77,12 @@ export interface IEventsService {
     query: ActivityEventActivitiesQuery,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
+  loadEventFeedbackPage(
+    query: EventFeedbackPageQueryDto
+  ): Promise<EventFeedbackPageResultDto>;
+  loadEventFeedbackDeck(
+    query: EventFeedbackDeckQueryDto
+  ): Promise<EventFeedbackDeckResultDto>;
   saveActivityEvent(
     payload: ActivityEventSaveDTO
   ): Promise<ActivityEventDTO | null>;
@@ -687,6 +694,87 @@ export interface EventFeedbackReceivedEntryDto {
 export interface EventFeedbackReceivedEventDto {
   eventId: string;
   entries: EventFeedbackReceivedEntryDto[];
+}
+
+export interface EventFeedbackPageQueryDto {
+  userId: string;
+  filter: EventFeedbackListFilter;
+  page: number;
+  pageSize: number;
+}
+
+export interface EventFeedbackDeckQueryDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventFeedbackPageCountsDto {
+  ownEvents: number;
+  pending: number;
+  feedbacked: number;
+  removed: number;
+}
+
+export interface EventFeedbackPageStateSnapshotDto {
+  submittedCardsById: Record<string, true>;
+  submittedAnswersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
+  submittedEventsById: Record<string, string>;
+  removedEventsById: Record<string, true>;
+  removedEventDatesById: Record<string, string>;
+  organizerNotesByEventId: Record<string, string>;
+}
+
+export interface EventFeedbackPageItemDto {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  startAtMs: number;
+  pendingCards: number;
+  totalCards: number;
+  isRemoved: boolean;
+  isFeedbacked: boolean;
+  feedbackedAtMs: number | null;
+  removedAtMs?: number | null;
+  isOwnEvent?: boolean;
+}
+
+export interface EventFeedbackCardSourceDto {
+  id: string;
+  eventId: string;
+  kind: 'event' | 'attendee';
+  attendeeUserId?: string;
+  targetUserId?: string;
+  targetRole?: ActivityMemberRole;
+  eventTitle: string;
+  eventSubtitle: string;
+  eventImageUrl: string;
+  eventTimeframe: string;
+  eventStartAtIso: string;
+  eventLabel: string;
+  targetName: string;
+  targetAge?: number;
+  targetCity?: string;
+  targetGender?: UserGender;
+  targetTraitLabel?: string;
+  targetImageUrl?: string;
+}
+
+export interface EventFeedbackPageResultDto {
+  items: EventFeedbackPageItemDto[];
+  total: number;
+  allItems: EventFeedbackPageItemDto[];
+  organizerItems: EventFeedbackPageItemDto[];
+  receivedEvents: EventFeedbackReceivedEventDto[];
+  state: EventFeedbackPageStateSnapshotDto;
+  counts: EventFeedbackPageCountsDto;
+}
+
+export interface EventFeedbackDeckResultDto {
+  eventId: string;
+  title: string;
+  cards: EventFeedbackCardSourceDto[];
 }
 
 export interface EventFeedbackAnswerSubmitDto {

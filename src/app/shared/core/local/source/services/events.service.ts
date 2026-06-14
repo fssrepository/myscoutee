@@ -3,12 +3,17 @@ import { Injectable, inject } from '@angular/core';
 import type { ActivityEventSaveDTO } from '../../../contracts';
 import type { ActivityPendingReason } from '../../../common/constants';
 import type { SubEventLeaderboardState } from '../../../contracts/event.interface';
+import { EventFeedbackBuilder } from '../../../base/builders';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackDeckQueryDto,
+  EventFeedbackDeckResultDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
+  EventFeedbackPageQueryDto,
+  EventFeedbackPageResultDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
 } from '../../../contracts/activity.interface';
@@ -134,6 +139,56 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async queryReceivedEventFeedback(userId: string): Promise<EventFeedbackReceivedEventDto[]> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventFeedbackRepository.queryReceivedEventFeedback(userId);
+  }
+
+  async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return EventFeedbackBuilder.emptyPageResult(query.filter);
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
+    const ownedEventIds = records
+      .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
+      .map(record => record.id.trim())
+      .filter(Boolean);
+    const users = this.usersRepository.queryAllUsers();
+    const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
+    if (!activeUser) {
+      return EventFeedbackBuilder.emptyPageResult(query.filter);
+    }
+    return EventFeedbackBuilder.buildPageResult({
+      query,
+      records,
+      users,
+      activeUser,
+      states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
+      receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId, ownedEventIds)
+    });
+  }
+
+  async loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedEventId = query.eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
+    const users = this.usersRepository.queryAllUsers();
+    const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
+    if (!activeUser) {
+      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+    }
+    return EventFeedbackBuilder.buildDeckResult({
+      query: {
+        userId: normalizedUserId,
+        eventId: normalizedEventId
+      },
+      records,
+      users,
+      activeUser
+    });
   }
 
   async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {

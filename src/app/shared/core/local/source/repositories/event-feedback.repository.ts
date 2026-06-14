@@ -37,17 +37,19 @@ export class LocalEventFeedbackRepository {
     }));
   }
 
-  queryReceivedEventFeedback(userId: string): EventFeedbackReceivedEventDto[] {
+  queryReceivedEventFeedback(userId: string, ownedEventIdsInput?: Iterable<string>): EventFeedbackReceivedEventDto[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
-    const ownedEventIds = new Set(
-      this.eventsRepository.queryItemsByUser(normalizedUserId)
-        .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
-        .map(record => record.id.trim())
-        .filter(Boolean)
-    );
+    const ownedEventIds = ownedEventIdsInput
+      ? new Set([...ownedEventIdsInput].map(eventId => eventId.trim()).filter(Boolean))
+      : new Set(
+          this.eventsRepository.queryItemsByUser(normalizedUserId)
+            .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
+            .map(record => record.id.trim())
+            .filter(Boolean)
+        );
     if (ownedEventIds.size === 0) {
       return [];
     }

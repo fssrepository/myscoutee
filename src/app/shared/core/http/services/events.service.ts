@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
-import { PricingBuilder } from '../../../core/base/builders';
+import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
 import type { ActivityEventSaveDTO } from '../../contracts';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
@@ -12,8 +12,12 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackDeckQueryDto,
+  EventFeedbackDeckResultDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
+  EventFeedbackPageQueryDto,
+  EventFeedbackPageResultDto,
   EventFeedbackStateDto,
   EventFeedbackSubmitRequestDto
 } from '../../contracts/activity.interface';
@@ -506,6 +510,45 @@ export class HttpEventsService implements IEventsService {
         : [];
     } catch {
       return [];
+    }
+  }
+
+  async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return EventFeedbackBuilder.emptyPageResult(query.filter);
+    }
+    try {
+      const response = await this.http
+        .post<EventFeedbackPageResultDto | null>(`${this.apiBaseUrl}/activities/events/feedback/page`, {
+          userId: normalizedUserId,
+          filter: query.filter,
+          page: Math.max(0, Math.trunc(Number(query.page) || 0)),
+          pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
+        })
+        .toPromise();
+      return EventFeedbackBuilder.clonePageResult(response);
+    } catch {
+      return EventFeedbackBuilder.emptyPageResult(query.filter);
+    }
+  }
+
+  async loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedEventId = query.eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+    }
+    try {
+      const response = await this.http
+        .post<EventFeedbackDeckResultDto | null>(`${this.apiBaseUrl}/activities/events/feedback/deck`, {
+          userId: normalizedUserId,
+          eventId: normalizedEventId
+        })
+        .toPromise();
+      return EventFeedbackBuilder.cloneDeckResult(response);
+    } catch {
+      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
     }
   }
 

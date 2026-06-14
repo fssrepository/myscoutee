@@ -4,22 +4,20 @@ import type * as ActivityContracts from '../../shared/core/contracts/activity.in
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { EventsService } from '../../shared/core/base';
-import { AppContext } from '../../shared/ui';
-import type { UserDto } from '../../shared/core';
-import { SeedEventFeedbackBuilder } from '../../shared/core/local/seed/builders';
-import type { ActivityEventSeedItem } from '../../shared/core/local/seed/entity';
+import {
+  AppContext,
+  EventFeedbackDeckConverter,
+  EventFeedbackInfoCardConverter,
+  type EventFeedbackInfoCardData,
+  type EventFeedbackPageViewModel,
+  type ListQuery,
+  type PageResult
+} from '../../shared/ui';
 import type { EventFeedbackListFilter } from '../../shared/core/common/constants';
-import type { EventFeedbackPersistedState } from '../../shared/core/local/source/entity/event.entity';
 
-export interface EventFeedbackPopupSource {
-  eventItems: ActivityEventSeedItem[];
-  ownedEventItems: ActivityEventSeedItem[];
-  users: UserDto[];
-  activeUser: UserDto;
-  eventDatesById: Record<string, string>;
-  activityImageById: Record<string, string>;
-  eventStartAtMs(eventId: string): number | null;
-  eventTitleById(eventId: string): string;
+export interface EventFeedbackListFilters {
+  filter: EventFeedbackListFilter;
+  userId: string;
 }
 
 interface OrganizerEventFeedbackItem {
@@ -77,17 +75,8 @@ interface EventFeedbackStateOverride {
   providedIn: 'root'
 })
 export class EventFeedbackPopupStateService {
-  private readonly eventFeedbackUnlockDelayMs = 2 * 60 * 60 * 1000;
-  private readonly sourceRef = signal<EventFeedbackPopupSource | null>(null);
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
-
-  public registerSource(source: EventFeedbackPopupSource | null): void {
-    this.sourceRef.set(source);
-    if (!source?.activeUser?.id?.trim()) {
-      this.clearEventFeedbackListState('');
-    }
-  }
 
   public readonly isPopupOpen = signal<boolean>(false);
   public readonly isStackedPopupOpen = signal<boolean>(false);
@@ -101,6 +90,7 @@ export class EventFeedbackPopupStateService {
   public readonly selectedOrganizerEventFeedbackEventId = signal<string | null>(null);
   public readonly eventFeedbackSubmittedState = signal<boolean>(false);
   public readonly eventFeedbackSubmitMessage = signal<string>('');
+  public readonly eventFeedbackDeckLoading = signal<boolean>(false);
   
   public readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   public readonly eventFeedbackNoteSubmitted = signal<boolean>(false);
@@ -117,6 +107,10 @@ export class EventFeedbackPopupStateService {
   private readonly organizerEventFeedbackNotesByUser = signal<Record<string, Record<string, string>>>({});
   private readonly eventFeedbackStateOverridesByUser = signal<Record<string, Record<string, EventFeedbackStateOverride>>>({});
   private readonly receivedEventFeedbackByEventId = signal<Record<string, ActivityContracts.EventFeedbackReceivedEventDto>>({});
+  private readonly loadedEventFeedbackItems = signal<AppTypes.EventFeedbackEventCard[]>([]);
+  private readonly loadedOrganizerEventFeedbackItems = signal<AppTypes.EventFeedbackEventCard[]>([]);
+  private readonly loadedEventFeedbackCardsByEventId = signal<Record<string, AppTypes.EventFeedbackCard[]>>({});
+  private readonly loadedEventFeedbackTitleById = signal<Record<string, string>>({});
 
   public readonly eventFeedbackEventOverallOptions = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
   public readonly eventFeedbackHostImproveOptions = APP_STATIC_DATA.eventFeedbackHostImproveOptions;
@@ -136,7 +130,7 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackSubmitMessage.set('');
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
-    this.clearEventFeedbackListState(this.sourceRef()?.activeUser?.id?.trim() ?? '');
+    this.clearEventFeedbackListState(this.activeUserId());
     this.isPopupOpen.set(true);
   }
 
@@ -148,6 +142,7 @@ export class EventFeedbackPopupStateService {
     this.isStackedPopupOpen.set(false);
     this.stackedPopupMode.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
+    this.eventFeedbackDeckLoading.set(false);
   }
 
   public selectEventFeedbackListFilter(filter: EventFeedbackListFilter, event?: Event): void {
@@ -165,13 +160,13 @@ export class EventFeedbackPopupStateService {
       this.selectedOrganizerEventFeedbackEventId()
       ?? this.selectedEventFeedbackEventId()
       ?? this.eventFeedbackNoteForm().eventId;
-    return this.sourceRef()?.eventTitleById(eventId) ?? 'this event';
+    return this.eventTitleById(eventId);
   }
 
   public hasEventFeedbackOrganizerNote(eventId: string): boolean {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return false;
-    return Boolean(this.organizerEventFeedbackNotesByUser()[user.id]?.[eventId]?.trim());
+    const userId = this.activeUserId();
+    if (!userId) return false;
+    return Boolean(this.organizerEventFeedbackNotesByUser()[userId]?.[eventId]?.trim());
   }
 
   public openOrganizerEventFeedback(eventId: string, event?: Event): void {
@@ -186,33 +181,39 @@ export class EventFeedbackPopupStateService {
     this.isStackedPopupOpen.set(true);
   }
 
-  public startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
+  public async startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
     event?.stopPropagation();
     this.selectedEventFeedbackEventId.set(item.eventId);
-    
-    const cards = this.pendingEventFeedbackCardsForEvent(item.eventId).map(card => ({ ...card }));
-    this.eventFeedbackCards.set(cards);
+    this.eventFeedbackCards.set([]);
     this.eventFeedbackIndex.set(0);
     this.eventFeedbackSubmittedState.set(false);
     this.eventFeedbackSubmitMessage.set('');
     this.eventFeedbackTouchStartX = null;
     this.eventFeedbackTouchStartY = null;
-    
+    this.eventFeedbackDeckLoading.set(true);
+    this.stackedPopupMode.set('eventFeedback');
+    this.isStackedPopupOpen.set(true);
+
+    const cards = await this.loadEventFeedbackDeckCards(item);
+    if (this.selectedEventFeedbackEventId() !== item.eventId || this.stackedPopupMode() !== 'eventFeedback') {
+      this.eventFeedbackDeckLoading.set(false);
+      return;
+    }
+    this.eventFeedbackDeckLoading.set(false);
+    this.eventFeedbackCards.set(cards);
     if (cards.length === 0) {
       this.eventFeedbackListSubmitMessage.set(`${item.title} is already in Feedbacked.`);
       this.eventFeedbackListFilter.set('feedbacked');
+      this.closeStackedPopup();
       return;
     }
-    
-    this.stackedPopupMode.set('eventFeedback');
-    this.isStackedPopupOpen.set(true);
   }
 
   public async removeEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
     event?.stopPropagation();
     await this.persistEventRemovedState(item.eventId, true);
     this.markEventFeedbackEventRemoved(item.eventId);
-    this.mergeEventFeedbackStateOverride(this.sourceRef()?.activeUser?.id ?? '', item.eventId, {
+    this.mergeEventFeedbackStateOverride(this.activeUserId(), item.eventId, {
       removed: true,
       removedAtIso: AppUtils.toIsoDateTime(new Date())
     });
@@ -223,7 +224,7 @@ export class EventFeedbackPopupStateService {
     event?.stopPropagation();
     await this.persistEventRemovedState(item.eventId, false);
     this.restoreEventFeedbackEvent(item.eventId);
-    this.mergeEventFeedbackStateOverride(this.sourceRef()?.activeUser?.id ?? '', item.eventId, {
+    this.mergeEventFeedbackStateOverride(this.activeUserId(), item.eventId, {
       removed: false,
       removedAtIso: null
     });
@@ -234,10 +235,10 @@ export class EventFeedbackPopupStateService {
     event?.stopPropagation();
     this.selectedEventFeedbackEventId.set(item.eventId);
     
-    const user = this.sourceRef()?.activeUser;
+    const userId = this.activeUserId();
     this.eventFeedbackNoteForm.set({
       eventId: item.eventId,
-      text: user ? (this.organizerEventFeedbackNotesByUser()[user.id]?.[item.eventId] ?? '') : ''
+      text: userId ? (this.organizerEventFeedbackNotesByUser()[userId]?.[item.eventId] ?? '') : ''
     });
     
     this.eventFeedbackNoteSubmitted.set(false);
@@ -254,29 +255,29 @@ export class EventFeedbackPopupStateService {
     if (!this.canSubmitEventFeedbackNote()) {
       return;
     }
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return;
+    const userId = this.activeUserId();
+    if (!userId) return;
 
     const noteForm = this.eventFeedbackNoteForm();
     const eventId = noteForm.eventId;
     const trimmedText = noteForm.text.trim();
 
     this.organizerEventFeedbackNotesByUser.update(state => {
-      const nextByUser = { ...(state[user.id] ?? {}) };
+      const nextByUser = { ...(state[userId] ?? {}) };
       nextByUser[eventId] = trimmedText;
-      return { ...state, [user.id]: nextByUser };
+      return { ...state, [userId]: nextByUser };
     });
-    this.mergeEventFeedbackStateOverride(user.id, eventId, {
+    this.mergeEventFeedbackStateOverride(userId, eventId, {
       organizerNote: trimmedText
     });
     void this.eventsService.saveEventFeedbackNote({
-      userId: user.id,
+      userId,
       eventId,
       text: trimmedText
     });
 
     this.eventFeedbackNoteSubmitted.set(true);
-    const msg = `Organizer feedback saved for ${this.sourceRef()?.eventTitleById(eventId)}.`;
+    const msg = `Organizer feedback saved for ${this.eventTitleById(eventId)}.`;
     this.eventFeedbackNoteSubmitMessage.set(msg);
     this.eventFeedbackListSubmitMessage.set(msg);
   }
@@ -434,14 +435,14 @@ export class EventFeedbackPopupStateService {
     if (this.eventFeedbackSubmittedState()) {
       return;
     }
-    const user = this.sourceRef()?.activeUser;
+    const userId = this.activeUserId();
     const card = this.activeEventFeedbackCard();
-    if (!user || !card || this.isSelfAttendeeFeedbackCard(card)) {
+    if (!userId || !card || this.isSelfAttendeeFeedbackCard(card)) {
       return;
     }
     this.eventFeedbackSubmittedState.set(true);
     const eventId = card.eventId;
-    const eventTitle = this.sourceRef()?.eventTitleById(eventId) ?? '';
+    const eventTitle = this.eventTitleById(eventId);
     const cardsToSubmit = [...this.eventFeedbackCards()];
     const submittedAtIso = AppUtils.toIsoDateTime(new Date());
     const submittedAnswersByCardId: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> = {};
@@ -471,14 +472,14 @@ export class EventFeedbackPopupStateService {
     }
     this.markEventFeedbackEventSubmitted(eventId);
     this.restoreEventFeedbackEvent(eventId);
-    this.mergeEventFeedbackStateOverride(user.id, eventId, {
+    this.mergeEventFeedbackStateOverride(userId, eventId, {
       removed: false,
       removedAtIso: null,
       submittedAtIso,
       answersByCardId: submittedAnswersByCardId
     });
     void this.eventsService.submitEventFeedback({
-      userId: user.id,
+      userId,
       eventId,
       answers: requestAnswers
     });
@@ -529,25 +530,43 @@ export class EventFeedbackPopupStateService {
     this.previousEventFeedbackSlide();
   }
 
-  public async loadEventFeedbackListState(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
+  public async loadEventFeedbackPage(
+    query: ListQuery<EventFeedbackListFilters>
+  ): Promise<PageResult<EventFeedbackInfoCardData>> {
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const filter = query.filters?.filter ?? this.eventFeedbackListFilter();
+    const normalizedUserId = (query.filters?.userId?.trim() || this.activeUserId()).trim();
     if (!normalizedUserId) {
       this.clearEventFeedbackListState('');
-      return;
+      return { items: [], total: 0 };
     }
-    const [states, receivedEvents] = await Promise.all([
-      this.eventsService.queryEventFeedbackStates(normalizedUserId),
-      this.eventsService.queryReceivedEventFeedback(normalizedUserId)
-    ]);
-    if ((this.sourceRef()?.activeUser?.id?.trim() ?? '') !== normalizedUserId) {
-      return;
+    const result = await this.eventsService.loadEventFeedbackPage({
+      userId: normalizedUserId,
+      filter,
+      page,
+      pageSize
+    });
+    if (this.activeUserId() !== normalizedUserId) {
+      return { items: [], total: 0 };
     }
-    this.applyEventFeedbackStateDtos(normalizedUserId, states);
-    this.applyReceivedEventFeedbackEvents(receivedEvents);
+    const viewModel = EventFeedbackInfoCardConverter.convertPage(result, {
+      hasOrganizerNote: eventId => this.hasEventFeedbackOrganizerNote(eventId)
+    });
+    this.applyEventFeedbackPageResult(normalizedUserId, viewModel);
+    const items = this.eventFeedbackVisibleInfoCards();
+    return {
+      items: items.slice(page * pageSize, (page * pageSize) + pageSize),
+      total: items.length
+    };
   }
 
   private clearEventFeedbackListState(userId: string): void {
     this.receivedEventFeedbackByEventId.set({});
+    this.loadedEventFeedbackItems.set([]);
+    this.loadedOrganizerEventFeedbackItems.set([]);
+    this.loadedEventFeedbackCardsByEventId.set({});
+    this.loadedEventFeedbackTitleById.set({});
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -558,6 +577,43 @@ export class EventFeedbackPopupStateService {
     this.removedEventFeedbackEventsByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
     this.removedEventFeedbackEventDatesByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
     this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
+  }
+
+  private applyEventFeedbackPageResult(userId: string, result: EventFeedbackPageViewModel): void {
+    const submittedCards = { ...result.state.submittedCardsById };
+    const submittedAnswers = this.clonePersistedAnswersByCardId(result.state.submittedAnswersByCardId);
+    const submittedEvents = { ...result.state.submittedEventsById };
+    const removedEvents = { ...result.state.removedEventsById };
+    const removedEventDates = { ...result.state.removedEventDatesById };
+    const organizerNotes = { ...result.state.organizerNotesByEventId };
+    this.applyEventFeedbackStateOverrides(
+      userId,
+      submittedCards,
+      submittedAnswers,
+      submittedEvents,
+      removedEvents,
+      removedEventDates,
+      organizerNotes
+    );
+
+    const titleById: Record<string, string> = {};
+    for (const item of [...result.allItems, ...result.organizerItems]) {
+      const eventId = item.eventId?.trim() ?? '';
+      if (eventId) {
+        titleById[eventId] = item.title;
+      }
+    }
+
+    this.loadedEventFeedbackItems.set(result.allItems.map(item => ({ ...item })));
+    this.loadedOrganizerEventFeedbackItems.set(result.organizerItems.map(item => ({ ...item })));
+    this.loadedEventFeedbackTitleById.set(titleById);
+    this.applyReceivedEventFeedbackEvents(result.receivedEvents);
+    this.submittedEventFeedbackByUser.update(state => ({ ...state, [userId]: submittedCards }));
+    this.submittedEventFeedbackAnswersByUser.update(state => ({ ...state, [userId]: submittedAnswers }));
+    this.submittedEventFeedbackEventsByUser.update(state => ({ ...state, [userId]: submittedEvents }));
+    this.removedEventFeedbackEventsByUser.update(state => ({ ...state, [userId]: removedEvents }));
+    this.removedEventFeedbackEventDatesByUser.update(state => ({ ...state, [userId]: removedEventDates }));
+    this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [userId]: organizerNotes }));
   }
 
   private applyReceivedEventFeedbackEvents(events: ActivityContracts.EventFeedbackReceivedEventDto[]): void {
@@ -586,59 +642,8 @@ export class EventFeedbackPopupStateService {
     this.receivedEventFeedbackByEventId.set(next);
   }
 
-  private applyEventFeedbackStateDtos(userId: string, states: ActivityContracts.EventFeedbackStateDto[]): void {
-    const submittedCards: Record<string, true> = {};
-    const submittedAnswers: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> = {};
-    const submittedEvents: Record<string, string> = {};
-    const removedEvents: Record<string, true> = {};
-    const removedEventDates: Record<string, string> = {};
-    const organizerNotes: Record<string, string> = {};
-
-    for (const state of states) {
-      const eventId = state.eventId?.trim() ?? '';
-      if (!eventId) {
-        continue;
-      }
-      if (state.removed) {
-        removedEvents[eventId] = true;
-        const removedAtIso = state.removedAtIso?.trim() ?? '';
-        if (removedAtIso) {
-          removedEventDates[eventId] = removedAtIso;
-        }
-      }
-      const submittedAtIso = state.submittedAtIso?.trim() ?? '';
-      if (submittedAtIso) {
-        submittedEvents[eventId] = submittedAtIso;
-      }
-      const organizerNote = state.organizerNote?.trim() ?? '';
-      if (organizerNote) {
-        organizerNotes[eventId] = organizerNote;
-      }
-      for (const [cardId, answer] of Object.entries(this.clonePersistedAnswersByCardId(state.answersByCardId))) {
-        submittedCards[cardId] = true;
-        submittedAnswers[cardId] = this.cloneSubmittedEventFeedbackAnswer(answer);
-      }
-    }
-    this.applyEventFeedbackStateOverrides(
-      userId,
-      submittedCards,
-      submittedAnswers,
-      submittedEvents,
-      removedEvents,
-      removedEventDates,
-      organizerNotes
-    );
-
-    this.submittedEventFeedbackByUser.update(state => ({ ...state, [userId]: submittedCards }));
-    this.submittedEventFeedbackAnswersByUser.update(state => ({ ...state, [userId]: submittedAnswers }));
-    this.submittedEventFeedbackEventsByUser.update(state => ({ ...state, [userId]: submittedEvents }));
-    this.removedEventFeedbackEventsByUser.update(state => ({ ...state, [userId]: removedEvents }));
-    this.removedEventFeedbackEventDatesByUser.update(state => ({ ...state, [userId]: removedEventDates }));
-    this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [userId]: organizerNotes }));
-  }
-
   private async persistEventRemovedState(eventId: string, removed: boolean): Promise<void> {
-    const userId = this.sourceRef()?.activeUser?.id?.trim();
+    const userId = this.activeUserId();
     const normalizedEventId = eventId.trim();
     if (!userId || !normalizedEventId) {
       return;
@@ -742,9 +747,9 @@ export class EventFeedbackPopupStateService {
   }
 
   private clonePersistedAnswersByCardId(
-    answersByCardId: EventFeedbackPersistedState['answersByCardId'] | ActivityContracts.EventFeedbackStateDto['answersByCardId']
-  ): EventFeedbackPersistedState['answersByCardId'] {
-    const next: EventFeedbackPersistedState['answersByCardId'] = {};
+    answersByCardId: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> | undefined
+  ): Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> {
+    const next: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> = {};
     const source = (answersByCardId ?? {}) as Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>;
     for (const [cardId, answer] of Object.entries(source)) {
       const normalizedCardId = cardId.trim();
@@ -754,6 +759,50 @@ export class EventFeedbackPopupStateService {
       next[normalizedCardId] = this.cloneSubmittedEventFeedbackAnswer(answer);
     }
     return next;
+  }
+
+  private cloneCardsByEventId(
+    cardsByEventId: Record<string, AppTypes.EventFeedbackCard[]>
+  ): Record<string, AppTypes.EventFeedbackCard[]> {
+    const next: Record<string, AppTypes.EventFeedbackCard[]> = {};
+    for (const [eventId, cards] of Object.entries(cardsByEventId)) {
+      const normalizedEventId = eventId.trim();
+      if (!normalizedEventId) {
+        continue;
+      }
+      next[normalizedEventId] = cards.map(card => ({
+        ...card,
+        primaryOptions: [...(card.primaryOptions ?? [])],
+        secondaryOptions: [...(card.secondaryOptions ?? [])],
+        traitOptions: [...(card.traitOptions ?? [])],
+        selectedTraitIds: [...(card.selectedTraitIds ?? [])]
+      }));
+    }
+    return next;
+  }
+
+  private async loadEventFeedbackDeckCards(
+    item: AppTypes.EventFeedbackEventCard
+  ): Promise<AppTypes.EventFeedbackCard[]> {
+    const userId = this.activeUserId();
+    const eventId = item.eventId.trim();
+    if (!userId || !eventId) {
+      return [];
+    }
+    const deck = await this.eventsService.loadEventFeedbackDeck({ userId, eventId });
+    const cards = EventFeedbackDeckConverter.convert(deck)
+      .filter(card => card.eventId === eventId && !this.isSelfAttendeeFeedbackCard(card));
+    this.loadedEventFeedbackCardsByEventId.update(state => ({
+      ...state,
+      [eventId]: cards.map(card => ({
+        ...card,
+        primaryOptions: [...(card.primaryOptions ?? [])],
+        secondaryOptions: [...(card.secondaryOptions ?? [])],
+        traitOptions: [...(card.traitOptions ?? [])],
+        selectedTraitIds: [...(card.selectedTraitIds ?? [])]
+      }))
+    }));
+    return this.pendingEventFeedbackCardsForEvent(eventId).map(card => ({ ...card }));
   }
 
   // --- Computed Properties ---
@@ -785,25 +834,21 @@ export class EventFeedbackPopupStateService {
   public readonly eventFeedbackPendingCount = computed(() => this.eventFeedbackPendingItems().length);
   public readonly eventFeedbackFeedbackedCount = computed(() => this.eventFeedbackFeedbackedItems().length);
   public readonly eventFeedbackRemovedCount = computed(() => this.eventFeedbackRemovedItems().length);
-  public readonly organizerEventFeedbackItems = computed<OrganizerEventFeedbackItem[]>(() => {
-    const source = this.sourceRef();
-    if (!source) {
-      return [];
-    }
-    return [...source.ownedEventItems]
+  public readonly organizerEventFeedbackItems = computed<OrganizerEventFeedbackItem[]>(() =>
+    this.loadedOrganizerEventFeedbackItems()
       .map(item => {
-        const eventId = item.id?.trim() ?? '';
+        const eventId = item.eventId?.trim() ?? '';
         const received = this.receivedEventFeedbackByEventId()[eventId]?.entries ?? [];
         return {
           eventId,
           title: item.title,
-          subtitle: item.shortDescription,
+          subtitle: item.subtitle,
           timeframe: item.timeframe,
-          imageUrl: source.activityImageById[eventId] ?? item.imageUrl ?? '',
-          startAtMs: source.eventStartAtMs(eventId),
-          responseCount: received.length,
+          imageUrl: item.imageUrl,
+          startAtMs: item.startAtMs,
+          responseCount: received.length || item.totalCards,
           noteCount: received.filter(entry => entry.organizerNote.trim().length > 0).length,
-          latestActivityAtMs: this.organizerEventFeedbackEntriesLatestAtMs(received)
+          latestActivityAtMs: this.organizerEventFeedbackEntriesLatestAtMs(received) ?? item.feedbackedAtMs
         };
       })
       .filter(item => item.eventId.length > 0 && item.responseCount > 0)
@@ -813,8 +858,8 @@ export class EventFeedbackPopupStateService {
         || right.responseCount - left.responseCount
         || right.noteCount - left.noteCount
         || this.compareEventFeedbackDates(left.latestActivityAtMs, right.latestActivityAtMs, 'desc')
-      );
-  });
+      )
+  );
   public readonly organizerEventFeedbackCards = computed<AppTypes.EventFeedbackEventCard[]>(() =>
     this.organizerEventFeedbackItems().map(item => ({
       eventId: item.eventId,
@@ -916,15 +961,11 @@ export class EventFeedbackPopupStateService {
       const timestampDate = timestampIso ? new Date(timestampIso) : null;
       const hasValidTimestamp = Boolean(timestampDate) && !Number.isNaN(timestampDate!.getTime());
       const answer = this.organizerEventFeedbackEntryEventAnswer(entry);
-      const fallbackUser = this.organizerEventFeedbackUser(entry.viewerUserId);
-      const viewerName = entry.viewerName?.trim() || fallbackUser?.name?.trim() || entry.viewerUserId.trim() || 'Member';
+      const viewerName = entry.viewerName?.trim() || entry.viewerUserId.trim() || 'Member';
       const viewerInitials = entry.viewerInitials?.trim()
-        || fallbackUser?.initials?.trim()
         || AppUtils.initialsFromText(viewerName);
-      const viewerGender = entry.viewerGender === 'woman'
-        ? 'woman'
-        : (fallbackUser?.gender === 'woman' ? 'woman' : 'man');
-      const viewerImageUrl = entry.viewerImageUrl?.trim() || AppUtils.firstImageUrl(fallbackUser?.images);
+      const viewerGender = entry.viewerGender === 'woman' ? 'woman' : 'man';
+      const viewerImageUrl = entry.viewerImageUrl?.trim() || '';
       const dayKey = hasValidTimestamp ? AppUtils.toIsoDate(timestampDate as Date) : 'undated';
       const dayLabel = hasValidTimestamp
         ? (timestampDate as Date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
@@ -979,54 +1020,16 @@ export class EventFeedbackPopupStateService {
   public eventFeedbackFilterCount(filter: EventFeedbackListFilter): number {
     switch (filter) {
       case 'own-events':
-        return this.eventFeedbackCounterValue('ownEvents');
+        return this.eventFeedbackOwnEventsCount();
       case 'pending':
-        return this.activityCounterValue('feedback');
+        return this.eventFeedbackPendingCount();
       case 'feedbacked':
-        return this.eventFeedbackCounterValue('feedbacked');
+        return this.eventFeedbackFeedbackedCount();
       case 'removed':
-        return this.eventFeedbackCounterValue('removed');
+        return this.eventFeedbackRemovedCount();
       default:
         return 0;
     }
-  }
-
-  private activityCounterValue(key: 'feedback'): number {
-    const activeUser = this.activeCounterUser();
-    const activeUserId = activeUser?.id?.trim() ?? '';
-    if (!activeUser || !activeUserId) {
-      return 0;
-    }
-    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
-    return this.normalizeCounter(overrides[key] ?? activeUser.activities?.[key]);
-  }
-
-  private eventFeedbackCounterValue(key: keyof NonNullable<UserDto['activities']['eventFeedback']>): number {
-    const activeUser = this.activeCounterUser();
-    const activeUserId = activeUser?.id?.trim() ?? '';
-    if (!activeUser || !activeUserId) {
-      return 0;
-    }
-    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
-    return this.normalizeCounter(overrides.eventFeedback?.[key] ?? activeUser.activities?.eventFeedback?.[key]);
-  }
-
-  private activeCounterUser(): UserDto | null {
-    const sourceUser = this.sourceRef()?.activeUser;
-    const sourceUserId = sourceUser?.id?.trim() ?? '';
-    const activeUser = this.appCtx.activeUserProfile();
-    if (activeUser?.id?.trim() === sourceUserId) {
-      return activeUser;
-    }
-    return sourceUser ?? activeUser;
-  }
-
-  private normalizeCounter(value: unknown): number {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
-      return 0;
-    }
-    return Math.max(0, Math.trunc(numericValue));
   }
 
   public readonly eventFeedbackVisibleItems = computed(() => {
@@ -1039,7 +1042,27 @@ export class EventFeedbackPopupStateService {
     }
   });
 
+  public readonly eventFeedbackVisibleInfoCards = computed<EventFeedbackInfoCardData[]>(() =>
+    this.eventFeedbackVisibleItems().map(item =>
+      EventFeedbackInfoCardConverter.convert(item, {
+        hasOrganizerNote: eventId => this.hasEventFeedbackOrganizerNote(eventId)
+      })
+    )
+  );
+
   // --- Internal Data Helpers ---
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
+  }
+
+  private eventTitleById(eventId: string): string {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return 'this event';
+    }
+    return this.loadedEventFeedbackTitleById()[normalizedEventId]?.trim() || 'this event';
+  }
 
   private organizerEventFeedbackEntriesLatestAtMs(entries: readonly ActivityContracts.EventFeedbackReceivedEntryDto[]): number | null {
     let latestAtMs: number | null = null;
@@ -1120,35 +1143,10 @@ export class EventFeedbackPopupStateService {
     return options.find(option => option.value === normalizedValue)?.label ?? null;
   }
 
-  private organizerEventFeedbackUser(userId: string): UserDto | null {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    return this.sourceRef()?.users.find(user => user.id === normalizedUserId) ?? null;
-  }
-  
-  private buildEventFeedbackCardsData(): AppTypes.EventFeedbackCard[] {
-    const source = this.sourceRef();
-    if (!source) return [];
-    return SeedEventFeedbackBuilder.buildEventFeedbackCards({
-      eventItems: source.eventItems,
-      users: source.users,
-      activeUser: source.activeUser,
-      eventDatesById: source.eventDatesById,
-      activityImageById: source.activityImageById,
-      eventFeedbackUnlockDelayMs: this.eventFeedbackUnlockDelayMs,
-      eventOverallOptions: this.eventFeedbackEventOverallOptions,
-      hostImproveOptions: this.eventFeedbackHostImproveOptions,
-      attendeeCollabOptions: this.eventFeedbackAttendeeCollabOptions,
-      attendeeRejoinOptions: this.eventFeedbackAttendeeRejoinOptions,
-      personalityTraitOptions: this.eventFeedbackPersonalityTraitOptions
-    });
-  }
-
   private pendingEventFeedbackCardsForEvent(eventId: string): AppTypes.EventFeedbackCard[] {
-    return this.buildEventFeedbackCardsData().filter(card =>
-      card.eventId === eventId &&
+    const normalizedEventId = eventId.trim();
+    return [...(this.loadedEventFeedbackCardsByEventId()[normalizedEventId] ?? [])].filter(card =>
+      card.eventId === normalizedEventId &&
       !this.isSelfAttendeeFeedbackCard(card) &&
       !this.isEventFeedbackEventSubmitted(card.eventId) &&
       !this.isEventFeedbackSubmitted(card.id)
@@ -1156,94 +1154,93 @@ export class EventFeedbackPopupStateService {
   }
 
   private isSelfAttendeeFeedbackCard(card: AppTypes.EventFeedbackCard): boolean {
-    const user = this.sourceRef()?.activeUser;
-    return card.kind === 'attendee' && card.attendeeUserId === user?.id;
+    return card.kind === 'attendee' && card.attendeeUserId === this.activeUserId();
   }
 
   private isEventFeedbackSubmitted(cardId: string): boolean {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return false;
-    return Boolean(this.submittedEventFeedbackByUser()[user.id]?.[cardId]);
+    const userId = this.activeUserId();
+    if (!userId) return false;
+    return Boolean(this.submittedEventFeedbackByUser()[userId]?.[cardId]);
   }
 
   private markEventFeedbackSubmitted(cardId: string): void {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return;
+    const userId = this.activeUserId();
+    if (!userId) return;
     this.submittedEventFeedbackByUser.update(state => {
-      const current = { ...(state[user.id] ?? {}) };
+      const current = { ...(state[userId] ?? {}) };
       current[cardId] = true;
-      return { ...state, [user.id]: current };
+      return { ...state, [userId]: current };
     });
   }
 
   private markEventFeedbackEventSubmitted(eventId: string): void {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return;
+    const userId = this.activeUserId();
+    if (!userId) return;
     this.submittedEventFeedbackEventsByUser.update(state => {
-      const current = { ...(state[user.id] ?? {}) };
+      const current = { ...(state[userId] ?? {}) };
       current[eventId] = new Date().toISOString();
-      return { ...state, [user.id]: current };
+      return { ...state, [userId]: current };
     });
   }
 
   private eventFeedbackEventSubmittedAtMs(eventId: string): number | null {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return null;
-    const iso = this.submittedEventFeedbackEventsByUser()[user.id]?.[eventId];
+    const userId = this.activeUserId();
+    if (!userId) return null;
+    const iso = this.submittedEventFeedbackEventsByUser()[userId]?.[eventId];
     if (!iso) return null;
     const ms = new Date(iso).getTime();
     return Number.isNaN(ms) ? null : ms;
   }
 
   private eventFeedbackEventRemovedAtMs(eventId: string): number | null {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return null;
-    const iso = this.removedEventFeedbackEventDatesByUser()[user.id]?.[eventId];
+    const userId = this.activeUserId();
+    if (!userId) return null;
+    const iso = this.removedEventFeedbackEventDatesByUser()[userId]?.[eventId];
     if (!iso) return null;
     const ms = new Date(iso).getTime();
     return Number.isNaN(ms) ? null : ms;
   }
 
   private isEventFeedbackEventSubmitted(eventId: string): boolean {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return false;
-    return Boolean(this.submittedEventFeedbackEventsByUser()[user.id]?.[eventId]);
+    const userId = this.activeUserId();
+    if (!userId) return false;
+    return Boolean(this.submittedEventFeedbackEventsByUser()[userId]?.[eventId]);
   }
 
   private isEventFeedbackEventRemoved(eventId: string): boolean {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return false;
-    return Boolean(this.removedEventFeedbackEventsByUser()[user.id]?.[eventId]);
+    const userId = this.activeUserId();
+    if (!userId) return false;
+    return Boolean(this.removedEventFeedbackEventsByUser()[userId]?.[eventId]);
   }
 
   private markEventFeedbackEventRemoved(eventId: string): void {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return;
+    const userId = this.activeUserId();
+    if (!userId) return;
     const removedAtIso = new Date().toISOString();
     this.removedEventFeedbackEventsByUser.update(state => {
-      const current = { ...(state[user.id] ?? {}) };
+      const current = { ...(state[userId] ?? {}) };
       current[eventId] = true;
-      return { ...state, [user.id]: current };
+      return { ...state, [userId]: current };
     });
     this.removedEventFeedbackEventDatesByUser.update(state => {
-      const current = { ...(state[user.id] ?? {}) };
+      const current = { ...(state[userId] ?? {}) };
       current[eventId] = removedAtIso;
-      return { ...state, [user.id]: current };
+      return { ...state, [userId]: current };
     });
   }
 
   private restoreEventFeedbackEvent(eventId: string): void {
-    const user = this.sourceRef()?.activeUser;
-    if (!user) return;
+    const userId = this.activeUserId();
+    if (!userId) return;
     this.removedEventFeedbackEventsByUser.update(state => {
-      const current = { ...(state[user.id] ?? {}) };
+      const current = { ...(state[userId] ?? {}) };
       delete current[eventId];
-      return { ...state, [user.id]: current };
+      return { ...state, [userId]: current };
     });
     this.removedEventFeedbackEventDatesByUser.update(state => {
-      const current = { ...(state[user.id] ?? {}) };
+      const current = { ...(state[userId] ?? {}) };
       delete current[eventId];
-      return { ...state, [user.id]: current };
+      return { ...state, [userId]: current };
     });
   }
 
@@ -1293,57 +1290,42 @@ export class EventFeedbackPopupStateService {
       tags: [...tags],
       submittedAtIso
     };
-    const user = this.sourceRef()?.activeUser;
-    if (user) {
+    const userId = this.activeUserId();
+    if (userId) {
       this.submittedEventFeedbackAnswersByUser.update(state => {
-        const byUser = { ...(state[user.id] ?? {}) };
+        const byUser = { ...(state[userId] ?? {}) };
         byUser[card.id] = submittedAnswer;
-        return { ...state, [user.id]: byUser };
+        return { ...state, [userId]: byUser };
       });
     }
     return submittedAnswer;
   }
 
   public readonly eventFeedbackAllItems = computed(() => {
-    const source = this.sourceRef();
-    if (!source) return [];
-    const countsByEvent = new Map<string, { pending: number; total: number }>();
-    for (const card of this.buildEventFeedbackCardsData()) {
-      if (this.isSelfAttendeeFeedbackCard(card)) continue;
-      const current = countsByEvent.get(card.eventId) ?? { pending: 0, total: 0 };
-      current.total += 1;
-      if (!this.isEventFeedbackEventSubmitted(card.eventId) && !this.isEventFeedbackSubmitted(card.id)) current.pending += 1;
-      countsByEvent.set(card.eventId, current);
-    }
-
-    const items: AppTypes.EventFeedbackEventCard[] = [];
-    const nowMs = Date.now();
-    for (const item of source.eventItems) {
-      if (item.isAdmin) continue;
-      const startMs = source.eventStartAtMs(item.id);
-      if (startMs === null || nowMs < startMs + this.eventFeedbackUnlockDelayMs) continue;
-      
-      const counts = countsByEvent.get(item.id);
-      if (!counts || counts.total === 0) continue;
-      
-      const isRemoved = this.isEventFeedbackEventRemoved(item.id);
-      const feedbackedAtMs = this.eventFeedbackEventSubmittedAtMs(item.id);
-      items.push({
-        eventId: item.id,
-        title: item.title,
-        subtitle: item.shortDescription,
-        timeframe: item.timeframe,
-        imageUrl: source.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-${item.id}/1200/700`,
-        startAtMs: startMs,
-        pendingCards: counts.pending,
-        totalCards: counts.total,
+    return this.loadedEventFeedbackItems().map(item => {
+      const eventId = item.eventId.trim();
+      const cardsByEventId = this.loadedEventFeedbackCardsByEventId();
+      const hasLoadedDeck = Object.prototype.hasOwnProperty.call(cardsByEventId, eventId);
+      const cards = (cardsByEventId[eventId] ?? [])
+        .filter(card => !this.isSelfAttendeeFeedbackCard(card));
+      const eventSubmitted = this.isEventFeedbackEventSubmitted(eventId);
+      const pendingCards = eventSubmitted
+        ? 0
+        : hasLoadedDeck
+          ? cards.filter(card => !this.isEventFeedbackSubmitted(card.id)).length
+          : item.pendingCards;
+      const isRemoved = this.isEventFeedbackEventRemoved(eventId);
+      const feedbackedAtMs = this.eventFeedbackEventSubmittedAtMs(eventId) ?? item.feedbackedAtMs;
+      return {
+        ...item,
+        pendingCards,
+        totalCards: hasLoadedDeck ? (cards.length || item.totalCards) : item.totalCards,
         isRemoved,
-        isFeedbacked: !isRemoved && counts.pending === 0,
+        isFeedbacked: !isRemoved && pendingCards === 0,
         feedbackedAtMs,
-        removedAtMs: this.eventFeedbackEventRemovedAtMs(item.id)
-      });
-    }
-    return items;
+        removedAtMs: this.eventFeedbackEventRemovedAtMs(eventId) ?? item.removedAtMs ?? null
+      };
+    });
   });
 
   public readonly eventFeedbackPendingItems = computed(() => {
