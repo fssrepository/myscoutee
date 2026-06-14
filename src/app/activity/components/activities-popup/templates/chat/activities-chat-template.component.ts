@@ -17,7 +17,7 @@ import {
   type AppMenuTrigger
 } from '../../../../../shared/ui';
 import { I18nPipe } from '../../../../../shared/ui';
-import { ActivityResourceBuilder } from '../../../../../shared/core';
+import { ActivityResourceBuilder, toActivityEventRow } from '../../../../../shared/core';
 import {
   buildActivitiesChatTemplateData,
   type ActivitiesChatTemplateData
@@ -153,7 +153,6 @@ export class ActivitiesChatsController {
 
   private get activeUser() { return this.host.activeUser as UserDto; }
   private get activitiesContext() { return this.host.activitiesContext; }
-  private get activitiesService() { return this.host.activitiesService; }
   private get activityResourcesService() { return this.host.activityResourcesService; }
   private get appCtx() { return this.host.appCtx; }
   private get assetCards() { return this.host.assetCards as AppDTOs.AssetCardDTO[]; }
@@ -292,7 +291,7 @@ export class ActivitiesChatsController {
   }
 
   private buildChatEventActivityRow(record: ActivityEventRecord): AppTypes.ActivityListRow {
-    return this.activitiesService.buildEventDisplayRow({
+    return toActivityEventRow({
       ...record,
       startAtIso: this.eventDatesById[record.id] ?? this.hostingDatesById[record.id] ?? record.startAtIso ?? this.defaultEventStartIso(),
       distanceKm: this.eventDistanceById[record.id] ?? this.hostingDistanceById[record.id] ?? record.distanceKm ?? 0

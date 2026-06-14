@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesEventSyncPayload } from '../../contracts';
+import type { ActivityEventSaveDTO } from '../../contracts';
 import type { EventFeedbackCard, EventFeedbackEventCard } from '../../../core/base/models';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
@@ -18,6 +18,7 @@ import { HttpEventsService } from '../../http';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -85,6 +86,12 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return this.localEventsService.queryActivitiesEventDTOPage(query, signal);
     }
     return this.httpEventsService.queryActivitiesEventDTOPage(query, signal);
+  }
+
+  async saveActivityEvent(
+    payload: ActivityEventSaveDTO
+  ): Promise<ActivityEventDTO | null> {
+    return this.eventsService.saveActivityEvent(payload);
   }
 
   queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -307,7 +314,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.organizerEventFeedbackCardData(item, false);
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
     return this.eventsService.syncEventSnapshot(payload);
   }
 

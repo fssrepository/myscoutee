@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventRecord } from '../../contracts/activity.interface';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../contracts/activity.interface';
 import { LocalEventEditorDataService } from '../../local/source/services/event-editor-data.service';
 import { HttpEventEditorDataService } from '../../http/services/event-editor-data.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -25,7 +25,7 @@ export class EventEditorDataService extends BaseRouteModeService {
       : this.httpEventEditorDataService.queryKnownItemById(userId, itemId);
   }
 
-  loadFullItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
+  loadFullItemById(userId: string, itemId: string): Promise<ActivityEventDTO | null> {
     return this.isLocalRouteEnabled('/activities/events')
       ? this.localEventEditorDataService.loadFullItemById(userId, itemId)
       : this.httpEventEditorDataService.loadFullItemById(userId, itemId);

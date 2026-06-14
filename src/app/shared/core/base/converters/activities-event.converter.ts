@@ -5,13 +5,6 @@ import {
   type ActivityEventInfoCardOptions
 } from '../builders/activity-event-info-card.builder';
 
-export function buildActivityEventRows(
-  records: readonly ActivityEventCardRecord[],
-  options: ActivityEventInfoCardOptions = {}
-): AppTypes.ActivityListRow[] {
-  return records.map(record => toActivityEventRow(record, options));
-}
-
 export function toActivityEventRow(
   record: ActivityEventCardRecord,
   options: ActivityEventInfoCardOptions = {}

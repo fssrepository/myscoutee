@@ -1,9 +1,42 @@
-import type * as AppTypes from '../models';
 import type * as ContractTypes from '../../contracts';
-import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { AppUtils } from '../../../app-utils';
 import { EventEditorConverter } from '../converters/event-editor.converter';
 import { PricingBuilder } from './pricing.builder';
+
+interface EventEditorSubEventGroupInput {
+  id?: string;
+  name?: string;
+  source?: string;
+  capacityMin?: unknown;
+  capacityMax?: unknown;
+}
+
+interface EventEditorSubEventInput {
+  description?: string;
+  id?: string;
+  name?: string;
+  title?: string;
+  location?: string;
+  optional?: boolean;
+  startAt?: string;
+  endAt?: string;
+  capacityMin?: unknown;
+  capacityMax?: unknown;
+  groups?: readonly EventEditorSubEventGroupInput[];
+  membersPending?: unknown;
+  membersAccepted?: unknown;
+  pricing?: ContractTypes.PricingConfig | null;
+  carsPending?: unknown;
+  accommodationPending?: unknown;
+  suppliesPending?: unknown;
+  slotStartOffsetMinutes?: unknown;
+  slotDurationMinutes?: unknown;
+}
+
+interface EventEditorCapacityInput {
+  capacityMin: unknown;
+  capacityMax: unknown;
+}
 
 export class EventEditorBuilder {
   static cloneEventEditorPolicies(
@@ -24,14 +57,14 @@ export class EventEditorBuilder {
     return target === 'hosting' ? `h${timestampMs}` : `e${timestampMs}`;
   }
 
-  static cloneEventEditorSubEvents(
-    items: readonly AppTypes.EventEditorSubEventItem[]
-  ): AppTypes.EventEditorSubEventItem[] {
+  static cloneEventEditorSubEvents<T extends EventEditorSubEventInput>(
+    items: readonly T[]
+  ): T[] {
     return items.map(item => ({
       ...item,
       groups: (item.groups ?? []).map(group => ({ ...group })),
       pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
-    }));
+    }) as T);
   }
 
   static cloneEventEditorSlotTemplates(
@@ -46,9 +79,9 @@ export class EventEditorBuilder {
     }));
   }
 
-  static sortEventEditorSubEventRefsByStartAsc(
-    items: readonly AppTypes.EventEditorSubEventItem[]
-  ): AppTypes.EventEditorSubEventItem[] {
+  static sortEventEditorSubEventRefsByStartAsc<T extends EventEditorSubEventInput>(
+    items: readonly T[]
+  ): T[] {
     return [...items]
       .map((item, index) => ({
         item,
@@ -66,16 +99,16 @@ export class EventEditorBuilder {
       .map(entry => entry.item);
   }
 
-  static firstEventEditorSubEventByOrder(
-    items: readonly AppTypes.EventEditorSubEventItem[]
-  ): AppTypes.EventEditorSubEventItem | null {
+  static firstEventEditorSubEventByOrder<T extends EventEditorSubEventInput>(
+    items: readonly T[]
+  ): T | null {
     return this.sortEventEditorSubEventRefsByStartAsc(items)[0] ?? null;
   }
 
-  static withFirstEventEditorSubEventLocation(
-    items: readonly AppTypes.EventEditorSubEventItem[],
+  static withFirstEventEditorSubEventLocation<T extends EventEditorSubEventInput>(
+    items: readonly T[],
     location: string
-  ): AppTypes.EventEditorSubEventItem[] {
+  ): T[] {
     if (items.length === 0) {
       return [];
     }
@@ -86,11 +119,11 @@ export class EventEditorBuilder {
     const normalizedLocation = EventEditorConverter.normalizeEventEditorLocation(location);
     return items.map(item => item.id === first.id
       ? { ...item, location: normalizedLocation, groups: (item.groups ?? []).map(group => ({ ...group })) }
-      : { ...item, groups: (item.groups ?? []).map(group => ({ ...group })) });
+      : { ...item, groups: (item.groups ?? []).map(group => ({ ...group })) }) as T[];
   }
 
   static normalizedEventEditorCapacityRange(
-    form: Pick<AppTypes.EventEditorDraftForm, 'capacityMin' | 'capacityMax'>
+    form: EventEditorCapacityInput
   ): ContractTypes.EventCapacityRange {
     const min = this.normalizedEventEditorCapacityValueWithFloor(form.capacityMin, 0);
     const maxCandidate = this.normalizedEventEditorCapacityValueWithFloor(form.capacityMax, 0);
@@ -115,10 +148,10 @@ export class EventEditorBuilder {
   }
 
   static buildPersistedEventEditorSubEvents(
-    items: readonly AppTypes.EventEditorSubEventItem[]
+    items: readonly EventEditorSubEventInput[]
   ): ContractTypes.SubEventFormItem[] {
     return items.map((item, index) => {
-      const rawItem = item as AppTypes.EventEditorSubEventItem & Record<string, unknown>;
+      const rawItem = item as EventEditorSubEventInput & Record<string, unknown>;
       const capacityMin = Math.max(0, Math.trunc(Number(item.capacityMin) || 0));
       const capacityMax = Math.max(capacityMin, Math.trunc(Number(item.capacityMax) || capacityMin));
 
@@ -277,83 +310,5 @@ export class EventEditorBuilder {
     }
 
     return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
-  }
-
-  static buildEventEditorSyncPayload(params: {
-    eventId: string;
-    target: ContractTypes.EventEditorTarget;
-    form: AppTypes.EventEditorDraftForm;
-    subEventsDisplayMode: ContractTypes.SubEventsDisplayMode;
-    acceptedMembers: number;
-    pendingMembers: number;
-    capacityTotal: number;
-    existingRecord: ActivityEventRecord | null;
-    activeUserId: string | null;
-    activeUserProfile: {
-      name?: string;
-      initials?: string;
-      gender?: 'woman' | 'man';
-      city?: string;
-    } | null;
-    acceptedMemberUserIds: readonly string[];
-    pendingMemberUserIds: readonly string[];
-  }): Omit<ContractTypes.ActivitiesEventSyncPayload, 'syncKey'> {
-    return {
-      id: params.eventId,
-      target: params.target,
-      title: params.form.title.trim(),
-      shortDescription: params.form.description.trim(),
-      timeframe: this.buildEventEditorTimeframeLabel(params.form.startAt, params.form.endAt, params.form.frequency),
-      activity: params.existingRecord?.activity ?? 0,
-      isAdmin: params.existingRecord?.isAdmin ?? (params.target === 'hosting'),
-      startAt: params.form.startAt,
-      endAt: params.form.endAt,
-      distanceKm: params.existingRecord?.distanceKm ?? 0,
-      imageUrl: params.form.imageUrl || params.existingRecord?.imageUrl || '',
-      acceptedMembers: params.acceptedMembers,
-      pendingMembers: params.pendingMembers,
-      capacityTotal: Math.max(params.acceptedMembers, params.capacityTotal),
-      capacityMin: params.form.capacityMin,
-      capacityMax: params.form.capacityMax,
-      autoInviter: params.form.autoInviter,
-      frequency: params.form.frequency,
-      ticketing: params.form.ticketing,
-      pricing: PricingBuilder.compactPricingConfig(
-        PricingBuilder.syncSlotOverrides(
-          params.form.pricing,
-          PricingBuilder.slotCatalogFromEventSlotTemplates(this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates))
-        ),
-        {
-          context: 'event',
-          slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates)),
-          allowSlotFeatures: true
-        }
-      ),
-      policies: this.buildPersistedEventEditorPolicies(params.form.policies),
-      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(params.form.frequency) !== 'One-time',
-      slotTemplates: EventEditorConverter.normalizeEventEditorFrequency(params.form.frequency) !== 'One-time'
-        ? this.buildPersistedEventEditorSlotTemplates(params.form.slotTemplates)
-        : [],
-      visibility: params.form.visibility,
-      blindMode: params.form.blindMode,
-      published: params.target === 'hosting'
-        ? (params.existingRecord?.published ?? false)
-        : true,
-      creatorUserId: params.existingRecord?.creatorUserId ?? params.activeUserId ?? undefined,
-      creatorName: params.existingRecord?.creatorName ?? params.activeUserProfile?.name,
-      creatorInitials: params.existingRecord?.creatorInitials ?? params.activeUserProfile?.initials,
-      creatorGender: params.existingRecord?.creatorGender ?? params.activeUserProfile?.gender,
-      creatorCity: params.existingRecord?.creatorCity ?? params.activeUserProfile?.city,
-      location: params.form.location.trim(),
-      locationCoordinates: params.existingRecord?.locationCoordinates ?? undefined,
-      sourceLink: params.existingRecord?.sourceLink ?? '',
-      parentEventId: params.existingRecord?.parentEventId ?? null,
-      slotTemplateId: params.existingRecord?.slotTemplateId ?? null,
-      generated: params.existingRecord?.generated ?? false,
-      eventType: params.existingRecord?.eventType ?? 'main',
-      topics: [...params.form.topics],
-      subEvents: this.buildPersistedEventEditorSubEvents(params.form.subEvents),
-      subEventsDisplayMode: params.subEventsDisplayMode
-    };
   }
 }

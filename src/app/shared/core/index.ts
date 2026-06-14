@@ -1,6 +1,6 @@
 export {
   ActivitiesService,
-  type ActivitiesEventDisplaySync
+  type ActivityEventSaveResultDTO
 } from './base/services/activities.service';
 export {
   GameService,

@@ -1,8 +1,9 @@
-import type { EventVisibility } from '../../common/constants';
-import type { EventBlindMode, EventPolicyItem, EventSlotTemplate, SubEventsDisplayMode } from '../../contracts/event.interface';
-import type { PricingConfig } from '../../contracts/pricing.interface';
+import type { EventVisibility, UserGender } from '../../core/common/constants';
+import type { EventBlindMode, EventPolicyItem, EventRecordKind, EventSlotTemplate, SubEventsDisplayMode } from '../../core/contracts/event.interface';
+import type { PricingConfig } from '../../core/contracts/pricing.interface';
+import type { LocationCoordinates } from '../../core/contracts/user.interface';
 
-export interface EventEditorSubEventGroupItem {
+export interface EventFormSubEventGroupItem {
   id?: string;
   name?: string;
   source?: string;
@@ -11,7 +12,7 @@ export interface EventEditorSubEventGroupItem {
   capacityMax?: number;
 }
 
-export interface EventEditorSubEventItem {
+export interface EventFormSubEventItem {
   description?: string;
   id?: string;
   name?: string;
@@ -22,7 +23,7 @@ export interface EventEditorSubEventItem {
   endAt?: string;
   capacityMin?: number;
   capacityMax?: number;
-  groups?: EventEditorSubEventGroupItem[];
+  groups?: EventFormSubEventGroupItem[];
   membersPending?: number;
   membersAccepted?: number;
   pricing?: PricingConfig | null;
@@ -34,11 +35,26 @@ export interface EventEditorSubEventItem {
   [key: string]: unknown;
 }
 
-export interface EventEditorDraftForm {
+export interface EventForm {
   id: string;
   title: string;
   description: string;
   imageUrl: string;
+  activity?: number;
+  isAdmin?: boolean;
+  distanceKm?: number;
+  published?: boolean;
+  creatorUserId?: string;
+  creatorName?: string;
+  creatorInitials?: string;
+  creatorGender?: UserGender;
+  creatorCity?: string;
+  locationCoordinates?: LocationCoordinates | null;
+  sourceLink?: string;
+  parentEventId?: string | null;
+  slotTemplateId?: string | null;
+  generated?: boolean;
+  eventType?: EventRecordKind;
   visibility: EventVisibility;
   frequency: string;
   location: string;
@@ -52,12 +68,8 @@ export interface EventEditorDraftForm {
   topics: string[];
   slotsEnabled: boolean;
   slotTemplates: EventSlotTemplate[];
-  subEvents: EventEditorSubEventItem[];
+  subEvents: EventFormSubEventItem[];
+  subEventsDisplayMode?: SubEventsDisplayMode;
   startAt: string;
   endAt: string;
-}
-
-export interface EventEditorFormState {
-  form: EventEditorDraftForm;
-  subEventsDisplayMode: SubEventsDisplayMode;
 }

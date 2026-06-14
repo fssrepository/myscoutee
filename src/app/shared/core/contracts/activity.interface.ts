@@ -76,6 +76,9 @@ export interface IEventsService {
     query: ActivityEventActivitiesQuery,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
+  saveActivityEvent(
+    payload: ActivityEventSaveDTO
+  ): Promise<ActivityEventDTO | null>;
 }
 
 export interface IChatsService {
@@ -117,7 +120,7 @@ export interface EventExploreFeedFilters {
   excludedSourceIds?: string[];
 }
 
-export interface ActivitiesEventSyncPayload {
+export interface ActivityEventSaveDTO {
   id: string;
   target: EventEditorTarget;
   title: string;

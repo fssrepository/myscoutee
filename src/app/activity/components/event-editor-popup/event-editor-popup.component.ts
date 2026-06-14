@@ -16,11 +16,13 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import { EventEditorConverter } from '../../../shared/core/base/converters';
+import { ActivityEventEditorFormConverter, ActivityEventSaveConverter } from '../../../shared/ui/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as UiModels from '../../../shared/ui/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   ActivitiesService, ActivityMembersService, EventEditorDataService, ExplanationGuideService, MediaService, RouteIntervalSchedulerService } from '../../../shared/core';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityEventDTO } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
   type AppMenuGroup,
@@ -85,7 +87,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private lastHandledOpenSubEventsRequest = 0;
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
-  private currentRecord: ActivityEventRecord | null = null;
   private currentSourcePublished = false;
   private publishedCapacityMaxFloor = 0;
   private currentMemberSummary: ActivityContracts.ActivityMembersSummary | null = null;
@@ -179,14 +180,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         acceptedMemberUserIds: [],
         pendingMemberUserIds: []
       };
-      if (this.currentRecord?.id === sync.id) {
-        this.currentRecord = {
-          ...this.currentRecord,
-          acceptedMembers: this.currentMemberSummary.acceptedMembers,
-          pendingMembers: this.currentMemberSummary.pendingMembers,
-          capacityTotal: this.currentMemberSummary.capacityTotal
-        };
-      }
     });
 
   }
@@ -217,7 +210,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.clearEventEditorExplanationContext();
   }
 
-  eventForm: AppTypes.EventEditorDraftForm = {
+  eventForm: UiModels.EventForm = {
     id: '',
     title: '',
     description: '',
@@ -235,7 +228,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     slotsEnabled: false,
     slotTemplates: [] as ContractTypes.EventSlotTemplate[],
     topics: [] as string[],
-    subEvents: [] as AppTypes.EventEditorSubEventItem[],
+    subEvents: [] as UiModels.EventFormSubEventItem[],
     startAt: '',
     endAt: ''
   };
@@ -347,7 +340,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   handleSubEventsChange(subEvents: readonly EventSubeventsItem[]): void {
-    const mapped: AppTypes.EventEditorSubEventItem[] = subEvents.map(item => ({
+    const mapped: UiModels.EventFormSubEventItem[] = subEvents.map(item => ({
       ...item,
       groups: (item.groups ?? []).map(group => ({ ...group }))
     }));
@@ -592,7 +585,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected isGeneratedSlotInstance(): boolean {
-    return Boolean(this.currentRecord?.generated) || this.currentRecord?.eventType === 'slot';
+    return Boolean(this.eventForm.generated) || this.eventForm.eventType === 'slot';
   }
 
   saveEventEditorForm(): void {
@@ -946,12 +939,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.subEventPanelChipTitle(current.item, current.index);
   }
 
-  subEventLocationLabel(subEvent: AppTypes.EventEditorSubEventItem | null | undefined): string {
+  subEventLocationLabel(subEvent: UiModels.EventFormSubEventItem | null | undefined): string {
     const location = EventEditorConverter.normalizeEventEditorLocation(subEvent?.location).trim();
     return location || 'Location pending';
   }
 
-  subEventPanelChipTitle(subEvent: AppTypes.EventEditorSubEventItem, index: number): string {
+  subEventPanelChipTitle(subEvent: UiModels.EventFormSubEventItem, index: number): string {
     const baseName = (this.subEventName(subEvent) || 'Untitled').trim() || 'Untitled';
     if (this.subEventsDisplayMode !== 'Tournament') {
       return baseName;
@@ -959,7 +952,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `Stage ${index + 1} - ${baseName}`;
   }
 
-  subEventPanelChipTrackId(index: number, subEvent: AppTypes.EventEditorSubEventItem): string {
+  subEventPanelChipTrackId(index: number, subEvent: UiModels.EventFormSubEventItem): string {
     const id = `${subEvent.id ?? ''}`.trim();
     if (id) {
       return id;
@@ -972,7 +965,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     ].join(':');
   }
 
-  subEventCardRange(subEvent: AppTypes.EventEditorSubEventItem): string {
+  subEventCardRange(subEvent: UiModels.EventFormSubEventItem): string {
     const start = EventEditorConverter.parseEventEditorDateValue(subEvent.startAt);
     const end = EventEditorConverter.parseEventEditorDateValue(subEvent.endAt);
     if (!start || !end) {
@@ -983,7 +976,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `${startLabel} - ${endLabel}`;
   }
 
-  subEventPanelChipIsCurrent(subEvent: AppTypes.EventEditorSubEventItem): boolean {
+  subEventPanelChipIsCurrent(subEvent: UiModels.EventFormSubEventItem): boolean {
     const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return false;
@@ -1491,29 +1484,27 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     void this.refreshCurrentMemberSummary(row.id);
 
     try {
-      const record = await this.eventEditorDataService.loadFullItemById(activeUserId, row.id);
+      const eventDTO = await this.eventEditorDataService.loadFullItemById(activeUserId, row.id);
 
       this.isLoadingEventData.set(false);
-      if (!record) {
+      if (!eventDTO) {
         return;
       }
 
-      this.currentRecord = record;
-      this.editorTarget = this.currentRecord.type === 'hosting' ? 'hosting' : target;
-      this.editingEventId = this.currentRecord.id;
-      this.openRecord(this.currentRecord, readOnly, this.editorTarget);
+      this.editorTarget = eventDTO.type === 'hosting' ? 'hosting' : target;
+      this.editingEventId = eventDTO.id;
+      this.openEventDTO(eventDTO, readOnly, this.editorTarget);
     } catch {
       this.isLoadingEventData.set(false);
     }
   }
 
-  private openRecord(record: ActivityEventRecord, readOnly: boolean, target: ContractTypes.EventEditorTarget): void {
-    const source = EventEditorConverter.toEventEditorSourceFromRecord(record, target);
+  private openEventDTO(eventDTO: ActivityEventDTO, readOnly: boolean, _target: ContractTypes.EventEditorTarget): void {
     if (readOnly) {
-      this.eventEditorService.openView(source);
+      this.eventEditorService.openView(eventDTO);
       return;
     }
-    this.eventEditorService.openEdit(source);
+    this.eventEditorService.openEdit(eventDTO);
   }
 
   private async persistEventEditorForm(options: { allowIncomplete?: boolean } = {}): Promise<boolean> {
@@ -1548,39 +1539,31 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (uploadedImageUrl) {
       this.eventForm.imageUrl = uploadedImageUrl;
     }
-    const existingRecord = this.currentRecord
-      ?? (activeUserId ? this.eventEditorDataService.peekKnownItemById(activeUserId, eventId) : null);
     const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
     this.currentMemberSummary = memberSummary;
-    const formForSync: AppTypes.EventEditorDraftForm = {
+    const formForSync: UiModels.EventForm = {
       ...this.eventForm,
+      subEventsDisplayMode: this.subEventsDisplayMode,
       title: options.allowIncomplete
-        ? (this.eventForm.title.trim() || existingRecord?.title || 'Untitled draft event')
+        ? (this.eventForm.title.trim() || 'Untitled draft event')
         : this.eventForm.title,
       description: options.allowIncomplete
-        ? (this.eventForm.description.trim() || existingRecord?.subtitle || 'Draft event in progress')
+        ? (this.eventForm.description.trim() || 'Draft event in progress')
         : this.eventForm.description
     };
 
-    const payload = EventEditorBuilder.buildEventEditorSyncPayload({
-      eventId,
+    const saveDTO = ActivityEventSaveConverter.convert({
       target: this.editorTarget,
       form: formForSync,
-      subEventsDisplayMode: this.subEventsDisplayMode,
-      acceptedMembers: memberSummary.acceptedMembers,
-      pendingMembers: memberSummary.pendingMembers,
-      capacityTotal: memberSummary.capacityTotal,
-      existingRecord,
+      memberSummary,
       activeUserId: activeUserId || null,
-      activeUserProfile: activeUserId ? this.appCtx.getUserProfile(activeUserId) : null,
-      acceptedMemberUserIds: memberSummary.acceptedMemberUserIds,
-      pendingMemberUserIds: memberSummary.pendingMemberUserIds
+      activeUserProfile: activeUserId ? this.appCtx.getUserProfile(activeUserId) : null
     });
 
-    const displaySync = await this.activitiesService.saveActivitiesEventSync(payload, {
+    const displaySync = await this.activitiesService.saveActivityEvent(saveDTO, {
       activeUserId
     });
-    this.activitiesContext.emitActivitiesEventDisplaySync(displaySync);
+    this.activitiesContext.emitActivityEventSaveResult(displaySync);
     return true;
   }
 
@@ -1635,7 +1618,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.mode() === 'create') {
       return true;
     }
-    return this.editorTarget === 'hosting' && this.currentRecord?.published === false;
+    return this.editorTarget === 'hosting' && this.eventForm.published === false;
   }
 
   private async runDraftAutosaveIfNeeded(): Promise<void> {
@@ -1680,7 +1663,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editorTarget = 'events';
     this.editingEventId = null;
     this.draftEventId = null;
-    this.currentRecord = null;
     this.currentSourcePublished = false;
     this.publishedCapacityMaxFloor = 0;
     this.currentMemberSummary = null;
@@ -2122,14 +2104,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.currentMemberSummary = summary;
-    if (this.currentRecord?.id === normalizedOwnerId && summary) {
-      this.currentRecord = {
-        ...this.currentRecord,
-        acceptedMembers: summary.acceptedMembers,
-        pendingMembers: summary.pendingMembers,
-        capacityTotal: summary.capacityTotal
-      };
-    }
   }
 
   private async resolveCurrentEventMembersSummary(
@@ -2138,13 +2112,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ): Promise<ActivityContracts.ActivityMembersSummary> {
     const queriedSummary = eventId ? await this.activityMembersService.querySummaryByOwnerId(eventId) : null;
     const summary = queriedSummary ?? this.currentMemberSummary;
-    const acceptedMembers = summary?.acceptedMembers ?? this.currentRecord?.acceptedMembers ?? 0;
-    const pendingMembers = summary?.pendingMembers ?? this.currentRecord?.pendingMembers ?? 0;
+    const acceptedMembers = summary?.acceptedMembers ?? 0;
+    const pendingMembers = summary?.pendingMembers ?? 0;
     const capacityFloor = Math.max(0, normalizedCapacity.max ?? normalizedCapacity.min ?? 0);
     const capacityTotal = Math.max(
       acceptedMembers,
       capacityFloor,
-      summary?.capacityTotal ?? this.currentRecord?.capacityTotal ?? 0
+      summary?.capacityTotal ?? 0
     );
     return {
       ownerType: 'event',
@@ -2157,21 +2131,36 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
-  private populateFormFromSourceEvent(sourceEvent: Record<string, unknown>): void {
-    const state = EventEditorConverter.toEventEditorFormState(sourceEvent);
-    this.editingEventId = state.form.id.trim() || this.editingEventId;
+  private populateFormFromSourceEvent(sourceEvent: ActivityEventDTO | Record<string, unknown>): void {
+    const isEventDTO = this.isActivityEventDTO(sourceEvent);
+    const form = isEventDTO
+      ? ActivityEventEditorFormConverter.convert(sourceEvent)
+      : EventEditorConverter.toEventEditorForm(sourceEvent);
+    if (isEventDTO) {
+      this.currentMemberSummary = {
+        ownerType: 'event',
+        ownerId: sourceEvent.id,
+        acceptedMembers: sourceEvent.acceptedMembers,
+        pendingMembers: sourceEvent.pendingMembers,
+        capacityTotal: sourceEvent.capacityTotal,
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: []
+      };
+    }
+    this.editingEventId = form.id.trim() || this.editingEventId;
     this.pendingEventImageFile = null;
-    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && sourceEvent['published'] !== false;
-    this.publishedCapacityMaxFloor = Math.max(0, Number(state.form.capacityMax ?? 0) || 0);
+    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && form.published !== false;
+    this.publishedCapacityMaxFloor = Math.max(0, Number(form.capacityMax ?? 0) || 0);
     this.eventForm = {
-      ...state.form,
-      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(state.form.frequency) !== 'One-time',
-      pricing: PricingBuilder.clonePricingConfig(state.form.pricing),
-      policies: EventEditorBuilder.cloneEventEditorPolicies(state.form.policies),
-      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(state.form.slotTemplates),
-      subEvents: EventEditorBuilder.cloneEventEditorSubEvents(state.form.subEvents)
+      ...form,
+      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(form.frequency) !== 'One-time',
+      pricing: PricingBuilder.clonePricingConfig(form.pricing),
+      policies: EventEditorBuilder.cloneEventEditorPolicies(form.policies),
+      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(form.slotTemplates),
+      subEvents: EventEditorBuilder.cloneEventEditorSubEvents(form.subEvents)
     };
-    this.subEventsDisplayMode = state.subEventsDisplayMode;
+    this.subEventsDisplayMode = form.subEventsDisplayMode ?? 'Casual';
+    this.eventForm.subEventsDisplayMode = this.subEventsDisplayMode;
     this.normalizeEventDateRange();
     this.syncDateTimeControlsFromForm();
     this.slotEditorMode = 'base';
@@ -2180,6 +2169,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.slotOverrideDateValue = this.defaultSlotOverrideDate();
     this.normalizeSlotOverrideDateSelection();
     this.seedDraftAutosaveSignature();
+  }
+
+  private isActivityEventDTO(sourceEvent: ActivityEventDTO | Record<string, unknown>): sourceEvent is ActivityEventDTO {
+    return typeof sourceEvent['startAtIso'] === 'string'
+      && typeof sourceEvent['endAtIso'] === 'string'
+      && typeof sourceEvent['timeframe'] === 'string';
   }
 
   private resetForm(target: ContractTypes.EventEditorTarget = this.editorTarget): void {
@@ -2208,11 +2203,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       slotTemplates: [],
       topics: [],
       subEvents: [],
+      subEventsDisplayMode: 'Casual',
       startAt: AppUtils.toIsoDateTimeLocal(start),
       endAt: AppUtils.toIsoDateTimeLocal(end)
     };
 
     this.subEventsDisplayMode = 'Casual';
+    this.eventForm.subEventsDisplayMode = this.subEventsDisplayMode;
     this.showSlotsPopup = false;
     this.syncDateTimeControlsFromForm();
     this.slotEditorMode = 'base';
@@ -2430,7 +2427,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return uploadResult.imageUrl;
   }
 
-  private currentSubEventPanelState(): { item: AppTypes.EventEditorSubEventItem; index: number } | null {
+  private currentSubEventPanelState(): { item: UiModels.EventFormSubEventItem; index: number } | null {
     const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents);
     if (source.length === 0) {
       return null;
@@ -2448,7 +2445,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
-  private resolveCurrentSubEventIndex(items: AppTypes.EventEditorSubEventItem[]): number {
+  private resolveCurrentSubEventIndex(items: UiModels.EventFormSubEventItem[]): number {
     if (items.length === 0) {
       return 0;
     }
@@ -2516,7 +2513,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  private subEventName(subEvent: AppTypes.EventEditorSubEventItem): string {
+  private subEventName(subEvent: UiModels.EventFormSubEventItem): string {
     return `${subEvent.name ?? subEvent.title ?? 'Untitled'}`;
   }
 }

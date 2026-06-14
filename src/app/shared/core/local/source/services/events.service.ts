@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesEventSyncPayload } from '../../../contracts';
+import type { ActivityEventSaveDTO } from '../../../contracts';
 import type { ActivityPendingReason } from '../../../common/constants';
 import type { SubEventLeaderboardState } from '../../../contracts/event.interface';
 import type {
@@ -20,6 +20,7 @@ import { LocalActivityEventsMapper } from '../mappers';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -148,11 +149,18 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.eventFeedbackRepository.flushToIndexedDb();
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.syncEventSnapshot(payload);
     await this.eventsRepository.flushToIndexedDb();
     return record;
+  }
+
+  async saveActivityEvent(payload: ActivityEventSaveDTO): Promise<ActivityEventDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const record = this.eventsRepository.syncEventSnapshot(payload);
+    await this.eventsRepository.flushToIndexedDb();
+    return record ? LocalActivityEventsMapper.toDTO(record) : null;
   }
 
   async trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {

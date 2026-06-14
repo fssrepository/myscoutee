@@ -3,10 +3,10 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import type * as AppTypes from '../../shared/core/base/models';
 import type * as ContractTypes from '../../shared/core/contracts';
-import { ChatsService, EventsService } from '../../shared/core';
-import type { ActivitiesEventSyncPayload } from '../../shared/core/contracts';
+import { ActivitiesService, ChatsService } from '../../shared/core';
+import type { ActivityEventSaveDTO } from '../../shared/core/contracts';
 import type { EventChatSession } from '../../shared/core/base/models';
-import type { ActivitiesEventDisplaySync } from '../../shared/core/base/services/activities.service';
+import type { ActivityEventSaveResultDTO } from '../../shared/core/base/services/activities.service';
 import type { ChatRecord } from '../../shared/core/contracts/chat.interface';
 
 interface ActivitiesUiState {
@@ -57,11 +57,11 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStateService {
-  private readonly eventsService = inject(EventsService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly chatsService = inject(ChatsService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private _activitiesEventSync = signal<ActivitiesEventSyncPayload | ActivitiesEventDisplaySync | null>(null);
+  private _activityEventSave = signal<ActivityEventSaveDTO | ActivityEventSaveResultDTO | null>(null);
   private _eventChatSession = signal<EventChatSession | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
@@ -84,7 +84,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesRatesFullscreenMode = computed(() => this._uiState().ratesFullscreenMode);
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
-  readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
+  readonly activityEventSave = this._activityEventSave.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
@@ -296,38 +296,29 @@ export class ActivitiesPopupStateService {
     this.patchUiState({ selectedRateId: rateId });
   }
 
-  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    this._activitiesEventSync.set({ ...payload });
+  emitActivityEventSave(payload: ActivityEventSaveDTO): Promise<void> {
+    this._activityEventSave.set({ ...payload });
     return this.runDeferredEventPersistence(payload);
   }
 
-  emitActivitiesEventDisplaySync(sync: ActivitiesEventDisplaySync): void {
-    this._activitiesEventSync.set(sync);
+  emitActivityEventSaveResult(sync: ActivityEventSaveResultDTO): void {
+    this._activityEventSave.set(sync);
   }
 
-  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    const persist = async () => {
-      await this.eventsService.syncEventSnapshot(payload).catch(() => {
+  private runDeferredEventPersistence(payload: ActivityEventSaveDTO): Promise<void> {
+    return this.activitiesService.saveActivityEvent(payload)
+      .then(displaySync => {
+        if (displaySync) {
+          this._activityEventSave.set(displaySync);
+        }
+      })
+      .catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
       });
-    };
-
-    return new Promise(resolve => {
-      const run = () => {
-        void persist().finally(resolve);
-      };
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          setTimeout(run, 0);
-        });
-        return;
-      }
-      setTimeout(run, 0);
-    });
   }
 
-  clearActivitiesEventSync(): void {
-    this._activitiesEventSync.set(null);
+  clearActivityEventSave(): void {
+    this._activityEventSave.set(null);
   }
 
   openEventChat(item: ChatRecord): void {

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
-import type { ActivitiesEventSyncPayload } from '../../contracts';
+import type { ActivityEventSaveDTO } from '../../contracts';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
 import type {
@@ -530,12 +530,23 @@ export class HttpEventsService implements IEventsService {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
     try {
       const response = await this.http
         .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
         .toPromise();
       return this.cloneRecords(response ? [response] : [])[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveActivityEvent(payload: ActivityEventSaveDTO): Promise<ActivityEventDTO | null> {
+    try {
+      const response = await this.http
+        .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
+        .toPromise();
+      return this.cloneDTOs(response ? [response] : [])[0] ?? null;
     } catch {
       return null;
     }

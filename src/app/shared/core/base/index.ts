@@ -59,7 +59,7 @@ export { ActivityMembersService } from './services/activity-members.service';
 export { ActivityResourcesService } from './services/activity-resources.service';
 export {
   ActivitiesService,
-  type ActivitiesEventDisplaySync
+  type ActivityEventSaveResultDTO
 } from './services/activities.service';
 export { AssetsService } from './services/assets.service';
 export { ActivityInviteCandidatesService } from './services/activity-invite-candidates.service';

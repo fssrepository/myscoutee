@@ -21,7 +21,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { ActivitiesService, ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService, toActivityEventRow } from '../../../shared/core';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { ASSET_TYPES, type AssetType, type SubEventResourceFilter } from '../../../shared/core/common/constants';
@@ -122,7 +122,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly chatsService = inject(ChatsService);
-  private readonly activitiesService = inject(ActivitiesService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
@@ -2160,7 +2159,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: this.activeUserId() }),
+      row: toActivityEventRow(eventRecord, { activeUserId: this.activeUserId() }),
       readOnly: true
     });
   }
@@ -3763,7 +3762,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const eventId = `${chat.eventId ?? ''}`.trim();
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const eventRow = eventRecord
-      ? this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: this.activeUserId() })
+      ? toActivityEventRow(eventRecord, { activeUserId: this.activeUserId() })
       : this.chatEventFallbackRow(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
     const resourceState = rawSubEvent && eventId

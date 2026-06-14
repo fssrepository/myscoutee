@@ -20,7 +20,7 @@ import type {
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
-import type { ActivitiesEventSyncPayload } from '../../../contracts';
+import type { ActivityEventSaveDTO } from '../../../contracts';
 import { EventEditorBuilder } from '../../../base/builders';
 import { PricingBuilder } from '../../../base/builders/pricing.builder';
 
@@ -452,7 +452,7 @@ export class LocalEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): ActivityEventRecord | null {
+  syncEventSnapshot(payload: ActivityEventSaveDTO): ActivityEventRecord | null {
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
@@ -1577,7 +1577,7 @@ export class LocalEventsRepository {
   }
 
   private buildSyncedRecord(
-    payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>,
+    payload: ActivityEventSaveDTO,
     context: {
       userId: string;
       type: 'events' | 'hosting';

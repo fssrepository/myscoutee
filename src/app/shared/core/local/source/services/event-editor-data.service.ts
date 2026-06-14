@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../../contracts/activity.interface';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalEventsService } from './events.service';
+import { LocalActivityEventsMapper } from '../mappers';
 import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../../contracts/activity.interface';
 
 @Injectable({
@@ -40,7 +41,7 @@ export class LocalEventEditorDataService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  async loadFullItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
+  async loadFullItemById(userId: string, itemId: string): Promise<ActivityEventDTO | null> {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
@@ -49,7 +50,8 @@ export class LocalEventEditorDataService {
       this.eventsService.queryItemsByUser(userId),
       this.eventsService.queryExploreItems(userId)
     ]);
-    return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
+    const record = [...owned, ...explore].find(item => item.id === normalizedItemId) ?? null;
+    return record ? LocalActivityEventsMapper.toDTO(record) : null;
   }
 
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {

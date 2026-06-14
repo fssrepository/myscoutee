@@ -227,11 +227,11 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.activitiesContext.activitiesEventSync();
+      const sync = this.activitiesContext.activityEventSave();
       if (!sync) {
         return;
       }
-      this.applyActivitiesEventSync(sync);
+      this.applyActivityEventSave(sync);
     });
 
     effect(() => {
@@ -923,8 +923,8 @@ export class EventExplorePopupComponent {
       const nextMembers = this.sortMembersByActionTimeDesc(
         existingMembers.filter(member => member.userId !== activeUserId)
       );
-      const payload = this.buildActivitiesEventSyncPayload(record, nextMembers);
-      const persistence = this.activitiesContext.emitActivitiesEventSync(payload);
+      const payload = this.buildActivityEventSaveDTO(record, nextMembers);
+      const persistence = this.activitiesContext.emitActivityEventSave(payload);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;
       }
@@ -1133,7 +1133,7 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private applyActivitiesEventSync(sync: ContractTypes.ActivitiesEventSyncPayload): void {
+  private applyActivityEventSave(sync: ContractTypes.ActivityEventSaveDTO): void {
     const userJoinedEvent = false;
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
@@ -1498,9 +1498,9 @@ export class EventExplorePopupComponent {
       ...existingMembers,
       this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
-    const rollbackPayload = this.buildActivitiesEventSyncPayload(record, existingMembers);
-    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers, selection?.paymentSessionId ?? null);
-    this.activitiesContext.emitActivitiesEventSync(nextPayload);
+    const rollbackPayload = this.buildActivityEventSaveDTO(record, existingMembers);
+    const nextPayload = this.buildActivityEventSaveDTO(record, nextMembers, selection?.paymentSessionId ?? null);
+    this.activitiesContext.emitActivityEventSave(nextPayload);
 
     try {
       const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1520,8 +1520,8 @@ export class EventExplorePopupComponent {
         await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(joinedRecord))
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
-      this.activitiesContext.emitActivitiesEventSync(
-        this.buildActivitiesEventSyncPayload(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+      this.activitiesContext.emitActivityEventSave(
+        this.buildActivityEventSaveDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = joinedRecord;
@@ -1529,7 +1529,7 @@ export class EventExplorePopupComponent {
       }
       this.cdr.markForCheck();
     } catch (error) {
-      this.activitiesContext.emitActivitiesEventSync(rollbackPayload);
+      this.activitiesContext.emitActivityEventSave(rollbackPayload);
       throw error;
     }
   }
@@ -1771,11 +1771,11 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private buildActivitiesEventSyncPayload(
+  private buildActivityEventSaveDTO(
     record: ActivityEventRecord,
     members: readonly ActivityContracts.ActivityMemberEntry[],
     paymentSessionId: string | null = null
-  ): Omit<ContractTypes.ActivitiesEventSyncPayload, 'syncKey'> {
+  ): ContractTypes.ActivityEventSaveDTO {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
       members,

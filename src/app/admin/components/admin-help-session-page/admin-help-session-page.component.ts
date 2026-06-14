@@ -2,7 +2,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
 import { AppPopupContext } from '../../../shared/ui';
-import { ActivitiesService, AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, type ShareTokenResolvedItem } from '../../../shared/core';
+import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, toActivityEventRow, type ShareTokenResolvedItem } from '../../../shared/core';
 import type { AssetCardDTO } from '../../../shared/core/base/dto';
 import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
@@ -19,7 +19,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
-  private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly popupCtx = inject(AppPopupContext);
 
@@ -239,7 +238,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       if (eventRecord) {
         this.popupCtx.requestActivitiesNavigation({
           type: 'eventEditor',
-          row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: userId }),
+          row: toActivityEventRow(eventRecord, { activeUserId: userId }),
           readOnly: true
         });
       } else {

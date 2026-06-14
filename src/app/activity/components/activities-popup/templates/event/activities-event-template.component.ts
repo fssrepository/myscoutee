@@ -4,12 +4,13 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
-import type { ActivitiesEventSyncPayload } from '../../../../../shared/core/contracts';
+import type { ActivityEventSaveDTO } from '../../../../../shared/core/contracts';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   ActivityEventBuilder,
-  ActivityMembersBuilder
+  ActivityMembersBuilder,
+  type ActivityEventSaveResultDTO
 } from '../../../../../shared/core';
 import {
   InfoCardComponent,
@@ -86,8 +87,8 @@ type ActivityInfoCardActionId =
   | 'viewInvitation';
 type ActivitiesEventsHost = any;
 type ActivityEventRecordLike = any;
-type InvitationApprovalSyncResult = {
-  syncPayload: Omit<ActivitiesEventSyncPayload, 'syncKey'>;
+type InvitationApprovalSaveResult = {
+  eventSaveDTO: ActivityEventSaveDTO;
   nextMembers: ActivityContracts.ActivityMemberEntry[] | null;
   capacityTotal: number;
 };
@@ -100,6 +101,7 @@ export class ActivitiesEventsController {
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
+  private get activitiesService() { return this.host.activitiesService; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
   private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberEntry[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
@@ -133,7 +135,9 @@ export class ActivitiesEventsController {
   private get users() { return this.host.users as any[]; }
 
   private activityRowIdentity(row: AppTypes.ActivityListRow): string { return this.host.activityRowIdentity(row); }
-  private applyActivitiesEventSync(sync: ActivitiesEventSyncPayload): void { this.host.applyActivitiesEventSync(sync); }
+  private applyActivityEventSave(sync: ActivityEventSaveDTO | ActivityEventSaveResultDTO): void {
+    this.host.applyActivityEventSave(sync);
+  }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private cloneSyncedSubEventForms(items: ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] { return this.host.cloneSyncedSubEventForms(items); }
   private openActivityChat(chat: ChatRecord): void { this.host.openActivityChat(chat); }
@@ -723,8 +727,8 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return;
     }
-    const syncPayload = await this.buildLeftEventSyncPayload(row);
-    if (!syncPayload) {
+    const eventSaveDTO = await this.buildLeftActivityEventSaveDTO(row);
+    if (!eventSaveDTO) {
       this.eventCheckoutDraftService.clear(activeUserId, row.id);
       this.removeVisibleActivityRow(row);
       this.refreshSectionBadges();
@@ -736,11 +740,11 @@ export class ActivitiesEventsController {
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
     const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberEntry) => member.userId !== activeUserId);
     const capacityTotal = Math.max(
-      Math.max(0, Math.trunc(Number(syncPayload.acceptedMembers) || 0)),
-      Math.max(0, Math.trunc(Number(syncPayload.capacityTotal) || 0))
+      Math.max(0, Math.trunc(Number(eventSaveDTO.acceptedMembers) || 0)),
+      Math.max(0, Math.trunc(Number(eventSaveDTO.capacityTotal) || 0))
     );
     const persistence = Promise.all([
-      this.activitiesContext.emitActivitiesEventSync(syncPayload),
+      this.activitiesContext.emitActivityEventSave(eventSaveDTO),
       currentMembers.length > nextMembers.length
         ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
         : Promise.resolve()
@@ -779,22 +783,22 @@ export class ActivitiesEventsController {
     row: AppTypes.ActivityListRow,
     selection?: ActivityContracts.EventCheckoutSelection | null
   ): Promise<void> {
-    const { syncPayload, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSyncResult(row, selection);
-    await Promise.all([
-      this.eventsService.syncEventSnapshot(syncPayload),
+    const { eventSaveDTO, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSaveResult(row, selection);
+    const [displaySync] = await Promise.all([
+      this.activitiesService.saveActivityEvent(eventSaveDTO),
       nextMembers
-        ? this.activityMembersService.replaceMembersByOwnerId(syncPayload.id, nextMembers, capacityTotal)
+        ? this.activityMembersService.replaceMembersByOwnerId(eventSaveDTO.id, nextMembers, capacityTotal)
         : Promise.resolve()
     ]);
-    this.removeInvitationItem(syncPayload.id);
-    this.applyActivitiesEventSync(syncPayload);
+    this.removeInvitationItem(eventSaveDTO.id);
+    this.applyActivityEventSave(displaySync);
     this.cdr.markForCheck();
   }
 
-  private async buildAcceptedInvitationSyncResult(
+  private async buildAcceptedInvitationSaveResult(
     row: AppTypes.ActivityListRow,
     selection?: ActivityContracts.EventCheckoutSelection | null
-  ): Promise<InvitationApprovalSyncResult> {
+  ): Promise<InvitationApprovalSaveResult> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       throw new Error('Unable to resolve active user.');
@@ -871,7 +875,7 @@ export class ActivitiesEventsController {
       : null;
 
     return {
-      syncPayload: {
+      eventSaveDTO: {
         id: row.id,
         target: 'events',
         title,
@@ -1010,9 +1014,9 @@ export class ActivitiesEventsController {
     delete this.activityMembersByRowId[`invitations:${sourceId}`];
   }
 
-  private async buildLeftEventSyncPayload(
+  private async buildLeftActivityEventSaveDTO(
     row: AppTypes.ActivityListRow
-  ): Promise<Omit<ActivitiesEventSyncPayload, 'syncKey'> | null> {
+  ): Promise<ActivityEventSaveDTO | null> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;
