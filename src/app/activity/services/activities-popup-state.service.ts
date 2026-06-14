@@ -6,7 +6,7 @@ import type * as ContractTypes from '../../shared/core/contracts';
 import { ActivitiesService, ChatsService } from '../../shared/core';
 import type { ActivityEventSaveDTO } from '../../shared/core/contracts';
 import type { EventChatSession } from '../../shared/core/base/models';
-import type { ActivityEventSaveResultDTO } from '../../shared/core/base/services/activities.service';
+import type { ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
 import type { ChatRecord } from '../../shared/core/contracts/chat.interface';
 
 interface ActivitiesUiState {
@@ -61,7 +61,7 @@ export class ActivitiesPopupStateService {
   private readonly chatsService = inject(ChatsService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private _activityEventSave = signal<ActivityEventSaveDTO | ActivityEventSaveResultDTO | null>(null);
+  private _activityEventSave = signal<ActivityEventDTO | null>(null);
   private _eventChatSession = signal<EventChatSession | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
@@ -297,11 +297,10 @@ export class ActivitiesPopupStateService {
   }
 
   emitActivityEventSave(payload: ActivityEventSaveDTO): Promise<void> {
-    this._activityEventSave.set({ ...payload });
     return this.runDeferredEventPersistence(payload);
   }
 
-  emitActivityEventSaveResult(sync: ActivityEventSaveResultDTO): void {
+  emitActivityEventSaveResult(sync: ActivityEventDTO): void {
     this._activityEventSave.set(sync);
   }
 

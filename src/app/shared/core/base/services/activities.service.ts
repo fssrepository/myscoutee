@@ -18,10 +18,6 @@ import { SessionService } from './session.service';
 import { UsersService } from './users.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
-export interface ActivityEventSaveResultDTO extends ContractTypes.ActivityEventSaveDTO {
-  eventDTO: ActivityEventDTO;
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -107,15 +103,12 @@ export class ActivitiesService extends BaseRouteModeService {
     _options: {
       activeUserId?: string | null;
     } = {}
-  ): Promise<ActivityEventSaveResultDTO> {
+  ): Promise<ActivityEventDTO> {
     const eventDTO = await this.eventsService.saveActivityEvent(payload);
     if (!eventDTO) {
       throw new Error('Event sync did not return an event DTO.');
     }
-    return {
-      ...payload,
-      eventDTO
-    };
+    return eventDTO;
   }
 
   private resolveActiveUserId(): string {

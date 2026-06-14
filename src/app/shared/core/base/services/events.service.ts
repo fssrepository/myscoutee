@@ -59,10 +59,6 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.queryEventItemsByUser(userId);
   }
 
-  queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    return this.eventsService.queryHostingItemsByUser(userId);
-  }
-
   queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryTrashedItemsByUser(userId);
   }
@@ -125,6 +121,14 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       ...this.eventsService.peekExploreItems(userId)
     ];
     return known.find(record => record.id === normalizedItemId) ?? null;
+  }
+
+  peekKnownItemDTOById(userId: string, itemId: string): ActivityEventDTO | null {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId || !this.isLocalRouteEnabled('/activities/events')) {
+      return null;
+    }
+    return this.localEventsService.peekKnownItemDTOById(userId, normalizedItemId);
   }
 
   async queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {

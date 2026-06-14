@@ -7,6 +7,7 @@ import { PricingBuilder } from '../../../core/base/builders';
 import type { ActivityEventSaveDTO } from '../../contracts';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
+import { ActivityEventDTO } from '../../contracts/activity.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -19,7 +20,6 @@ import type {
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
-  ActivityEventDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -70,10 +70,6 @@ export class HttpEventsService implements IEventsService {
 
   async queryEventItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/attending', userId);
-  }
-
-  async queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    return this.getRecords('/activities/events/hosting', userId);
   }
 
   async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
@@ -720,7 +716,7 @@ export class HttpEventsService implements IEventsService {
     if (!Array.isArray(items)) {
       return [];
     }
-    return items.map(item => ({
+    return items.map(item => new ActivityEventDTO({
       ...item,
       locationCoordinates: item.locationCoordinates ? { ...item.locationCoordinates } : item.locationCoordinates,
       pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,

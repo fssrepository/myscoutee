@@ -312,40 +312,42 @@ export type ActivityEventCardRecord = ActivityEventRecord | ActivityEventListIte
 
 export type ActivityEventDTOStatus = ActivityEventStatus;
 
-export interface ActivityEventDTO {
-  id: string;
-  userId: string;
+export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>> & Pick<ActivityEventDTO, 'id'>;
+
+export class ActivityEventDTO {
+  id!: string;
+  userId!: string;
   status?: ActivityEventDTOStatus;
   statusBeforeSuppression?: ActivityEventDTOStatus | null;
-  adminIds: string[];
-  avatar: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  inviter: string | null;
-  unread: number;
-  activity: number;
+  adminIds!: string[];
+  avatar!: string;
+  title!: string;
+  subtitle!: string;
+  timeframe!: string;
+  inviter!: string | null;
+  unread!: number;
+  activity!: number;
   trashedAtIso?: string | null;
-  creatorUserId: string;
-  creatorName: string;
-  creatorInitials: string;
+  creatorUserId!: string;
+  creatorName!: string;
+  creatorInitials!: string;
   creatorGender?: UserGender;
-  creatorCity: string;
-  visibility: EventVisibility;
+  creatorCity!: string;
+  visibility!: EventVisibility;
   blindMode?: EventBlindMode;
-  startAtIso: string;
-  endAtIso: string;
-  distanceKm: number;
-  imageUrl: string;
+  startAtIso!: string;
+  endAtIso!: string;
+  distanceKm!: number;
+  imageUrl!: string;
   sourceLink?: string;
-  location: string;
+  location!: string;
   locationCoordinates?: LocationCoordinates | null;
-  capacityMin: number | null;
-  capacityMax: number | null;
-  capacityTotal: number;
+  capacityMin!: number | null;
+  capacityMax!: number | null;
+  capacityTotal!: number;
   autoInviter?: boolean;
   frequency?: string;
-  ticketing: boolean;
+  ticketing!: boolean;
   pricing?: PricingConfig | null;
   policies?: EventPolicyItem[];
   slotsEnabled?: boolean;
@@ -356,19 +358,76 @@ export interface ActivityEventDTO {
   eventType?: EventRecordKind;
   nextSlot?: EventSlotOccurrence | null;
   upcomingSlots?: EventSlotOccurrence[];
-  acceptedMembers: number;
-  pendingMembers: number;
+  acceptedMembers!: number;
+  pendingMembers!: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: ActivityPendingReason;
-  topics: string[];
+  topics!: string[];
   subEvents?: SubEventFormItem[];
   subEventsDisplayMode?: SubEventsDisplayMode;
-  rating: number;
-  boost: number;
-  affinity: number;
+  rating!: number;
+  boost!: number;
+  affinity!: number;
+
+  constructor(data: Omit<ActivityEventDTO, 'apply'>) {
+    Object.assign(this, ActivityEventDTO.copyDefined(data));
+  }
+
+  apply(update: ActivityEventDTO): ActivityEventDTO;
+  apply(update: ActivityEventDTOApplyInput): ActivityEventDTO;
+  apply(update: ActivityEventDTOApplyInput): ActivityEventDTO {
+    const current = ActivityEventDTO.copyDefined(this);
+    const patch = ActivityEventDTO.copyDefined(update);
+    const acceptedMembers = ActivityEventDTO.countValue(patch.acceptedMembers, current.acceptedMembers);
+    const pendingMembers = ActivityEventDTO.countValue(patch.pendingMembers, current.pendingMembers);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      ActivityEventDTO.countValue(patch.capacityTotal, current.capacityTotal)
+    );
+
+    return new ActivityEventDTO({
+      ...current,
+      ...patch,
+      endAtIso: patch.endAtIso ?? (patch.startAtIso ? patch.startAtIso : current.endAtIso),
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    });
+  }
+
+  static from(data: ActivityEventDTO): ActivityEventDTO;
+  static from(data: Omit<ActivityEventDTO, 'apply'>): ActivityEventDTO;
+  static from(data: ActivityEventDTO | Omit<ActivityEventDTO, 'apply'>): ActivityEventDTO {
+    return data instanceof ActivityEventDTO
+      ? data
+      : new ActivityEventDTO(data);
+  }
+
+  private static copyDefined<T extends object>(value: T): T {
+    const copy = ActivityEventDTO.copyValue(value);
+    for (const key of Object.keys(copy) as (keyof T)[]) {
+      if (copy[key] === undefined) {
+        delete copy[key];
+      }
+    }
+    return copy;
+  }
+
+  private static copyValue<T>(value: T): T {
+    return value == null
+      ? value
+      : JSON.parse(JSON.stringify(value)) as T;
+  }
+
+  private static countValue(value: unknown, fallback: number): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric)
+      ? Math.max(0, Math.trunc(numeric))
+      : Math.max(0, Math.trunc(Number(fallback) || 0));
+  }
 }
 
 export interface ActivityEventPageResultDTO {

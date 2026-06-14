@@ -1,4 +1,3 @@
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 type ActivitiesToolbarHost = any;
 
@@ -30,7 +29,6 @@ export class ActivitiesPopupToolbarController {
   private get cdr() { return this.host.cdr; }
   private get rateFilters() { return this.host.rateFilters as typeof this.host.rateFilters; }
   private get rateItems() { return this.host.rateItems as typeof this.host.rateItems; }
-  private get hostingItems() { return this.host.hostingItems as typeof this.host.hostingItems; }
   private get chatBadge() { return this.host.chatBadge as number; }
   private get invitationsBadge() { return this.host.invitationsBadge as number; }
   private get eventsBadge() { return this.host.eventsBadge as number; }
@@ -61,15 +59,13 @@ export class ActivitiesPopupToolbarController {
   private set lastRateIndicatorPulseRowId(value: string | null) { this.host.lastRateIndicatorPulseRowId = value; }
 
   private isEventActivitiesPrimaryFilter(): boolean { return this.host.isEventActivitiesPrimaryFilter(); }
-  private isHostingPublished(id: string): boolean { return this.host.isHostingPublished(id); }
-  private isActivityIdentityTrashed(type: AppTypes.ActivityListRow['type'], id: string): boolean { return this.host.isActivityIdentityTrashed(type, id); }
   private chatItemsForActivities() { return this.host.chatItemsForActivities(); }
   private activityChatContextFilterKey(item: any) { return this.host.activityChatContextFilterKey(item); }
   private activitiesEventScopeLabel(): string { return this.host.activitiesEventScopeLabel(); }
   private effectiveActivitiesSecondaryFilter(): ContractTypes.ActivitiesSecondaryFilter { return this.host.effectiveActivitiesSecondaryFilter(); }
   private resetActivitiesScroll(): void { this.host.resetActivitiesScroll(); }
   private syncActivitiesSmartListQuery(): void { this.host.syncActivitiesSmartListQuery(); }
-  private openActivityRowInEventModule(row: AppTypes.ActivityListRow, readOnly: boolean): void { this.host.openActivityRowInEventModule(row, readOnly); }
+  private openActivityRowInEventModule(row: any, readOnly: boolean): void { this.host.openActivityRowInEventModule(row, readOnly); }
 
   activitiesPrimaryFilterLabel(): string {
     return this.activitiesPrimaryFilters.find((o: any) => o.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
@@ -397,11 +393,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   hostingDraftCount(): number {
-    return this.hostingItems
-      .filter((item: any) => item.isAdmin)
-      .filter((item: any) => !this.isActivityIdentityTrashed('hosting', item.id))
-      .filter((item: any) => !this.isHostingPublished(item.id))
-      .length;
+    return this.draftsBadge;
   }
 
   shouldShowActivitiesQuickActions(): boolean {
@@ -672,7 +664,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   requestOpenEventEditorForRow(
-    row: AppTypes.ActivityListRow,
+    row: any,
     readOnly = false,
     stacked = true
   ): void {

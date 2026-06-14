@@ -161,11 +161,10 @@ export class ActivitiesChatsController {
   private get eventDatesById() { return this.host.eventDatesById as Record<string, string>; }
   private get eventDistanceById() { return this.host.eventDistanceById as Record<string, number>; }
   private get eventEditorService() { return this.host.eventEditorService; }
-  private get eventItems() { return this.host.eventItems as ActivityEventRecord[]; }
+  private get eventsService() { return this.host.eventsService; }
   private get eventSubEventsById() { return this.host.eventSubEventsById as Record<string, ContractTypes.SubEventFormItem[]>; }
   private get hostingDatesById() { return this.host.hostingDatesById as Record<string, string>; }
   private get hostingDistanceById() { return this.host.hostingDistanceById as Record<string, number>; }
-  private get hostingItems() { return this.host.hostingItems as ActivityEventRecord[]; }
   private get users() { return this.host.users as UserDto[]; }
 
   private activityPendingMemberCount(row: AppTypes.ActivityListRow): number { return this.host.activityPendingMemberCount(row); }
@@ -285,8 +284,7 @@ export class ActivitiesChatsController {
     if (!eventId) {
       return this.resolveChatFocusEventSource();
     }
-    return this.eventItems.find(event => event.id === eventId)
-      ?? this.hostingItems.find(event => event.id === eventId)
+    return this.eventsService.peekKnownItemById(this.activeUser.id, eventId)
       ?? this.resolveEventEditorSource();
   }
 
@@ -309,11 +307,7 @@ export class ActivitiesChatsController {
     if (editorSource) {
       return editorSource;
     }
-    const managed = this.eventItems.find(item => item.isAdmin);
-    if (managed) {
-      return managed;
-    }
-    return this.eventItems[0] ?? this.hostingItems[0] ?? null;
+    return null;
   }
 
   private resolveEventEditorSource(): ActivityEventRecord | null {
@@ -329,14 +323,6 @@ export class ActivitiesChatsController {
       : '';
     if (!sourceId) {
       return null;
-    }
-    const eventMatch = this.eventItems.find(item => item.id === sourceId);
-    if (eventMatch) {
-      return eventMatch;
-    }
-    const hostingMatch = this.hostingItems.find(item => item.id === sourceId);
-    if (hostingMatch) {
-      return hostingMatch;
     }
     return this.buildFallbackEventEditorRecord(source, sourceId);
   }

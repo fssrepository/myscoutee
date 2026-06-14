@@ -1,15 +1,15 @@
 import { PricingBuilder } from '../../../base/builders';
+import { ActivityEventDTO } from '../../../contracts/activity.interface';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventCardRecord,
-  ActivityEventDTO,
   ActivityEventPageResultDTO
 } from '../../../contracts/activity.interface';
 import type { SubEventFormItem } from '../../../contracts/event.interface';
 
 export class LocalActivityEventsMapper {
   static toDTO(record: ActivityEventCardRecord): ActivityEventDTO {
-    return {
+    return new ActivityEventDTO({
       id: record.id,
       userId: record.userId,
       status: record.status,
@@ -68,7 +68,7 @@ export class LocalActivityEventsMapper {
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity
-    };
+    });
   }
 
   static toDTOList(records: readonly ActivityEventCardRecord[]): ActivityEventDTO[] {

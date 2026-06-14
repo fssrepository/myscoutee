@@ -1,7 +1,4 @@
-export {
-  ActivitiesService,
-  type ActivityEventSaveResultDTO
-} from './base/services/activities.service';
+export { ActivitiesService } from './base/services/activities.service';
 export {
   GameService,
   USER_GAME_CARDS_LOAD_CONTEXT_KEY

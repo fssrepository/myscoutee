@@ -58,9 +58,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return this.eventsRepository.queryEventItemsByUser(userId);
   }
 
-  async queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
+  async queryHostingItemsByUser(userId: string): Promise<ActivityEventDTO[]> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return this.eventsRepository.queryHostingItemsByUser(userId);
+    return LocalActivityEventsMapper.toDTOList(this.eventsRepository.queryHostingItemsByUser(userId));
   }
 
   async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
@@ -97,6 +97,18 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   peekExploreItems(userId: string): ActivityEventRecord[] {
     return this.eventsRepository.queryExploreItems(userId);
+  }
+
+  peekKnownItemDTOById(userId: string, itemId: string): ActivityEventDTO | null {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return null;
+    }
+    const record = [
+      ...this.peekItemsByUser(userId),
+      ...this.peekExploreItems(userId)
+    ].find(item => item.id === normalizedItemId);
+    return record ? LocalActivityEventsMapper.toDTO(record) : null;
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {

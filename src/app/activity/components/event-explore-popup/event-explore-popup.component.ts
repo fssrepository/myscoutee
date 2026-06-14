@@ -49,7 +49,7 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
@@ -1133,7 +1133,8 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private applyActivityEventSave(sync: ContractTypes.ActivityEventSaveDTO): void {
+  private applyActivityEventSave(sync: ActivityEventDTO): void {
+    const dto = sync;
     const userJoinedEvent = false;
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
@@ -1157,51 +1158,51 @@ export class EventExplorePopupComponent {
       }
       const existing = currentItems[currentIndex];
       if (existing) {
-        const nextEndIso = sync.endAt ?? sync.startAt;
-        const acceptedMembers = Number.isFinite(Number(sync.acceptedMembers))
-          ? Math.max(0, Math.trunc(Number(sync.acceptedMembers)))
+        const nextEndIso = dto.endAtIso ?? dto.startAtIso;
+        const acceptedMembers = Number.isFinite(Number(dto.acceptedMembers))
+          ? Math.max(0, Math.trunc(Number(dto.acceptedMembers)))
           : Math.max(0, existing.acceptedMembers);
 
         currentItems[currentIndex] = {
           ...existing,
-          title: sync.title,
-          subtitle: sync.shortDescription,
-          startAtIso: sync.startAt,
+          title: dto.title,
+          subtitle: dto.subtitle,
+          startAtIso: dto.startAtIso,
           endAtIso: nextEndIso,
-          distanceKm: sync.distanceKm,
-          visibility: sync.visibility ?? existing.visibility,
-          blindMode: sync.blindMode ?? existing.blindMode,
-          imageUrl: sync.imageUrl.trim() || existing.imageUrl,
-          sourceLink: sync.sourceLink?.trim() || existing.sourceLink,
-          location: sync.location?.trim() || existing.location,
-          locationCoordinates: sync.locationCoordinates ?? existing.locationCoordinates,
+          distanceKm: dto.distanceKm,
+          visibility: dto.visibility ?? existing.visibility,
+          blindMode: dto.blindMode ?? existing.blindMode,
+          imageUrl: dto.imageUrl.trim() || existing.imageUrl,
+          sourceLink: dto.sourceLink?.trim() || existing.sourceLink,
+          location: dto.location?.trim() || existing.location,
+          locationCoordinates: dto.locationCoordinates ?? existing.locationCoordinates,
           acceptedMembers,
-          pendingMembers: Number.isFinite(Number(sync.pendingMembers))
-            ? Math.max(0, Math.trunc(Number(sync.pendingMembers)))
+          pendingMembers: Number.isFinite(Number(dto.pendingMembers))
+            ? Math.max(0, Math.trunc(Number(dto.pendingMembers)))
             : existing.pendingMembers,
-          capacityMin: sync.capacityMin ?? existing.capacityMin,
-          capacityMax: sync.capacityMax ?? existing.capacityMax,
+          capacityMin: dto.capacityMin ?? existing.capacityMin,
+          capacityMax: dto.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
             acceptedMembers,
-            sync.capacityMax ?? sync.capacityTotal ?? existing.capacityTotal
+            dto.capacityMax ?? dto.capacityTotal ?? existing.capacityTotal
           ),
-          autoInviter: sync.autoInviter ?? existing.autoInviter,
-          frequency: sync.frequency ?? existing.frequency,
-          slotsEnabled: sync.slotsEnabled ?? existing.slotsEnabled,
-          slotTemplates: Array.isArray(sync.slotTemplates)
-            ? sync.slotTemplates.map(item => ({ ...item }))
+          autoInviter: dto.autoInviter ?? existing.autoInviter,
+          frequency: dto.frequency ?? existing.frequency,
+          slotsEnabled: dto.slotsEnabled ?? existing.slotsEnabled,
+          slotTemplates: Array.isArray(dto.slotTemplates)
+            ? dto.slotTemplates.map(item => ({ ...item }))
             : (existing.slotTemplates ?? []).map(item => ({ ...item })),
-          parentEventId: sync.parentEventId ?? existing.parentEventId,
-          slotTemplateId: sync.slotTemplateId ?? existing.slotTemplateId,
-          generated: sync.generated ?? existing.generated,
-          eventType: sync.eventType ?? existing.eventType,
-          nextSlot: sync.nextSlot ? { ...sync.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
-          upcomingSlots: Array.isArray(sync.upcomingSlots)
-            ? sync.upcomingSlots.map(item => ({ ...item }))
+          parentEventId: dto.parentEventId ?? existing.parentEventId,
+          slotTemplateId: dto.slotTemplateId ?? existing.slotTemplateId,
+          generated: dto.generated ?? existing.generated,
+          eventType: dto.eventType ?? existing.eventType,
+          nextSlot: dto.nextSlot ? { ...dto.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
+          upcomingSlots: Array.isArray(dto.upcomingSlots)
+            ? dto.upcomingSlots.map(item => ({ ...item }))
             : (existing.upcomingSlots ?? []).map(item => ({ ...item })),
-          topics: Array.isArray(sync.topics) ? [...sync.topics] : [...existing.topics],
-          ticketing: sync.ticketing ?? existing.ticketing,
-          status: sync.status ?? existing.status
+          topics: Array.isArray(dto.topics) ? [...dto.topics] : [...existing.topics],
+          ticketing: dto.ticketing ?? existing.ticketing,
+          status: dto.status ?? existing.status
         };
         this.eventExploreSmartList.replaceVisibleItems(currentItems);
         this.cdr.markForCheck();

@@ -57,10 +57,7 @@ export { RouteDelayService } from './services/route-delay.service';
 export { RouteIntervalSchedulerService } from './services/route-interval-scheduler.service';
 export { ActivityMembersService } from './services/activity-members.service';
 export { ActivityResourcesService } from './services/activity-resources.service';
-export {
-  ActivitiesService,
-  type ActivityEventSaveResultDTO
-} from './services/activities.service';
+export { ActivitiesService } from './services/activities.service';
 export { AssetsService } from './services/assets.service';
 export { ActivityInviteCandidatesService } from './services/activity-invite-candidates.service';
 export { ChatsService } from './services/chats.service';
