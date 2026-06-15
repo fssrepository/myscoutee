@@ -14,7 +14,7 @@
     [card]="assetExploreInfoCard(card, { groupLabel })"
     [useSharedMenu]="true"
     (mediaEndClick)="openAssetExploreBorrowFromBadge(card)"
-    (menuAction)="onAssetExploreInfoCardMenuAction(card, $event)"
+    (menuAction)="onAssetExploreCardMenuAction(card, $event)"
     (menuRequest)="openAssetExploreInfoCardMenu(card, $event)"
   ></app-info-card>
 </ng-template>

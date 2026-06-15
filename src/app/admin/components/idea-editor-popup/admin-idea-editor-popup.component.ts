@@ -8,12 +8,12 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext } from '../../../shared/ui';
 import { IdeaPostsService, type IdeaArticleDetailDto, type IdeaPostDto, type IdeaPostSaveRequestDto } from '../../../shared/core';
 import {
-  INFO_CARD_AVAILABLE_ACTIONS,
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardResolvedMenuAction
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import {
@@ -55,7 +55,7 @@ interface IdeaLanguageMenuContext {
 
 interface IdeaCardMenuContext {
   card: IdeaInfoCard;
-  action: InfoCardResolvedMenuAction;
+  action: CardResolvedMenuAction;
 }
 
 interface IdeaPostDraft {
@@ -809,7 +809,7 @@ export class AdminIdeaEditorPopupComponent {
     return this.featuredPendingIds.has(postId);
   }
 
-  protected onIdeaCardMenuAction(card: IdeaInfoCard, event: InfoCardMenuActionEvent): void {
+  protected onIdeaCardMenuAction(card: IdeaInfoCard, event: CardMenuActionEvent<InfoCardData>): void {
     const post = this.ideaPostFromCard(card);
     if (!post) {
       return;
@@ -838,7 +838,7 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: InfoCardMenuRequestEvent): void {
+  protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: CardMenuRequestEvent<InfoCardData>): void {
     const menuId = `admin-idea-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
       this.appMenuDispatcher.close(menuId);
@@ -879,14 +879,14 @@ export class AdminIdeaEditorPopupComponent {
 
   private infoCardMenuItems(
     card: IdeaInfoCard,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, IdeaCardMenuContext>[] {
     return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
@@ -904,7 +904,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';

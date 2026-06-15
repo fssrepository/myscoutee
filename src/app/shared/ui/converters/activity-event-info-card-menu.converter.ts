@@ -3,8 +3,8 @@ import type {
   AppMenuPalette
 } from '../components/menu';
 import {
-  INFO_CARD_AVAILABLE_ACTIONS,
-  type InfoCardResolvedMenuAction
+  CARD_MENU_ACTIONS,
+  type CardResolvedMenuAction
 } from '../components/card';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
@@ -22,7 +22,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
 export interface ActivityEventInfoCardMenuContext {
   menu: 'activity-event-card';
   subject: ActivityEventInfoCardMenuSubject;
-  action: InfoCardResolvedMenuAction;
+  action: CardResolvedMenuAction;
 }
 
 export interface ActivityEventInfoCardMenuConverterOptions {
@@ -70,11 +70,11 @@ export class ActivityEventInfoCardMenuConverter {
     if (!this.isActionVisible(subject, actionId, activeUserId)) {
       return [];
     }
-    const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+    const config = CARD_MENU_ACTIONS[actionId];
     if (!config) {
       return [];
     }
-    const action: InfoCardResolvedMenuAction = {
+    const action: CardResolvedMenuAction = {
       id: actionId,
       ...config
     };
@@ -228,7 +228,7 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 
-  private static actionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private static actionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'brown';

@@ -11,8 +11,8 @@ import { ActivityMembersBuilder } from '../../../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent
 } from '../../../../../shared/ui';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
@@ -29,8 +29,8 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
   @Input() cardRevision = 0;
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
-  @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
-  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
+  @Output() readonly menuAction = new EventEmitter<CardMenuActionEvent<InfoCardData>>();
+  @Output() readonly menuRequest = new EventEmitter<CardMenuRequestEvent<InfoCardData>>();
 
   protected card: InfoCardData | null = null;
 
@@ -59,11 +59,11 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
     this.mediaEndClick.emit();
   }
 
-  protected onMenuAction(event: InfoCardMenuActionEvent): void {
+  protected onMenuAction(event: CardMenuActionEvent<InfoCardData>): void {
     this.menuAction.emit(event);
   }
 
-  protected onMenuRequest(event: InfoCardMenuRequestEvent): void {
+  protected onMenuRequest(event: CardMenuRequestEvent<InfoCardData>): void {
     this.menuRequest.emit(event);
   }
 
@@ -213,7 +213,7 @@ export class ActivitiesEventsController {
     return !!activeUserId && (inviteProjection.invitedMemberUserIds ?? []).includes(activeUserId);
   }
 
-  public onActivityEventInfoCardMenuAction(row: AppTypes.ActivityListRow, action: InfoCardMenuActionEvent): void {
+  public onActivityEventCardMenuAction(row: AppTypes.ActivityListRow, action: CardMenuActionEvent<InfoCardData>): void {
     switch (action.actionId as ActivityInfoCardActionId) {
       case 'publish':
         this.runActivityItemPublishAction(row);

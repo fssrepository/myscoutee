@@ -30,16 +30,16 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  INFO_CARD_AVAILABLE_ACTIONS,
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
   TopicPickerPopupComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -67,7 +67,7 @@ type EventExploreMenuContext =
       menu: 'info-card';
       record: ActivityEventRecord;
       card: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     };
 
 @Component({
@@ -473,7 +473,7 @@ export class EventExplorePopupComponent {
       return;
     }
     if (context.menu === 'info-card') {
-      this.onEventExploreInfoCardMenuAction(context.record, {
+      this.onEventExploreCardMenuAction(context.record, {
         id: context.card.id,
         actionId: context.action.id,
         action: context.action,
@@ -496,7 +496,7 @@ export class EventExplorePopupComponent {
 
   protected openEventExploreInfoCardMenu(
     record: ActivityEventRecord,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `event-explore-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
@@ -525,14 +525,14 @@ export class EventExplorePopupComponent {
 
   private infoCardMenuItems(
     record: ActivityEventRecord,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, EventExploreMenuContext>[] {
     return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
@@ -552,7 +552,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -749,7 +749,7 @@ export class EventExplorePopupComponent {
     return record.blindMode === 'Open Event';
   }
 
-  protected onEventExploreInfoCardMenuAction(record: ActivityEventRecord, action: InfoCardMenuActionEvent): void {
+  protected onEventExploreCardMenuAction(record: ActivityEventRecord, action: CardMenuActionEvent<InfoCardData>): void {
     if (action.actionId === 'view') {
       this.runEventExploreViewAction(record);
       return;

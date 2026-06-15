@@ -34,7 +34,7 @@ import type { ActivitiesFeedFilters, ActivityEventSaveDTO } from '../../../share
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuComponent, AppMenuDispatcher, type AppMenuBranch, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type InfoCardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuComponent, AppMenuDispatcher, type AppMenuBranch, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -593,8 +593,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  protected onActivityEventInfoCardMenuAction(row: ActivityPopupCard, action: InfoCardMenuActionEvent): void {
-    this.activitiesEvents.onActivityEventInfoCardMenuAction(row, action);
+  protected onActivityEventCardMenuAction(row: ActivityPopupCard, action: CardMenuActionEvent<InfoCardData>): void {
+    this.activitiesEvents.onActivityEventCardMenuAction(row, action);
   }
 
   protected activitySmartListMenuItems(
@@ -619,7 +619,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!row) {
       return;
     }
-    this.onActivityEventInfoCardMenuAction(row, {
+    this.onActivityEventCardMenuAction(row, {
       id: row.id,
       actionId: context.action.id,
       action: context.action,

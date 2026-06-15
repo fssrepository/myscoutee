@@ -20,14 +20,14 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger,
   CounterBadgePipe,
-  INFO_CARD_AVAILABLE_ACTIONS,
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   ProgressIndicatorComponent,
   SmartListComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListLoadPage,
@@ -101,13 +101,13 @@ type EventResourceMenuContext =
       menu: 'resource-card';
       card: AppDTOs.SubEventResourceCardDTO;
       infoCard: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     }
   | {
       menu: 'asset-explore-card';
       card: AppDTOs.AssetCardDTO;
       infoCard: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     };
 
 const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
@@ -954,7 +954,7 @@ export class EventResourcePopupComponent implements DoCheck {
         });
         return;
       case 'asset-explore-card':
-        this.onAssetExploreInfoCardMenuAction(context.card, {
+        this.onAssetExploreCardMenuAction(context.card, {
           id: context.infoCard.id,
           actionId: context.action.id,
           action: context.action,
@@ -968,7 +968,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected openResourceInfoCardMenu(
     card: AppDTOs.SubEventResourceCardDTO,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `event-resource-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
@@ -990,7 +990,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected openAssetExploreInfoCardMenu(
     card: AppDTOs.AssetCardDTO,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `asset-explore-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
@@ -1019,15 +1019,15 @@ export class EventResourcePopupComponent implements DoCheck {
 
   private infoCardMenuItems(
     card: AppDTOs.SubEventResourceCardDTO | AppDTOs.AssetCardDTO,
-    request: InfoCardMenuRequestEvent,
+    request: CardMenuRequestEvent<InfoCardData>,
     menu: 'resource-card' | 'asset-explore-card'
   ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
     return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
@@ -1055,7 +1055,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   }
 
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -1085,7 +1085,7 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.openAssetExploreBorrowDialog(card);
   }
 
-  protected onAssetExploreInfoCardMenuAction(card: AppDTOs.AssetCardDTO, event: InfoCardMenuActionEvent): void {
+  protected onAssetExploreCardMenuAction(card: AppDTOs.AssetCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreAssetView(card, new Event('click'));
@@ -1351,7 +1351,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return candidate >= min && candidate <= max;
   };
 
-  protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: InfoCardMenuActionEvent): void {
+  protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.host.openResourceAssetView(card, 'view', new Event('click'));
       return;

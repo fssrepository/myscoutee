@@ -24,15 +24,15 @@ import {
   type AppMenuTrigger
 } from '../../menu';
 import type {
-  InfoCardClickEvent,
+  CardClickEvent,
   InfoCardData,
   InfoCardFooterChip,
-  InfoCardMenuAction,
-  InfoCardMenuActionConfig,
-  InfoCardMenuActionEvent,
-  InfoCardResolvedMenuAction,
-  InfoCardMenuRequestEvent,
-  InfoCardMenuTriggerRect,
+  CardMenuAction,
+  CardMenuActionConfig,
+  CardMenuActionEvent,
+  CardResolvedMenuAction,
+  CardMenuRequestEvent,
+  CardMenuTriggerRect,
   InfoCardOverlayAccessory,
   InfoCardOverlayLayout,
   InfoCardOverlayAction,
@@ -41,7 +41,7 @@ import type {
   InfoCardOverlayTone,
   InfoCardOverlayVariant
 } from '../card.types';
-import { INFO_CARD_AVAILABLE_ACTIONS } from '../card.types';
+import { CARD_MENU_ACTIONS } from '../card.types';
 
 @Component({
   selector: 'app-info-card',
@@ -67,18 +67,18 @@ export class InfoCardComponent implements OnDestroy {
   private static documentPointerDownTarget: Document | null = null;
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly cdr = inject(ChangeDetectorRef);
-  protected readonly availableActions = INFO_CARD_AVAILABLE_ACTIONS;
+  protected readonly availableActions = CARD_MENU_ACTIONS;
 
   @Input() card: InfoCardData | null = null;
   @Input() useSharedMenu = false;
   @Input() useSharedMenuTrigger = false;
   @Input() sharedMenuContext: Record<string, unknown> | null = null;
 
-  @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();
-  @Output() readonly mediaStartClick = new EventEmitter<InfoCardClickEvent>();
-  @Output() readonly mediaEndClick = new EventEmitter<InfoCardClickEvent>();
-  @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
-  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
+  @Output() readonly cardClick = new EventEmitter<CardClickEvent<InfoCardData>>();
+  @Output() readonly mediaStartClick = new EventEmitter<CardClickEvent<InfoCardData>>();
+  @Output() readonly mediaEndClick = new EventEmitter<CardClickEvent<InfoCardData>>();
+  @Output() readonly menuAction = new EventEmitter<CardMenuActionEvent<InfoCardData>>();
+  @Output() readonly menuRequest = new EventEmitter<CardMenuRequestEvent<InfoCardData>>();
 
   protected isMobileView = false;
   protected menuOpen = false;
@@ -212,14 +212,14 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected onMenuActionSelected(
-    action: InfoCardMenuAction,
-    config: InfoCardMenuActionConfig,
+    action: CardMenuAction,
+    config: CardMenuActionConfig,
     event: Event
   ): void {
     if (!this.card) {
       return;
     }
-    const resolvedAction: InfoCardResolvedMenuAction = {
+    const resolvedAction: CardResolvedMenuAction = {
       id: action,
       ...config
     };
@@ -349,11 +349,11 @@ export class InfoCardComponent implements OnDestroy {
       return [];
     }
     return card.menuActions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
@@ -376,7 +376,7 @@ export class InfoCardComponent implements OnDestroy {
     return (this.card?.footerChips?.length ?? 0) > 0;
   }
 
-  protected trackByActionId(index: number, action: InfoCardMenuAction): string | number {
+  protected trackByActionId(index: number, action: CardMenuAction): string | number {
     // Keep menu buttons stable while the menu is open; recreating them can
     // interact badly with the document-level pointerdown closer.
     return action || index;
@@ -386,7 +386,7 @@ export class InfoCardComponent implements OnDestroy {
     return `${chip.label}:${chip.toneClass ?? ''}:${index}`;
   }
 
-  private sharedMenuActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private sharedMenuActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'brown';
@@ -445,7 +445,7 @@ export class InfoCardComponent implements OnDestroy {
     return spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow;
   }
 
-  private resolveMenuTriggerRect(trigger: HTMLElement | null): InfoCardMenuTriggerRect | null {
+  private resolveMenuTriggerRect(trigger: HTMLElement | null): CardMenuTriggerRect | null {
     if (typeof window === 'undefined' || !trigger) {
       return null;
     }

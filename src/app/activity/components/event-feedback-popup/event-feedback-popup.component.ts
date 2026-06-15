@@ -18,8 +18,8 @@ import {
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -36,7 +36,7 @@ type EventFeedbackMenuContext = {
 } | {
   menu: 'info-card';
   card: InfoCardData;
-  action: InfoCardResolvedMenuAction;
+  action: CardResolvedMenuAction;
 };
 
 interface OrganizerEventFeedbackCarouselStatItem {
@@ -359,7 +359,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     this.feedback.startEventFeedback(item);
   }
 
-  protected onEventFeedbackCardMenuAction(card: InfoCardData, event: InfoCardMenuActionEvent): void {
+  protected onEventFeedbackCardMenuAction(card: InfoCardData, event: CardMenuActionEvent<InfoCardData>): void {
     const item = this.feedback.eventFeedbackItemById(card.id);
     if (!item) {
       return;

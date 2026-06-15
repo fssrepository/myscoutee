@@ -56,7 +56,7 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
-export type InfoCardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
+export type CardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
 
 export interface CardBadgeConfig {
@@ -163,19 +163,22 @@ export interface InfoCardOverlayAction {
   progressRing?: boolean;
 }
 
-export type InfoCardMenuAction = string;
+export type CardMenuAction = string;
 
-export interface InfoCardMenuActionConfig {
+export interface CardMenuActionConfig {
   label: string;
   icon: string;
-  tone?: InfoCardMenuActionTone;
+  tone?: CardMenuActionTone;
 }
 
-export interface InfoCardResolvedMenuAction extends InfoCardMenuActionConfig {
-  id: string;
+export interface CardResolvedMenuAction {
+  id: CardMenuAction;
+  label: string;
+  icon: string;
+  tone?: CardMenuActionTone;
 }
 
-export const INFO_CARD_AVAILABLE_ACTIONS: Readonly<Record<string, InfoCardMenuActionConfig>> = {
+export const CARD_MENU_ACTIONS: Readonly<Record<string, CardMenuActionConfig>> = {
   accept: { label: 'accept', icon: 'done', tone: 'accent' },
   addOrganizerNote: { label: 'add.organizer.note', icon: 'edit_note' },
   askOrganizer: { label: 'ask.organizer', icon: 'support_agent' },
@@ -232,7 +235,7 @@ export interface DisplayData<TEagerDetail = unknown> {
   distanceMetersExact?: number | null;
   badgeCount?: number | null;
   sortScore?: number | null;
-  menuActions?: readonly InfoCardMenuAction[];
+  menuActions?: readonly CardMenuAction[];
   ownerId?: string | null;
   ownerUserId?: string | null;
   eagerDetail?: TEagerDetail | null;
@@ -257,7 +260,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
   hasMenuOptions?: boolean;
-  menuActions?: readonly InfoCardMenuAction[];
+  menuActions?: readonly CardMenuAction[];
   menuTitle?: string | null;
   menuBadgeCount?: number | null;
   clickable?: boolean;
@@ -322,19 +325,19 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   memberCount?: number | null;
 }
 
-export interface InfoCardClickEvent {
+export interface CardClickEvent<TCard extends DisplayData = DisplayData> {
   id: string;
-  card: InfoCardData;
+  card: TCard;
 }
 
-export interface InfoCardMenuActionEvent {
+export interface CardMenuActionEvent<TCard extends DisplayData = DisplayData> {
   id: string;
   actionId: string;
-  action: InfoCardResolvedMenuAction;
-  card: InfoCardData;
+  action: CardResolvedMenuAction;
+  card: TCard;
 }
 
-export interface InfoCardMenuTriggerRect {
+export interface CardMenuTriggerRect {
   left: number;
   top: number;
   right: number;
@@ -343,12 +346,12 @@ export interface InfoCardMenuTriggerRect {
   height: number;
 }
 
-export interface InfoCardMenuRequestEvent {
+export interface CardMenuRequestEvent<TCard extends DisplayData = DisplayData> {
   id: string;
-  card: InfoCardData;
-  actions: readonly InfoCardMenuAction[];
+  card: TCard;
+  actions: readonly CardMenuAction[];
   title?: string | null;
-  triggerRect: InfoCardMenuTriggerRect | null;
+  triggerRect: CardMenuTriggerRect | null;
   openUp: boolean;
   closeRequested?: boolean;
   closeTrigger: () => void;

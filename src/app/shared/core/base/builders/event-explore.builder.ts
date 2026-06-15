@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
-import type { CardRenderState, InfoCardData, InfoCardMenuAction } from '../../../ui';
+import type { CardRenderState, InfoCardData, CardMenuAction } from '../../../ui';
 import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
@@ -109,9 +109,9 @@ export class EventExploreBuilder {
     };
   }
 
-  private static menuActionsForRecord(record: ActivityEventRecord): readonly InfoCardMenuAction[] {
+  private static menuActionsForRecord(record: ActivityEventRecord): readonly CardMenuAction[] {
     const full = this.isFull(record);
-    const actions: InfoCardMenuAction[] = [
+    const actions: CardMenuAction[] = [
       'view'
     ];
     actions.push(this.joinActionId(record));
@@ -183,7 +183,7 @@ export class EventExploreBuilder {
     return record.blindMode === 'Open Event';
   }
 
-  private static joinActionId(record: ActivityEventRecord): InfoCardMenuAction {
+  private static joinActionId(record: ActivityEventRecord): CardMenuAction {
     if (this.isFull(record)) {
       return 'joinWaitlist';
     }

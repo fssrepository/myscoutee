@@ -29,8 +29,8 @@ import {
   type AppMenuTrigger,
   type BasketChip,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SingleRowData,
   type SmartListConfig,
@@ -71,7 +71,7 @@ type AssetPopupMenuContext =
       menu: 'asset-info-card';
       assetCard: AppDTOs.AssetCardDTO;
       card: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     };
 
 @Component({
@@ -273,7 +273,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return !!host && host.isSubEventAssetAssignPopup() && host.isSubEventAssetAssignCardSelected(cardId);
   }
 
-  protected onOwnedAssetInfoCardMenuAction(card: AppDTOs.AssetCardDTO, event: InfoCardMenuActionEvent): void {
+  protected onOwnedAssetCardMenuAction(card: AppDTOs.AssetCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (this.isBasketMode()) {
       return;
     }
@@ -480,7 +480,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       return;
     }
     if (context.menu === 'asset-info-card') {
-      this.onOwnedAssetInfoCardMenuAction(context.assetCard, {
+      this.onOwnedAssetCardMenuAction(context.assetCard, {
         id: context.card.id,
         actionId: context.action.id,
         action: context.action,

@@ -1,7 +1,7 @@
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
 import type * as AppTypes from '../models';
-import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
+import type { InfoCardData, CardMenuAction } from '../../../ui';
 import { AssetCardBuilder } from './asset-card.builder';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { AssetTicketConverter } from '../converters/asset-ticket.converter';
@@ -280,8 +280,8 @@ export class AssetInfoCardBuilder {
   private static assetExploreMenuActions(
     canBorrow: boolean,
     canReportOwner: boolean
-  ): readonly InfoCardMenuAction[] {
-    const actions: InfoCardMenuAction[] = ['viewAsset'];
+  ): readonly CardMenuAction[] {
+    const actions: CardMenuAction[] = ['viewAsset'];
     if (canBorrow) {
       actions.push('borrowAsset');
     }
@@ -338,7 +338,7 @@ export class AssetInfoCardBuilder {
     };
   }
 
-  private static ownedAssetMenuActions(card: AppDTOs.AssetCardDTO): readonly InfoCardMenuAction[] {
+  private static ownedAssetMenuActions(card: AppDTOs.AssetCardDTO): readonly CardMenuAction[] {
     const configuredActions = (card.menuActions ?? [])
       .map(action => `${action ?? ''}`.trim())
       .filter(action => action.length > 0);
