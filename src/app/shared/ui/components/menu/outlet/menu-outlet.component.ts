@@ -53,13 +53,10 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
 
   private readonly dispatcher = inject(AppMenuDispatcher);
-  @Input() scope = 'default';
   @Input() items: readonly AppMenuItem<TId, TContext>[] | null = null;
 
   protected readonly activeMenu = computed(() => {
-    const activeMenu = this.dispatcher.activeMenu();
-    const scope = `${this.scope ?? 'default'}`.trim() || 'default';
-    return activeMenu?.scope === scope ? activeMenu : null;
+    return this.dispatcher.activeMenu();
   });
 
   @Output() readonly itemSelect = new EventEmitter<AppMenuItemSelectEvent<TId, TContext>>();

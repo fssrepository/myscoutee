@@ -85,6 +85,7 @@ type EventExploreMenuContext =
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
+  providers: [AppMenuDispatcher],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventExplorePopupComponent {
@@ -504,7 +505,6 @@ export class EventExplorePopupComponent {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'event-explore',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(record, request),

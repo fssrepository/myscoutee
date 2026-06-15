@@ -144,7 +144,6 @@ export interface AppMenuAnchorRect {
 
 export interface AppMenuDispatchConfig<TId extends string = string, TContext = unknown> {
   id: string;
-  scope?: string;
   kind?: AppMenuKind;
   title?: AppMenuLiveValue<string | null | undefined>;
   items?: readonly AppMenuItem<TId, TContext>[];
@@ -163,7 +162,6 @@ export interface AppMenuDispatchConfig<TId extends string = string, TContext = u
 
 export interface AppMenuDispatchState<TId extends string = string, TContext = unknown>
   extends AppMenuDispatchConfig<TId, TContext> {
-  scope: string;
   kind: AppMenuKind;
   items: readonly AppMenuItem<TId, TContext>[];
   model: AppMenuModel<TId, TContext> | null;

@@ -317,7 +317,8 @@ export interface EventResourcePopupHost {
     CounterBadgePipe
   ],
   templateUrl: './event-resource-popup.component.html',
-  styleUrls: ['./event-resource-popup.component.scss']
+  styleUrls: ['./event-resource-popup.component.scss'],
+  providers: [AppMenuDispatcher]
 })
 export class EventResourcePopupComponent implements DoCheck {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -976,7 +977,6 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'event-resource',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(card, request, 'resource-card'),
@@ -999,7 +999,6 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'event-resource',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(card, request, 'asset-explore-card'),

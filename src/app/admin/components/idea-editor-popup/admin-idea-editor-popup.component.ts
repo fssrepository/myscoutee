@@ -98,7 +98,8 @@ interface IdeaPostLangCache {
     ProgressIndicatorComponent
   ],
   templateUrl: './admin-idea-editor-popup.component.html',
-  styleUrl: './admin-idea-editor-popup.component.scss'
+  styleUrl: './admin-idea-editor-popup.component.scss',
+  providers: [AppMenuDispatcher]
 })
 export class AdminIdeaEditorPopupComponent {
   @ViewChild('ideaSmartList')
@@ -845,7 +846,6 @@ export class AdminIdeaEditorPopupComponent {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'admin-idea-editor',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(card, request),

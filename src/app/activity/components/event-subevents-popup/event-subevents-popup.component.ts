@@ -20,6 +20,7 @@ import type { ActivityEventRecord } from '../../../shared/core/contracts/activit
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
   AppMenuComponent,
+  AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
   type AppMenuItem,
@@ -250,6 +251,7 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss',
+  providers: [AppMenuDispatcher],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsPopupComponent implements OnChanges {

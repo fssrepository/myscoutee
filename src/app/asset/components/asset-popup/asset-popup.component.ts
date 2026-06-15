@@ -95,7 +95,8 @@ type AssetPopupMenuContext =
     AssetTicketScannerPopupComponent
   ],
   templateUrl: './asset-popup.component.html',
-  styleUrl: './asset-popup.component.scss'
+  styleUrl: './asset-popup.component.scss',
+  providers: [AppMenuDispatcher]
 })
 export class AssetPopupComponent implements DoCheck, OnDestroy {
   private readonly assetFacade = inject(AssetFacadeService);

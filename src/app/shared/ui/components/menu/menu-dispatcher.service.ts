@@ -53,7 +53,6 @@ export class AppMenuDispatcher {
   private createState(config: AppMenuDispatchConfig, triggerElement: HTMLElement | null): AppMenuDispatchState {
     return {
       ...config,
-      scope: `${config.scope ?? 'default'}`.trim() || 'default',
       kind: config.kind ?? 'select',
       items: config.items ?? [],
       model: config.model ?? null,

@@ -72,7 +72,6 @@ export class InfoCardComponent implements OnDestroy {
   @Input() card: InfoCardData | null = null;
   @Input() useSharedMenu = false;
   @Input() useSharedMenuTrigger = false;
-  @Input() sharedMenuScope = 'default';
   @Input() sharedMenuContext: Record<string, unknown> | null = null;
 
   @Output() readonly cardClick = new EventEmitter<InfoCardClickEvent>();

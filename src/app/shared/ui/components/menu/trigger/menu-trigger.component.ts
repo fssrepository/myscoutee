@@ -82,7 +82,6 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   protected isMobileViewport = false;
 
   @Input() menuId = '';
-  @Input() scope = 'default';
   @Input() kind: AppMenuKind = 'select';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
@@ -297,7 +296,6 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   private dispatchConfig(): AppMenuDispatchConfig<TId, TContext> {
     return {
       id: this.resolvedMenuId(),
-      scope: this.scope,
       kind: this.kind,
       title: this.title,
       items: this.items,
