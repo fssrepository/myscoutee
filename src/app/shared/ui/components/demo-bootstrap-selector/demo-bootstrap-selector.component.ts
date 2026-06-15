@@ -6,8 +6,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { AppPopupContext, type DemoBootstrapSelectorState } from '../../context/app-popup.context';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 import { I18nPipe } from '../../pipes';
-import { AppContext } from '../../context/app.context';
-import { USERS_LOAD_CONTEXT_KEY, UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
+import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
 import { SeedDemoBootstrapService } from '../../../core/local/seed';
 
 @Component({
@@ -25,7 +24,6 @@ import { SeedDemoBootstrapService } from '../../../core/local/seed';
 })
 export class DemoBootstrapSelectorComponent {
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly appCtx = inject(AppContext);
   private readonly usersService = inject(UsersService);
   private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -224,32 +222,16 @@ export class DemoBootstrapSelectorComponent {
           this.loadingLabel = 'Loading demo users';
           this.loadingStage = 'users';
         });
-        users = await this.usersService.loadAvailableDemoUsers(3000, undefined, request.mode);
+        users = await this.usersService.loadAvailableDemoUsers(request.mode);
       }
-      const loadState = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY);
-      const selectorErrorMessage = users.length === 0
-        && (loadState.status === 'timeout' || loadState.status === 'error')
-          ? (loadState.error?.trim() || 'Unable to load demo users right now.')
-          : '';
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
       this.commit(() => {
         this.users = users;
-        this.errorMessage = selectorErrorMessage;
+        this.errorMessage = '';
         this.loadingUserList = false;
-        if (selectorErrorMessage) {
-          this.loadingProgress = 0;
-          this.loadingLabel = 'Retry demo selector';
-          this.loadingStage = 'selector';
-        }
       });
-      if (selectorErrorMessage) {
-        this.commit(() => {
-          this.loading = false;
-        });
-        return;
-      }
       const autoSelectUserId = `${request.autoSelectUserId ?? ''}`.trim();
       if (autoSelectUserId) {
         const autoSelectedUser = users.find(user => user.id.trim() === autoSelectUserId) ?? null;
@@ -277,8 +259,10 @@ export class DemoBootstrapSelectorComponent {
       this.commit(() => {
         this.loading = false;
         this.loadingUserList = false;
-        this.errorMessage = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY).error?.trim()
-          || 'Unable to load demo users right now.';
+        this.loadingProgress = 0;
+        this.loadingLabel = 'Retry demo selector';
+        this.loadingStage = 'selector';
+        this.errorMessage = 'Unable to load demo users right now.';
       });
     }
   }

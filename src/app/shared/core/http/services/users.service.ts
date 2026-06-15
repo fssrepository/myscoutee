@@ -17,7 +17,6 @@ import type {
   UserSelectorRole,
   UserService,
   UserSubmitActionResponseDto,
-  UsersListQueryResponse,
   UserDto
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
@@ -48,11 +47,7 @@ export class HttpUsersService implements UserService {
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryAvailableDemoUsers(
-    requestTimeoutMs?: number,
-    selectorRole: UserSelectorRole = 'member',
-    _onProgress?: (state: BootstrapProcessState) => void
-  ): Promise<UsersListQueryResponse> {
+  async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     type HttpDemoUserListEntry = Partial<UserDto> & Partial<UserSelectorListItemDto> & {
       gender?: string | null;
     };
@@ -65,17 +60,14 @@ export class HttpUsersService implements UserService {
           }
         })
         .toPromise(),
-      'Users request timeout.',
-      requestTimeoutMs
+      'Users request timeout.'
     );
     if (!Array.isArray(response)) {
-      return { users: [] };
+      return [];
     }
-    return {
-      users: response
-        .map(user => this.toDemoUserListItem(user))
-        .filter((user): user is UserSelectorListItemDto => user !== null)
-    };
+    return response
+      .map(user => this.toDemoUserListItem(user))
+      .filter((user): user is UserSelectorListItemDto => user !== null);
   }
 
   prepareUserSession(_userId: string, onProgress?: (state: BootstrapProcessState) => void): Promise<void> {

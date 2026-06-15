@@ -196,10 +196,6 @@ export interface UserDto {
   };
 }
 
-export interface UsersListQueryResponse {
-  users: UserSelectorListItemDto[];
-}
-
 export interface UserByIdQueryResponse {
   user: UserDto | null;
   filterCount?: number;
@@ -247,7 +243,7 @@ export interface UserSubmitActionResponseDto {
 }
 
 export interface UserService {
-  queryAvailableDemoUsers(requestTimeoutMs?: number, selectorRole?: UserSelectorRole): Promise<UsersListQueryResponse>;
+  queryAvailableDemoUsers(selectorRole?: UserSelectorRole): Promise<UserSelectorListItemDto[]>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;

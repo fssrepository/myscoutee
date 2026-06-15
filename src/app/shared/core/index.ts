@@ -73,7 +73,6 @@ export {
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY,
-  USERS_LOAD_CONTEXT_KEY,
   UsersService
 } from './base/services/users.service';
 export {

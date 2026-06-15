@@ -12,10 +12,10 @@ import type {
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
+  UserSelectorListItemDto,
   UserSelectorRole,
   UserService,
-  UserSubmitActionResponseDto,
-  UsersListQueryResponse
+  UserSubmitActionResponseDto
 } from '../../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
@@ -49,15 +49,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
   private readonly realtimeStateByUserId: Record<string, LocalUserRealtimeSnapshotState> = {};
 
-  async queryAvailableDemoUsers(
-    _requestTimeoutMs?: number,
-    selectorRole: UserSelectorRole = 'member',
-    _onProgress?: (state: BootstrapProcessState) => void
-  ): Promise<UsersListQueryResponse> {
+  async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
-    return {
-      users: this.usersRepository.queryAvailableDemoUsers(selectorRole)
-    };
+    return this.usersRepository.queryAvailableDemoUsers(selectorRole);
   }
 
   async prepareUserSession(

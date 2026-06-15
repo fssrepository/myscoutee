@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { type LoadStatus } from '../../../ui/context';
-import { AppContext, type ActivityCounters } from '../../../ui/context';
+import { AppContext, type ActivityCounters, type LoadStatus } from '../../../ui/context';
 import { LocalUsersService } from '../../local';
 import { HttpUsersService } from '../../http';
 import type { BootstrapProcessState } from './bootstrap.service';
@@ -17,8 +16,7 @@ import type {
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
   UserSubmitActionResponseDto,
-  UserService,
-  UsersListQueryResponse
+  UserService
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
@@ -27,24 +25,12 @@ import { BaseRouteModeService } from './base-route-mode.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
-export const USERS_LOAD_CONTEXT_KEY = 'users-selector';
 export const USER_BY_ID_LOAD_CONTEXT_KEY = 'user-by-id';
 export const USER_FEEDBACK_SUBMIT_CONTEXT_KEY = 'user-feedback-submit';
 export const USER_REPORT_USER_SUBMIT_CONTEXT_KEY = 'user-report-user-submit';
 export const USER_PROFILE_SAVE_CONTEXT_KEY = 'user-profile-save';
 export const USER_LOGOUT_CONTEXT_KEY = 'user-logout';
 export const USER_DELETE_CONTEXT_KEY = 'user-delete';
-
-interface RoutedUserService extends UserService {
-  queryAvailableDemoUsers(
-    requestTimeoutMs?: number,
-    selectorRole?: UserSelectorRole,
-    onProgress?: (state: BootstrapProcessState) => void
-  ): Promise<UsersListQueryResponse>;
-  prepareUserSession(userId: string, onProgress?: (state: BootstrapProcessState) => void): Promise<void>;
-  peekCachedUsers?(): UserDto[];
-  peekCachedUserById?(userId: string): UserDto | null;
-}
 
 @Injectable({
   providedIn: 'root'
@@ -115,35 +101,16 @@ export class UsersService extends BaseRouteModeService {
     }));
   }
 
-  private get userService(): RoutedUserService {
+  private get userService(): LocalUsersService | HttpUsersService {
     return this.resolveRouteService('/auth/me', this.localUsersService, this.httpUsersService);
   }
 
-  private get userSelectorService(): RoutedUserService {
+  private get userSelectorService(): LocalUsersService | HttpUsersService {
     return this.resolveRouteService('/auth/demo-users', this.localUsersService, this.httpUsersService);
   }
 
-  async loadAvailableDemoUsers(
-    requestTimeoutMs?: number,
-    onProgress?: (state: BootstrapProcessState) => void,
-    selectorRole: UserSelectorRole = 'member'
-  ): Promise<UserSelectorListItemDto[]> {
-    this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'loading');
-
-    try {
-      const response = await this.userSelectorService.queryAvailableDemoUsers(requestTimeoutMs, selectorRole, onProgress);
-
-      this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'success');
-      return response.users;
-    } catch (error) {
-      if (this.isTimeoutError(error, 'Users request timeout.')) {
-        this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'timeout', 'Users request timeout.');
-        return [];
-      }
-
-      this.setLoadStatus(USERS_LOAD_CONTEXT_KEY, 'error', 'Unable to load demo users.');
-      return [];
-    }
+  async loadAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
+    return this.userSelectorService.queryAvailableDemoUsers(selectorRole);
   }
 
   async prepareDemoUserSession(
