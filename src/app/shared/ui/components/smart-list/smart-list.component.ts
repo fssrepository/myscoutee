@@ -28,12 +28,13 @@ import {
 } from '../progress-indicator';
 import { ROUTE_CONFIG } from '../../../core/base/config';
 import {
-  RatingStarBarComponent,
   type RatingStarBarConfig
 } from '../rating-star-bar';
 import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
+  type AppMenuDispatchState,
+  type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../menu';
 import {
@@ -61,7 +62,10 @@ import type {
   SmartListClassValue,
   SmartListConfig,
   SmartListGroup,
+  SmartListHeaderProgressState,
   SmartListInitialScrollAnchor,
+  SmartListItemMenuContext,
+  SmartListItemMenuRequest,
   SmartListItemRenderState,
   SmartListItemSelectEvent,
   SmartListItemTemplateContext,
@@ -116,7 +120,6 @@ type SmartListCalendarWindow = {
     CommonModule,
     MatIconModule,
     ProgressIndicatorComponent,
-    RatingStarBarComponent,
     AppMenuOutletComponent
   ],
   providers: [AppMenuDispatcher],
@@ -138,6 +141,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly CALENDAR_SCROLL_SETTLE_TOLERANCE_PX = 1;
   private static readonly CALENDAR_DIRECTION_COMMIT_MIN_PX = 32;
   private static readonly CALENDAR_DIRECTION_COMMIT_RATIO = 0.12;
+  private static readonly PAGINATION_RATING_MENU_ID = 'smart-list-pagination-rating';
+  private static readonly PAGINATION_RATING_ITEM_ID = 'pagination-rating';
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
@@ -195,6 +200,81 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onDispatchedMenuItemSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     this.menuItemSelect.emit(event);
+  }
+
+  protected onMenuOutletItemSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (this.isPaginationRatingMenuSelect(event)) {
+      const score = Number(event.value);
+      if (Number.isFinite(score)) {
+        this.onPaginationRatingSelect(score);
+      }
+      return;
+    }
+    this.refreshSurfaceSoon();
+    this.onDispatchedMenuItemSelect(event);
+  }
+
+  protected dispatchedMenuItems(): readonly AppMenuItem<string, unknown>[] | null {
+    const menu = this.itemMenuDispatcher.activeMenu() as AppMenuDispatchState<string, unknown> | null;
+    if (!menu) {
+      return null;
+    }
+    const itemMenu = this.itemMenuContext(menu.context);
+    return this.config.menuItems?.({
+      menu,
+      query: this.currentQuery(),
+      items: this.items,
+      item: itemMenu?.item ?? null,
+      itemId: itemMenu?.itemId ?? null,
+      request: itemMenu?.request ?? null
+    }) ?? menu.items;
+  }
+
+  private itemMenuContext(context: unknown): SmartListItemMenuContext<T> | null {
+    if (!context || typeof context !== 'object') {
+      return null;
+    }
+    const candidate = context as Partial<SmartListItemMenuContext<T>>;
+    return candidate.menu === 'smart-list-item' && typeof candidate.itemId === 'string'
+      ? candidate as SmartListItemMenuContext<T>
+      : null;
+  }
+
+  protected openItemMenu(item: T, request: SmartListItemMenuRequest): void {
+    const itemId = `${request.id ?? ''}`.trim();
+    if (!itemId) {
+      return;
+    }
+    const menuId = `smart-list-item:${itemId}`;
+    if (this.itemMenuDispatcher.isOpen(menuId)) {
+      this.itemMenuDispatcher.close(menuId);
+      this.refreshSurfaceSoon();
+      return;
+    }
+    this.itemMenuDispatcher.open({
+      id: menuId,
+      kind: request.kind ?? 'select',
+      title: request.title ?? null,
+      items: request.items ?? [],
+      context: {
+        menu: 'smart-list-item',
+        itemId,
+        item,
+        request
+      },
+      triggerRect: request.triggerRect ?? null,
+      openUp: request.openUp === true,
+      panelAlign: request.panelAlign ?? 'auto',
+      panelMode: request.panelMode ?? 'auto',
+      closeOnSelect: request.closeOnSelect !== false,
+      onClose: () => {
+        request.closeTrigger?.();
+        this.refreshSurfaceSoon();
+      }
+    }, null);
+    if (request.panelMode === 'dock' && this.resolvedPresentation() !== 'fullscreen') {
+      this.revealDockedItemMenuSoon(item);
+    }
   }
 
   menuOpen(): boolean {
@@ -470,9 +550,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected hostedProgressIndicatorConfig(): ProgressIndicatorBarConfig {
     const placement = this.resolveConfigValue<ProgressIndicatorPlacement>(this.config.headerProgress?.placement, 'inline');
+    const state = this.resolveConfigValue<SmartListHeaderProgressState>(this.config.headerProgress?.state, 'active');
     return this.progressIndicatorBarConfig({
       tone: this.resolveConfigValue(this.config.headerProgress?.tone, 'default'),
-      placement
+      placement,
+      ...(state === 'inactive' ? { state: 'inactive' } : {})
     }, this.resolvedHeaderProgressMode());
   }
 
@@ -510,6 +592,46 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolvedPaginationMode() === 'rating-stars' && this.resolvedPaginationRatingBarConfig() !== null;
   }
 
+  protected paginationRatingMenu(): AppMenuDispatchState<string, unknown> | null {
+    if (!this.shouldRenderPaginationRatingBar()) {
+      return null;
+    }
+    return {
+      id: SmartListComponent.PAGINATION_RATING_MENU_ID,
+      kind: 'select',
+      title: null,
+      items: this.paginationRatingMenuItems(),
+      model: null,
+      groups: [],
+      value: null,
+      trigger: null,
+      context: { menu: SmartListComponent.PAGINATION_RATING_MENU_ID },
+      openUp: false,
+      panelAlign: 'auto',
+      panelMode: this.shouldUseHostedFullscreenPagination() ? 'fixed' : 'dock',
+      mobileBreakpointPx: 760,
+      closeOnSelect: false,
+      triggerElement: null,
+      triggerRect: null,
+      onClose: null
+    };
+  }
+
+  protected paginationRatingMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    const config = this.resolvedPaginationRatingBarConfig();
+    if (!config) {
+      return [];
+    }
+    return [{
+      id: SmartListComponent.PAGINATION_RATING_ITEM_ID,
+      kind: 'rating-bar',
+      closeOnSelect: false,
+      value: this.resolvedPaginationRatingBarValue(),
+      ratingBarConfig: config,
+      context: { menu: SmartListComponent.PAGINATION_RATING_MENU_ID }
+    }];
+  }
+
   protected resolvedPaginationRatingBarValue(): number {
     const value = this.config.pagination?.ratingBarValue?.(this.cursorItem(), this.currentQuery()) ?? 0;
     return Number.isFinite(value) ? value : 0;
@@ -541,6 +663,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
     void this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
+  }
+
+  private isPaginationRatingMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): boolean {
+    const context = event.context as { menu?: string } | null | undefined;
+    return context?.menu === SmartListComponent.PAGINATION_RATING_MENU_ID
+      && event.id === SmartListComponent.PAGINATION_RATING_ITEM_ID;
   }
 
   public itemsSnapshot(): ReadonlyArray<T> {
@@ -835,7 +963,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
       presentation: 'list',
-      renderState: 'list'
+      renderState: 'list',
+      openMenu: request => this.openItemMenu(item, request)
     };
   }
 
@@ -900,7 +1029,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
       presentation: 'fullscreen',
-      renderState
+      renderState,
+      openMenu: request => this.openItemMenu(item, request)
     };
   }
 
@@ -2513,11 +2643,65 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private updateAutoFooterSpacerHeight(scrollElement?: HTMLDivElement | null): void {
-    // Preserve only explicit footer spacing from config (for example the
-    // ratings dock). The synthetic snap spacer was creating oversized empty
-    // space at the end of shared card-grid lists.
     void scrollElement;
-    this.autoFooterSpacerHeightPx = 0;
+    if (this.resolvedPresentation() === 'fullscreen') {
+      this.autoFooterSpacerHeightPx = 0;
+      return;
+    }
+    this.autoFooterSpacerHeightPx = this.activeDockedMenuHeightPx();
+  }
+
+  private revealDockedItemMenuSoon(item: T): void {
+    const prepare = () => {
+      this.updateAutoFooterSpacerHeight();
+      this.cdr.markForCheck();
+      const reveal = () => this.revealDockedItemMenu(item);
+      if (typeof globalThis.requestAnimationFrame === 'function') {
+        globalThis.requestAnimationFrame(reveal);
+        return;
+      }
+      setTimeout(reveal, 0);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(prepare));
+      return;
+    }
+    setTimeout(prepare, 0);
+  }
+
+  private revealDockedItemMenu(item: T): void {
+    const scrollElement = this.scrollHostRef?.nativeElement;
+    const dockHeight = this.activeDockedMenuHeightPx();
+    if (!scrollElement || dockHeight <= 0) {
+      return;
+    }
+    const itemIndex = this.items.indexOf(item);
+    if (itemIndex < 0) {
+      return;
+    }
+    const itemElement = scrollElement.querySelector<HTMLElement>(`.smart-list__item-shell[data-smart-list-index="${itemIndex}"]`);
+    if (!itemElement) {
+      return;
+    }
+    const scrollRect = scrollElement.getBoundingClientRect();
+    const itemRect = itemElement.getBoundingClientRect();
+    const safeBottom = scrollRect.bottom - dockHeight - 8;
+    if (itemRect.bottom <= safeBottom) {
+      return;
+    }
+    scrollElement.scrollTop += itemRect.bottom - safeBottom;
+    this.updateScrollProgress(scrollElement);
+    this.emitState();
+    this.cdr.markForCheck();
+  }
+
+  private activeDockedMenuHeightPx(): number {
+    const dock = (this.hostRef.nativeElement as HTMLElement).querySelector('.app-menu-outlet--dock') as HTMLElement | null;
+    if (!dock) {
+      return 0;
+    }
+    const height = dock.getBoundingClientRect().height;
+    return Number.isFinite(height) ? Math.max(0, Math.ceil(height)) : 0;
   }
 
   private listCardSnapTargets(scrollElement: HTMLDivElement): HTMLElement[] {

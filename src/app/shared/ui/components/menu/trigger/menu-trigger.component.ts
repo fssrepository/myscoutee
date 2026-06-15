@@ -21,6 +21,7 @@ import type {
   AppMenuLiveValue,
   AppMenuModel,
   AppMenuPanelAlign,
+  AppMenuPanelMode,
   AppMenuPalette,
   AppMenuTrigger,
   AppMenuTriggerShape,
@@ -82,7 +83,6 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   protected isMobileViewport = false;
 
   @Input() menuId = '';
-  @Input() scope = 'default';
   @Input() kind: AppMenuKind = 'select';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
@@ -93,6 +93,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   @Input() context: TContext | null = null;
   @Input() openUp = false;
   @Input() panelAlign: AppMenuPanelAlign | null = null;
+  @Input() panelMode: AppMenuPanelMode | null = null;
   @Input() mobileBreakpointPx = 760;
   @Input() closeOnSelect = true;
 
@@ -297,7 +298,6 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   private dispatchConfig(): AppMenuDispatchConfig<TId, TContext> {
     return {
       id: this.resolvedMenuId(),
-      scope: this.scope,
       kind: this.kind,
       title: this.title,
       items: this.items,
@@ -308,6 +308,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
       context: this.context ?? undefined,
       openUp: this.openUp,
       panelAlign: this.panelAlign ?? undefined,
+      panelMode: this.panelMode ?? undefined,
       mobileBreakpointPx: this.mobileBreakpointPx,
       closeOnSelect: this.closeOnSelect
     };

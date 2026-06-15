@@ -3,28 +3,35 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
-import { PricingBuilder } from '../../../core/base/builders';
+import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
+import type { ActivityEventSaveDTO } from '../../contracts';
+import type { ActivityPendingReason } from '../../common/constants';
+import type { SubEventLeaderboardState } from '../../contracts/event.interface';
+import { ActivityEventDTO } from '../../contracts/activity.interface';
 import type {
-  ActivitiesEventSyncPayload,
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventFeedbackDeckQueryDto,
+  EventFeedbackDeckResultDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
+  EventFeedbackPageQueryDto,
+  EventFeedbackPageResultDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+  EventFeedbackSubmitRequestDto
+} from '../../contracts/activity.interface';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventListItem,
   ActivityEventRecord,
-  ActivityEventScopeFilter,
-  ActivityEventRepositoryItemType
-} from '../../base/models/events.model';
+  ActivityEventScopeFilter
+} from '../../contracts/activity.interface';
+import type { IEventsService } from '../../contracts/activity.interface';
 
 interface HttpEventsFilterRequest {
   userId: string;
@@ -40,10 +47,16 @@ interface HttpEventsFilterRequest {
   rangeEnd?: string;
 }
 
+type HttpActivityEventPolicyDTO = NonNullable<ActivityEventDTO['policies']>[number];
+type HttpActivityEventSlotTemplateDTO = NonNullable<ActivityEventDTO['slotTemplates']>[number];
+type HttpActivityEventSlotOccurrenceDTO = NonNullable<ActivityEventDTO['upcomingSlots']>[number];
+type HttpActivityEventSubEventDTO = NonNullable<ActivityEventDTO['subEvents']>[number];
+type HttpActivityEventSubEventGroupDTO = NonNullable<HttpActivityEventSubEventDTO['groups']>[number];
+
 @Injectable({
   providedIn: 'root'
 })
-export class HttpEventsService {
+export class HttpEventsService implements IEventsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -61,10 +74,6 @@ export class HttpEventsService {
 
   async queryEventItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/attending', userId);
-  }
-
-  async queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    return this.getRecords('/activities/events/hosting', userId);
   }
 
   async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
@@ -123,6 +132,64 @@ export class HttpEventsService {
       }
       return {
         records: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
+  async queryActivitiesEventDTOPage(
+    query: ActivityEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.requestWithAbort(
+        this.http.post<ActivityEventDTO[] | ActivityEventPageResultDTO | null>(
+          `${this.apiBaseUrl}/activities/events/filter`,
+          {
+            userId: normalizedUserId,
+            filter: query.filter,
+            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
+            secondaryFilter: query.secondaryFilter,
+            sort: query.sort,
+            view: query.view,
+            limit: query.limit,
+            cursor: query.cursor ?? null,
+            anchorDate: query.anchorDate,
+            rangeStart: query.rangeStart,
+            rangeEnd: query.rangeEnd
+          } satisfies HttpEventsFilterRequest
+        ),
+        signal
+      );
+      if (Array.isArray(response)) {
+        const items = this.cloneDTOs(response);
+        return {
+          items,
+          total: items.length,
+          nextCursor: null
+        };
+      }
+      const items = this.cloneDTOs(response?.items);
+      return {
+        items,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        items: [],
         total: 0,
         nextCursor: null
       };
@@ -254,24 +321,24 @@ export class HttpEventsService {
     };
   }
 
-  async trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/trash', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async trashItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/trash', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/publish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async publishItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/publish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async unpublishItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/restore', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async restoreItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/restore', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    await this.postVoid('/activities/events/take-over', { userId: userId.trim(), type, sourceId: sourceId.trim() });
+  async takeOverItem(userId: string, sourceId: string): Promise<void> {
+    await this.postVoid('/activities/events/take-over', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
   waitForEventMutationDelay(): Promise<void> {
@@ -328,7 +395,7 @@ export class HttpEventsService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
-      pendingReason?: 'approval' | 'waitlist' | null;
+      pendingReason?: ActivityPendingReason;
     } = {}
   ): Promise<ActivityEventRecord | null> {
     const normalizedUserId = userId.trim();
@@ -446,6 +513,45 @@ export class HttpEventsService {
     }
   }
 
+  async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return EventFeedbackBuilder.emptyPageResult(query.filter);
+    }
+    try {
+      const response = await this.http
+        .post<EventFeedbackPageResultDto | null>(`${this.apiBaseUrl}/activities/events/feedback/page`, {
+          userId: normalizedUserId,
+          filter: query.filter,
+          page: Math.max(0, Math.trunc(Number(query.page) || 0)),
+          pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
+        })
+        .toPromise();
+      return EventFeedbackBuilder.clonePageResult(response);
+    } catch {
+      return EventFeedbackBuilder.emptyPageResult(query.filter);
+    }
+  }
+
+  async loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedEventId = query.eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+    }
+    try {
+      const response = await this.http
+        .post<EventFeedbackDeckResultDto | null>(`${this.apiBaseUrl}/activities/events/feedback/deck`, {
+          userId: normalizedUserId,
+          eventId: normalizedEventId
+        })
+        .toPromise();
+      return EventFeedbackBuilder.cloneDeckResult(response);
+    } catch {
+      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+    }
+  }
+
   async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
     await this.postVoid('/activities/events/feedback/submit', request);
   }
@@ -462,12 +568,23 @@ export class HttpEventsService {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
     try {
       const response = await this.http
         .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
         .toPromise();
       return this.cloneRecords(response ? [response] : [])[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async saveActivityEvent(payload: ActivityEventSaveDTO): Promise<ActivityEventDTO | null> {
+    try {
+      const response = await this.http
+        .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
+        .toPromise();
+      return this.cloneDTOs(response ? [response] : [])[0] ?? null;
     } catch {
       return null;
     }
@@ -581,6 +698,7 @@ export class HttpEventsService {
         userId: `${record.userId ?? ''}`.trim(),
         type: record.type ?? 'events',
         status: record.status,
+        adminIds: [...(record.adminIds ?? [])],
         avatar: `${record.avatar ?? ''}`.trim(),
         title: `${record.title ?? ''}`.trim(),
         subtitle: `${record.subtitle ?? ''}`.trim(),
@@ -588,11 +706,6 @@ export class HttpEventsService {
         inviter: record.inviter ?? null,
         unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
         activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-        isAdmin: record.isAdmin === true,
-        isInvitation: record.isInvitation === true,
-        isHosting: record.isHosting === true,
-        isTrashed: record.isTrashed === true,
-        published: record.published !== false,
         trashedAtIso: record.trashedAtIso ?? null,
         creatorUserId: `${record.creatorUserId ?? ''}`.trim(),
         creatorName: `${record.creatorName ?? ''}`.trim(),
@@ -642,6 +755,27 @@ export class HttpEventsService {
     });
   }
 
+  private cloneDTOs(items: readonly ActivityEventDTO[] | null | undefined): ActivityEventDTO[] {
+    if (!Array.isArray(items)) {
+      return [];
+    }
+    return items.map(item => new ActivityEventDTO({
+      ...item,
+      locationCoordinates: item.locationCoordinates ? { ...item.locationCoordinates } : item.locationCoordinates,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+      policies: (item.policies ?? []).map((policy: HttpActivityEventPolicyDTO) => ({ ...policy })),
+      slotTemplates: (item.slotTemplates ?? []).map((template: HttpActivityEventSlotTemplateDTO) => ({ ...template })),
+      nextSlot: item.nextSlot ? { ...item.nextSlot } : item.nextSlot,
+      upcomingSlots: (item.upcomingSlots ?? []).map((slot: HttpActivityEventSlotOccurrenceDTO) => ({ ...slot })),
+      topics: [...(item.topics ?? [])],
+      subEvents: (item.subEvents ?? []).map((subEvent: HttpActivityEventSubEventDTO) => ({
+        ...subEvent,
+        groups: (subEvent.groups ?? []).map((group: HttpActivityEventSubEventGroupDTO) => ({ ...group })),
+        pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : subEvent.pricing
+      }))
+    }));
+  }
+
   private cloneListItems(records: ActivityEventListItem[] | null | undefined): ActivityEventListItem[] {
     if (!Array.isArray(records)) {
       return [];
@@ -651,6 +785,7 @@ export class HttpEventsService {
       userId: `${record.userId ?? ''}`.trim(),
       type: record.type ?? 'events',
       status: record.status,
+      adminIds: [...(record.adminIds ?? [])],
       avatar: `${record.avatar ?? ''}`.trim(),
       title: `${record.title ?? ''}`.trim(),
       subtitle: `${record.subtitle ?? ''}`.trim(),
@@ -658,11 +793,6 @@ export class HttpEventsService {
       inviter: record.inviter ?? null,
       unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
       activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-      isAdmin: record.isAdmin === true,
-      isInvitation: record.isInvitation === true,
-      isHosting: record.isHosting === true,
-      isTrashed: record.isTrashed === true,
-      published: record.published !== false,
       creatorUserId: `${record.creatorUserId ?? ''}`.trim(),
       creatorName: `${record.creatorName ?? ''}`.trim(),
       creatorInitials: `${record.creatorInitials ?? ''}`.trim(),

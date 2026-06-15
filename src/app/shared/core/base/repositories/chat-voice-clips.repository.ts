@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppMemoryDb } from '../db';
-import type { ChatVoiceClip } from '../models';
-import { chatVoiceClipTableKey } from '../storage-scope';
+import { AppMemoryDb } from '../../common/app.db';
+import type { ChatVoiceClip } from '../../contracts';
+import { chatVoiceClipTableKey } from '../../common/storage-scope';
 
 @Injectable({
   providedIn: 'root'

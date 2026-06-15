@@ -8,7 +8,7 @@ import type {
   AdminAffinityGraphMetaDto,
   AdminAffinityGraphNeighborhoodDto,
   AdminAffinityGraphTileDto
-} from '../../base/interfaces/admin-affinity-graph.interface';
+} from '../../contracts/admin.interface';
 
 export interface AdminAffinityGraphRangeParams {
   minWeight?: number | null;

@@ -1049,6 +1049,7 @@
   z-index: 1;
   width: min(520px, calc(100vw - 1.2rem));
   max-height: calc(100vh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
   border: 1px solid rgba(31, 56, 94, 0.14);
   border-radius: 14px;
   background: #fff;
@@ -1155,8 +1156,9 @@
 .entry-ideas-popup-panel {
   position: relative;
   z-index: 1;
-  width: min(1160px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
   border: 1px solid rgba(31, 56, 94, 0.14);
   border-radius: 14px;
   background: #fff;
@@ -1213,9 +1215,11 @@
 .entry-idea-article-popup-panel {
   position: relative;
   z-index: 1;
-  width: min(1160px, calc(100vw - 1.2rem));
+  width: min(1080px, calc(100vw - 1.2rem));
   height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
   max-height: calc(100vh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
   min-height: 0;
   border: 1px solid rgba(31, 56, 94, 0.14);
   border-radius: 14px;

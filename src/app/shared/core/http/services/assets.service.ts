@@ -5,16 +5,18 @@ import { environment } from '../../../../../environments/environment';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
 import type * as AppTypes from '../../../core/base/models';
 
+import type * as AppDTOs from '../../base/dto';
+import type * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
 export class HttpAssetsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedAssetsByUserId: Record<string, AppTypes.AssetCard[]> = {};
-  private readonly inflightAssetsByUserId: Record<string, Promise<AppTypes.AssetCard[]>> = {};
+  private readonly cachedAssetsByUserId: Record<string, AppDTOs.AssetCardDTO[]> = {};
+  private readonly inflightAssetsByUserId: Record<string, Promise<AppDTOs.AssetCardDTO[]>> = {};
 
-  peekOwnedAssetsByUser(userId: string): AppTypes.AssetCard[] {
+  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetCardDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -22,7 +24,7 @@ export class HttpAssetsService {
     return this.cloneCards(this.cachedAssetsByUserId[normalizedUserId] ?? []);
   }
 
-  peekOwnedAssetById(userId: string, assetId: string): AppTypes.AssetCard | null {
+  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetCardDTO | null {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
       return null;
@@ -30,7 +32,7 @@ export class HttpAssetsService {
     return this.peekOwnedAssetsByUser(userId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async queryOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -50,7 +52,7 @@ export class HttpAssetsService {
     }
   }
 
-  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -60,14 +62,14 @@ export class HttpAssetsService {
     return cards.find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async queryVisibleAssets(query: AppTypes.AssetExploreQuery): Promise<AppTypes.AssetCard[]> {
+  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetCardDTO[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     try {
       const response = await this.http
-        .get<AppTypes.AssetCard[] | null>(`${this.apiBaseUrl}/assets/explore`, {
+        .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets/explore`, {
           params: new HttpParams()
             .set('userId', normalizedUserId)
             .set('type', query.type)
@@ -82,7 +84,7 @@ export class HttpAssetsService {
     }
   }
 
-  async saveOwnedAsset(userId: string, asset: AppTypes.AssetCard): Promise<AppTypes.AssetCard> {
+  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetCardDTO): Promise<AppDTOs.AssetCardDTO> {
     const normalizedUserId = userId.trim();
     const normalizedAsset = this.normalizeCard(asset);
     if (!normalizedUserId || !normalizedAsset) {
@@ -105,7 +107,7 @@ export class HttpAssetsService {
     return this.cloneCards([normalizedAsset])[0] ?? normalizedAsset;
   }
 
-  async replaceOwnedAssets(userId: string, assets: readonly AppTypes.AssetCard[]): Promise<AppTypes.AssetCard[]> {
+  async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetCardDTO[]): Promise<AppDTOs.AssetCardDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -145,7 +147,7 @@ export class HttpAssetsService {
     }
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppTypes.AssetCard | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -161,7 +163,7 @@ export class HttpAssetsService {
     );
     try {
       const response = await this.http
-        .post<AppTypes.AssetCard | null>(`${this.apiBaseUrl}/assets/take-over`, {
+        .post<AppDTOs.AssetCardDTO | null>(`${this.apiBaseUrl}/assets/take-over`, {
           userId: normalizedUserId,
           assetId: normalizedAssetId
         })
@@ -177,7 +179,7 @@ export class HttpAssetsService {
     return this.peekOwnedAssetsByUser(normalizedUserId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppTypes.AssetCard | null> {
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetCardDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     const normalizedTargetUserId = targetUserId.trim();
@@ -186,7 +188,7 @@ export class HttpAssetsService {
     }
     try {
       const response = await this.http
-        .post<AppTypes.AssetCard | null>(`${this.apiBaseUrl}/assets/make-manager`, {
+        .post<AppDTOs.AssetCardDTO | null>(`${this.apiBaseUrl}/assets/make-manager`, {
           userId: normalizedUserId,
           assetId: normalizedAssetId,
           targetUserId: normalizedTargetUserId
@@ -205,9 +207,9 @@ export class HttpAssetsService {
 
   async refreshAssetSourcePreview(
     userId: string,
-    type: AppTypes.AssetType,
+    type: AppConstants.AssetType,
     sourceLink: string
-  ): Promise<AppTypes.AssetSourcePreview | null> {
+  ): Promise<AppDTOs.AssetSourcePreviewDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceLink = sourceLink.trim();
     if (!normalizedSourceLink) {
@@ -247,9 +249,9 @@ export class HttpAssetsService {
     }
   }
 
-  private async fetchOwnedAssetsByUser(userId: string): Promise<AppTypes.AssetCard[]> {
+  private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
     const response = await this.http
-      .get<AppTypes.AssetCard[] | null>(`${this.apiBaseUrl}/assets`, {
+      .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets`, {
         params: new HttpParams().set('userId', userId)
       })
       .toPromise();
@@ -259,9 +261,9 @@ export class HttpAssetsService {
   }
 
   private upsertCard(
-    cards: readonly AppTypes.AssetCard[],
-    nextCard: AppTypes.AssetCard
-  ): AppTypes.AssetCard[] {
+    cards: readonly AppDTOs.AssetCardDTO[],
+    nextCard: AppDTOs.AssetCardDTO
+  ): AppDTOs.AssetCardDTO[] {
     const next = this.cloneCards(cards);
     const existingIndex = next.findIndex(card => card.id === nextCard.id);
     if (existingIndex >= 0) {
@@ -274,7 +276,7 @@ export class HttpAssetsService {
     ];
   }
 
-  private cloneCards(cards: readonly AppTypes.AssetCard[]): AppTypes.AssetCard[] {
+  private cloneCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
     return cards.map(card => ({
       ...card,
       routes: [...(card.routes ?? [])],
@@ -286,13 +288,13 @@ export class HttpAssetsService {
     }));
   }
 
-  private normalizeCards(cards: readonly AppTypes.AssetCard[]): AppTypes.AssetCard[] {
+  private normalizeCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
     return cards
       .map(card => this.normalizeCard(card))
-      .filter((card): card is AppTypes.AssetCard => Boolean(card));
+      .filter((card): card is AppDTOs.AssetCardDTO => Boolean(card));
   }
 
-  private normalizeCard(card: AppTypes.AssetCard | null | undefined): AppTypes.AssetCard | null {
+  private normalizeCard(card: AppDTOs.AssetCardDTO | null | undefined): AppDTOs.AssetCardDTO | null {
     const id = card?.id?.trim() ?? '';
     if (!id) {
       return null;
@@ -353,9 +355,9 @@ export class HttpAssetsService {
             name: `${request?.name ?? ''}`.trim(),
             initials: `${request?.initials ?? ''}`.trim(),
             gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
-            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppTypes.AssetRequestStatus,
+            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
             note: `${request?.note ?? ''}`.trim(),
-            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppTypes.AssetRequestKind,
+            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
             requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
             menuActions: Array.isArray(request?.menuActions)
               ? request.menuActions.map(action => `${action ?? ''}`.trim()).filter(action => action.length > 0)
@@ -391,7 +393,7 @@ export class HttpAssetsService {
     };
   }
 
-  private restoredAssetStatus(_card: AppTypes.AssetCard): string {
+  private restoredAssetStatus(_card: AppDTOs.AssetCardDTO): string {
     return 'A';
   }
 
@@ -417,7 +419,7 @@ export class HttpAssetsService {
     }
   }
 
-  private cloneRequest(request: AppTypes.AssetMemberRequest): AppTypes.AssetMemberRequest {
+  private cloneRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
     return {
       ...request,
       menuActions: [...(request.menuActions ?? [])],

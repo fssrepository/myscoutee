@@ -1,27 +1,16 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, NgZone, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import {
-  AppPopupContext,
-  ActivitiesService,
-  AdminWorkspaceDataService,
-  AssetDefaultsBuilder,
-  EventsService,
-  SessionService,
-  UsersService,
-  type BootstrapProcessStage,
-  type BootstrapProcessState,
-  type UserSelectorListItemDto,
-  type ShareTokenResolvedItem
-} from '../../../shared/core';
-import type { AssetCard } from '../../../shared/core/base/models';
-import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
+import { AppPopupContext } from '../../../shared/ui';
+import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, toActivityEventRow, type ShareTokenResolvedItem } from '../../../shared/core';
+import type { AssetCardDTO } from '../../../shared/core/base/dto';
+import type { AssetType } from '../../../shared/core/common/constants';
+import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
-  imports: [CommonModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [DemoBootstrapSelectorComponent],
   templateUrl: './admin-help-session-page.component.html',
   styleUrl: './admin-help-session-page.component.scss'
 })
@@ -30,18 +19,9 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
-  private readonly usersService = inject(UsersService);
-  private readonly activitiesService = inject(ActivitiesService);
   private readonly eventsService = inject(EventsService);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly changeDetectorRef = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
 
-  protected sessionLoading = true;
-  protected sessionSubmitting = false;
-  protected loadingProgress = 0;
-  protected loadingLabel = 'Preparing shared support user';
-  protected loadingStage: BootstrapProcessStage = 'selector';
   protected error = '';
 
   async ngOnInit(): Promise<void> {
@@ -50,11 +30,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   protected async retry(): Promise<void> {
     this.error = '';
-    this.sessionLoading = true;
-    this.sessionSubmitting = false;
-    this.loadingProgress = 0;
-    this.loadingStage = 'selector';
-    this.loadingLabel = 'Preparing shared support user';
     await this.openSharedUserView();
   }
 
@@ -68,10 +43,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
       this.fail('This support link is missing its token.');
       return;
     }
-    const useLocalHelpSession = this.workspaceData.shouldUseLocalAdminHelpSession;
-    const demoUsersPromise = useLocalHelpSession
-      ? this.loadLocalSupportUsers()
-      : Promise.resolve<UserSelectorListItemDto[]>([]);
     const resolved = await this.resolveAdminHelpToken(token);
     if (!resolved || resolved.kind !== 'adminHelp' || !resolved.ownerUserId?.trim()) {
       this.fail('This support link expired or is no longer available.');
@@ -79,20 +50,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const userId = resolved.ownerUserId.trim();
     const targetUrl = this.safeTargetUrl(resolved.url || resolved.entityId || '/game');
-    if (useLocalHelpSession) {
-      const users = await demoUsersPromise;
-      const selectedUser = users.find(user => user.id.trim() === userId) ?? null;
-      if (!selectedUser) {
-        this.fail('This shared support user is not available locally.');
-        return;
-      }
-      await this.prepareSharedUserSession(userId, targetUrl);
-      return;
-    }
-    this.loadingProgress = 100;
-    this.loadingStage = 'sessionReady';
-    this.loadingLabel = 'Opening MyScoutee as the user sees it';
-    await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
+    this.openSharedUserSelector(userId, targetUrl);
   }
 
   private resolveTokenFromRoute(): string {
@@ -116,106 +74,51 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return await this.workspaceData.resolveAdminHelpToken(token, value => this.resolveDemoAdminHelpToken(value));
   }
 
-  private applyProgress(state: BootstrapProcessState): void {
-    this.commitSelectorState(() => {
-      this.loadingProgress = state.percent;
-      this.loadingLabel = state.label;
-      this.loadingStage = state.stage;
+  private openSharedUserSelector(userId: string, targetUrl: string): void {
+    this.popupCtx.openDemoBootstrapSelector({
+      mode: 'member',
+      title: 'Demo felhasználó választása',
+      subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
+      autoSelectUserId: userId,
+      onSelect: selectedUserId => this.openSelectedSharedUser(selectedUserId, targetUrl),
+      onClose: () => {
+        void this.goAdmin();
+      }
     });
   }
 
-  protected loadingPosition(): number {
-    const progress = Number(this.loadingProgress);
-    if (!Number.isFinite(progress)) {
-      return 0;
+  private openSelectedSharedUser(userId: string, targetUrl: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.sessionService.startDemoSession(normalizedUserId, {
+      supportContext: {
+        kind: 'admin-support',
+        targetUrl: this.safeTargetUrl(targetUrl)
+      }
+    })) {
+      return false;
     }
-    return Math.max(0, Math.min(1, progress / 100));
+    void this.navigateToSharedTargetAfterSelectorClose(normalizedUserId, targetUrl);
+    return true;
   }
 
-  private async loadLocalSupportUsers(): Promise<UserSelectorListItemDto[]> {
-    this.commitSelectorState(() => {
-      this.sessionSubmitting = false;
-      this.sessionLoading = true;
-      this.loadingProgress = 0;
-      this.loadingStage = 'selector';
-      this.loadingLabel = 'Loading local support users';
-    });
-    await this.waitForPopupPaint();
-
-    const users = await this.usersService.loadAvailableDemoUsers(undefined, state => this.applyProgress(state));
-    this.commitSelectorState(() => {
-      this.loadingProgress = 100;
-      this.loadingStage = 'ready';
-      this.loadingLabel = 'Local support user ready';
-    });
-    await this.waitForLoaderCompletionBeat();
-
-    return users;
-  }
-
-  private async prepareSharedUserSession(userId: string, targetUrl: string): Promise<void> {
-    this.commitSelectorState(() => {
-      this.sessionSubmitting = true;
-      this.sessionLoading = true;
-      this.loadingProgress = 0;
-      this.loadingStage = 'session';
-      this.loadingLabel = 'Preparing shared user session';
-    });
-    await this.waitForPopupPaint();
-
-    try {
-      await this.usersService.prepareDemoUserSession(userId, state => this.applyProgress(state));
-      this.commitSelectorState(() => {
-        this.loadingProgress = 100;
-        this.loadingStage = 'sessionReady';
-        this.loadingLabel = 'Shared user session ready';
-      });
-      await this.waitForLoaderCompletionBeat();
-      this.sessionService.startDemoSession(userId);
-      await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl));
-    } catch {
-      this.commitSelectorState(() => {
-        this.sessionLoading = false;
-        this.sessionSubmitting = false;
-        this.loadingProgress = 0;
-        this.loadingStage = 'selector';
-        this.loadingLabel = 'Preparing shared support user';
-      });
-    }
+  private async navigateToSharedTargetAfterSelectorClose(userId: string, targetUrl: string): Promise<void> {
+    await this.waitForDemoSelectorClose();
+    await this.router.navigateByUrl(await this.queueSharedSupportTarget(userId, targetUrl), { replaceUrl: true });
   }
 
   private fail(message: string): void {
+    this.popupCtx.closeDemoBootstrapSelector();
     this.error = message;
-    this.sessionLoading = false;
-    this.sessionSubmitting = false;
-    this.loadingProgress = 0;
-    this.loadingStage = 'selector';
-    this.loadingLabel = 'Support link unavailable';
   }
 
-  private commitSelectorState(update: () => void): void {
-    this.ngZone.run(() => {
-      update();
-      this.changeDetectorRef.detectChanges();
-    });
-  }
-
-  private waitForPopupPaint(): Promise<void> {
+  private waitForDemoSelectorClose(): Promise<void> {
     return new Promise(resolve => {
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            setTimeout(resolve, 80);
-          });
-        });
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
         return;
       }
-      setTimeout(resolve, 80);
+      setTimeout(resolve, 0);
     });
-  }
-
-  private waitForLoaderCompletionBeat(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 240));
   }
 
   private resolveDemoAdminHelpToken(token: string): ShareTokenResolvedItem | null {
@@ -335,7 +238,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       if (eventRecord) {
         this.popupCtx.requestActivitiesNavigation({
           type: 'eventEditor',
-          row: this.activitiesService.buildEventDisplayRow(eventRecord, { activeUserId: userId }),
+          row: toActivityEventRow(eventRecord, { activeUserId: userId }),
           readOnly: true
         });
       } else {
@@ -361,7 +264,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return parsed.pathname || '/game';
   }
 
-  private buildSupportFallbackAsset(assetType: 'Car' | 'Accommodation' | 'Supplies', parsed: URL): AssetCard | undefined {
+  private buildSupportFallbackAsset(assetType: AssetType, parsed: URL): AssetCardDTO | undefined {
     const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
     if (!assetId) {
       return undefined;
@@ -402,11 +305,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return Math.max(0, Math.trunc(Number(parsed.searchParams.get(key)) || 0));
   }
 
-  private defaultSupportAssetCity(assetType: 'Car' | 'Accommodation' | 'Supplies'): string {
+  private defaultSupportAssetCity(assetType: AssetType): string {
     return assetType === 'Supplies' ? 'Austin' : '';
   }
 
-  private defaultSupportAssetImage(assetType: 'Car' | 'Accommodation' | 'Supplies', seed: string): string {
+  private defaultSupportAssetImage(assetType: AssetType, seed: string): string {
     const flavor = assetType === 'Car'
       ? 'road'
       : assetType === 'Accommodation'
@@ -437,7 +340,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
   }
 
-  private toAssetFilter(value: string | null): 'Car' | 'Accommodation' | 'Supplies' | null {
+  private toAssetFilter(value: string | null): AssetType | null {
     switch (`${value ?? ''}`.trim()) {
       case 'Car':
         return 'Car';

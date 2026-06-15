@@ -1,10 +1,71 @@
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../models';
-import type { ActivityEventRecord } from '../models/events.model';
+import type { ActivityListRow } from '../models';
+import type * as ContractTypes from '../../contracts';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { PricingBuilder } from '../builders/pricing.builder';
 
+import type * as AppConstants from '../../common/constants';
+
+interface EventEditorSubEventGroupInput {
+  id?: string;
+  name?: string;
+  source?: string;
+  membersPending?: number;
+  capacityMin?: number;
+  capacityMax?: number;
+  [key: string]: unknown;
+}
+
+interface EventEditorSubEventInput {
+  description?: string;
+  id?: string;
+  name?: string;
+  title?: string;
+  location?: string;
+  optional?: boolean;
+  startAt?: string;
+  endAt?: string;
+  capacityMin?: number;
+  capacityMax?: number;
+  groups?: EventEditorSubEventGroupInput[];
+  membersPending?: number;
+  membersAccepted?: number;
+  pricing?: ContractTypes.PricingConfig | null;
+  carsPending?: number;
+  accommodationPending?: number;
+  suppliesPending?: number;
+  slotStartOffsetMinutes?: number;
+  slotDurationMinutes?: number;
+  [key: string]: unknown;
+}
+
+interface EventEditorFormInput {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string;
+  status?: ContractTypes.ActivityEventStatus;
+  visibility: AppConstants.EventVisibility;
+  frequency: string;
+  location: string;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  blindMode: ContractTypes.EventBlindMode;
+  autoInviter: boolean;
+  ticketing: boolean;
+  pricing: ContractTypes.PricingConfig;
+  policies: ContractTypes.EventPolicyItem[];
+  topics: string[];
+  slotsEnabled: boolean;
+  slotTemplates: ContractTypes.EventSlotTemplate[];
+  subEvents: EventEditorSubEventInput[];
+  subEventsDisplayMode: ContractTypes.SubEventsDisplayMode;
+  startAt: string;
+  endAt: string;
+}
+
 export class EventEditorConverter {
-  static normalizeEventEditorPolicies(value: unknown): AppTypes.EventPolicyItem[] {
+  static normalizeEventEditorPolicies(value: unknown): ContractTypes.EventPolicyItem[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -21,9 +82,9 @@ export class EventEditorConverter {
           title: title || `Policy ${index + 1}`,
           description,
           required: item['required'] !== false
-        } satisfies AppTypes.EventPolicyItem;
+        } satisfies ContractTypes.EventPolicyItem;
       })
-      .filter((item): item is AppTypes.EventPolicyItem => item !== null);
+      .filter((item): item is ContractTypes.EventPolicyItem => item !== null);
   }
 
   static normalizeEventEditorTextValue(value: unknown): string {
@@ -34,7 +95,7 @@ export class EventEditorConverter {
     return `${value ?? ''}`.trim();
   }
 
-  static normalizeEventEditorVisibility(value: unknown): AppTypes.EventVisibility {
+  static normalizeEventEditorVisibility(value: unknown): AppConstants.EventVisibility {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'private' || normalized.includes('friend')) {
       return 'Friends only';
@@ -65,7 +126,7 @@ export class EventEditorConverter {
     return 'One-time';
   }
 
-  static normalizeEventEditorBlindMode(value: unknown): AppTypes.EventBlindMode {
+  static normalizeEventEditorBlindMode(value: unknown): ContractTypes.EventBlindMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
   }
@@ -121,9 +182,9 @@ export class EventEditorConverter {
     value: unknown,
     options: {
       context?: 'event' | 'asset' | 'subevent';
-      slotCatalog?: readonly AppTypes.PricingSlotReference[];
+      slotCatalog?: readonly ContractTypes.PricingSlotReference[];
     } = {}
-  ): AppTypes.PricingConfig {
+  ): ContractTypes.PricingConfig {
     return PricingBuilder.normalizePricingConfig(value, options);
   }
 
@@ -194,7 +255,7 @@ export class EventEditorConverter {
     return Math.max(0, Math.trunc(parsed));
   }
 
-  static normalizeEventEditorSlotTemplates(value: unknown): AppTypes.EventSlotTemplate[] {
+  static normalizeEventEditorSlotTemplates(value: unknown): ContractTypes.EventSlotTemplate[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -228,7 +289,7 @@ export class EventEditorConverter {
     });
   }
 
-  static normalizeEventEditorSubEvents(value: unknown): AppTypes.EventEditorSubEventItem[] {
+  static normalizeEventEditorSubEvents(value: unknown): EventEditorSubEventInput[] {
     if (!Array.isArray(value)) {
       return [];
     }
@@ -250,15 +311,15 @@ export class EventEditorConverter {
         endAt: endAtDate ? AppUtils.toIsoDateTimeLocal(endAtDate) : '',
         slotStartOffsetMinutes: this.toEventEditorCapacityInputValue(item['slotStartOffsetMinutes']) ?? undefined,
         slotDurationMinutes: this.toEventEditorCapacityInputValue(item['slotDurationMinutes']) ?? undefined,
-        groups: groups.map(group => ({ ...(group as Record<string, unknown>) })) as AppTypes.EventEditorSubEventGroupItem[]
+        groups: groups.map(group => ({ ...(group as Record<string, unknown>) }))
       };
     });
   }
 
   static normalizeEventEditorSubEventsDisplayMode(
     value: unknown,
-    subEvents: readonly AppTypes.EventEditorSubEventItem[] = []
-  ): AppTypes.SubEventsDisplayMode {
+    subEvents: readonly EventEditorSubEventInput[] = []
+  ): ContractTypes.SubEventsDisplayMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'tournament') {
       return 'Tournament';
@@ -292,7 +353,7 @@ export class EventEditorConverter {
 
   static toEventEditorSourceFromRecord(
     record: ActivityEventRecord,
-    target: AppTypes.EventEditorTarget
+    target: ContractTypes.EventEditorTarget
   ): Record<string, unknown> {
     const slotTemplates = this.normalizeEventEditorSlotTemplates(record.slotTemplates ?? []);
     return {
@@ -325,7 +386,7 @@ export class EventEditorConverter {
       subEventsDisplayMode: record.subEventsDisplayMode,
       startAt: record.startAtIso,
       endAt: record.endAtIso,
-      published: record.published,
+      status: record.status ?? 'A',
       pendingMembersCount: record.pendingMembers,
       distanceKm: record.distanceKm,
       sourceLink: record.sourceLink,
@@ -334,9 +395,9 @@ export class EventEditorConverter {
   }
 
   static toEventEditorFallbackSource(
-    row: AppTypes.ActivityListRow,
+    row: ActivityListRow,
     readOnly: boolean,
-    target: AppTypes.EventEditorTarget
+    target: ContractTypes.EventEditorTarget
   ): Record<string, unknown> {
     const title = row.title;
     const description = row.subtitle;
@@ -368,7 +429,7 @@ export class EventEditorConverter {
       subEventsDisplayMode: 'Casual',
       startAt: row.startAt ?? row.dateIso,
       endAt: row.endAt ?? row.dateIso,
-      published: target === 'hosting' ? (row.published ?? true) : true,
+      status: row.status ?? 'A',
       pendingMembersCount: this.toEventEditorCapacityInputValue(
         row.pendingMembers
       ) ?? 0,
@@ -385,7 +446,7 @@ export class EventEditorConverter {
     return Math.round((meters / 1000) * 10) / 10;
   }
 
-  static toEventEditorFormState(sourceEvent: Record<string, unknown>): AppTypes.EventEditorFormState {
+  static toEventEditorForm(sourceEvent: Record<string, unknown>): EventEditorFormInput {
     const sourceCapacity = (typeof sourceEvent['capacity'] === 'object' && sourceEvent['capacity'] !== null)
       ? sourceEvent['capacity'] as Record<string, unknown>
       : null;
@@ -402,29 +463,27 @@ export class EventEditorConverter {
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
 
     return {
-      form: {
-        id: `${sourceEvent['id'] ?? sourceEvent['eventId'] ?? ''}`.trim(),
-        title: `${sourceEvent['title'] ?? ''}`.trim(),
-        description: `${sourceEvent['description'] ?? sourceEvent['shortDescription'] ?? ''}`.trim(),
-        imageUrl: this.resolveEventEditorSourceImage(sourceEvent),
-        visibility: this.normalizeEventEditorVisibility(sourceEvent['visibility']),
-        frequency: this.normalizeEventEditorFrequency(sourceEvent['frequency']),
-        location: this.normalizeEventEditorLocation(sourceEvent['location']),
-        capacityMin: this.toEventEditorCapacityInputValue(sourceEvent['capacityMin'] ?? sourceCapacity?.['min']) ?? 0,
-        capacityMax: this.toEventEditorCapacityInputValue(sourceEvent['capacityMax'] ?? sourceCapacity?.['max']) ?? 0,
-        blindMode: this.normalizeEventEditorBlindMode(sourceEvent['blindMode'] ?? sourceEvent['matchingMode']),
-        autoInviter: this.normalizeEventEditorAutoInviter(sourceEvent['autoInviter'] ?? sourceEvent['inviteMode']),
-        ticketing: this.normalizeEventEditorTicketing(sourceEvent['ticketing'] ?? sourceEvent['ticketType']),
-        pricing: this.normalizeEventEditorPricing(sourceEvent['pricing'], { context: 'event', slotCatalog }),
-        policies: this.normalizeEventEditorPolicies(sourceEvent['policies']),
-        slotsEnabled: this.normalizeEventEditorSlotsEnabled(sourceEvent['slotsEnabled']),
-        slotTemplates,
-        topics: this.normalizeEventEditorTopics(sourceEvent['topics'] ?? sourceEvent['tags']),
-        subEvents,
-        startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
-        endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
-      },
-      subEventsDisplayMode: this.normalizeEventEditorSubEventsDisplayMode(sourceEvent['subEventsDisplayMode'], subEvents)
+      id: `${sourceEvent['id'] ?? sourceEvent['eventId'] ?? ''}`.trim(),
+      title: `${sourceEvent['title'] ?? ''}`.trim(),
+      description: `${sourceEvent['description'] ?? sourceEvent['shortDescription'] ?? ''}`.trim(),
+      imageUrl: this.resolveEventEditorSourceImage(sourceEvent),
+      visibility: this.normalizeEventEditorVisibility(sourceEvent['visibility']),
+      frequency: this.normalizeEventEditorFrequency(sourceEvent['frequency']),
+      location: this.normalizeEventEditorLocation(sourceEvent['location']),
+      capacityMin: this.toEventEditorCapacityInputValue(sourceEvent['capacityMin'] ?? sourceCapacity?.['min']) ?? 0,
+      capacityMax: this.toEventEditorCapacityInputValue(sourceEvent['capacityMax'] ?? sourceCapacity?.['max']) ?? 0,
+      blindMode: this.normalizeEventEditorBlindMode(sourceEvent['blindMode'] ?? sourceEvent['matchingMode']),
+      autoInviter: this.normalizeEventEditorAutoInviter(sourceEvent['autoInviter'] ?? sourceEvent['inviteMode']),
+      ticketing: this.normalizeEventEditorTicketing(sourceEvent['ticketing'] ?? sourceEvent['ticketType']),
+      pricing: this.normalizeEventEditorPricing(sourceEvent['pricing'], { context: 'event', slotCatalog }),
+      policies: this.normalizeEventEditorPolicies(sourceEvent['policies']),
+      slotsEnabled: this.normalizeEventEditorSlotsEnabled(sourceEvent['slotsEnabled']),
+      slotTemplates,
+      topics: this.normalizeEventEditorTopics(sourceEvent['topics'] ?? sourceEvent['tags']),
+      subEvents,
+      subEventsDisplayMode: this.normalizeEventEditorSubEventsDisplayMode(sourceEvent['subEventsDisplayMode'], subEvents),
+      startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
+      endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
     };
   }
 }

@@ -8,19 +8,13 @@
         </a>
       </header>
 
-      <section class="admin-entry-hero admin-home-hero admin-home-hero-pending">
+      <section class="admin-entry-hero admin-home-hero">
         <p class="admin-eyebrow">MyScoutee admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
       </section>
     </div>
-    @if (workspace.restoreAdminPreview(); as preview) {
-      <button type="button" class="admin-restore-avatar-button" aria-label="Restoring admin workspace" aria-busy="true" disabled>
-        <span class="admin-restore-button-avatar is-placeholder">
-          <mat-icon>schedule</mat-icon>
-        </span>
-      </button>
-    }
+    <app-navigator></app-navigator>
   </section>
 } @else if (workspace.dashboard(); as dashboard) {
   <section class="admin-workspace">

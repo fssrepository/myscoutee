@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { IdeaPost, IdeaPostSaveRequest } from '../../base/models';
+import type { IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -11,32 +11,32 @@ export class HttpIdeaPostsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadPublishedPosts(lang?: string | null): Promise<IdeaPost[]> {
+  async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
     const requestLang = this.requestLang(lang);
     const response = await this.http
-      .get<{ ideas?: Array<Partial<IdeaPost>> | null } | null>(`${this.apiBaseUrl}/landing/content`, {
+      .get<{ ideas?: Array<Partial<IdeaPostDto>> | null } | null>(`${this.apiBaseUrl}/landing/content`, {
         params: { lang: requestLang }
       })
       .toPromise();
     return this.normalizePosts(response?.ideas);
   }
 
-  async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPost[]> {
+  async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
     const params: Record<string, string> = { lang: this.normalizeLang(lang) };
     if (adminUserId.trim()) {
       params['adminUserId'] = adminUserId.trim();
     }
     const response = await this.http
-      .get<Array<Partial<IdeaPost>> | null>(`${this.apiBaseUrl}/admin/ideas`, {
+      .get<Array<Partial<IdeaPostDto>> | null>(`${this.apiBaseUrl}/admin/ideas`, {
         params
       })
       .toPromise();
     return this.normalizePosts(response);
   }
 
-  async savePost(request: IdeaPostSaveRequest): Promise<IdeaPost> {
+  async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
     const response = await this.http
-      .post<Partial<IdeaPost> | null>(`${this.apiBaseUrl}/admin/ideas`, request)
+      .post<Partial<IdeaPostDto> | null>(`${this.apiBaseUrl}/admin/ideas`, request)
       .toPromise();
     const post = this.normalizePost(response);
     if (!post) {
@@ -45,9 +45,9 @@ export class HttpIdeaPostsService {
     return post;
   }
 
-  async deletePost(postId: string, actorUserId: string): Promise<IdeaPost[]> {
+  async deletePost(postId: string, actorUserId: string): Promise<IdeaPostDto[]> {
     const response = await this.http
-      .request<Array<Partial<IdeaPost>> | null>(
+      .request<Array<Partial<IdeaPostDto>> | null>(
         'delete',
         `${this.apiBaseUrl}/admin/ideas/${encodeURIComponent(postId)}`,
         { body: { actorUserId } }
@@ -56,9 +56,9 @@ export class HttpIdeaPostsService {
     return this.normalizePosts(response);
   }
 
-  async restorePost(postId: string, actorUserId: string): Promise<IdeaPost> {
+  async restorePost(postId: string, actorUserId: string): Promise<IdeaPostDto> {
     const response = await this.http
-      .post<Partial<IdeaPost> | null>(
+      .post<Partial<IdeaPostDto> | null>(
         `${this.apiBaseUrl}/admin/ideas/${encodeURIComponent(postId)}/restore`,
         { actorUserId }
       )
@@ -70,14 +70,14 @@ export class HttpIdeaPostsService {
     return post;
   }
 
-  normalizePosts(value: Array<Partial<IdeaPost>> | null | undefined): IdeaPost[] {
+  normalizePosts(value: Array<Partial<IdeaPostDto>> | null | undefined): IdeaPostDto[] {
     return (Array.isArray(value) ? value : [])
       .map(post => this.normalizePost(post))
-      .filter((post): post is IdeaPost => Boolean(post))
+      .filter((post): post is IdeaPostDto => Boolean(post))
       .sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
-  normalizePost(value: Partial<IdeaPost> | null | undefined): IdeaPost | null {
+  normalizePost(value: Partial<IdeaPostDto> | null | undefined): IdeaPostDto | null {
     const id = `${value?.id ?? ''}`.trim();
     const title = `${value?.title ?? ''}`.trim();
     const contentHtml = `${value?.contentHtml ?? ''}`.trim();
@@ -173,7 +173,7 @@ export class HttpIdeaPostsService {
     return explicit || (this.normalizeLang(lang) === 'hu' ? 'Magyar' : 'English');
   }
 
-  private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
+  private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
   }

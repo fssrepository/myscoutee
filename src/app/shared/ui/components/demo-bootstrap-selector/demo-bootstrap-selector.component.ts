@@ -3,18 +3,11 @@ import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatRippleModule } from '@angular/material/core';
 
+import { AppPopupContext, type DemoBootstrapSelectorState } from '../../context/app-popup.context';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 import { I18nPipe } from '../../pipes';
-import {
-  AppContext,
-  AppPopupContext,
-  USERS_LOAD_CONTEXT_KEY,
-  UsersService,
-  type BootstrapProcessStage,
-  type DemoBootstrapSelectorState,
-  type UserSelectorListItemDto
-} from '../../../core';
-import { SeedDemoBootstrapService } from '../../../core/seed';
+import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
+import { SeedDemoBootstrapService } from '../../../core/local/seed';
 
 @Component({
   selector: 'app-demo-bootstrap-selector',
@@ -31,7 +24,6 @@ import { SeedDemoBootstrapService } from '../../../core/seed';
 })
 export class DemoBootstrapSelectorComponent {
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly appCtx = inject(AppContext);
   private readonly usersService = inject(UsersService);
   private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -45,6 +37,7 @@ export class DemoBootstrapSelectorComponent {
   @Input() loadingProgress = 0;
   @Input() loadingLabel = 'Preparing demo data';
   @Input() loadingStage: BootstrapProcessStage = 'selector';
+  protected loadingUserList = false;
   @Input() errorMessage = '';
   @Input() submitting = false;
   @Input() users: UserSelectorListItemDto[] = [];
@@ -86,7 +79,6 @@ export class DemoBootstrapSelectorComponent {
     }
     if (this.contextRequest) {
       this.contextRequest.onClose?.();
-      this.popupCtx.closeDemoBootstrapSelector();
       return;
     }
     this.closeRequested.emit();
@@ -170,6 +162,10 @@ export class DemoBootstrapSelectorComponent {
     return Math.max(0, Math.min(1, progress / 100));
   }
 
+  protected userListLoadDurationMs(): number {
+    return 3000;
+  }
+
   private openContextRequest(request: DemoBootstrapSelectorState): void {
     const requestToken = ++this.contextRequestToken;
     this.contextRequest = request;
@@ -180,6 +176,7 @@ export class DemoBootstrapSelectorComponent {
       this.subtitle = request.subtitle ?? 'Login disabled mode. Choose a demo user to open perspective-based data.';
       this.users = request.users?.map(user => ({ ...user })) ?? [];
       this.loading = true;
+      this.loadingUserList = false;
       this.loadingProgress = 0;
       this.loadingLabel = 'Preparing demo data';
       this.loadingStage = 'selector';
@@ -199,41 +196,56 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      await this.seedBootstrap.ensureDemoSelectorReady(request.mode, state => {
-        if (!this.isCurrentContextRequest(requestToken)) {
-          return;
-        }
-        this.commit(() => {
-          this.loadingProgress = state.percent;
-          this.loadingLabel = state.label;
-          this.loadingStage = state.stage;
+      if (this.usersService.localModeEnabled) {
+        await this.seedBootstrap.ensureDemoSelectorReady(request.mode, state => {
+          if (!this.isCurrentContextRequest(requestToken)) {
+            return;
+          }
+          this.commit(() => {
+            this.loadingUserList = false;
+            this.loadingProgress = state.percent;
+            this.loadingLabel = state.label;
+            this.loadingStage = state.stage;
+          });
         });
-      });
-      const users = request.users?.map(user => ({ ...user }))
-        ?? await this.usersService.loadAvailableDemoUsers(undefined);
-      const loadState = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY);
-      const selectorErrorMessage = users.length === 0
-        && (loadState.status === 'timeout' || loadState.status === 'error')
-          ? (loadState.error?.trim() || 'Unable to load demo users right now.')
-          : '';
+        await this.waitForPhaseReadyBlink();
+      }
+      if (!this.isCurrentContextRequest(requestToken)) {
+        return;
+      }
+      let users = request.users?.map(user => ({ ...user })) ?? null;
+      if (!users) {
+        this.commit(() => {
+          this.loadingUserList = true;
+          this.loadingProgress = 0;
+          this.loadingLabel = 'Loading demo users';
+          this.loadingStage = 'users';
+        });
+        users = await this.usersService.loadAvailableDemoUsers(request.mode);
+      }
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
       this.commit(() => {
         this.users = users;
-        this.errorMessage = selectorErrorMessage;
-        this.loadingProgress = selectorErrorMessage ? 0 : 100;
-        this.loadingLabel = selectorErrorMessage ? 'Retry demo selector' : 'Demo data ready';
-        this.loadingStage = selectorErrorMessage ? 'selector' : 'ready';
+        this.errorMessage = '';
+        this.loadingUserList = false;
       });
-      if (selectorErrorMessage) {
-        this.commit(() => {
-          this.loading = false;
-        });
-        return;
-      }
-      await this.waitForLoaderCompletionBeat();
-      if (!this.isCurrentContextRequest(requestToken)) {
+      const autoSelectUserId = `${request.autoSelectUserId ?? ''}`.trim();
+      if (autoSelectUserId) {
+        const autoSelectedUser = users.find(user => user.id.trim() === autoSelectUserId) ?? null;
+        if (!autoSelectedUser) {
+          this.commit(() => {
+            this.loading = false;
+            this.loadingUserList = false;
+            this.loadingProgress = 0;
+            this.loadingLabel = 'Retry demo selector';
+            this.loadingStage = 'selector';
+            this.errorMessage = 'Unable to open selected demo user.';
+          });
+          return;
+        }
+        this.selectContextUser(autoSelectUserId);
         return;
       }
       this.commit(() => {
@@ -245,8 +257,11 @@ export class DemoBootstrapSelectorComponent {
       }
       this.commit(() => {
         this.loading = false;
-        this.errorMessage = this.appCtx.getLoadingState(USERS_LOAD_CONTEXT_KEY).error?.trim()
-          || 'Unable to load demo users right now.';
+        this.loadingUserList = false;
+        this.loadingProgress = 0;
+        this.loadingLabel = 'Retry demo selector';
+        this.loadingStage = 'selector';
+        this.errorMessage = 'Unable to load demo users right now.';
       });
     }
   }
@@ -261,10 +276,20 @@ export class DemoBootstrapSelectorComponent {
     }
     const requestToken = this.contextRequestToken;
     const selectedUser = this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
+    if (!this.usersService.localModeEnabled) {
+      this.commit(() => {
+        this.submitting = true;
+        this.selectedUserId = normalizedUserId;
+        this.errorMessage = '';
+      });
+      void this.completeContextSelection(normalizedUserId, requestToken);
+      return;
+    }
     this.commit(() => {
       this.submitting = true;
       this.selectedUserId = normalizedUserId;
       this.loading = true;
+      this.loadingUserList = false;
       this.loadingProgress = 0;
       this.loadingLabel = 'Preparing demo session';
       this.loadingStage = 'session';
@@ -325,7 +350,6 @@ export class DemoBootstrapSelectorComponent {
         return;
       }
       if (accepted !== false) {
-        this.popupCtx.closeDemoBootstrapSelector();
         return;
       }
       this.resetContextSelectionFailure('Unable to open selected demo user.');
@@ -339,6 +363,7 @@ export class DemoBootstrapSelectorComponent {
   private resetContextSelectionFailure(message: string): void {
     this.commit(() => {
       this.loading = false;
+      this.loadingUserList = false;
       this.submitting = false;
       this.selectedUserId = '';
       this.loadingProgress = 0;
@@ -361,6 +386,7 @@ export class DemoBootstrapSelectorComponent {
     this.contextControlled = false;
     this.open = false;
     this.loading = false;
+    this.loadingUserList = false;
     this.loadingProgress = 0;
     this.loadingLabel = 'Preparing demo data';
     this.loadingStage = 'selector';
@@ -394,5 +420,9 @@ export class DemoBootstrapSelectorComponent {
 
   private waitForLoaderCompletionBeat(): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, 240));
+  }
+
+  private waitForPhaseReadyBlink(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, 500));
   }
 }

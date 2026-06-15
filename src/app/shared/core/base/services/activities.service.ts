@@ -1,34 +1,22 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../core/base/models';
-import type {
-  ActivitiesFeedFilters,
-  ActivitiesPageRequest,
-  EventExploreFeedFilters
-} from '../../../core/base/models';
-import type { ChatRecord } from '../models/chat.model';
-import type { UserDto } from '../interfaces/user.interface';
+import type * as ContractTypes from '../../contracts';
+import type { ActivitiesFeedFilters, ActivitiesPageRequest, EventExploreFeedFilters } from '../../contracts';
+import type { ChatDTO, ChatRecord } from '../../contracts/chat.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
-  buildActivityEventRows,
-  buildActivityRateRows,
-  toActivityEventRow,
   toActivitiesPageRequest
 } from '../converters';
-import { AppContext } from '../context';
-import type { ActivityEventRecord } from '../models/events.model';
+import { AppContext } from '../../../ui/context';
+import type { ActivityEventDTO, ActivityEventRecord, ActivityRateDTO } from '../../contracts/activity.interface';
 import { ChatsService } from './chats.service';
 import { EventsService } from './events.service';
 import { RatesService } from './rates.service';
 import { SessionService } from './session.service';
 import { UsersService } from './users.service';
 import { BaseRouteModeService } from './base-route-mode.service';
-
-export interface ActivitiesEventDisplaySync extends AppTypes.ActivitiesEventSyncPayload {
-  displayRecord: ActivityEventRecord;
-  displayRow: AppTypes.ActivityListRow;
-}
 
 @Injectable({
   providedIn: 'root'
@@ -39,21 +27,6 @@ export class ActivitiesService extends BaseRouteModeService {
   private readonly ratesService = inject(RatesService);
   private readonly appCtx = inject(AppContext);
   private readonly usersService = inject(UsersService);
-
-  async loadActivities(
-    query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatRecord[]; signal?: AbortSignal } = {}
-  ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const request = toActivitiesPageRequest(query);
-    if (request.primaryFilter === 'rates') {
-      return this.loadRates(request, options.signal);
-    }
-    if (request.primaryFilter === 'events') {
-      return this.loadEvents(request, options.signal);
-    }
-
-    return this.loadChats(request, options);
-  }
 
   async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<ActivityEventRecord>> {
     const filters = this.resolveExploreFilters(query.filters);
@@ -69,61 +42,13 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
-  buildEventDisplayRow(
-    record: ActivityEventRecord,
-    options: { activeUserId?: string | null } = {}
-  ): AppTypes.ActivityListRow {
-    const activeUserId = `${options.activeUserId ?? this.resolveActiveUserId()}`.trim();
-    return toActivityEventRow(record, { activeUserId });
-  }
-
-  async saveActivitiesEventSync(
-    payload: Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'>,
-    options: {
-      activeUserId?: string | null;
-    } = {}
-  ): Promise<ActivitiesEventDisplaySync> {
-    const displayRecord = await this.eventsService.syncEventSnapshot(payload);
-    if (!displayRecord) {
-      throw new Error('Event sync did not return a display record.');
-    }
-    const activeUserId = `${options.activeUserId ?? displayRecord.userId ?? this.resolveActiveUserId()}`.trim();
-    const displayRow = toActivityEventRow(displayRecord, { activeUserId });
-    return {
-      ...payload,
-      displayRecord,
-      displayRow
-    };
-  }
-
-  private async loadRates(
-    request: ActivitiesPageRequest,
-    signal?: AbortSignal
-  ): Promise<PageResult<AppTypes.ActivityListRow>> {
+  async loadActivityEvents(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { signal?: AbortSignal } = {}
+  ): Promise<PageResult<ActivityEventDTO>> {
+    const request = toActivitiesPageRequest(query);
     const activeUserId = this.resolveActiveUserId();
-    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request, signal);
-    this.cacheActivityUsers(page.users);
-    const knownUsers = this.resolveActivityUsers(page.users);
-    return {
-      items: buildActivityRateRows(page.items, {
-        activeUserId,
-        users: knownUsers,
-        filter: request.rateFilter,
-        secondaryFilter: request.secondaryFilter,
-        view: request.view,
-        preserveOrder: true
-      }),
-      total: page.total,
-      nextCursor: page.nextCursor ?? null
-    };
-  }
-
-  private async loadEvents(
-    request: ActivitiesPageRequest,
-    signal?: AbortSignal
-  ): Promise<PageResult<AppTypes.ActivityListRow>> {
-    const activeUserId = this.resolveActiveUserId();
-    const page = await this.eventsService.queryActivitiesEventListPage({
+    const page = await this.eventsService.queryActivitiesEventDTOPage({
       userId: activeUserId,
       filter: request.eventScopeFilter ?? 'active-events',
       hostingPublicationFilter: request.hostingPublicationFilter,
@@ -135,26 +60,55 @@ export class ActivitiesService extends BaseRouteModeService {
       anchorDate: request.anchorDate,
       rangeStart: request.rangeStart,
       rangeEnd: request.rangeEnd
-    }, signal);
-    const rows = buildActivityEventRows(page.records, { activeUserId });
+    }, options.signal);
     if (this.isCalendarActivitiesView(request.view)) {
-      return this.paginateActivitiesRows(rows, request);
+      return this.paginateActivityEventDTOs(page.items, request);
     }
     return {
-      items: rows,
+      items: page.items,
       total: page.total,
       nextCursor: page.nextCursor
     };
   }
 
-  private async loadChats(
-    request: ActivitiesPageRequest,
-    options: { chatItems?: readonly ChatRecord[] }
-  ): Promise<PageResult<AppTypes.ActivityListRow>> {
+  async loadActivityChats(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { chatItems?: readonly ChatRecord[]; signal?: AbortSignal } = {}
+  ): Promise<PageResult<ChatDTO>> {
+    const request = toActivitiesPageRequest(query);
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
-      chatItems: options.chatItems,
-      users: this.resolveActivityUsers()
+      chatItems: options.chatItems
     });
+  }
+
+  async loadActivityRates(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { signal?: AbortSignal } = {}
+  ): Promise<PageResult<ActivityRateDTO, { users: UserDto[] }>> {
+    const request = toActivitiesPageRequest(query);
+    const activeUserId = this.resolveActiveUserId();
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request, options.signal);
+    const users = this.resolveActivityUsers(page.users);
+    this.cacheActivityUsers(users);
+    return {
+      items: page.items.map(item => ({ ...item })),
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
+      context: { users }
+    };
+  }
+
+  async saveActivityEvent(
+    payload: ContractTypes.ActivityEventSaveDTO,
+    _options: {
+      activeUserId?: string | null;
+    } = {}
+  ): Promise<ActivityEventDTO> {
+    const eventDTO = await this.eventsService.saveActivityEvent(payload);
+    if (!eventDTO) {
+      throw new Error('Event sync did not return an event DTO.');
+    }
+    return eventDTO;
   }
 
   private resolveActiveUserId(): string {
@@ -194,7 +148,7 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
-  private normalizeEventExploreOrder(value: unknown): AppTypes.EventExploreOrder {
+  private normalizeEventExploreOrder(value: unknown): ContractTypes.EventExploreOrder {
     return value === 'past-events'
       || value === 'nearby'
       || value === 'most-relevant'
@@ -203,7 +157,7 @@ export class ActivitiesService extends BaseRouteModeService {
       : 'upcoming';
   }
 
-  private normalizeEventExploreView(value: unknown): AppTypes.EventExploreView {
+  private normalizeEventExploreView(value: unknown): ContractTypes.EventExploreView {
     return value === 'distance' ? 'distance' : 'day';
   }
 
@@ -250,25 +204,25 @@ export class ActivitiesService extends BaseRouteModeService {
     return this.usersService.peekCachedUsers();
   }
 
-  private paginateActivitiesRows(
-    rows: readonly AppTypes.ActivityListRow[],
+  private paginateActivityEventDTOs(
+    items: readonly ActivityEventDTO[],
     request: ActivitiesPageRequest
-  ): PageResult<AppTypes.ActivityListRow> {
+  ): PageResult<ActivityEventDTO> {
     if (this.isCalendarActivitiesView(request.view)) {
       const range = this.activitiesQueryRange(request);
-      const filteredRows = range
-        ? rows.filter(row => this.doesActivityRowOverlapRange(row, range.start, range.end))
-        : [...rows];
+      const filteredItems = range
+        ? items.filter(item => this.doesActivityEventDTOOverlapRange(item, range.start, range.end))
+        : [...items];
       return {
-        items: filteredRows,
-        total: filteredRows.length
+        items: filteredItems,
+        total: filteredItems.length
       };
     }
 
     const startIndex = request.page * request.pageSize;
     return {
-      items: rows.slice(startIndex, startIndex + request.pageSize),
-      total: rows.length
+      items: items.slice(startIndex, startIndex + request.pageSize),
+      total: items.length
     };
   }
 
@@ -284,8 +238,8 @@ export class ActivitiesService extends BaseRouteModeService {
     };
   }
 
-  private doesActivityRowOverlapRange(row: AppTypes.ActivityListRow, start: Date, end: Date): boolean {
-    const range = this.resolveActivityRowRange(row);
+  private doesActivityEventDTOOverlapRange(item: ActivityEventDTO, start: Date, end: Date): boolean {
+    const range = this.resolveActivityEventDTORange(item);
     if (!range) {
       return false;
     }
@@ -301,17 +255,9 @@ export class ActivitiesService extends BaseRouteModeService {
   private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
     return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
   }
-
-  private resolveActivityRowRange(row: AppTypes.ActivityListRow): { start: Date; end: Date } | null {
-    if (row.type === 'rates') {
-      const point = new Date(row.dateIso);
-      if (Number.isNaN(point.getTime())) {
-        return null;
-      }
-      return { start: point, end: new Date(point.getTime() + 60 * 1000) };
-    }
-    const start = new Date(row.startAt ?? row.dateIso);
-    const end = new Date(row.endAt ?? new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
+  private resolveActivityEventDTORange(item: ActivityEventDTO): { start: Date; end: Date } | null {
+    const start = new Date(item.startAtIso);
+    const end = new Date(item.endAtIso || new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
       return null;
     }
@@ -320,7 +266,7 @@ export class ActivitiesService extends BaseRouteModeService {
       : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
   }
 
-  private isCalendarActivitiesView(view: AppTypes.ActivitiesView): boolean {
+  private isCalendarActivitiesView(view: ContractTypes.ActivitiesView): boolean {
     return view === 'week' || view === 'month';
   }
 

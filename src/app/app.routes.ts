@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { restrictedAreaGuard } from './shared/core';
+import { restrictedAreaGuard } from './routing/restricted-area.guard';
 
 const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
 

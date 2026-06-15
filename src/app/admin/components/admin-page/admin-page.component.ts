@@ -4,11 +4,10 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
+import { AppPopupContext } from '../../../shared/ui';
 import { NavigatorComponent } from '../../../navigator';
 import {
-  SessionService,
-  AppPopupContext
-} from '../../../shared/core';
+  SessionService } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminShellService } from '../../services/admin-shell.service';
@@ -192,19 +191,33 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       mode: 'admin',
       title: 'Select admin user',
       subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',
-      users: this.workspace.adminUsers(),
       onSelect: adminUserId => this.openSelectedAdmin(adminUserId)
     });
   }
 
-  private async openSelectedAdmin(adminUserId: string): Promise<boolean> {
-    this.workspace.prepareSelectedAdminSession(adminUserId);
-    const dashboard = await this.workspace.bootstrapAdmin(adminUserId);
-    if (dashboard) {
-      await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
-      return true;
+  private openSelectedAdmin(adminUserId: string): boolean {
+    const normalizedAdminUserId = adminUserId.trim();
+    if (!normalizedAdminUserId) {
+      return false;
     }
-    return false;
+    this.workspace.prepareSelectedAdminSession(normalizedAdminUserId);
+    void this.navigateToAdminWorkspaceAfterSelectorClose();
+    return true;
+  }
+
+  private async navigateToAdminWorkspaceAfterSelectorClose(): Promise<void> {
+    await this.waitForDemoSelectorClose();
+    await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
+  }
+
+  private waitForDemoSelectorClose(): Promise<void> {
+    return new Promise(resolve => {
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+        return;
+      }
+      setTimeout(resolve, 0);
+    });
   }
 
   @HostListener('window:adminLogoutRequested')

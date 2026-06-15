@@ -4,7 +4,7 @@ import type {
   UserImpressionsSectionDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto
-} from '../interfaces/user.interface';
+} from '../../contracts/user.interface';
 
 type RealtimeFlatCounterKey =
   | 'game'

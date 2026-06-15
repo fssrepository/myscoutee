@@ -3,6 +3,7 @@ import { Component, EventEmitter, HostListener, Input, OnChanges, Output, Simple
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as AppTypes from '../../../core/base/models';
+import type * as ProfileContracts from '../../../core/contracts/profile.interface';
 
 @Component({
   selector: 'app-topic-picker-popup',
@@ -17,7 +18,7 @@ import type * as AppTypes from '../../../core/base/models';
 export class TopicPickerPopupComponent implements OnChanges {
   @Input() open = false;
   @Input() title = 'Topics';
-  @Input() groups: readonly AppTypes.InterestOptionGroup[] = [];
+  @Input() groups: readonly ProfileContracts.InterestOptionGroup[] = [];
   @Input() selected: readonly string[] = [];
   @Input() multiple = true;
   @Input() maxSelections = 5;
@@ -32,7 +33,7 @@ export class TopicPickerPopupComponent implements OnChanges {
     if (changes['groups']) {
       this.activeGroupIndex = this.clampGroupIndex(this.activeGroupIndex);
     }
-    if (changes['open']?.currentValue === true || changes['selected']) {
+    if (changes['open']?.currentValue === true && changes['open']?.previousValue !== true) {
       const selectedGroupIndex = this.selectedTopicGroupIndex();
       if (selectedGroupIndex >= 0) {
         this.activeGroupIndex = selectedGroupIndex;
@@ -80,7 +81,7 @@ export class TopicPickerPopupComponent implements OnChanges {
     return `#${topic.replace(/^#+/, '')}`;
   }
 
-  protected activeGroup(): AppTypes.InterestOptionGroup | null {
+  protected activeGroup(): ProfileContracts.InterestOptionGroup | null {
     return this.groups[this.clampGroupIndex(this.activeGroupIndex)] ?? null;
   }
 

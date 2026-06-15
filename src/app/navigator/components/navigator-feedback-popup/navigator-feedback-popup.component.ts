@@ -2,7 +2,8 @@
 import { Component, OnDestroy, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext, USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 

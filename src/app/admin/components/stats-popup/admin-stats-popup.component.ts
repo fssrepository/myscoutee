@@ -1,20 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
-  AdminStatsService,
-  AppContext,
-  type AdminStatsBreakdownItemDto,
-  type AdminStatsDashboardDto,
-  type AdminStatsGraphDto,
-  type AdminStatsGraphTimelinePointDto,
-  type AdminStatsMetricDto,
-  type AdminStatsRevenueDto,
-  type AdminStatsRevenueTimelinePointDto,
-  type AdminStatsSegmentDto,
-  type AdminStatsTimelinePointDto
-} from '../../../shared/core';
+  AdminStatsService, type AdminStatsBreakdownItemDto, type AdminStatsDashboardDto, type AdminStatsGraphDto, type AdminStatsGraphTimelinePointDto, type AdminStatsMetricDto, type AdminStatsRevenueDto, type AdminStatsRevenueTimelinePointDto, type AdminStatsSegmentDto, type AdminStatsTimelinePointDto } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import { AdminShellService } from '../../services/admin-shell.service';

@@ -5,7 +5,7 @@ import { MatRippleModule } from '@angular/material/core';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { I18nService, PrivacyPolicyService } from '../../../core';
-import type { HelpCenterRevision, HelpCenterSection, PrivacyConsentSource } from '../../../core/base/models';
+import type { HelpCenterRevision, HelpCenterSection, PrivacyConsentSource } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 

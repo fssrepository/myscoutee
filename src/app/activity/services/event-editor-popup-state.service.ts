@@ -1,5 +1,6 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { Subject } from 'rxjs';
+import type { SubEventResourceFilter } from '../../shared/core/common/constants';
 
 export interface EventEditorState {
   isOpen: boolean;
@@ -8,7 +9,7 @@ export interface EventEditorState {
   readOnly?: boolean;
 }
 
-export type EventEditorSubEventResourceType = 'Members' | 'Car' | 'Accommodation' | 'Supplies';
+export type EventEditorSubEventResourceType = SubEventResourceFilter;
 
 export interface EventEditorSubEventResourcePopupRequest {
   type: EventEditorSubEventResourceType;

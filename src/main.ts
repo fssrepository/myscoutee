@@ -1,8 +1,6 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { App } from './app/app';
-import { environment } from './environments/environment';
-import { appScopedIndexedDbName, removeScopedStorageEntries } from './app/shared/core/base/storage-scope';
 
 type MutableConsole = Console & Record<string, (...args: unknown[]) => void>;
 
@@ -87,35 +85,9 @@ function markBootstrapFailed(err: unknown): void {
   );
 }
 
-async function resetDemoStorageBeforeBootstrap(): Promise<void> {
-  if (environment.activitiesDataSource !== 'local') {
-    return;
-  }
-  try {
-    removeScopedStorageEntries(localStorage, 'demo');
-  } catch {
-    // A blocked localStorage should not break demo startup.
-  }
-  try {
-    removeScopedStorageEntries(sessionStorage, 'demo');
-  } catch {
-    // A blocked sessionStorage should not break demo startup.
-  }
-  if (typeof indexedDB === 'undefined') {
-    return;
-  }
-  await new Promise<void>(resolve => {
-    const request = indexedDB.deleteDatabase(appScopedIndexedDbName('demo'));
-    request.onsuccess = () => resolve();
-    request.onerror = () => resolve();
-    request.onblocked = () => resolve();
-  });
-}
-
 silenceBrowserConsoleLogs();
 bindBootstrapResumeRecovery();
 
-resetDemoStorageBeforeBootstrap()
-  .then(() => bootstrapApplication(App, appConfig))
+bootstrapApplication(App, appConfig)
   .then(() => markBootstrapped())
   .catch(err => markBootstrapFailed(err));

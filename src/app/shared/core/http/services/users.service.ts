@@ -14,14 +14,14 @@ import type {
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
   UserReportUserSubmitRequestDto,
+  UserSelectorRole,
   UserService,
   UserSubmitActionResponseDto,
-  UsersListQueryResponse,
   UserDto
-} from '../../base/interfaces/user.interface';
-import type { UserGameFilterPreferencesDto } from '../../base/interfaces/game.interface';
-import type { LocationCoordinates } from '../../base/interfaces/location.interface';
-import { AppContext } from '../../base/context';
+} from '../../contracts/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
+import { AppContext } from '../../../ui/context';
 import { UserRealtimeSnapshotConverter } from '../../base/converters';
 import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
@@ -47,29 +47,27 @@ export class HttpUsersService implements UserService {
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryAvailableDemoUsers(
-    requestTimeoutMs?: number,
-    _onProgress?: (state: BootstrapProcessState) => void
-  ): Promise<UsersListQueryResponse> {
+  async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     type HttpDemoUserListEntry = Partial<UserDto> & Partial<UserSelectorListItemDto> & {
       gender?: string | null;
     };
     const response = await this.routeDelay.withRequestTimeout(
       HttpUsersService.DEMO_USERS_ROUTE,
       this.http
-        .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`)
+        .get<HttpDemoUserListEntry[] | null>(`${this.apiBaseUrl}/auth/demo-users`, {
+          params: {
+            role: selectorRole
+          }
+        })
         .toPromise(),
-      'Users request timeout.',
-      requestTimeoutMs
+      'Users request timeout.'
     );
     if (!Array.isArray(response)) {
-      return { users: [] };
+      return [];
     }
-    return {
-      users: response
-        .map(user => this.toDemoUserListItem(user))
-        .filter((user): user is UserSelectorListItemDto => user !== null)
-    };
+    return response
+      .map(user => this.toDemoUserListItem(user))
+      .filter((user): user is UserSelectorListItemDto => user !== null);
   }
 
   prepareUserSession(_userId: string, onProgress?: (state: BootstrapProcessState) => void): Promise<void> {

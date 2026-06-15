@@ -87,13 +87,13 @@
 
 .app-progress-indicator--bar.is-state-loading .app-progress-indicator__bar-fill,
 .app-progress-indicator--bar.is-state-loading-overdue .app-progress-indicator__bar-fill,
-.app-progress-indicator--bar.is-state-offline .app-progress-indicator__bar-fill {
+.app-progress-indicator--bar.is-state-inactive .app-progress-indicator__bar-fill {
   opacity: 0;
 }
 
 .app-progress-indicator--bar.is-state-loading .app-progress-indicator__bar-loading,
 .app-progress-indicator--bar.is-state-loading-overdue .app-progress-indicator__bar-loading,
-.app-progress-indicator--bar.is-state-offline .app-progress-indicator__bar-loading {
+.app-progress-indicator--bar.is-state-inactive .app-progress-indicator__bar-loading {
   opacity: 1;
 }
 
@@ -102,7 +102,7 @@
   background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
 }
 
-.app-progress-indicator--bar.is-state-offline .app-progress-indicator__bar-loading {
+.app-progress-indicator--bar.is-state-inactive .app-progress-indicator__bar-loading {
   transform: scaleX(1) !important;
   background: linear-gradient(180deg, rgba(165, 173, 184, 0.92) 0%, rgba(145, 154, 167, 0.96) 100%);
 }

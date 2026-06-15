@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { AdminStatsDashboardDto } from '../../base/models';
+import type { AdminStatsDashboardDto } from '../../contracts/admin.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 const ADMIN_STATS_LOAD_ROUTE = '/admin/stats';

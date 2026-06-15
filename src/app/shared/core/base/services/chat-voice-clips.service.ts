@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ChatVoiceClip } from '../models';
+import type { ChatVoiceClip } from '../../contracts';
 import { ChatVoiceClipsRepository } from '../repositories/chat-voice-clips.repository';
 
 @Injectable({

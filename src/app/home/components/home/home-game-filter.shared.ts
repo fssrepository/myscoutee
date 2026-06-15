@@ -1,4 +1,4 @@
-import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 
 export const GAME_FILTER_AGE_MIN = 18;
 export const GAME_FILTER_AGE_MAX = 120;

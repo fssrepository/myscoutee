@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,23 +8,19 @@ import { of } from 'rxjs';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import {
-  EventSubeventLeaderboardFifaMatch,
-  EventSubeventLeaderboardFifaRow,
-  EventSubeventLeaderboardGroup,
-  EventSubeventLeaderboardMember,
-  EventSubeventLeaderboardPopupComponent,
-  EventSubeventLeaderboardScoreEntry,
-  EventSubeventLeaderboardScoreRow
+  EventSubeventLeaderboardFifaMatch, EventSubeventLeaderboardFifaRow, EventSubeventLeaderboardGroup, EventSubeventLeaderboardMember, EventSubeventLeaderboardPopupComponent, EventSubeventLeaderboardScoreEntry, EventSubeventLeaderboardScoreRow
 } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
-import { ActivityResourceBuilder, ActivityResourcesService, AppContext, EventsService } from '../../../shared/core';
-import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
   AppMenuComponent,
+  AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
   type AppMenuItem,
@@ -64,7 +61,7 @@ export interface EventSubeventsItem {
   description?: string;
   location?: string;
   optional?: boolean;
-  pricing?: AppTypes.PricingConfig | null;
+  pricing?: ContractTypes.PricingConfig | null;
   startAt?: string;
   endAt?: string;
   capacityMin?: number;
@@ -178,7 +175,7 @@ interface SubEventFormModel {
   startAt: string;
   endAt: string;
   optional: boolean;
-  pricing?: AppTypes.PricingConfig | null;
+  pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
   tournamentGroupCount?: number;
@@ -254,6 +251,7 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss',
+  providers: [AppMenuDispatcher],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsPopupComponent implements OnChanges {
@@ -272,7 +270,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   @Input() subEvents: readonly EventSubeventsItem[] = [];
   @Input() displayMode: SubEventsDisplayMode = 'Casual';
   @Input() slotsEnabled = false;
-  @Input() slotTemplates: readonly AppTypes.EventSlotTemplate[] = [];
+  @Input() slotTemplates: readonly ContractTypes.EventSlotTemplate[] = [];
   @Input() parentStartAt = '';
   @Input() parentEndAt = '';
 
@@ -2069,7 +2067,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
   }
 
-  private mapLeaderboardStateGroups(state: AppTypes.SubEventLeaderboardState): EventSubeventLeaderboardGroup[] {
+  private mapLeaderboardStateGroups(state: ContractTypes.SubEventLeaderboardState): EventSubeventLeaderboardGroup[] {
     return (state.groups ?? []).map((group, index) => {
       const key = `${group.groupId ?? `group-${index + 1}`}`.trim() || `group-${index + 1}`;
       return {
@@ -2088,7 +2086,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     });
   }
 
-  private mapLeaderboardMembers(members: readonly AppTypes.SubEventLeaderboardMember[] | null | undefined): EventSubeventLeaderboardMember[] {
+  private mapLeaderboardMembers(members: readonly ContractTypes.SubEventLeaderboardMember[] | null | undefined): EventSubeventLeaderboardMember[] {
     return (members ?? [])
       .map(member => ({
         id: `${member.id ?? ''}`.trim(),
@@ -2098,7 +2096,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private mapLeaderboardScoreEntries(
-    entries: readonly AppTypes.SubEventLeaderboardScoreEntry[] | null | undefined,
+    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[] | null | undefined,
     groupId: string
   ): EventSubeventLeaderboardScoreEntry[] {
     return (entries ?? [])
@@ -2115,7 +2113,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private mapLeaderboardFifaMatches(
-    matches: readonly AppTypes.SubEventLeaderboardFifaMatch[] | null | undefined,
+    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[] | null | undefined,
     groupId: string
   ): EventSubeventLeaderboardFifaMatch[] {
     return (matches ?? [])
@@ -2133,7 +2131,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       .filter(match => match.id && match.homeMemberId && match.awayMemberId);
   }
 
-  private mapLeaderboardScoreRows(rows: readonly AppTypes.SubEventLeaderboardScoreStandingRow[] | null | undefined): EventSubeventLeaderboardScoreRow[] {
+  private mapLeaderboardScoreRows(rows: readonly ContractTypes.SubEventLeaderboardScoreStandingRow[] | null | undefined): EventSubeventLeaderboardScoreRow[] {
     return (rows ?? [])
       .map(row => ({
         memberId: `${row.memberId ?? ''}`.trim(),
@@ -2144,7 +2142,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       .filter(row => row.memberId);
   }
 
-  private mapLeaderboardFifaRows(rows: readonly AppTypes.SubEventLeaderboardFifaStandingRow[] | null | undefined): EventSubeventLeaderboardFifaRow[] {
+  private mapLeaderboardFifaRows(rows: readonly ContractTypes.SubEventLeaderboardFifaStandingRow[] | null | undefined): EventSubeventLeaderboardFifaRow[] {
     return (rows ?? [])
       .map(row => ({
         memberId: `${row.memberId ?? ''}`.trim(),
@@ -2966,7 +2964,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private preparedAssetMetricsForItem(
     item: EventSubeventsItem,
     type: Exclude<EventEditorSubEventResourceType, 'Members'>,
-    fallbackSubEvent: AppTypes.SubEventFormItem | null = this.toSubEventResourceItem(item)
+    fallbackSubEvent: ContractTypes.SubEventFormItem | null = this.toSubEventResourceItem(item)
   ): EventSubeventsAssetMetrics {
     const prepared = (item as EventSubeventsPreparedItem).resourceMetrics?.[type];
     if (prepared) {
@@ -3006,7 +3004,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private buildAssetMetricsForType(
     item: EventSubeventsItem,
-    subEvent: AppTypes.SubEventFormItem | null,
+    subEvent: ContractTypes.SubEventFormItem | null,
     type: Exclude<EventEditorSubEventResourceType, 'Members'>
   ): EventSubeventsAssetMetrics {
     if (!subEvent) {
@@ -3063,7 +3061,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
   }
 
-  private toSubEventResourceItem(item: EventSubeventsItem): AppTypes.SubEventFormItem | null {
+  private toSubEventResourceItem(item: EventSubeventsItem): ContractTypes.SubEventFormItem | null {
     const subEventId = `${item.id ?? ''}`.trim();
     if (!subEventId) {
       return null;

@@ -1,9 +1,11 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
-import type { CardRenderState, InfoCardData, InfoCardMenuAction } from '../../../ui';
-import type { ActivityEventRecord } from '../models/events.model';
+import type * as ContractTypes from '../../contracts';
+import type { CardRenderState, InfoCardData, CardMenuAction } from '../../../ui';
+import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { toActivityEventRow } from '../converters/activities-event.converter';
 
+import type * as AppConstants from '../../common/constants';
 type TopicToneGroup = {
   toneClass: string;
   options: readonly string[];
@@ -86,7 +88,7 @@ export class EventExploreBuilder {
 
   static buildGroupLabel(
     record: ActivityEventRecord,
-    view: AppTypes.EventExploreView
+    view: ContractTypes.EventExploreView
   ): string {
     if (view === 'distance') {
       const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
@@ -107,9 +109,9 @@ export class EventExploreBuilder {
     };
   }
 
-  private static menuActionsForRecord(record: ActivityEventRecord): readonly InfoCardMenuAction[] {
+  private static menuActionsForRecord(record: ActivityEventRecord): readonly CardMenuAction[] {
     const full = this.isFull(record);
-    const actions: InfoCardMenuAction[] = [
+    const actions: CardMenuAction[] = [
       'view'
     ];
     actions.push(this.joinActionId(record));
@@ -181,7 +183,7 @@ export class EventExploreBuilder {
     return record.blindMode === 'Open Event';
   }
 
-  private static joinActionId(record: ActivityEventRecord): InfoCardMenuAction {
+  private static joinActionId(record: ActivityEventRecord): CardMenuAction {
     if (this.isFull(record)) {
       return 'joinWaitlist';
     }
@@ -221,7 +223,7 @@ export class EventExploreBuilder {
     return '';
   }
 
-  private static visibilityIcon(visibility: AppTypes.EventVisibility): string {
+  private static visibilityIcon(visibility: AppConstants.EventVisibility): string {
     if (visibility === 'Friends only') {
       return 'groups';
     }
@@ -231,7 +233,7 @@ export class EventExploreBuilder {
     return 'public';
   }
 
-  private static blindModeIcon(mode: AppTypes.EventBlindMode): string {
+  private static blindModeIcon(mode: ContractTypes.EventBlindMode): string {
     if (mode === 'Open Event') {
       return 'groups';
     }

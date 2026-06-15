@@ -1,9 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../../core/base/models';
-import type { ActivityEventRecord } from '../../base/models/events.model';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../contracts/activity.interface';
 import { HttpActivityMembersService } from './activity-members.service';
 import { HttpEventsService } from './events.service';
+import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -28,8 +28,35 @@ export class HttpEventEditorDataService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  loadFullItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
-    return this.queryKnownItemById(userId, itemId);
+  async loadFullItemById(userId: string, itemId: string): Promise<ActivityEventDTO | null> {
+    const normalizedItemId = itemId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !normalizedItemId) {
+      return null;
+    }
+    const pages = await Promise.all([
+      this.eventsService.queryActivitiesEventDTOPage({
+        userId: normalizedUserId,
+        filter: 'all',
+        hostingPublicationFilter: 'all',
+        secondaryFilter: 'recent',
+        sort: 'date',
+        view: 'day',
+        limit: 200,
+        cursor: null
+      }),
+      this.eventsService.queryActivitiesEventDTOPage({
+        userId: normalizedUserId,
+        filter: 'drafts',
+        hostingPublicationFilter: 'drafts',
+        secondaryFilter: 'recent',
+        sort: 'date',
+        view: 'day',
+        limit: 200,
+        cursor: null
+      })
+    ]);
+    return pages.flatMap(page => page.items).find(item => item.id === normalizedItemId) ?? null;
   }
 
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {

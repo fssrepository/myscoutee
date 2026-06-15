@@ -8,12 +8,16 @@ export type BootstrapProcessStage =
   | 'events'
   | 'users'
   | 'contacts'
+  | 'profileExperiences'
   | 'feedback'
   | 'ratings'
   | 'affinityGraph'
   | 'assets'
   | 'activityMembers'
   | 'activityResources'
+  | 'adminUsers'
+  | 'adminWorkspaceData'
+  | 'adminHelpLinks'
   | 'indexedDb'
   | 'ready'
   | 'session'
@@ -39,17 +43,22 @@ export type BootstrapProcessListener<Stage extends string = BootstrapProcessStag
 
 export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'selector', percent: 0, label: 'Preparing demo selector' },
-  { stage: 'helpCenter', percent: 5, label: 'Preparing help content' },
-  { stage: 'ideaPosts', percent: 8, label: 'Preparing article content' },
   { stage: 'chats', percent: 11, label: 'Loading chats' },
   { stage: 'events', percent: 22, label: 'Loading events' },
   { stage: 'users', percent: 34, label: 'Preparing demo users' },
   { stage: 'contacts', percent: 40, label: 'Preparing contacts' },
+  { stage: 'profileExperiences', percent: 43, label: 'Preparing profile experiences' },
   { stage: 'feedback', percent: 46, label: 'Preparing event feedback' },
   { stage: 'ratings', percent: 52, label: 'Loading ratings' },
   { stage: 'assets', percent: 64, label: 'Preparing owned assets' },
   { stage: 'activityMembers', percent: 82, label: 'Preparing activity members' },
   { stage: 'activityResources', percent: 94, label: 'Preparing activity resources' },
+  { stage: 'helpCenter', percent: 95, label: 'Preparing help content' },
+  { stage: 'ideaPosts', percent: 96, label: 'Preparing article content' },
+  { stage: 'adminUsers', percent: 97, label: 'Preparing admin users' },
+  { stage: 'adminWorkspaceData', percent: 97, label: 'Preparing admin workspace data' },
+  { stage: 'adminHelpLinks', percent: 97, label: 'Preparing admin help links' },
+  { stage: 'affinityGraph', percent: 97, label: 'Preparing admin graph' },
   { stage: 'indexedDb', percent: 98, label: 'Syncing demo IndexedDB' },
   { stage: 'ready', percent: 100, label: 'Demo data ready' }
 ];

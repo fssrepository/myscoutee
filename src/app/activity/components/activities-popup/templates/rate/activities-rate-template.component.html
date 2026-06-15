@@ -1,15 +1,15 @@
 @if (pairCard) {
   <app-pair-card
     [card]="pairCard"
-    (badgeClick)="onBadgeClick()"
-    (profileClick)="onProfileClick($event)"
+    (menuRequest)="onMenuRequest($event)"
+    (detailClick)="onDetailClick($event)"
   ></app-pair-card>
 } @else {
   @if (singleCard) {
     <app-single-card
       [card]="singleCard"
-      (badgeClick)="onBadgeClick()"
-      (profileClick)="onProfileClick($event)"
+      (menuRequest)="onMenuRequest($event)"
+      (detailClick)="onDetailClick($event)"
     ></app-single-card>
   }
 }

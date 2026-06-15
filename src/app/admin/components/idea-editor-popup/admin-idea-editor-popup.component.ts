@@ -5,14 +5,15 @@ import { MatIconModule } from '@angular/material/icon';
 import { Observable, from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext, IdeaPostsService, type IdeaArticleDetail, type IdeaPost, type IdeaPostSaveRequest } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { IdeaPostsService, type IdeaArticleDetailDto, type IdeaPostDto, type IdeaPostSaveRequestDto } from '../../../shared/core';
 import {
-  INFO_CARD_AVAILABLE_ACTIONS,
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardResolvedMenuAction
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import {
@@ -38,7 +39,7 @@ import { AdminShellService } from '../../services/admin-shell.service';
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
 type IdeaPanelLoadingMode = 'viewer' | 'editor';
-type IdeaInfoCard = InfoCardData<IdeaArticleDetail>;
+type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 type IdeaFilterMenuItemId = 'idea-filter-menu' | `idea-filter:${IdeaPostFilter}`;
 type IdeaLanguageMenuScope = 'list' | 'form';
 type IdeaLanguageMenuItemId = `${IdeaLanguageMenuScope}-language-menu` | `${IdeaLanguageMenuScope}-language:${string}`;
@@ -54,7 +55,7 @@ interface IdeaLanguageMenuContext {
 
 interface IdeaCardMenuContext {
   card: IdeaInfoCard;
-  action: InfoCardResolvedMenuAction;
+  action: CardResolvedMenuAction;
 }
 
 interface IdeaPostDraft {
@@ -76,9 +77,9 @@ interface IdeaSmartListFilters {
 }
 
 interface IdeaPostLangCache {
-  posts: IdeaPost[];
-  byId: Map<string, IdeaPost>;
-  byContentKey: Map<string, IdeaPost>;
+  posts: IdeaPostDto[];
+  byId: Map<string, IdeaPostDto>;
+  byContentKey: Map<string, IdeaPostDto>;
   indexById: Map<string, number>;
 }
 
@@ -97,7 +98,8 @@ interface IdeaPostLangCache {
     ProgressIndicatorComponent
   ],
   templateUrl: './admin-idea-editor-popup.component.html',
-  styleUrl: './admin-idea-editor-popup.component.scss'
+  styleUrl: './admin-idea-editor-popup.component.scss',
+  providers: [AppMenuDispatcher]
 })
 export class AdminIdeaEditorPopupComponent {
   @ViewChild('ideaSmartList')
@@ -116,7 +118,7 @@ export class AdminIdeaEditorPopupComponent {
   protected editing = false;
   protected draft: IdeaPostDraft | null = null;
   protected viewerPostId = '';
-  protected viewerPost: IdeaPost | null = null;
+  protected viewerPost: IdeaPostDto | null = null;
   protected articlePanelLoading = false;
   protected articlePanelLoadingMode: IdeaPanelLoadingMode | null = null;
   protected ideaFilter: IdeaPostFilter = 'all';
@@ -130,8 +132,8 @@ export class AdminIdeaEditorPopupComponent {
   private articlePanelLoadGeneration = 0;
   private listRevision = 0;
   private readonly postsByLang = new Map<string, IdeaPostLangCache>();
-  private adminPostList: IdeaPost[] = [];
-  private adminPostIndex = new Map<string, IdeaPost>();
+  private adminPostList: IdeaPostDto[] = [];
+  private adminPostIndex = new Map<string, IdeaPostDto>();
   private adminIdeaCardList: IdeaInfoCard[] = [];
   private adminIdeaCardIndex = new Map<string, IdeaInfoCard>();
   private readonly featuredPendingIds = new Set<string>();
@@ -164,7 +166,8 @@ export class AdminIdeaEditorPopupComponent {
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     pagination: {
       mode: 'scroll'
@@ -270,11 +273,11 @@ export class AdminIdeaEditorPopupComponent {
     this.close();
   }
 
-  protected posts(): IdeaPost[] {
+  protected posts(): IdeaPostDto[] {
     return this.adminPostList;
   }
 
-  protected selectedViewerPost(): IdeaPost | null {
+  protected selectedViewerPost(): IdeaPostDto | null {
     return this.viewerPost
       ?? this.adminPostById(this.viewerPostId)
       ?? null;
@@ -320,7 +323,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  protected async openViewer(post: IdeaPost, event?: Event): Promise<void> {
+  protected async openViewer(post: IdeaPostDto, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
     this.viewerPostId = '';
@@ -339,7 +342,7 @@ export class AdminIdeaEditorPopupComponent {
     this.refreshView();
   }
 
-  protected async startEditing(post: IdeaPost, event?: Event): Promise<void> {
+  protected async startEditing(post: IdeaPostDto, event?: Event): Promise<void> {
     event?.stopPropagation();
     const targetPost = this.clonePost(post);
     this.viewerPostId = '';
@@ -393,7 +396,7 @@ export class AdminIdeaEditorPopupComponent {
     };
   }
 
-  protected async saveDraft(event?: Event): Promise<IdeaPost | null> {
+  protected async saveDraft(event?: Event): Promise<IdeaPostDto | null> {
     event?.preventDefault();
     event?.stopPropagation();
     const activeDraft = this.draft;
@@ -426,7 +429,7 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  protected deletePost(post: IdeaPost, event?: Event): void {
+  protected deletePost(post: IdeaPostDto, event?: Event): void {
     event?.stopPropagation();
     this.confirmationDialog.open({
       title: 'Move article to trash?',
@@ -460,7 +463,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  protected togglePublishedFromCard(post: IdeaPost, event?: Event): void {
+  protected togglePublishedFromCard(post: IdeaPostDto, event?: Event): void {
     event?.stopPropagation();
     if (post.trashed) {
       return;
@@ -478,7 +481,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  protected async restorePost(post: IdeaPost, event?: Event): Promise<void> {
+  protected async restorePost(post: IdeaPostDto, event?: Event): Promise<void> {
     event?.stopPropagation();
     if (!post.trashed || this.saving) {
       return;
@@ -495,7 +498,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private async confirmRestorePost(post: IdeaPost): Promise<void> {
+  private async confirmRestorePost(post: IdeaPostDto): Promise<void> {
     this.saving = true;
     this.error = '';
     this.refreshView();
@@ -519,7 +522,7 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  private async confirmPublishedToggle(post: IdeaPost, nextPublished: boolean): Promise<void> {
+  private async confirmPublishedToggle(post: IdeaPostDto, nextPublished: boolean): Promise<void> {
     this.saving = true;
     this.error = '';
     this.refreshView();
@@ -555,7 +558,7 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  protected toggleFeaturedFromCard(post: IdeaPost, event?: Event): void {
+  protected toggleFeaturedFromCard(post: IdeaPostDto, event?: Event): void {
     event?.stopPropagation();
     if (post.trashed || !post.published || this.featuredPendingIds.has(post.id)) {
       return;
@@ -573,7 +576,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private async confirmFeaturedToggle(post: IdeaPost, nextFeatured: boolean): Promise<void> {
+  private async confirmFeaturedToggle(post: IdeaPostDto, nextFeatured: boolean): Promise<void> {
     const previousPost = { ...post, imageUrls: [...post.imageUrls] };
     const removeFromFeaturedFilter = this.ideaFilter === 'featured' && post.featured && !nextFeatured;
     this.featuredPendingIds.add(post.id);
@@ -617,7 +620,7 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  private replaceVisibleIdeaPost(post: IdeaPost): void {
+  private replaceVisibleIdeaPost(post: IdeaPostDto): void {
     const smartList = this.ideaSmartList;
     if (!smartList) {
       return;
@@ -644,7 +647,7 @@ export class AdminIdeaEditorPopupComponent {
     );
   }
 
-  private syncSavedPostInVisibleList(post: IdeaPost, previousId: string | null = post.id): void {
+  private syncSavedPostInVisibleList(post: IdeaPostDto, previousId: string | null = post.id): void {
     const smartList = this.ideaSmartList;
     if (!smartList) {
       return;
@@ -677,13 +680,13 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private clonePost(post: IdeaPost): IdeaPost {
+  private clonePost(post: IdeaPostDto): IdeaPostDto {
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
   private reindexAdminPosts(): void {
     const posts = this.ideaPosts.adminPosts();
-    const postIndex = new Map<string, IdeaPost>();
+    const postIndex = new Map<string, IdeaPostDto>();
     for (const post of posts) {
       postIndex.set(post.id, post);
     }
@@ -710,11 +713,11 @@ export class AdminIdeaEditorPopupComponent {
     this.adminIdeaCardIndex.clear();
   }
 
-  private cachePosts(lang: string, posts: readonly IdeaPost[]): void {
+  private cachePosts(lang: string, posts: readonly IdeaPostDto[]): void {
     this.setPostsCache(this.normalizeContentLang(lang), posts);
   }
 
-  private cachePost(post: IdeaPost): void {
+  private cachePost(post: IdeaPostDto): void {
     const lang = this.normalizeContentLang(post.lang);
     const cache = this.postsByLang.get(lang);
     if (!cache) {
@@ -741,7 +744,7 @@ export class AdminIdeaEditorPopupComponent {
     cache.byContentKey.set(clonedPost.contentKey, clonedPost);
   }
 
-  private async findArticleTranslation(contentKey: string, lang: string): Promise<IdeaPost | null> {
+  private async findArticleTranslation(contentKey: string, lang: string): Promise<IdeaPostDto | null> {
     const normalizedLang = this.normalizeContentLang(lang);
     const normalizedContentKey = `${contentKey ?? ''}`.trim();
     if (!normalizedContentKey) {
@@ -762,10 +765,10 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  private setPostsCache(lang: string, posts: readonly IdeaPost[]): void {
+  private setPostsCache(lang: string, posts: readonly IdeaPostDto[]): void {
     const clonedPosts = posts.map(post => this.clonePost(post));
-    const byId = new Map<string, IdeaPost>();
-    const byContentKey = new Map<string, IdeaPost>();
+    const byId = new Map<string, IdeaPostDto>();
+    const byContentKey = new Map<string, IdeaPostDto>();
     for (const post of clonedPosts) {
       byId.set(post.id, post);
       byContentKey.set(post.contentKey, post);
@@ -778,7 +781,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private indexPostsById(posts: readonly IdeaPost[]): Map<string, number> {
+  private indexPostsById(posts: readonly IdeaPostDto[]): Map<string, number> {
     const indexById = new Map<string, number>();
     posts.forEach((post, index) => indexById.set(post.id, index));
     return indexById;
@@ -806,7 +809,7 @@ export class AdminIdeaEditorPopupComponent {
     return this.featuredPendingIds.has(postId);
   }
 
-  protected onIdeaCardMenuAction(card: IdeaInfoCard, event: InfoCardMenuActionEvent): void {
+  protected onIdeaCardMenuAction(card: IdeaInfoCard, event: CardMenuActionEvent<InfoCardData>): void {
     const post = this.ideaPostFromCard(card);
     if (!post) {
       return;
@@ -835,7 +838,7 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: InfoCardMenuRequestEvent): void {
+  protected openIdeaInfoCardMenu(card: IdeaInfoCard, request: CardMenuRequestEvent<InfoCardData>): void {
     const menuId = `admin-idea-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
       this.appMenuDispatcher.close(menuId);
@@ -843,7 +846,6 @@ export class AdminIdeaEditorPopupComponent {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'admin-idea-editor',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(card, request),
@@ -877,14 +879,14 @@ export class AdminIdeaEditorPopupComponent {
 
   private infoCardMenuItems(
     card: IdeaInfoCard,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, IdeaCardMenuContext>[] {
-    return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+    return (request.actions ?? []).flatMap(actionId => {
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
@@ -902,7 +904,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -1082,11 +1084,11 @@ export class AdminIdeaEditorPopupComponent {
     this.draft.contentHtml = this.formatHtmlFragment(`${current.slice(0, start)}${pasted}${current.slice(end)}`);
   }
 
-  protected articlePreviewHtml(post: Pick<IdeaPost, 'contentHtml'> | null): string {
+  protected articlePreviewHtml(post: Pick<IdeaPostDto, 'contentHtml'> | null): string {
     return this.expandPlainImageLinksInHtml(post?.contentHtml ?? '');
   }
 
-  protected postStatusLabel(post: Pick<IdeaPost, 'published' | 'featured' | 'trashed'>): string {
+  protected postStatusLabel(post: Pick<IdeaPostDto, 'published' | 'featured' | 'trashed'>): string {
     if (post.trashed) {
       return 'Trashed';
     }
@@ -1096,7 +1098,7 @@ export class AdminIdeaEditorPopupComponent {
     return 'Published';
   }
 
-  protected postDateLabel(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null): string {
+  protected postDateLabel(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'> | null): string {
     const parsed = Date.parse(post?.submittedAtIso || post?.updatedAtIso || post?.createdAtIso || '');
     if (!Number.isFinite(parsed)) {
       return 'No date';
@@ -1108,7 +1110,7 @@ export class AdminIdeaEditorPopupComponent {
     }).format(new Date(parsed));
   }
 
-  protected ideaImageUrl(post: Pick<IdeaPost, 'imageUrl' | 'imageUrls'> | null): string {
+  protected ideaImageUrl(post: Pick<IdeaPostDto, 'imageUrl' | 'imageUrls'> | null): string {
     return `${post?.imageUrl ?? post?.imageUrls?.[0] ?? ''}`.trim();
   }
 
@@ -1198,7 +1200,7 @@ export class AdminIdeaEditorPopupComponent {
     this.editing = true;
   }
 
-  private draftFromPost(post: IdeaPost): IdeaPostDraft {
+  private draftFromPost(post: IdeaPostDto): IdeaPostDraft {
     return {
       id: post.id,
       contentKey: post.contentKey || this.contentKeyFromId(post.id),
@@ -1234,7 +1236,7 @@ export class AdminIdeaEditorPopupComponent {
       : '<p>Describe why this MyScoutee article matters.</p>';
   }
 
-  private requestFromDraft(draft: IdeaPostDraft): IdeaPostSaveRequest {
+  private requestFromDraft(draft: IdeaPostDraft): IdeaPostSaveRequestDto {
     const imageUrls = this.draftImageUrls(draft);
     return {
       actorUserId: this.actorUserId(),
@@ -1281,11 +1283,11 @@ export class AdminIdeaEditorPopupComponent {
     this.refreshView();
   }
 
-  private filterPosts(posts: readonly IdeaPost[], filter: IdeaPostFilter): IdeaPost[] {
+  private filterPosts(posts: readonly IdeaPostDto[], filter: IdeaPostFilter): IdeaPostDto[] {
     return posts.filter(post => this.matchesPostFilter(post, filter));
   }
 
-  private matchesPostFilter(post: IdeaPost, filter: IdeaPostFilter): boolean {
+  private matchesPostFilter(post: IdeaPostDto, filter: IdeaPostFilter): boolean {
     if (filter === 'trashed') {
       return post.trashed === true;
     }
@@ -1304,7 +1306,7 @@ export class AdminIdeaEditorPopupComponent {
     return true;
   }
 
-  private sortedPosts(posts: readonly IdeaPost[]): IdeaPost[] {
+  private sortedPosts(posts: readonly IdeaPostDto[]): IdeaPostDto[] {
     return [...posts].sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
@@ -1312,7 +1314,7 @@ export class AdminIdeaEditorPopupComponent {
     return [...cards].sort((left, right) => this.ideaCardSortValue(right) - this.ideaCardSortValue(left));
   }
 
-  private sortValue(post: Pick<IdeaPost, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
+  private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
   }
@@ -1321,11 +1323,11 @@ export class AdminIdeaEditorPopupComponent {
     return this.adminIdeaCardIndex.get(postId) ?? null;
   }
 
-  private ideaPostFromCard(card: IdeaInfoCard): IdeaPost | null {
+  private ideaPostFromCard(card: IdeaInfoCard): IdeaPostDto | null {
     return this.adminPostById(this.ideaCardPostId(card));
   }
 
-  private adminPostById(postId: string): IdeaPost | null {
+  private adminPostById(postId: string): IdeaPostDto | null {
     const normalizedPostId = `${postId ?? ''}`.trim();
     if (!normalizedPostId) {
       return null;
@@ -1334,16 +1336,16 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected ideaCardPostId(card: IdeaInfoCard | null | undefined): string {
-    return `${card?.detailRecord?.id ?? ''}`.trim();
+    return `${card?.eagerDetail?.id ?? ''}`.trim();
   }
 
   private ideaCardSortValue(card: IdeaInfoCard): number {
-    const parsed = Date.parse(card.detailRecord?.sortAtIso ?? '');
+    const parsed = Date.parse(card.eagerDetail?.sortAtIso ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
   }
 
   private ideaCardDayGroupLabel(card: IdeaInfoCard): string {
-    const parsed = Date.parse(card.detailRecord?.sortAtIso ?? '');
+    const parsed = Date.parse(card.eagerDetail?.sortAtIso ?? '');
     if (!Number.isFinite(parsed)) {
       return 'No date';
     }

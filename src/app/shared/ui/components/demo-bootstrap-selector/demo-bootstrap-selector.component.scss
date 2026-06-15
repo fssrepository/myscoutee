@@ -26,8 +26,9 @@
 .demo-login-panel {
   position: relative;
   z-index: 1;
-  width: min(1160px, calc(100vw - 1.3rem));
-  max-height: calc(100vh - 1.4rem);
+  width: min(1080px, calc(100vw - 1.2rem));
+  max-height: calc(100vh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
   overflow: hidden;
   border-radius: 14px;
   background: #fff;

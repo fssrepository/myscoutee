@@ -5,7 +5,7 @@ import { environment } from '../../../../../environments/environment';
 import type {
   UserExperiencesPersistenceService,
   UserExperiencesQueryResponseDto
-} from '../../base/interfaces/experience.interface';
+} from '../../contracts/profile.interface';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
 
 @Injectable({

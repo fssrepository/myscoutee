@@ -2,18 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Location } from '@angular/common';
 import { Component, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import {
-  AppContext,
-  AdminModerationService,
-  type AdminModerationActionResult,
-  type AdminReportedUserDto,
-  type AdminReportDto
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { AdminModerationService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
 import {
   SmartListComponent,
   type ListQuery,
@@ -27,8 +22,8 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
-import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
-import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
+import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
 import type { ActivityListRow } from '../../../shared/core/base/models';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -131,7 +126,8 @@ export class AdminReportsPopupComponent {
     snapMode: 'none',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -143,7 +139,7 @@ export class AdminReportsPopupComponent {
 
   protected readonly reportsSmartListLoadPage: SmartListLoadPage<AdminReportListItem, AdminReportListFilters> = (
     query
-  ) => of(this.loadReportsPage(query));
+  ) => from(this.loadReportsPage(query));
 
   protected readonly blockedUsersSmartListConfig: SmartListConfig<AdminBlockedUserListItem, AdminBlockedUserListFilters> = {
     pageSize: 12,
@@ -160,7 +156,8 @@ export class AdminReportsPopupComponent {
     snapMode: 'none',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -171,7 +168,7 @@ export class AdminReportsPopupComponent {
 
   protected readonly blockedUsersSmartListLoadPage: SmartListLoadPage<AdminBlockedUserListItem, AdminBlockedUserListFilters> = (
     query
-  ) => of(this.loadBlockedUsersPage(query));
+  ) => from(this.loadBlockedUsersPage(query));
 
   protected selectUser(user: AdminReportedUserDto): void {
     const firstReport = user.reports[0];
@@ -410,7 +407,11 @@ export class AdminReportsPopupComponent {
   }
 
   protected reportRows(): AdminReportListItem[] {
-    return (this.workspace.dashboard()?.reportedUsers ?? []).flatMap(user =>
+    return this.reportRowsForUsers(this.workspace.dashboard()?.reportedUsers ?? []);
+  }
+
+  private reportRowsForUsers(users: readonly AdminReportedUserDto[]): AdminReportListItem[] {
+    return users.flatMap(user =>
       user.reports.map(report => this.buildReportListItem(user, report))
     ).sort((first, second) =>
       Date.parse(second.report.createdDate) - Date.parse(first.report.createdDate)
@@ -724,8 +725,8 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private loadReportsPage(query: ListQuery<AdminReportListFilters>): PageResult<AdminReportListItem> {
-    const rows = this.reportRows();
+  private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
+    const rows = this.reportRowsForUsers(await this.workspace.loadReportedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -736,8 +737,8 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private loadBlockedUsersPage(query: ListQuery<AdminBlockedUserListFilters>): PageResult<AdminBlockedUserListItem> {
-    const rows = this.blockedUserRows();
+  private async loadBlockedUsersPage(query: ListQuery<AdminBlockedUserListFilters>): Promise<PageResult<AdminBlockedUserListItem>> {
+    const rows = this.blockedUserRowsForUsers(await this.workspace.loadBlockedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -749,7 +750,11 @@ export class AdminReportsPopupComponent {
   }
 
   private blockedUserRows(): AdminBlockedUserListItem[] {
-    return this.blockedUsers().map(user => ({
+    return this.blockedUserRowsForUsers(this.blockedUsers());
+  }
+
+  private blockedUserRowsForUsers(users: readonly AdminReportedUserDto[]): AdminBlockedUserListItem[] {
+    return users.map(user => ({
       id: user.userId,
       user,
       row: this.buildBlockedUserActivityRow(user)

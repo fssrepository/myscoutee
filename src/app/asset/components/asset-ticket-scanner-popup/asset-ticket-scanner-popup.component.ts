@@ -1,3 +1,4 @@
+import type * as AppDTOs from '../../../shared/core/base/dto';
 
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 
@@ -12,7 +13,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 })
 export class AssetTicketScannerPopupComponent implements AfterViewInit, OnDestroy {
   @Input() state: 'idle' | 'reading' | 'success' = 'idle';
-  @Input() result: AppTypes.TicketScanPayload | null = null;
+  @Input() result: AppDTOs.TicketScanPayloadDTO | null = null;
   @Input() avatarUrl = '';
   @Input() initials = '';
   @Input() personLine = '';

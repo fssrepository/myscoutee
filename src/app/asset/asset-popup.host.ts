@@ -1,10 +1,12 @@
 import type * as AppTypes from '../shared/core/base/models';
 
+import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AppConstants from '../shared/core/common/constants';
 export interface AssetPopupHost {
   isMobileView(): boolean;
   isSubEventAssetAssignPopup(): boolean;
-  assetTypeIcon(type: AppTypes.AssetFilterType): string;
-  assetTypeClass(type: AppTypes.AssetFilterType): string;
+  assetTypeIcon(type: AppConstants.AssetFilterType): string;
+  assetTypeClass(type: AppConstants.AssetFilterType): string;
   subEventAssetAssignHeaderTitle(): string;
   subEventAssetAssignHeaderSubtitle(): string;
   canConfirmSubEventAssetAssignSelection(): boolean;
@@ -12,8 +14,8 @@ export interface AssetPopupHost {
   subEventAssetAssignErrorMessage(): string;
   closeSubEventAssetAssignPopup(apply?: boolean): void;
   confirmSubEventAssetAssignSelection(event?: Event): void;
-  subEventAssetAssignCandidates(): AppTypes.AssetCard[];
-  selectedSubEventAssetAssignChips(): AppTypes.AssetCard[];
+  subEventAssetAssignCandidates(): AppDTOs.AssetCardDTO[];
+  selectedSubEventAssetAssignChips(): AppDTOs.AssetCardDTO[];
   toggleSubEventAssetAssignCard(cardId: string, event?: Event): void;
   isSubEventAssetAssignCardSelected(cardId: string): boolean;
 }

@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { I18nPipe } from '../../../shared/ui';
+import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
 import { NavigatorService } from '../../navigator.service';
@@ -21,7 +21,8 @@ interface ProfileViewRow {
   imports: [
     CommonModule,
     MatIconModule,
-    I18nPipe
+    I18nPipe,
+    ProgressIndicatorComponent
   ],
   templateUrl: './profile-view-popup.component.html',
   styleUrl: './profile-view-popup.component.scss',

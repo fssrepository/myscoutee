@@ -2,13 +2,22 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { HttpAdminWorkspaceService } from '../../http/services/admin-workspace.service';
-import { LocalAdminWorkspaceService } from '../../local/services/admin-workspace.service';
-import type { AdminBootstrapProcessState, AdminDashboardDto, ShareTokenResolvedItem } from '../models';
+import { LocalAdminWorkspaceService } from '../../local/source/services/admin-workspace.service';
+import type {
+  AdminBootstrapProcessState,
+  AdminDashboardDto,
+  AdminFeedbackDto,
+  AdminReportedUserDto
+} from '../../contracts/admin.interface';
+import type { ShareTokenResolvedItem } from '../../contracts/share.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ShareTokensService } from './share-tokens.service';
 import { UsersService } from './users.service';
 
 const ADMIN_WORKSPACE_ROUTE = '/admin';
+const ADMIN_REPORTS_ROUTE = '/admin/reports';
+const ADMIN_BLOCKED_USERS_ROUTE = '/admin/reports/blocked-users';
+const ADMIN_FEEDBACK_ROUTE = '/admin/feedback';
 
 export interface AdminWorkspaceMenuCounters {
   adminJobs: number;
@@ -23,8 +32,6 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
   private readonly localService = inject(LocalAdminWorkspaceService);
   private readonly shareTokens = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
-
-  readonly adminUsers = this.localService.adminUsers;
 
   get isFirebaseAdminMode(): boolean {
     return environment.firebaseLoginEnabled === true;
@@ -61,6 +68,21 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
     return this.isLocalAdminWorkspace()
       ? await this.localService.loadDashboard(adminUserId)
       : await this.httpService.loadDashboard(adminUserId);
+  }
+
+  async loadReportedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
+    const service = this.resolveRouteService(ADMIN_REPORTS_ROUTE, this.localService, this.httpService);
+    return await service.loadReportedUsers(adminUserId);
+  }
+
+  async loadBlockedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
+    const service = this.resolveRouteService(ADMIN_BLOCKED_USERS_ROUTE, this.localService, this.httpService);
+    return await service.loadBlockedUsers(adminUserId);
+  }
+
+  async loadFeedback(adminUserId?: string): Promise<AdminFeedbackDto[]> {
+    const service = this.resolveRouteService(ADMIN_FEEDBACK_ROUTE, this.localService, this.httpService);
+    return await service.loadFeedback(adminUserId);
   }
 
   async loadDashboardMenuCounters(adminUserId: string): Promise<AdminWorkspaceMenuCounters | null> {

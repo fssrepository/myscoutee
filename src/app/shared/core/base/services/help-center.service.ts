@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import { LocalHelpCenterService } from '../../local/services/help-center.service';
+import { LocalHelpCenterService } from '../../local/source/services/help-center.service';
 import { HttpHelpCenterService } from '../../http/services/help-center.service';
 import type {
   HelpCenterDocumentKind,
@@ -8,8 +8,8 @@ import type {
   HelpCenterState,
   PrivacyConsentRecord,
   PrivacyConsentSaveRequest
-} from '../models';
-import { AppContext } from '../context/app.context';
+} from '../../contracts';
+import { AppContext } from '../../../ui/context/app.context';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';

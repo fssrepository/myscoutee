@@ -28,8 +28,7 @@ export const ROUTE_CONFIG: RouteConfig = {
   entries: [
     {
       routePrefix: '/auth/demo-users',
-      demoDelayMs: 1500,
-      requestTimeoutMs: 10000
+      demoDelayMs: 1500
     },
     {
       routePrefix: '/auth/me',

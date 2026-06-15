@@ -3,7 +3,7 @@ import { Component, computed, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { HelpCenterService } from '../../../shared/core';
-import type { HelpCenterSection } from '../../../shared/core/base/models';
+import type { HelpCenterSection } from '../../../shared/core/contracts';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 
 @Component({

@@ -20,25 +20,29 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger,
   CounterBadgePipe,
-  INFO_CARD_AVAILABLE_ACTIONS,
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   ProgressIndicatorComponent,
   SmartListComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { ShareTokensService } from '../../../shared/core';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
+import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppConstants from '../../../shared/core/common/constants';
 interface CapacityEditorState {
   title: string;
   capacityMin: number;
@@ -64,9 +68,9 @@ interface PendingResourceDeleteState {
 }
 
 export interface ResourceAssetViewState {
-  card: AppTypes.SubEventResourceCard;
+  card: AppDTOs.SubEventResourceCardDTO;
   mode: 'view' | 'edit';
-  source: AppTypes.AssetCard | null;
+  source: AppDTOs.AssetCardDTO | null;
   memberLabel: string;
   memberCount: number;
   pendingCount: number;
@@ -89,21 +93,21 @@ type AssetExploreOrderOption = {
 };
 
 type EventResourceMenuContext =
-  | { menu: 'resource-filter'; filter: AppTypes.AssetType }
+  | { menu: 'resource-filter'; filter: AppConstants.AssetType }
   | { menu: 'quick-action'; action: 'assign' | 'explore' }
   | { menu: 'asset-explore-order'; order: AssetExploreOrder }
-  | { menu: 'asset-explore-category'; category: AppTypes.AssetCategory }
+  | { menu: 'asset-explore-category'; category: AppConstants.AssetCategory }
   | {
       menu: 'resource-card';
-      card: AppTypes.SubEventResourceCard;
+      card: AppDTOs.SubEventResourceCardDTO;
       infoCard: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     }
   | {
       menu: 'asset-explore-card';
-      card: AppTypes.AssetCard;
+      card: AppDTOs.AssetCardDTO;
       infoCard: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     };
 
 const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
@@ -115,10 +119,10 @@ const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
 export interface AssetExplorePopupViewState {
   title: string;
   subtitle: string;
-  type: AppTypes.AssetType;
-  category: AppTypes.AssetCategory;
+  type: AppConstants.AssetType;
+  category: AppConstants.AssetCategory;
   categoryDisplay: string;
-  categoryOptions: readonly AppTypes.AssetCategory[];
+  categoryOptions: readonly AppConstants.AssetCategory[];
   startDate: Date | null;
   endDate: Date | null;
   windowStartDate: Date | null;
@@ -127,7 +131,7 @@ export interface AssetExplorePopupViewState {
   endTime: string;
   loading: boolean;
   error: string | null;
-  cards: AppTypes.AssetCard[];
+  cards: AppDTOs.AssetCardDTO[];
 }
 
 export interface AssetExploreBorrowDialogViewState {
@@ -140,12 +144,12 @@ export interface AssetExploreBorrowDialogViewState {
   endDate: Date | null;
   startTime: string;
   endTime: string;
-  lineItems: AppTypes.EventCheckoutLineItem[];
+  lineItems: ActivityContracts.EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
   bookingStartAtIso: string;
-  cancellationPolicy: AppTypes.PricingCancellationPolicy | null;
-  policies: AppTypes.EventPolicyItem[];
+  cancellationPolicy: ContractTypes.PricingCancellationPolicy | null;
+  policies: ContractTypes.EventPolicyItem[];
   acceptedPolicyIds: string[];
   payable: boolean;
   paymentStep: boolean;
@@ -161,14 +165,14 @@ export interface AssignedAssetJoinDialogViewState {
   timeframe: string;
   pathLabel: string;
   memberSummary: string;
-  lineItems: AppTypes.EventCheckoutLineItem[];
+  lineItems: ActivityContracts.EventCheckoutLineItem[];
   totalAmount: number;
   shareAmount: number;
   shareMemberCount: number;
   currency: string;
   shareLabel: string;
   shareHint: string;
-  policies: AppTypes.EventPolicyItem[];
+  policies: ContractTypes.EventPolicyItem[];
   acceptedPolicyIds: string[];
   submitLabel: string;
   busyLabel: string;
@@ -190,13 +194,13 @@ export interface EventResourcePopupHost {
   summary(): string;
   isMobileView(): boolean;
   isMobilePopupSheetViewport(): boolean;
-  resourceFilter(): AppTypes.AssetType;
-  resourceFilterOptions(): readonly AppTypes.AssetType[];
-  resourceFilterCount(type: AppTypes.AssetType): number;
-  resourceTypeClass(type: AppTypes.SubEventResourceFilter): string;
-  resourceTypeIcon(type: AppTypes.SubEventResourceFilter): string;
-  resourceTypeLabel(type: AppTypes.SubEventResourceFilter): string;
-  cards(): AppTypes.SubEventResourceCard[];
+  resourceFilter(): AppConstants.AssetType;
+  resourceFilterOptions(): readonly AppConstants.AssetType[];
+  resourceFilterCount(type: AppConstants.AssetType): number;
+  resourceTypeClass(type: AppConstants.SubEventResourceFilter): string;
+  resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string;
+  resourceTypeLabel(type: AppConstants.SubEventResourceFilter): string;
+  cards(): AppDTOs.SubEventResourceCardDTO[];
   resourceAssetView(): ResourceAssetViewState | null;
   standaloneResourceAssetView(): boolean;
   assetExploreOnly(): boolean;
@@ -208,22 +212,22 @@ export interface EventResourcePopupHost {
   joinDialog(): AssignedAssetJoinDialogViewState | null;
   assetExploreBorrowDrafts(): AssetExploreBorrowDraftViewState[];
   close(): void;
-  selectResourceFilter(filter: AppTypes.SubEventResourceFilter): void;
+  selectResourceFilter(filter: AppConstants.SubEventResourceFilter): void;
   openAssignPopup(event?: Event): void;
   openExplorePopup(event?: Event): void;
   closeExplorePopup(event?: Event): void;
-  selectAssetExploreCategory(category: AppTypes.AssetCategory, event?: Event): void;
+  selectAssetExploreCategory(category: AppConstants.AssetCategory, event?: Event): void;
   setAssetExploreDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreTime(edge: 'start' | 'end', value: string): void;
-  assetExploreAvailableQuantity(card: AppTypes.AssetCard): number;
-  assetExploreAvailabilityLabel(card: AppTypes.AssetCard): string;
-  assetExploreCanBorrow(card: AppTypes.AssetCard): boolean;
-  assetExploreInfoCard(card: AppTypes.AssetCard, options?: { groupLabel?: string | null }): InfoCardData;
-  openAssetExploreAssetView(card: AppTypes.AssetCard, event?: Event): void;
-  openAssetExploreBorrowDialog(card: AppTypes.AssetCard, event?: Event): void;
-  openAssetExploreServiceChat(card: AppTypes.AssetCard, event?: Event): void;
-  canReportAssetExploreOwner(card: AppTypes.AssetCard): boolean;
-  reportAssetExploreOwner(card: AppTypes.AssetCard, event?: Event): void;
+  assetExploreAvailableQuantity(card: AppDTOs.AssetCardDTO): number;
+  assetExploreAvailabilityLabel(card: AppDTOs.AssetCardDTO): string;
+  assetExploreCanBorrow(card: AppDTOs.AssetCardDTO): boolean;
+  assetExploreInfoCard(card: AppDTOs.AssetCardDTO, options?: { groupLabel?: string | null }): InfoCardData;
+  openAssetExploreAssetView(card: AppDTOs.AssetCardDTO, event?: Event): void;
+  openAssetExploreBorrowDialog(card: AppDTOs.AssetCardDTO, event?: Event): void;
+  openAssetExploreServiceChat(card: AppDTOs.AssetCardDTO, event?: Event): void;
+  canReportAssetExploreOwner(card: AppDTOs.AssetCardDTO): boolean;
+  reportAssetExploreOwner(card: AppDTOs.AssetCardDTO, event?: Event): void;
   closeAssetExploreBorrowDialog(event?: Event): void;
   setAssetExploreBorrowDateRange(start: Date | null, end: Date | null): void;
   setAssetExploreBorrowTime(edge: 'start' | 'end', value: string): void;
@@ -235,35 +239,35 @@ export interface EventResourcePopupHost {
   confirmAssetExploreBorrow(event?: Event): void;
   resumeAssetExploreBorrowDraft(cardId: string, event?: Event): void;
   clearAssetExploreBorrowDraft(cardId: string, event?: Event): void;
-  trackByCard(index: number, card: AppTypes.SubEventResourceCard): string;
-  canOpenMap(card: AppTypes.SubEventResourceCard): boolean;
-  openMap(card: AppTypes.SubEventResourceCard, event?: Event): void;
-  canOpenBadgeDetails(card: AppTypes.SubEventResourceCard): boolean;
-  openBadgeDetails(card: AppTypes.SubEventResourceCard, event?: Event): void;
-  occupancyLabel(card: AppTypes.SubEventResourceCard): string;
-  resourceInfoCard(card: AppTypes.SubEventResourceCard, options?: { groupLabel?: string | null }): InfoCardData;
-  canOpenAssetMembers(card: AppTypes.SubEventResourceCard): boolean;
-  openAssetMembers(card: AppTypes.SubEventResourceCard, event?: Event): void;
-  openResourceAssetView(card: AppTypes.SubEventResourceCard, mode: 'view' | 'edit', event?: Event): void;
+  trackByCard(index: number, card: AppDTOs.SubEventResourceCardDTO): string;
+  canOpenMap(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  openMap(card: AppDTOs.SubEventResourceCardDTO, event?: Event): void;
+  canOpenBadgeDetails(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  openBadgeDetails(card: AppDTOs.SubEventResourceCardDTO, event?: Event): void;
+  occupancyLabel(card: AppDTOs.SubEventResourceCardDTO): string;
+  resourceInfoCard(card: AppDTOs.SubEventResourceCardDTO, options?: { groupLabel?: string | null }): InfoCardData;
+  canOpenAssetMembers(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  openAssetMembers(card: AppDTOs.SubEventResourceCardDTO, event?: Event): void;
+  openResourceAssetView(card: AppDTOs.SubEventResourceCardDTO, mode: 'view' | 'edit', event?: Event): void;
   closeResourceAssetView(event?: Event): void;
   openAssetViewRouteEditor(view: ResourceAssetViewState, event: Event, mode?: 'view' | 'edit'): void;
-  canJoin(card: AppTypes.SubEventResourceCard): boolean;
-  join(card: AppTypes.SubEventResourceCard, event: Event): void;
-  canLeave(card: AppTypes.SubEventResourceCard): boolean;
-  leave(card: AppTypes.SubEventResourceCard, event: Event): void;
+  canJoin(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  join(card: AppDTOs.SubEventResourceCardDTO, event: Event): void;
+  canLeave(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  leave(card: AppDTOs.SubEventResourceCardDTO, event: Event): void;
   closeJoinDialog(event?: Event): void;
   toggleJoinPolicy(policyId: string): void;
   canSubmitJoin(): boolean;
   confirmJoin(event?: Event): void;
-  canEditCapacity(card: AppTypes.SubEventResourceCard): boolean;
-  openCapacityEditor(card: AppTypes.SubEventResourceCard, event: Event): void;
-  canEditRoute(card: AppTypes.SubEventResourceCard): boolean;
-  routeMenuLabel(card: AppTypes.SubEventResourceCard): string;
-  openRouteEditor(card: AppTypes.SubEventResourceCard, event: Event, mode?: 'view' | 'edit'): void;
-  openResourceServiceChat(card: AppTypes.SubEventResourceCard, event: Event): void;
-  canReportResourceManager(card: AppTypes.SubEventResourceCard): boolean;
-  reportResourceManager(card: AppTypes.SubEventResourceCard, event: Event): void;
-  delete(card: AppTypes.SubEventResourceCard, event: Event): void;
+  canEditCapacity(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  openCapacityEditor(card: AppDTOs.SubEventResourceCardDTO, event: Event): void;
+  canEditRoute(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  routeMenuLabel(card: AppDTOs.SubEventResourceCardDTO): string;
+  openRouteEditor(card: AppDTOs.SubEventResourceCardDTO, event: Event, mode?: 'view' | 'edit'): void;
+  openResourceServiceChat(card: AppDTOs.SubEventResourceCardDTO, event: Event): void;
+  canReportResourceManager(card: AppDTOs.SubEventResourceCardDTO): boolean;
+  reportResourceManager(card: AppDTOs.SubEventResourceCardDTO, event: Event): void;
+  delete(card: AppDTOs.SubEventResourceCardDTO, event: Event): void;
   closeCapacityEditor(event?: Event): void;
   canSubmitCapacityEditor(): boolean;
   onCapacityMinChange(value: number | string): void;
@@ -313,7 +317,8 @@ export interface EventResourcePopupHost {
     CounterBadgePipe
   ],
   templateUrl: './event-resource-popup.component.html',
-  styleUrls: ['./event-resource-popup.component.scss']
+  styleUrls: ['./event-resource-popup.component.scss'],
+  providers: [AppMenuDispatcher]
 })
 export class EventResourcePopupComponent implements DoCheck {
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -376,12 +381,12 @@ export class EventResourcePopupComponent implements DoCheck {
   };
 
   @ViewChild('resourceSmartList')
-  private resourceSmartList?: SmartListComponent<AppTypes.SubEventResourceCard, ResourceSmartListFilters>;
+  private resourceSmartList?: SmartListComponent<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters>;
 
   @ViewChild('assetExploreSmartList')
-  private assetExploreSmartList?: SmartListComponent<AppTypes.AssetCard, ResourceSmartListFilters>;
+  private assetExploreSmartList?: SmartListComponent<AppDTOs.AssetCardDTO, ResourceSmartListFilters>;
 
-  protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = (
+  protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters> = (
     query
   ) => {
     const cards = this.host?.cards?.() ?? [];
@@ -394,7 +399,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   };
 
-  protected readonly resourceSmartListConfig: SmartListConfig<AppTypes.SubEventResourceCard, ResourceSmartListFilters> = {
+  protected readonly resourceSmartListConfig: SmartListConfig<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters> = {
     pageSize: 18,
     defaultView: 'list',
     headerProgress: {
@@ -415,7 +420,7 @@ export class EventResourcePopupComponent implements DoCheck {
     trackBy: (_index, card) => card.id
   };
 
-  protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<AppTypes.AssetCard, ResourceSmartListFilters> = (
+  protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = (
     query
   ) => {
     const cards = this.assetExploreCardsForView();
@@ -434,7 +439,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   };
 
-  protected readonly assetExploreSmartListConfig: SmartListConfig<AppTypes.AssetCard, ResourceSmartListFilters> = {
+  protected readonly assetExploreSmartListConfig: SmartListConfig<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'list',
@@ -547,7 +552,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected onResourceSmartListStateChange(
-    change: SmartListStateChange<AppTypes.SubEventResourceCard, ResourceSmartListFilters>
+    change: SmartListStateChange<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters>
   ): void {
     this.resourceListVisibleCount = change.items.length;
     this.resourceListReady = !change.initialLoading;
@@ -561,7 +566,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected onAssetExploreSmartListStateChange(
-    change: SmartListStateChange<AppTypes.AssetCard, ResourceSmartListFilters>
+    change: SmartListStateChange<AppDTOs.AssetCardDTO, ResourceSmartListFilters>
   ): void {
     this.assetExploreHeaderProgress = change.progress;
     this.assetExploreHeaderProgressLoading = change.loading;
@@ -580,20 +585,20 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected resourceInfoCard(
-    card: AppTypes.SubEventResourceCard,
+    card: AppDTOs.SubEventResourceCardDTO,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
     return this.host.resourceInfoCard(card, options);
   }
 
-  protected openResourceCardMap(card: AppTypes.SubEventResourceCard): void {
+  protected openResourceCardMap(card: AppDTOs.SubEventResourceCardDTO): void {
     if (!this.host.canOpenMap(card)) {
       return;
     }
     this.host.openMap(card);
   }
 
-  protected openResourceCardBadgeDetails(card: AppTypes.SubEventResourceCard): void {
+  protected openResourceCardBadgeDetails(card: AppDTOs.SubEventResourceCardDTO): void {
     if (!this.host.canOpenBadgeDetails(card)) {
       return;
     }
@@ -648,7 +653,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return `${view.source?.imageUrl ?? view.card.imageUrl ?? ''}`.trim();
   }
 
-  protected assetViewPolicies(view: ResourceAssetViewState): readonly AppTypes.EventPolicyItem[] {
+  protected assetViewPolicies(view: ResourceAssetViewState): readonly ContractTypes.EventPolicyItem[] {
     return view.source?.policies ?? [];
   }
 
@@ -660,15 +665,15 @@ export class EventResourcePopupComponent implements DoCheck {
     return Math.max(0, this.assetViewPolicies(view).length - this.assetViewRequiredPoliciesCount(view));
   }
 
-  protected assetViewPolicyRequirementLabel(policy: AppTypes.EventPolicyItem): string {
+  protected assetViewPolicyRequirementLabel(policy: ContractTypes.EventPolicyItem): string {
     return policy.required === false ? 'Optional' : 'Required';
   }
 
-  protected assetViewPolicyMetaLabel(policy: AppTypes.EventPolicyItem): string {
+  protected assetViewPolicyMetaLabel(policy: ContractTypes.EventPolicyItem): string {
     return policy.required === false ? 'Optional policy' : 'Required approval';
   }
 
-  protected assetViewPolicyPreview(policy: AppTypes.EventPolicyItem): string {
+  protected assetViewPolicyPreview(policy: ContractTypes.EventPolicyItem): string {
     const description = policy.description.trim();
     if (description.length > 0) {
       return description;
@@ -949,7 +954,7 @@ export class EventResourcePopupComponent implements DoCheck {
         });
         return;
       case 'asset-explore-card':
-        this.onAssetExploreInfoCardMenuAction(context.card, {
+        this.onAssetExploreCardMenuAction(context.card, {
           id: context.infoCard.id,
           actionId: context.action.id,
           action: context.action,
@@ -962,8 +967,8 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected openResourceInfoCardMenu(
-    card: AppTypes.SubEventResourceCard,
-    request: InfoCardMenuRequestEvent
+    card: AppDTOs.SubEventResourceCardDTO,
+    request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `event-resource-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
@@ -972,7 +977,6 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'event-resource',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(card, request, 'resource-card'),
@@ -985,8 +989,8 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected openAssetExploreInfoCardMenu(
-    card: AppTypes.AssetCard,
-    request: InfoCardMenuRequestEvent
+    card: AppDTOs.AssetCardDTO,
+    request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `asset-explore-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
@@ -995,7 +999,6 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'event-resource',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(card, request, 'asset-explore-card'),
@@ -1015,29 +1018,29 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private infoCardMenuItems(
-    card: AppTypes.SubEventResourceCard | AppTypes.AssetCard,
-    request: InfoCardMenuRequestEvent,
+    card: AppDTOs.SubEventResourceCardDTO | AppDTOs.AssetCardDTO,
+    request: CardMenuRequestEvent<InfoCardData>,
     menu: 'resource-card' | 'asset-explore-card'
   ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
-    return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+    return (request.actions ?? []).flatMap(actionId => {
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
       const context: EventResourceMenuContext = menu === 'resource-card'
         ? {
             menu,
-            card: card as AppTypes.SubEventResourceCard,
+            card: card as AppDTOs.SubEventResourceCardDTO,
             infoCard: request.card,
             action
           }
         : {
             menu,
-            card: card as AppTypes.AssetCard,
+            card: card as AppDTOs.AssetCardDTO,
             infoCard: request.card,
             action
           };
@@ -1052,7 +1055,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   }
 
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -1068,13 +1071,13 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected assetExploreInfoCard(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
     return this.host.assetExploreInfoCard(card, options);
   }
 
-  protected openAssetExploreBorrowFromBadge(card: AppTypes.AssetCard): void {
+  protected openAssetExploreBorrowFromBadge(card: AppDTOs.AssetCardDTO): void {
     if (!this.host.assetExploreCanBorrow(card)) {
       return;
     }
@@ -1082,7 +1085,7 @@ export class EventResourcePopupComponent implements DoCheck {
     this.host.openAssetExploreBorrowDialog(card);
   }
 
-  protected onAssetExploreInfoCardMenuAction(card: AppTypes.AssetCard, event: InfoCardMenuActionEvent): void {
+  protected onAssetExploreCardMenuAction(card: AppDTOs.AssetCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.showAssetExploreBorrowBasket = false;
       this.host.openAssetExploreAssetView(card, new Event('click'));
@@ -1165,11 +1168,11 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected assetExploreBorrowCancellationRules(
     dialog: AssetExploreBorrowDialogViewState
-  ): AppTypes.PricingCancellationRule[] {
+  ): ContractTypes.PricingCancellationRule[] {
     return dialog.cancellationPolicy?.rules ?? [];
   }
 
-  protected assetExploreBorrowCancellationRuleWindowLabel(rule: AppTypes.PricingCancellationRule): string {
+  protected assetExploreBorrowCancellationRuleWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
     const value = Math.max(0, Number(rule.offsetValue) || 0);
     const unit = rule.offsetUnit === 'hours'
       ? (value === 1 ? 'hour' : 'hours')
@@ -1182,7 +1185,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected assetExploreBorrowCancellationRuleRefundLabel(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     currency = 'USD'
   ): string {
     if (rule.refundKind === 'full') {
@@ -1199,13 +1202,13 @@ export class EventResourcePopupComponent implements DoCheck {
 
   private assetExploreBorrowApplicableCancellationRule(
     dialog: AssetExploreBorrowDialogViewState
-  ): AppTypes.PricingCancellationRule | null {
+  ): ContractTypes.PricingCancellationRule | null {
     const bookingStart = AppUtils.isoLocalDateTimeToDate(dialog.bookingStartAtIso);
     if (!bookingStart) {
       return null;
     }
 
-    let bestRule: AppTypes.PricingCancellationRule | null = null;
+    let bestRule: ContractTypes.PricingCancellationRule | null = null;
     let bestDeadlineMs = Number.NEGATIVE_INFINITY;
     for (const rule of this.assetExploreBorrowCancellationRules(dialog)) {
       const deadlineMs = this.assetExploreBorrowCancellationRuleDeadlineMs(rule, bookingStart);
@@ -1221,7 +1224,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreBorrowCancellationRuleDeadlineMs(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     bookingStart: Date
   ): number {
     const deadline = new Date(bookingStart.getTime());
@@ -1244,7 +1247,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreBorrowCancellationRefundAmount(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     totalAmount: number
   ): number {
     if (rule.refundKind === 'full') {
@@ -1260,7 +1263,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreBorrowDescribeCancellationRule(
-    rule: AppTypes.PricingCancellationRule,
+    rule: ContractTypes.PricingCancellationRule,
     currency: string
   ): string {
     return `${this.assetExploreBorrowCancellationRuleRefundLabel(rule, currency)} when cancelled at least ${this.assetExploreBorrowCancellationRuleWindowLabel(rule)}.`;
@@ -1298,19 +1301,19 @@ export class EventResourcePopupComponent implements DoCheck {
     return this.assetExploreStickyLabel || 'No items';
   }
 
-  protected assetExploreCategoryClass(option: AppTypes.AssetCategory): string {
+  protected assetExploreCategoryClass(option: AppConstants.AssetCategory): string {
     return AssetDefaultsBuilder.assetCategoryClass(option);
   }
 
-  protected assetExploreCategoryIcon(option: AppTypes.AssetCategory): string {
+  protected assetExploreCategoryIcon(option: AppConstants.AssetCategory): string {
     return AssetDefaultsBuilder.assetCategoryIcon(option);
   }
 
-  protected assetExploreCategoryLabel(option: AppTypes.AssetCategory): string {
+  protected assetExploreCategoryLabel(option: AppConstants.AssetCategory): string {
     return AssetDefaultsBuilder.assetCategoryLabel(option);
   }
 
-  private resourceTypePalette(type: AppTypes.SubEventResourceFilter): AppMenuPalette {
+  private resourceTypePalette(type: AppConstants.SubEventResourceFilter): AppMenuPalette {
     switch (type) {
       case 'Members':
         return 'blue';
@@ -1325,7 +1328,7 @@ export class EventResourcePopupComponent implements DoCheck {
     }
   }
 
-  private assetCategoryPalette(category: AppTypes.AssetCategory): AppMenuPalette {
+  private assetCategoryPalette(category: AppConstants.AssetCategory): AppMenuPalette {
     return this.resourceTypePalette(AssetDefaultsBuilder.assetCategoryType(category));
   }
 
@@ -1348,7 +1351,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return candidate >= min && candidate <= max;
   };
 
-  protected onResourceCardMenuAction(card: AppTypes.SubEventResourceCard, event: InfoCardMenuActionEvent): void {
+  protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.host.openResourceAssetView(card, 'view', new Event('click'));
       return;
@@ -1465,7 +1468,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private syncVisibleResourceCards(
-    cards: AppTypes.SubEventResourceCard[],
+    cards: AppDTOs.SubEventResourceCardDTO[],
     previousCardCount: number
   ): void {
     if (!this.resourceListReady || !this.resourceSmartList) {
@@ -1486,7 +1489,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private syncVisibleAssetExploreCards(
-    cards: AppTypes.AssetCard[],
+    cards: AppDTOs.AssetCardDTO[],
     previousCardCount: number
   ): void {
     if (!this.assetExploreListReady || !this.assetExploreSmartList) {
@@ -1515,11 +1518,11 @@ export class EventResourcePopupComponent implements DoCheck {
     this.assetExploreStickyLabel = 'No items';
   }
 
-  private assetExploreCardsForView(source: readonly AppTypes.AssetCard[] = this.host?.assetExplorePopup?.()?.cards ?? []): AppTypes.AssetCard[] {
-    const availability = (card: AppTypes.AssetCard) => this.host.assetExploreAvailableQuantity(card);
+  private assetExploreCardsForView(source: readonly AppDTOs.AssetCardDTO[] = this.host?.assetExplorePopup?.()?.cards ?? []): AppDTOs.AssetCardDTO[] {
+    const availability = (card: AppDTOs.AssetCardDTO) => this.host.assetExploreAvailableQuantity(card);
     const cards = [...source].filter(card => availability(card) > 0);
-    const price = (card: AppTypes.AssetCard) => this.assetExplorePriceAmount(card);
-    const policyCount = (card: AppTypes.AssetCard) => (card.policies ?? []).length;
+    const price = (card: AppDTOs.AssetCardDTO) => this.assetExplorePriceAmount(card);
+    const policyCount = (card: AppDTOs.AssetCardDTO) => (card.policies ?? []).length;
 
     cards.sort((left, right) => {
       if (this.assetExploreOrder === 'lowest-price') {
@@ -1558,7 +1561,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return cards;
   }
 
-  private assetExploreGroupLabel(card: AppTypes.AssetCard): string {
+  private assetExploreGroupLabel(card: AppDTOs.AssetCardDTO): string {
     if (this.assetExploreOrder === 'lowest-price') {
       const amount = this.assetExplorePriceAmount(card);
       if (amount <= 0) {
@@ -1595,14 +1598,14 @@ export class EventResourcePopupComponent implements DoCheck {
     return '4+ left';
   }
 
-  private assetExplorePriceAmount(card: AppTypes.AssetCard): number {
+  private assetExplorePriceAmount(card: AppDTOs.AssetCardDTO): number {
     if (!card.pricing?.enabled) {
       return 0;
     }
     return Math.max(0, Number(card.pricing.basePrice) || 0);
   }
 
-  private assetExplorePriceLabel(card: AppTypes.AssetCard): string {
+  private assetExplorePriceLabel(card: AppDTOs.AssetCardDTO): string {
     const amount = this.assetExplorePriceAmount(card);
     const currency = card.pricing?.currency || 'USD';
     if (amount <= 0) {
@@ -1619,7 +1622,7 @@ export class EventResourcePopupComponent implements DoCheck {
     }
   }
 
-  private assetExplorePolicyLabel(card: AppTypes.AssetCard): string {
+  private assetExplorePolicyLabel(card: AppDTOs.AssetCardDTO): string {
     const count = (card.policies ?? []).length;
     if (count <= 0) {
       return 'No policy';
@@ -1645,7 +1648,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return basePageSize;
   }
 
-  private openAssetExploreShareDialog(card: AppTypes.AssetCard): void {
+  private openAssetExploreShareDialog(card: AppDTOs.AssetCardDTO): void {
     void this.shareTokensService.createToken({
       kind: 'asset',
       entityId: card.id,
@@ -1654,13 +1657,13 @@ export class EventResourcePopupComponent implements DoCheck {
     }).then(token => this.openShareLinkDialog('Share asset', token));
   }
 
-  private openResourceShareDialog(card: AppTypes.SubEventResourceCard): void {
+  private openResourceShareDialog(card: AppDTOs.SubEventResourceCardDTO): void {
     const sourceAssetId = `${card.sourceAssetId ?? ''}`.trim();
     if (!sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation' && card.type !== 'Supplies')) {
       void this.shareTokensService.createToken({
         kind: 'asset',
         entityId: card.id,
-        assetType: card.type as AppTypes.AssetType
+        assetType: card.type as AppConstants.AssetType
       }).then(token => this.openShareLinkDialog('Share asset', token));
       return;
     }

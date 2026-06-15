@@ -1,10 +1,7 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../interfaces/user.interface';
-import type { LocationCoordinates } from '../interfaces';
-import type {
-  ActivityEventRecord,
-  ActivityEventRepositoryItemType
-} from '../models/events.model';
+import type { UserDto } from '../../contracts/user.interface';
+import type { LocationCoordinates } from '../../contracts/user.interface';
+import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../contracts/activity.interface';
 import { PricingBuilder } from './pricing.builder';
 import { UserProfileStateBuilder } from './user-profile-state.builder';
 
@@ -12,12 +9,17 @@ export class ActivityEventRecordBuilder {
   static cloneRecord(record: ActivityEventRecord): ActivityEventRecord {
     return {
       ...record,
+      adminIds: [...(record.adminIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
       subEvents: (record.subEvents ?? []).map(item => ({
         ...item,

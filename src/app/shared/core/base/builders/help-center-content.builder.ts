@@ -1,5 +1,5 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { HelpCenterDocumentKind, HelpCenterRevision } from '../models';
+import type { HelpCenterDocumentKind, HelpCenterRevision } from '../../contracts';
 
 export class HelpCenterContentBuilder {
   static explanationBootstrapContextKeys(): string[] {
