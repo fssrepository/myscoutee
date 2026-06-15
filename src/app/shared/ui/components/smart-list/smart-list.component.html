@@ -378,10 +378,10 @@
     </div>
   }
 
-  @let dockedPaginationMenu = paginationRatingMenu();
+  @let ratingPaginationMenu = paginationRatingMenu();
   <app-menu-outlet
-    [menu]="dockedPaginationMenu"
-    [items]="dockedPaginationMenu ? paginationRatingMenuItems() : dispatchedMenuItems()"
+    [menu]="ratingPaginationMenu"
+    [items]="ratingPaginationMenu ? paginationRatingMenuItems() : dispatchedMenuItems()"
     (itemSelect)="onMenuOutletItemSelect($event)"
   ></app-menu-outlet>
 </div>

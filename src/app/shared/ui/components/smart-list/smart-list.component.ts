@@ -608,7 +608,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       context: { menu: SmartListComponent.PAGINATION_RATING_MENU_ID },
       openUp: false,
       panelAlign: 'auto',
-      panelMode: 'dock',
+      panelMode: this.shouldUseHostedFullscreenPagination() ? 'fixed' : 'dock',
       mobileBreakpointPx: 760,
       closeOnSelect: false,
       triggerElement: null,

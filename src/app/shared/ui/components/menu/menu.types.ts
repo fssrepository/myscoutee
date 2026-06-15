@@ -44,7 +44,7 @@ export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuItemLayout = 'default' | 'summary';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
-export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock';
+export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
 
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
 export type AppMenuCounterValue = AppMenuLiveValue<number | string | null | undefined>;

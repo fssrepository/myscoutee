@@ -151,7 +151,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @HostBinding('class.app-menu-host--panel-bottom-docked')
   protected get hostPanelBottomDockedClass(): boolean {
-    return this.panelMode === 'dock';
+    return this.isBottomPanelMode;
   }
 
   @HostBinding('style.--app-menu-panel-gap')
@@ -184,7 +184,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
-    if (!this.open) {
+    if (!this.open || this.isFixedPanelMode) {
       return;
     }
     event.preventDefault();
@@ -194,7 +194,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @HostListener('document:pointerdown', ['$event'])
   protected onDocumentPointerDown(event: PointerEvent): void {
-    if (!this.open || this.isInlineKind || (this.resolvedLayout === 'mobile' && !this.isAnchoredOverlayKind)) {
+    if (
+      !this.open
+      || this.isInlineKind
+      || this.isFixedPanelMode
+      || (this.resolvedLayout === 'mobile' && !this.isAnchoredOverlayKind)
+    ) {
       return;
     }
     const target = event.target as Node | null;
@@ -205,7 +210,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get resolvedLayout(): AppMenuResolvedLayout {
-    if (this.panelMode === 'dock') {
+    if (this.isBottomPanelMode) {
       return 'desktop';
     }
     if (this.panelMode === 'sheet') {
@@ -239,6 +244,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected get isAnchoredOverlayKind(): boolean {
     return this.isDropdownListKind || this.isButtonRowKind;
+  }
+
+  private get isBottomPanelMode(): boolean {
+    return this.panelMode === 'dock' || this.panelMode === 'fixed';
+  }
+
+  private get isFixedPanelMode(): boolean {
+    return this.panelMode === 'fixed';
   }
 
   protected get isCustomTriggerAction(): boolean {

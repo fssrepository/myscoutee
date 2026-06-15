@@ -1,6 +1,8 @@
 :host {
+  --app-menu-outlet-overlay-z-index: 19000;
+  --app-menu-outlet-contained-z-index: 35;
   position: fixed;
-  z-index: 19000;
+  z-index: var(--app-menu-outlet-overlay-z-index);
   display: none;
   width: 0;
   height: 0;
@@ -11,8 +13,10 @@
   display: block;
 }
 
-:host(.app-menu-outlet--dock) {
+:host(.app-menu-outlet--dock),
+:host(.app-menu-outlet--fixed) {
   position: absolute;
+  z-index: var(--app-menu-outlet-contained-z-index);
   left: 0;
   right: 0;
   bottom: 0;

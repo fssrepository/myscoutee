@@ -68,10 +68,15 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return this.activeMenu()?.panelMode === 'dock';
   }
 
+  @HostBinding('class.app-menu-outlet--fixed')
+  protected get hostFixedClass(): boolean {
+    return this.activeMenu()?.panelMode === 'fixed';
+  }
+
   @HostBinding('style.left.px')
   protected get hostLeft(): number | null {
     const menu = this.activeMenu();
-    if (!menu || this.isDockMenu(menu) || this.isMobileMenu(menu)) {
+    if (!menu || this.isBottomMenu(menu) || this.isMobileMenu(menu)) {
       return null;
     }
     const rect = menu.triggerRect;
@@ -94,7 +99,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   @HostBinding('style.top.px')
   protected get hostTop(): number | null {
     const menu = this.activeMenu();
-    if (!menu || this.isDockMenu(menu) || this.isMobileMenu(menu)) {
+    if (!menu || this.isBottomMenu(menu) || this.isMobileMenu(menu)) {
       return null;
     }
     const rect = menu.triggerRect;
@@ -182,7 +187,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   }
 
   protected dockPanelToHost(menu: AppMenuDispatchState<TId, TContext>): boolean {
-    return !this.isDockMenu(menu) && !this.isMobileMenu(menu);
+    return !this.isBottomMenu(menu) && !this.isMobileMenu(menu);
   }
 
   protected resolvedItems(menu: AppMenuDispatchState<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
@@ -198,7 +203,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   }
 
   private isMobileMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
-    if (this.isDockMenu(menu)) {
+    if (this.isBottomMenu(menu)) {
       return false;
     }
     if (menu.panelMode === 'sheet') {
@@ -215,6 +220,14 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
 
   private isDockMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
     return menu.panelMode === 'dock';
+  }
+
+  private isFixedMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
+    return menu.panelMode === 'fixed';
+  }
+
+  private isBottomMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
+    return this.isDockMenu(menu) || this.isFixedMenu(menu);
   }
 
   private viewportWidth(): number {
