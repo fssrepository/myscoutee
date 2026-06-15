@@ -165,7 +165,8 @@ export class AdminIdeaEditorPopupComponent {
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     pagination: {
       mode: 'scroll'

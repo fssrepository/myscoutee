@@ -69,6 +69,13 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     this.admin.closePopup();
   }
 
+  protected graphProgressState(loading: boolean): 'loading' | 'scrolling' | 'inactive' {
+    if (!this.appCtx.isOnline()) {
+      return 'inactive';
+    }
+    return loading ? 'loading' : 'scrolling';
+  }
+
   protected onGraphFrameLoad(): void {
     this.graphFrameLoaded.set(true);
     this.clearGraphStaticShellHideTimer();

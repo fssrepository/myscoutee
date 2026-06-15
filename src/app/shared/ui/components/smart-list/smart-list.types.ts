@@ -19,6 +19,7 @@ export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
 export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
+export type SmartListHeaderProgressState = 'active' | 'inactive';
 export type SmartListFilters = object;
 export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
@@ -242,6 +243,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
     enabled?: SmartListConfigValue<boolean, TFilters>;
     tone?: SmartListConfigValue<ProgressIndicatorTone, TFilters>;
     placement?: SmartListConfigValue<ProgressIndicatorPlacement, TFilters>;
+    state?: SmartListConfigValue<SmartListHeaderProgressState, TFilters>;
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);

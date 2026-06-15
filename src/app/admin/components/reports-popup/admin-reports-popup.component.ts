@@ -126,7 +126,8 @@ export class AdminReportsPopupComponent {
     snapMode: 'none',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -155,7 +156,8 @@ export class AdminReportsPopupComponent {
     snapMode: 'none',
     scrollPaddingTop: '2.6rem',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,

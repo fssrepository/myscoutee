@@ -139,7 +139,8 @@ export class EventMembersPopupComponent {
     pageSize: 16,
     defaultView: 'list',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,

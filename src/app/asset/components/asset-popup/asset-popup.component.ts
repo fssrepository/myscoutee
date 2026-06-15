@@ -153,7 +153,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     emptyLabel: query => this.assetFacade.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
     emptyDescription: query => this.assetFacade.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -175,7 +176,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     emptyDescription: 'Enable Ticketing On in an event to generate a ticket here.',
     emptyStickyLabel: 'No tickets',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',

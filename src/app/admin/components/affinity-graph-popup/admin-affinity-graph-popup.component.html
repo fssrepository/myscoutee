@@ -52,13 +52,13 @@
             <app-progress-indicator
               kind="bar"
               placement="inline"
-              state="loading"
+              [state]="graphProgressState(true)"
             ></app-progress-indicator>
           } @else {
             <app-progress-indicator
               kind="bar"
               placement="inline"
-              state="scrolling"
+              [state]="graphProgressState(false)"
               [position]="graphZoomProgress()"
             ></app-progress-indicator>
           }

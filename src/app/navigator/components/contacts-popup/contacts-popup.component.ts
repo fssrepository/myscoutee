@@ -249,7 +249,8 @@ export class ContactsPopupComponent implements OnDestroy {
     emptyDescription: 'Use Create contact to add members into your personal quick-reach list.',
     emptyStickyLabel: 'No contacts',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',

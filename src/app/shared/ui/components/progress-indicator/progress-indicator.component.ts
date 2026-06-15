@@ -1,12 +1,10 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostBinding, Input, OnChanges, OnDestroy, SimpleChanges, inject, signal } from '@angular/core';
 
-import { AppContext } from '../../../ui';
-
 export type ProgressIndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type ProgressIndicatorPlacement = 'edge' | 'inline';
 export type ProgressIndicatorShape = 'circle' | 'button';
 export type ProgressIndicatorSize = 'sm' | 'md';
-export type ProgressIndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'offline';
+export type ProgressIndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'inactive';
 export type ProgressIndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success';
 
 export interface ProgressIndicatorBarConfig {
@@ -27,7 +25,6 @@ let progressIndicatorId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
-  private readonly appCtx = inject(AppContext);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   @Input() kind: ProgressIndicatorKind = 'bar';
@@ -181,8 +178,8 @@ export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnD
     return this.resolvedState === 'success';
   }
 
-  protected get isOfflineState(): boolean {
-    return this.resolvedState === 'offline';
+  protected get isInactiveState(): boolean {
+    return this.resolvedState === 'inactive';
   }
 
   protected get isScrollingState(): boolean {
@@ -190,14 +187,11 @@ export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnD
   }
 
   protected get resolvedState(): ProgressIndicatorState {
-    if (this.kind === 'bar' && !this.appCtx.isOnline()) {
-      return 'offline';
-    }
     return this.state;
   }
 
   protected progressTransform(): string {
-    if (this.isOfflineState) {
+    if (this.isInactiveState) {
       return 'scaleX(1)';
     }
     const position = this.usesTimedLoadProgress()

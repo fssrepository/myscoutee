@@ -414,7 +414,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     scrollPaddingTop: '2.6rem',
     footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activitiesRates.editorSpacerHeight() : null,
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     pagination: {
       mode: () => {

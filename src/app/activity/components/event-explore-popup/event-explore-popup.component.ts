@@ -169,7 +169,8 @@ export class EventExplorePopupComponent {
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     presentation: 'list',
     listLayout: 'card-grid',

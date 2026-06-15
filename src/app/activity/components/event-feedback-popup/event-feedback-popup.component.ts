@@ -203,7 +203,8 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     pageSize: 12,
     defaultView: 'list',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => this.eventFeedbackEmptyDescription(query.filters?.filter ?? 'pending'),

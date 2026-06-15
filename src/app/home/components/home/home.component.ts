@@ -230,7 +230,8 @@ export class HomeComponent implements OnDestroy {
     presentation: 'fullscreen',
     showBackgroundLoadingProgress: true,
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     trackBy: (_index, row) => row.id,
     emptyLabel: () => this.noCandidateTitle,

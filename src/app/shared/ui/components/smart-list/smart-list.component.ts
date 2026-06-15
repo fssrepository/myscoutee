@@ -63,6 +63,7 @@ import type {
   SmartListClassValue,
   SmartListConfig,
   SmartListGroup,
+  SmartListHeaderProgressState,
   SmartListInitialScrollAnchor,
   SmartListItemRenderState,
   SmartListItemSelectEvent,
@@ -484,9 +485,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected hostedProgressIndicatorConfig(): ProgressIndicatorBarConfig {
     const placement = this.resolveConfigValue<ProgressIndicatorPlacement>(this.config.headerProgress?.placement, 'inline');
+    const state = this.resolveConfigValue<SmartListHeaderProgressState>(this.config.headerProgress?.state, 'active');
     return this.progressIndicatorBarConfig({
       tone: this.resolveConfigValue(this.config.headerProgress?.tone, 'default'),
-      placement
+      placement,
+      ...(state === 'inactive' ? { state: 'inactive' } : {})
     }, this.resolvedHeaderProgressMode());
   }
 

@@ -219,7 +219,8 @@ export class EventChatPopupComponent implements OnDestroy {
     groupMarkerClass: 'chat-thread-group-marker',
     headerProgress: {
       enabled: true,
-      tone: 'chat'
+      tone: 'chat',
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: () => this.chatInitialLoadPending ? '' : 'No messages yet',
     emptyDescription: () => this.chatInitialLoadPending ? '' : 'Start the conversation.',
