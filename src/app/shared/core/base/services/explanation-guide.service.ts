@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type { HelpCenterRevision } from '../models';
+import type { HelpCenterRevision } from '../../contracts';
 import { HelpCenterService } from './help-center.service';
-import { APP_STORAGE_KEYS } from '../storage-scope';
+import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 
 @Injectable({
   providedIn: 'root'

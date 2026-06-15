@@ -1,21 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 
-import {
-  AppContext,
-  AdminWorkspaceDataService,
-  HelpCenterService,
-  SessionService,
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  type AdminBootstrapProcessState,
-  type AdminDashboardDto,
-  type AdminModerationUserPatch,
-  type AdminReportedUserDto,
-  type AdminUserDto,
-  type UserDto,
-  type UserSelectorListItemDto
-} from '../../shared/core';
-import { APP_STORAGE_KEYS } from '../../shared/core/base/storage-scope';
+import { AppContext } from '../../shared/ui';
+import { AdminWorkspaceDataService, HelpCenterService, SessionService, UsersService, UserRecordsBuilder, USER_BY_ID_LOAD_CONTEXT_KEY, type AdminBootstrapProcessState, type AdminDashboardDto, type AdminFeedbackDto, type AdminModerationUserPatch, type AdminReportedUserDto, type AdminUserDto, type UserDto, type UserSelectorListItemDto } from '../../shared/core';
+import { APP_STORAGE_KEYS } from '../../shared/core/common/storage-scope';
 import { AdminShellService } from './admin-shell.service';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
@@ -28,6 +16,7 @@ export class AdminWorkspaceService {
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly sessionService = inject(SessionService);
+  private readonly usersService = inject(UsersService);
   private readonly shell = inject(AdminShellService);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
@@ -38,14 +27,18 @@ export class AdminWorkspaceService {
   readonly busy = this.busyRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
-  readonly adminUsers = this.workspaceData.adminUsers;
 
   get isFirebaseAdminMode(): boolean {
     return this.workspaceData.isFirebaseAdminMode;
   }
 
   prepareSelectedAdminSession(adminUserId: string): void {
-    this.workspaceData.prepareSelectedAdminSession(adminUserId);
+    const normalizedAdminUserId = adminUserId.trim();
+    if (!normalizedAdminUserId) {
+      return;
+    }
+    this.workspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
+    this.persistAdminSession(normalizedAdminUserId);
   }
 
   applyDashboard(dashboard: AdminDashboardDto): void {
@@ -126,7 +119,8 @@ export class AdminWorkspaceService {
     if (!adminId) {
       return null;
     }
-    return this.adminUsers().find(user => user.id === adminId) ?? null;
+    const user = this.usersService.peekCachedUserById(adminId);
+    return user ? UserRecordsBuilder.toDemoUserListItem(user) : null;
   }
 
   async bootstrapAdmin(
@@ -157,6 +151,31 @@ export class AdminWorkspaceService {
     } finally {
       this.busyRef.set(false);
     }
+  }
+
+  async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
+    const users = (await this.workspaceData.loadReportedUsers(this.currentAdminUserId())).map(user =>
+      this.normalizeReportedUser(user)
+    );
+    this.patchDashboard({ reportedUsers: users });
+    return users;
+  }
+
+  async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {
+    const users = (await this.workspaceData.loadBlockedUsers(this.currentAdminUserId())).map(user =>
+      this.normalizeReportedUser(user, true)
+    );
+    this.patchDashboard({ blockedUsers: users });
+    return users;
+  }
+
+  async loadFeedback(): Promise<AdminFeedbackDto[]> {
+    const feedback = (await this.workspaceData.loadFeedback(this.currentAdminUserId())).map(item => ({
+      ...item,
+      userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
+    }));
+    this.patchDashboard({ feedback });
+    return feedback;
   }
 
   clearAdminSession(): void {
@@ -208,6 +227,23 @@ export class AdminWorkspaceService {
         userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
       }))
     };
+  }
+
+  private patchDashboard(patch: Partial<Pick<AdminDashboardDto, 'reportedUsers' | 'blockedUsers' | 'feedback'>>): void {
+    const dashboard = this.dashboardRef();
+    if (!dashboard) {
+      return;
+    }
+    const nextDashboard = {
+      ...dashboard,
+      ...patch
+    };
+    this.dashboardRef.set(nextDashboard);
+    this.activateAdminProfile(nextDashboard);
+  }
+
+  private currentAdminUserId(): string | undefined {
+    return this.dashboardRef()?.activeAdmin.id ?? this.readStoredAdminId() ?? undefined;
   }
 
   private normalizeReportedUser(user: AdminReportedUserDto, blockedFallback = false): AdminReportedUserDto {

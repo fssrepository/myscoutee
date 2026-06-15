@@ -1031,7 +1031,9 @@
   padding: 1rem;
   width: min(1080px, calc(100vw - 1.2rem));
   height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
   max-height: calc(100vh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
   box-sizing: border-box;
   border-radius: 14px;
   border: 1px solid rgba(132, 162, 199, 0.32);

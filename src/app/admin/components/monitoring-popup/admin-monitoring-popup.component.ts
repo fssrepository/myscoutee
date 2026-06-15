@@ -1,16 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
-  AdminMonitoringService,
-  AppContext,
-  type AdminMonitoringStateDto,
-  AdminMonitoringCategoryDto,
-  AdminMonitoringEdgeDto,
-  AdminMonitoringHealth,
-  AdminMonitoringMetricDto
-} from '../../../shared/core';
+  AdminMonitoringService, type AdminMonitoringStateDto, AdminMonitoringCategoryDto, AdminMonitoringEdgeDto, AdminMonitoringHealth, AdminMonitoringMetricDto } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 import {
   AppMenuComponent,

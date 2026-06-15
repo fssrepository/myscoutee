@@ -1,9 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type {
-  HelpCenterRevision,
-  HelpCenterState
-} from '../models';
+import type { HelpCenterRevision, HelpCenterState } from '../../contracts';
 import { HelpCenterService } from './help-center.service';
 
 export interface TermsPolicyOpenOptions {

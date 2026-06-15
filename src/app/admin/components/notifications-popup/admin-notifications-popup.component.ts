@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
+import { AppContext } from '../../../shared/ui';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminNotificationsService, AppContext } from '../../../shared/core';
+import { AdminNotificationsService } from '../../../shared/core';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,

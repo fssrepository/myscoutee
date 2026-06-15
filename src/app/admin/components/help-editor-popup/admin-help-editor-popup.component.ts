@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext, HelpCenterService, I18nService } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { HelpCenterService, I18nService } from '../../../shared/core';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
@@ -13,7 +14,7 @@ import type {
   HelpCenterSectionPanelSpan,
   HelpCenterSection,
   HelpCenterState
-} from '../../../shared/core/base/models';
+} from '../../../shared/core/contracts';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {

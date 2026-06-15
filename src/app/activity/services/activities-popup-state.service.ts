@@ -2,28 +2,27 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
 import type * as AppTypes from '../../shared/core/base/models';
-import { ChatsService, EventsService } from '../../shared/core';
-import type {
-  ActivitiesEventSyncPayload,
-  EventChatSession
-} from '../../shared/core/base/models';
-import type { ActivitiesEventDisplaySync } from '../../shared/core/base/services/activities.service';
-import type { ChatRecord } from '../../shared/core/base/models/chat.model';
+import type * as ContractTypes from '../../shared/core/contracts';
+import { ActivitiesService, ChatsService } from '../../shared/core';
+import type { ActivityEventSaveDTO } from '../../shared/core/contracts';
+import type { EventChatSession } from '../../shared/core/base/models';
+import type { ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
+import type { ChatRecord } from '../../shared/core/contracts/chat.interface';
 
 interface ActivitiesUiState {
   open: boolean;
   openRevision: number;
-  primaryFilter: AppTypes.ActivitiesPrimaryFilter;
-  eventScope: AppTypes.ActivitiesEventScope;
-  secondaryFilter: AppTypes.ActivitiesSecondaryFilter;
-  chatContextFilter: AppTypes.ActivitiesChatContextFilter;
-  supportCaseFilter: AppTypes.SupportCaseFilter;
-  hostingPublicationFilter: AppTypes.HostingPublicationFilter;
-  rateFilter: AppTypes.RateFilterKey;
+  primaryFilter: ContractTypes.ActivitiesPrimaryFilter;
+  eventScope: ContractTypes.ActivitiesEventScope;
+  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter;
+  chatContextFilter: ContractTypes.ActivitiesChatContextFilter;
+  supportCaseFilter: ContractTypes.SupportCaseFilter;
+  hostingPublicationFilter: ContractTypes.HostingPublicationFilter;
+  rateFilter: ContractTypes.RateFilterKey;
   rateSocialBadgeEnabled: boolean;
   rateIndividualSocialBadgeEnabled: boolean;
   ratePairSocialBadgeEnabled: boolean;
-  view: AppTypes.ActivitiesView;
+  view: ContractTypes.ActivitiesView;
   showViewPicker: boolean;
   showSecondaryPicker: boolean;
   stickyValue: string;
@@ -58,11 +57,11 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStateService {
-  private readonly eventsService = inject(EventsService);
+  private readonly activitiesService = inject(ActivitiesService);
   private readonly chatsService = inject(ChatsService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private _activitiesEventSync = signal<ActivitiesEventSyncPayload | ActivitiesEventDisplaySync | null>(null);
+  private _activityEventSave = signal<ActivityEventDTO | null>(null);
   private _eventChatSession = signal<EventChatSession | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
@@ -85,7 +84,7 @@ export class ActivitiesPopupStateService {
   readonly activitiesRatesFullscreenMode = computed(() => this._uiState().ratesFullscreenMode);
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
-  readonly activitiesEventSync = this._activitiesEventSync.asReadonly();
+  readonly activityEventSave = this._activityEventSave.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
@@ -96,9 +95,9 @@ export class ActivitiesPopupStateService {
     : 'http';
 
   openActivities(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter = 'chats',
-    eventScope?: AppTypes.ActivitiesEventScope,
-    initialRateFilter?: AppTypes.RateFilterKey,
+    primaryFilter: ContractTypes.ActivitiesPrimaryFilter = 'chats',
+    eventScope?: ContractTypes.ActivitiesEventScope,
+    initialRateFilter?: ContractTypes.RateFilterKey,
     initialRateSocialBadgeEnabled = false,
     options: { adminServiceOnly?: boolean } = {}
   ): void {
@@ -153,7 +152,7 @@ export class ActivitiesPopupStateService {
     return this._uiState().open;
   }
 
-  setActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): void {
+  setActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): void {
     if (this._uiState().adminServiceOnly) {
       this.patchUiState({
         primaryFilter: 'chats',
@@ -188,25 +187,25 @@ export class ActivitiesPopupStateService {
     }));
   }
 
-  setActivitiesEventScope(scope: AppTypes.ActivitiesEventScope): void {
+  setActivitiesEventScope(scope: ContractTypes.ActivitiesEventScope): void {
     this.patchUiState({
       eventScope: scope,
       hostingPublicationFilter: scope === 'drafts' ? 'drafts' : 'all'
     });
   }
 
-  setActivitiesSecondaryFilter(filter: AppTypes.ActivitiesSecondaryFilter): void {
+  setActivitiesSecondaryFilter(filter: ContractTypes.ActivitiesSecondaryFilter): void {
     this.patchUiState({
       secondaryFilter: filter,
       showSecondaryPicker: false
     });
   }
 
-  setActivitiesChatContextFilter(filter: AppTypes.ActivitiesChatContextFilter): void {
+  setActivitiesChatContextFilter(filter: ContractTypes.ActivitiesChatContextFilter): void {
     this.patchUiState({ chatContextFilter: this._uiState().adminServiceOnly ? 'service' : filter });
   }
 
-  setActivitiesSupportCaseFilter(filter: AppTypes.SupportCaseFilter): void {
+  setActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
     const normalized = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
@@ -216,11 +215,11 @@ export class ActivitiesPopupStateService {
     });
   }
 
-  setActivitiesHostingPublicationFilter(filter: AppTypes.HostingPublicationFilter): void {
+  setActivitiesHostingPublicationFilter(filter: ContractTypes.HostingPublicationFilter): void {
     this.patchUiState({ hostingPublicationFilter: filter });
   }
 
-  setActivitiesRateFilter(filter: AppTypes.RateFilterKey): void {
+  setActivitiesRateFilter(filter: ContractTypes.RateFilterKey): void {
     this._uiState.update(state => {
       const nextState = {
         ...state,
@@ -258,7 +257,7 @@ export class ActivitiesPopupStateService {
     });
   }
 
-  setActivitiesView(view: AppTypes.ActivitiesView): void {
+  setActivitiesView(view: ContractTypes.ActivitiesView): void {
     this.patchUiState({
       view,
       showViewPicker: false,
@@ -297,38 +296,28 @@ export class ActivitiesPopupStateService {
     this.patchUiState({ selectedRateId: rateId });
   }
 
-  emitActivitiesEventSync(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    this._activitiesEventSync.set({ ...payload });
+  emitActivityEventSave(payload: ActivityEventSaveDTO): Promise<void> {
     return this.runDeferredEventPersistence(payload);
   }
 
-  emitActivitiesEventDisplaySync(sync: ActivitiesEventDisplaySync): void {
-    this._activitiesEventSync.set(sync);
+  emitActivityEventSaveResult(sync: ActivityEventDTO): void {
+    this._activityEventSave.set(sync);
   }
 
-  private runDeferredEventPersistence(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<void> {
-    const persist = async () => {
-      await this.eventsService.syncEventSnapshot(payload).catch(() => {
+  private runDeferredEventPersistence(payload: ActivityEventSaveDTO): Promise<void> {
+    return this.activitiesService.saveActivityEvent(payload)
+      .then(displaySync => {
+        if (displaySync) {
+          this._activityEventSave.set(displaySync);
+        }
+      })
+      .catch(() => {
         // Demo persistence is best-effort; UI state stays optimistic.
       });
-    };
-
-    return new Promise(resolve => {
-      const run = () => {
-        void persist().finally(resolve);
-      };
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          setTimeout(run, 0);
-        });
-        return;
-      }
-      setTimeout(run, 0);
-    });
   }
 
-  clearActivitiesEventSync(): void {
-    this._activitiesEventSync.set(null);
+  clearActivityEventSave(): void {
+    this._activityEventSave.set(null);
   }
 
   openEventChat(item: ChatRecord): void {
@@ -354,42 +343,42 @@ export class ActivitiesPopupStateService {
     });
   }
 
-  async loadEventChatMessages(chat: ChatRecord): Promise<AppTypes.ChatPopupMessage[]> {
+  async loadEventChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
-  async sendEventChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<AppTypes.ChatPopupMessage | null> {
+  async sendEventChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async sendEventChatMessageWithAttachments(
     chat: ChatRecord,
     text: string,
-    attachments: readonly AppTypes.ChatMessageAttachment[],
+    attachments: readonly ContractTypes.ChatMessageAttachment[],
     clientId?: string,
-    replyTo?: AppTypes.ChatPopupMessage['replyTo']
-  ): Promise<AppTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
+  ): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
   }
 
   async updateEventChatMessage(
     chat: ChatRecord,
     messageId: string,
-    mutation: AppTypes.ChatMessageMutation
-  ): Promise<AppTypes.ChatPopupMessage | null> {
+    mutation: ContractTypes.ChatMessageMutation
+  ): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchEventChatMessages(
     chat: ChatRecord,
-    onMessage: (message: AppTypes.ChatPopupMessage) => void
+    onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchEventChatEvents(
     chat: ChatRecord,
-    onEvent: (event: AppTypes.ChatLiveEvent) => void
+    onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatEvents(chat, onEvent);
   }
@@ -417,7 +406,7 @@ export class ActivitiesPopupStateService {
       : state.rateIndividualSocialBadgeEnabled;
   }
 
-  private normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): AppTypes.ActivitiesPrimaryFilter {
+  private normalizeActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): ContractTypes.ActivitiesPrimaryFilter {
     if (filter === 'hosting' || filter === 'invitations') {
       return 'events';
     }
@@ -425,9 +414,9 @@ export class ActivitiesPopupStateService {
   }
 
   private resolveActivitiesEventScope(
-    primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-    explicitScope?: AppTypes.ActivitiesEventScope
-  ): AppTypes.ActivitiesEventScope {
+    primaryFilter: ContractTypes.ActivitiesPrimaryFilter,
+    explicitScope?: ContractTypes.ActivitiesEventScope
+  ): ContractTypes.ActivitiesEventScope {
     if (explicitScope) {
       return explicitScope;
     }

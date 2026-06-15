@@ -2,11 +2,9 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type {
-  ActivityMemberOwnerRef,
-  ActivityMembersSummary
-} from '../../../core/base/models';
 import type * as AppTypes from '../../../core/base/models';
+import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
+import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -14,10 +12,10 @@ import type * as AppTypes from '../../../core/base/models';
 export class HttpActivityMembersService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedMembersByOwnerKey: Record<string, AppTypes.ActivityMemberEntry[]> = {};
+  private readonly cachedMembersByOwnerKey: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
   private readonly cachedSummariesByOwnerKey: Record<string, ActivityMembersSummary> = {};
 
-  peekMembersByOwner(owner: ActivityMemberOwnerRef): AppTypes.ActivityMemberEntry[] {
+  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberEntry[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
@@ -25,14 +23,14 @@ export class HttpActivityMembersService {
     return this.cloneEntries(this.cachedMembersByOwnerKey[this.ownerKey(normalizedOwner)] ?? []);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<AppTypes.ActivityMemberEntry[]> {
+  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
     }
     try {
       const response = await this.http
-        .get<AppTypes.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
+        .get<ActivityContracts.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
           params: new HttpParams()
             .set('ownerType', normalizedOwner.ownerType)
             .set('ownerId', normalizedOwner.ownerId)
@@ -80,7 +78,7 @@ export class HttpActivityMembersService {
 
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null,
     actorUserId = ''
   ): Promise<void> {
@@ -103,7 +101,7 @@ export class HttpActivityMembersService {
     targetUserId: string,
     action: 'disqualify' | 'reinstate',
     reason?: string | null
-  ): Promise<AppTypes.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedOwner || !normalizedTargetUserId) {
@@ -111,7 +109,7 @@ export class HttpActivityMembersService {
     }
     try {
       const response = await this.http
-        .post<AppTypes.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+        .post<ActivityContracts.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
           owner: normalizedOwner,
           actorUserId: actorUserId.trim(),
           targetUserId: normalizedTargetUserId,
@@ -163,7 +161,7 @@ export class HttpActivityMembersService {
 
   private cacheMembers(
     owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): void {
     const normalizedOwner = this.normalizeOwnerRef(owner);
@@ -192,7 +190,7 @@ export class HttpActivityMembersService {
 
   private buildSummary(
     owner: ActivityMemberOwnerRef,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): ActivityMembersSummary {
     const acceptedMemberUserIds = members
@@ -218,7 +216,7 @@ export class HttpActivityMembersService {
     };
   }
 
-  private cloneEntries(entries: readonly AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+  private cloneEntries(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
     return entries.map(entry => ({ ...entry }));
   }
 

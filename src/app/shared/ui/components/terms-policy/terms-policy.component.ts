@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
 import { I18nService, TermsPolicyService } from '../../../core';
-import type { HelpCenterSection } from '../../../core/base/models';
+import type { HelpCenterSection } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 

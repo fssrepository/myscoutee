@@ -114,8 +114,11 @@
   position: relative;
   z-index: 1;
   width: min(1080px, calc(100vw - 1.2rem));
+  height: calc(100vh - 1.2rem);
   height: calc(100dvh - 1.2rem);
+  min-height: calc(100vh - 1.2rem);
   min-height: calc(100dvh - 1.2rem);
+  max-height: calc(100vh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
   border: 1px solid rgba(125, 146, 177, 0.28);
   border-radius: 18px;
@@ -864,7 +867,9 @@
   width: min(1080px, calc(100vw - 1.2rem));
   max-width: 100%;
   height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
   max-height: calc(100vh - 1.2rem);
+  max-height: calc(100dvh - 1.2rem);
 }
 
 .experience-form-header {

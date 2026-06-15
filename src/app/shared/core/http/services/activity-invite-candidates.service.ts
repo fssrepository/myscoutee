@@ -2,8 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity-invite.interface';
-import type { ActivityMemberEntry } from '../../contracts/activity-member.interface';
+import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity.interface';
+import type { ActivityMemberEntry } from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'

@@ -6,6 +6,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../../core/contracts';
 
 @Component({
   selector: 'app-pricing-slot-panel',
@@ -24,16 +25,16 @@ export class PricingSlotPanelComponent implements OnChanges {
   @Input() enabled = false;
   @Output() readonly enabledChange = new EventEmitter<boolean>();
 
-  @Input() overrides: readonly AppTypes.PricingSlotOverride[] = [];
-  @Output() readonly overridesChange = new EventEmitter<AppTypes.PricingSlotOverride[]>();
+  @Input() overrides: readonly ContractTypes.PricingSlotOverride[] = [];
+  @Output() readonly overridesChange = new EventEmitter<ContractTypes.PricingSlotOverride[]>();
 
-  @Input() slotCatalog: readonly AppTypes.PricingSlotReference[] = [];
+  @Input() slotCatalog: readonly ContractTypes.PricingSlotReference[] = [];
   @Input() currency = 'USD';
   @Input() readOnly = false;
   @Input() title = 'Customize pricing per slot';
   @Input() description = 'Override global rules with slot-specific pricing.';
 
-  protected workingOverrides: AppTypes.PricingSlotOverride[] = [];
+  protected workingOverrides: ContractTypes.PricingSlotOverride[] = [];
   
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
@@ -116,7 +117,7 @@ export class PricingSlotPanelComponent implements OnChanges {
     this.emitOverrides();
   }
 
-  protected availableSlotsFor(override: AppTypes.PricingSlotOverride): AppTypes.PricingSlotReference[] {
+  protected availableSlotsFor(override: ContractTypes.PricingSlotOverride): ContractTypes.PricingSlotReference[] {
     const selectedSlotIds = new Set(
       this.workingOverrides
         .map(item => item.slotId?.trim() || '')
@@ -132,11 +133,11 @@ export class PricingSlotPanelComponent implements OnChanges {
     return this.remainingSlots().length > 0;
   }
 
-  protected trackByOverride(_: number, override: AppTypes.PricingSlotOverride): string {
+  protected trackByOverride(_: number, override: ContractTypes.PricingSlotOverride): string {
     return override.id;
   }
 
-  protected slotWindowLabel(override: AppTypes.PricingSlotOverride): string {
+  protected slotWindowLabel(override: ContractTypes.PricingSlotOverride): string {
     const start = this.formatDateTime(override.startAt);
     const end = this.formatDateTime(override.endAt);
     if (!start && !end) {
@@ -184,7 +185,7 @@ export class PricingSlotPanelComponent implements OnChanges {
     this.cdr.markForCheck();
   }
 
-  private remainingSlots(): AppTypes.PricingSlotReference[] {
+  private remainingSlots(): ContractTypes.PricingSlotReference[] {
     const selectedSlotIds = new Set(
       this.workingOverrides
         .map(item => item.slotId?.trim() || '')

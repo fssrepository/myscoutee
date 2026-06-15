@@ -4,20 +4,18 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesPageRequest } from '../../../core/base/models';
-import type { RateRecord } from '../../contracts/rate.interface';
-import type {
-  ActivityRatePageResult,
-  UserRateRecord,
-  UserRatesSyncResult
-} from '../../base/interfaces/game.interface';
-import type { UserDto } from '../../base/interfaces/user.interface';
+import type { ActivitiesPageRequest } from '../../contracts';
+import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
+import type { UserRatesSyncResult } from '../../contracts/activity.interface';
+import type { IRatesService } from '../../contracts/activity.interface';
+import type { UserRateRecord } from '../../local/source/entity/rate.entity';
+import type { UserDto } from '../../contracts/user.interface';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 
 @Injectable({
   providedIn: 'root'
 })
-export class HttpRatesService {
+export class HttpRatesService implements IRatesService {
   private static readonly USER_RATES_SYNC_ROUTE = '/user-rates/sync';
   private static readonly USER_RATES_ROUTE = '/activities/rates';
   private static readonly USER_RATES_PAGE_ROUTE = '/activities/rates/page';
@@ -25,9 +23,9 @@ export class HttpRatesService {
   private readonly rateOutboxRepository = inject(RateOutboxRepository);
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedRatesByUserId: Record<string, RateRecord[]> = {};
+  private readonly cachedRatesByUserId: Record<string, ActivityRateDTO[]> = {};
 
-  peekRateItemsByUser(userId: string): RateRecord[] {
+  peekRateItemsByUser(userId: string): ActivityRateDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -40,14 +38,14 @@ export class HttpRatesService {
     );
   }
 
-  async queryRateItemsByUser(userId: string): Promise<RateRecord[]> {
+  async queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     try {
       const response = await this.http
-        .get<RateRecord[] | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_ROUTE}`, {
+        .get<ActivityRateDTO[] | null>(`${this.apiBaseUrl}${HttpRatesService.USER_RATES_ROUTE}`, {
           params: new HttpParams().set('userId', normalizedUserId)
         })
         .toPromise();
@@ -75,7 +73,7 @@ export class HttpRatesService {
     userId: string,
     request: ActivitiesPageRequest,
     signal?: AbortSignal
-  ): Promise<ActivityRatePageResult> {
+  ): Promise<ActivityRatePageResultDTO> {
     this.throwIfAborted(signal);
     try {
       await this.flushPendingUserRatesOutboxBatch();
@@ -85,7 +83,7 @@ export class HttpRatesService {
     this.throwIfAborted(signal);
     await this.queryRateItemsByUser(userId);
     this.throwIfAborted(signal);
-    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateRecord['direction']];
+    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
     let params = new HttpParams()
       .set('userId', userId)
       .set('mode', mode === 'pair' ? 'pair' : 'single')
@@ -109,7 +107,7 @@ export class HttpRatesService {
     try {
       const response = await this.requestWithAbort(
         this.http.get<{
-          items?: RateRecord[] | null;
+          items?: ActivityRateDTO[] | null;
           total?: number | null;
           nextCursor?: string | null;
           users?: UserDto[] | null;
@@ -191,14 +189,14 @@ export class HttpRatesService {
     return error;
   }
 
-  private shouldUseCachedActivitiesRatePage(page: ActivityRatePageResult, userId: string): boolean {
+  private shouldUseCachedActivitiesRatePage(page: ActivityRatePageResultDTO, userId: string): boolean {
     return page.items.length === 0
       && page.total === 0
       && this.peekRateItemsByUser(userId).length > 0;
   }
 
-  private buildCachedActivitiesRatePage(userId: string, request: ActivitiesPageRequest): ActivityRatePageResult {
-    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', RateRecord['direction']];
+  private buildCachedActivitiesRatePage(userId: string, request: ActivitiesPageRequest): ActivityRatePageResultDTO {
+    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
     const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
     const pageIndex = Math.max(0, Math.trunc(Number(request.page) || 0));
     const filtered = this.peekRateItemsByUser(userId)
@@ -224,7 +222,7 @@ export class HttpRatesService {
     };
   }
 
-  private matchesRateRange(item: RateRecord, request: ActivitiesPageRequest): boolean {
+  private matchesRateRange(item: ActivityRateDTO, request: ActivitiesPageRequest): boolean {
     const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
     const rangeStartMs = request.rangeStart ? AppUtils.toSortableDate(request.rangeStart) : null;
     const rangeEndMs = request.rangeEnd ? AppUtils.toSortableDate(request.rangeEnd) : null;
@@ -237,7 +235,7 @@ export class HttpRatesService {
     return true;
   }
 
-  private matchesRateSocialFilter(item: RateRecord, socialBadgeEnabled: boolean): boolean {
+  private matchesRateSocialFilter(item: ActivityRateDTO, socialBadgeEnabled: boolean): boolean {
     if (item.mode === 'individual') {
       const friendsInCommon = item.socialContext === 'friends-in-common';
       return socialBadgeEnabled ? friendsInCommon : !friendsInCommon;
@@ -249,7 +247,7 @@ export class HttpRatesService {
     return true;
   }
 
-  private compareRateItems(left: RateRecord, right: RateRecord, request: ActivitiesPageRequest): number {
+  private compareRateItems(left: ActivityRateDTO, right: ActivityRateDTO, request: ActivitiesPageRequest): number {
     if (request.sort === 'distance') {
       const distanceDelta = this.rateDistanceValue(left) - this.rateDistanceValue(right);
       if (distanceDelta !== 0) {
@@ -280,14 +278,14 @@ export class HttpRatesService {
       : right.id.localeCompare(left.id);
   }
 
-  private rateDistanceValue(item: RateRecord): number {
+  private rateDistanceValue(item: ActivityRateDTO): number {
     if (Number.isFinite(item.distanceMetersExact)) {
       return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
     }
     return 0;
   }
 
-  private rateRelevanceScore(item: RateRecord): number {
+  private rateRelevanceScore(item: ActivityRateDTO): number {
     const scoreGiven = Number.isFinite(item.scoreGiven)
       ? Math.max(0, Math.round(Number(item.scoreGiven)))
       : 0;
@@ -415,7 +413,7 @@ export class HttpRatesService {
       .filter(id => id.length > 0))];
   }
 
-  private cloneRateItems(items: readonly RateRecord[]): RateRecord[] {
+  private cloneRateItems(items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
     return items.map(item => ({ ...item }));
   }
 }

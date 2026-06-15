@@ -1,5 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type * as AppTypes from '../../../core/base/models';
+import type * as ContractTypes from '../../contracts';
 
 type ActivityEventSourceLike = {
   id: string;
@@ -28,7 +29,7 @@ type ActivityEventSourceLike = {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: unknown;
-  policies?: readonly AppTypes.EventPolicyItem[];
+  policies?: readonly ContractTypes.EventPolicyItem[];
 };
 
 export class ActivityEventBuilder {

@@ -18,7 +18,14 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
-import type { CardImageSlide, CardProfileViewData, PairCardData, PairCardSlot } from '../card.types';
+import type {
+  CardImageSlide,
+  CardMenuRequestEvent,
+  CardMenuTriggerRect,
+  CardProfileViewData,
+  PairCardData,
+  PairCardSlot
+} from '../card.types';
 
 @Component({
   selector: 'app-pair-card',
@@ -101,13 +108,15 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() card: PairCardData | null = null;
 
   @Output() readonly badgeClick = new EventEmitter<string>();
-  @Output() readonly profileClick = new EventEmitter<CardProfileViewData>();
+  @Output() readonly menuRequest = new EventEmitter<CardMenuRequestEvent<PairCardData>>();
+  @Output() readonly detailClick = new EventEmitter<CardProfileViewData>();
 
   protected readonly activeIndexByKey: Record<string, number> = {};
   protected readonly loadingByKey: Record<string, boolean> = {};
   protected splitPercent = PairCardComponent.SPLIT_DEFAULT_PERCENT;
   protected isResizing = false;
   protected transientBadgeBlink = false;
+  protected badgeMenuOpen = false;
   protected fullscreenCardWidth: string | null = null;
   protected fullscreenCardHeight: string | null = null;
 
@@ -280,10 +289,27 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   protected onBadgeClick(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    if (!this.isBadgeInteractive() || this.card?.badge?.disabled || !this.card?.rowId) {
+    const card = this.card;
+    const badge = card?.badge;
+    if (!this.isBadgeInteractive() || badge?.disabled || !card?.rowId || !badge) {
       return;
     }
-    this.badgeClick.emit(this.card.rowId);
+    if (badge.menuRequest === true) {
+      const trigger = event.currentTarget as HTMLElement | null;
+      this.badgeMenuOpen = true;
+      this.cdr.markForCheck();
+      this.menuRequest.emit({
+        id: card.rowId,
+        card,
+        actions: [],
+        badge,
+        triggerRect: this.resolveBadgeTriggerRect(trigger),
+        openUp: this.shouldOpenBadgeMenuUp(trigger),
+        closeTrigger: () => this.closeBadgeMenu()
+      });
+      return;
+    }
+    this.badgeClick.emit(card.rowId);
   }
 
   protected onProfileClick(profileView: CardProfileViewData | null | undefined, event: MouseEvent): void {
@@ -292,10 +318,14 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     if (!userId) {
       return;
     }
-    this.profileClick.emit({
+    this.emitDetailClick({
       ...profileView,
       userId
     });
+  }
+
+  private emitDetailClick(event: CardProfileViewData): void {
+    this.detailClick.emit(event);
   }
 
   protected consumeClick(event: Event): void {
@@ -373,8 +403,42 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     this.splitPercent = this.card?.split?.initialPercent ?? PairCardComponent.lastCompactSplitPercent;
     this.isResizing = false;
     this.transientBadgeBlink = false;
+    this.badgeMenuOpen = false;
     this.stopSplitDrag();
     this.cdr.markForCheck();
+  }
+
+  private closeBadgeMenu(): void {
+    if (!this.badgeMenuOpen) {
+      return;
+    }
+    this.badgeMenuOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  private shouldOpenBadgeMenuUp(trigger: HTMLElement | null): boolean {
+    if (typeof window === 'undefined' || !trigger) {
+      return false;
+    }
+    const rect = trigger.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+    const estimatedMenuHeight = 128;
+    return viewportHeight - rect.bottom < estimatedMenuHeight && rect.top > viewportHeight - rect.bottom;
+  }
+
+  private resolveBadgeTriggerRect(trigger: HTMLElement | null): CardMenuTriggerRect | null {
+    if (typeof window === 'undefined' || !trigger) {
+      return null;
+    }
+    const rect = trigger.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+      width: rect.width,
+      height: rect.height
+    };
   }
 
   private startLoadingPulse(slotKey: string): void {

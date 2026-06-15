@@ -8,28 +8,19 @@ import {
   effect,
   inject
 } from '@angular/core';
+import { AppContext, AppPopupContext, type ActivityMembersSyncState } from '../../../shared/ui';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type { ActivityMemberOwnerRef, EventExploreFeedFilters } from '../../../shared/core/base/models';
+import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
+import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  ActivityMembersBuilder,
-  ActivityMembersService,
-  ActivitiesService,
-  AppContext,
-  AppPopupContext,
-  EventExploreBuilder,
-  EventsService,
-  type ActivityMembersSyncState,
-  GameService,
-  ShareTokensService,
-  UsersService,
-  type UserDto
-} from '../../../shared/core';
+  ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventExploreBuilder, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   AppMenuDispatcher,
@@ -39,16 +30,16 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  INFO_CARD_AVAILABLE_ACTIONS,
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
   TopicPickerPopupComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardMenuRequestEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -58,8 +49,10 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
-import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
-import type { ChatRecord } from '../../../shared/core/base/models/chat.model';
+import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -67,14 +60,14 @@ type CheckoutDraftEntry = {
 };
 
 type EventExploreMenuContext =
-  | { menu: 'order'; order: AppTypes.EventExploreOrder }
-  | { menu: 'view'; view: AppTypes.EventExploreView }
+  | { menu: 'order'; order: ContractTypes.EventExploreOrder }
+  | { menu: 'view'; view: ContractTypes.EventExploreView }
   | { menu: 'topic-picker' }
   | {
       menu: 'info-card';
       record: ActivityEventRecord;
       card: InfoCardData;
-      action: InfoCardResolvedMenuAction;
+      action: CardResolvedMenuAction;
     };
 
 @Component({
@@ -92,6 +85,7 @@ type EventExploreMenuContext =
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
+  providers: [AppMenuDispatcher],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventExplorePopupComponent {
@@ -113,7 +107,7 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
-    (option): option is { key: AppTypes.EventExploreView; label: string; icon: string } =>
+    (option): option is { key: ContractTypes.EventExploreView; label: string; icon: string } =>
       option.key === 'day' || option.key === 'distance'
   );
   protected readonly topicFilterGroups = APP_STATIC_DATA.interestOptionGroups;
@@ -125,8 +119,8 @@ export class EventExplorePopupComponent {
   protected showTopicPicker = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
   protected showCheckoutDraftBasket = false;
-  protected eventExploreOrder: AppTypes.EventExploreOrder = 'upcoming';
-  protected eventExploreView: AppTypes.EventExploreView = 'day';
+  protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
+  protected eventExploreView: ContractTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
   protected eventExploreFilterHasRooms = false;
   protected eventExploreFilterTopic = '';
@@ -137,7 +131,7 @@ export class EventExplorePopupComponent {
   protected eventExploreHeaderLoadingOverdue = false;
   protected eventExploreStickyLabel = 'No items';
 
-  protected selectedMembers: AppTypes.ActivityMemberEntry[] = [];
+  protected selectedMembers: ActivityContracts.ActivityMemberEntry[] = [];
   protected selectedMembersTitle = '';
   protected selectedMembersPendingOnly = false;
   protected selectedMembersRecord: ActivityEventRecord | null = null;
@@ -176,7 +170,8 @@ export class EventExplorePopupComponent {
     emptyLabel: 'No visible events right now.',
     emptyDescription: 'Try another filter or check back later.',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     presentation: 'list',
     listLayout: 'card-grid',
@@ -234,11 +229,11 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.activitiesContext.activitiesEventSync();
+      const sync = this.activitiesContext.activityEventSave();
       if (!sync) {
         return;
       }
-      this.applyActivitiesEventSync(sync);
+      this.applyActivityEventSave(sync);
     });
 
     effect(() => {
@@ -332,7 +327,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectEventExploreOrder(order: AppTypes.EventExploreOrder, event?: Event): void {
+  protected selectEventExploreOrder(order: ContractTypes.EventExploreOrder, event?: Event): void {
     event?.stopPropagation();
     if (this.eventExploreOrder === order) {
       this.cdr.markForCheck();
@@ -343,7 +338,7 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected selectEventExploreView(view: AppTypes.EventExploreView, event?: Event): void {
+  protected selectEventExploreView(view: ContractTypes.EventExploreView, event?: Event): void {
     event?.stopPropagation();
     if (this.eventExploreView === view) {
       this.cdr.markForCheck();
@@ -478,7 +473,7 @@ export class EventExplorePopupComponent {
       return;
     }
     if (context.menu === 'info-card') {
-      this.onEventExploreInfoCardMenuAction(context.record, {
+      this.onEventExploreCardMenuAction(context.record, {
         id: context.card.id,
         actionId: context.action.id,
         action: context.action,
@@ -501,7 +496,7 @@ export class EventExplorePopupComponent {
 
   protected openEventExploreInfoCardMenu(
     record: ActivityEventRecord,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `event-explore-card:${request.id}`;
     if (this.appMenuDispatcher.isOpen(menuId)) {
@@ -510,7 +505,6 @@ export class EventExplorePopupComponent {
     }
     this.appMenuDispatcher.open({
       id: menuId,
-      scope: 'event-explore',
       kind: 'select',
       title: this.infoCardMenuTitle(request.card),
       items: this.infoCardMenuItems(record, request),
@@ -531,14 +525,14 @@ export class EventExplorePopupComponent {
 
   private infoCardMenuItems(
     record: ActivityEventRecord,
-    request: InfoCardMenuRequestEvent
+    request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, EventExploreMenuContext>[] {
-    return request.actions.flatMap(actionId => {
-      const config = INFO_CARD_AVAILABLE_ACTIONS[actionId];
+    return (request.actions ?? []).flatMap(actionId => {
+      const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];
       }
-      const action: InfoCardResolvedMenuAction = {
+      const action: CardResolvedMenuAction = {
         id: actionId,
         ...config
       };
@@ -558,7 +552,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: InfoCardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -573,23 +567,23 @@ export class EventExplorePopupComponent {
     }
   }
 
-  protected eventExploreOrderLabel(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderLabel(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.label ?? 'Upcoming';
   }
 
-  protected eventExploreOrderIcon(order: AppTypes.EventExploreOrder = this.eventExploreOrder): string {
+  protected eventExploreOrderIcon(order: ContractTypes.EventExploreOrder = this.eventExploreOrder): string {
     return this.eventExploreOrderOptions.find(option => option.key === order)?.icon ?? 'event_upcoming';
   }
 
-  protected eventExploreCurrentViewLabel(view: AppTypes.EventExploreView = this.eventExploreView): string {
+  protected eventExploreCurrentViewLabel(view: ContractTypes.EventExploreView = this.eventExploreView): string {
     return this.eventExploreViewOptions.find(option => option.key === view)?.label ?? 'Day';
   }
 
-  protected eventExploreCurrentViewIcon(view: AppTypes.EventExploreView = this.eventExploreView): string {
+  protected eventExploreCurrentViewIcon(view: ContractTypes.EventExploreView = this.eventExploreView): string {
     return this.eventExploreViewOptions.find(option => option.key === view)?.icon ?? 'today';
   }
 
-  private eventExploreOrderPalette(order: AppTypes.EventExploreOrder): AppMenuPalette {
+  private eventExploreOrderPalette(order: ContractTypes.EventExploreOrder): AppMenuPalette {
     switch (order) {
       case 'upcoming':
         return 'blue';
@@ -604,7 +598,7 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private eventExploreViewPalette(view: AppTypes.EventExploreView): AppMenuPalette {
+  private eventExploreViewPalette(view: ContractTypes.EventExploreView): AppMenuPalette {
     return view === 'distance' ? 'teal' : 'blue';
   }
 
@@ -677,7 +671,7 @@ export class EventExplorePopupComponent {
     return `${acceptedCount} members · ${pendingCount} pending`;
   }
 
-  protected get activityMembersOrdered(): AppTypes.ActivityMemberEntry[] {
+  protected get activityMembersOrdered(): ActivityContracts.ActivityMemberEntry[] {
     if (!this.selectedMembersPendingOnly) {
       return this.sortMembersByActionTimeDesc(this.selectedMembers);
     }
@@ -755,7 +749,7 @@ export class EventExplorePopupComponent {
     return record.blindMode === 'Open Event';
   }
 
-  protected onEventExploreInfoCardMenuAction(record: ActivityEventRecord, action: InfoCardMenuActionEvent): void {
+  protected onEventExploreCardMenuAction(record: ActivityEventRecord, action: CardMenuActionEvent<InfoCardData>): void {
     if (action.actionId === 'view') {
       this.runEventExploreViewAction(record);
       return;
@@ -930,8 +924,8 @@ export class EventExplorePopupComponent {
       const nextMembers = this.sortMembersByActionTimeDesc(
         existingMembers.filter(member => member.userId !== activeUserId)
       );
-      const payload = this.buildActivitiesEventSyncPayload(record, nextMembers);
-      const persistence = this.activitiesContext.emitActivitiesEventSync(payload);
+      const payload = this.buildActivityEventSaveDTO(record, nextMembers);
+      const persistence = this.activitiesContext.emitActivityEventSave(payload);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = nextMembers;
       }
@@ -1060,7 +1054,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectEventExploreSlot(slot: AppTypes.EventSlotOccurrence): void {
+  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrence): void {
     const record = this.slotPickerRecord;
     if (!record) {
       return;
@@ -1091,7 +1085,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  protected slotPickerOccupancyLabel(slot: AppTypes.EventSlotOccurrence): string {
+  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrence): string {
     return `${slot.acceptedMembers} / ${slot.capacityTotal}`;
   }
 
@@ -1140,7 +1134,8 @@ export class EventExplorePopupComponent {
     }
   }
 
-  private applyActivitiesEventSync(sync: AppTypes.ActivitiesEventSyncPayload): void {
+  private applyActivityEventSave(sync: ActivityEventDTO): void {
+    const dto = sync;
     const userJoinedEvent = false;
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
@@ -1164,51 +1159,51 @@ export class EventExplorePopupComponent {
       }
       const existing = currentItems[currentIndex];
       if (existing) {
-        const nextEndIso = sync.endAt ?? sync.startAt;
-        const acceptedMembers = Number.isFinite(Number(sync.acceptedMembers))
-          ? Math.max(0, Math.trunc(Number(sync.acceptedMembers)))
+        const nextEndIso = dto.endAtIso ?? dto.startAtIso;
+        const acceptedMembers = Number.isFinite(Number(dto.acceptedMembers))
+          ? Math.max(0, Math.trunc(Number(dto.acceptedMembers)))
           : Math.max(0, existing.acceptedMembers);
 
         currentItems[currentIndex] = {
           ...existing,
-          title: sync.title,
-          subtitle: sync.shortDescription,
-          startAtIso: sync.startAt,
+          title: dto.title,
+          subtitle: dto.subtitle,
+          startAtIso: dto.startAtIso,
           endAtIso: nextEndIso,
-          distanceKm: sync.distanceKm,
-          visibility: sync.visibility ?? existing.visibility,
-          blindMode: sync.blindMode ?? existing.blindMode,
-          imageUrl: sync.imageUrl.trim() || existing.imageUrl,
-          sourceLink: sync.sourceLink?.trim() || existing.sourceLink,
-          location: sync.location?.trim() || existing.location,
-          locationCoordinates: sync.locationCoordinates ?? existing.locationCoordinates,
+          distanceKm: dto.distanceKm,
+          visibility: dto.visibility ?? existing.visibility,
+          blindMode: dto.blindMode ?? existing.blindMode,
+          imageUrl: dto.imageUrl.trim() || existing.imageUrl,
+          sourceLink: dto.sourceLink?.trim() || existing.sourceLink,
+          location: dto.location?.trim() || existing.location,
+          locationCoordinates: dto.locationCoordinates ?? existing.locationCoordinates,
           acceptedMembers,
-          pendingMembers: Number.isFinite(Number(sync.pendingMembers))
-            ? Math.max(0, Math.trunc(Number(sync.pendingMembers)))
+          pendingMembers: Number.isFinite(Number(dto.pendingMembers))
+            ? Math.max(0, Math.trunc(Number(dto.pendingMembers)))
             : existing.pendingMembers,
-          capacityMin: sync.capacityMin ?? existing.capacityMin,
-          capacityMax: sync.capacityMax ?? existing.capacityMax,
+          capacityMin: dto.capacityMin ?? existing.capacityMin,
+          capacityMax: dto.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
             acceptedMembers,
-            sync.capacityMax ?? sync.capacityTotal ?? existing.capacityTotal
+            dto.capacityMax ?? dto.capacityTotal ?? existing.capacityTotal
           ),
-          autoInviter: sync.autoInviter ?? existing.autoInviter,
-          frequency: sync.frequency ?? existing.frequency,
-          slotsEnabled: sync.slotsEnabled ?? existing.slotsEnabled,
-          slotTemplates: Array.isArray(sync.slotTemplates)
-            ? sync.slotTemplates.map(item => ({ ...item }))
+          autoInviter: dto.autoInviter ?? existing.autoInviter,
+          frequency: dto.frequency ?? existing.frequency,
+          slotsEnabled: dto.slotsEnabled ?? existing.slotsEnabled,
+          slotTemplates: Array.isArray(dto.slotTemplates)
+            ? dto.slotTemplates.map(item => ({ ...item }))
             : (existing.slotTemplates ?? []).map(item => ({ ...item })),
-          parentEventId: sync.parentEventId ?? existing.parentEventId,
-          slotTemplateId: sync.slotTemplateId ?? existing.slotTemplateId,
-          generated: sync.generated ?? existing.generated,
-          eventType: sync.eventType ?? existing.eventType,
-          nextSlot: sync.nextSlot ? { ...sync.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
-          upcomingSlots: Array.isArray(sync.upcomingSlots)
-            ? sync.upcomingSlots.map(item => ({ ...item }))
+          parentEventId: dto.parentEventId ?? existing.parentEventId,
+          slotTemplateId: dto.slotTemplateId ?? existing.slotTemplateId,
+          generated: dto.generated ?? existing.generated,
+          eventType: dto.eventType ?? existing.eventType,
+          nextSlot: dto.nextSlot ? { ...dto.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
+          upcomingSlots: Array.isArray(dto.upcomingSlots)
+            ? dto.upcomingSlots.map(item => ({ ...item }))
             : (existing.upcomingSlots ?? []).map(item => ({ ...item })),
-          topics: Array.isArray(sync.topics) ? [...sync.topics] : [...existing.topics],
-          ticketing: sync.ticketing ?? existing.ticketing,
-          published: sync.published ?? existing.published
+          topics: Array.isArray(dto.topics) ? [...dto.topics] : [...existing.topics],
+          ticketing: dto.ticketing ?? existing.ticketing,
+          status: dto.status ?? existing.status
         };
         this.eventExploreSmartList.replaceVisibleItems(currentItems);
         this.cdr.markForCheck();
@@ -1241,7 +1236,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  private buildMemberEntries(record: ActivityEventRecord): AppTypes.ActivityMemberEntry[] {
+  private buildMemberEntries(record: ActivityEventRecord): ActivityContracts.ActivityMemberEntry[] {
     const row = EventExploreBuilder.buildActivityRow(record);
     const rowKey = `${row.type}:${row.id}`;
     const summary = this.activityMembersService.peekSummaryByOwner(this.eventMembersOwner(record));
@@ -1260,7 +1255,7 @@ export class EventExplorePopupComponent {
       false
     );
 
-    const entries: AppTypes.ActivityMemberEntry[] = [];
+    const entries: ActivityContracts.ActivityMemberEntry[] = [];
     for (const userId of acceptedUserIds) {
       const user = this.resolveUser(userId, record);
       const base = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1476,7 +1471,7 @@ export class EventExplorePopupComponent {
 
   private async submitEventExploreJoinRequest(
     record: ActivityEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null
   ): Promise<void> {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
@@ -1505,9 +1500,9 @@ export class EventExplorePopupComponent {
       ...existingMembers,
       this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
-    const rollbackPayload = this.buildActivitiesEventSyncPayload(record, existingMembers);
-    const nextPayload = this.buildActivitiesEventSyncPayload(record, nextMembers, selection?.paymentSessionId ?? null);
-    this.activitiesContext.emitActivitiesEventSync(nextPayload);
+    const rollbackPayload = this.buildActivityEventSaveDTO(record, existingMembers);
+    const nextPayload = this.buildActivityEventSaveDTO(record, nextMembers, selection?.paymentSessionId ?? null);
+    this.activitiesContext.emitActivityEventSave(nextPayload);
 
     try {
       const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1527,8 +1522,8 @@ export class EventExplorePopupComponent {
         await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(joinedRecord))
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
-      this.activitiesContext.emitActivitiesEventSync(
-        this.buildActivitiesEventSyncPayload(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+      this.activitiesContext.emitActivityEventSave(
+        this.buildActivityEventSaveDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = joinedRecord;
@@ -1536,7 +1531,7 @@ export class EventExplorePopupComponent {
       }
       this.cdr.markForCheck();
     } catch (error) {
-      this.activitiesContext.emitActivitiesEventSync(rollbackPayload);
+      this.activitiesContext.emitActivityEventSave(rollbackPayload);
       throw error;
     }
   }
@@ -1703,8 +1698,8 @@ export class EventExplorePopupComponent {
   private buildJoinRequestEntry(
     record: ActivityEventRecord,
     accepted = false,
-    pendingReason: 'approval' | 'waitlist' | null = null
-  ): AppTypes.ActivityMemberEntry {
+    pendingReason: ActivityPendingReason = null
+  ): ActivityContracts.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
     const row = EventExploreBuilder.buildActivityRow(record);
     const entry = ActivityMembersBuilder.toActivityMemberEntry(
@@ -1733,7 +1728,7 @@ export class EventExplorePopupComponent {
 
   private isConfirmedEventExploreBooking(
     record: ActivityEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null
   ): boolean {
     if (this.isEventExploreSelectionFull(record, selection)) {
       return false;
@@ -1749,7 +1744,7 @@ export class EventExplorePopupComponent {
 
   private isEventExploreSelectionFull(
     record: ActivityEventRecord,
-    selection?: AppTypes.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null
   ): boolean {
     const slotSourceId = `${selection?.slotSourceId ?? ''}`.trim();
     if (slotSourceId) {
@@ -1770,7 +1765,7 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private isEventExploreSlotFull(slot: AppTypes.EventSlotOccurrence): boolean {
+  private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrence): boolean {
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     if (capacityTotal <= 0) {
       return false;
@@ -1778,11 +1773,11 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private buildActivitiesEventSyncPayload(
+  private buildActivityEventSaveDTO(
     record: ActivityEventRecord,
-    members: readonly AppTypes.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberEntry[],
     paymentSessionId: string | null = null
-  ): Omit<AppTypes.ActivitiesEventSyncPayload, 'syncKey'> {
+  ): ContractTypes.ActivityEventSaveDTO {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
       members,
@@ -1790,12 +1785,10 @@ export class EventExplorePopupComponent {
     );
     return {
       id: record.id,
-      target: 'events',
       title: record.title,
       shortDescription: record.subtitle,
       timeframe: record.timeframe,
       activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-      isAdmin: false,
       startAt: record.startAtIso,
       endAt: record.endAtIso,
       distanceKm: record.distanceKm,
@@ -1810,7 +1803,7 @@ export class EventExplorePopupComponent {
       ticketing: record.ticketing,
       visibility: record.visibility,
       blindMode: record.blindMode,
-      published: record.published,
+      status: record.status ?? 'A',
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,
@@ -1833,7 +1826,7 @@ export class EventExplorePopupComponent {
     };
   }
 
-  private sortMembersByActionTimeDesc(entries: readonly AppTypes.ActivityMemberEntry[]): AppTypes.ActivityMemberEntry[] {
+  private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
     return [...entries].sort((left, right) =>
       AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
     );
@@ -1894,15 +1887,15 @@ export class EventExplorePopupComponent {
     return AppUtils.normalizeText(`${topic ?? ''}`.replace(/^#+\s*/, '').trim());
   }
 
-  private activityMemberAge(entry: AppTypes.ActivityMemberEntry): number {
+  private activityMemberAge(entry: ActivityContracts.ActivityMemberEntry): number {
     return this.userByIdMap.get(entry.userId)?.age ?? 0;
   }
 
-  private activityMemberRoleLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private activityMemberRoleLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     return entry.role;
   }
 
-  private activityMemberStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private activityMemberStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return 'Approved';
     }
@@ -1918,7 +1911,7 @@ export class EventExplorePopupComponent {
     return 'Waiting For Admin Approval';
   }
 
-  private memberCardStatusIcon(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardStatusIcon(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
     }
@@ -1928,7 +1921,7 @@ export class EventExplorePopupComponent {
     return 'outgoing_mail';
   }
 
-  private memberCardStatusClass(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardStatusClass(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
     }
@@ -1938,7 +1931,7 @@ export class EventExplorePopupComponent {
     return 'member-status-invite-pending';
   }
 
-  private memberCardToneClass(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardToneClass(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
     }
@@ -1948,19 +1941,19 @@ export class EventExplorePopupComponent {
     return 'member-card-tone-invite-pending';
   }
 
-  private memberCardStatusLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private memberCardStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     if (entry.status === 'accepted') {
       return entry.role;
     }
     return this.activityMemberStatusLabel(entry);
   }
 
-  private isActivityJoinRequest(entry: AppTypes.ActivityMemberEntry): boolean {
+  private isActivityJoinRequest(entry: ActivityContracts.ActivityMemberEntry): boolean {
     return entry.requestKind === 'join'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
-  private activityMemberDeleteLabel(entry: AppTypes.ActivityMemberEntry): string {
+  private activityMemberDeleteLabel(entry: ActivityContracts.ActivityMemberEntry): string {
     return entry.status === 'accepted' ? 'Remove member' : 'Delete invitation';
   }
 }

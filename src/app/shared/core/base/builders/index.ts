@@ -9,7 +9,6 @@ export {
 export { AssetCardBuilder } from './asset-card.builder';
 export { AssetDefaultsBuilder } from './asset-defaults.builder';
 export { AssetInfoCardBuilder } from './asset-info-card.builder';
-export { ChatThreadBuilder } from './chat-thread.builder';
 export { EventExploreBuilder } from './event-explore.builder';
 export { EventFeedbackBuilder } from './event-feedback.builder';
 export { EventEditorBuilder } from './event-editor.builder';
@@ -19,5 +18,4 @@ export { ScheduleDateBuilder } from './schedule-date.builder';
 export { UserFilterPreferencesBuilder } from './user-filter-preferences.builder';
 export { UserMenuCountersBuilder } from './user-menu-counters.builder';
 export { UserProfileStateBuilder } from './user-profile-state.builder';
-export { UserRatesBuilder } from './user-rates.builder';
 export { UserRecordsBuilder } from './user-records.builder';

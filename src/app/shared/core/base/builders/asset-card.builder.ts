@@ -2,8 +2,10 @@ import type * as AppTypes from '../models';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
+import type * as AppDTOs from '../dto';
+import type * as AppConstants from '../../common/constants';
 export class AssetCardBuilder {
-  static buildEmptyAssetForm(type: AppTypes.AssetType): Omit<AppTypes.AssetCard, 'id' | 'requests'> {
+  static buildEmptyAssetForm(type: AppConstants.AssetType): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
     return {
       type,
       title: '',
@@ -22,7 +24,7 @@ export class AssetCardBuilder {
     };
   }
 
-  static normalizeAssetRoutes(type: AppTypes.AssetType, routes: string[] | undefined | null): string[] {
+  static normalizeAssetRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
     if (type === 'Supplies') {
       return [];
     }
@@ -36,7 +38,7 @@ export class AssetCardBuilder {
   }
 
   static normalizeAssetImageLink(
-    type: AppTypes.AssetType,
+    type: AppConstants.AssetType,
     imageUrl: string | null | undefined,
     options: { fallbackImageUrl?: string | null } = {}
   ): string {
@@ -59,9 +61,9 @@ export class AssetCardBuilder {
   }
 
   static normalizeAssetMedia(
-    card: AppTypes.AssetCard,
+    card: AppDTOs.AssetCardDTO,
     options: { fallbackImageUrl?: string | null } = {}
-  ): AppTypes.AssetCard {
+  ): AppDTOs.AssetCardDTO {
     const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, options);
     const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
     return {
@@ -75,32 +77,32 @@ export class AssetCardBuilder {
   }
 
   static normalizeAssetMediaCards(
-    cards: readonly AppTypes.AssetCard[],
-    options: { fallbackImageUrl?: (card: AppTypes.AssetCard) => string | null | undefined } = {}
-  ): AppTypes.AssetCard[] {
+    cards: readonly AppDTOs.AssetCardDTO[],
+    options: { fallbackImageUrl?: (card: AppDTOs.AssetCardDTO) => string | null | undefined } = {}
+  ): AppDTOs.AssetCardDTO[] {
     return cards.map(card => this.normalizeAssetMedia(card, {
       fallbackImageUrl: options.fallbackImageUrl?.(card) ?? ''
     }));
   }
 
-  static capacityLabel(card: AppTypes.AssetCard): string {
+  static capacityLabel(card: AppDTOs.AssetCardDTO): string {
     return `${this.capacityValue(card)}`;
   }
 
-  static quantityLabel(card: AppTypes.AssetCard): string {
+  static quantityLabel(card: AppDTOs.AssetCardDTO): string {
     return `${this.quantityValue(card)}`;
   }
 
-  static capacityValue(card: Pick<AppTypes.AssetCard, 'capacityTotal'>): number {
+  static capacityValue(card: Pick<AppDTOs.AssetCardDTO, 'capacityTotal'>): number {
     return Math.max(1, Math.trunc(Number(card.capacityTotal) || 0));
   }
 
-  static quantityValue(card: Pick<AppTypes.AssetCard, 'type' | 'quantity' | 'capacityTotal'>): number {
+  static quantityValue(card: Pick<AppDTOs.AssetCardDTO, 'type' | 'quantity' | 'capacityTotal'>): number {
     return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
   }
 
   static storedQuantityValue(
-    card: Pick<AppTypes.AssetCard, 'type' | 'capacityTotal'> & { quantity: unknown }
+    card: Pick<AppDTOs.AssetCardDTO, 'type' | 'capacityTotal'> & { quantity: unknown }
   ): number {
     const parsed = Math.trunc(Number(card.quantity));
     if (Number.isFinite(parsed) && parsed >= 0) {
@@ -109,12 +111,12 @@ export class AssetCardBuilder {
     return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
   }
 
-  static defaultQuantity(type: AppTypes.AssetType): number {
+  static defaultQuantity(type: AppConstants.AssetType): number {
     return type === 'Supplies' ? 6 : 1;
   }
 
   static normalizeQuantity(
-    type: AppTypes.AssetType,
+    type: AppConstants.AssetType,
     value: unknown,
     capacityFallback: unknown = null
   ): number {
@@ -128,7 +130,7 @@ export class AssetCardBuilder {
     return this.defaultQuantity(type);
   }
 
-  static primaryLocation(card: AppTypes.AssetCard): string {
+  static primaryLocation(card: AppDTOs.AssetCardDTO): string {
     if (card.type !== 'Accommodation') {
       return '';
     }
@@ -138,7 +140,7 @@ export class AssetCardBuilder {
       ?? card.city.trim();
   }
 
-  static canOpenMap(card: AppTypes.AssetCard): boolean {
+  static canOpenMap(card: AppDTOs.AssetCardDTO): boolean {
     return card.type === 'Accommodation' && this.primaryLocation(card).length > 0;
   }
 

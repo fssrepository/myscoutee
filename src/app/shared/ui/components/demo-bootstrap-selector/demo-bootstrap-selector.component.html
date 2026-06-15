@@ -45,14 +45,24 @@
                   [attr.aria-label]="'Demo data loading progress' | i18n"
                   [attr.aria-valuemin]="0"
                   [attr.aria-valuemax]="100"
-                  [attr.aria-valuenow]="loadingProgress"
+                  [attr.aria-valuenow]="loadingUserList ? null : loadingProgress"
                   >
-                  <app-progress-indicator
-                    kind="pill-bar"
-                    [position]="loadingPosition()"
-                  ></app-progress-indicator>
+                  @if (loadingUserList) {
+                    <app-progress-indicator
+                      kind="load-ring"
+                      state="loading"
+                      [durationMs]="userListLoadDurationMs()"
+                    ></app-progress-indicator>
+                  } @else {
+                    <app-progress-indicator
+                      kind="pill-bar"
+                      [position]="loadingPosition()"
+                    ></app-progress-indicator>
+                  }
                 </div>
-                <p class="demo-user-progress-value">{{ loadingProgress }}%</p>
+                @if (!loadingUserList) {
+                  <p class="demo-user-progress-value">{{ loadingProgress }}%</p>
+                }
               </div>
             </div>
           </div>

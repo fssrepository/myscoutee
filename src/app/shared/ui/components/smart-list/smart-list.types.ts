@@ -3,6 +3,14 @@ import type {
   ProgressIndicatorPlacement,
   ProgressIndicatorTone
 } from '../progress-indicator';
+import type {
+  AppMenuAnchorRect,
+  AppMenuDispatchState,
+  AppMenuItem,
+  AppMenuKind,
+  AppMenuPanelAlign,
+  AppMenuPanelMode
+} from '../menu';
 import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type ListDirection = 'asc' | 'desc';
@@ -15,6 +23,7 @@ export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
 export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
+export type SmartListHeaderProgressState = 'active' | 'inactive';
 export type SmartListFilters = object;
 export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
@@ -97,6 +106,27 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
   selectMode: boolean;
   presentation: SmartListPresentation;
   renderState: SmartListItemRenderState;
+  openMenu: (request: SmartListItemMenuRequest) => void;
+}
+
+export interface SmartListItemMenuRequest {
+  id: string;
+  kind?: AppMenuKind;
+  title?: string | null;
+  items?: readonly AppMenuItem<string, unknown>[];
+  triggerRect?: AppMenuAnchorRect | null;
+  openUp?: boolean;
+  panelAlign?: AppMenuPanelAlign;
+  panelMode?: AppMenuPanelMode;
+  closeOnSelect?: boolean;
+  closeTrigger?: (() => void) | null;
+}
+
+export interface SmartListItemMenuContext<T> {
+  menu: 'smart-list-item';
+  itemId: string;
+  item: T;
+  request: SmartListItemMenuRequest;
 }
 
 export interface SmartListCalendarDateRange {
@@ -183,6 +213,18 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
   currentViewMode: SmartListViewMode;
 }
 
+export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters = SmartListFilters> {
+  menu: AppMenuDispatchState<string, unknown>;
+  query: ListQuery<TFilters>;
+  items: readonly T[];
+  item: T | null;
+  itemId: string | null;
+  request: SmartListItemMenuRequest | null;
+}
+
+export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = SmartListFilters> =
+  (context: SmartListMenuItemsContext<T, TFilters>) => readonly AppMenuItem<string, unknown>[];
+
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   mobilePageSizeCap?: number | null;
@@ -205,6 +247,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   showStickyHeader?: boolean;
   showFirstGroupMarker?: boolean;
   showGroupMarker?: (context: SmartListGroupMarkerContext<T, TFilters>) => boolean;
+  menuItems?: SmartListMenuItemsResolver<T, TFilters>;
   loadTriggerEdge?: SmartListLoadTriggerEdge;
   mergeStrategy?: SmartListMergeStrategy;
   initialScrollAnchor?: SmartListInitialScrollAnchor;
@@ -228,6 +271,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
     enabled?: SmartListConfigValue<boolean, TFilters>;
     tone?: SmartListConfigValue<ProgressIndicatorTone, TFilters>;
     placement?: SmartListConfigValue<ProgressIndicatorPlacement, TFilters>;
+    state?: SmartListConfigValue<SmartListHeaderProgressState, TFilters>;
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);

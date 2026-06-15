@@ -1,12 +1,10 @@
-import { ChangeDetectionStrategy, Component, HostBinding, Input, OnChanges, OnDestroy, SimpleChanges, inject, signal } from '@angular/core';
-
-import { AppContext } from '../../../core';
+import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostBinding, Input, OnChanges, OnDestroy, SimpleChanges, inject, signal } from '@angular/core';
 
 export type ProgressIndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type ProgressIndicatorPlacement = 'edge' | 'inline';
 export type ProgressIndicatorShape = 'circle' | 'button';
 export type ProgressIndicatorSize = 'sm' | 'md';
-export type ProgressIndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'offline';
+export type ProgressIndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'inactive';
 export type ProgressIndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success';
 
 export interface ProgressIndicatorBarConfig {
@@ -26,8 +24,8 @@ let progressIndicatorId = 0;
   styleUrl: './progress-indicator.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
-  private readonly appCtx = inject(AppContext);
+export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   @Input() kind: ProgressIndicatorKind = 'bar';
   @Input() placement: ProgressIndicatorPlacement = 'edge';
@@ -44,9 +42,12 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   protected readonly actionErrorGradientId = `app-progress-action-error-gradient-${progressIndicatorId}`;
   protected readonly actionAccentGradientId = `app-progress-action-accent-gradient-${progressIndicatorId}`;
   private readonly timedLoadPosition = signal(0);
+  private readonly actionButtonSize = signal({ width: 104, height: 48 });
   private timedLoadStartedAtMs = 0;
   private timedLoadFrameId: number | null = null;
   private timedLoadTimerId: ReturnType<typeof setTimeout> | null = null;
+  private actionButtonResizeObserver: ResizeObserver | null = null;
+  private actionButtonMeasureFrameId: number | null = null;
   private manualPositionInput = false;
 
   @HostBinding('class.app-progress-indicator-host')
@@ -120,15 +121,21 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   @HostBinding('attr.aria-hidden')
   protected readonly ariaHidden = 'true';
 
+  ngAfterViewInit(): void {
+    this.syncActionButtonSizeObserver();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['position']) {
       this.manualPositionInput = true;
     }
     this.syncTimedLoadProgress();
+    this.syncActionButtonSizeObserver();
   }
 
   ngOnDestroy(): void {
     this.clearTimedLoadProgress();
+    this.clearActionButtonSizeObserver();
   }
 
   protected get isBarKind(): boolean {
@@ -171,8 +178,8 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
     return this.resolvedState === 'success';
   }
 
-  protected get isOfflineState(): boolean {
-    return this.resolvedState === 'offline';
+  protected get isInactiveState(): boolean {
+    return this.resolvedState === 'inactive';
   }
 
   protected get isScrollingState(): boolean {
@@ -180,14 +187,11 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   }
 
   protected get resolvedState(): ProgressIndicatorState {
-    if (this.kind === 'bar' && !this.appCtx.isOnline()) {
-      return 'offline';
-    }
     return this.state;
   }
 
   protected progressTransform(): string {
-    if (this.isOfflineState) {
+    if (this.isInactiveState) {
       return 'scaleX(1)';
     }
     const position = this.usesTimedLoadProgress()
@@ -229,6 +233,36 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
   protected get resolvedPerimeter(): number {
     const value = Number(this.perimeter);
     return Number.isFinite(value) && value > 0 ? value : 100;
+  }
+
+  protected actionButtonViewBox(): string {
+    const { width, height } = this.actionButtonSize();
+    return `0 0 ${width} ${height}`;
+  }
+
+  protected actionButtonPath(): string {
+    const { width, height } = this.actionButtonSize();
+    const inset = 2;
+    const left = inset;
+    const right = Math.max(left + 1, width - inset);
+    const top = inset;
+    const bottom = Math.max(top + 1, height - inset);
+    const centerY = height / 2;
+    const radius = Math.max(0, (bottom - top) / 2);
+    const startX = width / 2;
+    const rightArcX = Math.max(left, right - radius);
+    const leftArcX = Math.min(right, left + radius);
+
+    return [
+      `M${startX} ${top}`,
+      `H${rightArcX}`,
+      `A${radius} ${radius} 0 0 1 ${right} ${centerY}`,
+      `A${radius} ${radius} 0 0 1 ${rightArcX} ${bottom}`,
+      `H${leftArcX}`,
+      `A${radius} ${radius} 0 0 1 ${left} ${centerY}`,
+      `A${radius} ${radius} 0 0 1 ${leftArcX} ${top}`,
+      `H${startX}`
+    ].join(' ');
   }
 
   private clampUnit(value: number): number {
@@ -278,6 +312,55 @@ export class ProgressIndicatorComponent implements OnChanges, OnDestroy {
     this.clearTimedLoadProgressHandle();
     this.timedLoadStartedAtMs = 0;
     this.timedLoadPosition.set(0);
+  }
+
+  private syncActionButtonSizeObserver(): void {
+    if (!this.isActionRingKind || !this.isActionButtonShape) {
+      this.clearActionButtonSizeObserver();
+      return;
+    }
+    this.measureActionButtonSize();
+    if (this.actionButtonResizeObserver || typeof ResizeObserver !== 'function') {
+      return;
+    }
+    this.actionButtonResizeObserver = new ResizeObserver(() => this.measureActionButtonSize());
+    this.actionButtonResizeObserver.observe(this.host.nativeElement);
+  }
+
+  private measureActionButtonSize(): void {
+    this.clearActionButtonMeasureFrame();
+    const measure = (): void => {
+      this.actionButtonMeasureFrameId = null;
+      const rect = this.host.nativeElement.getBoundingClientRect();
+      const width = Math.max(24, Math.round(rect.width));
+      const height = Math.max(24, Math.round(rect.height));
+      const current = this.actionButtonSize();
+      if (current.width === width && current.height === height) {
+        return;
+      }
+      this.actionButtonSize.set({ width, height });
+    };
+    if (typeof requestAnimationFrame === 'function') {
+      this.actionButtonMeasureFrameId = requestAnimationFrame(measure);
+      return;
+    }
+    measure();
+  }
+
+  private clearActionButtonSizeObserver(): void {
+    this.actionButtonResizeObserver?.disconnect();
+    this.actionButtonResizeObserver = null;
+    this.clearActionButtonMeasureFrame();
+  }
+
+  private clearActionButtonMeasureFrame(): void {
+    if (this.actionButtonMeasureFrameId === null) {
+      return;
+    }
+    if (typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.actionButtonMeasureFrameId);
+    }
+    this.actionButtonMeasureFrameId = null;
   }
 
   private clearTimedLoadProgressHandle(): void {

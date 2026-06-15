@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import { APP_CACHE_KEYS, APP_STORAGE_KEYS } from '../storage-scope';
+import { APP_CACHE_KEYS, APP_STORAGE_KEYS } from '../../common/storage-scope';
 
 interface BeforeInstallPromptChoice {
   outcome: 'accepted' | 'dismissed';

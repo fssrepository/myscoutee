@@ -1,35 +1,39 @@
 import { Injectable, inject } from '@angular/core';
 
+import type { ActivityEventSaveDTO } from '../../contracts';
+import type { SubEventLeaderboardState } from '../../contracts/event.interface';
+import type { ActivityPendingReason } from '../../common/constants';
 import type {
-  ActivitiesEventSyncPayload,
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
-  EventFeedbackCard,
-  EventFeedbackEventCard,
+  EventFeedbackDeckQueryDto,
+  EventFeedbackDeckResultDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
+  EventFeedbackPageQueryDto,
+  EventFeedbackPageResultDto,
   EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto,
-  SubEventLeaderboardState
-} from '../../../core/base/models';
+  EventFeedbackSubmitRequestDto
+} from '../../contracts/activity.interface';
 import { LocalEventsService } from '../../local';
 import { HttpEventsService } from '../../http';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventDTO,
+  ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventRecord,
-  ActivityEventRepositoryItemType
-} from '../models/events.model';
-import type { InfoCardData, InfoCardMenuAction } from '../../../ui';
+  ActivityEventRecord
+} from '../../contracts/activity.interface';
+import type { IEventsService } from '../../contracts/activity.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
   providedIn: 'root'
 })
-export class EventsService extends BaseRouteModeService {
+export class EventsService extends BaseRouteModeService implements IEventsService {
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
 
@@ -57,10 +61,6 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.queryEventItemsByUser(userId);
   }
 
-  queryHostingItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
-    return this.eventsService.queryHostingItemsByUser(userId);
-  }
-
   queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryTrashedItemsByUser(userId);
   }
@@ -73,6 +73,22 @@ export class EventsService extends BaseRouteModeService {
       return this.localEventsService.queryActivitiesEventListPage(query, signal);
     }
     return this.httpEventsService.queryActivitiesEventListPage(query, signal);
+  }
+
+  async queryActivitiesEventDTOPage(
+    query: ActivityEventActivitiesQuery,
+    signal?: AbortSignal
+  ): Promise<ActivityEventPageResultDTO> {
+    if (this.isLocalRouteEnabled('/activities/events')) {
+      return this.localEventsService.queryActivitiesEventDTOPage(query, signal);
+    }
+    return this.httpEventsService.queryActivitiesEventDTOPage(query, signal);
+  }
+
+  async saveActivityEvent(
+    payload: ActivityEventSaveDTO
+  ): Promise<ActivityEventDTO | null> {
+    return this.eventsService.saveActivityEvent(payload);
   }
 
   queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -109,6 +125,14 @@ export class EventsService extends BaseRouteModeService {
     return known.find(record => record.id === normalizedItemId) ?? null;
   }
 
+  peekKnownItemDTOById(userId: string, itemId: string): ActivityEventDTO | null {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId || !this.isLocalRouteEnabled('/activities/events')) {
+      return null;
+    }
+    return this.localEventsService.peekKnownItemDTOById(userId, normalizedItemId);
+  }
+
   async queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
@@ -125,24 +149,24 @@ export class EventsService extends BaseRouteModeService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  trashItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.trashItem(userId, type, sourceId);
+  trashItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.trashItem(userId, sourceId);
   }
 
-  publishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.publishItem(userId, type, sourceId);
+  publishItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.publishItem(userId, sourceId);
   }
 
-  unpublishItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.unpublishItem(userId, type, sourceId);
+  unpublishItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.unpublishItem(userId, sourceId);
   }
 
-  restoreItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.restoreItem(userId, type, sourceId);
+  restoreItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.restoreItem(userId, sourceId);
   }
 
-  takeOverItem(userId: string, type: ActivityEventRepositoryItemType, sourceId: string): Promise<void> {
-    return this.eventsService.takeOverItem(userId, type, sourceId);
+  takeOverItem(userId: string, sourceId: string): Promise<void> {
+    return this.eventsService.takeOverItem(userId, sourceId);
   }
 
   waitForEventMutationDelay(): Promise<void> {
@@ -174,7 +198,7 @@ export class EventsService extends BaseRouteModeService {
       acceptedPolicyIds?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
-      pendingReason?: 'approval' | 'waitlist' | null;
+      pendingReason?: ActivityPendingReason;
     } = {}
   ): Promise<ActivityEventRecord | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
@@ -196,6 +220,14 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.queryReceivedEventFeedback(userId);
   }
 
+  loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
+    return this.eventsService.loadEventFeedbackPage(query);
+  }
+
+  loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
+    return this.eventsService.loadEventFeedbackDeck(query);
+  }
+
   submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
     return this.eventsService.submitEventFeedback(request);
   }
@@ -212,188 +244,7 @@ export class EventsService extends BaseRouteModeService {
     return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
-  eventFeedbackInfoCard(
-    item: EventFeedbackEventCard,
-    options: { hasOrganizerNote?: boolean } = {}
-  ): InfoCardData {
-    if (item.isOwnEvent) {
-      return this.organizerEventFeedbackInfoCard({
-        eventId: item.eventId,
-        title: item.title,
-        subtitle: item.subtitle,
-        timeframe: item.timeframe,
-        imageUrl: item.imageUrl,
-        responseCount: item.pendingCards,
-        noteCount: 0
-      });
-    }
-    const startAvailable = this.isEventFeedbackStartAvailable(item);
-    const detailRows = item.isFeedbacked
-      ? [item.timeframe]
-      : [item.timeframe, this.eventFeedbackItemStatusLine(item)];
-    return {
-      id: item.eventId,
-      status: item.isRemoved ? 'removed' : item.isFeedbacked ? 'feedbacked' : 'pending',
-      title: item.title,
-      imageUrl: item.imageUrl,
-      metaRows: [item.subtitle],
-      detailRows,
-      leadingIcon: {
-        icon: this.eventFeedbackLeadingIcon(item)
-      },
-      mediaEnd: {
-        variant: 'badge',
-        tone: 'default',
-        label: this.eventFeedbackStartBadgeLabel(item),
-        interactive: startAvailable,
-        ariaLabel: startAvailable
-          ? 'Start event feedback'
-          : 'Event feedback unavailable'
-      },
-      menuActions: this.eventFeedbackMenuActions(item, options.hasOrganizerNote === true),
-      clickable: false
-    };
-  }
-
-  eventFeedbackCarouselInfoCard(card: EventFeedbackCard): InfoCardData {
-    const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
-    return {
-      id: card.id,
-      title: card.heading,
-      imageUrl: card.imageUrl,
-      metaRows: [card.subheading],
-      metaRowsLimit: 1,
-      detailRows,
-      leadingIcon: {
-        icon: card.icon
-      },
-      clickable: false
-    };
-  }
-
-  organizerEventFeedbackInfoCard(item: {
-    eventId: string;
-    title: string;
-    subtitle: string;
-    timeframe: string;
-    imageUrl: string;
-    responseCount: number;
-    noteCount: number;
-  }): InfoCardData {
-    return this.organizerEventFeedbackCardData(item, true);
-  }
-
-  organizerEventFeedbackDetailInfoCard(item: {
-    eventId: string;
-    title: string;
-    subtitle: string;
-    timeframe: string;
-    imageUrl: string;
-    responseCount: number;
-    noteCount: number;
-  }): InfoCardData {
-    return this.organizerEventFeedbackCardData(item, false);
-  }
-
-  async syncEventSnapshot(payload: Omit<ActivitiesEventSyncPayload, 'syncKey'>): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
     return this.eventsService.syncEventSnapshot(payload);
-  }
-
-  private isEventFeedbackStartAvailable(item: EventFeedbackEventCard): boolean {
-    return !item.isRemoved && item.pendingCards > 0;
-  }
-
-  private eventFeedbackItemStatusLine(item: EventFeedbackEventCard): string {
-    if (item.isRemoved) {
-      return 'Removed without feedback.';
-    }
-    if (item.isFeedbacked) {
-      return 'Feedbacked.';
-    }
-    return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
-  }
-
-  private eventFeedbackLeadingIcon(item: EventFeedbackEventCard): string {
-    if (item.isOwnEvent) {
-      return 'stadium';
-    }
-    if (item.isFeedbacked) {
-      return 'task_alt';
-    }
-    if (item.isRemoved) {
-      return 'delete_outline';
-    }
-    return 'rate_review';
-  }
-
-  private eventFeedbackStartBadgeLabel(item: EventFeedbackEventCard): string {
-    if (item.isOwnEvent) {
-      return 'View Feedbacks';
-    }
-    if (item.isRemoved) {
-      return 'Removed';
-    }
-    if (item.isFeedbacked) {
-      return 'Feedbacked';
-    }
-    return 'Start Feedback';
-  }
-
-  private eventFeedbackMenuActions(
-    item: EventFeedbackEventCard,
-    hasOrganizerNote: boolean
-  ): readonly InfoCardMenuAction[] {
-    if (item.isOwnEvent) {
-      return [];
-    }
-    const actions: InfoCardMenuAction[] = [];
-
-    if (this.isEventFeedbackStartAvailable(item)) {
-      actions.push('startFeedback');
-    }
-
-    if (!item.isRemoved && !item.isFeedbacked) {
-      actions.push('removeFeedback');
-    }
-
-    if (item.isRemoved) {
-      actions.push('restoreFeedback');
-    }
-
-    actions.push(hasOrganizerNote ? 'editOrganizerNote' : 'addOrganizerNote');
-
-    return actions;
-  }
-
-  private organizerEventFeedbackCardData(item: {
-    eventId: string;
-    title: string;
-    subtitle: string;
-    timeframe: string;
-    imageUrl: string;
-    responseCount: number;
-    noteCount: number;
-  }, showAction: boolean): InfoCardData {
-    return {
-      id: item.eventId,
-      title: item.title,
-      imageUrl: item.imageUrl,
-      metaRows: [item.subtitle],
-      detailRows: [item.timeframe],
-      leadingIcon: {
-        icon: 'stadium'
-      },
-      mediaEnd: showAction
-        ? {
-          variant: 'badge',
-          tone: 'default',
-          label: 'View Feedbacks',
-          pendingCount: item.responseCount,
-          interactive: true,
-          ariaLabel: `Open feedback details for ${item.title}`
-        }
-        : null,
-      clickable: false
-    };
   }
 }

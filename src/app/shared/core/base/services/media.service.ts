@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import { LocalMediaService } from '../../local/services/media.service';
+import { LocalMediaService } from '../../local/source/services/media.service';
 import { HttpMediaService } from '../../http/services/media.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 

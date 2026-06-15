@@ -256,6 +256,19 @@
                   </button>
                 }
               </div>
+            } @else if (isRatingBarItem(item)) {
+              <div
+                class="app-menu__rating-item"
+                [class.app-menu__rating-item--disabled]="isItemDisabled(item)"
+                role="none"
+                (click)="$event.stopPropagation()"
+                >
+                <app-rating-star-bar
+                  [config]="itemRatingBarConfig(item)"
+                  (valueChange)="updateRatingBarItemValue(item, $event)"
+                  (scoreSelect)="selectRatingBarItem(item, $event)"
+                ></app-rating-star-bar>
+              </div>
             } @else if (itemHref(item)) {
               <a
                 class="app-menu__item"

@@ -378,15 +378,12 @@
     </div>
   }
 
-  @if (shouldRenderPaginationRatingBar()) {
-    <app-rating-star-bar
-      [config]="resolvedPaginationRatingBarConfig()"
-      [value]="resolvedPaginationRatingBarValue()"
-      (scoreSelect)="onPaginationRatingSelect($event)"
-    ></app-rating-star-bar>
-  }
-
-  <app-menu-outlet (itemSelect)="onDispatchedMenuItemSelect($event)"></app-menu-outlet>
+  @let ratingPaginationMenu = paginationRatingMenu();
+  <app-menu-outlet
+    [menu]="ratingPaginationMenu"
+    [items]="ratingPaginationMenu ? paginationRatingMenuItems() : dispatchedMenuItems()"
+    (itemSelect)="onMenuOutletItemSelect($event)"
+  ></app-menu-outlet>
 </div>
 
 <ng-template #fullscreenEmptyState>

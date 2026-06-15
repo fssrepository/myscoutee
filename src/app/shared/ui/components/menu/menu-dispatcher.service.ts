@@ -13,6 +13,10 @@ export class AppMenuDispatcher {
   readonly activeMenu = this.activeMenuRef.asReadonly();
 
   open(config: AppMenuDispatchConfig, triggerElement: HTMLElement | null): void {
+    const activeMenu = this.activeMenuRef();
+    if (activeMenu && activeMenu.id !== config.id) {
+      activeMenu.onClose?.();
+    }
     this.activeMenuRef.set(this.createState(config, triggerElement));
   }
 
@@ -53,7 +57,6 @@ export class AppMenuDispatcher {
   private createState(config: AppMenuDispatchConfig, triggerElement: HTMLElement | null): AppMenuDispatchState {
     return {
       ...config,
-      scope: `${config.scope ?? 'default'}`.trim() || 'default',
       kind: config.kind ?? 'select',
       items: config.items ?? [],
       model: config.model ?? null,
@@ -62,6 +65,7 @@ export class AppMenuDispatcher {
       trigger: config.trigger ?? null,
       openUp: config.openUp === true,
       panelAlign: config.panelAlign ?? 'auto',
+      panelMode: config.panelMode ?? 'auto',
       mobileBreakpointPx: Math.max(1, Number(config.mobileBreakpointPx) || 760),
       closeOnSelect: config.closeOnSelect !== false,
       triggerElement,

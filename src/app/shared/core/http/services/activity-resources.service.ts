@@ -6,17 +6,18 @@ import { environment } from '../../../../../environments/environment';
 import { ActivityResourceBuilder } from '../../base/builders';
 import type * as AppTypes from '../../../core/base/models';
 
+import type * as AppDTOs from '../../base/dto';
 @Injectable({
   providedIn: 'root'
 })
 export class HttpActivityResourcesService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedStateByRecordId: Record<string, AppTypes.ActivitySubEventResourceState> = {};
+  private readonly cachedStateByRecordId: Record<string, AppDTOs.ActivitySubEventResourceStateDTO> = {};
 
   peekSubEventResourceState(
-    ref: AppTypes.ActivitySubEventResourceStateRef
-  ): AppTypes.ActivitySubEventResourceState | null {
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     const normalizedRef = this.normalizeRef(ref);
     if (!normalizedRef) {
       return null;
@@ -27,15 +28,15 @@ export class HttpActivityResourcesService {
   }
 
   async querySubEventResourceState(
-    ref: AppTypes.ActivitySubEventResourceStateRef
-  ): Promise<AppTypes.ActivitySubEventResourceState | null> {
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     const normalizedRef = this.normalizeRef(ref);
     if (!normalizedRef) {
       return null;
     }
     try {
       const response = await this.http
-        .get<AppTypes.ActivitySubEventResourceState | null>(`${this.apiBaseUrl}/activities/events/subevent-resources`, {
+        .get<AppDTOs.ActivitySubEventResourceStateDTO | null>(`${this.apiBaseUrl}/activities/events/subevent-resources`, {
           params: new HttpParams()
             .set('ownerId', normalizedRef.ownerId)
             .set('subEventId', normalizedRef.subEventId)
@@ -53,9 +54,9 @@ export class HttpActivityResourcesService {
   }
 
   async replaceSubEventResourceState(
-    state: AppTypes.ActivitySubEventResourceState,
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
     signal?: AbortSignal
-  ): Promise<AppTypes.ActivitySubEventResourceState | null> {
+  ): Promise<AppDTOs.ActivitySubEventResourceStateDTO | null> {
     const normalizedState = ActivityResourceBuilder.normalizeState(state, state);
     if (!normalizedState) {
       return null;
@@ -64,7 +65,7 @@ export class HttpActivityResourcesService {
     try {
       const response = await this.requestWithAbort(
         this.http
-          .post<AppTypes.ActivitySubEventResourceState | null>(
+          .post<AppDTOs.ActivitySubEventResourceStateDTO | null>(
             `${this.apiBaseUrl}/activities/events/subevent-resources/replace`,
             normalizedState
           ),
@@ -120,8 +121,8 @@ export class HttpActivityResourcesService {
   }
 
   private normalizeRef(
-    ref: AppTypes.ActivitySubEventResourceStateRef | null | undefined
-  ): AppTypes.ActivitySubEventResourceStateRef | null {
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO | null | undefined
+  ): AppDTOs.ActivitySubEventResourceStateRefDTO | null {
     const ownerId = `${ref?.ownerId ?? ''}`.trim();
     const subEventId = `${ref?.subEventId ?? ''}`.trim();
     const assetOwnerUserId = `${ref?.assetOwnerUserId ?? ''}`.trim();

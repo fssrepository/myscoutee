@@ -15,6 +15,7 @@ export interface RatingStarBarDockConfig {
 
 export interface RatingStarBarConfig {
   scale?: readonly number[];
+  value?: number | null;
   readonly?: boolean;
   label?: string | null;
   actionLabel?: string | null;
@@ -70,6 +71,7 @@ export class RatingStarBarComponent implements OnDestroy {
   @Input() config: RatingStarBarConfig | null = null;
   @Input() value = 0;
 
+  @Output() readonly valueChange = new EventEmitter<number>();
   @Output() readonly scoreSelect = new EventEmitter<number>();
 
   protected get resolvedScale(): readonly number[] {
@@ -119,7 +121,10 @@ export class RatingStarBarComponent implements OnDestroy {
     if (this.dirty) {
       return this.stagedValue;
     }
-    const normalizedValue = this.normalizeScore(this.value);
+    const configuredValue = this.config?.value;
+    const normalizedValue = this.normalizeScore(
+      Number.isFinite(Number(configuredValue)) ? Number(configuredValue) : this.value
+    );
     return normalizedValue > 0 ? normalizedValue : this.defaultScore();
   }
 
@@ -160,6 +165,7 @@ export class RatingStarBarComponent implements OnDestroy {
     const input = event.target instanceof HTMLInputElement ? inputValue(event.target) : this.defaultScore();
     this.stagedValue = this.normalizeScore(input) || this.defaultScore();
     this.dirty = true;
+    this.valueChange.emit(this.stagedValue);
     this.cdr.markForCheck();
   }
 

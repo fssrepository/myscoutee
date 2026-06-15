@@ -23,16 +23,8 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import {
-  AppContext,
-  ExplanationGuideService,
-  GameService,
-  USER_BY_ID_LOAD_CONTEXT_KEY,
-  UsersService,
-  type UserDto,
-  type UserGameMode,
-  type UserGameSocialCard
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import { ExplanationGuideService, GameService, USER_BY_ID_LOAD_CONTEXT_KEY, UsersService, type UserDto, type UserGameMode, type UserGameSocialCard } from '../../../shared/core';
 import { HomeGameFilterPopupComponent } from './home-game-filter-popup.component';
 import { I18nPipe } from '../../../shared/ui';
 import {
@@ -238,7 +230,8 @@ export class HomeComponent implements OnDestroy {
     presentation: 'fullscreen',
     showBackgroundLoadingProgress: true,
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     trackBy: (_index, row) => row.id,
     emptyLabel: () => this.noCandidateTitle,

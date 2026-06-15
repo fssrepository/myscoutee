@@ -1,5 +1,5 @@
-import type { UserGameFilterPreferencesDto } from '../interfaces/game.interface';
-import type { UserDto } from '../interfaces/user.interface';
+import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
+import type { UserDto } from '../../contracts/user.interface';
 
 export class UserFilterPreferencesBuilder {
   static buildDefaultFilterPreferences(user: UserDto): UserGameFilterPreferencesDto {

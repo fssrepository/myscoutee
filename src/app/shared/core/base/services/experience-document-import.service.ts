@@ -4,7 +4,7 @@ import type {
   ExperienceImportProgressCallback,
   ParsedExperienceImportEntry,
   UserExperienceImportParseResult
-} from '../interfaces/experience.interface';
+} from '../../contracts/profile.interface';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
 
 type ExperienceSectionType = ExperienceEntry['type'] | 'Ignore';

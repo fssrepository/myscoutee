@@ -1,6 +1,46 @@
-import type { UserGameFilterPreferencesDto } from './game.interface';
-import type { LocationCoordinates } from './location.interface';
+import type { UserGameFilterPreferencesDto } from './activity.interface';
+import type {
+  ProfileStatus,
+  UserGender
+} from '../common/constants';
 import type { ProfileDetailFormGroup } from './profile.interface';
+
+export interface LocationCoordinates {
+  latitude: number;
+  longitude: number;
+}
+
+export interface FirebaseAuthProfileDto {
+  id: string;
+  name: string;
+  email: string;
+  initials: string;
+  imageUrl?: string;
+}
+
+export type FirebaseAuthProvider = 'google' | 'facebook' | 'email';
+export type FirebaseEmailAuthMode = 'sign-in' | 'create';
+
+export interface FirebaseAuthRequestDto {
+  provider: FirebaseAuthProvider;
+  emailMode?: FirebaseEmailAuthMode;
+  email?: string;
+  password?: string;
+}
+
+export interface EntryConsentStateDto {
+  version: string;
+  accepted: boolean;
+  acceptedAtIso: string;
+}
+
+export interface EntryConsentAuditRecordDto {
+  tsIso: string;
+  action: 'accepted' | 'rejected';
+  version: string;
+  source: 'entry';
+  userAgent: string;
+}
 
 export interface UserPersonalityTraitDto {
   id: string;
@@ -97,13 +137,15 @@ export interface UserSelectorListItemDto {
   name: string;
   city: string;
   initials: string;
-  gender: 'woman' | 'man';
+  gender: UserGender;
   statusText?: string;
   completion?: number;
   profileFormVersion?: number;
   profileStatus?: UserDto['profileStatus'];
   deletedAtIso?: string | null;
 }
+
+export type UserSelectorRole = 'member' | 'admin';
 
 export interface UserDto {
   id: string;
@@ -116,7 +158,7 @@ export interface UserDto {
   languages: string[];
   horoscope: string;
   initials: string;
-  gender: 'woman' | 'man';
+  gender: UserGender;
   statusText: string;
   hostTier: string;
   traitLabel: string;
@@ -130,8 +172,8 @@ export interface UserDto {
   images?: string[];
   profileDetails?: ProfileDetailFormGroup[];
   impressions?: UserImpressionsDto;
-  profileStatus: 'public' | 'friends only' | 'host only' | 'inactive' | 'blocked' | 'deleted' | 'onboarding';
-  previousProfileStatus?: UserDto['profileStatus'] | null;
+  profileStatus: ProfileStatus;
+  previousProfileStatus?: ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
   activities: {
@@ -152,10 +194,6 @@ export interface UserDto {
     adminJobs?: number;
     adminMetrics?: number;
   };
-}
-
-export interface UsersListQueryResponse {
-  users: UserSelectorListItemDto[];
 }
 
 export interface UserByIdQueryResponse {
@@ -205,7 +243,7 @@ export interface UserSubmitActionResponseDto {
 }
 
 export interface UserService {
-  queryAvailableDemoUsers(requestTimeoutMs?: number): Promise<UsersListQueryResponse>;
+  queryAvailableDemoUsers(selectorRole?: UserSelectorRole): Promise<UserSelectorListItemDto[]>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;

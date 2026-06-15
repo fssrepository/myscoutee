@@ -1,10 +1,11 @@
 import type * as AppTypes from '../../../core/base/models';
-import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../models';
+import type * as ContractTypes from '../../contracts';
+import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
 import type { ListQuery } from '../../../ui';
 
 export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>): ActivitiesPageRequest {
   const filters = query.filters;
-  const primaryFilter = normalizeActivitiesPrimaryFilter((filters?.primaryFilter ?? 'chats') as AppTypes.ActivitiesPrimaryFilter);
+  const primaryFilter = normalizeActivitiesPrimaryFilter((filters?.primaryFilter ?? 'chats') as ContractTypes.ActivitiesPrimaryFilter);
   const secondaryFilter = normalizeActivitiesSecondaryFilter(filters?.secondaryFilter, primaryFilter);
   const view = normalizeActivitiesView(query.view);
 
@@ -31,14 +32,14 @@ export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>)
   };
 }
 
-function normalizeActivitiesPrimaryFilter(filter: AppTypes.ActivitiesPrimaryFilter): AppTypes.ActivitiesPrimaryFilter {
+function normalizeActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): ContractTypes.ActivitiesPrimaryFilter {
   if (filter === 'hosting' || filter === 'invitations') {
     return 'events';
   }
   return filter;
 }
 
-function normalizeActivitiesEventScopeFilter(value: unknown): AppTypes.ActivitiesEventScope {
+function normalizeActivitiesEventScopeFilter(value: unknown): ContractTypes.ActivitiesEventScope {
   return value === 'all'
     || value === 'pending'
     || value === 'invitations'
@@ -51,27 +52,27 @@ function normalizeActivitiesEventScopeFilter(value: unknown): AppTypes.Activitie
 
 function normalizeActivitiesSecondaryFilter(
   value: unknown,
-  primaryFilter?: AppTypes.ActivitiesPrimaryFilter
-): AppTypes.ActivitiesSecondaryFilter {
+  primaryFilter?: ContractTypes.ActivitiesPrimaryFilter
+): ContractTypes.ActivitiesSecondaryFilter {
   const normalized = value === 'relevant' || value === 'past' ? value : 'recent';
   return primaryFilter === 'events' && normalized === 'relevant'
     ? 'recent'
     : normalized;
 }
 
-function normalizeActivitiesChatContextFilter(value: unknown): AppTypes.ActivitiesChatContextFilter {
+function normalizeActivitiesChatContextFilter(value: unknown): ContractTypes.ActivitiesChatContextFilter {
   return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
 }
 
-function normalizeSupportCaseFilter(value: unknown): AppTypes.SupportCaseFilter {
+function normalizeSupportCaseFilter(value: unknown): ContractTypes.SupportCaseFilter {
   return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
 }
 
-function normalizeHostingPublicationFilter(value: unknown): AppTypes.HostingPublicationFilter {
+function normalizeHostingPublicationFilter(value: unknown): ContractTypes.HostingPublicationFilter {
   return value === 'drafts' ? 'drafts' : 'all';
 }
 
-function normalizeRateFilter(value: unknown): AppTypes.RateFilterKey {
+function normalizeRateFilter(value: unknown): ContractTypes.RateFilterKey {
   return value === 'individual-received'
     || value === 'individual-mutual'
     || value === 'individual-met'
@@ -81,14 +82,14 @@ function normalizeRateFilter(value: unknown): AppTypes.RateFilterKey {
     : 'individual-given';
 }
 
-function normalizeActivitiesView(value: unknown): AppTypes.ActivitiesView {
+function normalizeActivitiesView(value: unknown): ContractTypes.ActivitiesView {
   return value === 'week' || value === 'month' || value === 'distance' ? value : 'day';
 }
 
 function resolveActivitiesPageSort(
-  primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-  secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-  view: AppTypes.ActivitiesView
+  primaryFilter: ContractTypes.ActivitiesPrimaryFilter,
+  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter,
+  view: ContractTypes.ActivitiesView
 ): string {
   if (primaryFilter === 'rates') {
     if (view === 'distance') {
@@ -114,9 +115,9 @@ function resolveActivitiesPageSort(
 }
 
 function resolveActivitiesPageSortDirection(
-  primaryFilter: AppTypes.ActivitiesPrimaryFilter,
-  secondaryFilter: AppTypes.ActivitiesSecondaryFilter,
-  view: AppTypes.ActivitiesView
+  primaryFilter: ContractTypes.ActivitiesPrimaryFilter,
+  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter,
+  view: ContractTypes.ActivitiesView
 ): 'asc' | 'desc' {
   if (primaryFilter === 'rates') {
     if (view === 'distance') {

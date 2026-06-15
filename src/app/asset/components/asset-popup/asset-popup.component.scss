@@ -12,8 +12,8 @@
   --asset-popup-z-index: 12000;
   --asset-popup-stacked-z-index: 12100;
   --asset-popup-super-stacked-z-index: 12200;
-  --asset-popup-basket-shell-gap: 0.35rem;
-  --asset-popup-basket-panel-max-width: 1120px;
+  --asset-popup-basket-shell-gap: 0.6rem;
+  --asset-popup-basket-panel-max-width: 1080px;
 }
 
 .asset-popup .app-popup {
@@ -43,6 +43,7 @@
 
 .app-popup-panel.popup-panel-assets {
   height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
 }
 
 .app-popup-panel.popup-panel-ticket-fullscreen {
@@ -1581,12 +1582,16 @@
   width: min(var(--asset-popup-basket-panel-max-width), calc(100vw - (var(--asset-popup-basket-shell-gap) * 2)));
   max-width: calc(100vw - (var(--asset-popup-basket-shell-gap) * 2));
   height: calc(100vh - (var(--asset-popup-basket-shell-gap) * 2));
+  height: calc(100dvh - (var(--asset-popup-basket-shell-gap) * 2));
   max-height: calc(100vh - (var(--asset-popup-basket-shell-gap) * 2));
+  max-height: calc(100dvh - (var(--asset-popup-basket-shell-gap) * 2));
 }
 
 .asset-popup .app-popup.app-popup-stacked.app-popup-super-stacked.app-popup-super-stacked-over-subevents
   .popup-panel-assets.popup-panel-subevent-asset-assign {
+  height: calc(100vh - (var(--asset-popup-basket-shell-gap) * 2));
   height: calc(100dvh - (var(--asset-popup-basket-shell-gap) * 2));
+  max-height: calc(100vh - (var(--asset-popup-basket-shell-gap) * 2));
   max-height: calc(100dvh - (var(--asset-popup-basket-shell-gap) * 2));
 }
 

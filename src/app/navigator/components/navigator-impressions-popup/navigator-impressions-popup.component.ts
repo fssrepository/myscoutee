@@ -5,12 +5,8 @@ import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import {
-  AppContext,
-  type UserDto,
-  type UserImpressionsDto,
-  type UserImpressionsSectionDto
-} from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
+import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
 import {
   resolveHostTierColorClass,
   resolveHostTierIcon,

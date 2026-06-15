@@ -1,4 +1,5 @@
 import type * as AppTypes from '../../../../../shared/core/base/models';
+import type * as ContractTypes from '../../../../../shared/core/contracts';
 
 export interface ActivitiesChatTemplateData {
   id: string;
@@ -12,7 +13,7 @@ export interface ActivitiesChatTemplateData {
   avatarClass: string;
   toneClass: string;
   showSupportControls: boolean;
-  supportCaseStatus: AppTypes.SupportCaseStatus | null;
+  supportCaseStatus: ContractTypes.SupportCaseStatus | null;
   supportCaseLabelKey: string;
   supportCaseBadgeClass: string;
   supportCaseAssigneeName: string;
@@ -53,7 +54,7 @@ export function buildActivitiesChatTemplateData(
   };
 }
 
-function supportCaseStatus(status: string | null | undefined): AppTypes.SupportCaseStatus | null {
+function supportCaseStatus(status: string | null | undefined): ContractTypes.SupportCaseStatus | null {
   if (status === 'pending' || status === 'picked' || status === 'solved' || status === 'blocked') {
     return status;
   }

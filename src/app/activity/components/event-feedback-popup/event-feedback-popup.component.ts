@@ -6,10 +6,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
-import { ActivityMembersService, AppContext, EventsService, GameService, UsersService, type UserDto } from '../../../shared/core';
-import type { ActivityEventSeedItem } from '../../../shared/core/base/models/event-seed-item.model';
 import {
   AppMenuComponent,
+  AppContext,
+  EventFeedbackDeckConverter,
+  EventFeedbackInfoCardConverter,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -17,31 +18,25 @@ import {
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent,
-  type InfoCardResolvedMenuAction,
+  type CardMenuActionEvent,
+  type CardResolvedMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
-import type { ActivityEventRecord } from '../../../shared/core/base/models/events.model';
-import { EventFeedbackPopupStateService, type EventFeedbackPopupSource } from '../../services/event-feedback-popup-state.service';
+import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
+import { EventFeedbackPopupStateService, type EventFeedbackListFilters } from '../../services/event-feedback-popup-state.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-
-interface EventFeedbackListFilters {
-  filter: AppTypes.EventFeedbackListFilter;
-  userId: string;
-}
 
 type EventFeedbackMenuContext = {
   menu: 'filter';
-  filter: AppTypes.EventFeedbackListFilter;
+  filter: EventFeedbackListFilter;
 } | {
   menu: 'info-card';
-  item: AppTypes.EventFeedbackEventCard;
   card: InfoCardData;
-  action: InfoCardResolvedMenuAction;
+  action: CardResolvedMenuAction;
 };
 
 interface OrganizerEventFeedbackCarouselStatItem {
@@ -84,19 +79,10 @@ interface OrganizerEventFeedbackCarouselSection {
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'
 })
-export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopupSource {
+export class EventFeedbackPopupComponent implements OnDestroy {
   public readonly feedback = inject(EventFeedbackPopupStateService);
   private readonly appCtx = inject(AppContext);
-  private readonly eventsService = inject(EventsService);
-  private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly gameService = inject(GameService);
-  private readonly usersService = inject(UsersService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly eventRecordsRef = signal<ActivityEventRecord[]>([]);
-  private lastLoadedUserId = '';
-  private loadRequestVersion = 0;
-  private eventRecordsLoadPromise: Promise<void> | null = null;
-  private eventRecordsLoadUserId = '';
   private eventFeedbackViewportScrollLockTargetIndex: number | null = null;
   private eventFeedbackViewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
   private eventFeedbackSurfaceSwipePointerId: number | null = null;
@@ -189,12 +175,12 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   };
 
   protected eventFeedbackItemTemplateRef?: TemplateRef<
-    SmartListItemTemplateContext<AppTypes.EventFeedbackEventCard, EventFeedbackListFilters>
+    SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>
   >;
 
   @ViewChild('eventFeedbackItemTemplate', { read: TemplateRef })
   private set eventFeedbackItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.EventFeedbackEventCard, EventFeedbackListFilters>> | undefined
+    value: TemplateRef<SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>> | undefined
   ) {
     this.eventFeedbackItemTemplateRef = value;
   }
@@ -203,21 +189,22 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   private eventFeedbackViewportRef?: ElementRef<HTMLDivElement>;
 
   @ViewChild('eventFeedbackSmartList')
-  private eventFeedbackSmartList?: SmartListComponent<AppTypes.EventFeedbackEventCard, EventFeedbackListFilters>;
+  private eventFeedbackSmartList?: SmartListComponent<InfoCardData, EventFeedbackListFilters>;
 
   protected readonly eventFeedbackSmartListLoadPage: SmartListLoadPage<
-    AppTypes.EventFeedbackEventCard,
+    InfoCardData,
     EventFeedbackListFilters
-  > = (query) => from(this.loadEventFeedbackPage(query));
+  > = (query) => from(this.feedback.loadEventFeedbackPage(query));
 
   protected readonly eventFeedbackSmartListConfig: SmartListConfig<
-    AppTypes.EventFeedbackEventCard,
+    InfoCardData,
     EventFeedbackListFilters
   > = {
     pageSize: 12,
     defaultView: 'list',
     headerProgress: {
-      enabled: true
+      enabled: true,
+      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => this.eventFeedbackEmptyDescription(query.filters?.filter ?? 'pending'),
@@ -234,7 +221,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       'assets-card-list': true,
       'event-feedback-event-list': true
     },
-    trackBy: (_index, item) => item.eventId
+    trackBy: (_index, item) => item.id
   };
 
   protected eventFeedbackFilterMenuTrigger(): AppMenuTrigger {
@@ -281,7 +268,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     if (context?.menu !== 'info-card') {
       return;
     }
-    this.onEventFeedbackCardMenuAction(context.item, {
+    this.onEventFeedbackCardMenuAction(context.card, {
       id: context.card.id,
       actionId: context.action.id,
       action: context.action,
@@ -289,7 +276,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
   }
 
-  private eventFeedbackFilterPalette(filter: AppTypes.EventFeedbackListFilter): AppMenuPalette {
+  private eventFeedbackFilterPalette(filter: EventFeedbackListFilter): AppMenuPalette {
     switch (filter) {
       case 'feedbacked':
         return 'green';
@@ -303,29 +290,6 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   constructor() {
-    this.feedback.registerSource(this);
-
-    effect(() => {
-      const activeUserId = this.appCtx.activeUserId().trim();
-      if (activeUserId) {
-        return;
-      }
-      this.lastLoadedUserId = '';
-      this.eventRecordsLoadUserId = '';
-      this.eventRecordsLoadPromise = null;
-      this.eventRecordsRef.set([]);
-    });
-
-    effect(() => {
-      const isPopupOpen = this.feedback.isPopupOpen();
-      if (!isPopupOpen) {
-        return;
-      }
-      this.lastLoadedUserId = '';
-      this.eventRecordsLoadUserId = '';
-      this.eventRecordsLoadPromise = null;
-    });
-
     effect(() => {
       const filter = this.feedback.eventFeedbackListFilter();
       const userId = this.appCtx.activeUserId().trim();
@@ -380,79 +344,11 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     });
   }
 
-  public get eventItems(): ActivityEventSeedItem[] {
-    return this.uniqueEventRecords()
-      .filter(record => record.type === 'events' && !record.isTrashed && !record.isInvitation && !record.isAdmin)
-      .map(record => this.toDemoEventSeedItem(record));
-  }
-
-  public get ownedEventItems(): ActivityEventSeedItem[] {
-    return this.uniqueEventRecords()
-      .filter(record => !record.isTrashed && !record.isInvitation && !!record.isAdmin)
-      .map(record => this.toDemoEventSeedItem(record));
-  }
-
-  private get fallbackUsers(): UserDto[] {
-    return this.usersService.peekCachedUsers();
-  }
-
-  public get users(): UserDto[] {
-    const activeUser = this.appCtx.activeUserProfile();
-    const snapshot = this.gameService.getGameCardsUsersSnapshot();
-    const base = snapshot.length > 0 ? snapshot : this.fallbackUsers;
-    const next = [...base];
-    if (activeUser && !next.some(user => user.id === activeUser.id)) {
-      next.unshift(activeUser);
+  protected onEventFeedbackCardPrimaryAction(card: InfoCardData): void {
+    const item = this.feedback.eventFeedbackItemById(card.id);
+    if (!item) {
+      return;
     }
-    return next;
-  }
-
-  public get activeUser(): UserDto {
-    return this.appCtx.activeUserProfile() ?? this.users[0] ?? this.createFallbackUser();
-  }
-
-  public get eventDatesById(): Record<string, string> {
-    const next: Record<string, string> = {};
-    for (const record of this.uniqueEventRecords()) {
-      if (!record.startAtIso) {
-        continue;
-      }
-      next[record.id] = record.startAtIso;
-    }
-    return next;
-  }
-
-  public get activityImageById(): Record<string, string> {
-    const next: Record<string, string> = {};
-    for (const record of this.uniqueEventRecords()) {
-      if (!record.imageUrl?.trim()) {
-        continue;
-      }
-      next[record.id] = record.imageUrl;
-    }
-    return next;
-  }
-
-  public eventStartAtMs(eventId: string): number | null {
-    const record = this.eventRecordById(eventId);
-    if (!record?.startAtIso) {
-      return null;
-    }
-    const value = new Date(record.startAtIso).getTime();
-    return Number.isNaN(value) ? null : value;
-  }
-
-  public eventTitleById(eventId: string): string {
-    return this.eventRecordById(eventId)?.title ?? 'this event';
-  }
-
-  protected eventFeedbackInfoCard(item: AppTypes.EventFeedbackEventCard): InfoCardData {
-    return this.eventsService.eventFeedbackInfoCard(item, {
-      hasOrganizerNote: this.feedback.hasEventFeedbackOrganizerNote(item.eventId)
-    });
-  }
-
-  protected onEventFeedbackCardPrimaryAction(item: AppTypes.EventFeedbackEventCard): void {
     if (item.isOwnEvent) {
       this.openOrganizerEventFeedback(item.eventId);
       return;
@@ -463,7 +359,11 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     this.feedback.startEventFeedback(item);
   }
 
-  protected onEventFeedbackCardMenuAction(item: AppTypes.EventFeedbackEventCard, event: InfoCardMenuActionEvent): void {
+  protected onEventFeedbackCardMenuAction(card: InfoCardData, event: CardMenuActionEvent<InfoCardData>): void {
+    const item = this.feedback.eventFeedbackItemById(card.id);
+    if (!item) {
+      return;
+    }
     if (item.isOwnEvent) {
       return;
     }
@@ -520,7 +420,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       return;
     }
     const currentItems = [...smartList.itemsSnapshot()];
-    const nextItems = currentItems.filter(item => item.eventId !== normalizedEventId);
+    const nextItems = currentItems.filter(item => item.id !== normalizedEventId);
     if (nextItems.length === currentItems.length) {
       return;
     }
@@ -530,19 +430,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   }
 
   protected eventFeedbackCarouselInfoCard(card: AppTypes.EventFeedbackCard): InfoCardData {
-    return this.eventsService.eventFeedbackCarouselInfoCard(card);
-  }
-
-  protected organizerEventFeedbackInfoCard(item: {
-    eventId: string;
-    title: string;
-    subtitle: string;
-    timeframe: string;
-    imageUrl: string;
-    responseCount: number;
-    noteCount: number;
-  }): InfoCardData {
-    return this.eventsService.organizerEventFeedbackInfoCard(item);
+    return EventFeedbackDeckConverter.infoCard(card);
   }
 
   protected organizerEventFeedbackDetailInfoCard(item: {
@@ -554,7 +442,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     responseCount: number;
     noteCount: number;
   }): InfoCardData {
-    return this.eventsService.organizerEventFeedbackDetailInfoCard(item);
+    return EventFeedbackInfoCardConverter.organizerEventFeedbackCard(item, { showAction: false });
   }
 
   protected openOrganizerEventFeedback(eventId: string): void {
@@ -732,160 +620,16 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
   ngOnDestroy(): void {
     this.clearEventFeedbackViewportScrollLock();
     this.resetEventFeedbackSurfaceSwipe();
-    this.feedback.registerSource(null);
-  }
-
-  private async loadEventFeedbackPage(
-    query: ListQuery<EventFeedbackListFilters>
-  ): Promise<{ items: AppTypes.EventFeedbackEventCard[]; total: number }> {
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const start = page * pageSize;
-    const userId = query.filters?.userId?.trim() || this.appCtx.activeUserId().trim();
-
-    if (!userId) {
-      this.lastLoadedUserId = '';
-      this.eventRecordsLoadUserId = '';
-      this.eventRecordsLoadPromise = null;
-      this.eventRecordsRef.set([]);
-      return { items: [], total: 0 };
-    }
-
-    await Promise.all([
-      this.loadEventRecords(userId),
-      this.feedback.loadEventFeedbackListState(userId)
-    ]);
-
-    const items = this.feedback.eventFeedbackVisibleItems();
-    return {
-      items: items.slice(start, start + pageSize),
-      total: items.length
-    };
-  }
-
-  private async loadEventRecords(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      this.lastLoadedUserId = '';
-      this.eventRecordsLoadUserId = '';
-      this.eventRecordsLoadPromise = null;
-      this.eventRecordsRef.set([]);
-      return;
-    }
-
-    if (this.eventRecordsLoadPromise && this.eventRecordsLoadUserId === normalizedUserId) {
-      return this.eventRecordsLoadPromise;
-    }
-
-    if (this.lastLoadedUserId === normalizedUserId && this.eventRecordsRef().length > 0) {
-      return;
-    }
-
-    const requestVersion = ++this.loadRequestVersion;
-    this.eventRecordsLoadUserId = normalizedUserId;
-    this.eventRecordsLoadPromise = (async () => {
-      const records = await this.eventsService.queryItemsByUser(normalizedUserId);
-      if (requestVersion !== this.loadRequestVersion) {
-        return;
-      }
-      this.lastLoadedUserId = normalizedUserId;
-      this.eventRecordsRef.set(records);
-      void this.usersService.warmCachedUsers(this.collectEventRecordUserIds(records));
-    })();
-
-    try {
-      await this.eventRecordsLoadPromise;
-    } finally {
-      if (this.eventRecordsLoadUserId === normalizedUserId) {
-        this.eventRecordsLoadPromise = null;
-      }
-    }
-  }
-
-  private eventRecordById(eventId: string): ActivityEventRecord | null {
-    const normalizedEventId = eventId.trim();
-    if (!normalizedEventId) {
-      return null;
-    }
-    return this.uniqueEventRecords().find(record => record.id === normalizedEventId) ?? null;
-  }
-
-  private uniqueEventRecords(): ActivityEventRecord[] {
-    const byId = new Map<string, ActivityEventRecord>();
-    for (const record of this.eventRecordsRef()) {
-      const recordId = record.id?.trim() ?? '';
-      if (!recordId) {
-        continue;
-      }
-      const current = byId.get(recordId);
-      if (!current || this.shouldPreferEventRecord(record, current)) {
-        byId.set(recordId, record);
-      }
-    }
-    return [...byId.values()];
-  }
-
-  private shouldPreferEventRecord(candidate: ActivityEventRecord, current: ActivityEventRecord): boolean {
-    const score = (record: ActivityEventRecord) =>
-      (record.isAdmin ? 8 : 0)
-      + (record.type === 'hosting' ? 4 : 0)
-      + (!record.isInvitation ? 2 : 0)
-      + (!record.isTrashed ? 1 : 0);
-    return score(candidate) > score(current);
-  }
-
-  private collectEventRecordUserIds(records: readonly ActivityEventRecord[]): string[] {
-    return [...new Set(records.flatMap(record => [
-      `${record.creatorUserId ?? ''}`.trim(),
-      ...(this.activityMembersService.peekSummaryByOwner({ ownerType: 'event', ownerId: record.id })?.acceptedMemberUserIds ?? [])
-        .map(userId => `${userId}`.trim()),
-      ...(this.activityMembersService.peekSummaryByOwner({ ownerType: 'event', ownerId: record.id })?.pendingMemberUserIds ?? [])
-        .map(userId => `${userId}`.trim())
-    ]).filter(userId => userId.length > 0))];
-  }
-
-  private createFallbackUser(): UserDto {
-    return {
-      id: this.appCtx.activeUserId().trim(),
-      name: 'User',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: 'U',
-      gender: 'woman',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 0,
-      headline: '',
-      about: '',
-      images: [],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0,
-        cars: 0,
-        accommodation: 0,
-        supplies: 0,
-        tickets: 0,
-        contacts: 0,
-        feedback: 0
-      }
-    };
   }
 
   private eventFeedbackGroupLabel(
-    item: AppTypes.EventFeedbackEventCard,
-    filter: AppTypes.EventFeedbackListFilter
+    item: InfoCardData,
+    filter: EventFeedbackListFilter
   ): string {
-    const timestampMs = this.eventFeedbackGroupTimestampMs(item, filter);
+    const detail = this.feedback.eventFeedbackItemById(item.id);
+    const timestampMs = detail
+      ? this.eventFeedbackGroupTimestampMs(detail, filter)
+      : null;
     if (!timestampMs || Number.isNaN(timestampMs)) {
       return 'No date';
     }
@@ -899,7 +643,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
 
   private eventFeedbackGroupTimestampMs(
     item: AppTypes.EventFeedbackEventCard,
-    filter: AppTypes.EventFeedbackListFilter
+    filter: EventFeedbackListFilter
   ): number | null {
     switch (filter) {
       case 'feedbacked':
@@ -1053,7 +797,7 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
     return typeof window === 'undefined' ? 1280 : window.innerWidth;
   }
 
-  private eventFeedbackEmptyDescription(filter: AppTypes.EventFeedbackListFilter): string {
+  private eventFeedbackEmptyDescription(filter: EventFeedbackListFilter): string {
     switch (filter) {
       case 'own-events':
         return 'No own events yet. Hosted events with received feedback will show here.';
@@ -1065,42 +809,5 @@ export class EventFeedbackPopupComponent implements OnDestroy, EventFeedbackPopu
       default:
         return 'No pending events yet. New items appear about 2 hours after event start.';
     }
-  }
-
-  private toDemoEventSeedItem(record: ActivityEventRecord): ActivityEventSeedItem {
-    return {
-      id: record.id,
-      avatar: record.avatar,
-      title: record.title,
-      shortDescription: record.subtitle,
-      timeframe: record.timeframe,
-      activity: record.activity,
-      isAdmin: record.isAdmin,
-      creatorUserId: record.creatorUserId,
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
-      distanceKm: record.distanceKm,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      capacityTotal: record.capacityTotal,
-      visibility: record.visibility,
-      blindMode: record.blindMode,
-      imageUrl: record.imageUrl,
-      sourceLink: record.sourceLink,
-      location: record.location,
-      locationCoordinates: record.locationCoordinates ? { ...record.locationCoordinates } : undefined,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      autoInviter: record.autoInviter,
-      frequency: record.frequency,
-      topics: [...record.topics],
-      subEvents: record.subEvents ? [...record.subEvents] : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode,
-      rating: record.rating,
-      boost: record.boost,
-      affinity: record.affinity,
-      ticketing: record.ticketing,
-      published: record.published
-    };
   }
 }

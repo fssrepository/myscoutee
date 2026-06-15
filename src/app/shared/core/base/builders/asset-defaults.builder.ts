@@ -1,12 +1,14 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type * as AppTypes from '../models';
 
+import type * as AppDTOs from '../dto';
+import type * as AppConstants from '../../common/constants';
 export class AssetDefaultsBuilder {
-  static assetTypeLabel(type: AppTypes.AssetFilterType): string {
+  static assetTypeLabel(type: AppConstants.AssetFilterType): string {
     return APP_STATIC_DATA.assetTypeLabels[type];
   }
 
-  static assetTypeIcon(type: AppTypes.AssetFilterType): string {
+  static assetTypeIcon(type: AppConstants.AssetFilterType): string {
     if (type === 'Car') {
       return 'directions_car';
     }
@@ -19,7 +21,7 @@ export class AssetDefaultsBuilder {
     return 'inventory_2';
   }
 
-  static assetTypeClass(type: AppTypes.AssetFilterType): string {
+  static assetTypeClass(type: AppConstants.AssetFilterType): string {
     if (type === 'Car') {
       return 'asset-filter-car';
     }
@@ -35,7 +37,7 @@ export class AssetDefaultsBuilder {
     return 'asset-filter-car';
   }
 
-  static eventVisibilityClass(option: AppTypes.EventVisibility): string {
+  static eventVisibilityClass(option: AppConstants.EventVisibility): string {
     switch (option) {
       case 'Public':
         return 'event-visibility-public';
@@ -46,7 +48,7 @@ export class AssetDefaultsBuilder {
     }
   }
 
-  static visibilityIcon(option: AppTypes.EventVisibility): string {
+  static visibilityIcon(option: AppConstants.EventVisibility): string {
     switch (option) {
       case 'Friends only':
         return 'groups';
@@ -57,17 +59,17 @@ export class AssetDefaultsBuilder {
     }
   }
 
-  static assetCategoryOptions(type: AppTypes.AssetType): AppTypes.AssetCategory[] {
+  static assetCategoryOptions(type: AppConstants.AssetType): AppConstants.AssetCategory[] {
     return [...(APP_STATIC_DATA.assetCategoryOptionsByType[type] ?? [])];
   }
 
-  static assetCategoryLabel(category: AppTypes.AssetCategory | null | undefined): string {
+  static assetCategoryLabel(category: AppConstants.AssetCategory | null | undefined): string {
     return `${category ?? ''}`.trim();
   }
 
   static assetCategoryIcon(
-    category: AppTypes.AssetCategory | null | undefined,
-    fallbackType: AppTypes.AssetType = this.assetCategoryType(category)
+    category: AppConstants.AssetCategory | null | undefined,
+    fallbackType: AppConstants.AssetType = this.assetCategoryType(category)
   ): string {
     switch (`${category ?? ''}`.trim().toLowerCase()) {
       case 'ride':
@@ -96,8 +98,8 @@ export class AssetDefaultsBuilder {
   }
 
   static assetCategoryClass(
-    category: AppTypes.AssetCategory | null | undefined,
-    fallbackType: AppTypes.AssetType = this.assetCategoryType(category)
+    category: AppConstants.AssetCategory | null | undefined,
+    fallbackType: AppConstants.AssetType = this.assetCategoryType(category)
   ): string {
     switch (`${category ?? ''}`.trim().toLowerCase()) {
       case 'ride':
@@ -125,7 +127,7 @@ export class AssetDefaultsBuilder {
     }
   }
 
-  static assetCategoryType(category: AppTypes.AssetCategory | null | undefined): AppTypes.AssetType {
+  static assetCategoryType(category: AppConstants.AssetCategory | null | undefined): AppConstants.AssetType {
     switch (`${category ?? ''}`.trim().toLowerCase()) {
       case 'ride':
         return 'Car';
@@ -136,11 +138,11 @@ export class AssetDefaultsBuilder {
     }
   }
 
-  static defaultCategory(type: AppTypes.AssetType): AppTypes.AssetCategory {
+  static defaultCategory(type: AppConstants.AssetType): AppConstants.AssetCategory {
     return this.assetCategoryOptions(type)[0] ?? '';
   }
 
-  static normalizeCategory(type: AppTypes.AssetType, value: unknown): AppTypes.AssetCategory {
+  static normalizeCategory(type: AppConstants.AssetType, value: unknown): AppConstants.AssetCategory {
     const normalized = `${value ?? ''}`.trim();
     const options = this.assetCategoryOptions(type);
     if (options.some(option => option === normalized)) {
@@ -149,7 +151,7 @@ export class AssetDefaultsBuilder {
     return this.defaultCategory(type);
   }
 
-  static defaultAssetImage(type: AppTypes.AssetType, seed = type.toLowerCase()): string {
+  static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {
     const flavor = type === 'Car'
       ? 'road'
       : type === 'Accommodation'
@@ -159,7 +161,7 @@ export class AssetDefaultsBuilder {
     return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
   }
 
-  static ownedAssetEmptyLabel(type: AppTypes.AssetType): string {
+  static ownedAssetEmptyLabel(type: AppConstants.AssetType): string {
     if (type === 'Accommodation') {
       return 'No properties yet';
     }
@@ -169,7 +171,7 @@ export class AssetDefaultsBuilder {
     return 'No cars yet';
   }
 
-  static ownedAssetEmptyDescription(type: AppTypes.AssetType): string {
+  static ownedAssetEmptyDescription(type: AppConstants.AssetType): string {
     if (type === 'Accommodation') {
       return 'Add a property, stay, room, or place so it can show up here.';
     }

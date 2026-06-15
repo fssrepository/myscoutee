@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
-import { AppContext } from '../../../shared/core';
+import { AppContext } from '../../../shared/ui';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 @Component({

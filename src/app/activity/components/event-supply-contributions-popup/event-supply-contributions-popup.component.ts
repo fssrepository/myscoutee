@@ -1,3 +1,4 @@
+import type * as AppDTOs from '../../../shared/core/base/dto';
 
 import { Component, DoCheck, Input, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -34,16 +35,16 @@ export interface EventSupplyContributionsPopupHost {
   title(): string;
   subtitle(): string;
   summary(): string;
-  rows(): AppTypes.SubEventSupplyContributionRow[];
-  loadRowsPage(query: ListQuery<SupplyContributionListFilters>): Promise<PageResult<AppTypes.SubEventSupplyContributionRow>>;
+  rows(): AppDTOs.SubEventSupplyContributionRowDTO[];
+  loadRowsPage(query: ListQuery<SupplyContributionListFilters>): Promise<PageResult<AppDTOs.SubEventSupplyContributionRowDTO>>;
   bringDialog(): SupplyBringDialogState | null;
   pendingDelete(): { label: string; busy?: boolean; error?: string | null } | null;
   close(): void;
   openBringDialog(event?: Event): void;
   addedLabel(addedAtIso: string): string;
   quantityLabel(quantity: number): string;
-  canDelete(row: AppTypes.SubEventSupplyContributionRow): boolean;
-  requestDelete(row: AppTypes.SubEventSupplyContributionRow, event?: Event): void;
+  canDelete(row: AppDTOs.SubEventSupplyContributionRowDTO): boolean;
+  requestDelete(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void;
   cancelBringDialog(): void;
   canSubmitBringDialog(): boolean;
   onBringQuantityChange(value: number | string): void;
@@ -87,26 +88,26 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   };
 
   @ViewChild('supplyContributionSmartList')
-  private supplyContributionSmartList?: SmartListComponent<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>;
+  private supplyContributionSmartList?: SmartListComponent<AppDTOs.SubEventSupplyContributionRowDTO, SupplyContributionListFilters>;
 
   protected supplyContributionItemTemplateRef?: TemplateRef<
-    SmartListItemTemplateContext<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>
+    SmartListItemTemplateContext<AppDTOs.SubEventSupplyContributionRowDTO, SupplyContributionListFilters>
   >;
 
   @ViewChild('supplyContributionItemTemplate', { read: TemplateRef })
   private set supplyContributionItemTemplate(
-    value: TemplateRef<SmartListItemTemplateContext<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>> | undefined
+    value: TemplateRef<SmartListItemTemplateContext<AppDTOs.SubEventSupplyContributionRowDTO, SupplyContributionListFilters>> | undefined
   ) {
     this.supplyContributionItemTemplateRef = value;
   }
 
   protected readonly supplyContributionSmartListLoadPage: SmartListLoadPage<
-    AppTypes.SubEventSupplyContributionRow,
+    AppDTOs.SubEventSupplyContributionRowDTO,
     SupplyContributionListFilters
   > = query => from(this.host.loadRowsPage(query));
 
   protected readonly supplyContributionSmartListConfig: SmartListConfig<
-    AppTypes.SubEventSupplyContributionRow,
+    AppDTOs.SubEventSupplyContributionRowDTO,
     SupplyContributionListFilters
   > = {
     pageSize: 12,
@@ -165,7 +166,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   protected onSupplyContributionSmartListStateChange(
-    change: SmartListStateChange<AppTypes.SubEventSupplyContributionRow, SupplyContributionListFilters>
+    change: SmartListStateChange<AppDTOs.SubEventSupplyContributionRowDTO, SupplyContributionListFilters>
   ): void {
     this.supplyContributionListVisibleCount = change.items.length;
     this.supplyContributionListReady = !change.initialLoading;
@@ -179,7 +180,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   private syncSupplyContributionVisibleRows(
-    rows: AppTypes.SubEventSupplyContributionRow[],
+    rows: AppDTOs.SubEventSupplyContributionRowDTO[],
     previousRowCount: number
   ): void {
     if (!this.supplyContributionListReady || !this.supplyContributionSmartList) {

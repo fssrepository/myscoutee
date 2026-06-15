@@ -12,12 +12,12 @@ import type {
   AdminNotificationScheduleSlot,
   AdminNotificationTimingMode,
   AdminNotificationTriggerKind
-} from '../models/admin-notification.model';
+} from '../../contracts/admin.interface';
 import { HttpAdminNotificationsService } from '../../http/services/admin-notifications.service';
 import {
   LocalAdminNotificationsService,
   type LocalAdminNotificationDelayOptions
-} from '../../local/services/admin-notifications.service';
+} from '../../local/source/services/admin-notifications.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 

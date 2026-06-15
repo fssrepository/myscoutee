@@ -24,9 +24,11 @@ import {
   MediaService, ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
   DetailPrivacy,
-  ExperienceEntry,
-  ProfileDetailFormGroup,
   ProfileStatus
+} from '../../../shared/core/common/constants';
+import type {
+  ExperienceEntry,
+  ProfileDetailFormGroup
 } from '../../../shared/core/contracts/profile.interface';
 
 interface OnboardingStep {

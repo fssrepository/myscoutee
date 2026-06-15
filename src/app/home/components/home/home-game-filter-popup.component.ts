@@ -12,7 +12,7 @@ import {
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
-import type { UserDto } from '../../../shared/core/base/interfaces/user.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   FilterSelectorKind,

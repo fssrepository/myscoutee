@@ -1,23 +1,10 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { type ActivityCounters } from '../shared/ui';
 import { Router } from '@angular/router';
-import {
-  AppContext,
-  HelpCenterService,
-  PrivacyPolicyService,
-  RouteIntervalSchedulerService,
-  SessionService,
-  TermsPolicyService,
-  UsersService,
-  type ActivityMemberOwnerType,
-  type ActivityCounters,
-  type EntryConsentState,
-  type HelpCenterRevision,
-  type PrivacyConsentRecord,
-  type UserDto,
-  type UserImpressionsSectionDto,
-  type UserRealtimeLongPollResponseDto
-} from '../shared/core';
-import { APP_STORAGE_KEYS } from '../shared/core/base/storage-scope';
+import { AppContext } from '../shared/ui';
+import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevision, type PrivacyConsentRecord, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
+import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
+import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
 import { AssetPopupStateService } from '../asset/asset-popup-state.service';
 
@@ -350,7 +337,7 @@ export class NavigatorService {
     return true;
   }
 
-  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentState | null {
+  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentStateDto | null {
     if (typeof localStorage === 'undefined') {
       return null;
     }
@@ -359,7 +346,7 @@ export class NavigatorService {
       return null;
     }
     try {
-      const parsed = JSON.parse(raw) as Partial<EntryConsentState>;
+      const parsed = JSON.parse(raw) as Partial<EntryConsentStateDto>;
       if (
         parsed.version !== this.entryConsentVersion(revision) ||
         parsed.accepted !== true ||

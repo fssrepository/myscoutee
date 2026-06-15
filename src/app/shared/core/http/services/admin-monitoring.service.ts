@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { AdminMonitoringStateDto } from '../../base/models/admin-monitoring.model';
+import type { AdminMonitoringStateDto } from '../../contracts/admin.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 const ADMIN_MONITORING_LOAD_ROUTE = '/admin/monitoring';
