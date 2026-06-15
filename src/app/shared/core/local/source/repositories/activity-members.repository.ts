@@ -16,6 +16,9 @@ export interface DemoAcceptedEventMemberGroup {
   userIds: string[];
 }
 
+type LocalGameSocialMode = Extract<UserGameMode, 'friends-in-common' | 'separated-friends'> | 'outside-network';
+type LocalGameSocialCardsByMode = Record<LocalGameSocialMode, UserGameSocialCard[]>;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -29,7 +32,7 @@ export class LocalActivityMembersRepository {
     neighborsByUserId: Map<string, Set<string>>;
     edgeEventNameByKey: Map<string, string>;
   } | null = null;
-  private readonly gameSocialCardsByUserId = new Map<string, Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]>>();
+  private readonly gameSocialCardsByUserId = new Map<string, LocalGameSocialCardsByMode>();
 
   peekRecordsByOwner(owner: ActivityMemberOwnerRef): ActivityMemberRecord[] {
     return this.readRecordsByOwner(owner);
@@ -44,7 +47,7 @@ export class LocalActivityMembersRepository {
     return this.acceptedEventMemberGroupsFromTable(table);
   }
 
-  queryGameSocialCards(activeUserId: string, mode: Extract<UserGameMode, 'friends-in-common' | 'separated-friends'>): UserGameSocialCard[] {
+  queryGameSocialCards(activeUserId: string, mode: LocalGameSocialMode): UserGameSocialCard[] {
     const normalizedUserId = activeUserId.trim();
     if (!normalizedUserId) {
       return [];
@@ -129,9 +132,10 @@ export class LocalActivityMembersRepository {
     this.acceptedMemberGraphCache = graph;
     this.acceptedMemberGraphCacheToken = graphToken;
     this.gameSocialCardsByUserId.clear();
-    const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
     const usersById = new Map(this.localActivityMemberUsers.map(user => [user.id, user] as const));
-    for (const activeUserId of graphUserIds) {
+    const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
+    const gameUserIds = [...usersById.keys()].sort();
+    for (const activeUserId of gameUserIds) {
       if (!UserProfileStateBuilder.isPublicGameProfile(usersById.get(activeUserId))) {
         continue;
       }
@@ -140,9 +144,10 @@ export class LocalActivityMembersRepository {
         .filter(userId => UserProfileStateBuilder.isInsideNetworkGameProfile(usersById.get(userId)))
         .sort();
       const activeNeighborIds = new Set(activeNeighbors);
-      const cards: Record<'friends-in-common' | 'separated-friends', UserGameSocialCard[]> = {
+      const cards: LocalGameSocialCardsByMode = {
         'friends-in-common': [],
-        'separated-friends': []
+        'separated-friends': [],
+        'outside-network': []
       };
       for (let leftIndex = 0; leftIndex < activeNeighbors.length; leftIndex += 1) {
         const leftUserId = activeNeighbors[leftIndex];
@@ -192,6 +197,34 @@ export class LocalActivityMembersRepository {
             ?? 'Friends in Common'
         });
       }
+      for (let leftIndex = 0; leftIndex < gameUserIds.length; leftIndex += 1) {
+        const leftUserId = gameUserIds[leftIndex];
+        if (
+          leftUserId === activeUserId
+          || activeNeighborIds.has(leftUserId)
+          || !UserProfileStateBuilder.isPublicGameProfile(usersById.get(leftUserId))
+        ) {
+          continue;
+        }
+        for (let rightIndex = leftIndex + 1; rightIndex < gameUserIds.length; rightIndex += 1) {
+          const rightUserId = gameUserIds[rightIndex];
+          if (
+            rightUserId === activeUserId
+            || activeNeighborIds.has(rightUserId)
+            || graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)
+            || !UserProfileStateBuilder.isPublicGameProfile(usersById.get(rightUserId))
+          ) {
+            continue;
+          }
+          const [primaryUserId, secondaryUserId] = this.orderedPairUserIds(leftUserId, rightUserId, usersById);
+          const key = this.sortedPairKey(primaryUserId, secondaryUserId);
+          cards['outside-network'].push({
+            id: `outside-network:${activeUserId}:${key}`,
+            userId: primaryUserId,
+            secondaryUserId
+          });
+        }
+      }
       cards['friends-in-common'].sort((left, right) => {
         const bridgeDelta = (right.bridgeCount ?? 0) - (left.bridgeCount ?? 0);
         if (bridgeDelta !== 0) {
@@ -206,9 +239,32 @@ export class LocalActivityMembersRepository {
           - this.pairDistanceScore(activeUserId, left, usersById);
         return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
       });
+      cards['outside-network'].sort((left, right) => {
+        const scoreDelta = this.pairDistanceScore(activeUserId, right, usersById)
+          - this.pairDistanceScore(activeUserId, left, usersById);
+        return scoreDelta !== 0 ? scoreDelta : left.id.localeCompare(right.id);
+      });
       this.gameSocialCardsByUserId.set(activeUserId, cards);
     }
     this.gameSocialCardsCacheToken = graphToken;
+  }
+
+  private orderedPairUserIds(
+    leftUserId: string,
+    rightUserId: string,
+    usersById: ReadonlyMap<string, UserDto>
+  ): [string, string] {
+    const leftUser = usersById.get(leftUserId);
+    const rightUser = usersById.get(rightUserId);
+    if (leftUser?.gender === 'woman' && rightUser?.gender !== 'woman') {
+      return [leftUserId, rightUserId];
+    }
+    if (rightUser?.gender === 'woman' && leftUser?.gender !== 'woman') {
+      return [rightUserId, leftUserId];
+    }
+    return leftUserId.localeCompare(rightUserId) <= 0
+      ? [leftUserId, rightUserId]
+      : [rightUserId, leftUserId];
   }
 
   private pairDistanceScore(

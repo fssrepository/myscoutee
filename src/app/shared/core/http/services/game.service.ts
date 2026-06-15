@@ -125,7 +125,7 @@ export class HttpGameService implements UserGameDataService {
       };
     }
 
-    if (mode === 'separated-friends') {
+    if (mode === 'pair' || mode === 'separated-friends') {
       const socialCards = (cards.socialCards ?? []).filter(card => {
         const pairKey = this.toSocialPairKey(card);
         return !pairKey || !pendingRatedPairKeys.has(pairKey);
@@ -200,11 +200,14 @@ export class HttpGameService implements UserGameDataService {
   }
 
   private cloneSocialCard(card: UserGameSocialCard): UserGameSocialCard {
+    const socialContext = card.socialContext === 'friends-in-common' || card.socialContext === 'separated-friends'
+      ? card.socialContext
+      : undefined;
     return {
       id: `${card.id ?? ''}`.trim(),
       userId: `${card.userId ?? ''}`.trim(),
       secondaryUserId: `${card.secondaryUserId ?? ''}`.trim() || undefined,
-      socialContext: card.socialContext === 'friends-in-common' ? 'friends-in-common' : 'separated-friends',
+      ...(socialContext ? { socialContext } : {}),
       bridgeUserId: `${card.bridgeUserId ?? ''}`.trim() || undefined,
       bridgeCount: Number.isFinite(card.bridgeCount) ? Math.max(0, Math.trunc(Number(card.bridgeCount))) : undefined,
       eventName: `${card.eventName ?? ''}`.trim() || undefined

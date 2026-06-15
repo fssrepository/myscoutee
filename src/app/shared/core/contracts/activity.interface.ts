@@ -549,12 +549,13 @@ export interface UserGameCardsStackSnapshot {
 }
 
 export type UserGameMode = 'single' | 'pair' | 'separated-friends' | 'friends-in-common';
+export type UserGameSocialContext = 'separated-friends' | 'friends-in-common';
 
 export interface UserGameSocialCard {
   id: string;
   userId: string;
   secondaryUserId?: string;
-  socialContext: 'separated-friends' | 'friends-in-common';
+  socialContext?: UserGameSocialContext;
   bridgeUserId?: string;
   bridgeCount?: number;
   eventName?: string;

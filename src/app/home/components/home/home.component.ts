@@ -203,8 +203,6 @@ export class HomeComponent implements OnDestroy {
   private gameStackPaginating = false;
   private gameStackExhausted = false;
   private homeSmartListQueryKey = '';
-  private syntheticPairRoundsCacheKey = '';
-  private syntheticPairRoundsCache: PairModeRoundState[] = [];
   private unregisterExplanationContext: (() => void) | null = null;
   private inFlightServiceCardStackReloadKey: string | null = null;
   private queuedServiceCardStackReloadKey: string | null = null;
@@ -249,10 +247,6 @@ export class HomeComponent implements OnDestroy {
   protected get isPairMode(): boolean {
     return this.selectedHomeMode === 'pair'
       || this.selectedHomeMode === 'separated-friends';
-  }
-
-  private get isSyntheticPairMode(): boolean {
-    return this.selectedHomeMode === 'pair';
   }
 
   protected get isSeparatedFriendsMode(): boolean {
@@ -485,7 +479,7 @@ export class HomeComponent implements OnDestroy {
         .filter((user): user is UserDto => !!user);
     }
     const excludedUserIds = new Set(this.gameService.queryExcludedGameCardUserIds(this.activeUserId, this.selectedHomeMode));
-    const metUserIds = this.selectedHomeMode !== 'single' && !this.isSyntheticPairMode
+    const metUserIds = this.selectedHomeMode !== 'single'
       ? null
       : new Set(this.gameService.queryMetUserIds(this.activeUserId));
     return this.users
@@ -543,19 +537,13 @@ export class HomeComponent implements OnDestroy {
     if (this.isFriendsInCommonMode) {
       return this.socialFriendsInCommonSingleRows().length > 0;
     }
-    if (this.isSeparatedFriendsMode) {
+    if (this.isPairMode) {
       return this.socialPairRows().length > 0;
-    }
-    if (this.isSyntheticPairMode) {
-      return this.pairModeCycleSize() > 0;
     }
     return this.candidatePool.length > 0;
   }
 
   protected get filterBadgeCount(): number {
-    if (this.isSyntheticPairMode) {
-      return Math.max(0, this.pairModeCycleSize());
-    }
     const overrideTotal = this.gameService.peekUserGameCardsStackSnapshot(this.activeUser.id).filterCount;
     if (this.gameInitialCardsLoadPending) {
       if (overrideTotal === null) {
@@ -1316,7 +1304,6 @@ export class HomeComponent implements OnDestroy {
 
   private resetServiceCardState(): void {
     this.clearPendingRatingAdvanceTimer();
-    this.invalidateSyntheticPairRoundsCache();
     this.gameService.resetUserGameCardsStack(this.activeUserId);
   }
 
@@ -1528,7 +1515,7 @@ export class HomeComponent implements OnDestroy {
         await this.waitForHomeGameStackTick();
       }
     }
-    if (this.isSyntheticPairMode || query.page > 0 || this.gameInitialCardsLoadPending === false) {
+    if (query.page > 0 || this.gameInitialCardsLoadPending === false) {
       return;
     }
     await this.ensureInitialServiceCardStackLoaded();
@@ -1554,7 +1541,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async ensureHomeSmartListRowsAvailable(query: ListQuery<HomeSmartListFilters>): Promise<void> {
-    if (this.isSyntheticPairMode || !this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
+    if (!this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       return;
     }
     const pageSize = Number.isFinite(query.pageSize)
@@ -1589,7 +1576,7 @@ export class HomeComponent implements OnDestroy {
     if (this.isFriendsInCommonMode) {
       return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards).length;
     }
-    if (this.isSeparatedFriendsMode) {
+    if (this.isPairMode) {
       return this.socialCardsForCurrentMode(serviceStack.socialCards).length;
     }
     return serviceStack.cardUserIds.length;
@@ -1603,7 +1590,7 @@ export class HomeComponent implements OnDestroy {
     if (this.isFriendsInCommonMode) {
       return this.visibleFriendsInCommonSocialCards(serviceStack.socialCards).length;
     }
-    if (this.isSeparatedFriendsMode) {
+    if (this.isPairMode) {
       const ratedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
       return this.socialCardsForCurrentMode(serviceStack.socialCards).filter(card => {
         const secondUserId = card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || '';
@@ -1630,36 +1617,18 @@ export class HomeComponent implements OnDestroy {
     if (this.isFriendsInCommonMode) {
       return this.visibleFriendsInCommonSocialCards(snapshot.socialCards).length;
     }
-    if (this.isSeparatedFriendsMode) {
+    if (this.isPairMode) {
       return this.socialCardsForCurrentMode(snapshot.socialCards).length;
     }
-    return this.candidatePool.length;
+    return this.isPairMode ? this.pairModeCycleSize() : this.candidatePool.length;
   }
 
   private homeSmartListRowsPage(startIndex: number, endIndex: number): HomeSmartListRow[] {
     if (this.isFriendsInCommonMode) {
       return this.socialFriendsInCommonSingleRows().slice(startIndex, endIndex);
     }
-    if (this.isSeparatedFriendsMode) {
-      return this.socialPairRows().slice(startIndex, endIndex);
-    }
-    if (this.isSyntheticPairMode) {
-      return this.pairModeRounds()
-        .slice(startIndex, endIndex)
-        .map((round, index) => ({
-          id: round.socialCard?.id ?? `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${startIndex + index}`,
-          mode: 'pair',
-          round
-        }));
-    }
     if (this.isPairMode) {
-      return this.pairModeRounds()
-        .slice(startIndex, endIndex)
-        .map((round, index) => ({
-          id: round.socialCard?.id ?? `pair:${round.woman?.id ?? 'none'}:${round.man?.id ?? 'none'}:${startIndex + index}`,
-          mode: 'pair',
-          round
-        }));
+      return this.socialPairRows().slice(startIndex, endIndex);
     }
     return this.candidatePool
       .slice(startIndex, endIndex)
@@ -1668,20 +1637,6 @@ export class HomeComponent implements OnDestroy {
         mode: 'single',
         candidate
       }));
-  }
-
-  private buildSyntheticPairRoundsCacheKey(
-    candidates: readonly UserDto[],
-    excludedPairKeys: readonly string[]
-  ): string {
-    const candidateIdsKey = candidates.map(candidate => candidate.id).join('|');
-    const excludedPairKeysKey = [...excludedPairKeys].sort((left, right) => left.localeCompare(right)).join('|');
-    return `${this.gameStackPaginationStateKey()}|candidates:${candidateIdsKey}|excluded:${excludedPairKeysKey}`;
-  }
-
-  private invalidateSyntheticPairRoundsCache(): void {
-    this.syntheticPairRoundsCacheKey = '';
-    this.syntheticPairRoundsCache = [];
   }
 
   private async onHomeSmartListRatingSelect(row: HomeSmartListRow | null, score: number): Promise<void> {
@@ -1808,6 +1763,9 @@ export class HomeComponent implements OnDestroy {
     if (this.isSeparatedFriendsMode) {
       return cards.filter(card => card.socialContext === 'separated-friends');
     }
+    if (this.selectedHomeMode === 'pair') {
+      return cards.filter(card => !card.socialContext);
+    }
     return [];
   }
 
@@ -1887,6 +1845,9 @@ export class HomeComponent implements OnDestroy {
     }
     if (socialCard.socialContext === 'friends-in-common') {
       return side === 'left' ? 'Person' : 'Common friend';
+    }
+    if (!socialCard.socialContext) {
+      return side === 'left' ? 'Person A' : 'Person B';
     }
     return side === 'left' ? 'Friend A' : 'Friend B';
   }
@@ -2075,41 +2036,10 @@ export class HomeComponent implements OnDestroy {
   }
 
   private pairModeRounds(): PairModeRoundState[] {
-    if (this.isSeparatedFriendsMode) {
+    if (this.isPairMode) {
       return this.socialPairRows().map(row => row.round);
     }
-    const excludedPairKeys = new Set(this.gameService.queryExcludedGameCardPairKeys(this.activeUserId));
-    const candidates = this.candidatePool;
-    const cacheKey = this.buildSyntheticPairRoundsCacheKey(candidates, [...excludedPairKeys]);
-    if (this.syntheticPairRoundsCacheKey === cacheKey) {
-      return this.syntheticPairRoundsCache;
-    }
-    const metUserIdsByCandidateId = new Map(
-      candidates.map(candidate => [candidate.id, new Set(this.gameService.queryMetUserIds(candidate.id))] as const)
-    );
-    const rounds: PairModeRoundState[] = [];
-    for (let leftIndex = 0; leftIndex < candidates.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < candidates.length; rightIndex += 1) {
-        const left = candidates[leftIndex] ?? null;
-        const right = candidates[rightIndex] ?? null;
-        const leftMetUserIds = left ? metUserIdsByCandidateId.get(left.id) : null;
-        if (
-          !left
-          || !right
-          || excludedPairKeys.has(this.sortedHomePairKey(left.id, right.id))
-          || leftMetUserIds?.has(right.id)
-        ) {
-          continue;
-        }
-        rounds.push({
-          woman: left,
-          man: right
-        });
-      }
-    }
-    this.syntheticPairRoundsCacheKey = cacheKey;
-    this.syntheticPairRoundsCache = rounds;
-    return rounds;
+    return [];
   }
 
   private pairModeRoundAt(index: number): PairModeRoundState | null {
@@ -2445,9 +2375,6 @@ export class HomeComponent implements OnDestroy {
   }
 
   private totalRoundsForCurrentMode(): number {
-    if (this.isSyntheticPairMode) {
-      return this.pairModeCycleSize();
-    }
     const serviceStack = this.gameService.peekUserGameCardsStackSnapshot(this.activeUserId);
     if (serviceStack.cardUserIds.length > 0 || serviceStack.socialCards.length > 0 || serviceStack.nextCursor !== null) {
       const loadedCount = this.loadedServiceRowsCount(serviceStack);
@@ -2505,7 +2432,7 @@ export class HomeComponent implements OnDestroy {
   }): void {
     this.cancelGameStackPaginationLoad();
     this.gameStackPaginationKey = this.gameStackPaginationStateKey();
-    const loadedCount = this.isSeparatedFriendsMode || this.isFriendsInCommonMode
+    const loadedCount = this.isPairMode || this.isFriendsInCommonMode
       ? this.loadedServiceRowsCount(serviceStack)
       : serviceStack.cardUserIds.length;
     this.gameStackCardsLoaded = loadedCount;
@@ -2539,7 +2466,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private startGameStackPaginationLoad(): void {
-    if (!this.isSyntheticPairMode && this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
+    if (this.gameService.shouldUseUserGameCardsStack(this.activeUserId)) {
       this.startServiceCardPaginationLoad();
       return;
     }
@@ -2714,7 +2641,6 @@ export class HomeComponent implements OnDestroy {
       byId.set(user.id, user);
     }
     this.users = Array.from(byId.values());
-    this.invalidateSyntheticPairRoundsCache();
   }
 
   private toHomeUser(user: UserDto): UserDto {
