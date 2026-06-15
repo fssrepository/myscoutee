@@ -120,8 +120,20 @@ export class AppPopupContext {
       subtitle: payload.subtitle?.trim() || undefined,
       autoSelectUserId: payload.autoSelectUserId?.trim() || undefined,
       users: payload.users?.map(user => ({ ...user })),
-      onSelect: payload.onSelect,
-      onClose: payload.onClose
+      onSelect: async userId => {
+        const accepted = await payload.onSelect(userId);
+        if (accepted !== false) {
+          this.closeDemoBootstrapSelector();
+        }
+        return accepted;
+      },
+      onClose: () => {
+        try {
+          payload.onClose?.();
+        } finally {
+          this.closeDemoBootstrapSelector();
+        }
+      }
     });
   }
 

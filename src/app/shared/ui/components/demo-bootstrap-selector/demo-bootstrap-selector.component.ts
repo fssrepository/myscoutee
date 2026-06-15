@@ -79,7 +79,6 @@ export class DemoBootstrapSelectorComponent {
     }
     if (this.contextRequest) {
       this.contextRequest.onClose?.();
-      this.popupCtx.closeDemoBootstrapSelector();
       return;
     }
     this.closeRequested.emit();
@@ -278,7 +277,12 @@ export class DemoBootstrapSelectorComponent {
     const requestToken = this.contextRequestToken;
     const selectedUser = this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
     if (!this.usersService.localModeEnabled) {
-      this.completeContextSelectionImmediately(normalizedUserId, requestToken);
+      this.commit(() => {
+        this.submitting = true;
+        this.selectedUserId = normalizedUserId;
+        this.errorMessage = '';
+      });
+      void this.completeContextSelection(normalizedUserId, requestToken);
       return;
     }
     this.commit(() => {
@@ -335,20 +339,6 @@ export class DemoBootstrapSelectorComponent {
     }
   }
 
-  private completeContextSelectionImmediately(userId: string, requestToken: number): void {
-    const request = this.contextRequest;
-    if (!request || !this.isCurrentContextRequest(requestToken)) {
-      return;
-    }
-    try {
-      const accepted = Promise.resolve(request.onSelect(userId));
-      this.popupCtx.closeDemoBootstrapSelector();
-      void accepted.catch(() => undefined);
-    } catch {
-      this.resetContextSelectionFailure('Unable to open selected demo user.');
-    }
-  }
-
   private async completeContextSelection(userId: string, requestToken: number): Promise<void> {
     const request = this.contextRequest;
     if (!request || !this.isCurrentContextRequest(requestToken)) {
@@ -360,7 +350,6 @@ export class DemoBootstrapSelectorComponent {
         return;
       }
       if (accepted !== false) {
-        this.popupCtx.closeDemoBootstrapSelector();
         return;
       }
       this.resetContextSelectionFailure('Unable to open selected demo user.');
