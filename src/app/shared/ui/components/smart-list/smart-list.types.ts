@@ -4,6 +4,7 @@ import type {
   ProgressIndicatorTone
 } from '../progress-indicator';
 import type {
+  AppMenuAnchorRect,
   AppMenuDispatchState,
   AppMenuItem
 } from '../menu';
@@ -102,6 +103,22 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
   selectMode: boolean;
   presentation: SmartListPresentation;
   renderState: SmartListItemRenderState;
+  openMenu: (request: SmartListItemMenuRequest) => void;
+}
+
+export interface SmartListItemMenuRequest {
+  id: string;
+  title?: string | null;
+  triggerRect?: AppMenuAnchorRect | null;
+  openUp?: boolean;
+  closeTrigger?: (() => void) | null;
+}
+
+export interface SmartListItemMenuContext<T> {
+  menu: 'smart-list-item';
+  itemId: string;
+  item: T;
+  request: SmartListItemMenuRequest;
 }
 
 export interface SmartListCalendarDateRange {
@@ -192,6 +209,9 @@ export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters 
   menu: AppMenuDispatchState<string, unknown>;
   query: ListQuery<TFilters>;
   items: readonly T[];
+  item: T | null;
+  itemId: string | null;
+  request: SmartListItemMenuRequest | null;
 }
 
 export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = SmartListFilters> =

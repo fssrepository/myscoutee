@@ -347,6 +347,7 @@ export interface InfoCardMenuRequestEvent {
   id: string;
   card: InfoCardData;
   actions: readonly InfoCardMenuAction[];
+  title?: string | null;
   triggerRect: InfoCardMenuTriggerRect | null;
   openUp: boolean;
   closeRequested?: boolean;

@@ -1,9 +1,9 @@
 @if (card) {
   <app-info-card
     [card]="card"
-    [useSharedMenuTrigger]="true"
-    [sharedMenuContext]="menuSubject"
+    [useSharedMenu]="true"
     (mediaEndClick)="onMediaEndClick()"
     (menuAction)="onMenuAction($event)"
+    (menuRequest)="onMenuRequest($event)"
   ></app-info-card>
 }

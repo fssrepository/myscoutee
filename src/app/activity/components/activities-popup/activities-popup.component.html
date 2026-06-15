@@ -166,13 +166,14 @@
             (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
             (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"
           ></app-smart-list>
-          <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel">
+          <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
             <app-activities-event-template
               [row]="row"
               [groupLabel]="groupLabel"
               [cardRevision]="activitiesEventCardRevisionForRow(row)"
               (mediaEndClick)="openActivityMembers(row)"
               (menuAction)="onActivityEventInfoCardMenuAction(row, $event)"
+              (menuRequest)="openMenu($event)"
             ></app-activities-event-template>
           </ng-template>
           <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">

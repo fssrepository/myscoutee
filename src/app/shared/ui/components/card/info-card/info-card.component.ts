@@ -148,9 +148,14 @@ export class InfoCardComponent implements OnDestroy {
     });
   }
 
-  protected toggleMenu(event: Event): void {
+  protected onMenuTriggerPointerDown(event: Event): void {
     event.stopPropagation();
-    if (!this.card?.menuActions?.length) {
+  }
+
+  protected toggleMenu(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!this.card || !this.hasMenuActions()) {
       return;
     }
     const trigger = event.currentTarget as HTMLElement | null;
@@ -171,7 +176,8 @@ export class InfoCardComponent implements OnDestroy {
       this.menuRequest.emit({
         id: this.card.id,
         card: this.card,
-        actions: this.card.menuActions,
+        actions: this.card.menuActions ?? [],
+        title: this.sharedMenuTitle(),
         triggerRect: this.resolveMenuTriggerRect(trigger),
         openUp: this.shouldOpenMenuUp(trigger),
         closeTrigger: () => this.closeMenu()
@@ -303,7 +309,7 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected hasMenuActions(): boolean {
-    if (this.useSharedMenuTrigger && this.card?.hasMenuOptions === true) {
+    if ((this.useSharedMenu || this.useSharedMenuTrigger) && this.card?.hasMenuOptions === true) {
       return true;
     }
     return (this.card?.menuActions?.length ?? 0) > 0;

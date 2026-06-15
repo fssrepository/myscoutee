@@ -11,9 +11,9 @@ import { ActivityMembersBuilder } from '../../../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
-  type InfoCardMenuActionEvent
+  type InfoCardMenuActionEvent,
+  type InfoCardMenuRequestEvent
 } from '../../../../../shared/ui';
-import type { ActivityEventInfoCardMenuSubject } from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
 @Component({
@@ -30,14 +30,13 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
   @Output() readonly mediaEndClick = new EventEmitter<void>();
   @Output() readonly menuAction = new EventEmitter<InfoCardMenuActionEvent>();
+  @Output() readonly menuRequest = new EventEmitter<InfoCardMenuRequestEvent>();
 
   protected card: InfoCardData | null = null;
-  protected menuSubject: ActivityEventInfoCardMenuSubject | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['row'] || changes['groupLabel'] || changes['cardRevision']) {
       this.card = this.buildCard();
-      this.menuSubject = this.buildMenuSubject();
     }
   }
 
@@ -56,30 +55,16 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
     return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
   }
 
-  private buildMenuSubject(): ActivityEventInfoCardMenuSubject | null {
-    const row = this.row;
-    if (!row || !this.isInfoCardRow(row)) {
-      return null;
-    }
-    return {
-      menu: 'activity-event-card',
-      id: row.id,
-      status: row.status ?? null,
-      ownerUserId: row.ownerUserId ?? row.ownerId ?? null,
-      adminIds: [...(row.adminIds ?? [])],
-      acceptedMemberUserIds: [...(row.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(row.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(row.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(row.pendingRequestMemberUserIds ?? [])]
-    };
-  }
-
   protected onMediaEndClick(): void {
     this.mediaEndClick.emit();
   }
 
   protected onMenuAction(event: InfoCardMenuActionEvent): void {
     this.menuAction.emit(event);
+  }
+
+  protected onMenuRequest(event: InfoCardMenuRequestEvent): void {
+    this.menuRequest.emit(event);
   }
 
 }

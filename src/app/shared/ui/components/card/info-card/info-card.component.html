@@ -240,6 +240,7 @@
             class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
             [class.is-open]="menuTriggerOpen"
             [attr.aria-label]="(menuTriggerOpen ? 'close.card.actions' : 'open.card.actions') | i18n"
+            (pointerdown)="onMenuTriggerPointerDown($event)"
             (click)="toggleMenu($event)"
             >
             <mat-icon>{{ menuTriggerOpen ? 'close' : 'more_vert' }}</mat-icon>

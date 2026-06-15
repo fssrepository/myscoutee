@@ -65,6 +65,8 @@ import type {
   SmartListGroup,
   SmartListHeaderProgressState,
   SmartListInitialScrollAnchor,
+  SmartListItemMenuContext,
+  SmartListItemMenuRequest,
   SmartListItemRenderState,
   SmartListItemSelectEvent,
   SmartListItemTemplateContext,
@@ -205,11 +207,54 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!menu) {
       return null;
     }
+    const itemMenu = this.itemMenuContext(menu.context);
     return this.config.menuItems?.({
       menu,
       query: this.currentQuery(),
-      items: this.items
+      items: this.items,
+      item: itemMenu?.item ?? null,
+      itemId: itemMenu?.itemId ?? null,
+      request: itemMenu?.request ?? null
     }) ?? menu.items;
+  }
+
+  private itemMenuContext(context: unknown): SmartListItemMenuContext<T> | null {
+    if (!context || typeof context !== 'object') {
+      return null;
+    }
+    const candidate = context as Partial<SmartListItemMenuContext<T>>;
+    return candidate.menu === 'smart-list-item' && typeof candidate.itemId === 'string'
+      ? candidate as SmartListItemMenuContext<T>
+      : null;
+  }
+
+  protected openItemMenu(item: T, request: SmartListItemMenuRequest): void {
+    const itemId = `${request.id ?? ''}`.trim();
+    if (!itemId) {
+      return;
+    }
+    const menuId = `smart-list-item:${itemId}`;
+    if (this.itemMenuDispatcher.isOpen(menuId)) {
+      this.itemMenuDispatcher.close(menuId);
+      return;
+    }
+    this.itemMenuDispatcher.open({
+      id: menuId,
+      kind: 'select',
+      title: request.title ?? null,
+      items: [],
+      context: {
+        menu: 'smart-list-item',
+        itemId,
+        item,
+        request
+      },
+      triggerRect: request.triggerRect ?? null,
+      openUp: request.openUp === true,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger ?? null
+    }, null);
   }
 
   menuOpen(): boolean {
@@ -852,7 +897,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
       presentation: 'list',
-      renderState: 'list'
+      renderState: 'list',
+      openMenu: request => this.openItemMenu(item, request)
     };
   }
 
@@ -917,7 +963,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
       presentation: 'fullscreen',
-      renderState
+      renderState,
+      openMenu: request => this.openItemMenu(item, request)
     };
   }
 

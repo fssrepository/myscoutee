@@ -600,8 +600,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitySmartListMenuItems(
     context: SmartListMenuItemsContext<ActivityPopupCard, ActivitiesSmartListFilters>
   ): readonly AppMenuItem<string, unknown>[] {
-    const subject = context.menu.context as ActivityEventInfoCardMenuSubject | undefined;
-    if (subject?.menu !== 'activity-event-card') {
+    const subject = this.activityEventMenuSubjectFromRow(context.item);
+    if (!subject) {
       return context.menu.items;
     }
     const activeUserId = this.appCtx.activeUserId().trim() || this.activeUser.id;
@@ -625,6 +625,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
       action: context.action,
       card: row
     });
+  }
+
+  private activityEventMenuSubjectFromRow(row: ActivityPopupCard | null | undefined): ActivityEventInfoCardMenuSubject | null {
+    if (!row || (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations')) {
+      return null;
+    }
+    return {
+      menu: 'activity-event-card',
+      id: row.id,
+      status: row.status ?? null,
+      ownerUserId: row.ownerUserId ?? row.ownerId ?? null,
+      adminIds: [...(row.adminIds ?? [])],
+      acceptedMemberUserIds: [...(row.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(row.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(row.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(row.pendingRequestMemberUserIds ?? [])]
+    };
   }
 
   private activityEventRowFromMenuSubject(subject: ActivityEventInfoCardMenuSubject): ActivityPopupEventCard | null {
