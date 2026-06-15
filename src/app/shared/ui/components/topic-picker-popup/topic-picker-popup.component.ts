@@ -33,7 +33,7 @@ export class TopicPickerPopupComponent implements OnChanges {
     if (changes['groups']) {
       this.activeGroupIndex = this.clampGroupIndex(this.activeGroupIndex);
     }
-    if (changes['open']?.currentValue === true || changes['selected']) {
+    if (changes['open']?.currentValue === true && changes['open']?.previousValue !== true) {
       const selectedGroupIndex = this.selectedTopicGroupIndex();
       if (selectedGroupIndex >= 0) {
         this.activeGroupIndex = selectedGroupIndex;

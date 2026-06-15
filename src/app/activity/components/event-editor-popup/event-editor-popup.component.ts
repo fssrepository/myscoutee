@@ -25,14 +25,14 @@ import {
 import type { ActivityEventDTO } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
-  type AppMenuGroup,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
   CounterBadgePipe,
   PricingEditorComponent,
-  ProgressIndicatorComponent
+  ProgressIndicatorComponent,
+  TopicPickerPopupComponent
 } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
@@ -41,8 +41,7 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'frequency'; frequency: string }
-  | { menu: 'topic'; topic: string };
+  | { menu: 'frequency'; frequency: string };
 
 @Component({
   selector: 'app-event-editor-popup',
@@ -58,6 +57,7 @@ type EventEditorMenuContext =
     MatTimepickerModule,
     MatNativeDateModule,
     AppMenuComponent,
+    TopicPickerPopupComponent,
     EventSubeventsPopupComponent,
     PricingEditorComponent,
     ProgressIndicatorComponent,
@@ -126,6 +126,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.showSlotsPopup = false;
         this.showPoliciesPopup = false;
         this.showPolicyEditorPopup = false;
+        this.showTopicPicker = false;
         this.showSubEventsPopup = false;
         this.resetDraftAutosaveTracking();
         return;
@@ -153,6 +154,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showSlotsPopup = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
+      this.showTopicPicker = false;
       this.showSubEventsPopup = true;
     });
 
@@ -187,12 +189,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
       this.showSubEventsPopup = false;
+      this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showSubEventsPopup = false;
+      this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
       this.isLoadingEventData.set(false);
@@ -245,6 +249,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showSlotsPopup = false;
   showPoliciesPopup = false;
   showPolicyEditorPopup = false;
+  showTopicPicker = false;
   showSubEventsPopup = false;
   isSavePending = false;
   workingPolicies: ContractTypes.EventPolicyItem[] = [];
@@ -259,6 +264,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showPoliciesPopup = false;
     this.showPolicyEditorPopup = false;
     this.showSubEventsPopup = false;
+    this.showTopicPicker = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
     this.clearEventEditorExplanationContext();
@@ -306,6 +312,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   requestOpenMembers(): void {
+    this.showTopicPicker = false;
     const eventId = this.currentEventIdentity() || 'draft-event';
     const canManageMembers = !this.eventEditorService.readOnly();
     const row: AppTypes.ActivityListRow = {
@@ -332,7 +339,32 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenSubEvents(): void {
     this.showSlotsPopup = false;
+    this.showTopicPicker = false;
     this.showSubEventsPopup = true;
+  }
+
+  requestOpenTopics(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+    this.showSlotsPopup = false;
+    this.showPoliciesPopup = false;
+    this.showPolicyEditorPopup = false;
+    this.showSubEventsPopup = false;
+    this.showTopicPicker = true;
+  }
+
+  closeTopicPicker(): void {
+    this.showTopicPicker = false;
+  }
+
+  updateTopicSelection(topics: readonly string[]): void {
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics(topics);
   }
 
   closeSubEventsPopup(): void {
@@ -684,49 +716,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return 'sell';
   }
 
-  protected eventTopicsMenuTrigger(): AppMenuTrigger {
-    const count = this.eventForm.topics.length;
-    return {
-      label: count === 0 ? 'Select topics' : `${count} ${count === 1 ? 'topic' : 'topics'}`,
-      icon: this.eventTopicsPanelIcon(),
-      ariaLabel: 'Open event topics',
-      palette: count > 0 ? 'gold' : 'neutral',
-      disabled: this.eventEditorService.readOnly(),
-      shape: 'field'
-    };
-  }
-
-  protected eventTopicsMenuGroups(): readonly AppMenuGroup<string, EventEditorMenuContext>[] {
-    const selected = new Set(this.eventForm.topics.map(topic => EventEditorConverter.normalizeEventEditorTopicToken(topic)));
-    const maxReached = selected.size >= 5;
-    return this.interestOptionGroups.map((group, groupIndex) => {
-      const palette = this.eventTopicGroupPalette(group.toneClass);
-      return {
-        id: `event-topic-${groupIndex}-${group.title}`,
-        label: group.shortTitle || group.title,
-        icon: group.icon || this.eventTopicGroupIcon(group.toneClass),
-        palette,
-        children: group.options.map(option => {
-          const normalized = EventEditorConverter.normalizeEventEditorTopicToken(option);
-          const active = selected.has(normalized);
-          return {
-            id: `event-topic-${groupIndex}-${option}`,
-            label: this.eventTopicLabel(option),
-            icon: 'tag',
-            kind: 'checkbox' as const,
-            active,
-            checked: active,
-            closeOnSelect: false,
-            disabled: !active && maxReached,
-            palette,
-            surface: 'tinted' as const,
-            context: { menu: 'topic' as const, topic: option }
-          };
-        })
-      };
-    });
-  }
-
   eventAutoInviterClass(enabled: boolean): string {
     return enabled ? 'auto-inviter-on' : 'auto-inviter-off';
   }
@@ -817,10 +806,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.selectVisibility(event.context.visibility, event.sourceEvent);
       return;
     }
-    if (event.context.menu === 'topic') {
-      this.toggleEventTopic(event.context.topic);
-      return;
-    }
     event.sourceEvent.stopPropagation();
     this.onEventFrequencyChange(event.context.frequency);
   }
@@ -839,60 +824,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return 'gold';
       default:
         return 'slate';
-    }
-  }
-
-  private toggleEventTopic(topic: string): void {
-    if (this.eventEditorService.readOnly()) {
-      return;
-    }
-    const normalized = EventEditorConverter.normalizeEventEditorTopicToken(topic);
-    if (!normalized) {
-      return;
-    }
-    const current = EventEditorConverter.normalizeEventEditorTopics(this.eventForm.topics);
-    const currentNormalized = new Set(current.map(item => EventEditorConverter.normalizeEventEditorTopicToken(item)));
-    const next = currentNormalized.has(normalized)
-      ? current.filter(item => EventEditorConverter.normalizeEventEditorTopicToken(item) !== normalized)
-      : [...current, topic].slice(0, 5);
-    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics(next);
-  }
-
-  private eventTopicGroupIcon(toneClass: string): string {
-    switch (toneClass) {
-      case 'section-social':
-        return 'celebration';
-      case 'section-arts':
-        return 'palette';
-      case 'section-food':
-        return 'restaurant';
-      case 'section-active':
-        return 'hiking';
-      case 'section-mind':
-        return 'self_improvement';
-      case 'section-identity':
-        return 'auto_awesome';
-      default:
-        return 'label';
-    }
-  }
-
-  private eventTopicGroupPalette(toneClass: string): AppMenuPalette {
-    switch (toneClass) {
-      case 'section-social':
-        return 'orange';
-      case 'section-arts':
-        return 'purple';
-      case 'section-food':
-        return 'brown';
-      case 'section-active':
-        return 'blue';
-      case 'section-mind':
-        return 'mint';
-      case 'section-identity':
-        return 'gold';
-      default:
-        return 'neutral';
     }
   }
 
