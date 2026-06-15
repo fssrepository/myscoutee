@@ -1022,7 +1022,7 @@ export class EventResourcePopupComponent implements DoCheck {
     request: CardMenuRequestEvent<InfoCardData>,
     menu: 'resource-card' | 'asset-explore-card'
   ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
-    return request.actions.flatMap(actionId => {
+    return (request.actions ?? []).flatMap(actionId => {
       const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];

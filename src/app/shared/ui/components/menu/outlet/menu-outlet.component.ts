@@ -7,7 +7,6 @@ import {
   HostListener,
   Input,
   Output,
-  computed,
   inject
 } from '@angular/core';
 
@@ -36,6 +35,7 @@ import type {
         [open]="true"
         [openUp]="resolvedOpenUp(menu)"
         [panelAlign]="resolvedPanelAlign(menu)"
+        [panelMode]="menu.panelMode"
         [panelDockToHost]="dockPanelToHost(menu)"
         [mobileBreakpointPx]="menu.mobileBreakpointPx"
         [closeOnSelect]="menu.closeOnSelect"
@@ -53,11 +53,8 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
 
   private readonly dispatcher = inject(AppMenuDispatcher);
+  @Input() menu: AppMenuDispatchState<TId, TContext> | null = null;
   @Input() items: readonly AppMenuItem<TId, TContext>[] | null = null;
-
-  protected readonly activeMenu = computed(() => {
-    return this.dispatcher.activeMenu();
-  });
 
   @Output() readonly itemSelect = new EventEmitter<AppMenuItemSelectEvent<TId, TContext>>();
 
@@ -66,10 +63,15 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return this.activeMenu() !== null;
   }
 
+  @HostBinding('class.app-menu-outlet--dock')
+  protected get hostDockClass(): boolean {
+    return this.activeMenu()?.panelMode === 'dock';
+  }
+
   @HostBinding('style.left.px')
   protected get hostLeft(): number | null {
     const menu = this.activeMenu();
-    if (!menu || this.isMobileMenu(menu)) {
+    if (!menu || this.isDockMenu(menu) || this.isMobileMenu(menu)) {
       return null;
     }
     const rect = menu.triggerRect;
@@ -92,7 +94,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   @HostBinding('style.top.px')
   protected get hostTop(): number | null {
     const menu = this.activeMenu();
-    if (!menu || this.isMobileMenu(menu)) {
+    if (!menu || this.isDockMenu(menu) || this.isMobileMenu(menu)) {
       return null;
     }
     const rect = menu.triggerRect;
@@ -114,7 +116,10 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     this.dispatcher.refreshActiveRect();
   }
 
-  protected onOpenChange(open: boolean, menu: AppMenuDispatchState): void {
+  protected onOpenChange(open: boolean, menu: AppMenuDispatchState<TId, TContext>): void {
+    if (this.isControlledMenu(menu)) {
+      return;
+    }
     if (!open) {
       this.dispatcher.close(menu.id);
     }
@@ -122,17 +127,19 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
 
   protected onItemSelect(
     event: AppMenuItemSelectEvent<string, unknown>,
-    menu: AppMenuDispatchState
+    menu: AppMenuDispatchState<TId, TContext>
   ): void {
     const selectEvent: AppMenuItemSelectEvent<TId, TContext> = {
       ...(event as AppMenuItemSelectEvent<TId, TContext>),
       context: (event.context ?? menu.context) as TContext | undefined
     };
-    this.dispatcher.close(menu.id);
+    if (!this.isControlledMenu(menu) && (event.item.closeOnSelect ?? menu.closeOnSelect)) {
+      this.dispatcher.close(menu.id);
+    }
     this.itemSelect.emit(selectEvent);
   }
 
-  protected resolvedOpenUp(menu: AppMenuDispatchState): boolean {
+  protected resolvedOpenUp(menu: AppMenuDispatchState<TId, TContext>): boolean {
     if (this.isMobileMenu(menu)) {
       return false;
     }
@@ -153,7 +160,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return menu.openUp && spaceAbove >= Math.min(estimatedHeight, 140);
   }
 
-  protected resolvedPanelAlign(menu: AppMenuDispatchState): AppMenuPanelAlign {
+  protected resolvedPanelAlign(menu: AppMenuDispatchState<TId, TContext>): AppMenuPanelAlign {
     if (menu.panelAlign !== 'auto' || this.isMobileMenu(menu)) {
       return menu.panelAlign === 'auto' ? 'end' : menu.panelAlign;
     }
@@ -174,19 +181,40 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return spaceRight >= spaceLeft ? 'start' : 'end';
   }
 
-  protected dockPanelToHost(menu: AppMenuDispatchState): boolean {
-    return !this.isMobileMenu(menu);
+  protected dockPanelToHost(menu: AppMenuDispatchState<TId, TContext>): boolean {
+    return !this.isDockMenu(menu) && !this.isMobileMenu(menu);
   }
 
-  protected resolvedItems(menu: AppMenuDispatchState): readonly AppMenuItem[] {
+  protected resolvedItems(menu: AppMenuDispatchState<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
     return this.items ?? menu.items;
   }
 
-  private isMobileMenu(menu: AppMenuDispatchState): boolean {
+  protected activeMenu(): AppMenuDispatchState<TId, TContext> | null {
+    return this.menu ?? (this.dispatcher.activeMenu() as AppMenuDispatchState<TId, TContext> | null);
+  }
+
+  private isControlledMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
+    return this.menu?.id === menu.id;
+  }
+
+  private isMobileMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
+    if (this.isDockMenu(menu)) {
+      return false;
+    }
+    if (menu.panelMode === 'sheet') {
+      return true;
+    }
+    if (menu.panelMode === 'anchored') {
+      return false;
+    }
     if (typeof window === 'undefined') {
       return false;
     }
     return window.innerWidth <= Math.max(1, Number(menu.mobileBreakpointPx) || 760);
+  }
+
+  private isDockMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
+    return menu.panelMode === 'dock';
   }
 
   private viewportWidth(): number {
@@ -203,7 +231,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return window.innerHeight || document.documentElement.clientHeight;
   }
 
-  private layoutBounds(menu: AppMenuDispatchState): {
+  private layoutBounds(menu: AppMenuDispatchState<TId, TContext>): {
     left: number;
     top: number;
     right: number;
@@ -251,7 +279,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return false;
   }
 
-  private estimatedPanelWidth(menu: AppMenuDispatchState): number {
+  private estimatedPanelWidth(menu: AppMenuDispatchState<TId, TContext>): number {
     const labels = this.visibleItems(menu)
       .map(item => `${this.resolveLiveValue(item.label) ?? this.resolveLiveValue(item.description) ?? ''}`.trim());
     const longestLabel = labels.reduce((longest, label) => Math.max(longest, label.length), 0);
@@ -259,19 +287,19 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     return Math.min(448, Math.max(AppMenuOutletComponent.DESKTOP_MIN_PANEL_WIDTH_PX, textWidth));
   }
 
-  private estimatedPanelHeight(menu: AppMenuDispatchState): number {
+  private estimatedPanelHeight(menu: AppMenuDispatchState<TId, TContext>): number {
     const titleHeight = `${this.resolveLiveValue(menu.title) ?? ''}`.trim() ? 34 : 0;
     const itemCount = Math.max(1, this.visibleItems(menu).length);
     const branchHeaderHeight = this.visibleItems(menu).some(item => (item.children?.length ?? 0) > 0) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
-  private visibleItems(menu: AppMenuDispatchState): readonly AppMenuItem[] {
+  private visibleItems(menu: AppMenuDispatchState<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
     const items = this.resolvedItems(menu);
     if (items.length > 0) {
       return items;
     }
-    const fallbackItems: AppMenuItem[] = [];
+    const fallbackItems: AppMenuItem<TId, TContext>[] = [];
     for (const branch of menu.model?.nodes ?? menu.groups) {
       fallbackItems.push(...(branch.children ?? branch.items ?? []));
     }

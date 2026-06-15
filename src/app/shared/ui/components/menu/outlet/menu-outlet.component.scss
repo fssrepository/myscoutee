@@ -10,3 +10,13 @@
 :host(.app-menu-outlet--open) {
   display: block;
 }
+
+:host(.app-menu-outlet--dock) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: auto;
+  height: auto;
+}

@@ -527,7 +527,7 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord,
     request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, EventExploreMenuContext>[] {
-    return request.actions.flatMap(actionId => {
+    return (request.actions ?? []).flatMap(actionId => {
       const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];

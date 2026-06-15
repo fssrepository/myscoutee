@@ -6,7 +6,10 @@ import type {
 import type {
   AppMenuAnchorRect,
   AppMenuDispatchState,
-  AppMenuItem
+  AppMenuItem,
+  AppMenuKind,
+  AppMenuPanelAlign,
+  AppMenuPanelMode
 } from '../menu';
 import type { RatingStarBarConfig } from '../rating-star-bar';
 
@@ -108,9 +111,14 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
 
 export interface SmartListItemMenuRequest {
   id: string;
+  kind?: AppMenuKind;
   title?: string | null;
+  items?: readonly AppMenuItem<string, unknown>[];
   triggerRect?: AppMenuAnchorRect | null;
   openUp?: boolean;
+  panelAlign?: AppMenuPanelAlign;
+  panelMode?: AppMenuPanelMode;
+  closeOnSelect?: boolean;
   closeTrigger?: (() => void) | null;
 }
 

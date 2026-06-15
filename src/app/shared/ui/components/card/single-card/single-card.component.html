@@ -139,7 +139,7 @@
           [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
           [class.activities-rate-score-badge-between]="usesBetweenBadge()"
           [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
-          [class.is-active]="cardBadge.active"
+          [class.is-active]="cardBadge.active || badgeMenuOpen"
           [class.is-pending]="cardBadge.pending"
           [class.is-disabled]="cardBadge.disabled"
           [class.is-blink]="isBadgeBlinking()"

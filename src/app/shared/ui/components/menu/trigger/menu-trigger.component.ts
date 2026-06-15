@@ -21,6 +21,7 @@ import type {
   AppMenuLiveValue,
   AppMenuModel,
   AppMenuPanelAlign,
+  AppMenuPanelMode,
   AppMenuPalette,
   AppMenuTrigger,
   AppMenuTriggerShape,
@@ -92,6 +93,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   @Input() context: TContext | null = null;
   @Input() openUp = false;
   @Input() panelAlign: AppMenuPanelAlign | null = null;
+  @Input() panelMode: AppMenuPanelMode | null = null;
   @Input() mobileBreakpointPx = 760;
   @Input() closeOnSelect = true;
 
@@ -306,6 +308,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
       context: this.context ?? undefined,
       openUp: this.openUp,
       panelAlign: this.panelAlign ?? undefined,
+      panelMode: this.panelMode ?? undefined,
       mobileBreakpointPx: this.mobileBreakpointPx,
       closeOnSelect: this.closeOnSelect
     };

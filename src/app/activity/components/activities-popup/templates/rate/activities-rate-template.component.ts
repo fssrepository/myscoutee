@@ -6,6 +6,9 @@ import type { UserDto } from '../../../../../shared/core/contracts/user.interfac
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
+  type AppMenuItemSelectEvent,
+  type AppMenuItem,
+  type CardMenuRequestEvent,
   PairCardComponent,
   type CardProfileViewData,
   type RateCardPerson,
@@ -14,8 +17,10 @@ import {
   type CardBadgeConfig,
   type ImageCardPerson,
   type PairCardData,
+  type SmartListItemMenuRequest,
   type SingleCardData
 } from '../../../../../shared/ui';
+import { ActivityRateMenuConverter } from '../../../../../shared/ui/converters';
 import { ActivitiesRateEditorPresenter } from './activities-rate-editor.presenter';
 import {
   isActivitiesRateBlinking,
@@ -58,6 +63,7 @@ export interface ActivitiesRateTemplateContext {
   hasOwnRating: (item: ActivityRateDTO) => boolean;
   pairReceivedAverageScore: (item: ActivityRateDTO) => number;
   rateOwnScore: (item: ActivityRateDTO) => number;
+  getActivityRateMenuItems: (row: AppTypes.ActivityListRow) => readonly AppMenuItem<string, unknown>[];
   isFullscreenPaginationAnimating: () => boolean;
 }
 
@@ -74,10 +80,10 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
   @Input() presentation: SingleCardData['presentation'] | PairCardData['presentation'] = 'list';
   @Input() state: SingleCardData['state'] | PairCardData['state'] = 'default';
   @Input() context: ActivitiesRateTemplateContext | null = null;
+  @Input() openMenu: ((request: SmartListItemMenuRequest) => void) | null = null;
   @Input() cardRevision: string | number = 0;
 
-  @Output() readonly badgeClick = new EventEmitter<void>();
-  @Output() readonly profileClick = new EventEmitter<CardProfileViewData>();
+  @Output() readonly detailClick = new EventEmitter<CardProfileViewData>();
 
   protected pairCard: PairCardData | null = null;
   protected singleCard: SingleCardData | null = null;
@@ -95,12 +101,30 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     }
   }
 
-  protected onBadgeClick(): void {
-    this.badgeClick.emit();
+  protected onMenuRequest(event: CardMenuRequestEvent<SingleCardData | PairCardData>): void {
+    const row = this.row;
+    const context = this.context;
+    if (!row || !context || !this.openMenu || row.type !== 'rates') {
+      return;
+    }
+    const items = context.getActivityRateMenuItems(row);
+    if (items.length === 0) {
+      return;
+    }
+    this.openMenu({
+      id: row.id,
+      kind: 'select',
+      items,
+      triggerRect: event.triggerRect,
+      openUp: false,
+      panelMode: 'dock',
+      closeOnSelect: true,
+      closeTrigger: event.closeTrigger
+    });
   }
 
-  protected onProfileClick(event: CardProfileViewData): void {
-    this.profileClick.emit(event);
+  protected onDetailClick(event: CardProfileViewData): void {
+    this.detailClick.emit(event);
   }
 
   private rebuildCards(): void {
@@ -172,6 +196,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
       disabled: this.isPairReceivedRateRow(row, context),
       blink: context.isActivityRateBlinking(row),
       interactive: options?.interactive ?? true,
+      menuRequest: options?.interactive ?? true,
       layout: options?.layout ?? 'floating'
     };
   }
@@ -324,6 +349,7 @@ export class ActivitiesRatesController {
     hasOwnRating: item => this.hasOwnRating(item),
     pairReceivedAverageScore: item => this.pairReceivedAverageScore(item),
     rateOwnScore: item => this.rateOwnScore(item),
+    getActivityRateMenuItems: row => this.activityRateMenuItems(row),
     isFullscreenPaginationAnimating: () => this.deps.isFullscreenPaginationAnimating()
   };
 
@@ -355,6 +381,43 @@ export class ActivitiesRatesController {
       blinkOnSelect: false,
       animation: this.isRatingBarBlinking ? 'blink' : 'default'
     };
+  }
+
+  ratingMenuConfig(row: AppTypes.ActivityListRow): RatingStarBarConfig {
+    const modeLabel = row.type === 'rates' && row.mode === 'pair' ? 'Pair' : 'Single';
+    return {
+      scale: this.deps.getRatingScale(),
+      value: this.ownRatingValue(row),
+      readonly: this.isPairReceivedRow(row),
+      label: `Affinity · ${modeLabel} · ${row.title || 'Rate'}`,
+      actionLabel: 'save',
+      blinkOnSelect: false,
+      animation: this.isRatingBarBlinking ? 'blink' : 'default',
+      dock: null
+    };
+  }
+
+  activityRateMenuItems(row: AppTypes.ActivityListRow): readonly AppMenuItem<string, unknown>[] {
+    if (row.type !== 'rates' || this.isPairReceivedRow(row)) {
+      return [];
+    }
+    return ActivityRateMenuConverter.convert({
+      menu: 'activity-rate-card',
+      id: row.id,
+      value: this.ownRatingValue(row),
+      ratingBarConfig: this.ratingMenuConfig(row)
+    });
+  }
+
+  handleMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): boolean {
+    if (!ActivityRateMenuConverter.isActivityRateMenuEvent(event)) {
+      return false;
+    }
+    const selection = ActivityRateMenuConverter.selectionFromEvent(event);
+    if (selection) {
+      this.setOwnRatingForRowId(selection.rowId, selection.value);
+    }
+    return true;
   }
 
   ratingBarValue(): number {
@@ -397,7 +460,7 @@ export class ActivitiesRatesController {
 
   closeEditorFromUserScroll(event?: Event): void {
     const target = event?.target;
-    if (target instanceof Element && target.closest('[data-rating-star-bar-dock]')) {
+    if (target instanceof Element && target.closest('[data-rating-star-bar-dock], .app-menu__rating-item')) {
       return;
     }
     if (!this.isEditorOpen()) {
@@ -464,13 +527,33 @@ export class ActivitiesRatesController {
   }
 
   setSelectedOwnRating(score: number): void {
-    const normalized = this.normalizeScore(score);
     const row = this.isFullscreenModeActive()
       ? this.currentFullscreenRow()
       : this.selectedRow();
     if (!row || row.type !== 'rates') {
       return;
     }
+    this.recordOwnRatingForRow(row, score, true);
+  }
+
+  setOwnRatingForRowId(rowId: string, score: number): void {
+    const normalizedRowId = rowId.trim();
+    if (!normalizedRowId) {
+      return;
+    }
+    const row = selectedActivitiesRateRow(normalizedRowId, this.deps.getFilteredActivityRows())
+      ?? (this.selectedListRateRow?.id === normalizedRowId ? this.selectedListRateRow : null);
+    if (!row || row.type !== 'rates') {
+      return;
+    }
+    this.recordOwnRatingForRow(row, score, false);
+  }
+
+  private recordOwnRatingForRow(
+    row: AppTypes.ActivityListRow,
+    score: number,
+    syncSelectedEditor: boolean
+  ): void {
     if (this.isPairReceivedRow(row)) {
       return;
     }
@@ -478,8 +561,11 @@ export class ActivitiesRatesController {
     if (!rateItem) {
       return;
     }
-    this.holdDockOpenForScoreSelection();
-    this.setSelectedRateId(row.id);
+    const normalized = this.normalizeScore(score);
+    if (syncSelectedEditor) {
+      this.holdDockOpenForScoreSelection();
+      this.setSelectedRateId(row.id);
+    }
     this.activityRateDraftById()[row.id] = normalized;
     const nextDirection = this.pendingDirectionAfterRating(rateItem);
     if (nextDirection) {
@@ -493,7 +579,9 @@ export class ActivitiesRatesController {
     );
     this.triggerRatingBarBlink();
     this.triggerBlinks(row.id);
-    this.closeEditorAfterScoreCommit();
+    if (syncSelectedEditor) {
+      this.closeEditorAfterScoreCommit();
+    }
   }
 
   clearEditorState(preserveScrollPosition = true): void {

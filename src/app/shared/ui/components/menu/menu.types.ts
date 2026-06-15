@@ -1,4 +1,5 @@
 import type { Signal } from '@angular/core';
+import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type AppMenuKind =
   | 'button-row'
@@ -11,6 +12,7 @@ export type AppMenuItemKind =
   | 'checkbox'
   | 'divider'
   | 'radio'
+  | 'rating-bar'
   | 'section'
   | 'select-trigger'
   | 'toggle';
@@ -42,6 +44,7 @@ export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuItemLayout = 'default' | 'summary';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
+export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock';
 
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
 export type AppMenuCounterValue = AppMenuLiveValue<number | string | null | undefined>;
@@ -98,11 +101,13 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   active?: AppMenuLiveValue<boolean | null | undefined>;
   checked?: AppMenuLiveValue<boolean | null | undefined>;
   closeOnSelect?: boolean;
+  value?: unknown;
   context?: TContext;
   ariaLabel?: AppMenuLiveValue<string | null | undefined>;
   href?: AppMenuLiveValue<string | null | undefined>;
   target?: AppMenuLiveValue<string | null | undefined>;
   rel?: AppMenuLiveValue<string | null | undefined>;
+  ratingBarConfig?: RatingStarBarConfig | null;
   segments?: readonly AppMenuSegment[];
   span?: AppMenuLiveValue<number | null | undefined>;
   children?: readonly AppMenuItem<TId, TContext>[];
@@ -131,6 +136,7 @@ export interface AppMenuItemSelectEvent<TId extends string = string, TContext = 
   item: AppMenuItem<TId, TContext>;
   context?: TContext;
   sourceEvent: Event;
+  value?: unknown;
 }
 
 export interface AppMenuAnchorRect {
@@ -154,6 +160,7 @@ export interface AppMenuDispatchConfig<TId extends string = string, TContext = u
   context?: TContext;
   openUp?: boolean;
   panelAlign?: AppMenuPanelAlign;
+  panelMode?: AppMenuPanelMode;
   mobileBreakpointPx?: number;
   closeOnSelect?: boolean;
   triggerRect?: AppMenuAnchorRect | null;
@@ -170,6 +177,7 @@ export interface AppMenuDispatchState<TId extends string = string, TContext = un
   trigger: AppMenuTrigger | null;
   openUp: boolean;
   panelAlign: AppMenuPanelAlign;
+  panelMode: AppMenuPanelMode;
   mobileBreakpointPx: number;
   closeOnSelect: boolean;
   triggerElement: HTMLElement | null;

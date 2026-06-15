@@ -67,6 +67,7 @@ export interface CardBadgeConfig {
   disabled?: boolean;
   blink?: boolean;
   interactive?: boolean;
+  menuRequest?: boolean;
   layout?: CardBadgeLayout;
 }
 
@@ -346,10 +347,11 @@ export interface CardMenuTriggerRect {
   height: number;
 }
 
-export interface CardMenuRequestEvent<TCard extends DisplayData = DisplayData> {
+export interface CardMenuRequestEvent<TCard = DisplayData> {
   id: string;
   card: TCard;
-  actions: readonly CardMenuAction[];
+  actions?: readonly CardMenuAction[];
+  badge?: CardBadgeConfig | null;
   title?: string | null;
   triggerRect: CardMenuTriggerRect | null;
   openUp: boolean;

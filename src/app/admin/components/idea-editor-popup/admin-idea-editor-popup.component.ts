@@ -881,7 +881,7 @@ export class AdminIdeaEditorPopupComponent {
     card: IdeaInfoCard,
     request: CardMenuRequestEvent<InfoCardData>
   ): readonly AppMenuItem<string, IdeaCardMenuContext>[] {
-    return request.actions.flatMap(actionId => {
+    return (request.actions ?? []).flatMap(actionId => {
       const config = CARD_MENU_ACTIONS[actionId];
       if (!config) {
         return [];

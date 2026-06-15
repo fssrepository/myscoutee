@@ -407,12 +407,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'none';
       }
       if (this.activitiesPrimaryFilter === 'rates') {
-        return this.activitiesRates.isEditorDockVisible() ? 'none' : 'mandatory';
+        return 'mandatory';
       }
       return 'mandatory';
     },
     scrollPaddingTop: '2.6rem',
-    footerSpacerHeight: () => this.activitiesPrimaryFilter === 'rates' ? this.activitiesRates.editorSpacerHeight() : null,
+    footerSpacerHeight: null,
     headerProgress: {
       enabled: true,
       state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
@@ -425,7 +425,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         if (this.activitiesRates.isFullscreenModeActive()) {
           return this.activitiesRates.isFullscreenReadOnlyNavigation() ? 'arrows' : 'rating-stars';
         }
-        return this.activitiesRates.shouldRenderEditorDock() ? 'rating-stars' : 'scroll';
+        return 'scroll';
       },
       ratingBarConfig: () => this.activitiesRates.ratingBarConfig(),
       ratingBarValue: () => this.activitiesRates.ratingBarValue(),
@@ -611,6 +611,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivityEventSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (this.activitiesRates.handleMenuSelect(event)) {
+      return;
+    }
     const context = event.context as ActivityEventInfoCardMenuContext | undefined;
     if (context?.menu !== 'activity-event-card') {
       return;
@@ -2729,6 +2732,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     if (
       target.closest('[data-rating-star-bar-dock]')
+      || target.closest('.app-menu__rating-item')
       || target.closest('.activities-rate-score-badge')
       || target.closest('.activities-rate-profile-card.is-rate-editor-selected')
     ) {

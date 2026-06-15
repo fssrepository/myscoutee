@@ -20,6 +20,12 @@ export {
   ActivityRateImageCardConverter,
   type ActivityRateImageCardConverterOptions
 } from './activity-rate-image-card.converter';
+export {
+  ActivityRateMenuConverter,
+  type ActivityRateMenuContext,
+  type ActivityRateMenuSelection,
+  type ActivityRateMenuSubject
+} from './activity-rate-menu.converter';
 export { EventFeedbackDeckConverter } from './event-feedback-deck.converter';
 export {
   EventFeedbackInfoCardConverter,

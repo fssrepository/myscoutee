@@ -16,6 +16,10 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../pipes';
+import {
+  RatingStarBarComponent,
+  type RatingStarBarConfig
+} from '../rating-star-bar';
 import type {
   AppMenuBranch,
   AppMenuCounter,
@@ -29,6 +33,7 @@ import type {
   AppMenuLiveValue,
   AppMenuModel,
   AppMenuPanelAlign,
+  AppMenuPanelMode,
   AppMenuPalette,
   AppMenuSegment,
   AppMenuTrigger,
@@ -41,7 +46,7 @@ type AppMenuResolvedLayout = 'desktop' | 'mobile';
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe],
+  imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -63,6 +68,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @Input() trigger: AppMenuTrigger | null = null;
   @Input() openUp = false;
   @Input() panelAlign: AppMenuPanelAlign = 'auto';
+  @Input() panelMode: AppMenuPanelMode = 'auto';
   @Input() panelGapPx: number | null = null;
   @Input() panelDockToHost = false;
   @Input() mobileBreakpointPx = 760;
@@ -143,6 +149,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.panelDockToHost;
   }
 
+  @HostBinding('class.app-menu-host--panel-bottom-docked')
+  protected get hostPanelBottomDockedClass(): boolean {
+    return this.panelMode === 'dock';
+  }
+
   @HostBinding('style.--app-menu-panel-gap')
   protected get hostPanelGapStyle(): string | null {
     if (this.panelGapPx === null || this.panelGapPx === undefined) {
@@ -194,6 +205,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get resolvedLayout(): AppMenuResolvedLayout {
+    if (this.panelMode === 'dock') {
+      return 'desktop';
+    }
+    if (this.panelMode === 'sheet') {
+      return 'mobile';
+    }
+    if (this.panelMode === 'anchored') {
+      return 'desktop';
+    }
     return this.isMobileViewport ? 'mobile' : 'desktop';
   }
 
@@ -486,7 +506,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       id: item.id,
       item,
       context: item.context,
-      sourceEvent: event
+      sourceEvent: event,
+      value: item.value
     });
     this.setOpen(false);
   }
@@ -501,7 +522,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       id: item.id,
       item,
       context: item.context,
-      sourceEvent: event
+      sourceEvent: event,
+      value: item.value
     });
     if (item.closeOnSelect ?? this.closeOnSelect) {
       this.setOpen(false);
@@ -522,9 +544,34 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       id: item.id,
       item,
       context: item.context,
-      sourceEvent: event
+      sourceEvent: event,
+      value: item.value
     };
     this.itemSelect.emit(selectEvent);
+    if (item.closeOnSelect ?? this.closeOnSelect) {
+      this.setOpen(false);
+    }
+  }
+
+  protected updateRatingBarItemValue(item: AppMenuItem<TId, TContext>, value: unknown): void {
+    if (!this.isRatingBarItem(item)) {
+      return;
+    }
+    item.value = value;
+  }
+
+  protected selectRatingBarItem(item: AppMenuItem<TId, TContext>, score: number): void {
+    if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
+      return;
+    }
+    this.updateRatingBarItemValue(item, score);
+    this.itemSelect.emit({
+      id: item.id,
+      item,
+      context: item.context,
+      sourceEvent: new Event('ratingScoreSelect'),
+      value: item.value
+    });
     if (item.closeOnSelect ?? this.closeOnSelect) {
       this.setOpen(false);
     }
@@ -540,7 +587,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       id: item.id,
       item,
       context: item.context,
-      sourceEvent: event
+      sourceEvent: event,
+      value: item.value
     });
     if (item.closeOnSelect ?? this.closeOnSelect) {
       this.setOpen(false);
@@ -742,6 +790,31 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected isSection(item: AppMenuItem<TId, TContext>): boolean {
     return item.kind === 'section';
+  }
+
+  protected isRatingBarItem(item: AppMenuItem<TId, TContext>): boolean {
+    return item.kind === 'rating-bar';
+  }
+
+  protected itemRatingBarConfig(item: AppMenuItem<TId, TContext>): RatingStarBarConfig | null {
+    if (!this.isRatingBarItem(item)) {
+      return null;
+    }
+    return {
+      ...(item.ratingBarConfig ?? {}),
+      value: this.ratingBarItemValue(item),
+      readonly: this.isItemDisabled(item) || (item.ratingBarConfig?.readonly ?? false),
+      dock: null
+    };
+  }
+
+  private ratingBarItemValue(item: AppMenuItem<TId, TContext>): number | null {
+    const itemValue = Number(item.value);
+    if (Number.isFinite(itemValue)) {
+      return itemValue;
+    }
+    const configuredValue = Number(item.ratingBarConfig?.value);
+    return Number.isFinite(configuredValue) ? configuredValue : null;
   }
 
   protected isBranch(item: AppMenuItem<TId, TContext>): boolean {

@@ -378,17 +378,11 @@
     </div>
   }
 
-  @if (shouldRenderPaginationRatingBar()) {
-    <app-rating-star-bar
-      [config]="resolvedPaginationRatingBarConfig()"
-      [value]="resolvedPaginationRatingBarValue()"
-      (scoreSelect)="onPaginationRatingSelect($event)"
-    ></app-rating-star-bar>
-  }
-
+  @let dockedPaginationMenu = paginationRatingMenu();
   <app-menu-outlet
-    [items]="dispatchedMenuItems()"
-    (itemSelect)="onDispatchedMenuItemSelect($event)"
+    [menu]="dockedPaginationMenu"
+    [items]="dockedPaginationMenu ? paginationRatingMenuItems() : dispatchedMenuItems()"
+    (itemSelect)="onMenuOutletItemSelect($event)"
   ></app-menu-outlet>
 </div>
 
