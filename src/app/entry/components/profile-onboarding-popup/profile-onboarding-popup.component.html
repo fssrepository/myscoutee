@@ -92,14 +92,19 @@
                 </label>
                 <div class="profile-onboarding-language-field profile-onboarding-field">
                   <span class="profile-onboarding-required-label">Languages</span>
-                  <app-menu
-                    class="profile-onboarding-menu profile-onboarding-language-menu"
-                    kind="select"
-                    [trigger]="languagesMenuTrigger(f.languages)"
-                    [items]="languageMenuItems(f.languages)"
-                    [closeOnSelect]="false"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
-                  ></app-menu>
+                  <button
+                    type="button"
+                    class="profile-status-select-wrap selector-like language-mobile-trigger language-select-btn profile-onboarding-language-trigger"
+                    [class.active]="f.languages.length > 0"
+                    [disabled]="saving || uploadingImageSlotIndex !== null"
+                    (click)="openLanguageSelector($event)"
+                    >
+                    <span class="label">{{ languageTriggerPrimaryLabel(f.languages) || 'Select languages' }}</span>
+                    @if (languageTriggerOverflowCount(f.languages) > 0) {
+                      <span class="count">+{{ languageTriggerOverflowCount(f.languages) }}</span>
+                    }
+                    <mat-icon class="arrow">chevron_right</mat-icon>
+                  </button>
                 </div>
               </div>
             </section>
@@ -301,7 +306,7 @@
           }
 
           @if (currentStep().id === 'values') {
-            <section class="profile-onboarding-page profile-onboarding-selector-page">
+            <section class="profile-onboarding-page profile-onboarding-selector-page popup-panel-profile-selector">
               <div class="profile-onboarding-selector-head">
                 <span>{{ 'Values' | i18n }}</span>
                 <button
@@ -323,20 +328,20 @@
                   }
                 </div>
               } @else {
-                <p class="profile-onboarding-selector-empty">{{ 'No items selected yet.' | i18n }}</p>
+                <p class="profile-onboarding-selector-empty profile-filter-selector-empty">{{ 'No items selected yet.' | i18n }}</p>
               }
               @for (group of beliefsValuesOptionGroups; track group.title) {
-                <div class="profile-onboarding-selector-group" [class]="group.toneClass">
-                  <div class="profile-onboarding-selector-group-head">
-                    <span class="profile-onboarding-selector-group-tag" [class]="group.toneClass">
-                      <mat-icon>{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+                <div class="profile-onboarding-selector-group values-selector-group profile-selector-option-group" [class]="group.toneClass">
+                  <div class="profile-onboarding-selector-group-head profile-selector-option-group-head">
+                    <span class="profile-onboarding-selector-group-tag profile-selector-option-group-tag" [class]="group.toneClass">
+                      <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
                       <span>{{ group.shortTitle }}</span>
                     </span>
-                    <span class="profile-onboarding-selector-group-line" [class]="group.toneClass"></span>
+                    <span class="profile-onboarding-selector-group-line profile-selector-option-group-line" [class]="group.toneClass"></span>
                   </div>
-                  <div class="profile-onboarding-selector-chip-grid">
+                  <div class="profile-onboarding-selector-chip-grid profile-selector-chip-grid">
                     @for (option of group.options; track option) {
-                      <button type="button" [class.active]="isValueSelected(option)" (click)="toggleValue(option)">
+                      <button type="button" class="profile-selector-chip" [class.active]="isValueSelected(option)" (click)="toggleValue(option)">
                         <span>{{ option }}</span>
                       </button>
                     }
@@ -347,7 +352,7 @@
           }
 
           @if (currentStep().id === 'interests') {
-            <section class="profile-onboarding-page profile-onboarding-selector-page">
+            <section class="profile-onboarding-page profile-onboarding-selector-page popup-panel-profile-selector">
               <div class="profile-onboarding-selector-head">
                 <span>{{ 'Interests' | i18n }}</span>
                 <button
@@ -369,20 +374,20 @@
                   }
                 </div>
               } @else {
-                <p class="profile-onboarding-selector-empty">{{ 'No items selected yet.' | i18n }}</p>
+                <p class="profile-onboarding-selector-empty profile-filter-selector-empty">{{ 'No items selected yet.' | i18n }}</p>
               }
               @for (group of interestOptionGroups; track group.title) {
-                <div class="profile-onboarding-selector-group" [class]="group.toneClass">
-                  <div class="profile-onboarding-selector-group-head">
-                    <span class="profile-onboarding-selector-group-tag" [class]="group.toneClass">
-                      <mat-icon>{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
+                <div class="profile-onboarding-selector-group values-selector-group profile-selector-option-group" [class]="group.toneClass">
+                  <div class="profile-onboarding-selector-group-head profile-selector-option-group-head">
+                    <span class="profile-onboarding-selector-group-tag profile-selector-option-group-tag" [class]="group.toneClass">
+                      <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
                       <span>{{ group.shortTitle }}</span>
                     </span>
-                    <span class="profile-onboarding-selector-group-line" [class]="group.toneClass"></span>
+                    <span class="profile-onboarding-selector-group-line profile-selector-option-group-line" [class]="group.toneClass"></span>
                   </div>
-                  <div class="profile-onboarding-selector-chip-grid">
+                  <div class="profile-onboarding-selector-chip-grid profile-selector-chip-grid">
                     @for (option of group.options; track option) {
-                      <button type="button" [class.active]="isInterestSelected(option)" (click)="toggleInterest(option)">
+                      <button type="button" class="profile-selector-chip" [class.active]="isInterestSelected(option)" (click)="toggleInterest(option)">
                         <span>{{ option }}</span>
                       </button>
                     }
@@ -586,6 +591,82 @@
           </span>
         </footer>
       </div>
+      @if (mobileProfileSelectorSheet; as selectorSheet) {
+        <section class="mobile-profile-selector-sheet-wrap" (click)="$event.stopPropagation()">
+          <div class="mobile-profile-selector-backdrop" (click)="$event.stopPropagation(); closeMobileProfileSelectorSheet()"></div>
+          <div
+            class="mobile-profile-selector-sheet mobile-profile-selector-sheet-language"
+            (click)="$event.stopPropagation()"
+            >
+            <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
+            <div class="mobile-profile-selector-title">
+              <mat-icon>list</mat-icon>
+              <span>{{ selectorSheet.title }}</span>
+              <button
+                type="button"
+                class="mobile-profile-selector-close-btn popup-surface-close-btn"
+                (click)="closeMobileProfileSelectorSheet(); $event.stopPropagation()"
+                aria-label="Close language popup"
+                >
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+            <div class="mobile-profile-language-entry" (click)="$event.stopPropagation()">
+              @if (f.languages.length > 0) {
+                <div class="mobile-profile-language-chips">
+                  @for (item of f.languages; track item) {
+                    <button
+                      type="button"
+                      class="mobile-profile-language-chip"
+                      [ngClass]="languageToneClass(item)"
+                      (click)="removeLanguage(item)"
+                      >
+                      <span>{{ item }}</span>
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                </div>
+              }
+              <label class="mobile-profile-language-input-wrap">
+                <input
+                  type="text"
+                  [(ngModel)]="languageInput"
+                  (keydown)="onLanguageInputKeydown($event)"
+                  (blur)="onLanguageInputBlur()"
+                  placeholder="Type language"
+                  />
+                <button
+                  type="button"
+                  class="mobile-profile-language-submit-btn"
+                  (click)="submitMobileLanguageAndClose($event)"
+                  aria-label="Save language search and close"
+                  >
+                  <mat-icon>search</mat-icon>
+                </button>
+              </label>
+            </div>
+            <div class="mobile-profile-selector-options">
+              @for (item of availableLanguageDisplaySuggestions; track item) {
+                <button
+                  type="button"
+                  class="mobile-profile-selector-option"
+                  [class.active]="isMobileSelectorOptionActive(item)"
+                  [ngClass]="languageToneClass(item)"
+                  (click)="selectMobileProfileSelectorOption(item)"
+                  >
+                  <span class="mobile-profile-selector-option-main">
+                    <mat-icon>language</mat-icon>
+                    <span>{{ item }}</span>
+                  </span>
+                  @if (isMobileSelectorOptionActive(item)) {
+                    <mat-icon>check</mat-icon>
+                  }
+                </button>
+              }
+            </div>
+          </div>
+        </section>
+      }
     </section>
   }
 }

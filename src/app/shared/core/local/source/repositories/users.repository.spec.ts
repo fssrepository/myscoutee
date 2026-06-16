@@ -24,13 +24,6 @@ describe('LocalUsersRepository demo selector', () => {
   it('returns member and admin selector users alphabetically by display name', () => {
     seedUsers([
       user('zoe', 'Zoe', { affinity: 100 }),
-      user('u-onboarding', '', {
-        city: '',
-        initials: 'NP',
-        statusText: 'New',
-        completion: 0,
-        profileFormVersion: 0
-      }),
       user('ava', 'ava', { affinity: 1 }),
       user('mia', 'Mia', { affinity: 50 }),
       user('admin-demo-zoe', 'Zoe Admin', { admin: true, affinity: 100 }),
@@ -38,7 +31,7 @@ describe('LocalUsersRepository demo selector', () => {
     ]);
 
     expect(repository.queryAvailableDemoUsers('member').map(item => item.id))
-      .toEqual(['u-onboarding', 'ava', 'mia', 'zoe']);
+      .toEqual(['ava', 'mia', 'zoe']);
     expect(repository.queryAvailableDemoUsers('admin').map(item => item.id))
       .toEqual(['admin-demo-ava', 'admin-demo-zoe']);
   });

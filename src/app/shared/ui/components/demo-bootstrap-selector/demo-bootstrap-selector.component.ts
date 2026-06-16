@@ -5,9 +5,21 @@ import { MatRippleModule } from '@angular/material/core';
 
 import { AppPopupContext, type DemoBootstrapSelectorState } from '../../context/app-popup.context';
 import { ProgressIndicatorComponent } from '../progress-indicator';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../menu';
 import { I18nPipe } from '../../pipes';
 import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
+import { UserProfileStateBuilder } from '../../../core/base/builders';
 import { SeedDemoBootstrapService } from '../../../core/local/seed';
+
+type DemoSelectorHeaderMenuItemId = 'new-profile';
+
+interface DemoSelectorHeaderMenuContext {
+  action: 'new-profile';
+}
 
 @Component({
   selector: 'app-demo-bootstrap-selector',
@@ -16,6 +28,7 @@ import { SeedDemoBootstrapService } from '../../../core/local/seed';
     CommonModule,
     MatButtonModule,
     MatRippleModule,
+    AppMenuComponent,
     ProgressIndicatorComponent,
     I18nPipe
   ],
@@ -48,6 +61,7 @@ export class DemoBootstrapSelectorComponent {
   @Output() readonly closeRequested = new EventEmitter<void>();
   @Output() readonly retryRequested = new EventEmitter<void>();
   @Output() readonly userSelected = new EventEmitter<string>();
+  @Output() readonly newProfileRequested = new EventEmitter<void>();
 
   constructor() {
     effect(() => {
@@ -141,14 +155,36 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected isNewProfile(user: UserSelectorListItemDto): boolean {
-    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
-    const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
-    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
-    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
-    const hasDisplayIdentity = Boolean(`${user.name ?? ''}`.trim() || `${user.city ?? ''}`.trim());
-    return statusText === 'new'
-      || statusText === 'new profile'
-      || (!hasDisplayIdentity && hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
+    return UserProfileStateBuilder.isEmptyOnboardingProfile(user);
+  }
+
+  protected newProfileMenuItems(): readonly AppMenuItem<DemoSelectorHeaderMenuItemId, DemoSelectorHeaderMenuContext>[] {
+    if (!this.newProfileAvailable()) {
+      return [];
+    }
+    return [{
+      id: 'new-profile',
+      label: 'new.demo.profile',
+      icon: 'person_add',
+      kind: 'action',
+      palette: 'orange',
+      disabled: () => this.loading || this.submitting,
+      ariaLabel: 'Open new demo profile',
+      context: { action: 'new-profile' }
+    }];
+  }
+
+  protected onHeaderMenuSelect(
+    event: AppMenuItemSelectEvent<DemoSelectorHeaderMenuItemId, DemoSelectorHeaderMenuContext>
+  ): void {
+    if (event.context?.action !== 'new-profile') {
+      return;
+    }
+    this.requestNewProfile();
+  }
+
+  protected visibleUsers(): readonly UserSelectorListItemDto[] {
+    return this.users.filter(user => !this.isNewProfile(user));
   }
 
   protected selectedUser(): UserSelectorListItemDto | null {
@@ -280,7 +316,6 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     const requestToken = this.contextRequestToken;
-    const selectedUser = this.users.find(user => user.id.trim() === normalizedUserId) ?? null;
     if (!this.usersService.localModeEnabled) {
       this.commit(() => {
         this.submitting = true;
@@ -301,11 +336,36 @@ export class DemoBootstrapSelectorComponent {
       this.errorMessage = '';
     });
 
-    if (selectedUser && this.isNewProfile(selectedUser)) {
-      void this.completeContextSelection(normalizedUserId, requestToken);
+    void this.prepareContextUser(normalizedUserId, requestToken);
+  }
+
+  private requestNewProfile(): void {
+    if (this.loading || this.submitting) {
       return;
     }
-    void this.prepareContextUser(normalizedUserId, requestToken);
+    if (this.contextRequest) {
+      this.selectContextNewProfile();
+      return;
+    }
+    this.newProfileRequested.emit();
+  }
+
+  private selectContextNewProfile(): void {
+    if (!this.contextRequest?.onNewProfile) {
+      return;
+    }
+    const requestToken = this.contextRequestToken;
+    this.commit(() => {
+      this.submitting = true;
+      this.selectedUserId = '';
+      this.loading = true;
+      this.loadingUserList = false;
+      this.loadingProgress = 0;
+      this.loadingLabel = 'Opening profile setup';
+      this.loadingStage = 'session';
+      this.errorMessage = '';
+    });
+    void this.completeContextNewProfileSelection(requestToken);
   }
 
   private async prepareContextUser(userId: string, requestToken: number): Promise<void> {
@@ -363,6 +423,34 @@ export class DemoBootstrapSelectorComponent {
         this.resetContextSelectionFailure('Unable to open selected demo user.');
       }
     }
+  }
+
+  private async completeContextNewProfileSelection(requestToken: number): Promise<void> {
+    const request = this.contextRequest;
+    if (!request?.onNewProfile || !this.isCurrentContextRequest(requestToken)) {
+      return;
+    }
+    try {
+      const accepted = await request.onNewProfile();
+      if (!this.isCurrentContextRequest(requestToken)) {
+        return;
+      }
+      if (accepted !== false) {
+        return;
+      }
+      this.resetContextSelectionFailure('Unable to open profile setup.');
+    } catch {
+      if (this.isCurrentContextRequest(requestToken)) {
+        this.resetContextSelectionFailure('Unable to open profile setup.');
+      }
+    }
+  }
+
+  private newProfileAvailable(): boolean {
+    if (this.contextRequest) {
+      return this.contextRequest.mode === 'member' && Boolean(this.contextRequest.onNewProfile);
+    }
+    return true;
   }
 
   private resetContextSelectionFailure(message: string): void {

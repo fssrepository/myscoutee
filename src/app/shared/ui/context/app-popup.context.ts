@@ -46,6 +46,7 @@ export interface DemoBootstrapSelectorState {
   autoSelectUserId?: string;
   users?: readonly UserSelectorListItemDto[];
   onSelect: (userId: string) => boolean | Promise<boolean>;
+  onNewProfile?: () => boolean | Promise<boolean>;
   onClose?: () => void;
 }
 
@@ -111,6 +112,7 @@ export class AppPopupContext {
     autoSelectUserId?: string;
     users?: readonly UserSelectorListItemDto[];
     onSelect: (userId: string) => boolean | Promise<boolean>;
+    onNewProfile?: () => boolean | Promise<boolean>;
     onClose?: () => void;
   }): void {
     this._demoBootstrapSelector.set({
@@ -127,6 +129,15 @@ export class AppPopupContext {
         }
         return accepted;
       },
+      onNewProfile: payload.onNewProfile
+        ? async () => {
+            const accepted = await payload.onNewProfile?.();
+            if (accepted !== false) {
+              this.closeDemoBootstrapSelector();
+            }
+            return accepted !== false;
+          }
+        : undefined,
       onClose: () => {
         try {
           payload.onClose?.();

@@ -47,10 +47,6 @@ export class LocalUsersRepository {
   }
 
   private compareSelectableDemoUsers(left: UserDto, right: UserDto): number {
-    const setupProfileDelta = Number(this.isSetupDemoProfile(left)) - Number(this.isSetupDemoProfile(right));
-    if (setupProfileDelta !== 0) {
-      return -setupProfileDelta;
-    }
     const nameDelta = this.demoSelectorSortText(left.name, left.id)
       .localeCompare(this.demoSelectorSortText(right.name, right.id), 'en', { sensitivity: 'base' });
     if (nameDelta !== 0) {
@@ -62,29 +58,6 @@ export class LocalUsersRepository {
 
   private demoSelectorSortText(name: string | null | undefined, userId: string | null | undefined): string {
     return `${name ?? ''}`.trim() || `${userId ?? ''}`.trim();
-  }
-
-  private isSetupDemoProfile(user: UserDto): boolean {
-    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
-    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
-    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
-    const hasSeededProfileData = Boolean(
-      `${user.name ?? ''}`.trim()
-      || `${user.birthday ?? ''}`.trim()
-      || `${user.city ?? ''}`.trim()
-      || `${user.height ?? ''}`.trim()
-      || `${user.physique ?? ''}`.trim()
-      || (user.languages ?? []).some(language => language.trim().length > 0)
-      || (user.images ?? []).some(image => image.trim().length > 0)
-      || (user.profileDetails ?? []).some(group =>
-        (group.rows ?? []).some(row => `${row.value ?? ''}`.trim().length > 0))
-    );
-    return !hasSeededProfileData
-      && (
-        statusText === 'new'
-        || statusText === 'new profile'
-        || (completion === 0 && profileFormVersion === 0)
-      );
   }
 
   queryAllUsers(): UserDto[] {

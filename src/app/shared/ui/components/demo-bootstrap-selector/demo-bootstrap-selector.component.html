@@ -3,20 +3,32 @@
     <div class="demo-login-backdrop" (click)="requestClose()"></div>
     <div class="demo-login-panel" (click)="$event.stopPropagation()">
       <div class="demo-login-header">
-        <div>
+        <div class="demo-login-title">
           <h2>{{ title | i18n }}</h2>
           <p>{{ subtitle | i18n }}</p>
         </div>
-        <button
-          mat-icon-button
-          type="button"
-          class="popup-close"
-          [disabled]="submitting"
-          (click)="requestClose()"
-          [attr.aria-label]="'Close demo user popup' | i18n"
-          >
-          <span class="popup-close-glyph" aria-hidden="true">×</span>
-        </button>
+        <div class="demo-login-header-actions">
+          @if (newProfileMenuItems(); as newProfileItems) {
+            @if (newProfileItems.length > 0) {
+              <app-menu
+                class="demo-new-profile-menu"
+                kind="button-row"
+                [items]="newProfileItems"
+                (itemSelect)="onHeaderMenuSelect($event)"
+              ></app-menu>
+            }
+          }
+          <button
+            mat-icon-button
+            type="button"
+            class="popup-close"
+            [disabled]="submitting"
+            (click)="requestClose()"
+            [attr.aria-label]="'close.demo.user.popup' | i18n"
+            >
+            <span class="popup-close-glyph" aria-hidden="true">×</span>
+          </button>
+        </div>
       </div>
       <div class="demo-user-stage">
         @if (loading) {
@@ -93,9 +105,9 @@
                 </div>
               </div>
             </div>
-          } @else if (users.length > 0) {
+          } @else if (visibleUsers().length > 0) {
             <div class="demo-user-grid" [class.demo-user-grid-submitting]="submitting">
-              @for (user of users; track user.id) {
+              @for (user of visibleUsers(); track user.id) {
                 <button
                   type="button"
                   class="demo-user-item"
@@ -119,18 +131,18 @@
                   @if (user.name.trim()) {
                     <span class="demo-user-name" data-i18n-ignore>{{ user.name.trim() }}</span>
                   } @else {
-                    <span class="demo-user-name">{{ 'New demo profile' | i18n }}</span>
+                    <span class="demo-user-name">{{ 'new.demo.profile' | i18n }}</span>
                   }
                   <span class="demo-user-meta">
                     @if (isNewProfile(user)) {
-                      <span>{{ 'Needs setup' | i18n }}</span>
+                      <span>{{ 'needs.setup' | i18n }}</span>
                     } @else {
                       <span>{{ userGenderLabel(user) | i18n }}</span>
                       <span class="demo-user-meta-separator" aria-hidden="true"> · </span>
                       @if (user.city.trim()) {
                         <span class="demo-user-city" data-i18n-ignore>{{ user.city.trim() }}</span>
                       } @else {
-                        <span class="demo-user-city">{{ 'Needs setup' | i18n }}</span>
+                        <span class="demo-user-city">{{ 'needs.setup' | i18n }}</span>
                       }
                     }
                   </span>

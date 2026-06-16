@@ -27,6 +27,11 @@ export interface EntryDemoUserSelectionEvent {
   fail: () => void;
 }
 
+export interface EntryDemoNewProfileRequestEvent {
+  complete: () => void;
+  fail: () => void;
+}
+
 @Component({
   selector: 'app-entry-shell',
   standalone: true,
@@ -67,6 +72,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   @Input() isMobileView = false;
 
   @Output() readonly demoUserSelected = new EventEmitter<EntryDemoUserSelectionEvent>();
+  @Output() readonly demoNewProfileRequested = new EventEmitter<EntryDemoNewProfileRequestEvent>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<FirebaseAuthRequestDto>();
   @Output() readonly firebaseSessionContinueRequested = new EventEmitter<void>();
   @Output() readonly entryConsentStateChanged = new EventEmitter<boolean>();
@@ -321,6 +327,14 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         this.ngZone.run(() => {
           this.demoUserSelected.emit({
             userId,
+            complete: () => resolve(true),
+            fail: () => resolve(false)
+          });
+        });
+      }),
+      onNewProfile: () => new Promise<boolean>(resolve => {
+        this.ngZone.run(() => {
+          this.demoNewProfileRequested.emit({
             complete: () => resolve(true),
             fail: () => resolve(false)
           });
