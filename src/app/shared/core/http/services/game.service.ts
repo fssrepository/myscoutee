@@ -125,7 +125,7 @@ export class HttpGameService implements UserGameDataService {
       };
     }
 
-    if (mode === 'pair' || mode === 'separated-friends') {
+    if (mode === 'outside-network' || mode === 'separated-friends') {
       const socialCards = (cards.socialCards ?? []).filter(card => {
         const pairKey = this.toSocialPairKey(card);
         return !pairKey || !pendingRatedPairKeys.has(pairKey);

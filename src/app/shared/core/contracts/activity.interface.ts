@@ -548,7 +548,7 @@ export interface UserGameCardsStackSnapshot {
   requestInFlight: boolean;
 }
 
-export type UserGameMode = 'single' | 'pair' | 'separated-friends' | 'friends-in-common';
+export type UserGameMode = 'single' | 'outside-network' | 'separated-friends' | 'friends-in-common';
 export type UserGameSocialContext = 'separated-friends' | 'friends-in-common';
 
 export interface UserGameSocialCard {

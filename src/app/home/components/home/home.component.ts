@@ -154,7 +154,7 @@ export class HomeComponent implements OnDestroy {
     { key: 'single', label: 'Preferences', icon: 'person' },
     { key: 'friends-in-common', label: 'Friends in Common', icon: 'diversity_3' },
     { key: 'separated-friends', label: 'Inside Network', icon: 'group_add' },
-    { key: 'pair', label: 'Outside Network', icon: 'groups' }
+    { key: 'outside-network', label: 'Outside Network', icon: 'groups' }
   ];
   private users: UserDto[] = [];
   protected selectedRating = 0;
@@ -245,8 +245,11 @@ export class HomeComponent implements OnDestroy {
     = query => from(this.loadHomeSmartListPage(query));
 
   protected get isPairMode(): boolean {
-    return this.selectedHomeMode === 'pair'
-      || this.selectedHomeMode === 'separated-friends';
+    return this.isOutsideNetworkMode || this.isSeparatedFriendsMode;
+  }
+
+  protected get isOutsideNetworkMode(): boolean {
+    return this.selectedHomeMode === 'outside-network';
   }
 
   protected get isSeparatedFriendsMode(): boolean {
@@ -616,7 +619,7 @@ export class HomeComponent implements OnDestroy {
   protected homeModeToneClass(mode: UserGameMode): string {
     const map: Record<UserGameMode, string> = {
       single: 'mode-single',
-      pair: 'mode-pair',
+      'outside-network': 'mode-outside-network',
       'separated-friends': 'mode-separated-friends',
       'friends-in-common': 'mode-friends-in-common'
     };
@@ -1763,7 +1766,7 @@ export class HomeComponent implements OnDestroy {
     if (this.isSeparatedFriendsMode) {
       return cards.filter(card => card.socialContext === 'separated-friends');
     }
-    if (this.selectedHomeMode === 'pair') {
+    if (this.isOutsideNetworkMode) {
       return cards.filter(card => !card.socialContext);
     }
     return [];
@@ -1891,7 +1894,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private normalizeHomeMode(mode: UserGameMode | string | null | undefined): UserGameMode {
-    return mode === 'pair'
+    return mode === 'outside-network'
       || mode === 'separated-friends'
       || mode === 'friends-in-common'
       ? mode

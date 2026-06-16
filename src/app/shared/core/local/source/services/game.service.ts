@@ -62,13 +62,13 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       };
     }
     const mode = request.mode ?? 'single';
-    if (mode === 'pair' || mode === 'separated-friends' || mode === 'friends-in-common') {
+    if (mode === 'outside-network' || mode === 'separated-friends' || mode === 'friends-in-common') {
       const allUsers = this.usersRepository.queryAllUsers();
       const usersById = new Map(allUsers.map(user => [user.id, user] as const));
       const ratedPairKeys = new Set(this.ratesRepository.queryRatedGameCardPairKeys(normalizedUserId));
       const ratedSingleUserIds = new Set(this.ratesRepository.queryRatedGameCardUserIds(normalizedUserId, 'single'));
       const allSocialCards = this.activityMembersRepository
-        .queryGameSocialCards(normalizedUserId, mode === 'pair' ? 'outside-network' : mode)
+        .queryGameSocialCards(normalizedUserId, mode)
         .filter(card => this.isSocialCardVisible(usersById, card, mode))
         .filter(card => {
           if (mode === 'friends-in-common') {
@@ -416,7 +416,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   private isSocialCardVisible(
     usersById: ReadonlyMap<string, UserDto>,
     card: UserGameSocialCard,
-    mode: 'pair' | 'separated-friends' | 'friends-in-common'
+    mode: 'outside-network' | 'separated-friends' | 'friends-in-common'
   ): boolean {
     const candidate = usersById.get(card.userId.trim());
     if (mode === 'friends-in-common') {
@@ -426,7 +426,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     }
 
     const secondUser = usersById.get((card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || ''));
-    if (mode === 'pair') {
+    if (mode === 'outside-network') {
       return UserProfileStateBuilder.isPublicGameProfile(candidate)
         && UserProfileStateBuilder.isPublicGameProfile(secondUser);
     }

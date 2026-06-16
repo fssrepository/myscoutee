@@ -16,7 +16,7 @@ export interface DemoAcceptedEventMemberGroup {
   userIds: string[];
 }
 
-type LocalGameSocialMode = Extract<UserGameMode, 'friends-in-common' | 'separated-friends'> | 'outside-network';
+type LocalGameSocialMode = Extract<UserGameMode, 'outside-network' | 'friends-in-common' | 'separated-friends'>;
 type LocalGameSocialCardsByMode = Record<LocalGameSocialMode, UserGameSocialCard[]>;
 
 @Injectable({
