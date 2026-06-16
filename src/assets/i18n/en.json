@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.06.07.en.1",
+  "version": "2026.06.16.en.1",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -746,6 +746,7 @@
     "past": "Past",
     "past.events": "Past Events",
     "preferences": "Preferences",
+    "inside.network": "Inside Network",
     "preparing.admin.bootstrap": "Preparing admin bootstrap",
     "preparing.admin.data": "Preparing admin data",
     "preparing.demo.data": "Preparing demo data",
@@ -1192,6 +1193,7 @@
     "public": "Public",
     "private": "Private",
     "friends": "Friends",
+    "friends.in.common": "Friends in Common",
     "hosts": "Hosts",
     "friends.only": "Friends only",
     "host.only": "Host only",

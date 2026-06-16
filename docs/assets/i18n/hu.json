@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.06.04.hu.2",
+  "version": "2026.06.16.hu.1",
     "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -724,6 +724,7 @@
     "past": "Korábbi",
     "past.events": "Korábbi események",
     "preferences": "Preferenciák",
+    "inside.network": "Hálózaton belül",
     "preparing.admin.bootstrap": "Admin indítás előkészítése",
     "preparing.admin.data": "Admin adatok előkészítése",
     "preparing.demo.data": "Demo adatok előkészítése",
@@ -1158,6 +1159,7 @@
     "public": "Nyilvános",
     "private": "Privát",
     "friends": "Barátok",
+    "friends.in.common": "Közös ismerősök",
     "hosts": "Szervezők",
     "friends.only": "Csak barátok",
     "host.only": "Csak szervezők",
