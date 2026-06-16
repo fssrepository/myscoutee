@@ -28,10 +28,18 @@
                 </p>
                 @if (submitting && selectedUser(); as user) {
                   <div class="demo-user-selected-session">
-                    <span class="demo-user-selected-avatar-wrap">
-                      <span class="demo-user-selected-ring" aria-hidden="true"></span>
-                      <span class="user-avatar" [ngClass]="userAvatarClass(user)">{{ user.initials }}</span>
-                    </span>
+                    @if (userAvatarLabel(user); as avatarLabel) {
+                      <span class="demo-user-selected-avatar-wrap">
+                        <span class="demo-user-selected-ring" aria-hidden="true"></span>
+                        <span
+                          class="user-avatar"
+                          [ngClass]="userAvatarClass(user)"
+                          data-i18n-ignore
+                          >
+                          {{ avatarLabel }}
+                        </span>
+                      </span>
+                    }
                     <span class="demo-user-selected-copy">
                       <strong>{{ user.name }}</strong>
                       <small>{{ 'Auto selected' | i18n }}</small>
@@ -99,7 +107,15 @@
                   [matRippleColor]="'rgba(72, 111, 196, 0.16)'"
                   (click)="requestUserSelect(user.id)"
                   >
-                  <span class="user-avatar" [ngClass]="userAvatarClass(user)">{{ user.initials }}</span>
+                  @if (userAvatarLabel(user); as avatarLabel) {
+                    <span
+                      class="user-avatar"
+                      [ngClass]="userAvatarClass(user)"
+                      data-i18n-ignore
+                      >
+                      {{ avatarLabel }}
+                    </span>
+                  }
                   @if (user.name.trim()) {
                     <span class="demo-user-name" data-i18n-ignore>{{ user.name.trim() }}</span>
                   } @else {

@@ -136,14 +136,19 @@ export class DemoBootstrapSelectorComponent {
     return this.isNewProfile(user) ? 'user-color-setup' : `user-color-${user.gender}`;
   }
 
+  protected userAvatarLabel(user: UserSelectorListItemDto): string {
+    return this.isNewProfile(user) ? '' : `${user.initials ?? ''}`.trim();
+  }
+
   protected isNewProfile(user: UserSelectorListItemDto): boolean {
     const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
     const hasProfileStateSignal = user.completion !== undefined || user.profileFormVersion !== undefined;
     const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
     const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
+    const hasDisplayIdentity = Boolean(`${user.name ?? ''}`.trim() || `${user.city ?? ''}`.trim());
     return statusText === 'new'
       || statusText === 'new profile'
-      || (hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
+      || (!hasDisplayIdentity && hasProfileStateSignal && completion === 0 && profileFormVersion === 0);
   }
 
   protected selectedUser(): UserSelectorListItemDto | null {
