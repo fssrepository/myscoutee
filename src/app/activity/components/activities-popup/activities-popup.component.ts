@@ -1146,7 +1146,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesSelectTrigger({
       label: this.activitiesToolbar.activitiesRateFilterLabel(),
       icon: this.activitiesToolbar.activitiesRateFilterIcon(this.activitiesRateFilter),
-      palette: 'gold',
+      palette: this.activitiesRatePalette(this.activitiesRateFilter),
       counter: this.activitiesToolbar.selectedRateFilterCount()
     });
   }
