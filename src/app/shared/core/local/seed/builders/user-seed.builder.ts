@@ -68,7 +68,7 @@ const BASE_DEMO_USERS: UserDto[] = [
     headline: 'Reliable planning, zero drama.',
     about: 'I like compact events with clear timelines and simple role assignment.',
     images: buildDemoPortraitStack('man', 75),
-    profileStatus: 'friends only',
+    profileStatus: 'public',
     activities: { game: 4, chat: 3, invitations: 1, events: 2, hosting: 1 }
   },
   {
@@ -90,7 +90,7 @@ const BASE_DEMO_USERS: UserDto[] = [
     headline: 'Art nights and adventure mornings.',
     about: 'I enjoy cultural events and activity-heavy weekends with small groups.',
     images: buildDemoPortraitStack('woman', 76),
-    profileStatus: 'friends only',
+    profileStatus: 'public',
     activities: { game: 6, chat: 7, invitations: 3, events: 4, hosting: 2 }
   },
   {
@@ -200,7 +200,7 @@ const BASE_DEMO_USERS: UserDto[] = [
     headline: 'Metrics first, then movement.',
     about: 'I optimize event outcomes and participant quality through filtered invites.',
     images: buildDemoPortraitStack('man', 81),
-    profileStatus: 'friends only',
+    profileStatus: 'public',
     activities: { game: 4, chat: 4, invitations: 2, events: 3, hosting: 2 }
   },
   {
