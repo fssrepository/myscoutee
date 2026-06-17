@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const frontendRoot = path.resolve(__dirname, '..');
-const outputDir = path.resolve(process.env.FRONTEND_BUILD_OUTPUT_DIR || path.join(frontendRoot, 'docs'));
+const outputDir = resolveOutputDir(process.env.FRONTEND_BUILD_OUTPUT_DIR || 'prod');
 const indexPath = path.join(outputDir, 'index.html');
 const serviceWorkerPath = path.join(outputDir, 'app-sw.js');
 const versionPath = path.join(outputDir, 'app-version.json');
@@ -153,6 +153,10 @@ function shouldPrecacheBuildAsset(relativePath) {
     return false;
   }
   return /\.(?:js|css|woff2?|ttf)$/i.test(relativePath);
+}
+
+function resolveOutputDir(value) {
+  return path.isAbsolute(value) ? value : path.join(frontendRoot, value);
 }
 
 function runOptional(command, args) {

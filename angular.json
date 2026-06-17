@@ -21,7 +21,7 @@
           "builder": "@angular/build:application",
           "options": {
             "outputPath": {
-              "base": "docs",
+              "base": "local",
               "browser": ""
             },
             "browser": "src/main.ts",
@@ -46,6 +46,10 @@
           },
           "configurations": {
             "production": {
+              "outputPath": {
+                "base": "prod",
+                "browser": ""
+              },
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -75,6 +79,10 @@
               }
             },
             "github": {
+              "outputPath": {
+                "base": "docs",
+                "browser": ""
+              },
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -128,6 +136,10 @@
               "sourceMap": true
             },
             "e2e": {
+              "outputPath": {
+                "base": "e2e",
+                "browser": ""
+              },
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
@@ -157,7 +169,7 @@
               }
             }
           },
-          "defaultConfiguration": "dev"
+          "defaultConfiguration": "local"
         },
         "serve": {
           "builder": "@angular/build:dev-server",
