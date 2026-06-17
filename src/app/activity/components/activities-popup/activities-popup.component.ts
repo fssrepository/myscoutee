@@ -34,7 +34,7 @@ import type { ActivitiesFeedFilters, ActivityEventSaveDTO } from '../../../share
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuComponent, AppMenuDispatcher, type AppMenuBranch, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuComponent, AppMenuDispatcher, type AppMenuGroup, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -1152,7 +1152,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesRateMenuModel(): AppMenuModel<string, ActivitiesToolbarMenuContext> {
-    type RateMenuNode = Omit<AppMenuBranch<string, ActivitiesToolbarMenuContext>, 'items' | 'children' | 'headerActions'> & {
+    type RateMenuNode = Omit<AppMenuGroup<string, ActivitiesToolbarMenuContext>, 'items' | 'headerActions'> & {
       items: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
       headerActions?: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
     };

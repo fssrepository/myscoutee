@@ -53,8 +53,8 @@
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
             [disabled]="isItemDisabled(item)"
-            [attr.aria-expanded]="hasItemChildren(item) ? isActionRowItemOpen(item) : null"
-            [attr.aria-haspopup]="hasItemChildren(item) ? 'menu' : null"
+            [attr.aria-expanded]="hasNestedItems(item) ? isActionRowItemOpen(item) : null"
+            [attr.aria-haspopup]="hasNestedItems(item) ? 'menu' : null"
             [attr.aria-pressed]="isToggleItem(item) ? isItemActive(item) : null"
             [attr.aria-label]="actionRowItemAriaLabel(item)"
             [title]="actionRowItemAriaLabel(item) || actionRowItemLabel(item)"
@@ -74,7 +74,7 @@
                 {{ itemCounterLabel(item) }}
               </span>
             }
-            @if (isLabeledActionRowItem(item) && hasItemChildren(item)) {
+            @if (isLabeledActionRowItem(item) && hasNestedItems(item)) {
               <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
             }
           </button>
@@ -110,23 +110,23 @@
 
       @if (isShortcutGridKind && hasMenuNodes) {
         <div class="app-menu__groups">
-          @for (branch of menuNodes; track trackByBranchId($index, branch)) {
-            <section class="app-menu__group" role="group" [attr.aria-label]="branchAriaLabel(branch)">
-              @if (branchLabel(branch) || branchIcon(branch)) {
-                <div class="app-menu__group-header" [ngClass]="branchPaletteClass(branch)">
+          @for (group of menuNodes; track trackByGroupId($index, group)) {
+            <section class="app-menu__group" role="group" [attr.aria-label]="groupAriaLabel(group)">
+              @if (groupLabel(group) || groupIcon(group)) {
+                <div class="app-menu__group-header" [ngClass]="groupPaletteClass(group)">
                   <span class="app-menu__group-badge">
-                    @if (branchIcon(branch)) {
-                      <mat-icon>{{ branchIcon(branch) }}</mat-icon>
+                    @if (groupIcon(group)) {
+                      <mat-icon>{{ groupIcon(group) }}</mat-icon>
                     }
-                    @if (branchLabel(branch)) {
-                      <span>{{ branchLabel(branch) | i18n }}</span>
+                    @if (groupLabel(group)) {
+                      <span>{{ groupLabel(group) | i18n }}</span>
                     }
                   </span>
                   <span class="app-menu__group-line"></span>
                 </div>
               }
               <div class="app-menu__shortcut-grid">
-                @for (item of branchChildren(branch); track trackByItemId($index, item)) {
+                @for (item of groupItems(group); track trackByItemId($index, item)) {
                   @if (isDivider(item)) {
                     <div class="app-menu__divider app-menu__shortcut-divider" role="separator"></div>
                   } @else if (isSection(item)) {
@@ -177,7 +177,7 @@
                       @if (hasItemCounter(item)) {
                         <span
                           class="app-menu__counter app-menu__counter--shortcut"
-                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, branch))"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
                           >
                           {{ itemCounterLabel(item) }}
                         </span>
@@ -310,7 +310,7 @@
                 @if (showItemCheck(item)) {
                   <mat-icon class="app-menu__item-check">done</mat-icon>
                 }
-                @if (hasItemChildren(item)) {
+                @if (hasNestedItems(item)) {
                   <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
                 }
               </a>
@@ -353,7 +353,7 @@
                 @if (showItemCheck(item)) {
                   <mat-icon class="app-menu__item-check">done</mat-icon>
                 }
-                @if (hasItemChildren(item)) {
+                @if (hasNestedItems(item)) {
                   <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
                 }
               </button>

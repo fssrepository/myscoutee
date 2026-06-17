@@ -612,7 +612,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       nodes: [
         {
           id: 'process-filter-root',
-          children: [
+          items: [
             {
               id: 'process-filter-menu',
               kind: 'select-trigger',
@@ -620,7 +620,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
               icon: this.processFilterIcon(),
               counter: this.processFilterCount(),
               ariaLabel: 'admin.jobs.filter.aria',
-              children: this.processFilterOptions.map(option => ({
+              items: this.processFilterOptions.map(option => ({
                 id: `process-filter:${option.key}`,
                 kind: 'radio',
                 label: option.labelKey,

@@ -452,7 +452,7 @@ export class ProfileEditorComponent {
         closeIcon: 'close',
         ariaLabel: 'Open experience actions',
         palette: 'blue',
-        children: [
+        items: [
           {
             id: 'experience-action-create',
             label: 'Create',

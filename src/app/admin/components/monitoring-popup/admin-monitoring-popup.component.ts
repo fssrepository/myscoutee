@@ -90,7 +90,7 @@ export class AdminMonitoringPopupComponent implements OnInit {
       nodes: [
         {
           id: 'monitoring-filter-root',
-          children: [
+          items: [
             {
               id: 'filter-menu',
               kind: 'select-trigger',
@@ -98,7 +98,7 @@ export class AdminMonitoringPopupComponent implements OnInit {
               icon: this.filterIcon(),
               counter: this.filterCount(),
               ariaLabel: 'admin.monitoring.filter.aria',
-              children: this.filterOptions.map(option => ({
+              items: this.filterOptions.map(option => ({
                 id: `filter:${option.key}`,
                 kind: 'radio',
                 label: option.labelKey,

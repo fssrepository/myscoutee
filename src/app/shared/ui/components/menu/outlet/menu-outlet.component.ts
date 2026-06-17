@@ -303,7 +303,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   private estimatedPanelHeight(menu: AppMenuDispatchState<TId, TContext>): number {
     const titleHeight = `${this.resolveLiveValue(menu.title) ?? ''}`.trim() ? 34 : 0;
     const itemCount = Math.max(1, this.visibleItems(menu).length);
-    const branchHeaderHeight = this.visibleItems(menu).some(item => (item.children?.length ?? 0) > 0) ? 38 : 0;
+    const branchHeaderHeight = this.visibleItems(menu).some(item => (item.items?.length ?? 0) > 0) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
@@ -313,8 +313,8 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
       return items;
     }
     const fallbackItems: AppMenuItem<TId, TContext>[] = [];
-    for (const branch of menu.model?.nodes ?? menu.groups) {
-      fallbackItems.push(...(branch.children ?? branch.items ?? []));
+    for (const group of menu.model?.nodes ?? menu.groups) {
+      fallbackItems.push(...(group.items ?? []));
     }
     return fallbackItems;
   }

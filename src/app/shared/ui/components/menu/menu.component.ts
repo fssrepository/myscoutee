@@ -21,7 +21,6 @@ import {
   type RatingStarBarConfig
 } from '../rating-star-bar';
 import type {
-  AppMenuBranch,
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
@@ -308,7 +307,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return spaceRight >= spaceLeft ? 'start' : 'end';
   }
 
-  protected get menuNodes(): readonly AppMenuBranch<TId, TContext>[] {
+  protected get menuNodes(): readonly AppMenuGroup<TId, TContext>[] {
     return this.model?.nodes ?? this.groups;
   }
 
@@ -322,7 +321,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
     const items: AppMenuItem<TId, TContext>[] = [];
     for (const node of this.menuNodes) {
-      items.push(...this.branchChildren(node));
+      items.push(...this.groupItems(node));
     }
     return items;
   }
@@ -337,7 +336,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.activeBranch) {
-      return this.activeBranch.children ?? [];
+      return this.activeBranch.items ?? [];
     }
     if (this.items.length > 0) {
       return this.items;
@@ -506,7 +505,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
       return;
     }
-    if (this.hasItemChildren(item)) {
+    if (this.hasNestedItems(item)) {
       if (this.open && this.activeBranchPath[0]?.id === item.id) {
         this.setOpen(false);
         return;
@@ -632,7 +631,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       if (openIcon) {
         return openIcon;
       }
-      if (!this.isLabeledActionRowItem(item) && this.hasItemChildren(item)) {
+      if (!this.isLabeledActionRowItem(item) && this.hasNestedItems(item)) {
         return 'close';
       }
     }
@@ -667,29 +666,29 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
   }
 
-  protected branchPalette(branch: AppMenuBranch<TId, TContext>): AppMenuPalette {
-    return branch.palette ?? 'default';
+  protected groupPalette(group: AppMenuGroup<TId, TContext>): AppMenuPalette {
+    return group.palette ?? 'default';
   }
 
-  protected branchPaletteClass(branch: AppMenuBranch<TId, TContext>): string {
-    return this.paletteClass(this.branchPalette(branch));
+  protected groupPaletteClass(group: AppMenuGroup<TId, TContext>): string {
+    return this.paletteClass(this.groupPalette(group));
   }
 
-  protected branchLabel(branch: AppMenuBranch<TId, TContext>): string {
-    return `${this.resolveLiveValue(branch.label) ?? ''}`.trim();
+  protected groupLabel(group: AppMenuGroup<TId, TContext>): string {
+    return `${this.resolveLiveValue(group.label) ?? ''}`.trim();
   }
 
-  protected branchIcon(branch: AppMenuBranch<TId, TContext>): string {
-    return `${this.resolveLiveValue(branch.icon) ?? ''}`.trim();
+  protected groupIcon(group: AppMenuGroup<TId, TContext>): string {
+    return `${this.resolveLiveValue(group.icon) ?? ''}`.trim();
   }
 
-  protected branchAriaLabel(branch: AppMenuBranch<TId, TContext>): string | null {
-    const ariaLabel = `${this.resolveLiveValue(branch.ariaLabel) ?? this.branchLabel(branch)}`.trim();
+  protected groupAriaLabel(group: AppMenuGroup<TId, TContext>): string | null {
+    const ariaLabel = `${this.resolveLiveValue(group.ariaLabel) ?? this.groupLabel(group)}`.trim();
     return ariaLabel || null;
   }
 
-  protected branchChildren(branch: AppMenuBranch<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
-    return branch.children ?? branch.items ?? [];
+  protected groupItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return group.items ?? [];
   }
 
   private groupedDropdownItems(): readonly AppMenuItem<TId, TContext>[] {
@@ -697,29 +696,29 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       return [];
     }
     const items: AppMenuItem<TId, TContext>[] = [];
-    for (const branch of this.menuNodes) {
-      const children = this.branchChildren(branch);
-      if (children.length === 0) {
+    for (const group of this.menuNodes) {
+      const groupItems = this.groupItems(group);
+      if (groupItems.length === 0) {
         continue;
       }
       if (items.length > 0) {
         items.push({
-          id: `${branch.id}__divider` as TId,
+          id: `${group.id}__divider` as TId,
           kind: 'divider'
         });
       }
-      if (this.branchLabel(branch) || this.branchIcon(branch)) {
+      if (this.groupLabel(group) || this.groupIcon(group)) {
         items.push({
-          id: `${branch.id}__section` as TId,
+          id: `${group.id}__section` as TId,
           kind: 'section',
-          label: branch.label,
-          icon: branch.icon,
-          palette: branch.palette,
-          headerActions: branch.headerActions,
-          ariaLabel: branch.ariaLabel
+          label: group.label,
+          icon: group.icon,
+          palette: group.palette,
+          headerActions: group.headerActions,
+          ariaLabel: group.ariaLabel
         });
       }
-      items.push(...children);
+      items.push(...groupItems);
     }
     return items;
   }
@@ -774,7 +773,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if ((this.isDropdownListKind || this.isButtonRowKind) && item.kind === 'radio') {
       return false;
     }
-    return this.isItemActive(item) && !this.hasItemChildren(item);
+    return this.isItemActive(item) && !this.hasNestedItems(item);
   }
 
   protected isItemChecked(item: AppMenuItem<TId, TContext>): boolean | null {
@@ -834,12 +833,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return item.kind === 'branch';
   }
 
-  protected hasItemChildren(item: AppMenuItem<TId, TContext>): boolean {
-    return (item.children?.length ?? 0) > 0;
+  protected hasNestedItems(item: AppMenuItem<TId, TContext>): boolean {
+    return (item.items?.length ?? 0) > 0;
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
-    return (this.isDropdownListKind || this.isButtonRowKind) && this.hasItemChildren(item);
+    return (this.isDropdownListKind || this.isButtonRowKind) && this.hasNestedItems(item);
   }
 
   protected itemHref(item: AppMenuItem<TId, TContext>): string {
@@ -888,9 +887,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.counterLabel(this.itemCounter(item));
   }
 
-  protected itemCounterKey(item: AppMenuItem<TId, TContext>, branch?: AppMenuBranch<TId, TContext>): string {
+  protected itemCounterKey(item: AppMenuItem<TId, TContext>, group?: AppMenuGroup<TId, TContext>): string {
     const itemKey = `${item.kind ?? 'action'}:${item.id}`;
-    return branch ? `node:${branch.id}:${itemKey}` : `item:${itemKey}`;
+    return group ? `node:${group.id}:${itemKey}` : `item:${itemKey}`;
   }
 
   protected isCounterPulsing(key: string): boolean {
@@ -901,8 +900,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return `${item.kind ?? 'action'}:${item.id || index}`;
   }
 
-  protected trackByBranchId(index: number, branch: AppMenuBranch<TId, TContext>): string {
-    return `${branch.id || index}`;
+  protected trackByGroupId(index: number, group: AppMenuGroup<TId, TContext>): string {
+    return `${group.id || index}`;
   }
 
   protected trackBySegmentId(index: number, segment: AppMenuSegment): string {
@@ -1002,7 +1001,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private estimatedPanelHeight(): number {
     const titleHeight = this.resolvedTitle ? 34 : 0;
     const itemCount = Math.max(1, this.visibleListItems.length);
-    const branchHeaderHeight = this.visibleListItems.some(item => (item.children?.length ?? 0) > 0) ? 38 : 0;
+    const branchHeaderHeight = this.visibleListItems.some(item => (item.items?.length ?? 0) > 0) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
@@ -1017,12 +1016,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     for (const item of this.items) {
       this.observeItemCounterPulse(item, visibleCounterKeys);
     }
-    for (const branch of this.menuNodes) {
-      for (const action of branch.headerActions ?? []) {
-        this.observeItemCounterPulse(action, visibleCounterKeys, branch);
+    for (const group of this.menuNodes) {
+      for (const action of group.headerActions ?? []) {
+        this.observeItemCounterPulse(action, visibleCounterKeys, group);
       }
-      for (const item of this.branchChildren(branch)) {
-        this.observeItemCounterPulse(item, visibleCounterKeys, branch);
+      for (const item of this.groupItems(group)) {
+        this.observeItemCounterPulse(item, visibleCounterKeys, group);
       }
     }
     for (const key of this.counterValueByKey.keys()) {
@@ -1036,19 +1035,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private observeItemCounterPulse(
     item: AppMenuItem<TId, TContext>,
     visibleCounterKeys: Set<string>,
-    branch?: AppMenuBranch<TId, TContext>
+    group?: AppMenuGroup<TId, TContext>
   ): void {
     this.observeCounterPulse(
-      this.itemCounterKey(item, branch),
+      this.itemCounterKey(item, group),
       this.itemCounter(item),
       this.hasValueCounter(item.id) || this.isLiveCounter(item.counter ?? null),
       visibleCounterKeys
     );
     for (const action of item.headerActions ?? []) {
-      this.observeItemCounterPulse(action, visibleCounterKeys, branch);
+      this.observeItemCounterPulse(action, visibleCounterKeys, group);
     }
-    for (const child of item.children ?? []) {
-      this.observeItemCounterPulse(child, visibleCounterKeys, branch);
+    for (const child of item.items ?? []) {
+      this.observeItemCounterPulse(child, visibleCounterKeys, group);
     }
   }
 

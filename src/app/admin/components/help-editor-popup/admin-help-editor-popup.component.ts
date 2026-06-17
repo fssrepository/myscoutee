@@ -169,7 +169,7 @@ export class AdminHelpEditorPopupComponent {
       nodes: [
         {
           id: 'document-menu-root',
-          children: [
+          items: [
             {
               id: 'document-menu',
               kind: 'select-trigger',
@@ -177,7 +177,7 @@ export class AdminHelpEditorPopupComponent {
               icon: this.documentIcon(this.documentKind),
               disabled,
               ariaLabel: this.uiText('Select content type'),
-              children: [
+              items: [
                 this.documentMenuKindItem('help', disabled),
                 this.documentMenuKindItem('privacy', disabled),
                 this.documentMenuKindItem('terms', disabled),
@@ -188,7 +188,7 @@ export class AdminHelpEditorPopupComponent {
                   icon: 'tips_and_updates',
                   active: this.documentKind === 'explanation',
                   disabled,
-                  children: this.explainableSurfaces().map(surface => this.explanationMenuSurfaceItem(surface, disabled)),
+                  items: this.explainableSurfaces().map(surface => this.explanationMenuSurfaceItem(surface, disabled)),
                   headerActions: [
                     {
                       id: 'create-explanation',
@@ -212,7 +212,7 @@ export class AdminHelpEditorPopupComponent {
       nodes: [
         {
           id: 'language-menu-root',
-          children: [
+          items: [
             {
               id: 'language-menu',
               kind: 'select-trigger',
@@ -220,7 +220,7 @@ export class AdminHelpEditorPopupComponent {
               palette: 'success',
               disabled,
               ariaLabel: 'Content language',
-              children: this.contentLanguages().map(language => ({
+              items: this.contentLanguages().map(language => ({
                 id: `language:${this.normalizeContentLang(language.lang)}`,
                 kind: 'radio',
                 label: this.languageMenuItemLabel(language.lang),

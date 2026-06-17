@@ -110,26 +110,23 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   ratingBarConfig?: RatingStarBarConfig | null;
   segments?: readonly AppMenuSegment[];
   span?: AppMenuLiveValue<number | null | undefined>;
-  children?: readonly AppMenuItem<TId, TContext>[];
+  items?: readonly AppMenuItem<TId, TContext>[];
   headerActions?: readonly AppMenuItem<TId, TContext>[];
 }
 
-export interface AppMenuBranch<TId extends string = string, TContext = unknown> {
+export interface AppMenuGroup<TId extends string = string, TContext = unknown> {
   id: string;
   label?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
   palette?: AppMenuPalette;
-  children?: readonly AppMenuItem<TId, TContext>[];
   items?: readonly AppMenuItem<TId, TContext>[];
   headerActions?: readonly AppMenuItem<TId, TContext>[];
   ariaLabel?: AppMenuLiveValue<string | null | undefined>;
 }
 
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
-  nodes: readonly AppMenuBranch<TId, TContext>[];
+  nodes: readonly AppMenuGroup<TId, TContext>[];
 }
-
-export type AppMenuGroup<TId extends string = string, TContext = unknown> = AppMenuBranch<TId, TContext>;
 
 export interface AppMenuItemSelectEvent<TId extends string = string, TContext = unknown> {
   id: TId;
