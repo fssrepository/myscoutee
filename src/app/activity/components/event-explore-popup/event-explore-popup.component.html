@@ -45,83 +45,16 @@
             (stateChange)="onEventExploreSmartListStateChange($event)"
           ></app-smart-list>
           @if (checkoutDraftCount() > 0) {
-            <div class="event-explore-basket">
-              @if (showCheckoutDraftBasket) {
-                <section class="event-explore-basket-panel">
-                  <header class="event-explore-basket-panel__head">
-                    <div>
-                      <strong>Basket</strong>
-                      <span>{{ checkoutDraftCount() }} open {{ checkoutDraftCount() === 1 ? 'basket item' : 'basket items' }}</span>
-                    </div>
-                    <button type="button" class="event-explore-basket-panel__close" (click)="toggleCheckoutDraftBasket($event)" aria-label="Close basket">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </header>
-                  <div class="event-explore-basket-panel__list">
-                    @for (entry of checkoutDraftEntries(); track entry.draft.sourceId) {
-                      <article class="event-explore-basket-item">
-                        <div class="event-explore-basket-item__copy">
-                          <strong>{{ entry.draft.eventTitle }}</strong>
-                          <span>{{ entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout' }}</span>
-                          <span>{{ entry.draft.lineItems.length }} {{ entry.draft.lineItems.length === 1 ? 'item' : 'items' }} · {{ entry.draft.currency }} {{ entry.draft.totalAmount.toFixed(2) }}</span>
-                          @if (isCheckoutDraftClearing(entry.draft.sourceId)) {
-                            <span>Releasing this basket item...</span>
-                          } @else if (!canContinueCheckoutDraft(entry)) {
-                            <span>{{ checkoutDraftPendingLabel(entry) }}</span>
-                          }
-                        </div>
-                        <div class="event-explore-basket-item__actions">
-                          <button
-                            type="button"
-                            class="event-explore-basket-item__btn"
-                            [disabled]="isCheckoutDraftClearing(entry.draft.sourceId)"
-                            (click)="viewCheckoutDraftEvent(entry, $event)"
-                          >
-                            View
-                          </button>
-                          <button
-                            type="button"
-                            class="event-explore-basket-item__btn"
-                            [disabled]="!canContinueCheckoutDraft(entry)"
-                            (click)="continueCheckoutDraft(entry, $event)"
-                          >
-                            {{ checkoutDraftActionLabel(entry) }}
-                          </button>
-                          <span
-                            class="event-explore-basket-item__clear-shell"
-                            [class.is-loading]="isCheckoutDraftClearing(entry.draft.sourceId)"
-                          >
-                            @if (isCheckoutDraftClearing(entry.draft.sourceId)) {
-                              <span class="event-explore-basket-item__clear-ring" aria-hidden="true">
-                                <app-progress-indicator kind="action-ring" shape="button" state="loading"></app-progress-indicator>
-                              </span>
-                            }
-                            <button
-                              type="button"
-                              class="event-explore-basket-item__btn event-explore-basket-item__btn--clear"
-                              [disabled]="isCheckoutDraftClearing(entry.draft.sourceId)"
-                              (click)="clearCheckoutDraft(entry.draft, $event)"
-                            >
-                              <span>{{ isCheckoutDraftClearing(entry.draft.sourceId) ? 'Clearing...' : 'Clear' }}</span>
-                            </button>
-                          </span>
-                        </div>
-                      </article>
-                    }
-                  </div>
-                </section>
-              }
-              <button
-                type="button"
-                class="event-explore-basket-fab"
-                [class.is-open]="showCheckoutDraftBasket"
-                (click)="toggleCheckoutDraftBasket($event)"
-                aria-label="Open basket"
-              >
-                <mat-icon>shopping_basket</mat-icon>
-                <span class="event-explore-basket-fab__count">{{ checkoutDraftCount() }}</span>
-              </button>
-            </div>
+            <app-menu
+              class="event-explore-basket-menu"
+              kind="fab"
+              title="Basket"
+              [trigger]="checkoutDraftMenuTrigger()"
+              [items]="checkoutDraftMenuItems()"
+              [panelAlign]="'end'"
+              [mobileBreakpointPx]="900"
+              (itemSelect)="onEventExploreMenuSelect($event)"
+            ></app-menu>
           }
           <ng-template #eventExploreItemTemplate let-record let-groupLabel="groupLabel">
             <app-info-card

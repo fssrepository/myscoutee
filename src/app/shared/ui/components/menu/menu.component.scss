@@ -668,6 +668,7 @@
   opacity: 0.52;
   box-shadow: none;
   transform: none;
+  pointer-events: none;
 }
 
 .app-menu__button-row-item--progress:disabled {
@@ -1812,6 +1813,7 @@ a.app-menu__item {
 
 .app-menu__item-description {
   font-size: 0.7rem;
+  white-space: pre-line;
 }
 
 .app-menu__shortcut-description {
@@ -1823,6 +1825,21 @@ a.app-menu__item {
   font-size: 0.72rem;
   font-weight: 800;
   white-space: nowrap;
+}
+
+.app-menu__item-detail--badge {
+  justify-self: start;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.12rem 0.42rem;
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+  font-size: 0.62rem;
+  line-height: 1.1;
+  white-space: normal;
+  box-shadow: 0 3px 9px var(--app-menu-shadow);
 }
 
 .app-menu__item-check {

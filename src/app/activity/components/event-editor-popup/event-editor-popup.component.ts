@@ -12,6 +12,7 @@ import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { Subscription } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
+import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
@@ -41,7 +42,8 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'frequency'; frequency: string };
+  | { menu: 'frequency'; frequency: string }
+  | { menu: 'checkout-draft'; sourceId: string };
 
 @Component({
   selector: 'app-event-editor-popup',
@@ -72,6 +74,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly activitiesService = inject(ActivitiesService);
   protected readonly eventEditorDataService = inject(EventEditorDataService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly mediaService = inject(MediaService);
@@ -798,6 +801,37 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
   }
 
+  protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
+    this.eventCheckoutDraftService.drafts();
+    if (!this.eventEditorService.readOnly()) {
+      return null;
+    }
+    const eventId = this.currentEventIdentity();
+    const activeUserId = this.activeUserId();
+    if (!eventId || !activeUserId) {
+      return null;
+    }
+    return this.eventCheckoutDraftService.read(activeUserId, eventId);
+  }
+
+  protected eventEditorCheckoutStatusMenuItems(draft: EventCheckoutDraft): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    const canContinue = this.eventEditorCanContinueCheckoutDraft(draft);
+    return [{
+      id: `checkout-draft-${draft.sourceId}`,
+      label: this.eventEditorCheckoutStatusLabel(draft),
+      icon: this.eventEditorCheckoutStatusIcon(draft),
+      kind: 'action',
+      layout: 'summary',
+      active: true,
+      disabled: !canContinue,
+      palette: this.eventEditorCheckoutStatusPalette(draft),
+      ariaLabel: canContinue
+        ? `Continue checkout for ${draft.eventTitle}`
+        : this.eventEditorCheckoutStatusLabel(draft),
+      context: { menu: 'checkout-draft', sourceId: draft.sourceId }
+    }];
+  }
+
   protected onEventEditorMenuSelect(event: AppMenuItemSelectEvent<string, EventEditorMenuContext>): void {
     if (!event.context) {
       return;
@@ -806,8 +840,79 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.selectVisibility(event.context.visibility, event.sourceEvent);
       return;
     }
-    event.sourceEvent.stopPropagation();
-    this.onEventFrequencyChange(event.context.frequency);
+    if (event.context.menu === 'checkout-draft') {
+      this.continueEventEditorCheckoutDraft(event.context.sourceId, event.sourceEvent);
+      return;
+    }
+    if (event.context.menu === 'frequency') {
+      event.sourceEvent.stopPropagation();
+      this.onEventFrequencyChange(event.context.frequency);
+    }
+  }
+
+  private eventEditorCanContinueCheckoutDraft(draft: EventCheckoutDraft): boolean {
+    if (draft.checkoutSessionId?.trim()) {
+      return true;
+    }
+    if (draft.pendingReason !== 'approval' && draft.pendingReason !== 'waitlist') {
+      return true;
+    }
+    return this.resolveEventEditorCheckoutMemberStatus(draft.sourceId) === 'accepted';
+  }
+
+  private eventEditorCheckoutStatusLabel(draft: EventCheckoutDraft): string {
+    if (this.eventEditorCanContinueCheckoutDraft(draft)) {
+      return 'Folytatás';
+    }
+    return draft.pendingReason === 'waitlist'
+      ? 'Helyre vár'
+      : 'Jóváhagyásra vár';
+  }
+
+  private eventEditorCheckoutStatusIcon(draft: EventCheckoutDraft): string {
+    if (this.eventEditorCanContinueCheckoutDraft(draft)) {
+      return 'event_available';
+    }
+    return draft.pendingReason === 'waitlist'
+      ? 'hourglass_empty'
+      : 'pending_actions';
+  }
+
+  private eventEditorCheckoutStatusPalette(draft: EventCheckoutDraft): AppMenuPalette {
+    if (this.eventEditorCanContinueCheckoutDraft(draft)) {
+      return 'red';
+    }
+    return draft.pendingReason === 'waitlist' ? 'amber' : 'orange';
+  }
+
+  private resolveEventEditorCheckoutMemberStatus(sourceId: string): 'accepted' | 'pending' | 'none' {
+    const activeUserId = this.activeUserId();
+    const ownerId = sourceId.trim();
+    if (!activeUserId || !ownerId) {
+      return 'none';
+    }
+    const member = this.activityMembersService.peekMembersByOwner({
+      ownerType: 'event',
+      ownerId
+    }).find(item => item.userId === activeUserId);
+    return member?.status === 'accepted'
+      ? 'accepted'
+      : member?.status === 'pending'
+        ? 'pending'
+        : 'none';
+  }
+
+  private continueEventEditorCheckoutDraft(sourceId: string, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const draft = this.eventCheckoutDraftService.read(this.activeUserId(), sourceId);
+    if (!draft || !this.eventEditorCanContinueCheckoutDraft(draft)) {
+      return;
+    }
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'eventCheckoutDraft',
+      sourceId: draft.sourceId
+    });
   }
 
   private eventFrequencyPalette(frequency: string): AppMenuPalette {

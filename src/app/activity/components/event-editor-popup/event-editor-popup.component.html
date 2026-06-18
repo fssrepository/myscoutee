@@ -48,6 +48,14 @@
           </button>
         </span>
         }
+        @if (eventEditorCheckoutDraft(); as checkoutDraft) {
+        <app-menu
+          class="event-editor-checkout-status-menu"
+          kind="button-row"
+          [items]="eventEditorCheckoutStatusMenuItems(checkoutDraft)"
+          (itemSelect)="onEventEditorMenuSelect($event)"
+        ></app-menu>
+        }
         <button type="button" class="popup-close" (click)="close()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>

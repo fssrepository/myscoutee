@@ -62,7 +62,7 @@
             [attr.aria-haspopup]="hasNestedItems(item) ? 'menu' : null"
             [attr.aria-pressed]="isToggleItem(item) ? isItemActive(item) : null"
             [attr.aria-label]="actionRowItemAriaLabel(item)"
-            [title]="actionRowItemAriaLabel(item) || actionRowItemLabel(item)"
+            [title]="isItemDisabled(item) ? null : actionRowItemAriaLabel(item) || actionRowItemLabel(item)"
             (click)="selectActionRowItem(item, $event)"
             >
             @if (itemProgressState(item); as progressState) {
@@ -441,6 +441,9 @@
                   @if (itemDescription(item)) {
                     <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
                   }
+                  @if (itemDetail(item) && itemLayout(item) === 'summary') {
+                    <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                  }
                 </span>
                 @if (hasItemCounter(item)) {
                   <span
@@ -450,7 +453,7 @@
                     {{ itemCounterLabel(item) }}
                   </span>
                 }
-                @if (itemDetail(item)) {
+                @if (itemDetail(item) && itemLayout(item) !== 'summary') {
                   <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                 }
                 @if (showItemCheck(item)) {
@@ -462,7 +465,11 @@
               </a>
             } @else {
               @if (isItemRemovable(item)) {
-                <div class="app-menu__item-row" [ngClass]="itemPaletteClass(item)">
+                <div
+                  class="app-menu__item-row"
+                  [ngClass]="itemPaletteClass(item)"
+                  [class.app-menu__item-row--summary]="itemLayout(item) === 'summary'"
+                  >
                   <button
                     type="button"
                     class="app-menu__item app-menu__item--row-primary"
@@ -485,8 +492,11 @@
                       @if (itemDescription(item)) {
                         <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
                       }
+                      @if (itemDetail(item) && itemLayout(item) === 'summary') {
+                        <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                      }
                     </span>
-                    @if (itemDetail(item)) {
+                    @if (itemDetail(item) && itemLayout(item) !== 'summary') {
                       <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                     }
                     @if (hasItemCounter(item)) {
@@ -538,8 +548,11 @@
                     @if (itemDescription(item)) {
                       <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
                     }
+                    @if (itemDetail(item) && itemLayout(item) === 'summary') {
+                      <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                    }
                   </span>
-                  @if (itemDetail(item)) {
+                  @if (itemDetail(item) && itemLayout(item) !== 'summary') {
                     <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                   }
                   @if (hasItemCounter(item)) {

@@ -35,7 +35,6 @@ import {
   type AppMenuTrigger,
   CARD_MENU_ACTIONS,
   InfoCardComponent,
-  ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
   type InfoCardData,
@@ -66,6 +65,7 @@ type EventExploreMenuContext =
   | { menu: 'view'; view: ContractTypes.EventExploreView }
   | { menu: 'filter-toggle'; filter: 'friends' | 'open-spots' }
   | { menu: 'topic-filter'; topic: string }
+  | { menu: 'checkout-draft'; entry: CheckoutDraftEntry }
   | {
       menu: 'info-card';
       record: ActivityEventRecord;
@@ -82,7 +82,6 @@ type EventExploreMenuContext =
     AppMenuComponent,
     AppMenuOutletComponent,
     InfoCardComponent,
-    ProgressIndicatorComponent,
     SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
@@ -119,7 +118,6 @@ export class EventExplorePopupComponent {
 
   protected isOpen = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
-  protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: ContractTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
@@ -145,7 +143,6 @@ export class EventExplorePopupComponent {
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
   private readonly checkoutDraftReleaseSourceIds = new Set<string>();
-  private readonly clearingCheckoutDraftsBySourceId = new Map<string, EventCheckoutDraft>();
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
@@ -199,10 +196,14 @@ export class EventExplorePopupComponent {
 
     effect(() => {
       const request = this.popupCtx.activitiesNavigationRequest();
-      if (!request || request.type !== 'eventExplore') {
+      if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
       this.popupCtx.clearActivitiesNavigationRequest();
+      if (request.type === 'eventCheckoutDraft') {
+        void this.continueCheckoutDraftBySourceId(request.sourceId);
+        return;
+      }
       this.openEventExplore();
     });
 
@@ -281,27 +282,7 @@ export class EventExplorePopupComponent {
       this.closeEventExploreSlotPicker();
       return;
     }
-    if (this.showCheckoutDraftBasket) {
-      this.showCheckoutDraftBasket = false;
-      this.cdr.markForCheck();
-      return;
-    }
     this.closeEventExplore();
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (this.showCheckoutDraftBasket && !target.closest('.event-explore-basket')) {
-      this.showCheckoutDraftBasket = false;
-    }
-    this.cdr.markForCheck();
   }
 
   protected onEventExploreSmartListStateChange(state: SmartListStateChange<ActivityEventRecord, EventExploreFeedFilters>): void {
@@ -315,7 +296,6 @@ export class EventExplorePopupComponent {
 
   protected closeEventExplore(): void {
     this.isOpen = false;
-    this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -507,6 +487,14 @@ export class EventExplorePopupComponent {
         return;
       }
       this.toggleEventExploreHasRooms(event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'checkout-draft') {
+      if (event.action === 'remove') {
+        void this.clearCheckoutDraft(context.entry.draft, event.sourceEvent);
+        return;
+      }
+      void this.viewCheckoutDraftEvent(context.entry, event.sourceEvent);
       return;
     }
     if (context.menu === 'topic-filter') {
@@ -792,12 +780,7 @@ export class EventExplorePopupComponent {
 
   protected checkoutDraftEntries(): CheckoutDraftEntry[] {
     const activeUserId = this.activeUserId.trim();
-    const liveDrafts = this.eventCheckoutDraftService.listByUser(activeUserId);
-    const liveSourceIds = new Set(liveDrafts.map(draft => draft.sourceId.trim()).filter(Boolean));
-    const clearingDrafts = [...this.clearingCheckoutDraftsBySourceId.values()]
-      .filter(draft => draft.userId === activeUserId)
-      .filter(draft => !liveSourceIds.has(draft.sourceId.trim()));
-    return [...liveDrafts, ...clearingDrafts]
+    return this.eventCheckoutDraftService.listByUser(activeUserId)
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
@@ -818,29 +801,75 @@ export class EventExplorePopupComponent {
     return this.resolveCheckoutDraftMembershipStatus(entry.draft.sourceId, entry.record) === 'accepted';
   }
 
-  protected checkoutDraftActionLabel(entry: CheckoutDraftEntry): string {
-    if (this.canContinueCheckoutDraft(entry)) {
-      return 'Continue';
-    }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'Waiting for spot'
-      : 'Waiting for approval';
+  protected checkoutDraftMenuTrigger(): AppMenuTrigger {
+    const count = this.checkoutDraftCount();
+    return {
+      icon: 'shopping_basket',
+      closeIcon: 'close',
+      ariaLabel: count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`,
+      counter: count,
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'orange'
+    };
   }
 
-  protected checkoutDraftPendingLabel(entry: CheckoutDraftEntry): string {
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'Waiting for a spot to open before payment.'
-      : 'Waiting for admin approval before payment.';
+  protected checkoutDraftMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return this.checkoutDraftEntries().map(entry => {
+      const clearing = this.isCheckoutDraftClearing(entry.draft.sourceId);
+      const itemCount = entry.draft.lineItems.length;
+      return {
+        id: `checkout-draft-${entry.draft.sourceId}`,
+        label: entry.draft.eventTitle,
+        description: [
+          entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout',
+          `${itemCount} ${itemCount === 1 ? 'item' : 'items'} · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
+        ].join('\n'),
+        detail: clearing ? 'Releasing...' : this.checkoutDraftMenuStatusLabel(entry),
+        icon: this.checkoutDraftMenuIcon(entry),
+        kind: 'action',
+        palette: this.checkoutDraftMenuPalette(entry),
+        surface: 'tinted',
+        layout: 'summary',
+        disabled: clearing,
+        removable: true,
+        removeIcon: 'close',
+        removeAriaLabel: `Clear ${entry.draft.eventTitle}`,
+        context: { menu: 'checkout-draft', entry }
+      };
+    });
   }
 
   protected isCheckoutDraftClearing(sourceId: string): boolean {
     return this.checkoutDraftReleaseSourceIds.has(sourceId.trim());
   }
 
-  protected toggleCheckoutDraftBasket(event?: Event): void {
-    event?.stopPropagation();
-    this.showCheckoutDraftBasket = !this.showCheckoutDraftBasket;
-    this.cdr.markForCheck();
+  private checkoutDraftMenuStatusLabel(entry: CheckoutDraftEntry): string {
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'Checkout ready';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist'
+      ? 'Waiting for spot'
+      : 'Waiting for approval';
+  }
+
+  private checkoutDraftMenuIcon(entry: CheckoutDraftEntry): string {
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'event_available';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist'
+      ? 'hourglass_empty'
+      : 'pending_actions';
+  }
+
+  private checkoutDraftMenuPalette(entry: CheckoutDraftEntry): AppMenuPalette {
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return 'warning';
+    }
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'red';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist' ? 'amber' : 'orange';
   }
 
   protected async continueCheckoutDraft(
@@ -863,10 +892,31 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    this.showCheckoutDraftBasket = false;
     this.openEventExploreCheckout(record, {
       approvalGranted: this.canContinueCheckoutDraft({ draft, record })
     });
+  }
+
+  private async continueCheckoutDraftBySourceId(sourceId: string): Promise<void> {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    const activeUserId = this.activeUserId.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    if (!activeUserId) {
+      return;
+    }
+    this.activeUserId = activeUserId;
+    const draft = this.eventCheckoutDraftService.read(activeUserId, normalizedSourceId);
+    if (!draft) {
+      return;
+    }
+    const entry: CheckoutDraftEntry = {
+      draft,
+      record: this.eventsService.peekKnownItemById(activeUserId, normalizedSourceId)
+        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedSourceId)
+    };
+    await this.continueCheckoutDraft(entry);
   }
 
   protected async viewCheckoutDraftEvent(
@@ -889,7 +939,6 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    this.showCheckoutDraftBasket = false;
     this.runEventExploreViewAction(record);
   }
 
@@ -910,7 +959,6 @@ export class EventExplorePopupComponent {
     }
 
     this.checkoutDraftReleaseSourceIds.add(sourceId);
-    this.clearingCheckoutDraftsBySourceId.set(sourceId, { ...draft });
     this.eventCheckoutDraftService.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
@@ -950,7 +998,6 @@ export class EventExplorePopupComponent {
         this.reloadEventExploreSmartList();
       }
     } finally {
-      this.clearingCheckoutDraftsBySourceId.delete(sourceId);
       this.checkoutDraftReleaseSourceIds.delete(sourceId);
       this.cdr.markForCheck();
     }
