@@ -29,31 +29,10 @@
       <div class="popup-body popup-body-event-explore">
         <div class="event-explore-popup">
           <div class="event-explore-filter-bar popup-filter-bar">
-            <button
-              type="button"
-              class="popup-view-fab event-explore-filter-btn event-explore-filter-friends"
-              [class.is-active]="eventExploreFilterFriendsOnly"
-              (click)="toggleEventExploreFriendsOnly($event)"
-              >
-              <mat-icon>groups</mat-icon>
-              <span>Friends going</span>
-            </button>
-            <button
-              type="button"
-              class="popup-view-fab event-explore-filter-btn event-explore-filter-rooms"
-              [class.is-active]="eventExploreFilterHasRooms"
-              (click)="toggleEventExploreHasRooms($event)"
-              >
-              <mat-icon>hotel</mat-icon>
-              <span>Open spots</span>
-            </button>
             <app-menu
-              class="event-explore-topic-menu"
-              kind="select"
-              title="Topic Filter"
-              [filterable]="true"
-              [trigger]="eventExploreTopicMenuTrigger()"
-              [model]="eventExploreTopicMenuModel()"
+              class="event-explore-filter-menu"
+              kind="button-row"
+              [items]="eventExploreFilterMenuItems()"
               (itemSelect)="onEventExploreMenuSelect($event)"
             ></app-menu>
           </div>

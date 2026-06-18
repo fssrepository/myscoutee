@@ -264,37 +264,8 @@
   overflow: visible;
 }
 
-.event-explore-filter-btn {
-  min-height: 34px;
-  padding: 0.14rem 0.72rem;
-  border-radius: 999px;
-  border-color: rgba(42, 83, 141, 0.3);
-  background: linear-gradient(180deg, #f7fbff 0%, #edf4ff 100%);
-  color: #2b5f9c;
+.event-explore-filter-menu {
   flex: 0 0 auto;
-}
-
-.event-explore-filter-btn .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-}
-
-.event-explore-topic-menu {
-  flex: 0 0 auto;
-}
-
-.event-explore-filter-btn.is-active {
-  color: #fff;
-  border-color: transparent;
-}
-
-.event-explore-filter-friends.is-active {
-  background: linear-gradient(180deg, #4f9f6e 0%, #3e865b 100%);
-}
-
-.event-explore-filter-rooms.is-active {
-  background: linear-gradient(180deg, #4a91bf 0%, #3574a4 100%);
 }
 
 .event-explore-slot-picker-backdrop {

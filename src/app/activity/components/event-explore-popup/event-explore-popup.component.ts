@@ -64,6 +64,7 @@ type CheckoutDraftEntry = {
 type EventExploreMenuContext =
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
+  | { menu: 'filter-toggle'; filter: 'friends' | 'open-spots' }
   | { menu: 'topic-filter'; topic: string }
   | {
       menu: 'info-card';
@@ -369,32 +370,6 @@ export class EventExplorePopupComponent {
     return topic.replace(/^#+\s*/, '');
   }
 
-  protected eventExploreTopicMenuModel(): AppMenuModel<string, EventExploreMenuContext> {
-    return buildTabbedMenuModel<string, EventExploreMenuContext>({
-      idPrefix: 'topic',
-      groups: this.topicFilterGroups,
-      selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
-      context: topic => ({ menu: 'topic-filter', topic }),
-      itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
-      removeAriaLabel: topic => `Clear ${topic}`,
-      summary: {
-        emptyLabel: 'Topic',
-        maxLabels: 1,
-        counter: 'none'
-      }
-    });
-  }
-
-  protected eventExploreTopicMenuTrigger(): AppMenuTrigger {
-    return {
-      id: 'topic-filter',
-      icon: 'sell',
-      ariaLabel: 'Open topic filter',
-      palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
-      shape: 'pill'
-    };
-  }
-
   protected eventExploreOrderMenuTrigger(): AppMenuTrigger {
     return {
       label: this.eventExploreOrderLabel(),
@@ -443,6 +418,67 @@ export class EventExplorePopupComponent {
     }));
   }
 
+  protected eventExploreFilterMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return [
+      {
+        id: 'filter-friends-going',
+        label: 'Friends going',
+        icon: 'groups',
+        kind: 'toggle',
+        layout: 'summary',
+        active: this.eventExploreFilterFriendsOnly,
+        checked: this.eventExploreFilterFriendsOnly,
+        closeOnSelect: false,
+        palette: 'green',
+        context: { menu: 'filter-toggle', filter: 'friends' }
+      },
+      {
+        id: 'filter-open-spots',
+        label: 'Open spots',
+        icon: 'hotel',
+        kind: 'toggle',
+        layout: 'summary',
+        active: this.eventExploreFilterHasRooms,
+        checked: this.eventExploreFilterHasRooms,
+        closeOnSelect: false,
+        palette: 'blue',
+        context: { menu: 'filter-toggle', filter: 'open-spots' }
+      },
+      {
+        id: 'filter-topic',
+        label: this.eventExploreFilterTopic
+          ? `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`
+          : 'Topic',
+        icon: 'sell',
+        kind: 'select-trigger',
+        layout: 'summary',
+        active: !!this.eventExploreFilterTopic,
+        checked: !!this.eventExploreFilterTopic,
+        closeOnSelect: false,
+        palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
+        ariaLabel: 'Open topic filter',
+        filterable: true,
+        model: this.eventExploreTopicMenuModel()
+      }
+    ];
+  }
+
+  private eventExploreTopicMenuModel(): AppMenuModel<string, EventExploreMenuContext> {
+    return buildTabbedMenuModel<string, EventExploreMenuContext>({
+      idPrefix: 'topic',
+      groups: this.topicFilterGroups,
+      selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
+      context: topic => ({ menu: 'topic-filter', topic }),
+      itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
+      removeAriaLabel: topic => `Clear ${topic}`,
+      summary: {
+        emptyLabel: 'Topic',
+        maxLabels: 1,
+        counter: 'none'
+      }
+    });
+  }
+
   protected onEventExploreMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as EventExploreMenuContext | undefined;
     if (!context) {
@@ -463,6 +499,14 @@ export class EventExplorePopupComponent {
     }
     if (context.menu === 'view') {
       this.selectEventExploreView(context.view, event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'filter-toggle') {
+      if (context.filter === 'friends') {
+        this.toggleEventExploreFriendsOnly(event.sourceEvent);
+        return;
+      }
+      this.toggleEventExploreHasRooms(event.sourceEvent);
       return;
     }
     if (context.menu === 'topic-filter') {

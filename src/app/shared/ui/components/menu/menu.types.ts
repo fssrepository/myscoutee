@@ -118,6 +118,9 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   segments?: readonly AppMenuSegment[];
   span?: AppMenuLiveValue<number | null | undefined>;
   items?: readonly AppMenuItem<TId, TContext>[];
+  model?: AppMenuModel<TId, TContext> | null;
+  groups?: readonly AppMenuGroup<TId, TContext>[];
+  filterable?: boolean;
   headerActions?: readonly AppMenuItem<TId, TContext>[];
 }
 

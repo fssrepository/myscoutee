@@ -52,6 +52,7 @@
             [class.app-menu__button-row-item--open]="isActionRowItemOpen(item)"
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
+            [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
             [disabled]="isItemDisabled(item)"
             [attr.aria-expanded]="hasNestedItems(item) ? isActionRowItemOpen(item) : null"
             [attr.aria-haspopup]="hasNestedItems(item) ? 'menu' : null"
@@ -96,9 +97,9 @@
     <div
       class="app-menu__panel"
       [class.app-menu__panel--inline]="isInlineKind"
-      [class.app-menu__panel--dropdown-list]="(isDropdownListKind && !isTabbedPresentation) || isButtonRowKind"
+      [class.app-menu__panel--dropdown-list]="(isDropdownListKind && !isTabbedPresentation) || (isButtonRowKind && !activeBranchTabbedPresentation)"
       [class.app-menu__panel--fab]="isFabKind"
-      [class.app-menu__panel--tabs]="isTabbedPresentation"
+      [class.app-menu__panel--tabs]="isTabbedPresentation || activeBranchTabbedPresentation"
       [class.app-menu__panel--has-branch-header]="showBranchBack"
       [class.app-menu__panel--open-up]="resolvedOpenUp"
       [class.app-menu__panel--align-start]="resolvedPanelAlign === 'start'"
@@ -191,11 +192,11 @@
             </section>
           }
         </div>
-      } @else if (isTabbedPresentation && hasMenuNodes) {
+      } @else if ((isTabbedPresentation || activeBranchTabbedPresentation) && hasTabsGroups) {
         <div class="app-menu__tabs">
           @if (showTabsBar()) {
             <div class="app-menu__tabs-tabs" role="tablist" [attr.aria-label]="resolvedTitle || 'Menu tabs'">
-              @for (group of menuNodes; track trackByGroupId($index, group)) {
+              @for (group of tabsGroups; track trackByGroupId($index, group)) {
                 <button
                   type="button"
                   class="app-menu__tabs-tab"

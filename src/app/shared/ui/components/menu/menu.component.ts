@@ -142,7 +142,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @HostBinding('class.app-menu-host--presentation-tabs')
   protected get hostTabbedPresentationClass(): boolean {
-    return this.isTabbedPresentation;
+    return this.isTabbedPresentation || this.activeBranchTabbedPresentation;
   }
 
   @HostBinding('class.app-menu-host--kind-shortcut-grid')
@@ -272,6 +272,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.model?.presentation === 'tabs';
   }
 
+  protected get activeBranchTabbedPresentation(): boolean {
+    return this.activeBranch?.model?.presentation === 'tabs';
+  }
+
   protected get isDropdownListKind(): boolean {
     return this.isSelectKind || this.isFabKind;
   }
@@ -350,6 +354,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.menuNodes.length > 0;
   }
 
+  protected get tabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
+    if (this.activeBranchTabbedPresentation && this.activeBranch) {
+      return appMenuModelGroups(this.activeBranch.model, this.activeBranch.groups ?? []);
+    }
+    return this.menuNodes;
+  }
+
+  protected get hasTabsGroups(): boolean {
+    return this.tabsGroups.length > 0;
+  }
+
   protected get actionRowItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.items.length > 0) {
       return this.items;
@@ -366,7 +381,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get activeBranch(): AppMenuItem<TId, TContext> | null {
-    return this.activeBranchPath[this.activeBranchPath.length - 1] ?? null;
+    const branch = this.activeBranchPath[this.activeBranchPath.length - 1] ?? null;
+    return branch ? this.currentItemById(branch.id) ?? branch : null;
   }
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
@@ -569,6 +585,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
         return;
       }
       this.activeBranchPath = [item];
+      this.syncActiveTabsGroup();
       this.setOpen(true);
       return;
     }
@@ -701,7 +718,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.isSelectTriggerItem(item);
+    return this.isSelectTriggerItem(item) || item.layout === 'summary';
   }
 
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
@@ -771,18 +788,21 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isTabsFilterable(): boolean {
+    if (this.activeBranchTabbedPresentation) {
+      return this.activeBranch?.filterable === true;
+    }
     return this.isTabbedPresentation && this.filterable === true;
   }
 
   protected showTabsBar(): boolean {
-    return this.menuNodes.length > 1 || this.menuNodes.some(group => this.groupLabel(group) || this.groupIcon(group));
+    return this.tabsGroups.length > 1 || this.tabsGroups.some(group => this.groupLabel(group) || this.groupIcon(group));
   }
 
   protected activeTabsGroup(): AppMenuGroup<TId, TContext> | null {
-    if (this.menuNodes.length === 0) {
+    if (this.tabsGroups.length === 0) {
       return null;
     }
-    return this.menuNodes.find(group => group.id === this.activeTabsGroupId)
+    return this.tabsGroups.find(group => group.id === this.activeTabsGroupId)
       ?? this.defaultTabsGroup();
   }
 
@@ -910,7 +930,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if (((this.isDropdownListKind && !this.isTabbedPresentation) || this.isButtonRowKind) && item.kind === 'radio') {
+    if (((this.isDropdownListKind && !this.isTabbedPresentation) || (this.isButtonRowKind && !this.activeBranchTabbedPresentation)) && item.kind === 'radio') {
       return false;
     }
     return this.isItemActive(item) && !this.hasNestedItems(item);
@@ -991,7 +1011,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected hasNestedItems(item: AppMenuItem<TId, TContext>): boolean {
-    return (item.items?.length ?? 0) > 0;
+    return (item.items?.length ?? 0) > 0 || appMenuModelGroups(item.model, item.groups ?? []).length > 0;
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
@@ -999,26 +1019,49 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
-    return item.closeOnSelect ?? (this.isTabbedPresentation ? false : this.closeOnSelect);
+    return item.closeOnSelect ?? (this.isTabbedPresentation || this.activeBranchTabbedPresentation ? false : this.closeOnSelect);
   }
 
   private syncActiveTabsGroup(): void {
-    if (!this.isTabbedPresentation || this.menuNodes.length === 0) {
+    if ((!this.isTabbedPresentation && !this.activeBranchTabbedPresentation) || this.tabsGroups.length === 0) {
       return;
     }
     const activeGroup = this.activeTabsSelectedGroup();
-    const currentGroup = this.menuNodes.find(group => group.id === this.activeTabsGroupId);
-    this.activeTabsGroupId = (activeGroup ?? currentGroup ?? this.menuNodes[0] ?? null)?.id ?? null;
+    const currentGroup = this.tabsGroups.find(group => group.id === this.activeTabsGroupId);
+    this.activeTabsGroupId = (activeGroup ?? currentGroup ?? this.tabsGroups[0] ?? null)?.id ?? null;
   }
 
   private defaultTabsGroup(): AppMenuGroup<TId, TContext> | null {
-    return this.activeTabsSelectedGroup() ?? this.menuNodes[0] ?? null;
+    return this.activeTabsSelectedGroup() ?? this.tabsGroups[0] ?? null;
   }
 
   private activeTabsSelectedGroup(): AppMenuGroup<TId, TContext> | null {
-    return this.menuNodes.find(group =>
+    return this.tabsGroups.find(group =>
       this.groupItems(group).some(item => this.isItemActive(item))
     ) ?? null;
+  }
+
+  private currentItemById(id: TId): AppMenuItem<TId, TContext> | null {
+    return this.findItemById(this.actionRowItems, id);
+  }
+
+  private findItemById(items: readonly AppMenuItem<TId, TContext>[], id: TId): AppMenuItem<TId, TContext> | null {
+    for (const item of items) {
+      if (item.id === id) {
+        return item;
+      }
+      const childMatch = this.findItemById(item.items ?? [], id);
+      if (childMatch) {
+        return childMatch;
+      }
+      for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+        const modelMatch = this.findItemById(this.groupItems(group), id);
+        if (modelMatch) {
+          return modelMatch;
+        }
+      }
+    }
+    return null;
   }
 
   private itemMatchesFilter(item: AppMenuItem<TId, TContext>, query: string): boolean {
