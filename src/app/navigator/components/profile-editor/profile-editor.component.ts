@@ -1090,7 +1090,7 @@ export class ProfileEditorComponent {
         return 'pets';
       }
       if (normalizedOption.includes('cat')) {
-        return 'cat';
+        return 'pets';
       }
       if (normalizedOption.includes('all')) {
         return 'cruelty_free';

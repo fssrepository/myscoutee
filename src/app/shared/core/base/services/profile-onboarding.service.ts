@@ -8,11 +8,7 @@ import { profileOnboardingDraftStorageKey } from '../../common/storage-scope';
 export type ProfileOnboardingStepId =
   | 'basics'
   | 'photos'
-  | 'identity'
-  | 'about'
   | 'lifestyle'
-  | 'values'
-  | 'interests'
   | 'experience'
   | 'review';
 
@@ -24,7 +20,6 @@ export interface ProfileOnboardingForm {
   physique: string;
   languages: string[];
   images: string[];
-  headline: string;
   about: string;
   profileStatus: ProfileStatus;
   genderDetail: string;
@@ -197,7 +192,6 @@ export class ProfileOnboardingService {
       physique: `${user.physique ?? ''}`.trim(),
       languages: this.normalizeStringList(user.languages),
       images: this.normalizeStringList(user.images).slice(0, 8),
-      headline: `${user.headline ?? ''}`.trim(),
       about: `${user.about ?? ''}`.trim().slice(0, 160),
       profileStatus: this.normalizeProfileStatus(user.profileStatus),
       genderDetail: emptyProfile
@@ -247,7 +241,6 @@ export class ProfileOnboardingService {
         physique: `${draft.form?.physique ?? ''}`.trim(),
         languages: this.normalizeStringList(draft.form?.languages),
         images: this.normalizeStringList(draft.form?.images).slice(0, 8),
-        headline: `${draft.form?.headline ?? ''}`.trim(),
         about: `${draft.form?.about ?? ''}`.trim().slice(0, 160),
         profileStatus: this.normalizeProfileStatus(draft.form?.profileStatus),
         genderDetail: `${draft.form?.genderDetail ?? ''}`.trim(),
@@ -327,7 +320,7 @@ export class ProfileOnboardingService {
   }
 
   private stepIds(): ProfileOnboardingStepId[] {
-    return ['basics', 'photos', 'identity', 'about', 'lifestyle', 'values', 'interests', 'experience', 'review'];
+    return ['basics', 'photos', 'lifestyle', 'experience', 'review'];
   }
 
   private normalizeProfileStatus(value: unknown): ProfileStatus {

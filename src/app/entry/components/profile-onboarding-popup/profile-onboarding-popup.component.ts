@@ -15,8 +15,10 @@ import {
   AppMenuComponent,
   I18nPipe,
   ProgressIndicatorComponent,
+  buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../../shared/ui';
@@ -28,7 +30,6 @@ import type {
 } from '../../../shared/core/common/constants';
 import type {
   ExperienceEntry,
-  MobileProfileSelectorSheet,
   ProfileDetailFormGroup
 } from '../../../shared/core/contracts/profile.interface';
 
@@ -57,7 +58,11 @@ type OnboardingMenuField =
 
 type OnboardingMenuContext =
   | { menu: 'field'; field: OnboardingMenuField; value: string }
-  | { menu: 'experience-type'; value: string };
+  | { menu: 'experience-type'; value: ExperienceEntry['type'] }
+  | { menu: 'languageOption'; value: string }
+  | { menu: 'valuesOption'; value: string }
+  | { menu: 'interestOption'; value: string }
+  | { menu: 'navigation'; action: 'back' | 'skip' | 'next' };
 
 @Component({
   selector: 'app-profile-onboarding-popup',
@@ -113,16 +118,11 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
-  private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
 
   protected readonly steps: OnboardingStep[] = [
     { id: 'basics', title: 'Basics', optional: false },
     { id: 'photos', title: 'Photos', optional: false },
-    { id: 'identity', title: 'Identity', optional: true },
-    { id: 'about', title: 'About', optional: true },
     { id: 'lifestyle', title: 'Lifestyle', optional: true },
-    { id: 'values', title: 'Values', optional: true },
-    { id: 'interests', title: 'Interests', optional: true },
     { id: 'experience', title: 'Experience', optional: true },
     { id: 'review', title: 'Review', optional: false }
   ];
@@ -149,8 +149,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected selectedImageIndex = 0;
   protected pendingImageUploadIndex: number | null = null;
   protected uploadingImageSlotIndex: number | null = null;
-  protected languageInput = '';
-  protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']) {
@@ -178,7 +176,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.selectedImageIndex = 0;
       this.pendingImageUploadIndex = null;
       this.uploadingImageSlotIndex = null;
-      this.closeMobileProfileSelectorSheet();
       return;
     }
     this.assessment = this.onboarding.assessUser(this.user);
@@ -191,7 +188,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopDraftAutosaveLoop();
-    this.closeMobileProfileSelectorSheet();
     this.unlockDocumentScroll();
   }
 
@@ -323,137 +319,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.setStep(nextStep.id);
   }
 
-  protected onLanguagesChange(values: string[] | string | null): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.languages = this.normalizeSelectedLanguages(values);
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  protected removeLanguage(value: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.languages = this.draft.form.languages.filter(language => language !== value);
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  protected openLanguageSelector(event: Event): void {
-    event.stopPropagation();
-    if (this.saving || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const viewportHeight = globalThis.window?.innerHeight ?? 0;
-    if (viewportHeight > 0) {
-      const stableHeight = Math.max(viewportHeight - 6, 320);
-      this.document.documentElement.style.setProperty(this.languageSheetHeightCssVar, `${stableHeight}px`);
-    }
-    this.languageInput = '';
-    this.mobileProfileSelectorSheet = {
-      title: 'Languages',
-      selected: '',
-      options: this.languageSuggestions.map(option => ({
-        value: option,
-        label: option,
-        icon: 'language'
-      })),
-      context: { kind: 'language' }
-    };
-  }
-
-  protected closeMobileProfileSelectorSheet(): void {
-    this.document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
-    this.mobileProfileSelectorSheet = null;
-    this.languageInput = '';
-  }
-
-  protected submitMobileLanguageAndClose(event: Event): void {
-    event.stopPropagation();
-    this.addCustomLanguage();
-    this.closeMobileProfileSelectorSheet();
-  }
-
-  protected isMobileSelectorOptionActive(value: string): boolean {
-    return this.draft?.form.languages.some(item => item.toLowerCase() === value.toLowerCase()) ?? false;
-  }
-
-  protected selectMobileProfileSelectorOption(value: string): void {
-    this.toggleLanguage(value);
-  }
-
-  protected addCustomLanguage(value = this.languageInput): void {
-    if (!this.draft) {
-      return;
-    }
-    const normalized = value.trim();
-    if (!normalized) {
-      return;
-    }
-    const exists = this.draft.form.languages.some(item => item.toLowerCase() === normalized.toLowerCase());
-    if (!exists) {
-      this.draft.form.languages = [...this.draft.form.languages, normalized];
-    }
-    if (!this.languageSuggestions.some(item => item.toLowerCase() === normalized.toLowerCase())) {
-      this.languageSuggestions.push(normalized);
-    }
-    this.languageInput = '';
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  protected onLanguageInputBlur(): void {
-    this.addCustomLanguage();
-  }
-
-  protected onLanguageInputKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ',') {
-      return;
-    }
-    event.preventDefault();
-    this.addCustomLanguage();
-  }
-
-  protected languageTriggerPrimaryLabel(languages: readonly string[], maxVisible = 2): string {
-    const normalized = languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    if (normalized.length === 0) {
-      return '';
-    }
-    return normalized.slice(0, Math.max(1, maxVisible)).join(', ');
-  }
-
-  protected languageTriggerOverflowCount(languages: readonly string[], maxVisible = 2): number {
-    const normalized = languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    return Math.max(0, normalized.length - Math.max(1, maxVisible));
-  }
-
-  protected languageToneClass(value: string): string {
-    return `language-tone-${this.languageToneIndex(value)}`;
-  }
-
-  protected get availableLanguageSuggestions(): string[] {
-    const selected = this.draft?.form.languages ?? [];
-    const query = this.languageInput.trim().toLowerCase();
-    return this.languageSuggestions.filter(item => {
-      const isSelected = selected.some(language => language.toLowerCase() === item.toLowerCase());
-      if (isSelected) {
-        return false;
-      }
-      return query.length === 0 ? true : item.toLowerCase().includes(query);
-    });
-  }
-
-  protected get availableLanguageDisplaySuggestions(): string[] {
-    return this.availableLanguageSuggestions.slice(0, 20);
-  }
-
-  protected fieldMenuTrigger(value: string | null | undefined, icon = 'tune', palette: AppMenuPalette = 'neutral'): AppMenuTrigger {
+  protected selectMenuTrigger(value: string | null | undefined, icon = 'tune', palette: AppMenuPalette = 'neutral'): AppMenuTrigger {
     const label = `${value ?? ''}`.trim();
     return {
       label: label || 'Select',
@@ -463,6 +329,21 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
       ariaLabel: 'Open selector'
     };
+  }
+
+  protected fieldMenuTrigger(
+    field: OnboardingMenuField,
+    options: readonly string[],
+    activeValue: string | null | undefined,
+    icon = 'radio_button_checked',
+    palette: AppMenuPalette = 'neutral'
+  ): AppMenuTrigger {
+    const label = `${activeValue ?? ''}`.trim();
+    return this.selectMenuTrigger(
+      label,
+      label ? this.fieldMenuItemIcon(field, label, icon) : icon,
+      label ? this.fieldMenuItemPalette(field, label, options, palette) : palette
+    );
   }
 
   protected fieldMenuItems(
@@ -485,7 +366,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected profileStatusMenuTrigger(status: ProfileStatus): AppMenuTrigger {
-    return this.fieldMenuTrigger(status, this.statusIcon(status), this.profileStatusPalette(status));
+    return this.selectMenuTrigger(status, this.statusIcon(status), this.profileStatusPalette(status));
   }
 
   protected profileStatusMenuItems(status: ProfileStatus): readonly AppMenuItem<string, OnboardingMenuContext>[] {
@@ -502,7 +383,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected experienceTypeMenuTrigger(type: string): AppMenuTrigger {
-    return this.fieldMenuTrigger(type, this.experienceTypeIcon(type), this.experienceTypePalette(type));
+    return this.selectMenuTrigger(type, this.experienceTypeIcon(type), this.experienceTypePalette(type));
   }
 
   protected experienceTypeMenuItems(type: string): readonly AppMenuItem<string, OnboardingMenuContext>[] {
@@ -518,16 +399,170 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }));
   }
 
+  protected languageMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'language',
+      palette: 'blue',
+      shape: 'field',
+      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      ariaLabel: (this.draft?.form.languages.length ?? 0) > 0 ? 'open.languages.selector' : 'select.languages'
+    };
+  }
+
+  protected languageMenuModel(): AppMenuModel<string, OnboardingMenuContext> {
+    return buildTabbedMenuModel<string, OnboardingMenuContext>({
+      idPrefix: 'onboarding-language',
+      groups: [{
+        title: 'Languages',
+        shortTitle: 'Languages',
+        toneClass: 'section-languages',
+        options: this.languageMenuOptions()
+      }],
+      selected: this.draft?.form.languages ?? [],
+      context: value => ({ menu: 'languageOption', value }),
+      summary: {
+        emptyLabel: 'select.languages',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
+  protected valuesMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'auto_awesome',
+      palette: this.paletteFromProfileTone(this.valuesDominantToneClass(this.draft?.form.values ?? [])),
+      shape: 'field',
+      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      ariaLabel: (this.draft?.form.values.length ?? 0) > 0 ? 'open.values.selector' : 'select.values'
+    };
+  }
+
+  protected valuesMenuModel(): AppMenuModel<string, OnboardingMenuContext> {
+    return buildTabbedMenuModel<string, OnboardingMenuContext>({
+      idPrefix: 'onboarding-values',
+      groups: this.beliefsValuesOptionGroups,
+      selected: this.draft?.form.values ?? [],
+      context: value => ({ menu: 'valuesOption', value }),
+      summary: {
+        emptyLabel: 'select.values',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
+  protected interestsMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'sell',
+      palette: this.paletteFromProfileTone(this.interestDominantToneClass(this.draft?.form.interests ?? [])),
+      shape: 'field',
+      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      ariaLabel: (this.draft?.form.interests.length ?? 0) > 0 ? 'open.interests.selector' : 'select.interests'
+    };
+  }
+
+  protected interestsMenuModel(): AppMenuModel<string, OnboardingMenuContext> {
+    return buildTabbedMenuModel<string, OnboardingMenuContext>({
+      idPrefix: 'onboarding-interests',
+      groups: this.interestOptionGroups,
+      selected: this.draft?.form.interests ?? [],
+      context: value => ({ menu: 'interestOption', value }),
+      summary: {
+        emptyLabel: 'select.interests',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
+  protected onboardingActionMenuItems(): readonly AppMenuItem<string, OnboardingMenuContext>[] {
+    const primaryLabel = this.primaryActionLabel();
+    const items: AppMenuItem<string, OnboardingMenuContext>[] = [
+      {
+        id: 'onboarding-back',
+        label: 'Back',
+        icon: 'arrow_back',
+        layout: 'action',
+        palette: 'neutral',
+        surface: 'tinted',
+        disabled: this.saving || this.uploadingImageSlotIndex !== null || this.currentStepIndex() === 0,
+        ariaLabel: 'Back',
+        context: { menu: 'navigation', action: 'back' }
+      }
+    ];
+    if (this.currentStep().optional) {
+      items.push({
+        id: 'onboarding-skip',
+        label: 'Skip',
+        icon: 'skip_next',
+        layout: 'action',
+        palette: 'amber',
+        surface: 'tinted',
+        disabled: this.saving || this.uploadingImageSlotIndex !== null,
+        ariaLabel: 'Skip',
+        context: { menu: 'navigation', action: 'skip' }
+      });
+    }
+    items.push({
+      id: 'onboarding-next',
+      label: primaryLabel,
+      icon: this.currentStep().id === 'review' ? 'done' : 'arrow_forward',
+      layout: 'action',
+      palette: this.currentStep().id === 'review' ? 'green' : 'blue',
+      surface: 'tinted',
+      disabled: !this.canContinue(),
+      ariaLabel: primaryLabel,
+      progress: this.saving
+        ? {
+            state: 'loading',
+            shape: 'button'
+          }
+        : null,
+      context: { menu: 'navigation', action: 'next' }
+    });
+    return items;
+  }
+
   protected onProfileOnboardingMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as OnboardingMenuContext | undefined;
     if (!context) {
       return;
     }
-    if (context.menu === 'experience-type') {
-      this.experienceForm.type = context.value as ExperienceEntry['type'];
-      return;
+    switch (context.menu) {
+      case 'experience-type':
+        this.experienceForm.type = context.value;
+        return;
+      case 'field':
+        this.updateOnboardingField(context.field, context.value);
+        return;
+      case 'languageOption':
+        this.toggleLanguageOption(context.value, event.action === 'remove');
+        return;
+      case 'valuesOption':
+        this.updateLimitedOption('values', context.value, this.beliefsValuesAllOptions(), event.action === 'remove');
+        return;
+      case 'interestOption':
+        this.updateLimitedOption('interests', context.value, this.interestAllOptions(), event.action === 'remove');
+        return;
+      case 'navigation':
+        this.handleOnboardingNavigationAction(context.action);
+        return;
     }
-    this.updateOnboardingField(context.field, context.value);
+  }
+
+  private handleOnboardingNavigationAction(action: 'back' | 'skip' | 'next'): void {
+    switch (action) {
+      case 'back':
+        this.goBack();
+        return;
+      case 'skip':
+        this.skipStep();
+        return;
+      case 'next':
+        this.goNext();
+        return;
+    }
   }
 
   protected onBirthdayDateChange(value: Date | string | null): void {
@@ -618,81 +653,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.birthdayDate = AppUtils.fromIsoDate(this.draft?.form.birthday ?? '');
   }
 
-  protected toggleValue(option: string): void {
-    this.toggleLimitedOption('values', option, this.beliefsValuesAllOptions());
-  }
-
-  protected toggleInterest(option: string): void {
-    this.toggleLimitedOption('interests', option, this.interestAllOptions());
-  }
-
-  protected removeValueOption(option: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.values = this.draft.form.values.filter(item => item !== option);
-    this.persistDraft();
-  }
-
-  protected removeInterestOption(option: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.interests = this.draft.form.interests.filter(item => item !== option);
-    this.persistDraft();
-  }
-
-  protected clearValues(): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.values = [];
-    this.persistDraft();
-  }
-
-  protected clearInterests(): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.interests = [];
-    this.persistDraft();
-  }
-
-  protected isValueSelected(option: string): boolean {
-    return this.draft?.form.values.includes(option) ?? false;
-  }
-
-  protected isInterestSelected(option: string): boolean {
-    return this.draft?.form.interests.includes(option) ?? false;
-  }
-
-  protected profileSelectorToneIcon(toneClass: string): string {
-    switch (toneClass) {
-      case 'section-family':
-        return 'family_restroom';
-      case 'section-ambition':
-        return 'rocket_launch';
-      case 'section-lifestyle':
-        return 'eco';
-      case 'section-beliefs':
-        return 'auto_awesome';
-      case 'section-social':
-        return 'celebration';
-      case 'section-arts':
-        return 'palette';
-      case 'section-food':
-        return 'restaurant';
-      case 'section-active':
-        return 'hiking';
-      case 'section-mind':
-        return 'self_improvement';
-      case 'section-identity':
-        return 'public';
-      default:
-        return 'label';
-    }
-  }
-
   protected openExperienceForm(): void {
     if (this.saving) {
       return;
@@ -752,12 +712,15 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private getPhysiqueIcon(value: string): string {
     const normalized = AppUtils.normalizeText(value);
     if (normalized.includes('slim')) {
-      return 'directions_walk';
+      return 'directions_run';
     }
-    if (normalized.includes('lean') || normalized.includes('fit')) {
-      return 'fitness_center';
+    if (normalized.includes('lean')) {
+      return 'self_improvement';
     }
     if (normalized.includes('athletic')) {
+      return 'fitness_center';
+    }
+    if (normalized.includes('fit')) {
       return 'sports_gymnastics';
     }
     if (normalized.includes('curvy')) {
@@ -794,14 +757,17 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   private profileStatusPalette(status: string): AppMenuPalette {
     switch (status) {
-      case 'Public':
+      case 'public':
         return 'green';
-      case 'Friends':
+      case 'friends only':
         return 'blue';
-      case 'Hosts':
-        return 'orange';
-      case 'Private':
-        return 'slate';
+      case 'host only':
+        return 'brown';
+      case 'blocked':
+      case 'deleted':
+        return 'red';
+      case 'inactive':
+        return 'muted';
       default:
         return 'neutral';
     }
@@ -810,18 +776,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private detailToneFromOptions(value: string, options: readonly string[]): string {
     const index = options.findIndex(item => AppUtils.normalizeText(item) === AppUtils.normalizeText(value));
     return `detail-tone-${((index >= 0 ? index : 0) % 8) + 1}`;
-  }
-
-  private languageToneIndex(value: string): number {
-    const normalized = AppUtils.normalizeText(value);
-    if (!normalized) {
-      return 1;
-    }
-    let hash = 0;
-    for (const char of normalized) {
-      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-    }
-    return (hash % 8) + 1;
   }
 
   private paletteFromProfileTone(toneClass: string): AppMenuPalette {
@@ -836,6 +790,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       case 'status-friends':
       case 'physique-athletic':
       case 'detail-tone-1':
+      case 'section-languages':
       case 'section-social':
         return 'blue';
       case 'status-host':
@@ -858,24 +813,26 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       case 'section-lifestyle':
       case 'section-mind':
         return 'teal';
-      case 'detail-tone-4':
       case 'section-beliefs':
+        return 'purple';
+      case 'detail-tone-4':
       case 'section-arts':
-      case 'section-identity':
         return 'violet';
+      case 'section-identity':
+        return 'cyan';
       case 'status-inactive':
       default:
         return 'muted';
     }
   }
 
-  private experienceTypeIcon(type: string): string {
+  protected experienceTypeIcon(type: string): string {
     switch (type) {
       case 'School':
         return 'school';
-      case 'Online session':
+      case 'Online Session':
         return 'videocam';
-      case 'Additional project':
+      case 'Additional Project':
         return 'rocket_launch';
       case 'Workspace':
       default:
@@ -887,9 +844,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     switch (type) {
       case 'School':
         return 'blue';
-      case 'Online session':
+      case 'Online Session':
         return 'green';
-      case 'Additional project':
+      case 'Additional Project':
         return 'violet';
       case 'Workspace':
       default:
@@ -897,27 +854,144 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
   }
 
-  private toggleLanguage(language: string): void {
+  private toggleLanguageOption(value: string, removeOnly: boolean): void {
     if (!this.draft) {
       return;
     }
-    const normalized = language.trim();
-    if (!normalized) {
+    const normalizedValue = value.trim();
+    if (!normalizedValue) {
       return;
     }
     const current = this.draft.form.languages;
-    const exists = current.some(item => item.toLowerCase() === normalized.toLowerCase());
-    this.draft.form.languages = exists
-      ? current.filter(item => item.toLowerCase() !== normalized.toLowerCase())
-      : [...current, normalized];
-    this.languageInput = '';
+    const exists = current.some(item => item.toLowerCase() === normalizedValue.toLowerCase());
+    if (exists) {
+      this.draft.form.languages = current.filter(item => item.toLowerCase() !== normalizedValue.toLowerCase());
+    } else if (!removeOnly) {
+      this.draft.form.languages = [...current, normalizedValue];
+    }
     this.persistDraft();
     this.cdr.detectChanges();
+  }
+
+  private updateLimitedOption(
+    kind: 'values' | 'interests',
+    option: string,
+    allowedOptions: readonly string[],
+    removeOnly: boolean
+  ): void {
+    if (!this.draft || !this.containsNormalizedOption(allowedOptions, option)) {
+      return;
+    }
+
+    const current = this.draft.form[kind]
+      .filter(item => this.containsNormalizedOption(allowedOptions, item))
+      .slice(0, 5);
+    const normalizedOption = this.normalizeTopicToken(option);
+    const existingIndex = current.findIndex(item => this.normalizeTopicToken(item) === normalizedOption);
+
+    if (existingIndex >= 0) {
+      current.splice(existingIndex, 1);
+    } else if (!removeOnly && current.length < 5) {
+      current.push(option);
+    }
+
+    this.draft.form[kind] = current;
+    this.persistDraft();
+    this.cdr.detectChanges();
+  }
+
+  private languageMenuOptions(): readonly string[] {
+    const optionByKey = new Map<string, string>();
+    for (const option of [...this.languageSuggestions, ...(this.draft?.form.languages ?? [])]) {
+      const normalized = option.trim();
+      if (!normalized) {
+        continue;
+      }
+      optionByKey.set(normalized.toLowerCase(), normalized);
+    }
+    return [...optionByKey.values()];
+  }
+
+  private containsNormalizedOption(options: readonly string[], value: string): boolean {
+    const normalizedValue = this.normalizeTopicToken(value);
+    return options.some(option => this.normalizeTopicToken(option) === normalizedValue);
+  }
+
+  private normalizeTopicToken(value: unknown): string {
+    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  private valuesDominantToneClass(selected: readonly string[]): string {
+    return this.dominantToneClass(selected, value => this.valuesOptionToneClass(value), 'section-beliefs');
+  }
+
+  private interestDominantToneClass(selected: readonly string[]): string {
+    return this.dominantToneClass(selected, value => this.interestOptionToneClass(value), 'section-social');
+  }
+
+  private dominantToneClass(
+    selected: readonly string[],
+    toneForOption: (value: string) => string,
+    fallback: string
+  ): string {
+    const normalizedSelected = selected.map(item => item.trim()).filter(Boolean);
+    if (normalizedSelected.length === 0) {
+      return fallback;
+    }
+    const counts: Record<string, number> = {};
+    for (const option of normalizedSelected) {
+      const tone = toneForOption(option);
+      if (!tone) {
+        continue;
+      }
+      counts[tone] = (counts[tone] ?? 0) + 1;
+    }
+    let bestTone = '';
+    let bestCount = 0;
+    for (const [tone, count] of Object.entries(counts)) {
+      if (count > bestCount) {
+        bestTone = tone;
+        bestCount = count;
+      }
+    }
+    if (!bestTone || Object.values(counts).filter(count => count === bestCount).length > 1) {
+      return toneForOption(normalizedSelected[0]) || fallback;
+    }
+    return bestTone;
+  }
+
+  private valuesOptionToneClass(option: string): string {
+    const normalizedOption = this.normalizeTopicToken(option);
+    if (!normalizedOption) {
+      return '';
+    }
+    for (const group of this.beliefsValuesOptionGroups) {
+      if (group.options.some(groupOption => this.normalizeTopicToken(groupOption) === normalizedOption)) {
+        return group.toneClass;
+      }
+    }
+    return '';
+  }
+
+  private interestOptionToneClass(option: string): string {
+    const normalizedOption = this.normalizeTopicToken(option);
+    if (!normalizedOption) {
+      return '';
+    }
+    for (const group of this.interestOptionGroups) {
+      if (group.options.some(groupOption => this.normalizeTopicToken(groupOption) === normalizedOption)) {
+        return group.toneClass;
+      }
+    }
+    return '';
   }
 
   private fieldMenuItemIcon(field: OnboardingMenuField, value: string, fallback: string): string {
     if (field === 'physique') {
       return this.getPhysiqueIcon(value);
+    }
+    if (field !== 'profileStatus') {
+      return this.detailOptionIcon(this.profileDetailKeyFromField(field), value);
     }
     return fallback;
   }
@@ -935,6 +1009,186 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return this.paletteFromProfileTone(this.detailToneFromOptions(value, options));
     }
     return fallback;
+  }
+
+  private detailOptionIcon(labelKey: string, option: string): string {
+    const normalizedLabel = AppUtils.normalizeText(labelKey);
+    const normalizedOption = AppUtils.normalizeText(option);
+
+    if (normalizedLabel.includes('drinking')) {
+      if (normalizedOption.includes('never')) {
+        return 'no_drinks';
+      }
+      if (normalizedOption.includes('socially')) {
+        return 'groups';
+      }
+      if (normalizedOption.includes('occasionally')) {
+        return 'event';
+      }
+      return 'nightlife';
+    }
+    if (normalizedLabel.includes('smoking')) {
+      if (normalizedOption.includes('never')) {
+        return 'smoke_free';
+      }
+      if (normalizedOption.includes('trying')) {
+        return 'healing';
+      }
+      if (normalizedOption.includes('socially')) {
+        return 'group';
+      }
+      return 'smoking_rooms';
+    }
+    if (normalizedLabel.includes('workout')) {
+      if (normalizedOption.includes('daily')) {
+        return 'whatshot';
+      }
+      if (normalizedOption.includes('4x')) {
+        return 'fitness_center';
+      }
+      if (normalizedOption.includes('2-3x')) {
+        return 'directions_run';
+      }
+      return 'self_improvement';
+    }
+    if (normalizedLabel.includes('pets')) {
+      if (normalizedOption.includes('dog')) {
+        return 'pets';
+      }
+      if (normalizedOption.includes('cat')) {
+        return 'pets';
+      }
+      if (normalizedOption.includes('all')) {
+        return 'cruelty_free';
+      }
+      return 'block';
+    }
+    if (normalizedLabel.includes('family')) {
+      if (normalizedOption.includes('want')) {
+        return 'child_care';
+      }
+      if (normalizedOption.includes('open')) {
+        return 'family_restroom';
+      }
+      if (normalizedOption.includes('not sure')) {
+        return 'help_outline';
+      }
+      return 'do_not_disturb_alt';
+    }
+    if (normalizedLabel.includes('children')) {
+      if (normalizedOption === 'yes') {
+        return 'child_friendly';
+      }
+      if (normalizedOption === 'no') {
+        return 'do_not_disturb_alt';
+      }
+      return 'privacy_tip';
+    }
+    if (normalizedLabel.includes('love')) {
+      if (normalizedOption.includes('long-term')) {
+        return 'favorite';
+      }
+      if (normalizedOption.includes('slow-burn')) {
+        return 'hourglass_bottom';
+      }
+      if (normalizedOption.includes('open')) {
+        return 'hub';
+      }
+      return 'explore';
+    }
+    if (normalizedLabel.includes('communication')) {
+      if (normalizedOption.includes('direct')) {
+        return 'campaign';
+      }
+      if (normalizedOption.includes('calm')) {
+        return 'record_voice_over';
+      }
+      if (normalizedOption.includes('playful')) {
+        return 'mood';
+      }
+      return 'forum';
+    }
+    if (normalizedLabel.includes('orientation')) {
+      if (normalizedOption.includes('straight')) {
+        return 'person';
+      }
+      if (normalizedOption.includes('bisexual')) {
+        return 'diversity_3';
+      }
+      if (normalizedOption.includes('gay') || normalizedOption.includes('lesbian')) {
+        return 'favorite';
+      }
+      if (normalizedOption.includes('pansexual')) {
+        return 'all_inclusive';
+      }
+      if (normalizedOption.includes('asexual')) {
+        return 'do_not_disturb_on';
+      }
+      return 'privacy_tip';
+    }
+    if (normalizedLabel.includes('gender')) {
+      if (normalizedOption.includes('woman')) {
+        return 'female';
+      }
+      if (normalizedOption.includes('man')) {
+        return 'male';
+      }
+      if (normalizedOption.includes('non-binary')) {
+        return 'transgender';
+      }
+      return 'privacy_tip';
+    }
+    if (normalizedLabel.includes('religion')) {
+      if (normalizedOption.includes('spiritual')) {
+        return 'self_improvement';
+      }
+      if (normalizedOption.includes('christian')) {
+        return 'church';
+      }
+      if (normalizedOption.includes('muslim')) {
+        return 'mosque';
+      }
+      if (normalizedOption.includes('jewish')) {
+        return 'synagogue';
+      }
+      if (normalizedOption.includes('buddhist') || normalizedOption.includes('hindu')) {
+        return 'temple_buddhist';
+      }
+      if (normalizedOption.includes('atheist')) {
+        return 'public_off';
+      }
+      return 'privacy_tip';
+    }
+
+    if (normalizedOption.includes('never')) {
+      return 'block';
+    }
+    if (normalizedOption.includes('daily')) {
+      return 'today';
+    }
+    return this.fallbackDetailOptionIcon(normalizedOption);
+  }
+
+  private fallbackDetailOptionIcon(normalizedOption: string): string {
+    const iconPool = [
+      'radio_button_checked',
+      'diamond',
+      'bolt',
+      'eco',
+      'favorite',
+      'nightlife',
+      'star',
+      'palette',
+      'self_improvement',
+      'travel_explore',
+      'psychology',
+      'celebration'
+    ];
+    let hash = 0;
+    for (let i = 0; i < normalizedOption.length; i += 1) {
+      hash = ((hash << 5) - hash + normalizedOption.charCodeAt(i)) | 0;
+    }
+    return iconPool[Math.abs(hash) % iconPool.length];
   }
 
   private updateOnboardingField(field: OnboardingMenuField, value: string): void {
@@ -1075,7 +1329,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       physique: draft.form.physique.trim(),
       languages: [...draft.form.languages],
       horoscope: birthdayDate ? AppUtils.horoscopeByDate(birthdayDate) : user.horoscope,
-      headline: draft.form.headline.trim(),
+      headline: `${user.headline ?? ''}`.trim(),
       about: draft.form.about.trim().slice(0, 160),
       images: this.collectPersistedProfileImages(draft.form.images),
       profileStatus: draft.form.profileStatus,
@@ -1200,6 +1454,39 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
   }
 
+  private profileDetailKeyFromField(field: OnboardingMenuField): string {
+    switch (field) {
+      case 'genderDetail':
+        return 'profile.gender';
+      case 'drinking':
+        return 'profile.details.drinking';
+      case 'smoking':
+        return 'profile.details.smoking';
+      case 'workout':
+        return 'profile.details.workout';
+      case 'pets':
+        return 'profile.details.pets';
+      case 'familyPlans':
+        return 'profile.details.familyPlans';
+      case 'children':
+        return 'profile.details.children';
+      case 'loveStyle':
+        return 'profile.details.loveStyle';
+      case 'communicationStyle':
+        return 'profile.details.communicationStyle';
+      case 'sexualOrientation':
+        return 'profile.details.sexualOrientation';
+      case 'religion':
+        return 'profile.details.religion';
+      case 'physique':
+        return 'profile.physique';
+      case 'profileStatus':
+        return 'profile.status';
+      default:
+        return field;
+    }
+  }
+
   private isDetailPrivacy(value: string): value is DetailPrivacy {
     return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
@@ -1214,17 +1501,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (stepId === 'experience') {
       this.loadExperienceEntriesForCurrentUserOnce();
     }
-  }
-
-  private toggleLimitedOption(kind: 'values' | 'interests', option: string, allowed: string[]): void {
-    if (!this.draft || !allowed.includes(option)) {
-      return;
-    }
-    const current = this.draft.form[kind];
-    this.draft.form[kind] = current.includes(option)
-      ? current.filter(item => item !== option)
-      : [...current, option].slice(0, 5);
-    this.persistDraft();
   }
 
   private async loadExistingExperienceEntries(userId: string): Promise<void> {
@@ -1498,9 +1774,4 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  private normalizeSelectedLanguages(values: string[] | string | null): string[] {
-    const rawValues = Array.isArray(values) ? values : values ? [values] : [];
-    const selected = new Set(rawValues.map(value => value.trim().toLowerCase()).filter(Boolean));
-    return this.languageSuggestions.filter(language => selected.has(language.trim().toLowerCase()));
-  }
 }
