@@ -6,7 +6,7 @@ const path = require('node:path');
 const frontendRoot = path.resolve(__dirname, '..');
 const repoRoot = path.resolve(frontendRoot, '..');
 const mongoRoot = path.join(repoRoot, 'server/docker/conf/mongodb');
-const seedDatabases = ['demo_db', 'myscoutee_db'];
+const seedDatabases = ['demo_db', 'e2e_db', 'myscoutee_db'];
 const bundlePaths = [
   path.join(frontendRoot, 'src/assets/i18n/en.json'),
   path.join(frontendRoot, 'src/assets/i18n/hu.json')
@@ -17,7 +17,7 @@ const bundleDocs = bundles.map(bundle => ({
   _id: `i18n-bundle-${bundle.lang}`,
   lang: bundle.lang,
   version: bundle.version,
-  updatedAt: Date.UTC(2026, 4, 4)
+  updatedAt: Date.UTC(2026, 5, 18)
 }));
 const messageDocs = bundles.flatMap(bundle =>
   Object.entries(bundle.messages).map(([key, value]) => ({

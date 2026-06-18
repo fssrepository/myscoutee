@@ -602,7 +602,7 @@ export class ProfileEditorComponent {
       icon: 'auto_awesome',
       palette: this.paletteFromProfileTone(this.valuesDominantToneClass(row.value)),
       shape: 'field',
-      ariaLabel: selected.length > 0 ? 'Open values selector' : 'Select values'
+      ariaLabel: selected.length > 0 ? 'open.values.selector' : 'select.values'
     };
   }
 
@@ -617,7 +617,7 @@ export class ProfileEditorComponent {
       selected: this.parseCommaValues(row.value),
       context: value => ({ kind: 'valuesOption', groupIndex, rowIndex, value }),
       summary: {
-        emptyLabel: 'Select values',
+        emptyLabel: 'select.values',
         maxLabels: 2,
         counter: 'overflow'
       }
@@ -630,7 +630,7 @@ export class ProfileEditorComponent {
       icon: 'sell',
       palette: this.paletteFromProfileTone(this.interestDominantToneClass(row.value)),
       shape: 'field',
-      ariaLabel: selected.length > 0 ? 'Open interests selector' : 'Select interests'
+      ariaLabel: selected.length > 0 ? 'open.interests.selector' : 'select.interests'
     };
   }
 
@@ -645,7 +645,7 @@ export class ProfileEditorComponent {
       selected: this.parseCommaValues(row.value),
       context: value => ({ kind: 'interestOption', groupIndex, rowIndex, value }),
       summary: {
-        emptyLabel: 'Select interests',
+        emptyLabel: 'select.interests',
         maxLabels: 2,
         counter: 'overflow'
       }
@@ -657,7 +657,7 @@ export class ProfileEditorComponent {
       icon: 'language',
       palette: 'blue',
       shape: 'field',
-      ariaLabel: this.profileForm.languages.length > 0 ? 'Open languages selector' : 'Select languages'
+      ariaLabel: this.profileForm.languages.length > 0 ? 'open.languages.selector' : 'select.languages'
     };
   }
 
@@ -673,7 +673,7 @@ export class ProfileEditorComponent {
       selected: this.profileForm.languages,
       context: value => ({ kind: 'languageOption', value }),
       summary: {
-        emptyLabel: 'Select languages',
+        emptyLabel: 'select.languages',
         maxLabels: 2,
         counter: 'overflow'
       }

@@ -5,7 +5,7 @@ export const GAME_FILTER_AGE_MAX = 120;
 export const GAME_FILTER_HEIGHT_MIN_CM = 40;
 export const GAME_FILTER_HEIGHT_MAX_CM = 250;
 
-export type FilterSelectorKind =
+export type GameFilterMenuKind =
   | 'interests'
   | 'values'
   | 'physiques'
