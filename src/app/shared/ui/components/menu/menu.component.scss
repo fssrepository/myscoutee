@@ -1155,6 +1155,8 @@
 
 .app-menu__tabs-item-icon,
 .app-menu__tabs-item-check {
+  flex: 0 0 18px;
+  min-width: 18px;
   width: 18px;
   height: 18px;
   font-size: 18px;
@@ -1169,12 +1171,14 @@
 .app-menu__tabs-item-main {
   flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
   display: grid;
   gap: 0.08rem;
 }
 
 .app-menu__tabs-item-label,
 .app-menu__tabs-item-description {
+  display: block;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
