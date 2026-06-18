@@ -27,6 +27,7 @@ import type {
   AppMenuTriggerShape,
   AppMenuValueMap
 } from '../menu.types';
+import { appMenuModelSummary } from '../menu-summary';
 
 @Component({
   selector: 'app-menu-trigger',
@@ -85,6 +86,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   @Input() menuId = '';
   @Input() kind: AppMenuKind = 'select';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
+  @Input() filterable = false;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
   @Input() model: AppMenuModel<TId, TContext> | null = null;
   @Input() groups: readonly AppMenuGroup<TId, TContext>[] = [];
@@ -109,9 +111,19 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return this.kind === 'button-row';
   }
 
+  @HostBinding('class.app-menu-host--kind-fab')
+  protected get hostFabKindClass(): boolean {
+    return this.kind === 'fab';
+  }
+
   @HostBinding('class.app-menu-host--kind-select')
   protected get hostSelectKindClass(): boolean {
     return this.kind === 'select';
+  }
+
+  @HostBinding('class.app-menu-host--presentation-tabs')
+  protected get hostTabbedPresentationClass(): boolean {
+    return this.isTabbedPresentation;
   }
 
   @HostBinding('class.app-menu-host--kind-shortcut-grid')
@@ -158,6 +170,14 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return this.kind === 'select';
   }
 
+  protected get isFabKind(): boolean {
+    return this.kind === 'fab';
+  }
+
+  protected get isTabbedPresentation(): boolean {
+    return this.model?.presentation === 'tabs';
+  }
+
   protected get isCustomTriggerAction(): boolean {
     return this.trigger?.action === 'custom';
   }
@@ -167,7 +187,8 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   }
 
   protected triggerLabel(): string {
-    return `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    return configuredLabel || appMenuModelSummary(this.model, this.groups).label;
   }
 
   protected triggerIcon(): string {
@@ -180,13 +201,16 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
       if (this.shouldResolveTriggerIconToClose(baseIcon)) {
         return 'close';
       }
-      if (!baseIcon && this.isSelectKind) {
+      if (!baseIcon && this.isSelectLikeTrigger()) {
         return '';
       }
       return `${baseIcon || 'close'}`.trim();
     }
     const configuredIcon = this.resolveLiveValue(this.trigger?.icon);
-    if (!configuredIcon && this.isSelectKind) {
+    if (!configuredIcon && this.isFabKind) {
+      return 'add';
+    }
+    if (!configuredIcon && this.isSelectLikeTrigger()) {
       return '';
     }
     return `${configuredIcon ?? 'more_vert'}`.trim();
@@ -221,11 +245,14 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     if (this.isSelectKind && this.triggerShape() !== 'icon') {
       return 'expand_more';
     }
+    if (this.isTabbedPresentation && this.triggerShape() !== 'icon') {
+      return 'expand_more';
+    }
     return '';
   }
 
   protected triggerCaretRotates(): boolean {
-    return !this.isCustomTriggerAction && this.isSelectKind;
+    return !this.isCustomTriggerAction && this.isSelectLikeTrigger();
   }
 
   protected triggerAriaLabel(): string {
@@ -260,15 +287,30 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     if (this.trigger?.shape) {
       return this.trigger.shape;
     }
-    return this.isSelectKind ? 'pill' : 'default';
+    if (this.isFabKind) {
+      return 'icon';
+    }
+    return this.isSelectLikeTrigger() ? 'pill' : 'default';
   }
 
   protected hasTriggerCounter(): boolean {
-    return this.counterVisible(this.trigger?.counter ?? null);
+    return this.counterVisible(this.triggerCounter());
   }
 
   protected triggerCounterLabel(): string {
-    return this.counterLabel(this.trigger?.counter ?? null);
+    return this.counterLabel(this.triggerCounter());
+  }
+
+  private isSelectLikeTrigger(): boolean {
+    return this.isSelectKind || this.isTabbedPresentation;
+  }
+
+  private triggerCounter(): AppMenuCounter | AppMenuCounterValue | null {
+    const configuredCounter = this.trigger?.counter;
+    if (configuredCounter !== null && configuredCounter !== undefined) {
+      return configuredCounter;
+    }
+    return appMenuModelSummary(this.model, this.groups).counter;
   }
 
   protected onTriggerPointerDown(event: Event): void {
@@ -300,6 +342,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
       id: this.resolvedMenuId(),
       kind: this.kind,
       title: this.title,
+      filterable: this.filterable,
       items: this.items,
       model: this.model,
       groups: this.groups,

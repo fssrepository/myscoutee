@@ -50,8 +50,10 @@
             <app-menu
               class="event-explore-topic-menu"
               kind="select"
-              [open]="showTopicPicker"
+              title="Topic Filter"
+              [filterable]="true"
               [trigger]="eventExploreTopicMenuTrigger()"
+              [model]="eventExploreTopicMenuModel()"
               (itemSelect)="onEventExploreMenuSelect($event)"
             ></app-menu>
           </div>
@@ -186,15 +188,5 @@
         </div>
       </section>
     }
-    <app-topic-picker-popup
-      [open]="showTopicPicker"
-      [title]="'Topic Filter'"
-      [groups]="topicFilterGroups"
-      [selected]="eventExploreFilterTopic ? [eventExploreFilterTopic] : []"
-      [multiple]="false"
-      [closeOnSelect]="false"
-      (selectedChange)="updateEventExploreTopicSelection($event)"
-      (close)="closeEventExploreTopicPicker()"
-    ></app-topic-picker-popup>
   </section>
 }

@@ -39,6 +39,10 @@ import type {
   AppMenuTriggerShape,
   AppMenuValueMap
 } from './menu.types';
+import {
+  appMenuModelGroups,
+  appMenuModelSummary
+} from './menu-summary';
 
 type AppMenuResolvedLayout = 'desktop' | 'mobile';
 
@@ -60,6 +64,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @Input() kind: AppMenuKind = 'button-row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
+  @Input() filterable = false;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
   @Input() model: AppMenuModel<TId, TContext> | null = null;
   @Input() groups: readonly AppMenuGroup<TId, TContext>[] = [];
@@ -78,6 +83,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private internalOpen = false;
   private activeBranchPath: AppMenuItem<TId, TContext>[] = [];
+  private activeTabsGroupId: string | null = null;
+  protected tabsFilterText = '';
   private readonly counterValueByKey = new Map<string, string>();
   private readonly counterPulseTimerByKey = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pulsingCounterKeys = new Set<string>();
@@ -89,9 +96,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   set open(value: boolean | null | undefined) {
-    this.internalOpen = value === true;
+    const nextOpen = value === true;
+    const opened = nextOpen && !this.internalOpen;
+    this.internalOpen = nextOpen;
     if (!this.internalOpen) {
       this.activeBranchPath = [];
+      this.tabsFilterText = '';
+    } else if (opened) {
+      this.syncActiveTabsGroup();
     }
   }
 
@@ -118,9 +130,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.isButtonRowKind;
   }
 
+  @HostBinding('class.app-menu-host--kind-fab')
+  protected get hostFabKindClass(): boolean {
+    return this.isFabKind;
+  }
+
   @HostBinding('class.app-menu-host--kind-select')
   protected get hostSelectKindClass(): boolean {
     return this.kind === 'select';
+  }
+
+  @HostBinding('class.app-menu-host--presentation-tabs')
+  protected get hostTabbedPresentationClass(): boolean {
+    return this.isTabbedPresentation;
   }
 
   @HostBinding('class.app-menu-host--kind-shortcut-grid')
@@ -141,6 +163,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @HostBinding('class.app-menu-host--open')
   protected get hostOpenClass(): boolean {
     return this.panelVisible;
+  }
+
+  @HostBinding('class.app-menu-host--inline-panel')
+  protected get hostInlinePanelClass(): boolean {
+    return this.isInlineKind;
   }
 
   @HostBinding('class.app-menu-host--panel-docked')
@@ -222,7 +249,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get isInlineKind(): boolean {
-    return this.kind === 'shortcut-grid';
+    return this.kind === 'shortcut-grid' || (this.isTabbedPresentation && !this.hasTrigger);
   }
 
   protected get isButtonRowKind(): boolean {
@@ -233,16 +260,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.kind === 'shortcut-grid';
   }
 
+  protected get isFabKind(): boolean {
+    return this.kind === 'fab';
+  }
+
   protected get isSelectKind(): boolean {
     return this.kind === 'select';
   }
 
+  protected get isTabbedPresentation(): boolean {
+    return this.model?.presentation === 'tabs';
+  }
+
   protected get isDropdownListKind(): boolean {
-    return this.isSelectKind;
+    return this.isSelectKind || this.isFabKind;
   }
 
   protected get isAnchoredOverlayKind(): boolean {
-    return this.isDropdownListKind || this.isButtonRowKind;
+    return this.isDropdownListKind || this.isButtonRowKind || this.isTabbedPresentation;
   }
 
   private get isBottomPanelMode(): boolean {
@@ -308,7 +343,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get menuNodes(): readonly AppMenuGroup<TId, TContext>[] {
-    return this.model?.nodes ?? this.groups;
+    return appMenuModelGroups(this.model, this.groups);
   }
 
   protected get hasMenuNodes(): boolean {
@@ -356,7 +391,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected triggerLabel(): string {
-    return `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    return configuredLabel || appMenuModelSummary(this.model, this.groups).label;
   }
 
   protected triggerIcon(): string {
@@ -369,13 +405,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       if (this.shouldResolveTriggerIconToClose(baseIcon)) {
         return 'close';
       }
-      if (!baseIcon && this.isSelectKind) {
+      if (!baseIcon && this.isSelectLikeTrigger()) {
         return '';
       }
       return `${baseIcon || 'close'}`.trim();
     }
     const configuredIcon = this.resolveLiveValue(this.trigger?.icon);
-    if (!configuredIcon && this.isSelectKind) {
+    if (!configuredIcon && this.isFabKind) {
+      return 'add';
+    }
+    if (!configuredIcon && this.isSelectLikeTrigger()) {
       return '';
     }
     return `${configuredIcon ?? 'more_vert'}`.trim();
@@ -410,11 +449,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isSelectKind && this.triggerShape() !== 'icon') {
       return 'expand_more';
     }
+    if (this.isTabbedPresentation && this.triggerShape() !== 'icon') {
+      return 'expand_more';
+    }
     return '';
   }
 
   protected triggerCaretRotates(): boolean {
-    return !this.isCustomTriggerAction && this.isSelectKind;
+    return !this.isCustomTriggerAction && this.isSelectLikeTrigger();
   }
 
   protected triggerAriaLabel(): string {
@@ -452,19 +494,34 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (!this.hasTrigger) {
       return 'default';
     }
-    return this.isSelectKind ? 'pill' : 'default';
+    if (this.isFabKind) {
+      return 'icon';
+    }
+    return this.isSelectLikeTrigger() ? 'pill' : 'default';
   }
 
   protected hasTriggerCounter(): boolean {
-    return this.counterVisible(this.trigger?.counter ?? null);
+    return this.counterVisible(this.triggerCounter());
   }
 
   protected triggerCounterLabel(): string {
-    return this.counterLabel(this.trigger?.counter ?? null);
+    return this.counterLabel(this.triggerCounter());
   }
 
   protected triggerCounterKey(): string {
     return 'trigger';
+  }
+
+  private isSelectLikeTrigger(): boolean {
+    return this.isSelectKind || this.isTabbedPresentation;
+  }
+
+  private triggerCounter(): AppMenuCounter | AppMenuCounterValue | null {
+    const configuredCounter = this.trigger?.counter;
+    if (configuredCounter !== null && configuredCounter !== undefined) {
+      return configuredCounter;
+    }
+    return appMenuModelSummary(this.model, this.groups).counter;
   }
 
   protected toggleMenu(event: Event): void {
@@ -486,7 +543,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
         id: item.id,
         item,
         context: item.context,
-        sourceEvent: event
+        sourceEvent: event,
+        action: 'select'
       });
       return;
     }
@@ -519,7 +577,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
     this.setOpen(false);
   }
@@ -535,7 +594,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
     if (item.closeOnSelect ?? this.closeOnSelect) {
       this.setOpen(false);
@@ -557,12 +617,29 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     };
     this.itemSelect.emit(selectEvent);
-    if (item.closeOnSelect ?? this.closeOnSelect) {
+    if (this.shouldCloseOnSelect(item)) {
       this.setOpen(false);
     }
+  }
+
+  protected removeItem(item: AppMenuItem<TId, TContext>, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.isItemDisabled(item) || this.isPassiveItem(item) || !this.isItemRemovable(item)) {
+      return;
+    }
+    this.itemSelect.emit({
+      id: item.id,
+      item,
+      context: item.context,
+      sourceEvent: event,
+      value: item.value,
+      action: 'remove'
+    });
   }
 
   protected updateRatingBarItemValue(item: AppMenuItem<TId, TContext>, value: unknown): void {
@@ -582,9 +659,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: new Event('ratingScoreSelect'),
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
-    if (item.closeOnSelect ?? this.closeOnSelect) {
+    if (this.shouldCloseOnSelect(item)) {
       this.setOpen(false);
     }
   }
@@ -600,9 +678,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
-    if (item.closeOnSelect ?? this.closeOnSelect) {
+    if (this.shouldCloseOnSelect(item)) {
       this.setOpen(false);
     }
   }
@@ -691,6 +770,67 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return group.items ?? [];
   }
 
+  protected isTabsFilterable(): boolean {
+    return this.isTabbedPresentation && this.filterable === true;
+  }
+
+  protected showTabsBar(): boolean {
+    return this.menuNodes.length > 1 || this.menuNodes.some(group => this.groupLabel(group) || this.groupIcon(group));
+  }
+
+  protected activeTabsGroup(): AppMenuGroup<TId, TContext> | null {
+    if (this.menuNodes.length === 0) {
+      return null;
+    }
+    return this.menuNodes.find(group => group.id === this.activeTabsGroupId)
+      ?? this.defaultTabsGroup();
+  }
+
+  protected isTabsGroupActive(group: AppMenuGroup<TId, TContext>): boolean {
+    return this.activeTabsGroup()?.id === group.id;
+  }
+
+  protected selectTabsGroup(group: AppMenuGroup<TId, TContext>, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.activeTabsGroupId !== group.id) {
+      this.tabsFilterText = '';
+    }
+    this.activeTabsGroupId = group.id;
+  }
+
+  protected updateTabsFilter(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    this.tabsFilterText = `${target?.value ?? ''}`;
+  }
+
+  protected clearTabsFilter(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.tabsFilterText = '';
+  }
+
+  protected filteredTabsItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    const query = this.normalizedFilterText();
+    const items = this.groupItems(group);
+    if (!query) {
+      return items;
+    }
+    return items.filter(item => this.itemMatchesFilter(item, query));
+  }
+
+  protected hasVisibleTabsItems(group: AppMenuGroup<TId, TContext>): boolean {
+    return this.filteredTabsItems(group).length > 0;
+  }
+
+  protected tabsId(group: AppMenuGroup<TId, TContext>): string {
+    return `app-menu-tab-${this.safeDomId(group.id)}`;
+  }
+
+  protected tabsPanelId(group: AppMenuGroup<TId, TContext>): string {
+    return `app-menu-tab-panel-${this.safeDomId(group.id)}`;
+  }
+
   private groupedDropdownItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.isShortcutGridKind || !this.hasMenuNodes) {
       return [];
@@ -770,7 +910,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if ((this.isDropdownListKind || this.isButtonRowKind) && item.kind === 'radio') {
+    if (((this.isDropdownListKind && !this.isTabbedPresentation) || this.isButtonRowKind) && item.kind === 'radio') {
       return false;
     }
     return this.isItemActive(item) && !this.hasNestedItems(item);
@@ -789,6 +929,23 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected isItemDisabled(item: AppMenuItem<TId, TContext>): boolean {
     return this.resolveBoolean(item.disabled);
+  }
+
+  protected isItemRemovable(item: AppMenuItem<TId, TContext>): boolean {
+    return this.resolveBoolean(item.removable) && !this.isPassiveItem(item);
+  }
+
+  protected itemRemoveIcon(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.removeIcon) ?? 'close'}`.trim() || 'close';
+  }
+
+  protected itemRemoveAriaLabel(item: AppMenuItem<TId, TContext>): string {
+    const configured = `${this.resolveLiveValue(item.removeAriaLabel) ?? ''}`.trim();
+    if (configured) {
+      return configured;
+    }
+    const label = this.itemLabel(item);
+    return label ? `Remove ${label}` : 'Remove item';
   }
 
   protected isPassiveItem(item: AppMenuItem<TId, TContext>): boolean {
@@ -838,7 +995,47 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
-    return (this.isDropdownListKind || this.isButtonRowKind) && this.hasNestedItems(item);
+    return ((this.isDropdownListKind && !this.isTabbedPresentation) || this.isButtonRowKind) && this.hasNestedItems(item);
+  }
+
+  private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
+    return item.closeOnSelect ?? (this.isTabbedPresentation ? false : this.closeOnSelect);
+  }
+
+  private syncActiveTabsGroup(): void {
+    if (!this.isTabbedPresentation || this.menuNodes.length === 0) {
+      return;
+    }
+    const activeGroup = this.activeTabsSelectedGroup();
+    const currentGroup = this.menuNodes.find(group => group.id === this.activeTabsGroupId);
+    this.activeTabsGroupId = (activeGroup ?? currentGroup ?? this.menuNodes[0] ?? null)?.id ?? null;
+  }
+
+  private defaultTabsGroup(): AppMenuGroup<TId, TContext> | null {
+    return this.activeTabsSelectedGroup() ?? this.menuNodes[0] ?? null;
+  }
+
+  private activeTabsSelectedGroup(): AppMenuGroup<TId, TContext> | null {
+    return this.menuNodes.find(group =>
+      this.groupItems(group).some(item => this.isItemActive(item))
+    ) ?? null;
+  }
+
+  private itemMatchesFilter(item: AppMenuItem<TId, TContext>, query: string): boolean {
+    return [
+      item.id,
+      this.itemLabel(item),
+      this.itemDescription(item),
+      this.itemDetail(item)
+    ].some(value => this.normalizedText(value).includes(query));
+  }
+
+  private normalizedFilterText(): string {
+    return this.normalizedText(this.tabsFilterText);
+  }
+
+  private normalizedText(value: unknown): string {
+    return `${value ?? ''}`.trim().toLowerCase();
   }
 
   protected itemHref(item: AppMenuItem<TId, TContext>): string {
@@ -912,11 +1109,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.internalOpen === open) {
       return;
     }
+    const opened = open && !this.internalOpen;
     this.internalOpen = open;
     if (!open) {
       this.activeBranchPath = [];
+      this.tabsFilterText = '';
+    } else if (opened) {
+      this.syncActiveTabsGroup();
     }
     this.openChange.emit(open);
+  }
+
+  private safeDomId(value: string): string {
+    return `${value || 'group'}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
   }
 
   private syncMobileViewport(): void {
@@ -1007,10 +1212,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private syncCounterPulseState(): void {
     const visibleCounterKeys = new Set<string>();
+    const triggerCounter = this.triggerCounter();
     this.observeCounterPulse(
       this.triggerCounterKey(),
-      this.trigger?.counter ?? null,
-      this.isLiveCounter(this.trigger?.counter ?? null),
+      triggerCounter,
+      this.isLiveCounter(triggerCounter),
       visibleCounterKeys
     );
     for (const item of this.items) {

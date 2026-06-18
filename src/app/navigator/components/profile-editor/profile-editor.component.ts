@@ -20,14 +20,16 @@ import { AppContext } from '../../../shared/ui';
 import { MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
-import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
+import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
+  buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
@@ -36,7 +38,7 @@ import { NavigatorService } from '../../navigator.service';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
-type ProfileEditorPanel = 'profile' | 'image' | 'values' | 'interest' | 'experience';
+type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 
 type ProfileEditorMenuContext =
@@ -47,7 +49,10 @@ type ProfileEditorMenuContext =
   | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppConstants.DetailPrivacy }
   | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
   | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
-  | { kind: 'experienceQuickAction'; action: 'create' | 'upload' };
+  | { kind: 'experienceQuickAction'; action: 'create' | 'upload' }
+  | { kind: 'languageOption'; value: string }
+  | { kind: 'valuesOption'; groupIndex: number; rowIndex: number; value: string }
+  | { kind: 'interestOption'; groupIndex: number; rowIndex: number; value: string };
 
 interface ProfileFormState {
   fullName: string;
@@ -89,8 +94,7 @@ interface ExperienceImportDialogState {
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     ProgressIndicatorComponent,
-    I18nPipe,
-    CounterBadgePipe
+    I18nPipe
   ],
   providers: [
     AppMenuDispatcher,
@@ -114,7 +118,6 @@ export class ProfileEditorComponent {
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
   private readonly mediaService = inject(MediaService);
-  private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
   private readonly profileDetailsFormByUser: Record<string, ProfileContracts.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
@@ -132,7 +135,7 @@ export class ProfileEditorComponent {
   protected readonly detailPrivacyOptions = APP_STATIC_DATA.detailPrivacyOptions;
   protected readonly experienceFilterOptions = APP_STATIC_DATA.experienceFilterOptions;
   protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
-  protected languageSuggestions = [...APP_STATIC_DATA.languageSuggestions];
+  protected readonly languageSuggestions = APP_STATIC_DATA.languageSuggestions;
 
   protected panel: ProfileEditorPanel = 'profile';
   protected profileUser: UserDto | null = null;
@@ -142,13 +145,7 @@ export class ProfileEditorComponent {
   protected selectedImageIndex = 0;
   protected pendingSlotUploadIndex: number | null = null;
   protected uploadingImageSlotIndex: number | null = null;
-  protected languageInput = '';
-  protected mobileProfileSelectorSheet: ProfileContracts.MobileProfileSelectorSheet | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
-  protected valuesSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
-  protected valuesSelectorSelected: string[] = [];
-  protected interestSelectorContext: { groupIndex: number; rowIndex: number } | null = null;
-  protected interestSelectorSelected: string[] = [];
   protected experienceVisibility: Record<'workspace' | 'school', AppConstants.DetailPrivacy> = {
     workspace: 'Public',
     school: 'Public'
@@ -284,10 +281,6 @@ export class ProfileEditorComponent {
       return 'Admin profile';
     }
     switch (this.panel) {
-      case 'values':
-        return 'Values';
-      case 'interest':
-        return 'Interest';
       case 'experience':
         return 'Experience';
       default:
@@ -301,10 +294,6 @@ export class ProfileEditorComponent {
   }
 
   protected async handleCloseAction(): Promise<void> {
-    if (this.mobileProfileSelectorSheet) {
-      this.closeMobileProfileSelectorSheet();
-      return;
-    }
     if (this.experienceImportDialog.visible) {
       this.cancelExperienceImportDialog();
       return;
@@ -344,34 +333,6 @@ export class ProfileEditorComponent {
     this.editingExperienceId = null;
     this.resetExperienceForm();
     this.panel = 'experience';
-  }
-
-  protected openValuesSelector(groupIndex: number, rowIndex: number): void {
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    const allowed = new Set(this.beliefsValuesAllOptions());
-    this.valuesSelectorContext = { groupIndex, rowIndex };
-    this.valuesSelectorSelected = this.parseCommaValues(row.value)
-      .filter(item => allowed.has(item))
-      .slice(0, 5);
-    this.syncValuesContextToRow();
-    this.panel = 'values';
-  }
-
-  protected openInterestSelector(groupIndex: number, rowIndex: number): void {
-    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
-    if (!row) {
-      return;
-    }
-    const allowed = new Set(this.interestAllOptions());
-    this.interestSelectorContext = { groupIndex, rowIndex };
-    this.interestSelectorSelected = this.parseCommaValues(row.value)
-      .filter(item => allowed.has(item))
-      .slice(0, 5);
-    this.syncInterestContextToRow();
-    this.panel = 'interest';
   }
 
   protected selectImageSlot(index: number): void {
@@ -635,6 +596,92 @@ export class ProfileEditorComponent {
     }));
   }
 
+  protected valuesDetailMenuTrigger(row: ProfileContracts.ProfileDetailFormRow): AppMenuTrigger {
+    const selected = this.parseCommaValues(row.value);
+    return {
+      icon: 'auto_awesome',
+      palette: this.paletteFromProfileTone(this.valuesDominantToneClass(row.value)),
+      shape: 'field',
+      ariaLabel: selected.length > 0 ? 'Open values selector' : 'Select values'
+    };
+  }
+
+  protected valuesDetailMenuModel(
+    groupIndex: number,
+    rowIndex: number,
+    row: ProfileContracts.ProfileDetailFormRow
+  ): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
+    return buildTabbedMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext>({
+      idPrefix: `profile-values-${groupIndex}-${rowIndex}`,
+      groups: this.beliefsValuesOptionGroups,
+      selected: this.parseCommaValues(row.value),
+      context: value => ({ kind: 'valuesOption', groupIndex, rowIndex, value }),
+      summary: {
+        emptyLabel: 'Select values',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
+  protected interestDetailMenuTrigger(row: ProfileContracts.ProfileDetailFormRow): AppMenuTrigger {
+    const selected = this.parseCommaValues(row.value);
+    return {
+      icon: 'sell',
+      palette: this.paletteFromProfileTone(this.interestDominantToneClass(row.value)),
+      shape: 'field',
+      ariaLabel: selected.length > 0 ? 'Open interests selector' : 'Select interests'
+    };
+  }
+
+  protected interestDetailMenuModel(
+    groupIndex: number,
+    rowIndex: number,
+    row: ProfileContracts.ProfileDetailFormRow
+  ): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
+    return buildTabbedMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext>({
+      idPrefix: `profile-interest-${groupIndex}-${rowIndex}`,
+      groups: this.interestOptionGroups,
+      selected: this.parseCommaValues(row.value),
+      context: value => ({ kind: 'interestOption', groupIndex, rowIndex, value }),
+      summary: {
+        emptyLabel: 'Select interests',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
+  protected languageMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'language',
+      palette: 'blue',
+      shape: 'field',
+      ariaLabel: this.profileForm.languages.length > 0 ? 'Open languages selector' : 'Select languages'
+    };
+  }
+
+  protected languageMenuModel(): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
+    return buildTabbedMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext>({
+      idPrefix: 'profile-language',
+      groups: [{
+        title: '',
+        options: this.languageMenuOptions()
+      }],
+      selected: this.profileForm.languages,
+      context: value => ({ kind: 'languageOption', value }),
+      groupIcon: () => '',
+      groupPalette: () => 'blue',
+      itemIcon: () => 'language',
+      itemPalette: () => 'blue',
+      summary: {
+        emptyLabel: 'Select languages',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
   protected onProfileEditorMenuSelect(
     event: AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>
   ): void {
@@ -682,6 +729,27 @@ export class ProfileEditorComponent {
           return;
         }
         this.openExperienceUploadAction(event.sourceEvent);
+        return;
+      case 'languageOption':
+        this.toggleLanguageOption(context.value, event.action === 'remove');
+        return;
+      case 'valuesOption':
+        this.updateMultiValueDetailRow(
+          context.groupIndex,
+          context.rowIndex,
+          context.value,
+          this.beliefsValuesAllOptions(),
+          event.action === 'remove'
+        );
+        return;
+      case 'interestOption':
+        this.updateMultiValueDetailRow(
+          context.groupIndex,
+          context.rowIndex,
+          context.value,
+          this.interestAllOptions(),
+          event.action === 'remove'
+        );
         return;
     }
   }
@@ -866,144 +934,31 @@ export class ProfileEditorComponent {
     this.profileForm.horoscope = value ? AppUtils.horoscopeByDate(value) : '';
   }
 
-  protected openMobileLanguageSelector(event: Event): void {
-    event.stopPropagation();
-    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-      const stableHeight = Math.max(window.innerHeight - 6, 320);
-      document.documentElement.style.setProperty(this.languageSheetHeightCssVar, `${stableHeight}px`);
-    }
-    this.languageInput = '';
-    this.mobileProfileSelectorSheet = {
-      title: 'Languages',
-      selected: '',
-      options: this.languageSuggestions.map(option => ({
-        value: option,
-        label: option,
-        icon: 'language'
-      })),
-      context: { kind: 'language' }
-    };
-  }
-
-  protected closeMobileProfileSelectorSheet(): void {
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
-    }
-    this.mobileProfileSelectorSheet = null;
-  }
-
-  protected submitMobileLanguageAndClose(event: Event): void {
-    event.stopPropagation();
-    this.addCustomLanguage();
-    this.closeMobileProfileSelectorSheet();
-  }
-
-  protected isMobileSelectorOptionActive(value: string): boolean {
-    const sheet = this.mobileProfileSelectorSheet;
-    if (!sheet) {
-      return false;
-    }
-    if (sheet.context.kind === 'language') {
-      return this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
-    }
-    return sheet.selected === value;
-  }
-
-  protected selectMobileProfileSelectorOption(value: string): void {
-    const sheet = this.mobileProfileSelectorSheet;
-    if (!sheet) {
+  private toggleLanguageOption(value: string, removeOnly: boolean): void {
+    const normalizedValue = value.trim();
+    if (!normalizedValue) {
       return;
     }
-    if (sheet.context.kind !== 'language') {
-      return;
-    }
-    const exists = this.profileForm.languages.some(item => item.toLowerCase() === value.toLowerCase());
+    const exists = this.profileForm.languages.some(item => item.toLowerCase() === normalizedValue.toLowerCase());
     if (exists) {
-      this.profileForm.languages = this.profileForm.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
-    } else {
-      this.profileForm.languages = [...this.profileForm.languages, value];
-    }
-    this.languageInput = '';
-    this.mobileProfileSelectorSheet = {
-      ...sheet,
-      selected: this.profileForm.languages.join(', ')
-    };
-  }
-
-  protected addCustomLanguage(value = this.languageInput): void {
-    const normalized = value.trim();
-    if (!normalized) {
+      this.profileForm.languages = this.profileForm.languages.filter(item => item.toLowerCase() !== normalizedValue.toLowerCase());
       return;
     }
-    if (!this.profileForm.languages.some(item => item.toLowerCase() === normalized.toLowerCase())) {
-      this.profileForm.languages = [...this.profileForm.languages, normalized];
+    if (!removeOnly) {
+      this.profileForm.languages = [...this.profileForm.languages, normalizedValue];
     }
-    if (!this.languageSuggestions.some(item => item.toLowerCase() === normalized.toLowerCase())) {
-      this.languageSuggestions.push(normalized);
-    }
-    this.languageInput = '';
   }
 
-  protected onLanguageInputBlur(): void {
-    this.addCustomLanguage();
-  }
-
-  protected onLanguageInputKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ',') {
-      return;
-    }
-    event.preventDefault();
-    this.addCustomLanguage();
-  }
-
-  protected removeLanguage(value: string): void {
-    this.profileForm.languages = this.profileForm.languages.filter(item => item !== value);
-  }
-
-  protected languageTriggerLabel(): string {
-    if (this.profileForm.languages.length === 0) {
-      return '';
-    }
-    if (this.profileForm.languages.length === 1) {
-      return this.profileForm.languages[0];
-    }
-    return `${this.profileForm.languages[0]} +${this.profileForm.languages.length - 1}`;
-  }
-
-  protected languageTriggerPrimaryLabel(maxVisible = 2): string {
-    const languages = this.profileForm.languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    if (languages.length === 0) {
-      return '';
-    }
-    return languages.slice(0, Math.max(1, maxVisible)).join(', ');
-  }
-
-  protected languageTriggerOverflowCount(maxVisible = 2): number {
-    const languages = this.profileForm.languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    return Math.max(0, languages.length - Math.max(1, maxVisible));
-  }
-
-  protected languageToneClass(value: string): string {
-    return `language-tone-${this.languageToneIndex(value)}`;
-  }
-
-  protected get availableLanguageSuggestions(): string[] {
-    const query = this.languageInput.trim().toLowerCase();
-    return this.languageSuggestions.filter(item => {
-      const isSelected = this.profileForm.languages.some(selected => selected.toLowerCase() === item.toLowerCase());
-      if (isSelected) {
-        return false;
+  private languageMenuOptions(): readonly string[] {
+    const optionByKey = new Map<string, string>();
+    for (const option of [...this.languageSuggestions, ...this.profileForm.languages]) {
+      const normalized = option.trim();
+      if (!normalized) {
+        continue;
       }
-      return query.length === 0 ? true : item.toLowerCase().includes(query);
-    });
-  }
-
-  protected get availableLanguageDisplaySuggestions(): string[] {
-    return this.availableLanguageSuggestions.slice(0, 20);
+      optionByKey.set(normalized.toLowerCase(), normalized);
+    }
+    return [...optionByKey.values()];
   }
 
   protected isDetailPrivacyJustSelected(groupIndex: number, rowIndex: number): boolean {
@@ -1018,62 +973,36 @@ export class ProfileEditorComponent {
     return this.experienceVisibility[type];
   }
 
-  protected toggleValuesOption(option: string): void {
-    const allowed = this.beliefsValuesAllOptions();
-    if (!allowed.includes(option)) {
+  private updateMultiValueDetailRow(
+    groupIndex: number,
+    rowIndex: number,
+    option: string,
+    allowedOptions: readonly string[],
+    removeOnly: boolean
+  ): void {
+    const row = this.profileDetailsForm[groupIndex]?.rows[rowIndex];
+    if (!row || !this.containsNormalizedOption(allowedOptions, option)) {
       return;
     }
-    const exists = this.valuesSelectorSelected.includes(option);
-    if (!exists && this.valuesSelectorSelected.length >= 5) {
-      return;
+
+    const current = this.parseCommaValues(row.value)
+      .filter(item => this.containsNormalizedOption(allowedOptions, item))
+      .slice(0, 5);
+    const normalizedOption = this.normalizeTopicToken(option);
+    const existingIndex = current.findIndex(item => this.normalizeTopicToken(item) === normalizedOption);
+
+    if (existingIndex >= 0) {
+      current.splice(existingIndex, 1);
+    } else if (!removeOnly && current.length < 5) {
+      current.push(option);
     }
-    this.valuesSelectorSelected = exists
-      ? this.valuesSelectorSelected.filter(item => item !== option)
-      : [...this.valuesSelectorSelected, option];
-    this.syncValuesContextToRow();
+
+    row.value = current.join(', ');
   }
 
-  protected removeValuesOption(option: string): void {
-    this.valuesSelectorSelected = this.valuesSelectorSelected.filter(item => item !== option);
-    this.syncValuesContextToRow();
-  }
-
-  protected clearValuesSelector(): void {
-    this.valuesSelectorSelected = [];
-    this.syncValuesContextToRow();
-  }
-
-  protected isValuesOptionSelected(option: string): boolean {
-    return this.valuesSelectorSelected.includes(option);
-  }
-
-  protected toggleInterestOption(option: string): void {
-    const allowed = this.interestAllOptions();
-    if (!allowed.includes(option)) {
-      return;
-    }
-    const exists = this.interestSelectorSelected.includes(option);
-    if (!exists && this.interestSelectorSelected.length >= 5) {
-      return;
-    }
-    this.interestSelectorSelected = exists
-      ? this.interestSelectorSelected.filter(item => item !== option)
-      : [...this.interestSelectorSelected, option];
-    this.syncInterestContextToRow();
-  }
-
-  protected removeInterestOption(option: string): void {
-    this.interestSelectorSelected = this.interestSelectorSelected.filter(item => item !== option);
-    this.syncInterestContextToRow();
-  }
-
-  protected clearInterestSelector(): void {
-    this.interestSelectorSelected = [];
-    this.syncInterestContextToRow();
-  }
-
-  protected isInterestOptionSelected(option: string): boolean {
-    return this.interestSelectorSelected.includes(option);
+  private containsNormalizedOption(options: readonly string[], value: string): boolean {
+    const normalizedValue = this.normalizeTopicToken(value);
+    return options.some(option => this.normalizeTopicToken(option) === normalizedValue);
   }
 
   protected valuesOptionToneClass(option: string): string {
@@ -1096,49 +1025,6 @@ export class ProfileEditorComponent {
       }
     }
     return '';
-  }
-
-  protected profileSelectorToneIcon(toneClass: string): string {
-    switch (toneClass) {
-      case 'section-family':
-        return 'family_restroom';
-      case 'section-ambition':
-        return 'rocket_launch';
-      case 'section-lifestyle':
-        return 'eco';
-      case 'section-beliefs':
-        return 'auto_awesome';
-      case 'section-social':
-        return 'celebration';
-      case 'section-arts':
-        return 'palette';
-      case 'section-food':
-        return 'restaurant';
-      case 'section-active':
-        return 'hiking';
-      case 'section-mind':
-        return 'self_improvement';
-      case 'section-identity':
-        return 'public';
-      default:
-        return 'label';
-    }
-  }
-
-  protected valuesRowPreviewOptions(value: string, max = 2): string[] {
-    return this.parseCommaValues(value).slice(0, Math.max(0, max));
-  }
-
-  protected valuesRowPreviewOverflow(value: string, max = 2): number {
-    return Math.max(0, this.parseCommaValues(value).length - Math.max(0, max));
-  }
-
-  protected interestRowPreviewOptions(value: string, max = 2): string[] {
-    return this.parseCommaValues(value).slice(0, Math.max(0, max));
-  }
-
-  protected interestRowPreviewOverflow(value: string, max = 2): number {
-    return Math.max(0, this.parseCommaValues(value).length - Math.max(0, max));
   }
 
   protected detailOptionClass(labelKey: string, option: string, options: string[]): string {
@@ -1815,28 +1701,6 @@ export class ProfileEditorComponent {
     return total === 0 ? 0 : Math.round((completed / total) * 100);
   }
 
-  private syncValuesContextToRow(): void {
-    if (!this.valuesSelectorContext) {
-      return;
-    }
-    const row = this.profileDetailsForm[this.valuesSelectorContext.groupIndex]?.rows[this.valuesSelectorContext.rowIndex];
-    if (!row) {
-      return;
-    }
-    row.value = this.valuesSelectorSelected.join(', ');
-  }
-
-  private syncInterestContextToRow(): void {
-    if (!this.interestSelectorContext) {
-      return;
-    }
-    const row = this.profileDetailsForm[this.interestSelectorContext.groupIndex]?.rows[this.interestSelectorContext.rowIndex];
-    if (!row) {
-      return;
-    }
-    row.value = this.interestSelectorSelected.join(', ');
-  }
-
   private parseCommaValues(value: string): string[] {
     return value
       .split(',')
@@ -2025,18 +1889,6 @@ export class ProfileEditorComponent {
 
   private detailPrivacyFabKey(groupIndex: number, rowIndex: number): string {
     return `${groupIndex}-${rowIndex}`;
-  }
-
-  private languageToneIndex(value: string): number {
-    const normalized = AppUtils.normalizeText(value);
-    if (!normalized) {
-      return 1;
-    }
-    let hash = 0;
-    for (const char of normalized) {
-      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-    }
-    return (hash % 8) + 1;
   }
 
   private resetExperienceForm(): void {
@@ -2479,12 +2331,7 @@ export class ProfileEditorComponent {
   private resetTransientUiState(): void {
     this.menuDispatcher.close();
     this.panel = 'profile';
-    this.closeMobileProfileSelectorSheet();
     this.privacyFabJustSelectedKey = null;
-    this.valuesSelectorContext = null;
-    this.valuesSelectorSelected = [];
-    this.interestSelectorContext = null;
-    this.interestSelectorSelected = [];
     this.pendingSlotUploadIndex = null;
     this.showExperienceForm = false;
     this.editingExperienceId = null;

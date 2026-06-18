@@ -26,8 +26,11 @@ import {
   AppMenuDispatcher,
   AppMenuComponent,
   AppMenuOutletComponent,
+  appMenuPaletteFromToneClass,
+  buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   CARD_MENU_ACTIONS,
@@ -35,7 +38,6 @@ import {
   ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
-  TopicPickerPopupComponent,
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
@@ -62,7 +64,7 @@ type CheckoutDraftEntry = {
 type EventExploreMenuContext =
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
-  | { menu: 'topic-picker' }
+  | { menu: 'topic-filter'; topic: string }
   | {
       menu: 'info-card';
       record: ActivityEventRecord;
@@ -80,8 +82,7 @@ type EventExploreMenuContext =
     AppMenuOutletComponent,
     InfoCardComponent,
     ProgressIndicatorComponent,
-    SmartListComponent,
-    TopicPickerPopupComponent
+    SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -116,7 +117,6 @@ export class EventExplorePopupComponent {
   private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
-  protected showTopicPicker = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
   protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
@@ -285,11 +285,6 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    if (this.showTopicPicker) {
-      this.showTopicPicker = false;
-      this.cdr.markForCheck();
-      return;
-    }
     this.closeEventExplore();
   }
 
@@ -319,7 +314,6 @@ export class EventExplorePopupComponent {
 
   protected closeEventExplore(): void {
     this.isOpen = false;
-    this.showTopicPicker = false;
     this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
@@ -363,18 +357,6 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected toggleEventExploreTopicPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTopicPicker = !this.showTopicPicker;
-    this.cdr.markForCheck();
-  }
-
-  protected closeEventExploreTopicPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTopicPicker = false;
-    this.cdr.markForCheck();
-  }
-
   protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
     event?.stopPropagation();
     const normalizedTopic = this.normalizeTopic(topic);
@@ -383,39 +365,33 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected updateEventExploreTopicSelection(selected: readonly string[]): void {
-    const nextTopic = selected[0] ?? '';
-    if (this.normalizeTopic(nextTopic) === this.normalizeTopic(this.eventExploreFilterTopic)) {
-      return;
-    }
-    this.eventExploreFilterTopic = nextTopic;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected eventExploreTopicFilterLabel(): string {
-    if (!this.eventExploreFilterTopic) {
-      return 'Topic';
-    }
-    return `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`;
-  }
-
   protected eventExploreTopicLabel(topic: string): string {
     return topic.replace(/^#+\s*/, '');
   }
 
+  protected eventExploreTopicMenuModel(): AppMenuModel<string, EventExploreMenuContext> {
+    return buildTabbedMenuModel<string, EventExploreMenuContext>({
+      idPrefix: 'topic',
+      groups: this.topicFilterGroups,
+      selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
+      context: topic => ({ menu: 'topic-filter', topic }),
+      itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
+      removeAriaLabel: topic => `Clear ${topic}`,
+      summary: {
+        emptyLabel: 'Topic',
+        maxLabels: 1,
+        counter: 'none'
+      }
+    });
+  }
+
   protected eventExploreTopicMenuTrigger(): AppMenuTrigger {
     return {
-      id: 'topic-picker',
-      label: this.eventExploreTopicFilterLabel(),
+      id: 'topic-filter',
       icon: 'sell',
-      trailingIcon: 'chevron_right',
-      openTrailingIcon: 'expand_less',
       ariaLabel: 'Open topic filter',
       palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
-      shape: 'pill',
-      action: 'custom',
-      context: { menu: 'topic-picker' }
+      shape: 'pill'
     };
   }
 
@@ -489,8 +465,18 @@ export class EventExplorePopupComponent {
       this.selectEventExploreView(context.view, event.sourceEvent);
       return;
     }
-    if (context.menu === 'topic-picker') {
-      this.toggleEventExploreTopicPicker(event.sourceEvent);
+    if (context.menu === 'topic-filter') {
+      if (event.action === 'remove') {
+        event.sourceEvent.stopPropagation();
+        if (this.normalizeTopic(context.topic) !== this.normalizeTopic(this.eventExploreFilterTopic)) {
+          return;
+        }
+        this.eventExploreFilterTopic = '';
+        this.syncEventExploreQuery();
+        this.reloadEventExploreSmartList();
+        return;
+      }
+      this.selectEventExploreTopicFilter(context.topic, event.sourceEvent);
     }
   }
 
@@ -610,22 +596,7 @@ export class EventExplorePopupComponent {
     const group = this.topicFilterGroups.find(item =>
       item.options.some(option => this.normalizeTopic(option) === normalizedTopic)
     );
-    switch (group?.toneClass) {
-      case 'section-social':
-        return 'blue';
-      case 'section-arts':
-        return 'violet';
-      case 'section-food':
-        return 'orange';
-      case 'section-active':
-        return 'green';
-      case 'section-mind':
-        return 'teal';
-      case 'section-identity':
-        return 'purple';
-      default:
-        return 'neutral';
-    }
+    return appMenuPaletteFromToneClass(group?.toneClass);
   }
 
   protected eventExploreHeaderTitle(): string {

@@ -3,6 +3,7 @@ import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type AppMenuKind =
   | 'button-row'
+  | 'fab'
   | 'select'
   | 'shortcut-grid';
 
@@ -41,10 +42,13 @@ export type AppMenuPalette =
 
 export type AppMenuTriggerShape = 'default' | 'field' | 'pill' | 'icon';
 export type AppMenuTriggerAction = 'menu' | 'custom';
+export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuItemLayout = 'default' | 'summary';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
+export type AppMenuPresentation = 'list' | 'tabs';
+export type AppMenuSummaryCounter = 'overflow' | 'count' | 'none';
 
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
 export type AppMenuCounterValue = AppMenuLiveValue<number | string | null | undefined>;
@@ -100,6 +104,9 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   active?: AppMenuLiveValue<boolean | null | undefined>;
   checked?: AppMenuLiveValue<boolean | null | undefined>;
+  removable?: AppMenuLiveValue<boolean | null | undefined>;
+  removeIcon?: AppMenuLiveValue<string | null | undefined>;
+  removeAriaLabel?: AppMenuLiveValue<string | null | undefined>;
   closeOnSelect?: boolean;
   value?: unknown;
   context?: TContext;
@@ -124,8 +131,17 @@ export interface AppMenuGroup<TId extends string = string, TContext = unknown> {
   ariaLabel?: AppMenuLiveValue<string | null | undefined>;
 }
 
+export interface AppMenuSummary {
+  emptyLabel?: AppMenuLiveValue<string | null | undefined>;
+  maxLabels?: number;
+  counter?: AppMenuSummaryCounter;
+}
+
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
-  nodes: readonly AppMenuGroup<TId, TContext>[];
+  presentation?: AppMenuPresentation;
+  summary?: AppMenuSummary | null;
+  groups?: readonly AppMenuGroup<TId, TContext>[];
+  nodes?: readonly AppMenuGroup<TId, TContext>[];
 }
 
 export interface AppMenuItemSelectEvent<TId extends string = string, TContext = unknown> {
@@ -134,6 +150,7 @@ export interface AppMenuItemSelectEvent<TId extends string = string, TContext = 
   context?: TContext;
   sourceEvent: Event;
   value?: unknown;
+  action?: AppMenuItemSelectAction;
 }
 
 export interface AppMenuAnchorRect {
@@ -149,6 +166,7 @@ export interface AppMenuDispatchConfig<TId extends string = string, TContext = u
   id: string;
   kind?: AppMenuKind;
   title?: AppMenuLiveValue<string | null | undefined>;
+  filterable?: boolean;
   items?: readonly AppMenuItem<TId, TContext>[];
   model?: AppMenuModel<TId, TContext> | null;
   groups?: readonly AppMenuGroup<TId, TContext>[];
@@ -167,6 +185,7 @@ export interface AppMenuDispatchConfig<TId extends string = string, TContext = u
 export interface AppMenuDispatchState<TId extends string = string, TContext = unknown>
   extends AppMenuDispatchConfig<TId, TContext> {
   kind: AppMenuKind;
+  filterable: boolean;
   items: readonly AppMenuItem<TId, TContext>[];
   model: AppMenuModel<TId, TContext> | null;
   groups: readonly AppMenuGroup<TId, TContext>[];

@@ -600,6 +600,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       id: SmartListComponent.PAGINATION_RATING_MENU_ID,
       kind: 'select',
       title: null,
+      filterable: false,
       items: this.paginationRatingMenuItems(),
       model: null,
       groups: [],

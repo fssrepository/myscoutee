@@ -6,12 +6,11 @@
         class="app-popup-panel"
         [class.popup-panel-image-editor]="panel === 'image'"
         [class.popup-panel-profile-editor]="panel === 'profile' || panel === 'experience'"
-        [class.popup-panel-profile-selector]="panel === 'values' || panel === 'interest'"
         (click)="$event.stopPropagation()"
         >
         <div
           class="popup-header"
-          [class.popup-header-selector]="panel === 'values' || panel === 'interest' || panel === 'experience'"
+          [class.popup-header-selector]="panel === 'experience'"
           [class.popup-header-with-back]="panel !== 'profile'"
           >
           @if (panel !== 'profile') {
@@ -202,18 +201,14 @@
                           </label>
                           <label class="languages-field">
                             <span>Languages</span>
-                            <button
-                              type="button"
-                              class="profile-status-select-wrap selector-like language-mobile-trigger language-select-btn"
-                              [class.active]="profileForm.languages.length > 0"
-                              (click)="openMobileLanguageSelector($event)"
-                              >
-                              <span class="label">{{ languageTriggerPrimaryLabel() || 'Select languages' }}</span>
-                              @if (languageTriggerOverflowCount() > 0) {
-                                <span class="count">+{{ languageTriggerOverflowCount() }}</span>
-                              }
-                              <mat-icon class="arrow">chevron_right</mat-icon>
-                            </button>
+                            <app-menu
+                              kind="select"
+                              title="Languages"
+                              [filterable]="true"
+                              [trigger]="languageMenuTrigger()"
+                              [model]="languageMenuModel()"
+                              (itemSelect)="onProfileEditorMenuSelect($event)"
+                            ></app-menu>
                           </label>
                         </div>
                       } @else {
@@ -223,59 +218,27 @@
                               <span>{{ row.labelKey | i18n }}</span>
                               <div class="profile-details-control-row">
                                 @if (row.labelKey === 'profile.details.values' || row.labelKey === 'profile.details.interest') {
-                                  <button
-                                    type="button"
-                                    class="profile-status-select-wrap selector-like profile-details-values-btn"
-                                    [ngClass]="row.labelKey === 'profile.details.values' ? 'profile-details-values-tone-values' : 'profile-details-values-tone-interest'"
-                                    (click)="row.labelKey === 'profile.details.values' ? openValuesSelector(groupIndex, rowIndex) : openInterestSelector(groupIndex, rowIndex)"
-                                    >
-                                    @if (row.labelKey === 'profile.details.values') {
-                                      <span class="status-option-content profile-details-selected-badges">
-                                        @if (valuesRowPreviewOptions(row.value, 1).length > 0) {
-                                          <span class="profile-details-selected-chip-list">
-                                            @for (item of valuesRowPreviewOptions(row.value, 1); track item) {
-                                              <span
-                                                class="values-selected-chip profile-details-inline-chip"
-                                                [class]="valuesOptionToneClass(item)"
-                                                >
-                                                {{ item }}
-                                              </span>
-                                            }
-                                          </span>
-                                          @if (valuesRowPreviewOverflow(row.value, 1) > 0) {
-                                            <span class="profile-details-inline-overflow">
-                                              +{{ valuesRowPreviewOverflow(row.value, 1) }}
-                                            </span>
-                                          }
-                                        } @else {
-                                          <span class="profile-details-empty-summary">Select values</span>
-                                        }
-                                      </span>
-                                    } @else {
-                                      <span class="status-option-content profile-details-selected-badges">
-                                        @if (interestRowPreviewOptions(row.value, 2).length > 0) {
-                                          <span class="profile-details-selected-chip-list">
-                                            @for (item of interestRowPreviewOptions(row.value, 2); track item) {
-                                              <span
-                                                class="values-selected-chip profile-details-inline-chip"
-                                                [class]="interestOptionToneClass(item)"
-                                                >
-                                                {{ item }}
-                                              </span>
-                                            }
-                                          </span>
-                                          @if (interestRowPreviewOverflow(row.value, 2) > 0) {
-                                            <span class="profile-details-inline-overflow">
-                                              +{{ interestRowPreviewOverflow(row.value, 2) }}
-                                            </span>
-                                          }
-                                        } @else {
-                                          <span class="profile-details-empty-summary">Select interests</span>
-                                        }
-                                      </span>
-                                    }
-                                    <mat-icon>chevron_right</mat-icon>
-                                  </button>
+                                  @if (row.labelKey === 'profile.details.values') {
+                                    <app-menu
+                                      class="profile-details-values-menu"
+                                      kind="select"
+                                      [title]="row.labelKey | i18n"
+                                      [filterable]="true"
+                                      [trigger]="valuesDetailMenuTrigger(row)"
+                                      [model]="valuesDetailMenuModel(groupIndex, rowIndex, row)"
+                                      (itemSelect)="onProfileEditorMenuSelect($event)"
+                                    ></app-menu>
+                                  } @else {
+                                    <app-menu
+                                      class="profile-details-values-menu"
+                                      kind="select"
+                                      [title]="row.labelKey | i18n"
+                                      [filterable]="true"
+                                      [trigger]="interestDetailMenuTrigger(row)"
+                                      [model]="interestDetailMenuModel(groupIndex, rowIndex, row)"
+                                      (itemSelect)="onProfileEditorMenuSelect($event)"
+                                    ></app-menu>
+                                  }
                                 } @else {
                                   <app-menu
                                     class="profile-details-select"
@@ -400,118 +363,6 @@
                   </button>
                 }
               </div>
-            </div>
-          }
-          @if (panel === 'values') {
-            <div class="values-selector-popup profile-selector-popup">
-              <div class="profile-filter-selector-head">
-                <span class="profile-filter-selector-head-label">Values</span>
-                <button
-                  type="button"
-                  class="profile-filter-selector-clear"
-                  [class.is-hidden]="valuesSelectorSelected.length === 0"
-                  [disabled]="valuesSelectorSelected.length === 0"
-                  [attr.aria-hidden]="valuesSelectorSelected.length === 0 ? 'true' : null"
-                  (click)="clearValuesSelector()"
-                  >
-                  Clear
-                </button>
-              </div>
-              @if (valuesSelectorSelected.length > 0) {
-                <div class="profile-filter-selector-selected">
-                  @for (item of valuesSelectorSelected; track item) {
-                    <button
-                      type="button"
-                      class="profile-filter-selector-chip"
-                      (click)="removeValuesOption(item)"
-                      >
-                      <span>{{ item }}</span>
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  }
-                </div>
-              } @else {
-                <p class="profile-filter-selector-empty">No items selected yet.</p>
-              }
-              @for (group of beliefsValuesOptionGroups; track group) {
-                <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass">
-                  <div class="profile-selector-option-group-head">
-                    <span class="profile-selector-option-group-tag" [class]="group.toneClass">
-                      <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
-                      <span>{{ group.shortTitle }}</span>
-                    </span>
-                    <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
-                  </div>
-                  <div class="profile-selector-chip-grid">
-                    @for (option of group.options; track option) {
-                      <button
-                        type="button"
-                        class="profile-selector-chip"
-                        [class.active]="isValuesOptionSelected(option)"
-                        (click)="toggleValuesOption(option)"
-                        >
-                        <span>{{ option }}</span>
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
-            </div>
-          }
-          @if (panel === 'interest') {
-            <div class="values-selector-popup profile-selector-popup">
-              <div class="profile-filter-selector-head">
-                <span class="profile-filter-selector-head-label">Interest</span>
-                <button
-                  type="button"
-                  class="profile-filter-selector-clear"
-                  [class.is-hidden]="interestSelectorSelected.length === 0"
-                  [disabled]="interestSelectorSelected.length === 0"
-                  [attr.aria-hidden]="interestSelectorSelected.length === 0 ? 'true' : null"
-                  (click)="clearInterestSelector()"
-                  >
-                  Clear
-                </button>
-              </div>
-              @if (interestSelectorSelected.length > 0) {
-                <div class="profile-filter-selector-selected">
-                  @for (item of interestSelectorSelected; track item) {
-                    <button
-                      type="button"
-                      class="profile-filter-selector-chip"
-                      (click)="removeInterestOption(item)"
-                      >
-                      <span>{{ item }}</span>
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  }
-                </div>
-              } @else {
-                <p class="profile-filter-selector-empty">No items selected yet.</p>
-              }
-              @for (group of interestOptionGroups; track group) {
-                <div class="values-selector-group profile-selector-option-group" [class]="group.toneClass">
-                  <div class="profile-selector-option-group-head">
-                    <span class="profile-selector-option-group-tag" [class]="group.toneClass">
-                      <mat-icon class="profile-selector-option-group-tag-icon">{{ profileSelectorToneIcon(group.toneClass) }}</mat-icon>
-                      <span>{{ group.shortTitle }}</span>
-                    </span>
-                    <span class="profile-selector-option-group-line" [class]="group.toneClass"></span>
-                  </div>
-                  <div class="profile-selector-chip-grid">
-                    @for (option of group.options; track option) {
-                      <button
-                        type="button"
-                        class="profile-selector-chip"
-                        [class.active]="isInterestOptionSelected(option)"
-                        (click)="toggleInterestOption(option)"
-                        >
-                        <span>{{ option }}</span>
-                      </button>
-                    }
-                  </div>
-                </div>
-              }
             </div>
           }
           @if (panel === 'experience') {
@@ -765,113 +616,4 @@
       </div>
     </section>
   }
-}
-
-@if (isOpen() && mobileProfileSelectorSheet) {
-  <section class="mobile-profile-selector-sheet-wrap" (click)="$event.stopPropagation()">
-    <div class="mobile-profile-selector-backdrop" (click)="$event.stopPropagation(); closeMobileProfileSelectorSheet()"></div>
-    <div
-      class="mobile-profile-selector-sheet"
-      [class.mobile-profile-selector-sheet-language]="mobileProfileSelectorSheet.context.kind === 'language'"
-      (click)="$event.stopPropagation()"
-      >
-      <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
-      <div class="mobile-profile-selector-title">
-        <mat-icon>list</mat-icon>
-        <span>{{ mobileProfileSelectorSheet.title }}</span>
-        @if (mobileProfileSelectorSheet.context.kind === 'language') {
-          <button
-            type="button"
-            class="mobile-profile-selector-close-btn popup-surface-close-btn"
-            (click)="closeMobileProfileSelectorSheet(); $event.stopPropagation()"
-            aria-label="Close language popup"
-            >
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-      </div>
-      @if (mobileProfileSelectorSheet.context.kind !== 'language') {
-        <div class="mobile-profile-selector-options">
-          @for (option of mobileProfileSelectorSheet.options; track option) {
-            <button
-              type="button"
-              class="mobile-profile-selector-option"
-              [class.active]="isMobileSelectorOptionActive(option.value)"
-              [class.mobile-profile-selector-option-group]="option.disabled"
-              [ngClass]="option.toneClass"
-              [disabled]="option.disabled"
-              (click)="selectMobileProfileSelectorOption(option.value)"
-              >
-              <span class="mobile-profile-selector-option-main">
-                @if (option.icon) {
-                  <mat-icon>{{ option.icon }}</mat-icon>
-                }
-                <span>{{ option.label }}</span>
-              </span>
-              @if (!option.disabled && option.badge !== undefined && option.badge > 0) {
-                <span class="rate-filter-count-badge">{{ option.badge | counterBadge }}</span>
-              }
-              @if (!option.disabled && option.badge === undefined && isMobileSelectorOptionActive(option.value)) {
-                <mat-icon>check</mat-icon>
-              }
-            </button>
-          }
-        </div>
-      } @else {
-        <div class="mobile-profile-language-entry" (click)="$event.stopPropagation()">
-          @if (profileForm.languages.length > 0) {
-            <div class="mobile-profile-language-chips">
-              @for (item of profileForm.languages; track item) {
-                <button
-                  type="button"
-                  class="mobile-profile-language-chip"
-                  [ngClass]="languageToneClass(item)"
-                  (click)="removeLanguage(item)"
-                  >
-                  <span>{{ item }}</span>
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-          }
-          <label class="mobile-profile-language-input-wrap">
-            <input
-              type="text"
-              [(ngModel)]="languageInput"
-              (keydown)="onLanguageInputKeydown($event)"
-              (blur)="onLanguageInputBlur()"
-              placeholder="Type language"
-              />
-            <button
-              type="button"
-              class="mobile-profile-language-submit-btn"
-              (click)="submitMobileLanguageAndClose($event)"
-              aria-label="Save language search and close"
-              >
-              <mat-icon>search</mat-icon>
-            </button>
-          </label>
-        </div>
-        <div class="mobile-profile-selector-options">
-          @for (item of availableLanguageDisplaySuggestions; track item) {
-            <button
-              type="button"
-              class="mobile-profile-selector-option"
-              [class.active]="isMobileSelectorOptionActive(item)"
-              [ngClass]="languageToneClass(item)"
-              (click)="selectMobileProfileSelectorOption(item)"
-              >
-              <span class="mobile-profile-selector-option-main">
-                <mat-icon>language</mat-icon>
-                <span>{{ item }}</span>
-              </span>
-              @if (isMobileSelectorOptionActive(item)) {
-                <mat-icon>check</mat-icon>
-              }
-            </button>
-          }
-        </div>
-      }
-    </div>
-  </section>
 }

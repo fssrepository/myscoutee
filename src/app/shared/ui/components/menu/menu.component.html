@@ -96,7 +96,9 @@
     <div
       class="app-menu__panel"
       [class.app-menu__panel--inline]="isInlineKind"
-      [class.app-menu__panel--dropdown-list]="isDropdownListKind || isButtonRowKind"
+      [class.app-menu__panel--dropdown-list]="(isDropdownListKind && !isTabbedPresentation) || isButtonRowKind"
+      [class.app-menu__panel--fab]="isFabKind"
+      [class.app-menu__panel--tabs]="isTabbedPresentation"
       [class.app-menu__panel--has-branch-header]="showBranchBack"
       [class.app-menu__panel--open-up]="resolvedOpenUp"
       [class.app-menu__panel--align-start]="resolvedPanelAlign === 'start'"
@@ -187,6 +189,168 @@
                 }
               </div>
             </section>
+          }
+        </div>
+      } @else if (isTabbedPresentation && hasMenuNodes) {
+        <div class="app-menu__tabs">
+          @if (showTabsBar()) {
+            <div class="app-menu__tabs-tabs" role="tablist" [attr.aria-label]="resolvedTitle || 'Menu tabs'">
+              @for (group of menuNodes; track trackByGroupId($index, group)) {
+                <button
+                  type="button"
+                  class="app-menu__tabs-tab"
+                  [ngClass]="groupPaletteClass(group)"
+                  [class.app-menu__tabs-tab--active]="isTabsGroupActive(group)"
+                  [attr.id]="tabsId(group)"
+                  role="tab"
+                  [attr.aria-selected]="isTabsGroupActive(group)"
+                  [attr.aria-controls]="tabsPanelId(group)"
+                  (click)="selectTabsGroup(group, $event)"
+                  >
+                  @if (groupIcon(group)) {
+                    <mat-icon>{{ groupIcon(group) }}</mat-icon>
+                  }
+                  @if (groupLabel(group)) {
+                    <span>{{ groupLabel(group) | i18n }}</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+          @if (isTabsFilterable()) {
+            <div class="app-menu__tabs-filter" (click)="$event.stopPropagation()">
+              <mat-icon>search</mat-icon>
+              <input
+                type="text"
+                class="app-menu__tabs-filter-input"
+                [value]="tabsFilterText"
+                [attr.placeholder]="resolvedTitle || 'Search'"
+                (input)="updateTabsFilter($event)"
+                (keydown)="$event.stopPropagation()"
+                />
+              @if (tabsFilterText) {
+                <button
+                  type="button"
+                  class="app-menu__tabs-filter-clear"
+                  aria-label="Clear search"
+                  title="Clear search"
+                  (click)="clearTabsFilter($event)"
+                  >
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          }
+          @if (activeTabsGroup(); as group) {
+            <div
+              class="app-menu__tabs-panel"
+              [attr.id]="tabsPanelId(group)"
+              role="tabpanel"
+              [attr.aria-labelledby]="tabsId(group)"
+              >
+              <div class="app-menu__tabs-items">
+                @for (item of filteredTabsItems(group); track trackByItemId($index, item)) {
+                  @if (isDivider(item)) {
+                    <div class="app-menu__divider app-menu__tabs-divider" role="separator"></div>
+                  } @else if (isSection(item)) {
+                    <div class="app-menu__section-label app-menu__tabs-section" [ngClass]="itemPaletteClass(item)">
+                      @if (itemIcon(item)) {
+                        <mat-icon>{{ itemIcon(item) }}</mat-icon>
+                      }
+                      <span>{{ itemLabel(item) | i18n }}</span>
+                    </div>
+                  } @else {
+                    @if (isItemRemovable(item)) {
+                      <div class="app-menu__tabs-row" [ngClass]="itemPaletteClass(item)">
+                        <button
+                          type="button"
+                          class="app-menu__tabs-item app-menu__tabs-item--row-primary"
+                          [class.app-menu__tabs-item--active]="isItemActive(item)"
+                          [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
+                          [class.app-menu__tabs-item--with-description]="itemDescription(item)"
+                          [disabled]="isItemDisabled(item)"
+                          [attr.role]="itemRole(item)"
+                          [attr.aria-checked]="isItemChecked(item)"
+                          [attr.aria-label]="itemAriaLabel(item)"
+                          [title]="itemAriaLabel(item) || itemLabel(item)"
+                          (click)="selectItem(item, $event)"
+                          >
+                          @if (itemIcon(item)) {
+                            <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
+                          }
+                          <span class="app-menu__tabs-item-main">
+                            <span class="app-menu__tabs-item-label">{{ itemLabel(item) | i18n }}</span>
+                            @if (itemDescription(item)) {
+                              <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
+                            }
+                          </span>
+                          @if (hasItemCounter(item)) {
+                            <span
+                              class="app-menu__counter"
+                              [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
+                              >
+                              {{ itemCounterLabel(item) }}
+                            </span>
+                          }
+                          @if (showItemCheck(item)) {
+                            <mat-icon class="app-menu__tabs-item-check">done</mat-icon>
+                          }
+                        </button>
+                        <button
+                          type="button"
+                          class="app-menu__tabs-remove"
+                          [disabled]="isItemDisabled(item)"
+                          [attr.aria-label]="itemRemoveAriaLabel(item)"
+                          [title]="itemRemoveAriaLabel(item)"
+                          (click)="removeItem(item, $event)"
+                          >
+                          <mat-icon>{{ itemRemoveIcon(item) }}</mat-icon>
+                        </button>
+                      </div>
+                    } @else {
+                      <button
+                        type="button"
+                        class="app-menu__tabs-item"
+                        [ngClass]="itemPaletteClass(item)"
+                        [class.app-menu__tabs-item--active]="isItemActive(item)"
+                        [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
+                        [class.app-menu__tabs-item--with-description]="itemDescription(item)"
+                        [disabled]="isItemDisabled(item)"
+                        [attr.role]="itemRole(item)"
+                        [attr.aria-checked]="isItemChecked(item)"
+                        [attr.aria-label]="itemAriaLabel(item)"
+                        [title]="itemAriaLabel(item) || itemLabel(item)"
+                        (click)="selectItem(item, $event)"
+                        >
+                        @if (itemIcon(item)) {
+                          <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
+                        }
+                        <span class="app-menu__tabs-item-main">
+                          <span class="app-menu__tabs-item-label">{{ itemLabel(item) | i18n }}</span>
+                          @if (itemDescription(item)) {
+                            <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
+                          }
+                        </span>
+                        @if (hasItemCounter(item)) {
+                          <span
+                            class="app-menu__counter"
+                            [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
+                            >
+                            {{ itemCounterLabel(item) }}
+                          </span>
+                        }
+                        @if (showItemCheck(item)) {
+                          <mat-icon class="app-menu__tabs-item-check">done</mat-icon>
+                        }
+                      </button>
+                    }
+                  }
+                }
+                @if (!hasVisibleTabsItems(group)) {
+                  <div class="app-menu__tabs-empty">No matches</div>
+                }
+              </div>
+            </div>
           }
         </div>
       } @else {
@@ -315,48 +479,104 @@
                 }
               </a>
             } @else {
-              <button
-                type="button"
-                class="app-menu__item"
-                [ngClass]="itemPaletteClass(item)"
-                [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
-                [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
-                [class.app-menu__item--active]="isItemActive(item)"
-                [class.app-menu__item--disabled]="isItemDisabled(item)"
-                [class.app-menu__item--with-description]="itemDescription(item)"
-                [disabled]="isItemDisabled(item)"
-                [attr.role]="itemRole(item)"
-                [attr.aria-checked]="isItemChecked(item)"
-                [attr.aria-label]="itemAriaLabel(item)"
-                (click)="selectItem(item, $event)"
-                >
-                @if (itemIcon(item)) {
-                  <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
-                }
-                <span class="app-menu__item-main">
-                  <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
-                  @if (itemDescription(item)) {
-                    <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
-                  }
-                </span>
-                @if (itemDetail(item)) {
-                  <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
-                }
-                @if (hasItemCounter(item)) {
-                  <span
-                    class="app-menu__counter"
-                    [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+              @if (isItemRemovable(item)) {
+                <div class="app-menu__item-row" [ngClass]="itemPaletteClass(item)">
+                  <button
+                    type="button"
+                    class="app-menu__item app-menu__item--row-primary"
+                    [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                    [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
+                    [class.app-menu__item--active]="isItemActive(item)"
+                    [class.app-menu__item--disabled]="isItemDisabled(item)"
+                    [class.app-menu__item--with-description]="itemDescription(item)"
+                    [disabled]="isItemDisabled(item)"
+                    [attr.role]="itemRole(item)"
+                    [attr.aria-checked]="isItemChecked(item)"
+                    [attr.aria-label]="itemAriaLabel(item)"
+                    (click)="selectItem(item, $event)"
                     >
-                    {{ itemCounterLabel(item) }}
+                    @if (itemIcon(item)) {
+                      <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                    }
+                    <span class="app-menu__item-main">
+                      <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                      @if (itemDescription(item)) {
+                        <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                      }
+                    </span>
+                    @if (itemDetail(item)) {
+                      <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                    }
+                    @if (hasItemCounter(item)) {
+                      <span
+                        class="app-menu__counter"
+                        [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                        >
+                        {{ itemCounterLabel(item) }}
+                      </span>
+                    }
+                    @if (showItemCheck(item)) {
+                      <mat-icon class="app-menu__item-check">done</mat-icon>
+                    }
+                    @if (hasNestedItems(item)) {
+                      <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    class="app-menu__item-remove"
+                    [disabled]="isItemDisabled(item)"
+                    [attr.aria-label]="itemRemoveAriaLabel(item)"
+                    [title]="itemRemoveAriaLabel(item)"
+                    (click)="removeItem(item, $event)"
+                    >
+                    <mat-icon>{{ itemRemoveIcon(item) }}</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="app-menu__item"
+                  [ngClass]="itemPaletteClass(item)"
+                  [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                  [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
+                  [class.app-menu__item--active]="isItemActive(item)"
+                  [class.app-menu__item--disabled]="isItemDisabled(item)"
+                  [class.app-menu__item--with-description]="itemDescription(item)"
+                  [disabled]="isItemDisabled(item)"
+                  [attr.role]="itemRole(item)"
+                  [attr.aria-checked]="isItemChecked(item)"
+                  [attr.aria-label]="itemAriaLabel(item)"
+                  (click)="selectItem(item, $event)"
+                  >
+                  @if (itemIcon(item)) {
+                    <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                  }
+                  <span class="app-menu__item-main">
+                    <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                    @if (itemDescription(item)) {
+                      <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                    }
                   </span>
-                }
-                @if (showItemCheck(item)) {
-                  <mat-icon class="app-menu__item-check">done</mat-icon>
-                }
-                @if (hasNestedItems(item)) {
-                  <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
-                }
-              </button>
+                  @if (itemDetail(item)) {
+                    <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                  }
+                  @if (hasItemCounter(item)) {
+                    <span
+                      class="app-menu__counter"
+                      [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                      >
+                      {{ itemCounterLabel(item) }}
+                    </span>
+                  }
+                  @if (showItemCheck(item)) {
+                    <mat-icon class="app-menu__item-check">done</mat-icon>
+                  }
+                  @if (hasNestedItems(item)) {
+                    <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                  }
+                </button>
+              }
             }
           }
         </div>
