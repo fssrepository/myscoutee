@@ -509,7 +509,6 @@
                     class="app-menu__item-remove"
                     [disabled]="isItemDisabled(item)"
                     [attr.aria-label]="itemRemoveAriaLabel(item)"
-                    [title]="itemRemoveAriaLabel(item)"
                     (click)="removeItem(item, $event)"
                     >
                     <mat-icon>{{ itemRemoveIcon(item) }}</mat-icon>

@@ -125,6 +125,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   ngDoCheck(): void {
     this.syncCounterPulseState();
+    this.syncOpenPanelState();
   }
 
   ngOnDestroy(): void {
@@ -407,7 +408,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected get activeBranch(): AppMenuItem<TId, TContext> | null {
     const branch = this.activeBranchPath[this.activeBranchPath.length - 1] ?? null;
-    return branch ? this.currentItemById(branch.id) ?? branch : null;
+    return branch ? this.currentItemById(branch.id) : null;
   }
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
@@ -674,6 +675,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isItemDisabled(item) || this.isPassiveItem(item) || !this.isItemRemovable(item)) {
       return;
     }
+    const closesEmptyBranch = this.activeBranchPath.length > 0
+      && this.visibleSelectableListItems().length <= 1;
     this.itemSelect.emit({
       id: item.id,
       item,
@@ -682,6 +685,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       value: item.value,
       action: 'remove'
     });
+    if (closesEmptyBranch) {
+      this.setOpen(false);
+    }
   }
 
   protected updateRatingBarItemValue(item: AppMenuItem<TId, TContext>, value: unknown): void {
@@ -1080,6 +1086,29 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     const currentGroup = groups.find(group => group.id === this.activeTabsGroupId);
     const activeGroup = this.activeTabsSelectedGroup(groups);
     this.activeTabsGroupId = (currentGroup ?? activeGroup ?? groups[0] ?? null)?.id ?? null;
+  }
+
+  private syncOpenPanelState(): void {
+    if (!this.open || this.isInlineKind || this.isCustomTriggerAction) {
+      return;
+    }
+    if (this.activeBranchPath.length > 0) {
+      if (!this.activeBranch || this.visibleSelectableListItems().length === 0) {
+        this.setOpen(false);
+      }
+      return;
+    }
+    if (this.isButtonRowKind) {
+      this.setOpen(false);
+      return;
+    }
+    if (this.isDropdownListKind && !this.isTabbedPresentation && this.visibleSelectableListItems().length === 0) {
+      this.setOpen(false);
+    }
+  }
+
+  private visibleSelectableListItems(): readonly AppMenuItem<TId, TContext>[] {
+    return this.visibleListItems.filter(item => !this.isPassiveItem(item));
   }
 
   private defaultTabsGroup(groups: readonly AppMenuGroup<TId, TContext>[] = this.visibleTabsGroups): AppMenuGroup<TId, TContext> | null {
