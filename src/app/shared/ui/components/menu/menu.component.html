@@ -194,30 +194,6 @@
         </div>
       } @else if ((isTabbedPresentation || activeBranchTabbedPresentation) && hasTabsGroups) {
         <div class="app-menu__tabs">
-          @if (showTabsBar()) {
-            <div class="app-menu__tabs-tabs" role="tablist" [attr.aria-label]="resolvedTitle || 'Menu tabs'">
-              @for (group of tabsGroups; track trackByGroupId($index, group)) {
-                <button
-                  type="button"
-                  class="app-menu__tabs-tab"
-                  [ngClass]="groupPaletteClass(group)"
-                  [class.app-menu__tabs-tab--active]="isTabsGroupActive(group)"
-                  [attr.id]="tabsId(group)"
-                  role="tab"
-                  [attr.aria-selected]="isTabsGroupActive(group)"
-                  [attr.aria-controls]="tabsPanelId(group)"
-                  (click)="selectTabsGroup(group, $event)"
-                  >
-                  @if (groupIcon(group)) {
-                    <mat-icon>{{ groupIcon(group) }}</mat-icon>
-                  }
-                  @if (groupLabel(group)) {
-                    <span>{{ groupLabel(group) | i18n }}</span>
-                  }
-                </button>
-              }
-            </div>
-          }
           @if (isTabsFilterable()) {
             <div class="app-menu__tabs-filter" (click)="$event.stopPropagation()">
               <mat-icon>search</mat-icon>
@@ -238,6 +214,30 @@
                   (click)="clearTabsFilter($event)"
                   >
                   <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          }
+          @if (showTabsBar()) {
+            <div class="app-menu__tabs-tabs" role="tablist" [attr.aria-label]="resolvedTitle || 'Menu tabs'">
+              @for (group of visibleTabsGroups; track trackByGroupId($index, group)) {
+                <button
+                  type="button"
+                  class="app-menu__tabs-tab"
+                  [ngClass]="groupPaletteClass(group)"
+                  [class.app-menu__tabs-tab--active]="isTabsGroupActive(group)"
+                  [attr.id]="tabsId(group)"
+                  role="tab"
+                  [attr.aria-selected]="isTabsGroupActive(group)"
+                  [attr.aria-controls]="tabsPanelId(group)"
+                  (click)="selectTabsGroup(group, $event)"
+                  >
+                  @if (groupIcon(group)) {
+                    <mat-icon>{{ groupIcon(group) }}</mat-icon>
+                  }
+                  @if (groupLabel(group)) {
+                    <span>{{ groupLabel(group) | i18n }}</span>
+                  }
                 </button>
               }
             </div>
@@ -352,6 +352,8 @@
                 }
               </div>
             </div>
+          } @else {
+            <div class="app-menu__tabs-empty">No matches</div>
           }
         </div>
       } @else {

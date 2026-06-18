@@ -95,9 +95,11 @@ export function appMenuPaletteFromToneClass(toneClass: string | null | undefined
     case 'section-lifestyle':
     case 'section-mind':
       return 'teal';
-    case 'section-arts':
-    case 'section-beliefs':
     case 'section-identity':
+      return 'cyan';
+    case 'section-beliefs':
+      return 'purple';
+    case 'section-arts':
       return 'violet';
     default:
       return 'neutral';

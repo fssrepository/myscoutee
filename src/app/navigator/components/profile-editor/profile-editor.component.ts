@@ -1857,12 +1857,14 @@ export class ProfileEditorComponent {
       case 'section-mind':
       case 'experience-filter-online':
         return 'teal';
-      case 'detail-tone-4':
       case 'section-beliefs':
+        return 'purple';
+      case 'detail-tone-4':
       case 'section-arts':
-      case 'section-identity':
       case 'experience-filter-project':
         return 'violet';
+      case 'section-identity':
+        return 'cyan';
       case 'status-inactive':
       default:
         return 'muted';

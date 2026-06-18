@@ -365,6 +365,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.tabsGroups.length > 0;
   }
 
+  protected get visibleTabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
+    const query = this.normalizedFilterText();
+    if (!query) {
+      return this.tabsGroups;
+    }
+    return this.tabsGroups.filter(group => this.groupMatchesFilter(group, query));
+  }
+
   protected get actionRowItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.items.length > 0) {
       return this.items;
@@ -795,15 +803,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected showTabsBar(): boolean {
-    return this.tabsGroups.length > 1 || this.tabsGroups.some(group => this.groupLabel(group) || this.groupIcon(group));
+    const groups = this.visibleTabsGroups;
+    return groups.length > 1 || groups.some(group => this.groupLabel(group) || this.groupIcon(group));
   }
 
   protected activeTabsGroup(): AppMenuGroup<TId, TContext> | null {
-    if (this.tabsGroups.length === 0) {
+    const groups = this.visibleTabsGroups;
+    if (groups.length === 0) {
       return null;
     }
-    return this.tabsGroups.find(group => group.id === this.activeTabsGroupId)
-      ?? this.defaultTabsGroup();
+    return groups.find(group => group.id === this.activeTabsGroupId)
+      ?? this.defaultTabsGroup(groups);
   }
 
   protected isTabsGroupActive(group: AppMenuGroup<TId, TContext>): boolean {
@@ -813,21 +823,20 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   protected selectTabsGroup(group: AppMenuGroup<TId, TContext>, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    if (this.activeTabsGroupId !== group.id) {
-      this.tabsFilterText = '';
-    }
     this.activeTabsGroupId = group.id;
   }
 
   protected updateTabsFilter(event: Event): void {
     const target = event.target as HTMLInputElement | null;
     this.tabsFilterText = `${target?.value ?? ''}`;
+    this.syncActiveTabsGroup();
   }
 
   protected clearTabsFilter(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     this.tabsFilterText = '';
+    this.syncActiveTabsGroup();
   }
 
   protected filteredTabsItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
@@ -1026,17 +1035,22 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if ((!this.isTabbedPresentation && !this.activeBranchTabbedPresentation) || this.tabsGroups.length === 0) {
       return;
     }
-    const activeGroup = this.activeTabsSelectedGroup();
-    const currentGroup = this.tabsGroups.find(group => group.id === this.activeTabsGroupId);
-    this.activeTabsGroupId = (activeGroup ?? currentGroup ?? this.tabsGroups[0] ?? null)?.id ?? null;
+    const groups = this.visibleTabsGroups;
+    if (groups.length === 0) {
+      this.activeTabsGroupId = null;
+      return;
+    }
+    const currentGroup = groups.find(group => group.id === this.activeTabsGroupId);
+    const activeGroup = this.activeTabsSelectedGroup(groups);
+    this.activeTabsGroupId = (currentGroup ?? activeGroup ?? groups[0] ?? null)?.id ?? null;
   }
 
-  private defaultTabsGroup(): AppMenuGroup<TId, TContext> | null {
-    return this.activeTabsSelectedGroup() ?? this.tabsGroups[0] ?? null;
+  private defaultTabsGroup(groups: readonly AppMenuGroup<TId, TContext>[] = this.visibleTabsGroups): AppMenuGroup<TId, TContext> | null {
+    return this.activeTabsSelectedGroup(groups) ?? groups[0] ?? null;
   }
 
-  private activeTabsSelectedGroup(): AppMenuGroup<TId, TContext> | null {
-    return this.tabsGroups.find(group =>
+  private activeTabsSelectedGroup(groups: readonly AppMenuGroup<TId, TContext>[] = this.tabsGroups): AppMenuGroup<TId, TContext> | null {
+    return groups.find(group =>
       this.groupItems(group).some(item => this.isItemActive(item))
     ) ?? null;
   }
@@ -1071,6 +1085,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.itemDescription(item),
       this.itemDetail(item)
     ].some(value => this.normalizedText(value).includes(query));
+  }
+
+  private groupMatchesFilter(group: AppMenuGroup<TId, TContext>, query: string): boolean {
+    return this.groupItems(group).some(item => this.itemMatchesFilter(item, query));
   }
 
   private normalizedFilterText(): string {
