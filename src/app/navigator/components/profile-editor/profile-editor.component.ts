@@ -665,15 +665,13 @@ export class ProfileEditorComponent {
     return buildTabbedMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext>({
       idPrefix: 'profile-language',
       groups: [{
-        title: '',
+        title: 'Languages',
+        shortTitle: 'Languages',
+        toneClass: 'section-languages',
         options: this.languageMenuOptions()
       }],
       selected: this.profileForm.languages,
       context: value => ({ kind: 'languageOption', value }),
-      groupIcon: () => '',
-      groupPalette: () => 'blue',
-      itemIcon: () => 'language',
-      itemPalette: () => 'blue',
       summary: {
         emptyLabel: 'Select languages',
         maxLabels: 2,

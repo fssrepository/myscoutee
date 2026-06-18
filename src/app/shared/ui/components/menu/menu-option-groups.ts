@@ -85,6 +85,7 @@ export function appMenuPaletteFromToneClass(toneClass: string | null | undefined
   switch (toneClass) {
     case 'section-active':
       return 'green';
+    case 'section-languages':
     case 'section-social':
       return 'blue';
     case 'section-food':
@@ -124,6 +125,8 @@ export function appMenuIconFromToneClass(toneClass: string | null | undefined): 
       return 'restaurant';
     case 'section-active':
       return 'hiking';
+    case 'section-languages':
+      return 'language';
     case 'section-mind':
       return 'self_improvement';
     case 'section-identity':

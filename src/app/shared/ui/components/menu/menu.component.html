@@ -247,10 +247,10 @@
               class="app-menu__tabs-panel"
               [attr.id]="tabsPanelId(group)"
               role="tabpanel"
-              [attr.aria-labelledby]="tabsId(group)"
+              [attr.aria-labelledby]="showTabsBar() ? tabsId(group) : null"
               >
               <div class="app-menu__tabs-items">
-                @for (item of filteredTabsItems(group); track trackByItemId($index, item)) {
+                @for (item of tabsGroupItems(group); track trackByItemId($index, item)) {
                   @if (isDivider(item)) {
                     <div class="app-menu__divider app-menu__tabs-divider" role="separator"></div>
                   } @else if (isSection(item)) {

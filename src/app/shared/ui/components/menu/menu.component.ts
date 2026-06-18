@@ -16,6 +16,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../pipes';
+import { I18nService } from '../../../core';
 import {
   RatingStarBarComponent,
   type RatingStarBarConfig
@@ -61,6 +62,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
 
   @Input() kind: AppMenuKind = 'button-row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
@@ -370,7 +372,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (!query) {
       return this.tabsGroups;
     }
-    return this.tabsGroups.filter(group => this.groupMatchesFilter(group, query));
+    return this.tabsGroups
+      .map(group => ({
+        ...group,
+        items: this.groupItems(group).filter(item => this.itemMatchesFilter(item, query))
+      }))
+      .filter(group => this.groupItems(group).length > 0);
   }
 
   protected get actionRowItems(): readonly AppMenuItem<TId, TContext>[] {
@@ -803,8 +810,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected showTabsBar(): boolean {
-    const groups = this.visibleTabsGroups;
-    return groups.length > 1 || groups.some(group => this.groupLabel(group) || this.groupIcon(group));
+    return this.visibleTabsGroups.length > 1;
   }
 
   protected activeTabsGroup(): AppMenuGroup<TId, TContext> | null {
@@ -839,17 +845,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     this.syncActiveTabsGroup();
   }
 
-  protected filteredTabsItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
-    const query = this.normalizedFilterText();
-    const items = this.groupItems(group);
-    if (!query) {
-      return items;
-    }
-    return items.filter(item => this.itemMatchesFilter(item, query));
+  protected tabsGroupItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return this.groupItems(group);
   }
 
   protected hasVisibleTabsItems(group: AppMenuGroup<TId, TContext>): boolean {
-    return this.filteredTabsItems(group).length > 0;
+    return this.tabsGroupItems(group).length > 0;
   }
 
   protected tabsId(group: AppMenuGroup<TId, TContext>): string {
@@ -1080,15 +1081,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private itemMatchesFilter(item: AppMenuItem<TId, TContext>, query: string): boolean {
     return [
-      item.id,
-      this.itemLabel(item),
-      this.itemDescription(item),
-      this.itemDetail(item)
+      this.translatedFilterText(this.itemLabel(item)),
+      this.translatedFilterText(this.itemDescription(item)),
+      this.translatedFilterText(this.itemDetail(item))
     ].some(value => this.normalizedText(value).includes(query));
   }
 
-  private groupMatchesFilter(group: AppMenuGroup<TId, TContext>, query: string): boolean {
-    return this.groupItems(group).some(item => this.itemMatchesFilter(item, query));
+  private translatedFilterText(value: string): string {
+    return this.i18n.translate(value);
   }
 
   private normalizedFilterText(): string {
