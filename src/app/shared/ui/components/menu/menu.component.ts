@@ -853,6 +853,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.groupItems(group);
   }
 
+  protected tabsGroupSelectedCount(group: AppMenuGroup<TId, TContext>): number {
+    return this.groupItems(this.sourceTabsGroup(group)).filter(item => this.isItemActive(item)).length;
+  }
+
   protected itemLabelFilterParts(item: AppMenuItem<TId, TContext>): readonly AppMenuFilterTextPart[] {
     return this.filterTextParts(this.itemLabel(item));
   }
@@ -1062,6 +1066,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return groups.find(group =>
       this.groupItems(group).some(item => this.isItemActive(item))
     ) ?? null;
+  }
+
+  private sourceTabsGroup(group: AppMenuGroup<TId, TContext>): AppMenuGroup<TId, TContext> {
+    return this.tabsGroups.find(candidate => candidate.id === group.id) ?? group;
   }
 
   private currentItemById(id: TId): AppMenuItem<TId, TContext> | null {

@@ -195,27 +195,29 @@
       } @else if ((isTabbedPresentation || activeBranchTabbedPresentation) && hasTabsGroups) {
         <div class="app-menu__tabs">
           @if (isTabsFilterable()) {
-            <div class="app-menu__tabs-filter" (click)="$event.stopPropagation()">
-              <mat-icon>search</mat-icon>
-              <input
-                type="text"
-                class="app-menu__tabs-filter-input"
-                [value]="tabsFilterText"
-                [attr.placeholder]="resolvedTitle || 'Search'"
-                (input)="updateTabsFilter($event)"
-                (keydown)="$event.stopPropagation()"
-                />
-              @if (tabsFilterText) {
-                <button
-                  type="button"
-                  class="app-menu__tabs-filter-clear"
-                  aria-label="Clear search"
-                  title="Clear search"
-                  (click)="clearTabsFilter($event)"
-                  >
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
+            <div class="app-menu__tabs-head">
+              <div class="app-menu__tabs-filter" (click)="$event.stopPropagation()">
+                <mat-icon>search</mat-icon>
+                <input
+                  type="text"
+                  class="app-menu__tabs-filter-input"
+                  [value]="tabsFilterText"
+                  [attr.placeholder]="resolvedTitle || 'Search'"
+                  (input)="updateTabsFilter($event)"
+                  (keydown)="$event.stopPropagation()"
+                  />
+                @if (tabsFilterText) {
+                  <button
+                    type="button"
+                    class="app-menu__tabs-filter-clear"
+                    aria-label="Clear search"
+                    title="Clear search"
+                    (click)="clearTabsFilter($event)"
+                    >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
             </div>
           }
           @if (showTabsBar()) {
@@ -237,6 +239,9 @@
                   }
                   @if (groupLabel(group)) {
                     <span>{{ groupLabel(group) | i18n }}</span>
+                  }
+                  @if (tabsGroupSelectedCount(group) > 0) {
+                    <span class="app-menu__counter app-menu__counter--tabs-tab">{{ tabsGroupSelectedCount(group) }}</span>
                   }
                 </button>
               }
@@ -261,106 +266,49 @@
                       <span>{{ itemLabel(item) | i18n }}</span>
                     </div>
                   } @else {
-                    @if (isItemRemovable(item)) {
-                      <div class="app-menu__tabs-row" [ngClass]="itemPaletteClass(item)">
-                        <button
-                          type="button"
-                          class="app-menu__tabs-item app-menu__tabs-item--row-primary"
-                          [class.app-menu__tabs-item--active]="isItemActive(item)"
-                          [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
-                          [class.app-menu__tabs-item--with-description]="itemDescription(item)"
-                          [disabled]="isItemDisabled(item)"
-                          [attr.role]="itemRole(item)"
-                          [attr.aria-checked]="isItemChecked(item)"
-                          [attr.aria-label]="itemAriaLabel(item)"
-                          [title]="itemAriaLabel(item) || itemLabel(item)"
-                          (click)="selectItem(item, $event)"
-                          >
-                          @if (itemIcon(item)) {
-                            <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
-                          }
-                          <span class="app-menu__tabs-item-main">
-                            <span class="app-menu__tabs-item-label">
-                              @for (part of itemLabelFilterParts(item); track $index) {
-                                @if (part.match) {
-                                  <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
-                                } @else {
-                                  <span>{{ part.text }}</span>
-                                }
-                              }
-                            </span>
-                            @if (itemDescription(item)) {
-                              <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
+                    <button
+                      type="button"
+                      class="app-menu__tabs-item"
+                      [ngClass]="itemPaletteClass(item)"
+                      [class.app-menu__tabs-item--active]="isItemActive(item)"
+                      [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
+                      [class.app-menu__tabs-item--with-description]="itemDescription(item)"
+                      [disabled]="isItemDisabled(item)"
+                      [attr.role]="itemRole(item)"
+                      [attr.aria-checked]="isItemChecked(item)"
+                      [attr.aria-label]="itemAriaLabel(item)"
+                      [title]="itemAriaLabel(item) || itemLabel(item)"
+                      (click)="selectItem(item, $event)"
+                      >
+                      @if (itemIcon(item)) {
+                        <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
+                      }
+                      <span class="app-menu__tabs-item-main">
+                        <span class="app-menu__tabs-item-label">
+                          @for (part of itemLabelFilterParts(item); track $index) {
+                            @if (part.match) {
+                              <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
+                            } @else {
+                              <span>{{ part.text }}</span>
                             }
-                          </span>
-                          @if (hasItemCounter(item)) {
-                            <span
-                              class="app-menu__counter"
-                              [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
-                              >
-                              {{ itemCounterLabel(item) }}
-                            </span>
-                          }
-                          @if (showItemCheck(item)) {
-                            <mat-icon class="app-menu__tabs-item-check">done</mat-icon>
-                          }
-                        </button>
-                        <button
-                          type="button"
-                          class="app-menu__tabs-remove"
-                          [disabled]="isItemDisabled(item)"
-                          [attr.aria-label]="itemRemoveAriaLabel(item)"
-                          [title]="itemRemoveAriaLabel(item)"
-                          (click)="removeItem(item, $event)"
-                          >
-                          <mat-icon>{{ itemRemoveIcon(item) }}</mat-icon>
-                        </button>
-                      </div>
-                    } @else {
-                      <button
-                        type="button"
-                        class="app-menu__tabs-item"
-                        [ngClass]="itemPaletteClass(item)"
-                        [class.app-menu__tabs-item--active]="isItemActive(item)"
-                        [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
-                        [class.app-menu__tabs-item--with-description]="itemDescription(item)"
-                        [disabled]="isItemDisabled(item)"
-                        [attr.role]="itemRole(item)"
-                        [attr.aria-checked]="isItemChecked(item)"
-                        [attr.aria-label]="itemAriaLabel(item)"
-                        [title]="itemAriaLabel(item) || itemLabel(item)"
-                        (click)="selectItem(item, $event)"
-                        >
-                        @if (itemIcon(item)) {
-                          <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
-                        }
-                        <span class="app-menu__tabs-item-main">
-                          <span class="app-menu__tabs-item-label">
-                            @for (part of itemLabelFilterParts(item); track $index) {
-                              @if (part.match) {
-                                <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
-                              } @else {
-                                <span>{{ part.text }}</span>
-                              }
-                            }
-                          </span>
-                          @if (itemDescription(item)) {
-                            <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
                           }
                         </span>
-                        @if (hasItemCounter(item)) {
-                          <span
-                            class="app-menu__counter"
-                            [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
-                            >
-                            {{ itemCounterLabel(item) }}
-                          </span>
+                        @if (itemDescription(item)) {
+                          <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
                         }
-                        @if (showItemCheck(item)) {
-                          <mat-icon class="app-menu__tabs-item-check">done</mat-icon>
-                        }
-                      </button>
-                    }
+                      </span>
+                      @if (hasItemCounter(item)) {
+                        <span
+                          class="app-menu__counter"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
+                          >
+                          {{ itemCounterLabel(item) }}
+                        </span>
+                      }
+                      <span class="app-menu__tabs-toggle" [class.app-menu__tabs-toggle--active]="isItemActive(item)" aria-hidden="true">
+                        <span></span>
+                      </span>
+                    </button>
                   }
                 }
                 @if (!hasVisibleTabsItems(group)) {
