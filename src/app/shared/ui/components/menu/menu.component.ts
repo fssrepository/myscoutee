@@ -46,6 +46,10 @@ import {
 } from './menu-summary';
 
 type AppMenuResolvedLayout = 'desktop' | 'mobile';
+type AppMenuFilterTextPart = {
+  text: string;
+  match: boolean;
+};
 
 @Component({
   selector: 'app-menu',
@@ -849,6 +853,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.groupItems(group);
   }
 
+  protected itemLabelFilterParts(item: AppMenuItem<TId, TContext>): readonly AppMenuFilterTextPart[] {
+    return this.filterTextParts(this.itemLabel(item));
+  }
+
   protected hasVisibleTabsItems(group: AppMenuGroup<TId, TContext>): boolean {
     return this.tabsGroupItems(group).length > 0;
   }
@@ -1088,7 +1096,33 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   private translatedFilterText(value: string): string {
+    this.i18n.revision();
     return this.i18n.translate(value);
+  }
+
+  private filterTextParts(value: string): readonly AppMenuFilterTextPart[] {
+    const text = this.translatedFilterText(value);
+    const query = this.normalizedFilterText();
+    if (!query) {
+      return [{ text, match: false }];
+    }
+    const normalizedText = this.normalizedText(text);
+    const parts: AppMenuFilterTextPart[] = [];
+    let offset = 0;
+    let index = normalizedText.indexOf(query, offset);
+    while (index >= 0) {
+      if (index > offset) {
+        parts.push({ text: text.slice(offset, index), match: false });
+      }
+      const nextOffset = index + query.length;
+      parts.push({ text: text.slice(index, nextOffset), match: true });
+      offset = nextOffset;
+      index = normalizedText.indexOf(query, offset);
+    }
+    if (offset < text.length) {
+      parts.push({ text: text.slice(offset), match: false });
+    }
+    return parts.length > 0 ? parts : [{ text, match: false }];
   }
 
   private normalizedFilterText(): string {

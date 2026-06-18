@@ -280,7 +280,15 @@
                             <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
                           }
                           <span class="app-menu__tabs-item-main">
-                            <span class="app-menu__tabs-item-label">{{ itemLabel(item) | i18n }}</span>
+                            <span class="app-menu__tabs-item-label">
+                              @for (part of itemLabelFilterParts(item); track $index) {
+                                @if (part.match) {
+                                  <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
+                                } @else {
+                                  <span>{{ part.text }}</span>
+                                }
+                              }
+                            </span>
                             @if (itemDescription(item)) {
                               <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
                             }
@@ -327,7 +335,15 @@
                           <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
                         }
                         <span class="app-menu__tabs-item-main">
-                          <span class="app-menu__tabs-item-label">{{ itemLabel(item) | i18n }}</span>
+                          <span class="app-menu__tabs-item-label">
+                            @for (part of itemLabelFilterParts(item); track $index) {
+                              @if (part.match) {
+                                <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
+                              } @else {
+                                <span>{{ part.text }}</span>
+                              }
+                            }
+                          </span>
                           @if (itemDescription(item)) {
                             <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
                           }
