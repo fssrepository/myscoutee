@@ -20,7 +20,6 @@ import {
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
   InfoCardComponent,
-  ProgressIndicatorComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -65,6 +64,7 @@ type AssetPopupMenuContext =
   | { menu: 'ticket-order'; order: AppConstants.AssetTicketOrder }
   | { menu: 'asset-filter'; filter: AppConstants.AssetFilterType }
   | { menu: 'asset-assign-basket'; assetCard: AppDTOs.AssetCardDTO }
+  | { menu: 'asset-assign-confirm' }
   | { menu: 'supply-request-filter'; filter: AssetSupplyRequestFilter }
   | { menu: 'supply-request-action'; row: AssetSupplyRequestRow; action: AssetSupplyRequestRowAction }
   | {
@@ -85,7 +85,6 @@ type AssetPopupMenuContext =
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     InfoCardComponent,
-    ProgressIndicatorComponent,
     SmartListComponent,
     ConfirmationDialogComponent,
     I18nPipe,
@@ -240,16 +239,36 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected assetAssignBasketActionItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
     const type = this.currentAssetSmartListType();
     const count = this.assetAssignBasketCount();
-    return [{
-      id: 'asset-assign-basket',
-      icon: this.ownedAssets.assetTypeIcon(type),
-      openIcon: this.ownedAssets.assetTypeIcon(type),
-      palette: this.assetFilterPalette(type),
-      kind: 'branch',
-      counter: count > 0 ? count : null,
-      ariaLabel: 'Open selected assets',
-      items: this.assetAssignBasketMenuItems()
-    }];
+    const items: AppMenuItem<string, AssetPopupMenuContext>[] = [];
+    if (count > 0) {
+      items.push({
+        id: 'asset-assign-basket',
+        icon: this.ownedAssets.assetTypeIcon(type),
+        openIcon: this.ownedAssets.assetTypeIcon(type),
+        palette: this.assetFilterPalette(type),
+        kind: 'branch',
+        counter: count,
+        ariaLabel: 'Open selected assets',
+        items: this.assetAssignBasketMenuItems()
+      });
+    }
+    items.push({
+      id: 'asset-assign-confirm',
+      icon: 'done',
+      kind: 'action',
+      palette: this.basketSaveErrorMessage() ? 'danger' : 'success',
+      disabled: () => !this.canConfirmBasketSelection(),
+      ariaLabel: 'Save selected assets',
+      progress: {
+        state: () => this.isBasketSavePending()
+          ? 'loading'
+          : this.basketSaveErrorMessage()
+            ? 'error'
+            : null
+      },
+      context: { menu: 'asset-assign-confirm' }
+    });
+    return items;
   }
 
   protected assetAssignBasketMenuItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
@@ -513,6 +532,9 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         if (event.action === 'remove') {
           this.toggleAssetAssignBasketCard(context.assetCard.id, event.sourceEvent);
         }
+        return;
+      case 'asset-assign-confirm':
+        this.confirmBasketSelection(event.sourceEvent);
         return;
       case 'supply-request-filter':
         this.selectSupplyRequestFilter(context.filter, event.sourceEvent);

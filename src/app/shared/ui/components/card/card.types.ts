@@ -205,6 +205,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<string, CardMenuActionConfig>> =
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
+  removeAssignment: { label: 'remove', icon: 'link_off', tone: 'destructive' },
   removeFeedback: { label: 'remove', icon: 'remove_circle', tone: 'destructive' },
   reportManager: { label: 'report.manager', icon: 'flag', tone: 'warning' },
   reportOrganizer: { label: 'report.organizer', icon: 'flag', tone: 'warning' },

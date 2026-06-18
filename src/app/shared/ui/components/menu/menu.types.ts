@@ -1,4 +1,9 @@
 import type { Signal } from '@angular/core';
+import type {
+  ProgressIndicatorShape,
+  ProgressIndicatorState,
+  ProgressIndicatorTone
+} from '../progress-indicator';
 import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type AppMenuKind =
@@ -80,6 +85,13 @@ export interface AppMenuTrigger {
   context?: unknown;
 }
 
+export interface AppMenuItemProgress {
+  state: AppMenuLiveValue<ProgressIndicatorState | null | undefined>;
+  tone?: AppMenuLiveValue<ProgressIndicatorTone | null | undefined>;
+  shape?: ProgressIndicatorShape;
+  durationMs?: AppMenuLiveValue<number | null | undefined>;
+}
+
 export interface AppMenuSegment {
   id: string;
   label?: AppMenuLiveValue<string | null | undefined>;
@@ -115,6 +127,7 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   target?: AppMenuLiveValue<string | null | undefined>;
   rel?: AppMenuLiveValue<string | null | undefined>;
   ratingBarConfig?: RatingStarBarConfig | null;
+  progress?: AppMenuItemProgress | null;
   segments?: readonly AppMenuSegment[];
   span?: AppMenuLiveValue<number | null | undefined>;
   items?: readonly AppMenuItem<TId, TContext>[];

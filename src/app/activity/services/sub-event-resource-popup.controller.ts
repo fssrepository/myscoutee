@@ -83,6 +83,7 @@ interface PendingSupplyDeleteState {
 
 interface PendingResourceDeleteState {
   assetId: string;
+  type: AppConstants.AssetType;
   title: string;
   busy: boolean;
   error: string | null;
@@ -2362,11 +2363,12 @@ export class SubEventResourcePopupController {
 
   private requestDeleteResourceCard(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
     event.stopPropagation();
-    if (!card.sourceAssetId) {
+    if (!card.sourceAssetId || !this.isAssignableAssetType(card.type)) {
       return;
     }
     this.pendingResourceDeleteRef.set({
       assetId: card.sourceAssetId,
+      type: card.type,
       title: card.title,
       busy: false,
       error: null
@@ -2378,25 +2380,29 @@ export class SubEventResourcePopupController {
     if (!pending || pending.busy) {
       return;
     }
+    const nextState = this.buildResourceAssignmentRemovalState(pending);
+    if (!nextState) {
+      this.pendingResourceDeleteRef.set({
+        ...pending,
+        busy: false,
+        error: 'Unable to remove assignment.'
+      });
+      return;
+    }
     this.pendingResourceDeleteRef.set({
       ...pending,
       busy: true,
       error: null
     });
-    void this.ownedAssets.deleteAssetCardById(pending.assetId)
-      .then(deleted => {
+    void this.activityResourcesService.replaceSubEventResourceState(nextState)
+      .then(savedState => {
         const currentPending = this.pendingResourceDeleteRef();
         if (!currentPending || currentPending.assetId !== pending.assetId) {
           return;
         }
-        if (!deleted) {
-          this.pendingResourceDeleteRef.set({
-            ...currentPending,
-            busy: false,
-            error: 'Unable to delete resource card.'
-          });
-          return;
-        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.syncPopupSubEventMetrics({ persistAssetRequests: true });
         this.pendingResourceDeleteRef.set(null);
       })
       .catch(() => {
@@ -2407,7 +2413,7 @@ export class SubEventResourcePopupController {
         this.pendingResourceDeleteRef.set({
           ...currentPending,
           busy: false,
-          error: 'Unable to delete resource card.'
+          error: 'Unable to remove assignment.'
         });
       });
   }
@@ -2422,7 +2428,42 @@ export class SubEventResourcePopupController {
 
   private resourceDeleteCardLabel(): string {
     const pending = this.pendingResourceDeleteRef();
-    return pending ? `Delete "${pending.title}"?` : '';
+    return pending ? `Remove "${pending.title}" from this event assignment?` : '';
+  }
+
+  private buildResourceAssignmentRemovalState(
+    pending: PendingResourceDeleteState
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    const context = this.popupContextRef();
+    const nextState = this.buildPopupResourceState(context);
+    if (!context || !nextState) {
+      return null;
+    }
+    const currentIds = nextState.assetAssignmentIds[pending.type] ?? [];
+    const nextIds = currentIds.filter(assetId => assetId !== pending.assetId);
+    if (nextIds.length === currentIds.length) {
+      return null;
+    }
+    const nextSettings = { ...(nextState.assetSettingsByType[pending.type] ?? {}) };
+    delete nextSettings[pending.assetId];
+    nextState.assetAssignmentIds = {
+      ...nextState.assetAssignmentIds,
+      [pending.type]: nextIds
+    };
+    nextState.assetSettingsByType = {
+      ...nextState.assetSettingsByType,
+      [pending.type]: nextSettings
+    };
+    if (pending.type === 'Supplies') {
+      const nextSupplyEntries = { ...nextState.supplyContributionEntriesByAssetId };
+      delete nextSupplyEntries[pending.assetId];
+      nextState.supplyContributionEntriesByAssetId = nextSupplyEntries;
+    }
+    return nextState;
+  }
+
+  private isAssignableAssetType(type: AppConstants.SubEventResourceFilter): type is AppConstants.AssetType {
+    return type === 'Car' || type === 'Accommodation' || type === 'Supplies';
   }
 
   private openAssignPopup(event?: Event): void {

@@ -53,6 +53,10 @@
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
             [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
+            [class.app-menu__button-row-item--progress]="itemProgressState(item) !== null"
+            [class.app-menu__button-row-item--progress-loading]="itemProgressState(item) === 'loading'"
+            [class.app-menu__button-row-item--progress-error]="itemProgressState(item) === 'error'"
+            [class.app-menu__button-row-item--progress-success]="itemProgressState(item) === 'success'"
             [disabled]="isItemDisabled(item)"
             [attr.aria-expanded]="hasNestedItems(item) ? isActionRowItemOpen(item) : null"
             [attr.aria-haspopup]="hasNestedItems(item) ? 'menu' : null"
@@ -61,6 +65,17 @@
             [title]="actionRowItemAriaLabel(item) || actionRowItemLabel(item)"
             (click)="selectActionRowItem(item, $event)"
             >
+            @if (itemProgressState(item); as progressState) {
+              <span class="app-menu__button-row-ring" aria-hidden="true">
+                <app-progress-indicator
+                  kind="action-ring"
+                  [shape]="itemProgressShape(item)"
+                  [state]="progressState"
+                  [tone]="itemProgressTone(item)"
+                  [durationMs]="itemProgressDurationMs(item)"
+                ></app-progress-indicator>
+              </span>
+            }
             @if (actionRowItemIcon(item)) {
               <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
             }

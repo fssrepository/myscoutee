@@ -21,6 +21,12 @@ import {
   RatingStarBarComponent,
   type RatingStarBarConfig
 } from '../rating-star-bar';
+import {
+  ProgressIndicatorComponent,
+  type ProgressIndicatorShape,
+  type ProgressIndicatorState,
+  type ProgressIndicatorTone
+} from '../progress-indicator';
 import type {
   AppMenuCounter,
   AppMenuCounterValue,
@@ -54,7 +60,7 @@ type AppMenuFilterTextPart = {
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent],
+  imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent, ProgressIndicatorComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -759,6 +765,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected actionRowItemAriaLabel(item: AppMenuItem<TId, TContext>): string | null {
     return this.itemAriaLabel(item) ?? (this.actionRowItemLabel(item) || null);
+  }
+
+  protected itemProgressState(item: AppMenuItem<TId, TContext>): ProgressIndicatorState | null {
+    const state = this.resolveLiveValue(item.progress?.state) ?? null;
+    return state === 'idle' || state === 'inactive' ? null : state;
+  }
+
+  protected itemProgressTone(item: AppMenuItem<TId, TContext>): ProgressIndicatorTone {
+    return this.resolveLiveValue(item.progress?.tone) ?? 'default';
+  }
+
+  protected itemProgressShape(item: AppMenuItem<TId, TContext>): ProgressIndicatorShape {
+    return item.progress?.shape ?? (this.isLabeledActionRowItem(item) ? 'button' : 'circle');
+  }
+
+  protected itemProgressDurationMs(item: AppMenuItem<TId, TContext>): number {
+    const durationMs = Number(this.resolveLiveValue(item.progress?.durationMs));
+    return Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 3000;
   }
 
   protected branchHeaderActions(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
