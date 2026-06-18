@@ -142,6 +142,7 @@ export class EventExplorePopupComponent {
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
+  private readonly checkoutDraftClearSaveSourceIds = new Set<string>();
   private readonly checkoutDraftReleaseSourceIds = new Set<string>();
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
@@ -247,8 +248,8 @@ export class EventExplorePopupComponent {
         .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
       this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       if (this.isOpen) {
-        if (removedPendingDraftSourceIds.length > 0 && this.shouldReloadEventExploreAfterDraftRemoval(removedPendingDraftSourceIds)) {
-          this.reloadEventExploreSmartList();
+        if (removedPendingDraftSourceIds.length > 0) {
+          this.restoreVisibleEventExploreRecordsById(removedPendingDraftSourceIds);
         } else if (hasNewPendingDraft) {
           this.pruneVisibleTrackedEventExploreRecords();
         }
@@ -966,9 +967,6 @@ export class EventExplorePopupComponent {
         ?? await this.eventsService.queryKnownItemById(activeUserId, sourceId);
 
       if (!record) {
-        if (this.isOpen) {
-          this.reloadEventExploreSmartList();
-        }
         return;
       }
 
@@ -978,9 +976,7 @@ export class EventExplorePopupComponent {
       const hadMembership = existingMembers.some(member => member.userId === activeUserId);
       if (!hadMembership) {
         this.locallyTrackedMembershipSourceIds.delete(sourceId);
-        if (this.isOpen) {
-          this.reloadEventExploreSmartList();
-        }
+        this.restoreVisibleEventExploreRecord(record);
         return;
       }
 
@@ -988,15 +984,16 @@ export class EventExplorePopupComponent {
         existingMembers.filter(member => member.userId !== activeUserId)
       );
       const payload = this.buildActivityEventSaveDTO(record, nextMembers);
+      const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
+      this.checkoutDraftClearSaveSourceIds.add(sourceId);
       const persistence = this.activitiesContext.emitActivityEventSave(payload);
+      this.restoreVisibleEventExploreRecord(nextRecord);
       if (this.selectedMembersRecord?.id === record.id) {
+        this.selectedMembersRecord = nextRecord;
         this.selectedMembers = nextMembers;
       }
       this.cdr.markForCheck();
       await persistence;
-      if (this.isOpen) {
-        this.reloadEventExploreSmartList();
-      }
     } finally {
       this.checkoutDraftReleaseSourceIds.delete(sourceId);
       this.cdr.markForCheck();
@@ -1198,7 +1195,7 @@ export class EventExplorePopupComponent {
 
   private applyActivityEventSave(sync: ActivityEventDTO): void {
     const dto = sync;
-    const userJoinedEvent = false;
+    const userJoinedEvent = this.locallyTrackedMembershipSourceIds.has(sync.id);
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
     } else {
@@ -1211,6 +1208,7 @@ export class EventExplorePopupComponent {
     const currentIndex = currentItems.findIndex(record => record.id === sync.id);
 
     if (currentIndex >= 0) {
+      this.checkoutDraftClearSaveSourceIds.delete(sync.id);
       if (userJoinedEvent) {
         currentItems.splice(currentIndex, 1);
         this.eventExploreSmartList.replaceVisibleItems(currentItems, {
@@ -1274,6 +1272,9 @@ export class EventExplorePopupComponent {
     }
 
     if (!this.isOpen || userJoinedEvent) {
+      return;
+    }
+    if (this.checkoutDraftClearSaveSourceIds.delete(sync.id.trim())) {
       return;
     }
     if (this.checkoutDraftReleaseSourceIds.has(sync.id.trim())) {
@@ -1378,16 +1379,6 @@ export class EventExplorePopupComponent {
         .map(draft => draft.sourceId.trim())
         .filter(sourceId => sourceId.length > 0)
     );
-  }
-
-  private shouldReloadEventExploreAfterDraftRemoval(sourceIds: readonly string[]): boolean {
-    return sourceIds.some(sourceId => {
-      const normalizedSourceId = sourceId.trim();
-      if (!normalizedSourceId || this.checkoutDraftReleaseSourceIds.has(normalizedSourceId)) {
-        return false;
-      }
-      return !this.locallyTrackedMembershipSourceIds.has(normalizedSourceId);
-    });
   }
 
   private requiresApprovalBeforePayment(
@@ -1564,6 +1555,7 @@ export class EventExplorePopupComponent {
     ]);
     const rollbackPayload = this.buildActivityEventSaveDTO(record, existingMembers);
     const nextPayload = this.buildActivityEventSaveDTO(record, nextMembers, selection?.paymentSessionId ?? null);
+    this.locallyTrackedMembershipSourceIds.add(record.id);
     this.activitiesContext.emitActivityEventSave(nextPayload);
 
     try {
@@ -1593,6 +1585,9 @@ export class EventExplorePopupComponent {
       }
       this.cdr.markForCheck();
     } catch (error) {
+      await exitPromise;
+      this.locallyTrackedMembershipSourceIds.delete(record.id);
+      this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
       this.activitiesContext.emitActivityEventSave(rollbackPayload);
       throw error;
     }
@@ -1646,6 +1641,79 @@ export class EventExplorePopupComponent {
     this.eventExploreSmartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - 1)
     });
+  }
+
+  private restoreVisibleEventExploreRecord(record: ActivityEventRecord): void {
+    if (!this.isOpen || !this.eventExploreSmartList || !this.shouldShowRestoredEventExploreRecord(record)) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(item => item.id === record.id);
+    const nextItems = currentIndex >= 0
+      ? currentItems.map(item => item.id === record.id ? record : item)
+      : this.sortVisibleEventExploreRecords([...currentItems, record]);
+    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
+      total: currentIndex >= 0
+        ? this.eventExploreSmartList.cursorState().total
+        : this.eventExploreSmartList.cursorState().total + 1
+    });
+  }
+
+  private restoreVisibleEventExploreRecordsById(sourceIds: readonly string[]): void {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    sourceIds.forEach(sourceId => {
+      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId.trim());
+      if (record) {
+        this.restoreVisibleEventExploreRecord(record);
+      }
+    });
+  }
+
+  private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
+    const activeUserId = this.activeUserId.trim();
+    if (activeUserId && this.hasTrackedMembership(record, activeUserId)) {
+      return false;
+    }
+    if (this.eventExploreFilterFriendsOnly) {
+      return false;
+    }
+    if (this.eventExploreFilterHasRooms && this.isEventExploreRecordFull(record)) {
+      return false;
+    }
+    const selectedTopic = this.normalizeTopic(this.eventExploreFilterTopic);
+    if (selectedTopic && !record.topics.some(topic => this.normalizeTopic(topic) === selectedTopic)) {
+      return false;
+    }
+    return true;
+  }
+
+  private sortVisibleEventExploreRecords(records: readonly ActivityEventRecord[]): ActivityEventRecord[] {
+    return [...records].sort((left, right) => {
+      const byOrder = this.compareEventExploreRecords(left, right);
+      if (byOrder !== 0) {
+        return byOrder;
+      }
+      return left.title.localeCompare(right.title);
+    });
+  }
+
+  private compareEventExploreRecords(left: ActivityEventRecord, right: ActivityEventRecord): number {
+    switch (this.eventExploreOrder) {
+      case 'nearby':
+        return (Number(left.distanceKm) || 0) - (Number(right.distanceKm) || 0);
+      case 'top-rated':
+        return (Number(right.rating) || 0) - (Number(left.rating) || 0);
+      case 'most-relevant':
+        return (Number(right.affinity) || 0) - (Number(left.affinity) || 0);
+      case 'past-events':
+        return AppUtils.toSortableDate(right.startAtIso) - AppUtils.toSortableDate(left.startAtIso);
+      case 'upcoming':
+      default:
+        return AppUtils.toSortableDate(left.startAtIso) - AppUtils.toSortableDate(right.startAtIso);
+    }
   }
 
   private pruneVisibleTrackedEventExploreRecords(): void {
@@ -1885,6 +1953,25 @@ export class EventExplorePopupComponent {
         : undefined,
       subEventsDisplayMode: record.subEventsDisplayMode,
       paymentSessionId
+    };
+  }
+
+  private withEventExploreMemberSummary(
+    record: ActivityEventRecord,
+    members: readonly ActivityContracts.ActivityMemberEntry[]
+  ): ActivityEventRecord {
+    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
+      this.eventMembersOwner(record),
+      members,
+      record.capacityTotal
+    );
+    return {
+      ...record,
+      acceptedMembers: summary.acceptedMembers,
+      pendingMembers: summary.pendingMembers,
+      capacityTotal: summary.capacityTotal,
+      acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
+      pendingMemberUserIds: [...summary.pendingMemberUserIds]
     };
   }
 
