@@ -23,31 +23,12 @@
             {{ state.cancelLabel }}
           </button>
         }
-        <span
-          class="confirmation-dialog-confirm-shell"
-          [class.is-loading]="state.busy"
-          [class.is-error]="!state.busy && !!state.errorMessage"
-          >
-          @if (state.busy || state.errorMessage) {
-            <app-progress-indicator
-              kind="action-ring"
-              shape="button"
-              [state]="confirmRingState(state)"
-              [perimeter]="state.ringPerimeter"
-            ></app-progress-indicator>
-          }
-          <button
-            type="button"
-            class="confirmation-dialog-btn confirmation-dialog-confirm-btn"
-            [class.tone-accent]="state.confirmTone === 'accent'"
-            [class.tone-danger]="state.confirmTone === 'danger'"
-            [class.tone-neutral]="state.confirmTone === 'neutral'"
-            [disabled]="state.busy"
-            (click)="confirm($event)"
-            >
-            {{ confirmText(state) }}
-          </button>
-        </span>
+        <app-menu
+          class="confirmation-dialog-confirm-menu"
+          kind="button-row"
+          [items]="confirmMenuItems(state)"
+          (itemSelect)="onConfirmMenuSelect($event)"
+        ></app-menu>
       </div>
     </div>
   </section>

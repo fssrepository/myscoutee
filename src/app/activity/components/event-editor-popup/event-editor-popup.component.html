@@ -36,17 +36,12 @@
       </div>
       <div class="popup-header-mobile-actions-row">
         @if (!eventEditorService.readOnly()) {
-        <span class="event-editor-save-btn-shell" [class.is-loading]="isSavePending">
-          <span class="event-editor-save-btn-ring" aria-hidden="true">
-            <app-progress-indicator kind="action-ring" shape="circle" [state]="isSavePending ? 'loading' : 'idle'"></app-progress-indicator>
-          </span>
-          <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-editor-save-btn"
-            [class.form-save-invalid]="!canSubmitEventEditorForm() && !isSavePending"
-            [disabled]="!canSubmitEventEditorForm() || isSavePending" (click)="saveEventEditorForm()"
-            aria-label="Save event">
-            <mat-icon>done</mat-icon>
-          </button>
-        </span>
+        <app-menu
+          class="event-editor-save-menu"
+          kind="button-row"
+          [items]="eventEditorSaveMenuItems()"
+          (itemSelect)="onEventEditorMenuSelect($event)"
+        ></app-menu>
         }
         @if (eventEditorCheckoutDraft(); as checkoutDraft) {
         <app-menu

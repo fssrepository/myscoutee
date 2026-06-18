@@ -43,7 +43,8 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'frequency'; frequency: string }
-  | { menu: 'checkout-draft'; sourceId: string };
+  | { menu: 'checkout-draft'; sourceId: string }
+  | { menu: 'save' };
 
 @Component({
   selector: 'app-event-editor-popup',
@@ -631,6 +632,25 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     void this.runImmediateSave();
   }
 
+  protected eventEditorSaveMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    const canSubmit = this.canSubmitEventEditorForm();
+    return [{
+      id: 'event-editor-save',
+      icon: 'done',
+      layout: 'action',
+      palette: canSubmit || this.isSavePending ? 'success' : 'danger',
+      disabled: !canSubmit || this.isSavePending,
+      ariaLabel: 'Save event',
+      progress: this.isSavePending
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : null,
+      context: { menu: 'save' }
+    }];
+  }
+
   selectVisibility(option: AppConstants.EventVisibility, event?: Event): void {
     event?.stopPropagation();
     if (this.eventStructureReadOnly()) {
@@ -842,6 +862,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     if (event.context.menu === 'checkout-draft') {
       this.continueEventEditorCheckoutDraft(event.context.sourceId, event.sourceEvent);
+      return;
+    }
+    if (event.context.menu === 'save') {
+      this.saveEventEditorForm();
       return;
     }
     if (event.context.menu === 'frequency') {

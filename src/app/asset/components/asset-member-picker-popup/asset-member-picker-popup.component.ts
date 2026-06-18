@@ -18,7 +18,7 @@ import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent, BasketComponent, LazyBgImageDirective, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuTrigger, type BasketChip, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemTemplateContext, type SmartListLoaders, type SmartListStateChange
+  AppMenuComponent, BasketComponent, LazyBgImageDirective, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuTrigger, type BasketChip, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemTemplateContext, type SmartListLoaders, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
@@ -32,10 +32,9 @@ interface ActivityInviteFilters {
   fallbackTitle?: string;
 }
 
-type AssetMemberPickerMenuContext = {
-  menu: 'invite-sort';
-  sort: AppConstants.ActivityInviteSort;
-};
+type AssetMemberPickerMenuContext =
+  | { menu: 'invite-sort'; sort: AppConstants.ActivityInviteSort }
+  | { menu: 'confirm' };
 
 @Component({
   selector: 'app-asset-member-picker-popup',
@@ -46,9 +45,8 @@ type AssetMemberPickerMenuContext = {
     AppMenuComponent,
     BasketComponent,
     SmartListComponent,
-    LazyBgImageDirective,
-    ProgressIndicatorComponent
-],
+    LazyBgImageDirective
+  ],
   templateUrl: './asset-member-picker-popup.component.html',
   styleUrls: ['./asset-member-picker-popup.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -216,9 +214,32 @@ export class AssetMemberPickerPopupComponent {
     ];
   }
 
-  protected onInviteSortMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+  protected inviteConfirmMenuItems(): readonly AppMenuItem<string, AssetMemberPickerMenuContext>[] {
+    const hasError = !this.isConfirmPending && !!this.confirmErrorMessage;
+    return [{
+      id: 'invite-confirm',
+      icon: 'done',
+      layout: 'action',
+      palette: hasError || !this.hasSelectionChanges() ? 'danger' : 'success',
+      disabled: !this.canConfirmSelection(),
+      ariaLabel: 'Invite selected members',
+      progress: this.isConfirmPending || hasError
+        ? {
+            state: this.isConfirmPending ? 'loading' : 'error',
+            shape: 'circle'
+          }
+        : null,
+      context: { menu: 'confirm' }
+    }];
+  }
+
+  protected onInviteMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as AssetMemberPickerMenuContext | undefined;
-    if (!context || context.menu !== 'invite-sort') {
+    if (!context) {
+      return;
+    }
+    if (context.menu === 'confirm') {
+      void this.confirmSelection(event.sourceEvent);
       return;
     }
     this.selectInviteSort(context.sort);

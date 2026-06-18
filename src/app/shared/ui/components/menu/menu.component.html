@@ -52,6 +52,7 @@
             [class.app-menu__button-row-item--open]="isActionRowItemOpen(item)"
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
+            [class.app-menu__button-row-item--action]="isActionLayoutItem(item)"
             [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
             [class.app-menu__button-row-item--progress]="itemProgressState(item) !== null"
             [class.app-menu__button-row-item--progress-loading]="itemProgressState(item) === 'loading'"
@@ -72,6 +73,7 @@
                   [shape]="itemProgressShape(item)"
                   [state]="progressState"
                   [tone]="itemProgressTone(item)"
+                  [perimeter]="itemProgressPerimeter(item)"
                   [durationMs]="itemProgressDurationMs(item)"
                 ></app-progress-indicator>
               </span>

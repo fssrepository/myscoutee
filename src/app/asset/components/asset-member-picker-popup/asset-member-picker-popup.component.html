@@ -18,38 +18,19 @@
             kind="select"
             [trigger]="inviteSortMenuTrigger()"
             [items]="inviteSortMenuItems()"
-            (itemSelect)="onInviteSortMenuSelect($event)"
+            (itemSelect)="onInviteMenuSelect($event)"
           ></app-menu>
         </div>
         <div class="popup-header-mobile-actions-row">
           @if (selectedInviteCount() > 0) {
             <span class="header-members-count asset-member-picker-header-count">{{ selectedInviteCountLabel() }}</span>
           }
-          <span
-            class="asset-member-picker-save-btn-shell"
-            [class.is-loading]="isConfirmPending"
-            [class.is-error]="!isConfirmPending && !!confirmErrorMessage"
-            >
-            <button
-              type="button"
-              class="popup-header-add-btn subevent-leaderboard-save-btn asset-member-picker-save-btn"
-              [class.form-save-invalid]="selectedUserIds.length === 0 && !isConfirmPending"
-              [disabled]="!canConfirmSelection()"
-              (click)="confirmSelection($event)"
-              aria-label="Invite selected members"
-              >
-              <mat-icon>done</mat-icon>
-            </button>
-            @if (isConfirmPending || confirmErrorMessage) {
-              <span class="asset-member-picker-save-btn-ring" aria-hidden="true">
-                <app-progress-indicator
-                  kind="action-ring"
-                  shape="circle"
-                  [state]="isConfirmPending ? 'loading' : 'error'"
-                ></app-progress-indicator>
-              </span>
-            }
-          </span>
+          <app-menu
+            class="asset-member-picker-confirm-menu"
+            kind="button-row"
+            [items]="inviteConfirmMenuItems()"
+            (itemSelect)="onInviteMenuSelect($event)"
+          ></app-menu>
           <button type="button" class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
             <mat-icon>close</mat-icon>
           </button>

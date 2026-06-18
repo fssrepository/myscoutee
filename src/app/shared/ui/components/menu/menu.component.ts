@@ -749,7 +749,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.isSelectTriggerItem(item) || item.layout === 'summary';
+    return this.isSelectTriggerItem(item) || item.layout === 'summary' || (item.layout === 'action' && !!this.actionRowItemLabel(item));
+  }
+
+  protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return item.layout === 'action';
   }
 
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
@@ -789,6 +793,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   protected itemProgressDurationMs(item: AppMenuItem<TId, TContext>): number {
     const durationMs = Number(this.resolveLiveValue(item.progress?.durationMs));
     return Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 3000;
+  }
+
+  protected itemProgressPerimeter(item: AppMenuItem<TId, TContext>): number {
+    const perimeter = Number(this.resolveLiveValue(item.progress?.perimeter));
+    return Number.isFinite(perimeter) && perimeter > 0 ? perimeter : 100;
   }
 
   protected branchHeaderActions(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {

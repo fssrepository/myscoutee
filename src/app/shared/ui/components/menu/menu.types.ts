@@ -49,7 +49,7 @@ export type AppMenuTriggerShape = 'default' | 'field' | 'pill' | 'icon';
 export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
-export type AppMenuItemLayout = 'default' | 'summary';
+export type AppMenuItemLayout = 'default' | 'summary' | 'action';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
 export type AppMenuPresentation = 'list' | 'tabs';
@@ -89,6 +89,7 @@ export interface AppMenuItemProgress {
   state: AppMenuLiveValue<ProgressIndicatorState | null | undefined>;
   tone?: AppMenuLiveValue<ProgressIndicatorTone | null | undefined>;
   shape?: ProgressIndicatorShape;
+  perimeter?: AppMenuLiveValue<number | null | undefined>;
   durationMs?: AppMenuLiveValue<number | null | undefined>;
 }
 

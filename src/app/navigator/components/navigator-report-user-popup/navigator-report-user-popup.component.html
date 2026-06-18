@@ -71,29 +71,12 @@
         </label>
         <div class="support-actions">
           <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
-          <span
-            class="support-submit-btn-shell"
-            [class.is-loading]="isSubmitting()"
-            [class.is-error]="hasSubmitError()"
-            [class.is-success]="isSubmitSuccess()"
-            >
-            @if (showSubmitRing()) {
-              <span class="support-submit-btn-ring" aria-hidden="true">
-                <app-progress-indicator
-                  kind="action-ring"
-                  shape="button"
-                  [state]="hasSubmitError() ? 'error' : isSubmitSuccess() ? 'success' : 'loading'"
-                ></app-progress-indicator>
-              </span>
-            }
-            <button
-              type="submit"
-              class="link-btn primary-btn support-submit-btn"
-              [disabled]="!canSubmitReportUser()"
-              >
-              Submit report
-            </button>
-          </span>
+          <app-menu
+            class="support-submit-menu"
+            kind="button-row"
+            [items]="reportUserSubmitMenuItems()"
+            (itemSelect)="onReportUserSubmitMenuSelect($event)"
+          ></app-menu>
         </div>
       </form>
     </article>

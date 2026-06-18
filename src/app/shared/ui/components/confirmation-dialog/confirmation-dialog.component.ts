@@ -1,8 +1,13 @@
 
 import { Component, HostListener, Input, inject } from '@angular/core';
 
-import { ProgressIndicatorComponent } from '../progress-indicator';
 import { ConfirmationDialogService, type ConfirmationDialogState, type ConfirmationDialogTone } from '../../services/confirmation-dialog.service';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
+} from '../menu';
 
 export interface ConfirmationDialogLocalConfig {
   visible?: boolean;
@@ -40,7 +45,7 @@ type RenderedConfirmationDialogState = {
 @Component({
   selector: 'app-confirmation-dialog',
   standalone: true,
-  imports: [ProgressIndicatorComponent],
+  imports: [AppMenuComponent],
   templateUrl: './confirmation-dialog.component.html',
   styleUrl: './confirmation-dialog.component.scss'
 })
@@ -97,6 +102,32 @@ export class ConfirmationDialogComponent {
     return state.busy ? 'loading' : 'error';
   }
 
+  protected confirmMenuItems(state: RenderedConfirmationDialogState): readonly AppMenuItem<string>[] {
+    return [{
+      id: 'confirm',
+      label: this.confirmText(state),
+      icon: state.busy ? 'hourglass_empty' : undefined,
+      layout: 'action',
+      palette: this.confirmPalette(state),
+      disabled: state.busy,
+      ariaLabel: this.confirmText(state),
+      progress: state.busy || state.errorMessage
+        ? {
+            state: state.busy ? 'loading' : 'error',
+            shape: 'button',
+            perimeter: state.ringPerimeter
+          }
+        : null
+    }];
+  }
+
+  protected onConfirmMenuSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id !== 'confirm') {
+      return;
+    }
+    this.confirm(event.sourceEvent);
+  }
+
   protected closeFromBackdrop(event: Event): void {
     event.stopPropagation();
     const dialog = this.dialogState();
@@ -130,6 +161,19 @@ export class ConfirmationDialogComponent {
       return;
     }
     void this.dialogService.confirm();
+  }
+
+  private confirmPalette(state: RenderedConfirmationDialogState): AppMenuPalette {
+    if (state.errorMessage) {
+      return 'danger';
+    }
+    if (state.confirmTone === 'danger') {
+      return 'danger';
+    }
+    if (state.confirmTone === 'neutral') {
+      return 'slate';
+    }
+    return 'blue';
   }
 
   private mapServiceState(state: ConfirmationDialogState): RenderedConfirmationDialogState {
