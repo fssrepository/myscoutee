@@ -19,7 +19,11 @@ import { EventsService } from '../../../core/base/services/events.service';
 import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
 import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
 import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
-import { ProgressIndicatorComponent } from '../progress-indicator';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../menu';
 
 import type * as AppConstants from '../../../core/common/constants';
 type PricingSnapshot = {
@@ -45,7 +49,7 @@ type CancellationPreview = {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    ProgressIndicatorComponent
+    AppMenuComponent
   ],
   templateUrl: './event-checkout-popup.component.html',
   styleUrl: './event-checkout-popup.component.scss'
@@ -514,6 +518,31 @@ export class EventCheckoutPopupComponent {
         : 'Checking out...';
     }
     return dialog.busyConfirmLabel;
+  }
+
+  protected checkoutActionMenuItems(): readonly AppMenuItem<string>[] {
+    const hasError = !this.busy && !!this.errorMessage;
+    return [{
+      id: 'checkout-confirm',
+      label: this.busy ? this.busyLabel() : this.continueLabel(),
+      layout: 'action',
+      palette: hasError ? 'danger' : 'blue',
+      disabled: !this.canContinue() || this.busy,
+      ariaLabel: this.busy ? this.busyLabel() : this.continueLabel(),
+      progress: this.busy || hasError
+        ? {
+            state: this.busy ? 'loading' : 'error',
+            shape: 'button'
+          }
+        : null
+    }];
+  }
+
+  protected onCheckoutActionMenuSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id !== 'checkout-confirm') {
+      return;
+    }
+    void this.submit(event.sourceEvent);
   }
 
   protected paymentDisabled(): boolean {

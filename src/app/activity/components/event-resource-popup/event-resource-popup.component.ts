@@ -1388,7 +1388,9 @@ export class EventResourcePopupComponent implements DoCheck {
       this.host.reportResourceManager(card, new Event('click'));
       return;
     }
-    this.host.delete(card, new Event('click'));
+    if (event.actionId === 'removeAssignment' || event.actionId === 'delete') {
+      this.host.delete(card, new Event('click'));
+    }
   }
 
   @HostListener('window:keydown.escape', ['$event'])

@@ -3,7 +3,11 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { ProfileOnboardingService, SessionService, UsersService, type AppSession, type FirebaseAuthRequestDto, type UserDto } from '../../../shared/core';
-import { EntryShellComponent, type EntryDemoUserSelectionEvent } from '../entry-shell/entry-shell.component';
+import {
+  EntryShellComponent,
+  type EntryDemoNewProfileRequestEvent,
+  type EntryDemoUserSelectionEvent
+} from '../entry-shell/entry-shell.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
 
 @Component({
@@ -18,6 +22,7 @@ import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/pro
       [firebaseAuthMessage]="sessionService.firebaseNotice()"
       [isMobileView]="isMobileView"
       (demoUserSelected)="onDemoUserSelected($event)"
+      (demoNewProfileRequested)="onDemoNewProfileRequested($event)"
       (firebaseAuthRequested)="onFirebaseAuthRequested($event)"
       (firebaseSessionContinueRequested)="onFirebaseSessionContinueRequested()"
       (entryConsentStateChanged)="onEntryConsentStateChanged($event)"
@@ -98,6 +103,20 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     } catch {
       selection.fail();
     }
+  }
+
+  protected onDemoNewProfileRequested(request: EntryDemoNewProfileRequestEvent): void {
+    const user = this.buildDemoRegistrationUser();
+    this.pendingDemoSessionUserId = user.id;
+    this.openOnboardingGate(
+      user,
+      this.redirectUrl(),
+      {
+        title: 'Profile setup',
+        message: 'Complete your profile to create a demo profile.'
+      }
+    );
+    request.complete();
   }
 
   protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
@@ -305,6 +324,41 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       profileStatus: 'onboarding',
       activities: this.emptyActivities()
     };
+  }
+
+  private buildDemoRegistrationUser(): UserDto {
+    const userId = `demo-profile-${this.randomToken()}`;
+    return {
+      id: userId,
+      name: '',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: '',
+      gender: 'man',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      profileFormVersion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileDetails: [],
+      profileStatus: 'onboarding',
+      activities: this.emptyActivities()
+    };
+  }
+
+  private randomToken(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   private emptyActivities(): UserDto['activities'] {

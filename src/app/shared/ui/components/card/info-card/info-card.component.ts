@@ -131,6 +131,9 @@ export class InfoCardComponent implements OnDestroy {
       return;
     }
     event.stopPropagation();
+    if (this.emitOverlayMenuAction(this.card.mediaStart, event)) {
+      return;
+    }
     this.mediaStartClick.emit({
       id: this.card.id,
       card: this.card
@@ -142,10 +145,31 @@ export class InfoCardComponent implements OnDestroy {
       return;
     }
     event.stopPropagation();
+    if (this.emitOverlayMenuAction(this.card.mediaEnd, event)) {
+      return;
+    }
     this.mediaEndClick.emit({
       id: this.card.id,
       card: this.card
     });
+  }
+
+  private emitOverlayMenuAction(action: InfoCardOverlayAction | null | undefined, event: Event): boolean {
+    if (!this.card) {
+      return false;
+    }
+    const resolvedAction = this.resolveOverlayMenuAction(action);
+    if (!resolvedAction) {
+      return false;
+    }
+    event.preventDefault();
+    this.menuAction.emit({
+      id: this.card.id,
+      actionId: resolvedAction.id,
+      action: resolvedAction,
+      card: this.card
+    });
+    return true;
   }
 
   protected onMenuTriggerPointerDown(event: Event): void {
@@ -288,6 +312,26 @@ export class InfoCardComponent implements OnDestroy {
 
   protected overlayProgressRing(action: InfoCardOverlayAction | null | undefined): boolean {
     return action?.progressRing === true;
+  }
+
+  private resolveOverlayMenuAction(action: InfoCardOverlayAction | null | undefined): CardResolvedMenuAction | null {
+    const actionId = `${action?.actionId ?? ''}`.trim();
+    if (!actionId) {
+      return null;
+    }
+    const config = CARD_MENU_ACTIONS[actionId];
+    if (config) {
+      return {
+        id: actionId,
+        ...config
+      };
+    }
+    return {
+      id: actionId,
+      label: action?.ariaLabel || this.overlayLabel(action) || actionId,
+      icon: this.overlayIcon(action) ?? 'touch_app',
+      tone: action?.actionTone ?? undefined
+    };
   }
 
   protected visibleMetaRows(): readonly string[] {

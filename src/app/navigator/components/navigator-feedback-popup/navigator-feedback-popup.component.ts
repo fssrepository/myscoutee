@@ -4,13 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext } from '../../../shared/ui';
 import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-feedback-popup',
   standalone: true,
-  imports: [FormsModule, ProgressIndicatorComponent],
+  imports: [FormsModule, AppMenuComponent],
   templateUrl: './navigator-feedback-popup.component.html',
   styleUrl: './navigator-feedback-popup.component.scss'
 })
@@ -65,6 +69,30 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
 
   protected canSubmitFeedback(): boolean {
     return !this.isSubmitBusy() && !!this.feedbackForm.subject.trim() && this.feedbackDetailsRemaining === 0;
+  }
+
+  protected feedbackSubmitMenuItems(): readonly AppMenuItem<string>[] {
+    return [{
+      id: 'feedback-submit',
+      label: 'Send feedback',
+      layout: 'action',
+      palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
+      disabled: !this.canSubmitFeedback(),
+      ariaLabel: 'Send feedback',
+      progress: this.showSubmitRing()
+        ? {
+            state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
+            shape: 'button'
+          }
+        : null
+    }];
+  }
+
+  protected onFeedbackSubmitMenuSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id !== 'feedback-submit') {
+      return;
+    }
+    void this.submitFeedback();
   }
 
   protected clearSubmitStatus(): void {

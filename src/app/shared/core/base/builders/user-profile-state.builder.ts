@@ -2,7 +2,6 @@ import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
 
 export class UserProfileStateBuilder {
-  private static readonly EMPTY_ONBOARDING_USER_ID = 'u-onboarding';
   private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
   private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
 
@@ -69,7 +68,8 @@ export class UserProfileStateBuilder {
   }
 
   static isEmptyOnboardingProfileUserId(userId: string): boolean {
-    return userId.trim() === this.EMPTY_ONBOARDING_USER_ID;
+    void userId;
+    return false;
   }
 
   static isEmptyOnboardingProfile(
@@ -89,9 +89,6 @@ export class UserProfileStateBuilder {
       | 'profileDetails'
     >>
   ): boolean {
-    if (this.isEmptyOnboardingProfileUserId(`${user.id ?? ''}`)) {
-      return true;
-    }
     const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
     const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
     const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));

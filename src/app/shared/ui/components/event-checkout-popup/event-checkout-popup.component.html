@@ -280,27 +280,12 @@
             Cancel
           </button>
         }
-        <span
-          class="event-checkout-confirm-shell"
-          [class.is-loading]="busy"
-          [class.is-error]="!busy && !!errorMessage"
-        >
-          @if (busy || errorMessage) {
-            <app-progress-indicator
-              kind="action-ring"
-              shape="button"
-              [state]="busy ? 'loading' : 'error'"
-            ></app-progress-indicator>
-          }
-          <button
-            type="button"
-            class="event-checkout-btn event-checkout-btn--primary event-checkout-btn--confirm"
-            [disabled]="!canContinue() || busy"
-            (click)="submit($event)"
-          >
-            {{ busy ? busyLabel() : continueLabel() }}
-          </button>
-        </span>
+        <app-menu
+          class="event-checkout-confirm-menu"
+          kind="button-row"
+          [items]="checkoutActionMenuItems()"
+          (itemSelect)="onCheckoutActionMenuSelect($event)"
+        ></app-menu>
       </div>
     </div>
   </section>

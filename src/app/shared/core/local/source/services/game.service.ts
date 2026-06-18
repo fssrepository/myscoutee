@@ -62,7 +62,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
       };
     }
     const mode = request.mode ?? 'single';
-    if (mode === 'separated-friends' || mode === 'friends-in-common') {
+    if (mode === 'outside-network' || mode === 'separated-friends' || mode === 'friends-in-common') {
       const allUsers = this.usersRepository.queryAllUsers();
       const usersById = new Map(allUsers.map(user => [user.id, user] as const));
       const ratedPairKeys = new Set(this.ratesRepository.queryRatedGameCardPairKeys(normalizedUserId));
@@ -416,7 +416,7 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
   private isSocialCardVisible(
     usersById: ReadonlyMap<string, UserDto>,
     card: UserGameSocialCard,
-    mode: UserGameSocialCard['socialContext']
+    mode: 'outside-network' | 'separated-friends' | 'friends-in-common'
   ): boolean {
     const candidate = usersById.get(card.userId.trim());
     if (mode === 'friends-in-common') {
@@ -426,6 +426,10 @@ export class LocalGameService extends LocalRouteDelayService implements UserGame
     }
 
     const secondUser = usersById.get((card.secondaryUserId?.trim() || card.bridgeUserId?.trim() || ''));
+    if (mode === 'outside-network') {
+      return UserProfileStateBuilder.isPublicGameProfile(candidate)
+        && UserProfileStateBuilder.isPublicGameProfile(secondUser);
+    }
     return UserProfileStateBuilder.isInsideNetworkGameProfile(candidate)
       && UserProfileStateBuilder.isInsideNetworkGameProfile(secondUser);
   }

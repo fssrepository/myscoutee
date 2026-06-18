@@ -47,11 +47,17 @@ export class LocalUsersRepository {
   }
 
   private compareSelectableDemoUsers(left: UserDto, right: UserDto): number {
-    const affinityDelta = Math.trunc(Number(right.affinity) || 0) - Math.trunc(Number(left.affinity) || 0);
-    if (affinityDelta !== 0) {
-      return affinityDelta;
+    const nameDelta = this.demoSelectorSortText(left.name, left.id)
+      .localeCompare(this.demoSelectorSortText(right.name, right.id), 'en', { sensitivity: 'base' });
+    if (nameDelta !== 0) {
+      return nameDelta;
     }
-    return left.id.localeCompare(right.id);
+    return `${left.id ?? ''}`.trim()
+      .localeCompare(`${right.id ?? ''}`.trim(), 'en', { sensitivity: 'base' });
+  }
+
+  private demoSelectorSortText(name: string | null | undefined, userId: string | null | undefined): string {
+    return `${name ?? ''}`.trim() || `${userId ?? ''}`.trim();
   }
 
   queryAllUsers(): UserDto[] {

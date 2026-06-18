@@ -4,13 +4,17 @@ import { FormsModule } from '@angular/forms';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext } from '../../../shared/ui';
 import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 @Component({
   selector: 'app-navigator-report-user-popup',
   standalone: true,
-  imports: [FormsModule, ProgressIndicatorComponent],
+  imports: [FormsModule, AppMenuComponent],
   templateUrl: './navigator-report-user-popup.component.html',
   styleUrl: './navigator-report-user-popup.component.scss'
 })
@@ -104,6 +108,30 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
 
   protected canSubmitReportUser(): boolean {
     return this.isContextualReport() && !this.isSubmitBusy() && this.reportUserHandleValid && this.reportUserDetailsValid;
+  }
+
+  protected reportUserSubmitMenuItems(): readonly AppMenuItem<string>[] {
+    return [{
+      id: 'report-user-submit',
+      label: 'Submit report',
+      layout: 'action',
+      palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
+      disabled: !this.canSubmitReportUser(),
+      ariaLabel: 'Submit report',
+      progress: this.showSubmitRing()
+        ? {
+            state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
+            shape: 'button'
+          }
+        : null
+    }];
+  }
+
+  protected onReportUserSubmitMenuSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id !== 'report-user-submit') {
+      return;
+    }
+    void this.submitReportUser();
   }
 
   protected reportContextSummary(): string {

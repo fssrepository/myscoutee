@@ -53,6 +53,23 @@
   background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
 }
 
+.demo-login-title {
+  min-width: 0;
+}
+
+.demo-login-header-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.44rem;
+  flex: 0 0 auto;
+}
+
+.demo-new-profile-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
 .demo-login-panel h2 {
   margin: 0;
   font-size: 1.45rem;
@@ -334,6 +351,14 @@
     padding: 0;
     align-items: stretch;
     justify-content: stretch;
+  }
+
+  .demo-login-header {
+    gap: 0.45rem;
+  }
+
+  .demo-login-header-actions {
+    gap: 0.32rem;
   }
 
   .demo-login-panel {

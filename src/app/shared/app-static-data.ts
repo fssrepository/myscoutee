@@ -1307,7 +1307,7 @@ const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
     icon: 'tune',
     title: 'Affinity slider',
     blurb: 'Choose how strong the card feels for you.',
-    contentHtml: '<p>Tap or drag the Affinity slider from 1 to 10. The Go button appears only after you pick a value.</p>'
+    contentHtml: '<p>Tap or drag the Affinity slider from 1 to 10. The Go button saves the current visible value.</p>'
   },
   {
     id: 'affinity-network',

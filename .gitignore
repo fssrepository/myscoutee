@@ -5,7 +5,9 @@
 # Compiled output
 /dist
 /dev
+/e2e
 /local
+/prod
 /tmp
 /out-tsc
 /bazel-out

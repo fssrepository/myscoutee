@@ -479,9 +479,9 @@ export class EventChatPopupComponent implements OnDestroy {
       .map(group => ({
         id: group.id,
         label: group.label,
-        children: group.controls.map(control => this.chatContextControlMenuItem(control))
+        items: group.controls.map(control => this.chatContextControlMenuItem(control))
       }))
-      .filter(group => group.children.length > 0);
+      .filter(group => group.items.length > 0);
   }
 
   protected composerMenuTrigger(): AppMenuTrigger {

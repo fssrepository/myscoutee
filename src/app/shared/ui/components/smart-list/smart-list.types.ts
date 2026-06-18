@@ -106,6 +106,7 @@ export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilte
   selectMode: boolean;
   presentation: SmartListPresentation;
   renderState: SmartListItemRenderState;
+  selectItem: (event?: Event) => void;
   openMenu: (request: SmartListItemMenuRequest) => void;
 }
 
@@ -211,6 +212,8 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
   query: ListQuery<TFilters>;
   currentView: string | null;
   currentViewMode: SmartListViewMode;
+  selectMode: boolean;
+  sourceEvent?: Event;
 }
 
 export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters = SmartListFilters> {

@@ -68,7 +68,7 @@ const BASE_DEMO_USERS: UserDto[] = [
     headline: 'Reliable planning, zero drama.',
     about: 'I like compact events with clear timelines and simple role assignment.',
     images: buildDemoPortraitStack('man', 75),
-    profileStatus: 'friends only',
+    profileStatus: 'public',
     activities: { game: 4, chat: 3, invitations: 1, events: 2, hosting: 1 }
   },
   {
@@ -90,7 +90,7 @@ const BASE_DEMO_USERS: UserDto[] = [
     headline: 'Art nights and adventure mornings.',
     about: 'I enjoy cultural events and activity-heavy weekends with small groups.',
     images: buildDemoPortraitStack('woman', 76),
-    profileStatus: 'friends only',
+    profileStatus: 'public',
     activities: { game: 6, chat: 7, invitations: 3, events: 4, hosting: 2 }
   },
   {
@@ -200,7 +200,7 @@ const BASE_DEMO_USERS: UserDto[] = [
     headline: 'Metrics first, then movement.',
     about: 'I optimize event outcomes and participant quality through filtered invites.',
     images: buildDemoPortraitStack('man', 81),
-    profileStatus: 'friends only',
+    profileStatus: 'public',
     activities: { game: 4, chat: 4, invitations: 2, events: 3, hosting: 2 }
   },
   {
@@ -293,33 +293,6 @@ const BASE_DEMO_USERS: UserDto[] = [
   }
 ];
 
-const ONBOARDING_DEMO_USER: UserDto = {
-  id: 'u-onboarding',
-  name: '',
-  age: 0,
-  birthday: '',
-  city: '',
-  height: '',
-  physique: '',
-  languages: [],
-  horoscope: '',
-  initials: 'NP',
-  gender: 'woman',
-  statusText: 'New',
-  hostTier: '',
-  traitLabel: '',
-  completion: 0,
-  profileFormVersion: 0,
-  headline: '',
-  about: '',
-  affinity: 990000,
-  locationCoordinates: { latitude: 30.2672, longitude: -97.7431 },
-  images: [],
-  profileDetails: [],
-  profileStatus: 'public',
-  activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
-};
-
 export class SeedUserBuilder {
   private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
   private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
@@ -337,13 +310,9 @@ export class SeedUserBuilder {
   };
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserDto[] = BASE_DEMO_USERS): UserDto[] {
-    const includeOnboardingProfile = baseUsers === BASE_DEMO_USERS;
     const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
     if (baseUsers.length >= totalCount) {
-      return this.withOptionalOnboardingProfile(
-        normalizedBaseUsers.slice(0, totalCount),
-        includeOnboardingProfile
-      );
+      return normalizedBaseUsers.slice(0, totalCount);
     }
     const expanded: UserDto[] = [...normalizedBaseUsers];
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
@@ -384,7 +353,7 @@ export class SeedUserBuilder {
         ...this.demoLifecycleStatusForIndex(index, totalCount)
       }));
     }
-    return this.withOptionalOnboardingProfile(expanded, includeOnboardingProfile);
+    return expanded;
   }
 
   private static buildUniquePrimaryPortraitStack(
@@ -502,7 +471,8 @@ export class SeedUserBuilder {
   }
 
   static isEmptyOnboardingProfileUserId(userId: string): boolean {
-    return userId.trim() === ONBOARDING_DEMO_USER.id;
+    void userId;
+    return false;
   }
 
   static isEmptyOnboardingProfile(
@@ -578,13 +548,6 @@ export class SeedUserBuilder {
         ? Number(nextUser.affinity)
         : this.resolveUserAffinity(nextUser)
     };
-  }
-
-  private static withOptionalOnboardingProfile(users: UserDto[], include: boolean): UserDto[] {
-    if (!include || users.some(user => user.id === ONBOARDING_DEMO_USER.id)) {
-      return users;
-    }
-    return [...users, this.withResolvedLocationCoordinates(ONBOARDING_DEMO_USER)];
   }
 
   private static resolveSeedProfileFormVersion(value: unknown): number {

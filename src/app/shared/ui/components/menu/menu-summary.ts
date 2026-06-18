@@ -1,0 +1,107 @@
+import type {
+  AppMenuCounter,
+  AppMenuCounterValue,
+  AppMenuGroup,
+  AppMenuItem,
+  AppMenuLiveValue,
+  AppMenuModel
+} from './menu.types';
+
+export interface AppMenuModelSummaryResult {
+  label: string;
+  counter: AppMenuCounter | AppMenuCounterValue | null;
+  selectedCount: number;
+}
+
+export function appMenuModelGroups<TId extends string = string, TContext = unknown>(
+  model: AppMenuModel<TId, TContext> | null | undefined,
+  fallback: readonly AppMenuGroup<TId, TContext>[] = []
+): readonly AppMenuGroup<TId, TContext>[] {
+  return model?.groups ?? model?.nodes ?? fallback;
+}
+
+export function appMenuModelSummary<TId extends string = string, TContext = unknown>(
+  model: AppMenuModel<TId, TContext> | null | undefined,
+  fallbackGroups: readonly AppMenuGroup<TId, TContext>[] = []
+): AppMenuModelSummaryResult {
+  const summary = model?.summary ?? null;
+  if (!summary) {
+    return {
+      label: '',
+      counter: null,
+      selectedCount: 0
+    };
+  }
+
+  const labels = appMenuSelectedLabels(appMenuModelGroups(model, fallbackGroups));
+  const maxLabels = Math.max(1, Math.trunc(Number(summary.maxLabels) || 1));
+  const visibleLabels = labels.slice(0, maxLabels);
+  const label = visibleLabels.length > 0
+    ? visibleLabels.join(', ')
+    : `${appMenuResolveLiveValue(summary.emptyLabel) ?? ''}`.trim();
+  const counter = appMenuSummaryCounter(labels.length, maxLabels, summary.counter ?? 'overflow');
+
+  return {
+    label,
+    counter,
+    selectedCount: labels.length
+  };
+}
+
+export function appMenuResolveLiveValue<T>(value: AppMenuLiveValue<T> | null | undefined): T | null | undefined {
+  if (typeof value === 'function') {
+    return (value as () => T)();
+  }
+  return value;
+}
+
+function appMenuSelectedLabels<TId extends string, TContext>(
+  groups: readonly AppMenuGroup<TId, TContext>[]
+): string[] {
+  const selectedLabels: string[] = [];
+  const seenLabels = new Set<string>();
+  for (const group of groups) {
+    for (const item of group.items ?? []) {
+      collectSelectedItemLabels(item, selectedLabels, seenLabels);
+    }
+  }
+  return selectedLabels;
+}
+
+function collectSelectedItemLabels<TId extends string, TContext>(
+  item: AppMenuItem<TId, TContext>,
+  selectedLabels: string[],
+  seenLabels: Set<string>
+): void {
+  const kind = item.kind ?? 'action';
+  if (kind !== 'divider' && kind !== 'section' && isActiveItem(item)) {
+    const label = `${appMenuResolveLiveValue(item.label) ?? ''}`.trim();
+    const key = label.toLowerCase();
+    if (label && !seenLabels.has(key)) {
+      selectedLabels.push(label);
+      seenLabels.add(key);
+    }
+  }
+  for (const child of item.items ?? []) {
+    collectSelectedItemLabels(child, selectedLabels, seenLabels);
+  }
+}
+
+function isActiveItem<TId extends string, TContext>(item: AppMenuItem<TId, TContext>): boolean {
+  return appMenuResolveLiveValue(item.active) === true || appMenuResolveLiveValue(item.checked) === true;
+}
+
+function appMenuSummaryCounter(
+  selectedCount: number,
+  maxLabels: number,
+  mode: 'overflow' | 'count' | 'none'
+): AppMenuCounterValue | null {
+  if (selectedCount <= 0 || mode === 'none') {
+    return null;
+  }
+  if (mode === 'count') {
+    return selectedCount;
+  }
+  const overflow = selectedCount - maxLabels;
+  return overflow > 0 ? `+${overflow}` : null;
+}

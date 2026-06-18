@@ -452,7 +452,7 @@ export class ActivityResourceBuilder {
     if (options.canReportResourceManager === true) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
     }
-    actions.push('delete');
+    actions.push('removeAssignment');
     return actions;
   }
 }

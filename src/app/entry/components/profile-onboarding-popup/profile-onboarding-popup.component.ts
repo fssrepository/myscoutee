@@ -28,6 +28,7 @@ import type {
 } from '../../../shared/core/common/constants';
 import type {
   ExperienceEntry,
+  MobileProfileSelectorSheet,
   ProfileDetailFormGroup
 } from '../../../shared/core/contracts/profile.interface';
 
@@ -56,7 +57,6 @@ type OnboardingMenuField =
 
 type OnboardingMenuContext =
   | { menu: 'field'; field: OnboardingMenuField; value: string }
-  | { menu: 'language'; value: string }
   | { menu: 'experience-type'; value: string };
 
 @Component({
@@ -113,6 +113,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
+  private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
 
   protected readonly steps: OnboardingStep[] = [
     { id: 'basics', title: 'Basics', optional: false },
@@ -148,6 +149,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected selectedImageIndex = 0;
   protected pendingImageUploadIndex: number | null = null;
   protected uploadingImageSlotIndex: number | null = null;
+  protected languageInput = '';
+  protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']) {
@@ -175,6 +178,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.selectedImageIndex = 0;
       this.pendingImageUploadIndex = null;
       this.uploadingImageSlotIndex = null;
+      this.closeMobileProfileSelectorSheet();
       return;
     }
     this.assessment = this.onboarding.assessUser(this.user);
@@ -187,6 +191,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopDraftAutosaveLoop();
+    this.closeMobileProfileSelectorSheet();
     this.unlockDocumentScroll();
   }
 
@@ -336,6 +341,118 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.cdr.detectChanges();
   }
 
+  protected openLanguageSelector(event: Event): void {
+    event.stopPropagation();
+    if (this.saving || this.uploadingImageSlotIndex !== null) {
+      return;
+    }
+    const viewportHeight = globalThis.window?.innerHeight ?? 0;
+    if (viewportHeight > 0) {
+      const stableHeight = Math.max(viewportHeight - 6, 320);
+      this.document.documentElement.style.setProperty(this.languageSheetHeightCssVar, `${stableHeight}px`);
+    }
+    this.languageInput = '';
+    this.mobileProfileSelectorSheet = {
+      title: 'Languages',
+      selected: '',
+      options: this.languageSuggestions.map(option => ({
+        value: option,
+        label: option,
+        icon: 'language'
+      })),
+      context: { kind: 'language' }
+    };
+  }
+
+  protected closeMobileProfileSelectorSheet(): void {
+    this.document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
+    this.mobileProfileSelectorSheet = null;
+    this.languageInput = '';
+  }
+
+  protected submitMobileLanguageAndClose(event: Event): void {
+    event.stopPropagation();
+    this.addCustomLanguage();
+    this.closeMobileProfileSelectorSheet();
+  }
+
+  protected isMobileSelectorOptionActive(value: string): boolean {
+    return this.draft?.form.languages.some(item => item.toLowerCase() === value.toLowerCase()) ?? false;
+  }
+
+  protected selectMobileProfileSelectorOption(value: string): void {
+    this.toggleLanguage(value);
+  }
+
+  protected addCustomLanguage(value = this.languageInput): void {
+    if (!this.draft) {
+      return;
+    }
+    const normalized = value.trim();
+    if (!normalized) {
+      return;
+    }
+    const exists = this.draft.form.languages.some(item => item.toLowerCase() === normalized.toLowerCase());
+    if (!exists) {
+      this.draft.form.languages = [...this.draft.form.languages, normalized];
+    }
+    if (!this.languageSuggestions.some(item => item.toLowerCase() === normalized.toLowerCase())) {
+      this.languageSuggestions.push(normalized);
+    }
+    this.languageInput = '';
+    this.persistDraft();
+    this.cdr.detectChanges();
+  }
+
+  protected onLanguageInputBlur(): void {
+    this.addCustomLanguage();
+  }
+
+  protected onLanguageInputKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== ',') {
+      return;
+    }
+    event.preventDefault();
+    this.addCustomLanguage();
+  }
+
+  protected languageTriggerPrimaryLabel(languages: readonly string[], maxVisible = 2): string {
+    const normalized = languages
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    if (normalized.length === 0) {
+      return '';
+    }
+    return normalized.slice(0, Math.max(1, maxVisible)).join(', ');
+  }
+
+  protected languageTriggerOverflowCount(languages: readonly string[], maxVisible = 2): number {
+    const normalized = languages
+      .map(item => item.trim())
+      .filter(item => item.length > 0);
+    return Math.max(0, normalized.length - Math.max(1, maxVisible));
+  }
+
+  protected languageToneClass(value: string): string {
+    return `language-tone-${this.languageToneIndex(value)}`;
+  }
+
+  protected get availableLanguageSuggestions(): string[] {
+    const selected = this.draft?.form.languages ?? [];
+    const query = this.languageInput.trim().toLowerCase();
+    return this.languageSuggestions.filter(item => {
+      const isSelected = selected.some(language => language.toLowerCase() === item.toLowerCase());
+      if (isSelected) {
+        return false;
+      }
+      return query.length === 0 ? true : item.toLowerCase().includes(query);
+    });
+  }
+
+  protected get availableLanguageDisplaySuggestions(): string[] {
+    return this.availableLanguageSuggestions.slice(0, 20);
+  }
+
   protected fieldMenuTrigger(value: string | null | undefined, icon = 'tune', palette: AppMenuPalette = 'neutral'): AppMenuTrigger {
     const label = `${value ?? ''}`.trim();
     return {
@@ -358,10 +475,10 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return options.map(option => ({
       id: `${field}-${option}`,
       label: option,
-      icon,
+      icon: this.fieldMenuItemIcon(field, option, icon),
       kind: 'radio',
       active: option === activeValue,
-      palette,
+      palette: this.fieldMenuItemPalette(field, option, options, palette),
       surface: 'tinted',
       context: { menu: 'field', field, value: option }
     }));
@@ -381,32 +498,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       palette: this.profileStatusPalette(option.value),
       surface: 'tinted',
       context: { menu: 'field', field: 'profileStatus', value: option.value }
-    }));
-  }
-
-  protected languagesMenuTrigger(languages: readonly string[]): AppMenuTrigger {
-    return {
-      label: languages.length > 0 ? languages.join(', ') : 'Select languages',
-      icon: 'translate',
-      palette: languages.length > 0 ? 'sky' : 'neutral',
-      shape: 'field',
-      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
-      ariaLabel: 'Open language selector'
-    };
-  }
-
-  protected languageMenuItems(languages: readonly string[]): readonly AppMenuItem<string, OnboardingMenuContext>[] {
-    return this.languageSuggestions.map(language => ({
-      id: `language-${language}`,
-      label: language,
-      icon: 'translate',
-      kind: 'checkbox',
-      active: languages.includes(language),
-      checked: languages.includes(language),
-      closeOnSelect: false,
-      palette: languages.includes(language) ? 'sky' : 'neutral',
-      surface: 'tinted',
-      context: { menu: 'language', value: language }
     }));
   }
 
@@ -430,10 +521,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected onProfileOnboardingMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as OnboardingMenuContext | undefined;
     if (!context) {
-      return;
-    }
-    if (context.menu === 'language') {
-      this.toggleLanguage(context.value);
       return;
     }
     if (context.menu === 'experience-type') {
@@ -662,6 +749,49 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return this.profileStatusOptions.find(option => option.value === status)?.icon ?? 'public';
   }
 
+  private getPhysiqueIcon(value: string): string {
+    const normalized = AppUtils.normalizeText(value);
+    if (normalized.includes('slim')) {
+      return 'directions_walk';
+    }
+    if (normalized.includes('lean') || normalized.includes('fit')) {
+      return 'fitness_center';
+    }
+    if (normalized.includes('athletic')) {
+      return 'sports_gymnastics';
+    }
+    if (normalized.includes('curvy')) {
+      return 'accessibility';
+    }
+    if (normalized.includes('muscular')) {
+      return 'sports_mma';
+    }
+    return 'accessibility_new';
+  }
+
+  private getPhysiqueClass(value: string): string {
+    const normalized = AppUtils.normalizeText(value);
+    if (normalized.includes('slim')) {
+      return 'physique-slim';
+    }
+    if (normalized.includes('lean')) {
+      return 'physique-lean';
+    }
+    if (normalized.includes('fit')) {
+      return 'physique-fit';
+    }
+    if (normalized.includes('athletic')) {
+      return 'physique-athletic';
+    }
+    if (normalized.includes('curvy')) {
+      return 'physique-curvy';
+    }
+    if (normalized.includes('muscular')) {
+      return 'physique-muscular';
+    }
+    return 'physique-average';
+  }
+
   private profileStatusPalette(status: string): AppMenuPalette {
     switch (status) {
       case 'Public':
@@ -674,6 +804,68 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
         return 'slate';
       default:
         return 'neutral';
+    }
+  }
+
+  private detailToneFromOptions(value: string, options: readonly string[]): string {
+    const index = options.findIndex(item => AppUtils.normalizeText(item) === AppUtils.normalizeText(value));
+    return `detail-tone-${((index >= 0 ? index : 0) % 8) + 1}`;
+  }
+
+  private languageToneIndex(value: string): number {
+    const normalized = AppUtils.normalizeText(value);
+    if (!normalized) {
+      return 1;
+    }
+    let hash = 0;
+    for (const char of normalized) {
+      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+    }
+    return (hash % 8) + 1;
+  }
+
+  private paletteFromProfileTone(toneClass: string): AppMenuPalette {
+    switch (toneClass) {
+      case 'status-public':
+      case 'physique-lean':
+      case 'physique-fit':
+      case 'detail-tone-2':
+      case 'detail-tone-5':
+      case 'section-active':
+        return 'green';
+      case 'status-friends':
+      case 'physique-athletic':
+      case 'detail-tone-1':
+      case 'section-social':
+        return 'blue';
+      case 'status-host':
+      case 'detail-tone-8':
+        return 'brown';
+      case 'physique-slim':
+      case 'detail-tone-7':
+        return 'sky';
+      case 'physique-curvy':
+      case 'detail-tone-6':
+        return 'pink';
+      case 'physique-muscular':
+        return 'red';
+      case 'detail-tone-3':
+      case 'section-family':
+      case 'section-food':
+        return 'orange';
+      case 'section-ambition':
+        return 'amber';
+      case 'section-lifestyle':
+      case 'section-mind':
+        return 'teal';
+      case 'detail-tone-4':
+      case 'section-beliefs':
+      case 'section-arts':
+      case 'section-identity':
+        return 'violet';
+      case 'status-inactive':
+      default:
+        return 'muted';
     }
   }
 
@@ -710,15 +902,39 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return;
     }
     const normalized = language.trim();
-    if (!normalized || !this.languageSuggestions.includes(normalized)) {
+    if (!normalized) {
       return;
     }
     const current = this.draft.form.languages;
-    this.draft.form.languages = current.includes(normalized)
-      ? current.filter(item => item !== normalized)
+    const exists = current.some(item => item.toLowerCase() === normalized.toLowerCase());
+    this.draft.form.languages = exists
+      ? current.filter(item => item.toLowerCase() !== normalized.toLowerCase())
       : [...current, normalized];
+    this.languageInput = '';
     this.persistDraft();
     this.cdr.detectChanges();
+  }
+
+  private fieldMenuItemIcon(field: OnboardingMenuField, value: string, fallback: string): string {
+    if (field === 'physique') {
+      return this.getPhysiqueIcon(value);
+    }
+    return fallback;
+  }
+
+  private fieldMenuItemPalette(
+    field: OnboardingMenuField,
+    value: string,
+    options: readonly string[],
+    fallback: AppMenuPalette
+  ): AppMenuPalette {
+    if (field === 'physique') {
+      return this.paletteFromProfileTone(this.getPhysiqueClass(value));
+    }
+    if (field !== 'profileStatus') {
+      return this.paletteFromProfileTone(this.detailToneFromOptions(value, options));
+    }
+    return fallback;
   }
 
   private updateOnboardingField(field: OnboardingMenuField, value: string): void {

@@ -264,13 +264,13 @@ export class NavigatorMenuComponent {
       label: 'Settings',
       icon: 'settings',
       ariaLabel: this.isAdminMode() ? 'Open admin settings menu' : 'Open settings menu',
-      children: this.settingsMenuItems()
+      items: this.settingsMenuItems()
     });
     return {
       nodes: [
         {
           id: 'navigator-header-actions',
-          children: items
+          items: items
         }
       ]
     };
@@ -321,7 +321,7 @@ export class NavigatorMenuComponent {
           label: 'Impressions',
           icon: 'psychology',
           palette: 'violet',
-          children: [
+          items: [
             {
               id: 'impressions',
               span: 4,
@@ -359,7 +359,7 @@ export class NavigatorMenuComponent {
           label: 'Activities',
           icon: 'local_activity',
           palette: 'blue',
-          children: [
+          items: [
             {
               id: 'rates',
               label: 'Rates',
@@ -407,7 +407,7 @@ export class NavigatorMenuComponent {
           label: 'My Assets',
           icon: 'inventory_2',
           palette: 'brown',
-          children: [
+          items: [
             {
               id: 'car',
               label: 'Car',
@@ -462,7 +462,7 @@ export class NavigatorMenuComponent {
           label: 'Moderation & support',
           icon: 'admin_panel_settings',
           palette: 'orange',
-          children: [
+          items: [
             {
               id: 'adminReports',
               label: 'Reports',
@@ -494,7 +494,7 @@ export class NavigatorMenuComponent {
           label: 'Configuration',
           icon: 'tune',
           palette: 'teal',
-          children: [
+          items: [
             {
               id: 'adminJobs',
               label: 'jobs',
@@ -534,7 +534,7 @@ export class NavigatorMenuComponent {
           label: 'monitoring',
           icon: 'monitoring',
           palette: 'blue',
-          children: [
+          items: [
             {
               id: 'adminStats',
               label: 'stats',

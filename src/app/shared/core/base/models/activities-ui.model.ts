@@ -120,6 +120,7 @@ export interface CalendarTimedBadge {
 
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
+  | { type: 'eventCheckoutDraft'; sourceId: string }
   | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCardDTO }
   | {
       type: 'chatResource';

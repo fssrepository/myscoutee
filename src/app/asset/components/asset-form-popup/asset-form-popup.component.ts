@@ -21,7 +21,8 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 type AssetFormMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'type'; type: AppConstants.AssetType }
-  | { menu: 'category'; category: AppConstants.AssetCategory };
+  | { menu: 'category'; category: AppConstants.AssetCategory }
+  | { menu: 'save' };
 
 @Component({
   selector: 'app-asset-form-popup',
@@ -86,6 +87,24 @@ export class AssetFormPopupComponent implements OnChanges {
       return;
     }
     void this.save();
+  }
+
+  protected assetFormSaveMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+    return [{
+      id: 'asset-form-save',
+      icon: 'done',
+      layout: 'action',
+      palette: this.canSave || this.isSavePending ? 'success' : 'danger',
+      disabled: !this.canSave || this.isSavePending || this.isLoading,
+      ariaLabel: 'Save asset',
+      progress: this.isSavePending
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : null,
+      context: { menu: 'save' }
+    }];
   }
 
   protected visibilityMenuTrigger(): AppMenuTrigger {
@@ -177,6 +196,10 @@ export class AssetFormPopupComponent implements OnChanges {
     }
     if (context.menu === 'type') {
       this.onAssetTypeChange(context.type);
+      return;
+    }
+    if (context.menu === 'save') {
+      this.submitForm();
       return;
     }
     this.assetForm.category = context.category;

@@ -13,12 +13,19 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
 import {
-  FilterSelectorKind,
+  AppMenuComponent,
+  I18nPipe,
+  ProgressIndicatorComponent,
+  buildTabbedMenuModel,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuStaticOptionGroup,
+  type AppMenuTrigger
+} from '../../../shared/ui';
+import {
   GameFilterForm,
-  GameFilterOptionGroup,
-  HomeGameFilterPopupContext,
   cloneGameFilter,
   getGameUserFacet,
   getGameUserInterests,
@@ -29,14 +36,27 @@ import {
   GAME_FILTER_HEIGHT_MAX_CM,
   GAME_FILTER_HEIGHT_MIN_CM
 } from './home-game-filter.shared';
+import type {
+  GameFilterMenuKind,
+  GameFilterOptionGroup,
+  HomeGameFilterPopupContext
+} from './home-game-filter.shared';
+
+type GameFilterMenuId = string;
+type GameFilterMenuContext = {
+  kind: GameFilterMenuKind;
+  value: string;
+};
 
 @Component({
   selector: 'app-home-game-filter-popup',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    AppMenuComponent,
     CommonModule,
     FormsModule,
+    I18nPipe,
     MatIconModule,
     MatSliderModule,
     ProgressIndicatorComponent
@@ -51,23 +71,35 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   @Output() readonly closed = new EventEmitter<GameFilterForm | null>();
 
   protected filterDraft!: GameFilterForm;
-  protected filterSelector: FilterSelectorKind | null = null;
-  protected filterLanguageInput = '';
   protected readonly genderFilterOptions: Array<{ value: UserDto['gender']; label: string; icon: string }> = [
-    { value: 'woman', label: 'Woman', icon: 'female' },
-    { value: 'man', label: 'Man', icon: 'male' }
+    { value: 'woman', label: 'gender.woman', icon: 'female' },
+    { value: 'man', label: 'gender.man', icon: 'male' }
   ];
-
-  private filterLanguageSuggestionPool: string[] = [];
+  protected readonly basicsFilterMenuKinds: readonly GameFilterMenuKind[] = ['horoscopes', 'languages'];
+  protected readonly beliefsFilterMenuKinds: readonly GameFilterMenuKind[] = ['values', 'religions'];
+  protected readonly lifestyleFilterMenuKinds: readonly GameFilterMenuKind[] = [
+    'interests',
+    'physiques',
+    'smoking',
+    'drinking',
+    'workout',
+    'pets'
+  ];
+  protected readonly relationshipFilterMenuKinds: readonly GameFilterMenuKind[] = [
+    'genders',
+    'traitLabels',
+    'familyPlans',
+    'children',
+    'loveStyles',
+    'communicationStyles',
+    'sexualOrientations'
+  ];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!changes['context'] || !this.context) {
       return;
     }
     this.filterDraft = cloneGameFilter(this.context.filter);
-    this.filterSelector = null;
-    this.filterLanguageInput = '';
-    this.refreshFilterLanguageSuggestionPool();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -168,116 +200,89 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     return Array.from(new Set((this.context?.users ?? []).map(user => user.traitLabel))).sort((a, b) => a.localeCompare(b));
   }
 
-  protected get hasOpenFilterSelector(): boolean {
-    return this.filterSelector !== null;
-  }
-
-  protected get activeFilterSelectorTitle(): string {
-    switch (this.filterSelector) {
+  protected filterMenuTitle(kind: GameFilterMenuKind): string {
+    switch (kind) {
       case 'interests':
-        return 'Interest';
+        return 'interest';
       case 'values':
-        return 'Values';
+        return 'values';
       case 'physiques':
-        return 'Physique';
+        return 'physique';
       case 'languages':
-        return 'Languages';
+        return 'profile.languages';
       case 'genders':
-        return 'Gender';
+        return 'gender';
       case 'horoscopes':
-        return 'Horoscope';
+        return 'profile.horoscope';
       case 'traitLabels':
-        return 'Top Trait';
+        return 'top.trait';
       case 'smoking':
-        return 'Smoking';
+        return 'smoking';
       case 'drinking':
-        return 'Drinking';
+        return 'drinking';
       case 'workout':
-        return 'Workout';
+        return 'workout';
       case 'pets':
-        return 'Pets';
+        return 'pets';
       case 'familyPlans':
-        return 'Family plans';
+        return 'family.plans';
       case 'children':
-        return 'Children';
+        return 'children';
       case 'loveStyles':
-        return 'Love style';
+        return 'love.style';
       case 'communicationStyles':
-        return 'Communication style';
+        return 'communication.style';
       case 'sexualOrientations':
-        return 'Sexual orientation';
+        return 'sexual.orientation';
       case 'religions':
-        return 'Religion';
-      default:
-        return 'Filter';
+        return 'religion';
     }
   }
 
-  protected get activeFilterSelectorOptionGroups(): readonly GameFilterOptionGroup[] {
-    if (this.filterSelector === 'interests') {
-      return this.interestOptionGroups;
+  protected filterMenuTrigger(kind: GameFilterMenuKind): AppMenuTrigger {
+    return {
+      icon: this.filterMenuIcon(kind),
+      palette: this.filterMenuPalette(kind),
+      shape: 'field',
+      ariaLabel: this.filterMenuTitle(kind)
+    };
+  }
+
+  protected filterMenuModel(kind: GameFilterMenuKind): AppMenuModel<GameFilterMenuId, GameFilterMenuContext> {
+    return buildTabbedMenuModel<GameFilterMenuId, GameFilterMenuContext>({
+      idPrefix: `game-filter-${kind}`,
+      groups: this.filterMenuGroups(kind),
+      selected: this.filterMenuSelectedValues(kind),
+      context: value => ({ kind, value }),
+      itemLabel: value => this.filterMenuValueLabel(kind, value),
+      itemIcon: (value, group) => this.filterMenuItemIcon(kind, value, group),
+      itemPalette: (_value, group) => this.filterMenuGroupPalette(kind, group),
+      groupIcon: group => group.icon || this.filterMenuIcon(kind),
+      groupPalette: group => this.filterMenuGroupPalette(kind, group),
+      summary: {
+        emptyLabel: 'any',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
+  protected onGameFilterMenuSelect(
+    event: AppMenuItemSelectEvent<GameFilterMenuId, GameFilterMenuContext>
+  ): void {
+    const context = event.context;
+    if (!context) {
+      return;
     }
-    if (this.filterSelector === 'values') {
-      return this.valueOptionGroups;
+    const value = `${event.value ?? context.value}`.trim();
+    if (!value) {
+      return;
     }
-    return [];
-  }
-
-  protected get activeFilterSelectorUsesGroups(): boolean {
-    return this.filterSelector === 'interests' || this.filterSelector === 'values';
-  }
-
-  protected get activeFilterSelectorOptions(): Array<{ value: string; label: string; icon?: string }> {
-    switch (this.filterSelector) {
-      case 'interests':
-        return this.availableInterests.map(option => ({ value: option, label: option }));
-      case 'values':
-        return this.availableValues.map(option => ({ value: option, label: option }));
-      case 'smoking':
-        return this.availableSmokingOptions.map(option => ({ value: option, label: option }));
-      case 'drinking':
-        return this.availableDrinkingOptions.map(option => ({ value: option, label: option }));
-      case 'workout':
-        return this.availableWorkoutOptions.map(option => ({ value: option, label: option }));
-      case 'pets':
-        return this.availablePetsOptions.map(option => ({ value: option, label: option }));
-      case 'familyPlans':
-        return this.availableFamilyPlanOptions.map(option => ({ value: option, label: option }));
-      case 'children':
-        return this.availableChildrenOptions.map(option => ({ value: option, label: option }));
-      case 'loveStyles':
-        return this.availableLoveStyleOptions.map(option => ({ value: option, label: option }));
-      case 'communicationStyles':
-        return this.availableCommunicationStyleOptions.map(option => ({ value: option, label: option }));
-      case 'sexualOrientations':
-        return this.availableSexualOrientationOptions.map(option => ({ value: option, label: option }));
-      case 'religions':
-        return this.availableReligionOptions.map(option => ({ value: option, label: option }));
-      case 'physiques':
-        return this.availablePhysiques.map(option => ({ value: option, label: option }));
-      case 'languages':
-        return this.availableLanguages.map(option => ({ value: option, label: option }));
-      case 'genders':
-        return this.genderFilterOptions.map(option => ({ value: option.value, label: option.label, icon: option.icon }));
-      case 'horoscopes':
-        return this.availableHoroscopes.map(option => ({ value: option, label: option }));
-      case 'traitLabels':
-        return this.availableTraitLabels.map(option => ({ value: option, label: option }));
-      default:
-        return [];
+    if (event.action === 'remove') {
+      this.removeFilterMenuValue(context.kind, value, event.sourceEvent);
+      return;
     }
-  }
-
-  protected get availableFilterLanguageSuggestions(): string[] {
-    const selected = new Set(this.filterDraft.languages.map(item => item.trim().toLowerCase()));
-    const query = this.filterLanguageInput.trim().toLowerCase();
-    return this.filterLanguageSuggestionPool
-      .filter(item => !selected.has(item.toLowerCase()))
-      .filter(item => query.length === 0 || item.toLowerCase().includes(query));
-  }
-
-  protected get availableFilterLanguageDisplaySuggestions(): string[] {
-    return this.availableFilterLanguageSuggestions.slice(0, 24);
+    this.toggleGameFilterMenuValue(context.kind, value);
   }
 
   protected requestClose(event?: Event): void {
@@ -295,134 +300,266 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     this.closed.emit(normalizeGameFilter(this.filterDraft));
   }
 
-  protected openFilterSelector(kind: FilterSelectorKind): void {
-    this.filterSelector = kind;
-    if (kind === 'languages') {
-      this.filterLanguageInput = '';
-      this.refreshFilterLanguageSuggestionPool();
+  private filterMenuGroups(kind: GameFilterMenuKind): readonly GameFilterOptionGroup[] {
+    if (kind === 'interests') {
+      return this.interestOptionGroups;
     }
-  }
-
-  protected closeFilterSelector(): void {
-    this.filterSelector = null;
-  }
-
-  protected clearActiveFilterSelector(): void {
-    switch (this.filterSelector) {
-      case 'interests':
-        this.filterDraft.interests = [];
-        return;
-      case 'values':
-        this.filterDraft.values = [];
-        return;
-      case 'physiques':
-        this.filterDraft.physiques = [];
-        return;
-      case 'languages':
-        this.filterDraft.languages = [];
-        this.refreshFilterLanguageSuggestionPool();
-        return;
-      case 'genders':
-        this.filterDraft.genders = [];
-        return;
-      case 'horoscopes':
-        this.filterDraft.horoscopes = [];
-        return;
-      case 'traitLabels':
-        this.filterDraft.traitLabels = [];
-        return;
-      case 'smoking':
-        this.filterDraft.smoking = [];
-        return;
-      case 'drinking':
-        this.filterDraft.drinking = [];
-        return;
-      case 'workout':
-        this.filterDraft.workout = [];
-        return;
-      case 'pets':
-        this.filterDraft.pets = [];
-        return;
-      case 'familyPlans':
-        this.filterDraft.familyPlans = [];
-        return;
-      case 'children':
-        this.filterDraft.children = [];
-        return;
-      case 'loveStyles':
-        this.filterDraft.loveStyles = [];
-        return;
-      case 'communicationStyles':
-        this.filterDraft.communicationStyles = [];
-        return;
-      case 'sexualOrientations':
-        this.filterDraft.sexualOrientations = [];
-        return;
-      case 'religions':
-        this.filterDraft.religions = [];
-        return;
-      default:
-        return;
+    if (kind === 'values') {
+      return this.valueOptionGroups;
     }
+    return [{
+      title: this.filterMenuTitle(kind),
+      icon: this.filterMenuIcon(kind),
+      toneClass: this.filterMenuToneClass(kind),
+      options: this.filterMenuOptions(kind)
+    }];
   }
 
-  protected activeFilterSelectorHasSelection(): boolean {
-    if (!this.filterSelector) {
-      return false;
-    }
-    return this.filterSelectorSelectionCount(this.filterSelector) > 0;
-  }
-
-  protected filterSelectorHasSelection(kind: FilterSelectorKind): boolean {
-    return this.filterSelectorSelectionCount(kind) > 0;
-  }
-
-  protected filterSelectorPreview(kind: FilterSelectorKind): string[] {
-    return this.filterSelectorLabels(kind).slice(0, 2);
-  }
-
-  protected filterSelectorExtraCount(kind: FilterSelectorKind): number {
-    return Math.max(0, this.filterSelectorLabels(kind).length - 2);
-  }
-
-  protected filterSelectorToneClass(kind: FilterSelectorKind): string {
+  private filterMenuOptions(kind: GameFilterMenuKind): string[] {
     switch (kind) {
       case 'interests':
-        return 'game-filter-selector-tone-interest';
+        return this.mergeFilterOptions(this.availableInterests, this.filterDraft.interests);
       case 'values':
-        return 'game-filter-selector-tone-values';
-      case 'physiques':
-        return 'game-filter-selector-tone-physique';
-      case 'languages':
-        return 'game-filter-selector-tone-languages';
-      case 'genders':
-        return 'game-filter-selector-tone-gender';
-      case 'horoscopes':
-        return 'game-filter-selector-tone-horoscope';
-      case 'traitLabels':
-        return 'game-filter-selector-tone-traits';
+        return this.mergeFilterOptions(this.availableValues, this.filterDraft.values);
       case 'smoking':
-        return 'game-filter-selector-tone-smoking';
+        return this.mergeFilterOptions(this.availableSmokingOptions, this.filterDraft.smoking);
       case 'drinking':
-        return 'game-filter-selector-tone-drinking';
+        return this.mergeFilterOptions(this.availableDrinkingOptions, this.filterDraft.drinking);
       case 'workout':
-        return 'game-filter-selector-tone-workout';
+        return this.mergeFilterOptions(this.availableWorkoutOptions, this.filterDraft.workout);
       case 'pets':
-        return 'game-filter-selector-tone-pets';
+        return this.mergeFilterOptions(this.availablePetsOptions, this.filterDraft.pets);
       case 'familyPlans':
-        return 'game-filter-selector-tone-family';
+        return this.mergeFilterOptions(this.availableFamilyPlanOptions, this.filterDraft.familyPlans);
       case 'children':
-        return 'game-filter-selector-tone-children';
+        return this.mergeFilterOptions(this.availableChildrenOptions, this.filterDraft.children);
       case 'loveStyles':
-        return 'game-filter-selector-tone-love';
+        return this.mergeFilterOptions(this.availableLoveStyleOptions, this.filterDraft.loveStyles);
       case 'communicationStyles':
-        return 'game-filter-selector-tone-communication';
+        return this.mergeFilterOptions(this.availableCommunicationStyleOptions, this.filterDraft.communicationStyles);
       case 'sexualOrientations':
-        return 'game-filter-selector-tone-orientation';
+        return this.mergeFilterOptions(this.availableSexualOrientationOptions, this.filterDraft.sexualOrientations);
       case 'religions':
-        return 'game-filter-selector-tone-religion';
+        return this.mergeFilterOptions(this.availableReligionOptions, this.filterDraft.religions);
+      case 'physiques':
+        return this.mergeFilterOptions(this.availablePhysiques, this.filterDraft.physiques);
+      case 'languages':
+        return this.mergeFilterOptions(this.availableLanguages, this.filterDraft.languages);
+      case 'genders':
+        return this.genderFilterOptions.map(option => option.value);
+      case 'horoscopes':
+        return this.mergeFilterOptions(this.availableHoroscopes, this.filterDraft.horoscopes);
+      case 'traitLabels':
+        return this.mergeFilterOptions(this.availableTraitLabels, this.filterDraft.traitLabels);
+    }
+  }
+
+  private filterMenuItemIcon(
+    kind: GameFilterMenuKind,
+    value: string,
+    group: AppMenuStaticOptionGroup
+  ): string {
+    if (kind === 'genders') {
+      return this.genderFilterOptions.find(option => option.value === value)?.icon ?? this.filterMenuIcon(kind);
+    }
+    return group.icon || this.filterMenuIcon(kind);
+  }
+
+  private filterMenuIcon(kind: GameFilterMenuKind): string {
+    switch (kind) {
+      case 'interests':
+        return 'sell';
+      case 'values':
+        return 'auto_awesome';
+      case 'physiques':
+        return 'accessibility_new';
+      case 'languages':
+        return 'language';
+      case 'genders':
+        return 'wc';
+      case 'horoscopes':
+        return 'brightness_5';
+      case 'traitLabels':
+        return 'stars';
+      case 'smoking':
+        return 'smoking_rooms';
+      case 'drinking':
+        return 'local_bar';
+      case 'workout':
+        return 'fitness_center';
+      case 'pets':
+        return 'pets';
+      case 'familyPlans':
+        return 'family_restroom';
+      case 'children':
+        return 'child_care';
+      case 'loveStyles':
+        return 'favorite';
+      case 'communicationStyles':
+        return 'forum';
+      case 'sexualOrientations':
+        return 'diversity_1';
+      case 'religions':
+        return 'church';
+    }
+  }
+
+  private filterMenuPalette(kind: GameFilterMenuKind): AppMenuPalette {
+    switch (kind) {
+      case 'interests':
+      case 'smoking':
+      case 'workout':
+      case 'sexualOrientations':
+        return 'green';
+      case 'values':
+        return 'purple';
+      case 'physiques':
+      case 'drinking':
+      case 'languages':
+        return 'blue';
+      case 'genders':
+      case 'pets':
+      case 'familyPlans':
+        return 'orange';
+      case 'horoscopes':
+      case 'religions':
+        return 'gold';
+      case 'traitLabels':
+      case 'loveStyles':
+        return 'pink';
+      case 'children':
+        return 'sky';
+      case 'communicationStyles':
+        return 'violet';
+    }
+  }
+
+  private filterMenuToneClass(kind: GameFilterMenuKind): string {
+    switch (kind) {
+      case 'interests':
+        return 'game-filter-group-tone-lifestyle';
+      case 'values':
+        return 'game-filter-group-tone-beliefs';
+      case 'physiques':
+      case 'drinking':
+      case 'languages':
+        return 'game-filter-group-tone-social';
+      case 'smoking':
+      case 'workout':
+      case 'sexualOrientations':
+        return 'game-filter-group-tone-active';
+      case 'genders':
+      case 'pets':
+      case 'familyPlans':
+        return 'game-filter-group-tone-family';
+      case 'horoscopes':
+      case 'religions':
+        return 'game-filter-group-tone-beliefs';
+      case 'traitLabels':
+      case 'loveStyles':
+        return 'game-filter-group-tone-ambition';
+      case 'children':
+        return 'game-filter-group-tone-identity';
+      case 'communicationStyles':
+        return 'game-filter-group-tone-arts';
+    }
+  }
+
+  private filterMenuGroupPalette(kind: GameFilterMenuKind, group: AppMenuStaticOptionGroup): AppMenuPalette {
+    switch (group.toneClass) {
+      case 'game-filter-group-tone-social':
+        return 'blue';
+      case 'game-filter-group-tone-arts':
+        return 'violet';
+      case 'game-filter-group-tone-food':
+      case 'game-filter-group-tone-family':
+        return 'orange';
+      case 'game-filter-group-tone-active':
+        return 'green';
+      case 'game-filter-group-tone-mind':
+      case 'game-filter-group-tone-lifestyle':
+        return 'teal';
+      case 'game-filter-group-tone-identity':
+        return 'cyan';
+      case 'game-filter-group-tone-ambition':
+        return 'pink';
+      case 'game-filter-group-tone-beliefs':
+        return 'gold';
       default:
-        return 'game-filter-selector-tone-neutral';
+        return this.filterMenuPalette(kind);
+    }
+  }
+
+  private mergeFilterOptions(...optionLists: readonly (readonly string[])[]): string[] {
+    const optionsByKey = new Map<string, string>();
+    for (const optionList of optionLists) {
+      for (const option of optionList) {
+        const normalized = option.trim();
+        const key = normalized.toLowerCase();
+        if (!normalized || optionsByKey.has(key)) {
+          continue;
+        }
+        optionsByKey.set(key, normalized);
+      }
+    }
+    return Array.from(optionsByKey.values()).sort((a, b) => a.localeCompare(b));
+  }
+
+  private toggleGameFilterMenuValue(kind: GameFilterMenuKind, value: string): void {
+    switch (kind) {
+      case 'interests':
+        this.toggleFilterInterest(value);
+        return;
+      case 'values':
+        this.toggleFilterValue(value);
+        return;
+      case 'smoking':
+        this.toggleFilterSmoking(value);
+        return;
+      case 'drinking':
+        this.toggleFilterDrinking(value);
+        return;
+      case 'workout':
+        this.toggleFilterWorkout(value);
+        return;
+      case 'pets':
+        this.toggleFilterPets(value);
+        return;
+      case 'familyPlans':
+        this.toggleFilterFamilyPlans(value);
+        return;
+      case 'children':
+        this.toggleFilterChildren(value);
+        return;
+      case 'loveStyles':
+        this.toggleFilterLoveStyles(value);
+        return;
+      case 'communicationStyles':
+        this.toggleFilterCommunicationStyles(value);
+        return;
+      case 'sexualOrientations':
+        this.toggleFilterSexualOrientations(value);
+        return;
+      case 'religions':
+        this.toggleFilterReligions(value);
+        return;
+      case 'physiques':
+        this.toggleFilterPhysique(value);
+        return;
+      case 'languages':
+        this.toggleFilterLanguage(value);
+        return;
+      case 'genders':
+        if (value === 'woman' || value === 'man') {
+          this.toggleFilterGender(value);
+        }
+        return;
+      case 'horoscopes':
+        this.toggleFilterHoroscope(value);
+        return;
+      case 'traitLabels':
+        this.toggleFilterTraitLabel(value);
+        return;
     }
   }
 
@@ -447,42 +584,6 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     this.filterDraft.languages = exists
       ? this.filterDraft.languages.filter(item => item.toLowerCase() !== normalized.toLowerCase())
       : [...this.filterDraft.languages, normalized];
-    this.refreshFilterLanguageSuggestionPool();
-  }
-
-  protected submitFilterLanguageInput(event?: Event): void {
-    event?.stopPropagation();
-    const normalized = this.filterLanguageInput.trim();
-    if (!normalized) {
-      return;
-    }
-    const exists = this.filterDraft.languages.some(item => item.toLowerCase() === normalized.toLowerCase());
-    if (!exists) {
-      this.filterDraft.languages = [...this.filterDraft.languages, normalized];
-    }
-    this.filterLanguageInput = '';
-    this.refreshFilterLanguageSuggestionPool();
-  }
-
-  protected onFilterLanguageInputKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ',') {
-      return;
-    }
-    event.preventDefault();
-    this.submitFilterLanguageInput();
-  }
-
-  protected onFilterLanguageInputBlur(): void {
-    this.submitFilterLanguageInput();
-  }
-
-  protected selectFilterLanguage(value: string): void {
-    this.toggleFilterLanguage(value);
-    this.filterLanguageInput = '';
-  }
-
-  protected filterLanguageToneClass(value: string): string {
-    return `game-filter-language-tone-${this.filterLanguageToneIndex(value)}`;
   }
 
   protected toggleFilterGender(gender: UserDto['gender']): void {
@@ -537,176 +638,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     this.filterDraft.religions = this.toggleArraySelection(this.filterDraft.religions, option);
   }
 
-  protected isPhysiqueSelected(physique: string): boolean {
-    return this.filterDraft.physiques.includes(physique);
-  }
-
-  protected isInterestSelected(interest: string): boolean {
-    return this.filterDraft.interests.includes(interest);
-  }
-
-  protected isValueSelected(value: string): boolean {
-    return this.filterDraft.values.includes(value);
-  }
-
-  protected isLanguageSelected(language: string): boolean {
-    return this.filterDraft.languages.includes(language);
-  }
-
-  protected isGenderSelected(gender: UserDto['gender']): boolean {
-    return this.filterDraft.genders.includes(gender);
-  }
-
-  protected isHoroscopeSelected(horoscope: string): boolean {
-    return this.filterDraft.horoscopes.includes(horoscope);
-  }
-
-  protected isTraitLabelSelected(traitLabel: string): boolean {
-    return this.filterDraft.traitLabels.includes(traitLabel);
-  }
-
-  protected isSmokingSelected(option: string): boolean {
-    return this.filterDraft.smoking.includes(option);
-  }
-
-  protected isDrinkingSelected(option: string): boolean {
-    return this.filterDraft.drinking.includes(option);
-  }
-
-  protected isWorkoutSelected(option: string): boolean {
-    return this.filterDraft.workout.includes(option);
-  }
-
-  protected isPetsSelected(option: string): boolean {
-    return this.filterDraft.pets.includes(option);
-  }
-
-  protected isFamilyPlansSelected(option: string): boolean {
-    return this.filterDraft.familyPlans.includes(option);
-  }
-
-  protected isChildrenSelected(option: string): boolean {
-    return this.filterDraft.children.includes(option);
-  }
-
-  protected isLoveStylesSelected(option: string): boolean {
-    return this.filterDraft.loveStyles.includes(option);
-  }
-
-  protected isCommunicationStylesSelected(option: string): boolean {
-    return this.filterDraft.communicationStyles.includes(option);
-  }
-
-  protected isSexualOrientationsSelected(option: string): boolean {
-    return this.filterDraft.sexualOrientations.includes(option);
-  }
-
-  protected isReligionsSelected(option: string): boolean {
-    return this.filterDraft.religions.includes(option);
-  }
-
-  protected toggleActiveFilterSelectorOption(value: string): void {
-    switch (this.filterSelector) {
-      case 'interests':
-        this.toggleFilterInterest(value);
-        return;
-      case 'values':
-        this.toggleFilterValue(value);
-        return;
-      case 'smoking':
-        this.toggleFilterSmoking(value);
-        return;
-      case 'drinking':
-        this.toggleFilterDrinking(value);
-        return;
-      case 'workout':
-        this.toggleFilterWorkout(value);
-        return;
-      case 'pets':
-        this.toggleFilterPets(value);
-        return;
-      case 'familyPlans':
-        this.toggleFilterFamilyPlans(value);
-        return;
-      case 'children':
-        this.toggleFilterChildren(value);
-        return;
-      case 'loveStyles':
-        this.toggleFilterLoveStyles(value);
-        return;
-      case 'communicationStyles':
-        this.toggleFilterCommunicationStyles(value);
-        return;
-      case 'sexualOrientations':
-        this.toggleFilterSexualOrientations(value);
-        return;
-      case 'religions':
-        this.toggleFilterReligions(value);
-        return;
-      case 'physiques':
-        this.toggleFilterPhysique(value);
-        return;
-      case 'languages':
-        this.toggleFilterLanguage(value);
-        return;
-      case 'genders':
-        if (value === 'woman' || value === 'man') {
-          this.toggleFilterGender(value);
-        }
-        return;
-      case 'horoscopes':
-        this.toggleFilterHoroscope(value);
-        return;
-      case 'traitLabels':
-        this.toggleFilterTraitLabel(value);
-        return;
-      default:
-        return;
-    }
-  }
-
-  protected isActiveFilterSelectorOptionSelected(value: string): boolean {
-    switch (this.filterSelector) {
-      case 'interests':
-        return this.isInterestSelected(value);
-      case 'values':
-        return this.isValueSelected(value);
-      case 'smoking':
-        return this.isSmokingSelected(value);
-      case 'drinking':
-        return this.isDrinkingSelected(value);
-      case 'workout':
-        return this.isWorkoutSelected(value);
-      case 'pets':
-        return this.isPetsSelected(value);
-      case 'familyPlans':
-        return this.isFamilyPlansSelected(value);
-      case 'children':
-        return this.isChildrenSelected(value);
-      case 'loveStyles':
-        return this.isLoveStylesSelected(value);
-      case 'communicationStyles':
-        return this.isCommunicationStylesSelected(value);
-      case 'sexualOrientations':
-        return this.isSexualOrientationsSelected(value);
-      case 'religions':
-        return this.isReligionsSelected(value);
-      case 'physiques':
-        return this.isPhysiqueSelected(value);
-      case 'languages':
-        return this.isLanguageSelected(value);
-      case 'genders':
-        return value === 'woman' || value === 'man' ? this.isGenderSelected(value) : false;
-      case 'horoscopes':
-        return this.isHoroscopeSelected(value);
-      case 'traitLabels':
-        return this.isTraitLabelSelected(value);
-      default:
-        return false;
-    }
-  }
-
-  protected filterSelectorSelectedValues(kind: FilterSelectorKind): string[] {
+  protected filterMenuSelectedValues(kind: GameFilterMenuKind): string[] {
     switch (kind) {
       case 'interests':
         return [...this.filterDraft.interests];
@@ -747,14 +679,14 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     }
   }
 
-  protected filterSelectorValueLabel(kind: FilterSelectorKind, value: string): string {
+  protected filterMenuValueLabel(kind: GameFilterMenuKind, value: string): string {
     if (kind !== 'genders') {
       return value;
     }
     return this.genderFilterOptions.find(option => option.value === value)?.label ?? value;
   }
 
-  protected removeFilterSelectorValue(kind: FilterSelectorKind, value: string, event?: Event): void {
+  protected removeFilterMenuValue(kind: GameFilterMenuKind, value: string, event?: Event): void {
     event?.stopPropagation();
     switch (kind) {
       case 'interests':
@@ -798,7 +730,6 @@ export class HomeGameFilterPopupComponent implements OnChanges {
         return;
       case 'languages':
         this.filterDraft.languages = this.filterDraft.languages.filter(item => item.toLowerCase() !== value.toLowerCase());
-        this.refreshFilterLanguageSuggestionPool();
         return;
       case 'genders':
         if (value === 'woman' || value === 'man') {
@@ -847,129 +778,6 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   private toggleArraySelection<T extends string>(values: T[], target: T): T[] {
     const hasTarget = values.includes(target);
     return hasTarget ? values.filter(item => item !== target) : [...values, target];
-  }
-
-  private filterLanguageToneIndex(value: string): number {
-    const normalized = this.normalizeLanguageText(value);
-    if (!normalized) {
-      return 1;
-    }
-    let hash = 0;
-    for (const char of normalized) {
-      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-    }
-    return (hash % 8) + 1;
-  }
-
-  private normalizeLanguageText(value: string): string {
-    return value.trim().toLowerCase();
-  }
-
-  private refreshFilterLanguageSuggestionPool(): void {
-    const pool = new Map<string, string>();
-    for (const item of this.availableLanguages) {
-      const normalized = this.normalizeLanguageText(item);
-      if (!normalized || pool.has(normalized)) {
-        continue;
-      }
-      pool.set(normalized, item.trim());
-    }
-    for (const item of this.filterLanguageSuggestionPool) {
-      const normalized = this.normalizeLanguageText(item);
-      if (!normalized || pool.has(normalized)) {
-        continue;
-      }
-      pool.set(normalized, item.trim());
-    }
-    for (const item of this.filterDraft.languages) {
-      const normalized = this.normalizeLanguageText(item);
-      if (!normalized || pool.has(normalized)) {
-        continue;
-      }
-      pool.set(normalized, item.trim());
-    }
-    this.filterLanguageSuggestionPool = Array.from(pool.values()).sort((a, b) => a.localeCompare(b));
-  }
-
-  private filterSelectorSelectionCount(kind: FilterSelectorKind): number {
-    switch (kind) {
-      case 'interests':
-        return this.filterDraft.interests.length;
-      case 'values':
-        return this.filterDraft.values.length;
-      case 'smoking':
-        return this.filterDraft.smoking.length;
-      case 'drinking':
-        return this.filterDraft.drinking.length;
-      case 'workout':
-        return this.filterDraft.workout.length;
-      case 'pets':
-        return this.filterDraft.pets.length;
-      case 'familyPlans':
-        return this.filterDraft.familyPlans.length;
-      case 'children':
-        return this.filterDraft.children.length;
-      case 'loveStyles':
-        return this.filterDraft.loveStyles.length;
-      case 'communicationStyles':
-        return this.filterDraft.communicationStyles.length;
-      case 'sexualOrientations':
-        return this.filterDraft.sexualOrientations.length;
-      case 'religions':
-        return this.filterDraft.religions.length;
-      case 'physiques':
-        return this.filterDraft.physiques.length;
-      case 'languages':
-        return this.filterDraft.languages.length;
-      case 'genders':
-        return this.filterDraft.genders.length;
-      case 'horoscopes':
-        return this.filterDraft.horoscopes.length;
-      case 'traitLabels':
-        return this.filterDraft.traitLabels.length;
-      default:
-        return 0;
-    }
-  }
-
-  private filterSelectorLabels(kind: FilterSelectorKind): string[] {
-    switch (kind) {
-      case 'interests':
-        return [...this.filterDraft.interests];
-      case 'values':
-        return [...this.filterDraft.values];
-      case 'smoking':
-        return [...this.filterDraft.smoking];
-      case 'drinking':
-        return [...this.filterDraft.drinking];
-      case 'workout':
-        return [...this.filterDraft.workout];
-      case 'pets':
-        return [...this.filterDraft.pets];
-      case 'familyPlans':
-        return [...this.filterDraft.familyPlans];
-      case 'children':
-        return [...this.filterDraft.children];
-      case 'loveStyles':
-        return [...this.filterDraft.loveStyles];
-      case 'communicationStyles':
-        return [...this.filterDraft.communicationStyles];
-      case 'sexualOrientations':
-        return [...this.filterDraft.sexualOrientations];
-      case 'religions':
-        return [...this.filterDraft.religions];
-      case 'physiques':
-        return [...this.filterDraft.physiques];
-      case 'languages':
-        return [...this.filterDraft.languages];
-      case 'genders':
-        return this.filterDraft.genders.map(value => this.genderFilterOptions.find(item => item.value === value)?.label ?? value);
-      case 'horoscopes':
-        return [...this.filterDraft.horoscopes];
-      case 'traitLabels':
-      default:
-        return [...this.filterDraft.traitLabels];
-    }
   }
 
   private userInterests(user: UserDto): string[] {

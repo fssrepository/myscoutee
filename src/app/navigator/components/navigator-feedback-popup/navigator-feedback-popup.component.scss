@@ -156,39 +156,7 @@
   flex-wrap: wrap;
 }
 
-.support-submit-btn-shell {
-  position: relative;
+.support-submit-menu {
   display: inline-flex;
-  border-radius: 16px;
-  padding: 2px;
-}
-
-.support-submit-btn {
-  position: relative;
-  z-index: 1;
-  min-height: 40px;
-  border-color: transparent;
-}
-
-.support-submit-btn-ring {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.support-submit-btn-shell.is-loading .support-submit-btn,
-.support-submit-btn-shell.is-error .support-submit-btn,
-.support-submit-btn-shell.is-success .support-submit-btn {
-  box-shadow: none;
-}
-
-.support-actions .primary-btn:disabled,
-.support-submit-btn-shell.is-loading .support-submit-btn {
-  background: linear-gradient(180deg, #d9e2f2 0%, #c9d4e8 100%);
-  border-color: rgba(74, 103, 145, 0.32);
-  color: rgba(29, 51, 83, 0.72);
-  cursor: not-allowed;
-  box-shadow: none;
-  opacity: 1;
-  transform: none;
+  min-width: 142px;
 }
