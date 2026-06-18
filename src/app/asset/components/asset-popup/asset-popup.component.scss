@@ -721,11 +721,7 @@
 }
 
 .asset-popup .experience-action-menu-trigger .mat-icon {
-  transition: transform 0.16s ease, opacity 0.16s ease;
-}
-
-.asset-popup .experience-action-menu-trigger.is-open .mat-icon {
-  transform: rotate(90deg) scale(1.04);
+  transition: opacity 0.16s ease;
 }
 
 .asset-popup .assets-toolbar .profile-status-select-wrap:focus-within {

@@ -40,6 +40,17 @@
           </div>
           @if (isBasketMode()) {
             <div class="popup-header-inline-controls asset-popup-basket-controls">
+              @if (assetAssignBasketCount() > 0) {
+                <app-menu
+                  class="asset-popup-assign-menu"
+                  kind="button-row"
+                  [items]="assetAssignBasketActionItems()"
+                  [panelAlign]="'end'"
+                  [mobileBreakpointPx]="900"
+                  [closeOnSelect]="false"
+                  (itemSelect)="onAssetPopupMenuSelect($event)"
+                ></app-menu>
+              }
               <span
                 class="asset-popup-basket-save-btn-shell"
                 [class.is-loading]="isBasketSavePending()"
@@ -90,18 +101,12 @@
           [class.popup-body-friends-picker]="isBasketMode()"
           [class.popup-body-subevent-asset-assign]="isBasketMode()"
           >
-          <div
-            class="experience-popup assets-popup assets-popup-smart-list"
-            [class.assets-popup-tickets]="ownedAssets.isTicketPopup()"
-            [class.assets-popup-basket]="isBasketMode()"
-            >
+            <div
+              class="experience-popup assets-popup assets-popup-smart-list"
+              [class.assets-popup-tickets]="ownedAssets.isTicketPopup()"
+              [class.assets-popup-basket]="isBasketMode()"
+              >
             @if (isBasketMode()) {
-              <app-basket
-                className="friends-picker-chip-row asset-popup-basket-chip-row"
-                [chips]="basketChips()"
-                [disabled]="isBasketSavePending()"
-                (chipClick)="onBasketChipClick($event)"
-              ></app-basket>
               @if (basketSaveErrorMessage()) {
                 <p class="asset-popup-basket-error">{{ basketSaveErrorMessage() }}</p>
               }
@@ -153,6 +158,7 @@
                 [loadPage]="assetSmartListLoadPage"
                 [itemTemplate]="assetItemTemplate"
                 [query]="assetSmartListQuery"
+                (itemSelect)="onAssetSmartListItemSelect($event)"
                 (menuItemSelect)="onAssetDispatchedMenuSelect($event)"
                 (stateChange)="onAssetSmartListStateChange($event)"
               ></app-smart-list>
@@ -317,14 +323,14 @@
     ></app-info-card>
   </ng-template>
 
-  <ng-template #assetItemTemplate let-card let-groupLabel="groupLabel" let-selectMode="selectMode">
+  <ng-template #assetItemTemplate let-card let-groupLabel="groupLabel" let-selectMode="selectMode" let-selectItem="selectItem">
     <app-info-card
       [card]="ownedAssetInfoCard(card, { groupLabel: groupLabel, selectMode: selectMode, selected: isAssetAssignCardSelected(card.id), selectDisabled: isBasketSavePending() })"
       [useSharedMenuTrigger]="true"
       [sharedMenuContext]="{ menu: 'asset-info-card', assetCard: card }"
       (mediaStartClick)="openOwnedAssetMap(card)"
-      (mediaEndClick)="onOwnedAssetMediaEndClick(card, selectMode)"
-      (menuAction)="onOwnedAssetCardMenuAction(card, $event)"
+      (mediaEndClick)="openSupplyRequestList(card)"
+      (menuAction)="onOwnedAssetCardMenuAction(card, $event, selectMode ? selectItem : null)"
     ></app-info-card>
   </ng-template>
 

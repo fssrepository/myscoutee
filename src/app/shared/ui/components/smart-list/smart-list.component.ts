@@ -965,6 +965,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       selectMode: this.resolvedSelectMode(),
       presentation: 'list',
       renderState: 'list',
+      selectItem: event => this.selectSmartListItem(item, event),
       openMenu: request => this.openItemMenu(item, request)
     };
   }
@@ -1031,8 +1032,21 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       selectMode: this.resolvedSelectMode(),
       presentation: 'fullscreen',
       renderState,
+      selectItem: event => this.selectSmartListItem(item, event),
       openMenu: request => this.openItemMenu(item, request)
     };
+  }
+
+  private selectSmartListItem(item: T, event?: Event): void {
+    event?.stopPropagation();
+    this.itemSelect.emit({
+      item,
+      query: this.currentQuery(),
+      currentView: this.currentViewKey,
+      currentViewMode: this.currentViewMode,
+      selectMode: this.resolvedSelectMode(),
+      sourceEvent: event
+    });
   }
 
   protected hostedFullscreenEmptyLabel(): string {
@@ -1192,13 +1206,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected onCalendarItemClick(item: T, event?: Event): void {
-    event?.stopPropagation();
-    this.itemSelect.emit({
-      item,
-      query: this.currentQuery(),
-      currentView: this.currentViewKey,
-      currentViewMode: this.currentViewMode
-    });
+    this.selectSmartListItem(item, event);
   }
 
   protected calendarPrev(event?: Event): void {

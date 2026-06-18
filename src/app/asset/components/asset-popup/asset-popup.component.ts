@@ -19,7 +19,6 @@ import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
-  BasketComponent,
   InfoCardComponent,
   ProgressIndicatorComponent,
   SmartListComponent,
@@ -27,13 +26,13 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  type BasketChip,
   type InfoCardData,
   type CardMenuActionEvent,
   type CardResolvedMenuAction,
   type ListQuery,
   type SingleRowData,
   type SmartListConfig,
+  type SmartListItemSelectEvent,
   type SmartListStateChange,
   ConfirmationDialogComponent
 } from '../../../shared/ui';
@@ -65,6 +64,7 @@ interface AssetSupplyRequestRow extends SingleRowData {
 type AssetPopupMenuContext =
   | { menu: 'ticket-order'; order: AppConstants.AssetTicketOrder }
   | { menu: 'asset-filter'; filter: AppConstants.AssetFilterType }
+  | { menu: 'asset-assign-basket'; assetCard: AppDTOs.AssetCardDTO }
   | { menu: 'supply-request-filter'; filter: AssetSupplyRequestFilter }
   | { menu: 'supply-request-action'; row: AssetSupplyRequestRow; action: AssetSupplyRequestRowAction }
   | {
@@ -84,7 +84,6 @@ type AssetPopupMenuContext =
     AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
-    BasketComponent,
     InfoCardComponent,
     ProgressIndicatorComponent,
     SmartListComponent,
@@ -234,16 +233,56 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return this.ownedAssets.isTicketPopup() ? this.assetPopup.ticketHeaderSummary() : '';
   }
 
-  protected basketChips(): BasketChip[] {
+  protected assetAssignBasketCount(): number {
+    return this.assetAssignBasketCards().length;
+  }
+
+  protected assetAssignBasketActionItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    const type = this.currentAssetSmartListType();
+    const count = this.assetAssignBasketCount();
+    return [{
+      id: 'asset-assign-basket',
+      icon: this.ownedAssets.assetTypeIcon(type),
+      openIcon: this.ownedAssets.assetTypeIcon(type),
+      palette: this.assetFilterPalette(type),
+      kind: 'branch',
+      counter: count > 0 ? count : null,
+      ariaLabel: 'Open selected assets',
+      items: this.assetAssignBasketMenuItems()
+    }];
+  }
+
+  protected assetAssignBasketMenuItems(): readonly AppMenuItem<string, AssetPopupMenuContext>[] {
+    return this.assetAssignBasketCards().map(card => ({
+      id: `asset-assign-basket-${card.id}`,
+      label: card.title,
+      description: this.assetAssignBasketItemDescription(card),
+      icon: this.ownedAssets.assetTypeIcon(card.type),
+      kind: 'action',
+      palette: this.assetFilterPalette(card.type),
+      surface: 'tinted',
+      removable: true,
+      removeIcon: 'close',
+      removeAriaLabel: `Remove ${card.title}`,
+      closeOnSelect: false,
+      context: { menu: 'asset-assign-basket', assetCard: card }
+    }));
+  }
+
+  private assetAssignBasketCards(): AppDTOs.AssetCardDTO[] {
     const host = this.assetPopup.host();
     if (!host?.isSubEventAssetAssignPopup()) {
       return [];
     }
-    return host.selectedSubEventAssetAssignChips().map(card => ({
-      id: card.id,
-      label: card.title,
-      icon: this.ownedAssets.assetTypeIcon(card.type)
-    }));
+    return host.selectedSubEventAssetAssignChips();
+  }
+
+  private assetAssignBasketItemDescription(card: AppDTOs.AssetCardDTO): string {
+    return [
+      this.ownedAssets.assetTypeLabel(card.type),
+      card.subtitle,
+      card.city
+    ].map(value => `${value ?? ''}`.trim()).filter(Boolean).join(' · ');
   }
 
   protected canConfirmBasketSelection(): boolean {
@@ -273,7 +312,15 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return !!host && host.isSubEventAssetAssignPopup() && host.isSubEventAssetAssignCardSelected(cardId);
   }
 
-  protected onOwnedAssetCardMenuAction(card: AppDTOs.AssetCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
+  protected onOwnedAssetCardMenuAction(
+    card: AppDTOs.AssetCardDTO,
+    event: CardMenuActionEvent<InfoCardData>,
+    selectItem?: (() => void) | null
+  ): void {
+    if (event.actionId === 'toggleSelection') {
+      selectItem?.();
+      return;
+    }
     if (this.isBasketMode()) {
       return;
     }
@@ -462,6 +509,11 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       case 'asset-filter':
         this.onAssetFilterChange(context.filter);
         return;
+      case 'asset-assign-basket':
+        if (event.action === 'remove') {
+          this.toggleAssetAssignBasketCard(context.assetCard.id, event.sourceEvent);
+        }
+        return;
       case 'supply-request-filter':
         this.selectSupplyRequestFilter(context.filter, event.sourceEvent);
         return;
@@ -487,6 +539,13 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
         card: context.card
       });
     }
+  }
+
+  protected onAssetSmartListItemSelect(event: SmartListItemSelectEvent<AppDTOs.AssetCardDTO, OwnedAssetListFilters>): void {
+    if (!event.selectMode || !this.isBasketMode()) {
+      return;
+    }
+    this.toggleAssetAssignBasketCard(event.item.id, event.sourceEvent);
   }
 
   private async runSupplyRequestRowAction(
@@ -552,12 +611,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     });
   }
 
-  protected onOwnedAssetMediaEndClick(card: AppDTOs.AssetCardDTO, selectMode: boolean): void {
-    if (!selectMode) {
-      this.openSupplyRequestList(card);
-      return;
-    }
-    this.assetPopup.host()?.toggleSubEventAssetAssignCard(card.id);
+  private toggleAssetAssignBasketCard(cardId: string, event?: Event): void {
+    this.assetPopup.host()?.toggleSubEventAssetAssignCard(cardId, event);
   }
 
   protected openSupplyRequestList(card: AppDTOs.AssetCardDTO, event?: Event): void {
@@ -1098,14 +1153,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       return;
     }
     host.confirmSubEventAssetAssignSelection(event);
-  }
-
-  protected onBasketChipClick(payload: { chip: BasketChip; event: Event }): void {
-    const host = this.assetPopup.host();
-    if (!host?.isSubEventAssetAssignPopup()) {
-      return;
-    }
-    host.toggleSubEventAssetAssignCard(payload.chip.id, payload.event);
   }
 
   @HostListener('window:keydown.escape', ['$event'])

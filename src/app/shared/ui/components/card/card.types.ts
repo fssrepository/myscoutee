@@ -145,6 +145,8 @@ export interface InfoCardOverlayAccessory {
 }
 
 export interface InfoCardOverlayAction {
+  actionId?: CardMenuAction | null;
+  actionTone?: CardMenuActionTone | null;
   variant?: InfoCardOverlayVariant;
   layout?: InfoCardOverlayLayout | null;
   shape?: InfoCardOverlayShape | null;
