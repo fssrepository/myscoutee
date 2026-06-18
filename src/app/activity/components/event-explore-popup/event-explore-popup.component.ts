@@ -26,16 +26,17 @@ import {
   AppMenuDispatcher,
   AppMenuComponent,
   AppMenuOutletComponent,
+  appMenuPaletteFromToneClass,
+  buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   CARD_MENU_ACTIONS,
   InfoCardComponent,
-  ProgressIndicatorComponent,
   type PageResult,
   SmartListComponent,
-  TopicPickerPopupComponent,
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
@@ -62,7 +63,9 @@ type CheckoutDraftEntry = {
 type EventExploreMenuContext =
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
-  | { menu: 'topic-picker' }
+  | { menu: 'filter-toggle'; filter: 'friends' | 'open-spots' }
+  | { menu: 'topic-filter'; topic: string }
+  | { menu: 'checkout-draft'; entry: CheckoutDraftEntry }
   | {
       menu: 'info-card';
       record: ActivityEventRecord;
@@ -79,9 +82,7 @@ type EventExploreMenuContext =
     AppMenuComponent,
     AppMenuOutletComponent,
     InfoCardComponent,
-    ProgressIndicatorComponent,
-    SmartListComponent,
-    TopicPickerPopupComponent
+    SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
   styleUrl: './event-explore-popup.component.scss',
@@ -116,9 +117,7 @@ export class EventExplorePopupComponent {
   private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
-  protected showTopicPicker = false;
   protected slotPickerRecord: ActivityEventRecord | null = null;
-  protected showCheckoutDraftBasket = false;
   protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: ContractTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
@@ -143,8 +142,8 @@ export class EventExplorePopupComponent {
   private lastAppliedActivityMembersUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
+  private readonly checkoutDraftClearSaveSourceIds = new Set<string>();
   private readonly checkoutDraftReleaseSourceIds = new Set<string>();
-  private readonly clearingCheckoutDraftsBySourceId = new Map<string, EventCheckoutDraft>();
 
   protected eventExploreSmartListQuery: Partial<ListQuery<EventExploreFeedFilters>> = {};
 
@@ -198,10 +197,14 @@ export class EventExplorePopupComponent {
 
     effect(() => {
       const request = this.popupCtx.activitiesNavigationRequest();
-      if (!request || request.type !== 'eventExplore') {
+      if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
       this.popupCtx.clearActivitiesNavigationRequest();
+      if (request.type === 'eventCheckoutDraft') {
+        void this.continueCheckoutDraftBySourceId(request.sourceId);
+        return;
+      }
       this.openEventExplore();
     });
 
@@ -245,8 +248,8 @@ export class EventExplorePopupComponent {
         .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
       this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       if (this.isOpen) {
-        if (removedPendingDraftSourceIds.length > 0 && this.shouldReloadEventExploreAfterDraftRemoval(removedPendingDraftSourceIds)) {
-          this.reloadEventExploreSmartList();
+        if (removedPendingDraftSourceIds.length > 0) {
+          this.restoreVisibleEventExploreRecordsById(removedPendingDraftSourceIds);
         } else if (hasNewPendingDraft) {
           this.pruneVisibleTrackedEventExploreRecords();
         }
@@ -280,32 +283,7 @@ export class EventExplorePopupComponent {
       this.closeEventExploreSlotPicker();
       return;
     }
-    if (this.showCheckoutDraftBasket) {
-      this.showCheckoutDraftBasket = false;
-      this.cdr.markForCheck();
-      return;
-    }
-    if (this.showTopicPicker) {
-      this.showTopicPicker = false;
-      this.cdr.markForCheck();
-      return;
-    }
     this.closeEventExplore();
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.isOpen) {
-      return;
-    }
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (this.showCheckoutDraftBasket && !target.closest('.event-explore-basket')) {
-      this.showCheckoutDraftBasket = false;
-    }
-    this.cdr.markForCheck();
   }
 
   protected onEventExploreSmartListStateChange(state: SmartListStateChange<ActivityEventRecord, EventExploreFeedFilters>): void {
@@ -319,8 +297,6 @@ export class EventExplorePopupComponent {
 
   protected closeEventExplore(): void {
     this.isOpen = false;
-    this.showTopicPicker = false;
-    this.showCheckoutDraftBasket = false;
     this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -363,18 +339,6 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected toggleEventExploreTopicPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTopicPicker = !this.showTopicPicker;
-    this.cdr.markForCheck();
-  }
-
-  protected closeEventExploreTopicPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.showTopicPicker = false;
-    this.cdr.markForCheck();
-  }
-
   protected selectEventExploreTopicFilter(topic: string, event?: Event): void {
     event?.stopPropagation();
     const normalizedTopic = this.normalizeTopic(topic);
@@ -383,40 +347,8 @@ export class EventExplorePopupComponent {
     this.reloadEventExploreSmartList();
   }
 
-  protected updateEventExploreTopicSelection(selected: readonly string[]): void {
-    const nextTopic = selected[0] ?? '';
-    if (this.normalizeTopic(nextTopic) === this.normalizeTopic(this.eventExploreFilterTopic)) {
-      return;
-    }
-    this.eventExploreFilterTopic = nextTopic;
-    this.syncEventExploreQuery();
-    this.reloadEventExploreSmartList();
-  }
-
-  protected eventExploreTopicFilterLabel(): string {
-    if (!this.eventExploreFilterTopic) {
-      return 'Topic';
-    }
-    return `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`;
-  }
-
   protected eventExploreTopicLabel(topic: string): string {
     return topic.replace(/^#+\s*/, '');
-  }
-
-  protected eventExploreTopicMenuTrigger(): AppMenuTrigger {
-    return {
-      id: 'topic-picker',
-      label: this.eventExploreTopicFilterLabel(),
-      icon: 'sell',
-      trailingIcon: 'chevron_right',
-      openTrailingIcon: 'expand_less',
-      ariaLabel: 'Open topic filter',
-      palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
-      shape: 'pill',
-      action: 'custom',
-      context: { menu: 'topic-picker' }
-    };
   }
 
   protected eventExploreOrderMenuTrigger(): AppMenuTrigger {
@@ -467,6 +399,67 @@ export class EventExplorePopupComponent {
     }));
   }
 
+  protected eventExploreFilterMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return [
+      {
+        id: 'filter-friends-going',
+        label: 'Friends going',
+        icon: 'groups',
+        kind: 'toggle',
+        layout: 'summary',
+        active: this.eventExploreFilterFriendsOnly,
+        checked: this.eventExploreFilterFriendsOnly,
+        closeOnSelect: false,
+        palette: 'green',
+        context: { menu: 'filter-toggle', filter: 'friends' }
+      },
+      {
+        id: 'filter-open-spots',
+        label: 'Open spots',
+        icon: 'hotel',
+        kind: 'toggle',
+        layout: 'summary',
+        active: this.eventExploreFilterHasRooms,
+        checked: this.eventExploreFilterHasRooms,
+        closeOnSelect: false,
+        palette: 'blue',
+        context: { menu: 'filter-toggle', filter: 'open-spots' }
+      },
+      {
+        id: 'filter-topic',
+        label: this.eventExploreFilterTopic
+          ? `#${this.eventExploreTopicLabel(this.eventExploreFilterTopic)}`
+          : 'Topic',
+        icon: 'sell',
+        kind: 'select-trigger',
+        layout: 'summary',
+        active: !!this.eventExploreFilterTopic,
+        checked: !!this.eventExploreFilterTopic,
+        closeOnSelect: false,
+        palette: this.eventExploreTopicPalette(this.eventExploreFilterTopic),
+        ariaLabel: 'Open topic filter',
+        filterable: true,
+        model: this.eventExploreTopicMenuModel()
+      }
+    ];
+  }
+
+  private eventExploreTopicMenuModel(): AppMenuModel<string, EventExploreMenuContext> {
+    return buildTabbedMenuModel<string, EventExploreMenuContext>({
+      idPrefix: 'topic',
+      groups: this.topicFilterGroups,
+      selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
+      context: topic => ({ menu: 'topic-filter', topic }),
+      itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
+      removeAriaLabel: topic => `Clear ${topic}`,
+      summary: {
+        emptyLabel: 'Topic',
+        maxLabels: 1,
+        counter: 'none'
+      }
+    });
+  }
+
   protected onEventExploreMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as EventExploreMenuContext | undefined;
     if (!context) {
@@ -489,8 +482,34 @@ export class EventExplorePopupComponent {
       this.selectEventExploreView(context.view, event.sourceEvent);
       return;
     }
-    if (context.menu === 'topic-picker') {
-      this.toggleEventExploreTopicPicker(event.sourceEvent);
+    if (context.menu === 'filter-toggle') {
+      if (context.filter === 'friends') {
+        this.toggleEventExploreFriendsOnly(event.sourceEvent);
+        return;
+      }
+      this.toggleEventExploreHasRooms(event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'checkout-draft') {
+      if (event.action === 'remove') {
+        void this.clearCheckoutDraft(context.entry.draft, event.sourceEvent);
+        return;
+      }
+      void this.viewCheckoutDraftEvent(context.entry, event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'topic-filter') {
+      if (event.action === 'remove') {
+        event.sourceEvent.stopPropagation();
+        if (this.normalizeTopic(context.topic) !== this.normalizeTopic(this.eventExploreFilterTopic)) {
+          return;
+        }
+        this.eventExploreFilterTopic = '';
+        this.syncEventExploreQuery();
+        this.reloadEventExploreSmartList();
+        return;
+      }
+      this.selectEventExploreTopicFilter(context.topic, event.sourceEvent);
     }
   }
 
@@ -610,22 +629,7 @@ export class EventExplorePopupComponent {
     const group = this.topicFilterGroups.find(item =>
       item.options.some(option => this.normalizeTopic(option) === normalizedTopic)
     );
-    switch (group?.toneClass) {
-      case 'section-social':
-        return 'blue';
-      case 'section-arts':
-        return 'violet';
-      case 'section-food':
-        return 'orange';
-      case 'section-active':
-        return 'green';
-      case 'section-mind':
-        return 'teal';
-      case 'section-identity':
-        return 'purple';
-      default:
-        return 'neutral';
-    }
+    return appMenuPaletteFromToneClass(group?.toneClass);
   }
 
   protected eventExploreHeaderTitle(): string {
@@ -777,12 +781,7 @@ export class EventExplorePopupComponent {
 
   protected checkoutDraftEntries(): CheckoutDraftEntry[] {
     const activeUserId = this.activeUserId.trim();
-    const liveDrafts = this.eventCheckoutDraftService.listByUser(activeUserId);
-    const liveSourceIds = new Set(liveDrafts.map(draft => draft.sourceId.trim()).filter(Boolean));
-    const clearingDrafts = [...this.clearingCheckoutDraftsBySourceId.values()]
-      .filter(draft => draft.userId === activeUserId)
-      .filter(draft => !liveSourceIds.has(draft.sourceId.trim()));
-    return [...liveDrafts, ...clearingDrafts]
+    return this.eventCheckoutDraftService.listByUser(activeUserId)
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
@@ -803,29 +802,75 @@ export class EventExplorePopupComponent {
     return this.resolveCheckoutDraftMembershipStatus(entry.draft.sourceId, entry.record) === 'accepted';
   }
 
-  protected checkoutDraftActionLabel(entry: CheckoutDraftEntry): string {
-    if (this.canContinueCheckoutDraft(entry)) {
-      return 'Continue';
-    }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'Waiting for spot'
-      : 'Waiting for approval';
+  protected checkoutDraftMenuTrigger(): AppMenuTrigger {
+    const count = this.checkoutDraftCount();
+    return {
+      icon: 'shopping_basket',
+      closeIcon: 'close',
+      ariaLabel: count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`,
+      counter: count,
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'orange'
+    };
   }
 
-  protected checkoutDraftPendingLabel(entry: CheckoutDraftEntry): string {
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'Waiting for a spot to open before payment.'
-      : 'Waiting for admin approval before payment.';
+  protected checkoutDraftMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
+    return this.checkoutDraftEntries().map(entry => {
+      const clearing = this.isCheckoutDraftClearing(entry.draft.sourceId);
+      const itemCount = entry.draft.lineItems.length;
+      return {
+        id: `checkout-draft-${entry.draft.sourceId}`,
+        label: entry.draft.eventTitle,
+        description: [
+          entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout',
+          `${itemCount} ${itemCount === 1 ? 'item' : 'items'} · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
+        ].join('\n'),
+        detail: clearing ? 'Releasing...' : this.checkoutDraftMenuStatusLabel(entry),
+        icon: this.checkoutDraftMenuIcon(entry),
+        kind: 'action',
+        palette: this.checkoutDraftMenuPalette(entry),
+        surface: 'tinted',
+        layout: 'summary',
+        disabled: clearing,
+        removable: true,
+        removeIcon: 'close',
+        removeAriaLabel: `Clear ${entry.draft.eventTitle}`,
+        context: { menu: 'checkout-draft', entry }
+      };
+    });
   }
 
   protected isCheckoutDraftClearing(sourceId: string): boolean {
     return this.checkoutDraftReleaseSourceIds.has(sourceId.trim());
   }
 
-  protected toggleCheckoutDraftBasket(event?: Event): void {
-    event?.stopPropagation();
-    this.showCheckoutDraftBasket = !this.showCheckoutDraftBasket;
-    this.cdr.markForCheck();
+  private checkoutDraftMenuStatusLabel(entry: CheckoutDraftEntry): string {
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'Checkout ready';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist'
+      ? 'Waiting for spot'
+      : 'Waiting for approval';
+  }
+
+  private checkoutDraftMenuIcon(entry: CheckoutDraftEntry): string {
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'event_available';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist'
+      ? 'hourglass_empty'
+      : 'pending_actions';
+  }
+
+  private checkoutDraftMenuPalette(entry: CheckoutDraftEntry): AppMenuPalette {
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return 'warning';
+    }
+    if (this.canContinueCheckoutDraft(entry)) {
+      return 'red';
+    }
+    return this.checkoutDraftPendingReason(entry) === 'waitlist' ? 'amber' : 'orange';
   }
 
   protected async continueCheckoutDraft(
@@ -848,10 +893,31 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    this.showCheckoutDraftBasket = false;
     this.openEventExploreCheckout(record, {
       approvalGranted: this.canContinueCheckoutDraft({ draft, record })
     });
+  }
+
+  private async continueCheckoutDraftBySourceId(sourceId: string): Promise<void> {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    const activeUserId = this.activeUserId.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    if (!activeUserId) {
+      return;
+    }
+    this.activeUserId = activeUserId;
+    const draft = this.eventCheckoutDraftService.read(activeUserId, normalizedSourceId);
+    if (!draft) {
+      return;
+    }
+    const entry: CheckoutDraftEntry = {
+      draft,
+      record: this.eventsService.peekKnownItemById(activeUserId, normalizedSourceId)
+        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedSourceId)
+    };
+    await this.continueCheckoutDraft(entry);
   }
 
   protected async viewCheckoutDraftEvent(
@@ -874,7 +940,6 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
-    this.showCheckoutDraftBasket = false;
     this.runEventExploreViewAction(record);
   }
 
@@ -895,7 +960,6 @@ export class EventExplorePopupComponent {
     }
 
     this.checkoutDraftReleaseSourceIds.add(sourceId);
-    this.clearingCheckoutDraftsBySourceId.set(sourceId, { ...draft });
     this.eventCheckoutDraftService.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
@@ -903,9 +967,6 @@ export class EventExplorePopupComponent {
         ?? await this.eventsService.queryKnownItemById(activeUserId, sourceId);
 
       if (!record) {
-        if (this.isOpen) {
-          this.reloadEventExploreSmartList();
-        }
         return;
       }
 
@@ -915,9 +976,7 @@ export class EventExplorePopupComponent {
       const hadMembership = existingMembers.some(member => member.userId === activeUserId);
       if (!hadMembership) {
         this.locallyTrackedMembershipSourceIds.delete(sourceId);
-        if (this.isOpen) {
-          this.reloadEventExploreSmartList();
-        }
+        this.restoreVisibleEventExploreRecord(record);
         return;
       }
 
@@ -925,17 +984,17 @@ export class EventExplorePopupComponent {
         existingMembers.filter(member => member.userId !== activeUserId)
       );
       const payload = this.buildActivityEventSaveDTO(record, nextMembers);
+      const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
+      this.checkoutDraftClearSaveSourceIds.add(sourceId);
       const persistence = this.activitiesContext.emitActivityEventSave(payload);
+      this.restoreVisibleEventExploreRecord(nextRecord);
       if (this.selectedMembersRecord?.id === record.id) {
+        this.selectedMembersRecord = nextRecord;
         this.selectedMembers = nextMembers;
       }
       this.cdr.markForCheck();
       await persistence;
-      if (this.isOpen) {
-        this.reloadEventExploreSmartList();
-      }
     } finally {
-      this.clearingCheckoutDraftsBySourceId.delete(sourceId);
       this.checkoutDraftReleaseSourceIds.delete(sourceId);
       this.cdr.markForCheck();
     }
@@ -1136,7 +1195,7 @@ export class EventExplorePopupComponent {
 
   private applyActivityEventSave(sync: ActivityEventDTO): void {
     const dto = sync;
-    const userJoinedEvent = false;
+    const userJoinedEvent = this.locallyTrackedMembershipSourceIds.has(sync.id);
     if (userJoinedEvent) {
       this.locallyTrackedMembershipSourceIds.add(sync.id);
     } else {
@@ -1149,6 +1208,7 @@ export class EventExplorePopupComponent {
     const currentIndex = currentItems.findIndex(record => record.id === sync.id);
 
     if (currentIndex >= 0) {
+      this.checkoutDraftClearSaveSourceIds.delete(sync.id);
       if (userJoinedEvent) {
         currentItems.splice(currentIndex, 1);
         this.eventExploreSmartList.replaceVisibleItems(currentItems, {
@@ -1212,6 +1272,9 @@ export class EventExplorePopupComponent {
     }
 
     if (!this.isOpen || userJoinedEvent) {
+      return;
+    }
+    if (this.checkoutDraftClearSaveSourceIds.delete(sync.id.trim())) {
       return;
     }
     if (this.checkoutDraftReleaseSourceIds.has(sync.id.trim())) {
@@ -1316,16 +1379,6 @@ export class EventExplorePopupComponent {
         .map(draft => draft.sourceId.trim())
         .filter(sourceId => sourceId.length > 0)
     );
-  }
-
-  private shouldReloadEventExploreAfterDraftRemoval(sourceIds: readonly string[]): boolean {
-    return sourceIds.some(sourceId => {
-      const normalizedSourceId = sourceId.trim();
-      if (!normalizedSourceId || this.checkoutDraftReleaseSourceIds.has(normalizedSourceId)) {
-        return false;
-      }
-      return !this.locallyTrackedMembershipSourceIds.has(normalizedSourceId);
-    });
   }
 
   private requiresApprovalBeforePayment(
@@ -1502,6 +1555,7 @@ export class EventExplorePopupComponent {
     ]);
     const rollbackPayload = this.buildActivityEventSaveDTO(record, existingMembers);
     const nextPayload = this.buildActivityEventSaveDTO(record, nextMembers, selection?.paymentSessionId ?? null);
+    this.locallyTrackedMembershipSourceIds.add(record.id);
     this.activitiesContext.emitActivityEventSave(nextPayload);
 
     try {
@@ -1531,6 +1585,9 @@ export class EventExplorePopupComponent {
       }
       this.cdr.markForCheck();
     } catch (error) {
+      await exitPromise;
+      this.locallyTrackedMembershipSourceIds.delete(record.id);
+      this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
       this.activitiesContext.emitActivityEventSave(rollbackPayload);
       throw error;
     }
@@ -1584,6 +1641,79 @@ export class EventExplorePopupComponent {
     this.eventExploreSmartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - 1)
     });
+  }
+
+  private restoreVisibleEventExploreRecord(record: ActivityEventRecord): void {
+    if (!this.isOpen || !this.eventExploreSmartList || !this.shouldShowRestoredEventExploreRecord(record)) {
+      return;
+    }
+    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(item => item.id === record.id);
+    const nextItems = currentIndex >= 0
+      ? currentItems.map(item => item.id === record.id ? record : item)
+      : this.sortVisibleEventExploreRecords([...currentItems, record]);
+    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
+      total: currentIndex >= 0
+        ? this.eventExploreSmartList.cursorState().total
+        : this.eventExploreSmartList.cursorState().total + 1
+    });
+  }
+
+  private restoreVisibleEventExploreRecordsById(sourceIds: readonly string[]): void {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId) {
+      return;
+    }
+    sourceIds.forEach(sourceId => {
+      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId.trim());
+      if (record) {
+        this.restoreVisibleEventExploreRecord(record);
+      }
+    });
+  }
+
+  private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
+    const activeUserId = this.activeUserId.trim();
+    if (activeUserId && this.hasTrackedMembership(record, activeUserId)) {
+      return false;
+    }
+    if (this.eventExploreFilterFriendsOnly) {
+      return false;
+    }
+    if (this.eventExploreFilterHasRooms && this.isEventExploreRecordFull(record)) {
+      return false;
+    }
+    const selectedTopic = this.normalizeTopic(this.eventExploreFilterTopic);
+    if (selectedTopic && !record.topics.some(topic => this.normalizeTopic(topic) === selectedTopic)) {
+      return false;
+    }
+    return true;
+  }
+
+  private sortVisibleEventExploreRecords(records: readonly ActivityEventRecord[]): ActivityEventRecord[] {
+    return [...records].sort((left, right) => {
+      const byOrder = this.compareEventExploreRecords(left, right);
+      if (byOrder !== 0) {
+        return byOrder;
+      }
+      return left.title.localeCompare(right.title);
+    });
+  }
+
+  private compareEventExploreRecords(left: ActivityEventRecord, right: ActivityEventRecord): number {
+    switch (this.eventExploreOrder) {
+      case 'nearby':
+        return (Number(left.distanceKm) || 0) - (Number(right.distanceKm) || 0);
+      case 'top-rated':
+        return (Number(right.rating) || 0) - (Number(left.rating) || 0);
+      case 'most-relevant':
+        return (Number(right.affinity) || 0) - (Number(left.affinity) || 0);
+      case 'past-events':
+        return AppUtils.toSortableDate(right.startAtIso) - AppUtils.toSortableDate(left.startAtIso);
+      case 'upcoming':
+      default:
+        return AppUtils.toSortableDate(left.startAtIso) - AppUtils.toSortableDate(right.startAtIso);
+    }
   }
 
   private pruneVisibleTrackedEventExploreRecords(): void {
@@ -1823,6 +1953,25 @@ export class EventExplorePopupComponent {
         : undefined,
       subEventsDisplayMode: record.subEventsDisplayMode,
       paymentSessionId
+    };
+  }
+
+  private withEventExploreMemberSummary(
+    record: ActivityEventRecord,
+    members: readonly ActivityContracts.ActivityMemberEntry[]
+  ): ActivityEventRecord {
+    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
+      this.eventMembersOwner(record),
+      members,
+      record.capacityTotal
+    );
+    return {
+      ...record,
+      acceptedMembers: summary.acceptedMembers,
+      pendingMembers: summary.pendingMembers,
+      capacityTotal: summary.capacityTotal,
+      acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
+      pendingMemberUserIds: [...summary.pendingMemberUserIds]
     };
   }
 

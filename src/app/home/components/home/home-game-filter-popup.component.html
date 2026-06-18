@@ -3,15 +3,15 @@
     <div class="game-popup-backdrop" (click)="requestClose($event)"></div>
     <div class="game-popup-panel game-filter-popup-panel" (click)="$event.stopPropagation()">
       <header class="game-filter-popup-header">
-        <h2>Game Filters</h2>
-        <div class="game-filter-popup-header-actions" [class.is-hidden]="hasOpenFilterSelector">
+        <h2>{{ 'game.filters' | i18n }}</h2>
+        <div class="game-filter-popup-header-actions">
           <button
             type="button"
             class="game-popup-apply-btn"
             [class.is-saving]="saving"
             [disabled]="saving"
             (click)="apply()"
-            [attr.aria-label]="saving ? 'Saving filters' : 'Apply filters'"
+            [attr.aria-label]="saving ? ('saving.filters' | i18n) : ('apply.filters' | i18n)"
             >
             @if (saving) {
               <span class="game-popup-apply-save-ring" aria-hidden="true">
@@ -20,20 +20,20 @@
             }
             <mat-icon>check</mat-icon>
           </button>
-          <button type="button" class="game-popup-close-btn" [disabled]="saving" (click)="requestClose($event)" aria-label="Close filter popup">
+          <button type="button" class="game-popup-close-btn" [disabled]="saving" (click)="requestClose($event)" [attr.aria-label]="'close.filter.popup' | i18n">
             <mat-icon>close</mat-icon>
           </button>
         </div>
       </header>
-      <div class="game-popup-body game-filter-body" [class.has-selector-open]="hasOpenFilterSelector">
-        <div class="game-filter-layout-columns" [attr.aria-hidden]="hasOpenFilterSelector ? 'true' : null">
+      <div class="game-popup-body game-filter-body">
+        <div class="game-filter-layout-columns">
           <div class="game-filter-layout-col game-filter-layout-col-basics">
             <section class="game-filter-group game-filter-group-basics">
               <div class="game-filter-group-head">
-                <h3>Basics</h3>
+                <h3>{{ 'basics' | i18n }}</h3>
               </div>
               <div class="game-filter-section-head">
-                <h4>Age Range</h4>
+                <h4>{{ 'age.range' | i18n }}</h4>
                 <span class="game-filter-value-badge">{{ filterDraft.ageMin }} - {{ filterDraft.ageMax }}</span>
               </div>
               <div class="game-filter-slider-wrap">
@@ -51,7 +51,7 @@
                 </mat-slider>
               </div>
               <div class="game-filter-section-head">
-                <h4>Height Range (cm)</h4>
+                <h4>{{ 'height.range.cm' | i18n }}</h4>
                 <span class="game-filter-value-badge">{{ filterDraft.heightMinCm }} - {{ filterDraft.heightMaxCm }}</span>
               </div>
               <div class="game-filter-slider-wrap">
@@ -68,469 +68,84 @@
                     />
                 </mat-slider>
               </div>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-horoscope" (click)="openFilterSelector('horoscopes')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Horoscope</span>
-                  @if (filterSelectorHasSelection('horoscopes')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('horoscopes'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('horoscopes') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('horoscopes') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-languages" (click)="openFilterSelector('languages')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Languages</span>
-                  @if (filterSelectorHasSelection('languages')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('languages'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('languages') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('languages') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
+              @for (kind of basicsFilterMenuKinds; track kind) {
+                <label class="game-filter-menu-field">
+                  <span>{{ filterMenuTitle(kind) | i18n }}</span>
+                  <app-menu
+                    class="game-filter-menu"
+                    kind="select"
+                    [title]="filterMenuTitle(kind)"
+                    [filterable]="true"
+                    [trigger]="filterMenuTrigger(kind)"
+                    [model]="filterMenuModel(kind)"
+                    (itemSelect)="onGameFilterMenuSelect($event)"
+                  ></app-menu>
+                </label>
+              }
             </section>
             <section class="game-filter-group game-filter-group-beliefs">
               <div class="game-filter-group-head">
-                <h3>Beliefs</h3>
+                <h3>{{ 'beliefs' | i18n }}</h3>
               </div>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-values" (click)="openFilterSelector('values')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Values</span>
-                  @if (filterSelectorHasSelection('values')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('values'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('values') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('values') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-religion" (click)="openFilterSelector('religions')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Religion</span>
-                  @if (filterSelectorHasSelection('religions')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('religions'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('religions') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('religions') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
+              @for (kind of beliefsFilterMenuKinds; track kind) {
+                <label class="game-filter-menu-field">
+                  <span>{{ filterMenuTitle(kind) | i18n }}</span>
+                  <app-menu
+                    class="game-filter-menu"
+                    kind="select"
+                    [title]="filterMenuTitle(kind)"
+                    [filterable]="true"
+                    [trigger]="filterMenuTrigger(kind)"
+                    [model]="filterMenuModel(kind)"
+                    (itemSelect)="onGameFilterMenuSelect($event)"
+                  ></app-menu>
+                </label>
+              }
             </section>
           </div>
           <div class="game-filter-layout-col game-filter-layout-col-lifestyle">
             <section class="game-filter-group game-filter-group-lifestyle">
               <div class="game-filter-group-head">
-                <h3>Lifestyle</h3>
+                <h3>{{ 'lifestyle' | i18n }}</h3>
               </div>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-interest" (click)="openFilterSelector('interests')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Interest</span>
-                  @if (filterSelectorHasSelection('interests')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('interests'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('interests') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('interests') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-physique" (click)="openFilterSelector('physiques')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Physique</span>
-                  @if (filterSelectorHasSelection('physiques')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('physiques'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('physiques') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('physiques') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-smoking" (click)="openFilterSelector('smoking')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Smoking</span>
-                  @if (filterSelectorHasSelection('smoking')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('smoking'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('smoking') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('smoking') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-drinking" (click)="openFilterSelector('drinking')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Drinking</span>
-                  @if (filterSelectorHasSelection('drinking')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('drinking'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('drinking') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('drinking') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-workout" (click)="openFilterSelector('workout')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Workout</span>
-                  @if (filterSelectorHasSelection('workout')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('workout'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('workout') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('workout') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-pets" (click)="openFilterSelector('pets')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Pets</span>
-                  @if (filterSelectorHasSelection('pets')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('pets'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('pets') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('pets') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
+              @for (kind of lifestyleFilterMenuKinds; track kind) {
+                <label class="game-filter-menu-field">
+                  <span>{{ filterMenuTitle(kind) | i18n }}</span>
+                  <app-menu
+                    class="game-filter-menu"
+                    kind="select"
+                    [title]="filterMenuTitle(kind)"
+                    [filterable]="true"
+                    [trigger]="filterMenuTrigger(kind)"
+                    [model]="filterMenuModel(kind)"
+                    (itemSelect)="onGameFilterMenuSelect($event)"
+                  ></app-menu>
+                </label>
+              }
             </section>
           </div>
           <div class="game-filter-layout-col game-filter-layout-col-relationships">
             <section class="game-filter-group game-filter-group-relationships">
               <div class="game-filter-group-head">
-                <h3>Relationships</h3>
+                <h3>{{ 'relationships' | i18n }}</h3>
               </div>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-gender" (click)="openFilterSelector('genders')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Gender</span>
-                  @if (filterSelectorHasSelection('genders')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('genders'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('genders') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('genders') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-traits" (click)="openFilterSelector('traitLabels')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Top Trait</span>
-                  @if (filterSelectorHasSelection('traitLabels')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('traitLabels'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('traitLabels') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('traitLabels') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-family" (click)="openFilterSelector('familyPlans')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Family plans</span>
-                  @if (filterSelectorHasSelection('familyPlans')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('familyPlans'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('familyPlans') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('familyPlans') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-children" (click)="openFilterSelector('children')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Children</span>
-                  @if (filterSelectorHasSelection('children')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('children'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('children') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('children') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-love" (click)="openFilterSelector('loveStyles')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Love style</span>
-                  @if (filterSelectorHasSelection('loveStyles')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('loveStyles'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('loveStyles') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('loveStyles') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-communication" (click)="openFilterSelector('communicationStyles')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Communication style</span>
-                  @if (filterSelectorHasSelection('communicationStyles')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('communicationStyles'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('communicationStyles') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('communicationStyles') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-              <button type="button" class="game-filter-nav-btn game-filter-selector-tone-orientation" (click)="openFilterSelector('sexualOrientations')">
-                <span class="game-filter-nav-copy">
-                  <span class="game-filter-nav-title">Sexual orientation</span>
-                  @if (filterSelectorHasSelection('sexualOrientations')) {
-                    <span class="game-filter-nav-separator" aria-hidden="true"></span>
-                    <span class="game-filter-nav-badge-row">
-                      @for (item of filterSelectorPreview('sexualOrientations'); track item) {
-                        <span class="game-filter-nav-badge-chip">{{ item }}</span>
-                      }
-                    </span>
-                  } @else {
-                    <span class="game-filter-nav-summary game-filter-nav-summary-muted">Any</span>
-                  }
-                </span>
-                @if (filterSelectorExtraCount('sexualOrientations') > 0) {
-                  <span class="game-filter-nav-overflow-inline">+{{ filterSelectorExtraCount('sexualOrientations') }}</span>
-                }
-                <mat-icon>chevron_right</mat-icon>
-              </button>
+              @for (kind of relationshipFilterMenuKinds; track kind) {
+                <label class="game-filter-menu-field">
+                  <span>{{ filterMenuTitle(kind) | i18n }}</span>
+                  <app-menu
+                    class="game-filter-menu"
+                    kind="select"
+                    [title]="filterMenuTitle(kind)"
+                    [filterable]="true"
+                    [trigger]="filterMenuTrigger(kind)"
+                    [model]="filterMenuModel(kind)"
+                    (itemSelect)="onGameFilterMenuSelect($event)"
+                  ></app-menu>
+                </label>
+              }
             </section>
           </div>
         </div>
-        @if (filterSelector; as selector) {
-          <div class="game-filter-selector-overlay">
-            <section
-              class="game-filter-selector-panel"
-              [ngClass]="filterSelectorToneClass(selector)"
-              >
-              <div class="game-filter-selector-head">
-                <button type="button" class="game-filter-selector-back" (click)="closeFilterSelector()">
-                  <mat-icon>arrow_back</mat-icon>
-                  <span>{{ activeFilterSelectorTitle }}</span>
-                </button>
-                @if (activeFilterSelectorHasSelection()) {
-                  <button type="button" class="game-filter-selector-clear" (click)="clearActiveFilterSelector()">
-                    Clear
-                  </button>
-                }
-              </div>
-              @if (filterSelectorSelectedValues(selector).length > 0) {
-                <div class="game-filter-selector-selected">
-                  @for (value of filterSelectorSelectedValues(selector); track value) {
-                    <button
-                      type="button"
-                      class="game-filter-selector-chip"
-                      [ngClass]="selector === 'languages' ? filterLanguageToneClass(value) : ''"
-                      (click)="removeFilterSelectorValue(selector, value, $event)"
-                      >
-                      <span>{{ filterSelectorValueLabel(selector, value) }}</span>
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  }
-                </div>
-              } @else {
-                <p class="game-filter-selector-empty">No items selected yet.</p>
-              }
-              @if (selector === 'languages') {
-                <div class="game-filter-language-entry">
-                  <label class="game-filter-language-input-wrap">
-                    <input
-                      type="text"
-                      [(ngModel)]="filterLanguageInput"
-                      (keydown)="onFilterLanguageInputKeydown($event)"
-                      (blur)="onFilterLanguageInputBlur()"
-                      placeholder="Type language"
-                      />
-                    <button
-                      type="button"
-                      class="game-filter-language-submit-btn"
-                      (click)="submitFilterLanguageInput($event)"
-                      aria-label="Add language"
-                      >
-                      <mat-icon>search</mat-icon>
-                    </button>
-                  </label>
-                </div>
-                <div class="game-filter-language-options">
-                  @for (item of availableFilterLanguageDisplaySuggestions; track item) {
-                    <button
-                      type="button"
-                      class="game-filter-language-option"
-                      [ngClass]="filterLanguageToneClass(item)"
-                      (click)="selectFilterLanguage(item)"
-                      >
-                      <span class="game-filter-language-option-main">
-                        <mat-icon>language</mat-icon>
-                        <span>{{ item }}</span>
-                      </span>
-                    </button>
-                  }
-                  @if (availableFilterLanguageDisplaySuggestions.length === 0) {
-                    <p class="game-filter-selector-empty">No languages match your search.</p>
-                  }
-                </div>
-              } @else {
-                @if (activeFilterSelectorUsesGroups) {
-                  @for (group of activeFilterSelectorOptionGroups; track group) {
-                    <section class="game-filter-selector-option-group" [ngClass]="group.toneClass">
-                      <div class="game-filter-selector-option-group-head">
-                        <span class="game-filter-selector-option-group-tag" [ngClass]="group.toneClass">
-                          <mat-icon class="game-filter-selector-option-group-tag-icon">{{ group.icon }}</mat-icon>
-                          <span>{{ group.title }}</span>
-                        </span>
-                        <span class="game-filter-selector-option-group-line" [ngClass]="group.toneClass"></span>
-                      </div>
-                      <div class="game-filter-chip-grid">
-                        @for (option of group.options; track option) {
-                          <button
-                            type="button"
-                            class="game-filter-chip"
-                            [class.active]="isActiveFilterSelectorOptionSelected(option)"
-                            (click)="toggleActiveFilterSelectorOption(option)"
-                            >
-                            <span>{{ option }}</span>
-                          </button>
-                        }
-                      </div>
-                    </section>
-                  }
-                } @else {
-                  <div class="game-filter-chip-grid">
-                    @for (option of activeFilterSelectorOptions; track option) {
-                      <button
-                        type="button"
-                        class="game-filter-chip"
-                        [class.active]="isActiveFilterSelectorOptionSelected(option.value)"
-                        (click)="toggleActiveFilterSelectorOption(option.value)"
-                        >
-                        @if (option.icon) {
-                          <mat-icon>{{ option.icon }}</mat-icon>
-                        }
-                        <span>{{ option.label }}</span>
-                      </button>
-                    }
-                  </div>
-                }
-              }
-            </section>
-          </div>
-        }
       </div>
     </div>
   </section>

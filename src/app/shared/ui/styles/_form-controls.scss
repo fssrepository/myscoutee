@@ -568,64 +568,6 @@
   .physique-select-wrap.physique-muscular .status-option-content .mat-icon { color: #7d4f24; }
   .physique-select-wrap.physique-average .status-option-content .mat-icon { color: #4d667f; }
 
-  .language-select-btn {
-    width: fit-content;
-    min-width: 0;
-    max-width: 100%;
-    min-height: 36px;
-    height: 36px;
-    justify-content: flex-start;
-    border-radius: 999px;
-    border-color: #c8d3e2;
-    background: #f8f9fb;
-    box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
-    color: rgba(30, 56, 90, 0.92);
-    gap: 0.35rem;
-    padding: 0 0.52rem 0 0.8rem;
-    box-sizing: border-box;
-  }
-
-  .language-select-btn.active {
-    background: #f8f9fb;
-  }
-
-  .language-select-btn .label {
-    order: 1;
-    flex: 1 1 auto;
-    min-width: 0;
-    text-align: left;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: inherit;
-    font-size: 0.8rem;
-    font-weight: 700;
-  }
-
-  .language-select-btn .count {
-    order: 2;
-    flex: 0 0 auto;
-    margin-left: 0.16rem;
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #2f5f93;
-  }
-
-  .language-select-btn .arrow {
-    order: 3;
-    width: 19px;
-    height: 19px;
-    font-size: 19px;
-    line-height: 19px;
-    margin-left: 0.2rem;
-    flex: 0 0 19px;
-    color: rgba(43, 69, 102, 0.82);
-  }
-
-  .language-select-btn .arrow.open {
-    transform: rotate(90deg);
-  }
-
   .experience-filter-all {
     color: #694ea6;
   }

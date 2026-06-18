@@ -1007,7 +1007,7 @@ export class AdminIdeaEditorPopupComponent {
       nodes: [
         {
           id: 'idea-filter-root',
-          children: [
+          items: [
             {
               id: 'idea-filter-menu',
               kind: 'select-trigger',
@@ -1015,7 +1015,7 @@ export class AdminIdeaEditorPopupComponent {
               icon: this.filterIcon(),
               counter: this.filterCount(),
               ariaLabel: 'Filter articles',
-              children: this.filterOptions.map(option => ({
+              items: this.filterOptions.map(option => ({
                 id: `idea-filter:${option.id}`,
                 kind: 'radio',
                 label: option.label,
@@ -1160,14 +1160,14 @@ export class AdminIdeaEditorPopupComponent {
       nodes: [
         {
           id: `${scope}-language-root`,
-          children: [
+          items: [
             {
               id: rootId,
               kind: 'select-trigger',
               label: this.contentLanguageMenuLabel(normalizedCurrentLanguage),
               disabled,
               ariaLabel: 'Content language',
-              children: this.contentLanguages().map(language => {
+              items: this.contentLanguages().map(language => {
                 const normalizedLanguage = this.normalizeContentLang(language.lang);
                 return {
                   id: `${scope}-language:${normalizedLanguage}` as IdeaLanguageMenuItemId,

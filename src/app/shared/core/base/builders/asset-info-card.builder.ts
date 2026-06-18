@@ -77,6 +77,8 @@ export class AssetInfoCardBuilder {
       mediaStart: this.ownedAssetMediaStart(card),
       mediaEnd: selectMode
         ? {
+            actionId: 'toggleSelection',
+            actionTone: 'accent',
             variant: 'toggle',
             tone: selected ? 'selected' : 'default',
             icon: 'add',

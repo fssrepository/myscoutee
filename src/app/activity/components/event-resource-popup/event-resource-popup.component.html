@@ -542,7 +542,7 @@
           <section class="experience-delete-confirm">
             <div class="experience-delete-confirm-backdrop" (click)="host.cancelDeleteCard()"></div>
             <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
-              <h4>Delete resource card</h4>
+              <h4>Remove assignment</h4>
               <p>{{ host.deleteCardLabel() }}</p>
               @if (host.deleteCardErrorMessage()) {
                 <p class="subevent-resource-delete-error">{{ host.deleteCardErrorMessage() }}</p>
@@ -569,7 +569,7 @@
                     [disabled]="host.isDeleteCardPending()"
                     (click)="host.confirmDeleteCard()"
                     >
-                    {{ host.isDeleteCardPending() ? 'Deleting...' : 'Delete' }}
+                    {{ host.isDeleteCardPending() ? 'Removing...' : 'Remove' }}
                   </button>
                 </span>
               </div>

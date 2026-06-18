@@ -154,7 +154,7 @@ export class RatingStarBarComponent implements OnDestroy {
   }
 
   protected get shouldShowCommitButton(): boolean {
-    return this.dirty && !this.resolvedReadonly;
+    return !this.resolvedReadonly;
   }
 
   protected onSliderInput(event: Event): void {
@@ -171,10 +171,10 @@ export class RatingStarBarComponent implements OnDestroy {
 
   protected commitScore(event: Event): void {
     event.stopPropagation();
-    if (this.resolvedReadonly || !this.dirty) {
+    if (this.resolvedReadonly) {
       return;
     }
-    const score = this.normalizeScore(this.stagedValue) || this.defaultScore();
+    const score = this.normalizeScore(this.dirty ? this.stagedValue : this.displayValue) || this.defaultScore();
     if (this.config?.blinkOnSelect !== false) {
       this.triggerTransientBlink();
     }

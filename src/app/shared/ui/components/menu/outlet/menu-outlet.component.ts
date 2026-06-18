@@ -12,6 +12,7 @@ import {
 
 import { AppMenuComponent } from '../menu.component';
 import { AppMenuDispatcher } from '../menu-dispatcher.service';
+import { appMenuModelGroups } from '../menu-summary';
 import type {
   AppMenuDispatchState,
   AppMenuItem,
@@ -28,6 +29,7 @@ import type {
       <app-menu
         [kind]="menu.kind"
         [title]="menu.title"
+        [filterable]="menu.filterable"
         [items]="resolvedItems(menu)"
         [model]="menu.model"
         [groups]="menu.groups"
@@ -138,7 +140,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
       ...(event as AppMenuItemSelectEvent<TId, TContext>),
       context: (event.context ?? menu.context) as TContext | undefined
     };
-    if (!this.isControlledMenu(menu) && (event.item.closeOnSelect ?? menu.closeOnSelect)) {
+    if (!this.isControlledMenu(menu) && this.shouldCloseOnItemSelect(event, menu)) {
       this.dispatcher.close(menu.id);
     }
     this.itemSelect.emit(selectEvent);
@@ -200,6 +202,16 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
 
   private isControlledMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
     return this.menu?.id === menu.id;
+  }
+
+  private shouldCloseOnItemSelect(
+    event: AppMenuItemSelectEvent<string, unknown>,
+    menu: AppMenuDispatchState<TId, TContext>
+  ): boolean {
+    if (event.action === 'remove') {
+      return false;
+    }
+    return event.item.closeOnSelect ?? (menu.model?.presentation === 'tabs' ? false : menu.closeOnSelect);
   }
 
   private isMobileMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {
@@ -303,7 +315,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   private estimatedPanelHeight(menu: AppMenuDispatchState<TId, TContext>): number {
     const titleHeight = `${this.resolveLiveValue(menu.title) ?? ''}`.trim() ? 34 : 0;
     const itemCount = Math.max(1, this.visibleItems(menu).length);
-    const branchHeaderHeight = this.visibleItems(menu).some(item => (item.children?.length ?? 0) > 0) ? 38 : 0;
+    const branchHeaderHeight = this.visibleItems(menu).some(item => (item.items?.length ?? 0) > 0) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
@@ -313,8 +325,8 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
       return items;
     }
     const fallbackItems: AppMenuItem<TId, TContext>[] = [];
-    for (const branch of menu.model?.nodes ?? menu.groups) {
-      fallbackItems.push(...(branch.children ?? branch.items ?? []));
+    for (const group of appMenuModelGroups(menu.model, menu.groups)) {
+      fallbackItems.push(...(group.items ?? []));
     }
     return fallbackItems;
   }

@@ -90,63 +90,8 @@
   font-weight: 700;
 }
 
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  padding: 2px;
-  box-sizing: border-box;
-  overflow: hidden;
+.asset-member-picker-popup-shell .asset-member-picker-confirm-menu {
   flex: 0 0 auto;
-}
-
-.asset-member-picker-popup-shell .asset-member-picker-save-btn {
-  position: relative;
-  z-index: 1;
-  width: 30px;
-  min-width: 30px;
-  height: 30px;
-  min-height: 30px;
-  border-radius: 50%;
-}
-
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-ring {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn,
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-error .asset-member-picker-save-btn {
-  box-shadow: none;
-}
-
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn,
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn:hover,
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-loading .asset-member-picker-save-btn:disabled {
-  border-color: rgba(181, 117, 23, 0.76);
-  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
-  color: #8e4f0d;
-  opacity: 1;
-  cursor: wait;
-  box-shadow: none;
-  transform: none;
-  filter: none;
-}
-
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-error .asset-member-picker-save-btn,
-.asset-member-picker-popup-shell .asset-member-picker-save-btn-shell.is-error .asset-member-picker-save-btn:hover {
-  border-color: rgba(176, 31, 46, 0.82);
-  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
-  color: #fff;
-  opacity: 1;
-  box-shadow: none;
-  transform: none;
-  filter: none;
 }
 
 .asset-member-picker-popup-shell .asset-member-picker-sort-menu {

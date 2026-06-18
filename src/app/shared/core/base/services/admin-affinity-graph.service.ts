@@ -378,7 +378,7 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
 
   private normalizeNode(node: AdminAffinityGraphNodeDto | null | undefined): AdminAffinityGraphNodeDto | null {
     const id = `${node?.id ?? ''}`.trim();
-    if (!id || id === 'u-onboarding') {
+    if (!id) {
       return null;
     }
     const images = (node?.images ?? []).map(image => `${image ?? ''}`.trim()).filter(Boolean);

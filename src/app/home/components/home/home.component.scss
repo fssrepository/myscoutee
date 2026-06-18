@@ -207,8 +207,8 @@
   color: #1e569d;
 }
 
-.game-action-mode-select.mode-pair,
-.game-action-mode.mode-pair {
+.game-action-mode-select.mode-outside-network,
+.game-action-mode.mode-outside-network {
   background: linear-gradient(180deg, #f2eefc 0%, #e8e2f9 100%);
   border-color: rgba(100, 78, 163, 0.34);
   color: #4d3d8b;
@@ -257,7 +257,7 @@
     box-shadow 0.18s ease;
 }
 
-:host ::ng-deep .home-mode-select-panel .mat-mdc-option.home-mode-option.mode-pair {
+:host ::ng-deep .home-mode-select-panel .mat-mdc-option.home-mode-option.mode-outside-network {
   background: linear-gradient(180deg, #f2eefc 0%, #e8e2f9 100%);
 }
 
@@ -274,8 +274,8 @@
   color: #1e569d;
 }
 
-:host ::ng-deep .home-mode-select-panel .mat-mdc-option.home-mode-option.mode-pair .mat-icon,
-:host ::ng-deep .home-mode-select-panel .mat-mdc-option.home-mode-option.mode-pair .mdc-list-item__primary-text {
+:host ::ng-deep .home-mode-select-panel .mat-mdc-option.home-mode-option.mode-outside-network .mat-icon,
+:host ::ng-deep .home-mode-select-panel .mat-mdc-option.home-mode-option.mode-outside-network .mdc-list-item__primary-text {
   color: #4d3d8b;
 }
 

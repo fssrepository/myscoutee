@@ -16,12 +16,18 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../pipes';
+import { I18nService } from '../../../core';
 import {
   RatingStarBarComponent,
   type RatingStarBarConfig
 } from '../rating-star-bar';
+import {
+  ProgressIndicatorComponent,
+  type ProgressIndicatorShape,
+  type ProgressIndicatorState,
+  type ProgressIndicatorTone
+} from '../progress-indicator';
 import type {
-  AppMenuBranch,
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
@@ -40,13 +46,21 @@ import type {
   AppMenuTriggerShape,
   AppMenuValueMap
 } from './menu.types';
+import {
+  appMenuModelGroups,
+  appMenuModelSummary
+} from './menu-summary';
 
 type AppMenuResolvedLayout = 'desktop' | 'mobile';
+type AppMenuFilterTextPart = {
+  text: string;
+  match: boolean;
+};
 
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent],
+  imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent, ProgressIndicatorComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -58,9 +72,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
 
   @Input() kind: AppMenuKind = 'button-row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
+  @Input() filterable = false;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
   @Input() model: AppMenuModel<TId, TContext> | null = null;
   @Input() groups: readonly AppMenuGroup<TId, TContext>[] = [];
@@ -79,6 +95,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private internalOpen = false;
   private activeBranchPath: AppMenuItem<TId, TContext>[] = [];
+  private activeTabsGroupId: string | null = null;
+  protected tabsFilterText = '';
   private readonly counterValueByKey = new Map<string, string>();
   private readonly counterPulseTimerByKey = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pulsingCounterKeys = new Set<string>();
@@ -90,9 +108,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   set open(value: boolean | null | undefined) {
-    this.internalOpen = value === true;
+    const nextOpen = value === true;
+    const opened = nextOpen && !this.internalOpen;
+    this.internalOpen = nextOpen;
     if (!this.internalOpen) {
       this.activeBranchPath = [];
+      this.tabsFilterText = '';
+    } else if (opened) {
+      this.syncActiveTabsGroup();
     }
   }
 
@@ -102,6 +125,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   ngDoCheck(): void {
     this.syncCounterPulseState();
+    this.syncOpenPanelState();
   }
 
   ngOnDestroy(): void {
@@ -119,9 +143,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.isButtonRowKind;
   }
 
+  @HostBinding('class.app-menu-host--kind-fab')
+  protected get hostFabKindClass(): boolean {
+    return this.isFabKind;
+  }
+
   @HostBinding('class.app-menu-host--kind-select')
   protected get hostSelectKindClass(): boolean {
     return this.kind === 'select';
+  }
+
+  @HostBinding('class.app-menu-host--presentation-tabs')
+  protected get hostTabbedPresentationClass(): boolean {
+    return this.isTabbedPresentation || this.activeBranchTabbedPresentation;
   }
 
   @HostBinding('class.app-menu-host--kind-shortcut-grid')
@@ -142,6 +176,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   @HostBinding('class.app-menu-host--open')
   protected get hostOpenClass(): boolean {
     return this.panelVisible;
+  }
+
+  @HostBinding('class.app-menu-host--inline-panel')
+  protected get hostInlinePanelClass(): boolean {
+    return this.isInlineKind;
   }
 
   @HostBinding('class.app-menu-host--panel-docked')
@@ -223,7 +262,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get isInlineKind(): boolean {
-    return this.kind === 'shortcut-grid';
+    return this.kind === 'shortcut-grid' || (this.isTabbedPresentation && !this.hasTrigger);
   }
 
   protected get isButtonRowKind(): boolean {
@@ -234,16 +273,28 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.kind === 'shortcut-grid';
   }
 
+  protected get isFabKind(): boolean {
+    return this.kind === 'fab';
+  }
+
   protected get isSelectKind(): boolean {
     return this.kind === 'select';
   }
 
+  protected get isTabbedPresentation(): boolean {
+    return this.model?.presentation === 'tabs';
+  }
+
+  protected get activeBranchTabbedPresentation(): boolean {
+    return this.activeBranch?.model?.presentation === 'tabs';
+  }
+
   protected get isDropdownListKind(): boolean {
-    return this.isSelectKind;
+    return this.isSelectKind || this.isFabKind;
   }
 
   protected get isAnchoredOverlayKind(): boolean {
-    return this.isDropdownListKind || this.isButtonRowKind;
+    return this.isDropdownListKind || this.isButtonRowKind || this.isTabbedPresentation;
   }
 
   private get isBottomPanelMode(): boolean {
@@ -308,12 +359,36 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return spaceRight >= spaceLeft ? 'start' : 'end';
   }
 
-  protected get menuNodes(): readonly AppMenuBranch<TId, TContext>[] {
-    return this.model?.nodes ?? this.groups;
+  protected get menuNodes(): readonly AppMenuGroup<TId, TContext>[] {
+    return appMenuModelGroups(this.model, this.groups);
   }
 
   protected get hasMenuNodes(): boolean {
     return this.menuNodes.length > 0;
+  }
+
+  protected get tabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
+    if (this.activeBranchTabbedPresentation && this.activeBranch) {
+      return appMenuModelGroups(this.activeBranch.model, this.activeBranch.groups ?? []);
+    }
+    return this.menuNodes;
+  }
+
+  protected get hasTabsGroups(): boolean {
+    return this.tabsGroups.length > 0;
+  }
+
+  protected get visibleTabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
+    const query = this.normalizedFilterText();
+    if (!query) {
+      return this.tabsGroups;
+    }
+    return this.tabsGroups
+      .map(group => ({
+        ...group,
+        items: this.groupItems(group).filter(item => this.itemMatchesFilter(item, query))
+      }))
+      .filter(group => this.groupItems(group).length > 0);
   }
 
   protected get actionRowItems(): readonly AppMenuItem<TId, TContext>[] {
@@ -322,7 +397,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
     const items: AppMenuItem<TId, TContext>[] = [];
     for (const node of this.menuNodes) {
-      items.push(...this.branchChildren(node));
+      items.push(...this.groupItems(node));
     }
     return items;
   }
@@ -332,12 +407,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get activeBranch(): AppMenuItem<TId, TContext> | null {
-    return this.activeBranchPath[this.activeBranchPath.length - 1] ?? null;
+    const branch = this.activeBranchPath[this.activeBranchPath.length - 1] ?? null;
+    return branch ? this.currentItemById(branch.id) : null;
   }
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.activeBranch) {
-      return this.activeBranch.children ?? [];
+      return this.activeBranch.items ?? [];
     }
     if (this.items.length > 0) {
       return this.items;
@@ -357,7 +433,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected triggerLabel(): string {
-    return `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    return configuredLabel || appMenuModelSummary(this.model, this.groups).label;
   }
 
   protected triggerIcon(): string {
@@ -370,13 +447,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       if (this.shouldResolveTriggerIconToClose(baseIcon)) {
         return 'close';
       }
-      if (!baseIcon && this.isSelectKind) {
+      if (!baseIcon && this.isSelectLikeTrigger()) {
         return '';
       }
       return `${baseIcon || 'close'}`.trim();
     }
     const configuredIcon = this.resolveLiveValue(this.trigger?.icon);
-    if (!configuredIcon && this.isSelectKind) {
+    if (!configuredIcon && this.isFabKind) {
+      return 'add';
+    }
+    if (!configuredIcon && this.isSelectLikeTrigger()) {
       return '';
     }
     return `${configuredIcon ?? 'more_vert'}`.trim();
@@ -411,11 +491,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isSelectKind && this.triggerShape() !== 'icon') {
       return 'expand_more';
     }
+    if (this.isTabbedPresentation && this.triggerShape() !== 'icon') {
+      return 'expand_more';
+    }
     return '';
   }
 
   protected triggerCaretRotates(): boolean {
-    return !this.isCustomTriggerAction && this.isSelectKind;
+    return !this.isCustomTriggerAction && this.isSelectLikeTrigger();
   }
 
   protected triggerAriaLabel(): string {
@@ -453,19 +536,34 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (!this.hasTrigger) {
       return 'default';
     }
-    return this.isSelectKind ? 'pill' : 'default';
+    if (this.isFabKind) {
+      return 'icon';
+    }
+    return this.isSelectLikeTrigger() ? 'pill' : 'default';
   }
 
   protected hasTriggerCounter(): boolean {
-    return this.counterVisible(this.trigger?.counter ?? null);
+    return this.counterVisible(this.triggerCounter());
   }
 
   protected triggerCounterLabel(): string {
-    return this.counterLabel(this.trigger?.counter ?? null);
+    return this.counterLabel(this.triggerCounter());
   }
 
   protected triggerCounterKey(): string {
     return 'trigger';
+  }
+
+  private isSelectLikeTrigger(): boolean {
+    return this.isSelectKind || this.isTabbedPresentation;
+  }
+
+  private triggerCounter(): AppMenuCounter | AppMenuCounterValue | null {
+    const configuredCounter = this.trigger?.counter;
+    if (configuredCounter !== null && configuredCounter !== undefined) {
+      return configuredCounter;
+    }
+    return appMenuModelSummary(this.model, this.groups).counter;
   }
 
   protected toggleMenu(event: Event): void {
@@ -487,7 +585,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
         id: item.id,
         item,
         context: item.context,
-        sourceEvent: event
+        sourceEvent: event,
+        action: 'select'
       });
       return;
     }
@@ -506,12 +605,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
       return;
     }
-    if (this.hasItemChildren(item)) {
+    if (this.hasNestedItems(item)) {
       if (this.open && this.activeBranchPath[0]?.id === item.id) {
         this.setOpen(false);
         return;
       }
       this.activeBranchPath = [item];
+      this.syncActiveTabsGroup();
       this.setOpen(true);
       return;
     }
@@ -520,7 +620,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
     this.setOpen(false);
   }
@@ -536,7 +637,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
     if (item.closeOnSelect ?? this.closeOnSelect) {
       this.setOpen(false);
@@ -558,10 +660,32 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     };
     this.itemSelect.emit(selectEvent);
-    if (item.closeOnSelect ?? this.closeOnSelect) {
+    if (this.shouldCloseOnSelect(item)) {
+      this.setOpen(false);
+    }
+  }
+
+  protected removeItem(item: AppMenuItem<TId, TContext>, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.isItemDisabled(item) || this.isPassiveItem(item) || !this.isItemRemovable(item)) {
+      return;
+    }
+    const closesEmptyBranch = this.activeBranchPath.length > 0
+      && this.visibleSelectableListItems().length <= 1;
+    this.itemSelect.emit({
+      id: item.id,
+      item,
+      context: item.context,
+      sourceEvent: event,
+      value: item.value,
+      action: 'remove'
+    });
+    if (closesEmptyBranch) {
       this.setOpen(false);
     }
   }
@@ -583,9 +707,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: new Event('ratingScoreSelect'),
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
-    if (item.closeOnSelect ?? this.closeOnSelect) {
+    if (this.shouldCloseOnSelect(item)) {
       this.setOpen(false);
     }
   }
@@ -601,9 +726,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       item,
       context: item.context,
       sourceEvent: event,
-      value: item.value
+      value: item.value,
+      action: 'select'
     });
-    if (item.closeOnSelect ?? this.closeOnSelect) {
+    if (this.shouldCloseOnSelect(item)) {
       this.setOpen(false);
     }
   }
@@ -623,7 +749,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.isSelectTriggerItem(item);
+    return this.isSelectTriggerItem(item) || item.layout === 'summary' || (item.layout === 'action' && !!this.actionRowItemLabel(item));
+  }
+
+  protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return item.layout === 'action';
   }
 
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
@@ -632,7 +762,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       if (openIcon) {
         return openIcon;
       }
-      if (!this.isLabeledActionRowItem(item) && this.hasItemChildren(item)) {
+      if (!this.isLabeledActionRowItem(item) && this.hasNestedItems(item)) {
         return 'close';
       }
     }
@@ -645,6 +775,29 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected actionRowItemAriaLabel(item: AppMenuItem<TId, TContext>): string | null {
     return this.itemAriaLabel(item) ?? (this.actionRowItemLabel(item) || null);
+  }
+
+  protected itemProgressState(item: AppMenuItem<TId, TContext>): ProgressIndicatorState | null {
+    const state = this.resolveLiveValue(item.progress?.state) ?? null;
+    return state === 'idle' || state === 'inactive' ? null : state;
+  }
+
+  protected itemProgressTone(item: AppMenuItem<TId, TContext>): ProgressIndicatorTone {
+    return this.resolveLiveValue(item.progress?.tone) ?? 'default';
+  }
+
+  protected itemProgressShape(item: AppMenuItem<TId, TContext>): ProgressIndicatorShape {
+    return item.progress?.shape ?? (this.isLabeledActionRowItem(item) ? 'button' : 'circle');
+  }
+
+  protected itemProgressDurationMs(item: AppMenuItem<TId, TContext>): number {
+    const durationMs = Number(this.resolveLiveValue(item.progress?.durationMs));
+    return Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 3000;
+  }
+
+  protected itemProgressPerimeter(item: AppMenuItem<TId, TContext>): number {
+    const perimeter = Number(this.resolveLiveValue(item.progress?.perimeter));
+    return Number.isFinite(perimeter) && perimeter > 0 ? perimeter : 100;
   }
 
   protected branchHeaderActions(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
@@ -667,29 +820,96 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
   }
 
-  protected branchPalette(branch: AppMenuBranch<TId, TContext>): AppMenuPalette {
-    return branch.palette ?? 'default';
+  protected groupPalette(group: AppMenuGroup<TId, TContext>): AppMenuPalette {
+    return group.palette ?? 'default';
   }
 
-  protected branchPaletteClass(branch: AppMenuBranch<TId, TContext>): string {
-    return this.paletteClass(this.branchPalette(branch));
+  protected groupPaletteClass(group: AppMenuGroup<TId, TContext>): string {
+    return this.paletteClass(this.groupPalette(group));
   }
 
-  protected branchLabel(branch: AppMenuBranch<TId, TContext>): string {
-    return `${this.resolveLiveValue(branch.label) ?? ''}`.trim();
+  protected groupLabel(group: AppMenuGroup<TId, TContext>): string {
+    return `${this.resolveLiveValue(group.label) ?? ''}`.trim();
   }
 
-  protected branchIcon(branch: AppMenuBranch<TId, TContext>): string {
-    return `${this.resolveLiveValue(branch.icon) ?? ''}`.trim();
+  protected groupIcon(group: AppMenuGroup<TId, TContext>): string {
+    return `${this.resolveLiveValue(group.icon) ?? ''}`.trim();
   }
 
-  protected branchAriaLabel(branch: AppMenuBranch<TId, TContext>): string | null {
-    const ariaLabel = `${this.resolveLiveValue(branch.ariaLabel) ?? this.branchLabel(branch)}`.trim();
+  protected groupAriaLabel(group: AppMenuGroup<TId, TContext>): string | null {
+    const ariaLabel = `${this.resolveLiveValue(group.ariaLabel) ?? this.groupLabel(group)}`.trim();
     return ariaLabel || null;
   }
 
-  protected branchChildren(branch: AppMenuBranch<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
-    return branch.children ?? branch.items ?? [];
+  protected groupItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return group.items ?? [];
+  }
+
+  protected isTabsFilterable(): boolean {
+    if (this.activeBranchTabbedPresentation) {
+      return this.activeBranch?.filterable === true;
+    }
+    return this.isTabbedPresentation && this.filterable === true;
+  }
+
+  protected showTabsBar(): boolean {
+    return this.visibleTabsGroups.length > 1;
+  }
+
+  protected activeTabsGroup(): AppMenuGroup<TId, TContext> | null {
+    const groups = this.visibleTabsGroups;
+    if (groups.length === 0) {
+      return null;
+    }
+    return groups.find(group => group.id === this.activeTabsGroupId)
+      ?? this.defaultTabsGroup(groups);
+  }
+
+  protected isTabsGroupActive(group: AppMenuGroup<TId, TContext>): boolean {
+    return this.activeTabsGroup()?.id === group.id;
+  }
+
+  protected selectTabsGroup(group: AppMenuGroup<TId, TContext>, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.activeTabsGroupId = group.id;
+  }
+
+  protected updateTabsFilter(event: Event): void {
+    const target = event.target as HTMLInputElement | null;
+    this.tabsFilterText = `${target?.value ?? ''}`;
+    this.syncActiveTabsGroup();
+  }
+
+  protected clearTabsFilter(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.tabsFilterText = '';
+    this.syncActiveTabsGroup();
+  }
+
+  protected tabsGroupItems(group: AppMenuGroup<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return this.groupItems(group);
+  }
+
+  protected tabsGroupSelectedCount(group: AppMenuGroup<TId, TContext>): number {
+    return this.groupItems(this.sourceTabsGroup(group)).filter(item => this.isItemActive(item)).length;
+  }
+
+  protected itemLabelFilterParts(item: AppMenuItem<TId, TContext>): readonly AppMenuFilterTextPart[] {
+    return this.filterTextParts(this.itemLabel(item));
+  }
+
+  protected hasVisibleTabsItems(group: AppMenuGroup<TId, TContext>): boolean {
+    return this.tabsGroupItems(group).length > 0;
+  }
+
+  protected tabsId(group: AppMenuGroup<TId, TContext>): string {
+    return `app-menu-tab-${this.safeDomId(group.id)}`;
+  }
+
+  protected tabsPanelId(group: AppMenuGroup<TId, TContext>): string {
+    return `app-menu-tab-panel-${this.safeDomId(group.id)}`;
   }
 
   private groupedDropdownItems(): readonly AppMenuItem<TId, TContext>[] {
@@ -697,29 +917,29 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       return [];
     }
     const items: AppMenuItem<TId, TContext>[] = [];
-    for (const branch of this.menuNodes) {
-      const children = this.branchChildren(branch);
-      if (children.length === 0) {
+    for (const group of this.menuNodes) {
+      const groupItems = this.groupItems(group);
+      if (groupItems.length === 0) {
         continue;
       }
       if (items.length > 0) {
         items.push({
-          id: `${branch.id}__divider` as TId,
+          id: `${group.id}__divider` as TId,
           kind: 'divider'
         });
       }
-      if (this.branchLabel(branch) || this.branchIcon(branch)) {
+      if (this.groupLabel(group) || this.groupIcon(group)) {
         items.push({
-          id: `${branch.id}__section` as TId,
+          id: `${group.id}__section` as TId,
           kind: 'section',
-          label: branch.label,
-          icon: branch.icon,
-          palette: branch.palette,
-          headerActions: branch.headerActions,
-          ariaLabel: branch.ariaLabel
+          label: group.label,
+          icon: group.icon,
+          palette: group.palette,
+          headerActions: group.headerActions,
+          ariaLabel: group.ariaLabel
         });
       }
-      items.push(...children);
+      items.push(...groupItems);
     }
     return items;
   }
@@ -771,10 +991,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if ((this.isDropdownListKind || this.isButtonRowKind) && item.kind === 'radio') {
+    if (((this.isDropdownListKind && !this.isTabbedPresentation) || (this.isButtonRowKind && !this.activeBranchTabbedPresentation)) && item.kind === 'radio') {
       return false;
     }
-    return this.isItemActive(item) && !this.hasItemChildren(item);
+    return this.isItemActive(item) && !this.hasNestedItems(item);
   }
 
   protected isItemChecked(item: AppMenuItem<TId, TContext>): boolean | null {
@@ -790,6 +1010,23 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected isItemDisabled(item: AppMenuItem<TId, TContext>): boolean {
     return this.resolveBoolean(item.disabled);
+  }
+
+  protected isItemRemovable(item: AppMenuItem<TId, TContext>): boolean {
+    return this.resolveBoolean(item.removable) && !this.isPassiveItem(item);
+  }
+
+  protected itemRemoveIcon(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.removeIcon) ?? 'close'}`.trim() || 'close';
+  }
+
+  protected itemRemoveAriaLabel(item: AppMenuItem<TId, TContext>): string {
+    const configured = `${this.resolveLiveValue(item.removeAriaLabel) ?? ''}`.trim();
+    if (configured) {
+      return configured;
+    }
+    const label = this.itemLabel(item);
+    return label ? `Remove ${label}` : 'Remove item';
   }
 
   protected isPassiveItem(item: AppMenuItem<TId, TContext>): boolean {
@@ -834,12 +1071,136 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return item.kind === 'branch';
   }
 
-  protected hasItemChildren(item: AppMenuItem<TId, TContext>): boolean {
-    return (item.children?.length ?? 0) > 0;
+  protected hasNestedItems(item: AppMenuItem<TId, TContext>): boolean {
+    return (item.items?.length ?? 0) > 0 || appMenuModelGroups(item.model, item.groups ?? []).length > 0;
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
-    return (this.isDropdownListKind || this.isButtonRowKind) && this.hasItemChildren(item);
+    return ((this.isDropdownListKind && !this.isTabbedPresentation) || this.isButtonRowKind) && this.hasNestedItems(item);
+  }
+
+  private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
+    return item.closeOnSelect ?? (this.isTabbedPresentation || this.activeBranchTabbedPresentation ? false : this.closeOnSelect);
+  }
+
+  private syncActiveTabsGroup(): void {
+    if ((!this.isTabbedPresentation && !this.activeBranchTabbedPresentation) || this.tabsGroups.length === 0) {
+      return;
+    }
+    const groups = this.visibleTabsGroups;
+    if (groups.length === 0) {
+      this.activeTabsGroupId = null;
+      return;
+    }
+    const currentGroup = groups.find(group => group.id === this.activeTabsGroupId);
+    const activeGroup = this.activeTabsSelectedGroup(groups);
+    this.activeTabsGroupId = (currentGroup ?? activeGroup ?? groups[0] ?? null)?.id ?? null;
+  }
+
+  private syncOpenPanelState(): void {
+    if (!this.open || this.isInlineKind || this.isCustomTriggerAction) {
+      return;
+    }
+    if (this.activeBranchPath.length > 0) {
+      if (!this.activeBranch || this.visibleSelectableListItems().length === 0) {
+        this.setOpen(false);
+      }
+      return;
+    }
+    if (this.isButtonRowKind) {
+      this.setOpen(false);
+      return;
+    }
+    if (this.isDropdownListKind && !this.isTabbedPresentation && this.visibleSelectableListItems().length === 0) {
+      this.setOpen(false);
+    }
+  }
+
+  private visibleSelectableListItems(): readonly AppMenuItem<TId, TContext>[] {
+    return this.visibleListItems.filter(item => !this.isPassiveItem(item));
+  }
+
+  private defaultTabsGroup(groups: readonly AppMenuGroup<TId, TContext>[] = this.visibleTabsGroups): AppMenuGroup<TId, TContext> | null {
+    return this.activeTabsSelectedGroup(groups) ?? groups[0] ?? null;
+  }
+
+  private activeTabsSelectedGroup(groups: readonly AppMenuGroup<TId, TContext>[] = this.tabsGroups): AppMenuGroup<TId, TContext> | null {
+    return groups.find(group =>
+      this.groupItems(group).some(item => this.isItemActive(item))
+    ) ?? null;
+  }
+
+  private sourceTabsGroup(group: AppMenuGroup<TId, TContext>): AppMenuGroup<TId, TContext> {
+    return this.tabsGroups.find(candidate => candidate.id === group.id) ?? group;
+  }
+
+  private currentItemById(id: TId): AppMenuItem<TId, TContext> | null {
+    return this.findItemById(this.actionRowItems, id);
+  }
+
+  private findItemById(items: readonly AppMenuItem<TId, TContext>[], id: TId): AppMenuItem<TId, TContext> | null {
+    for (const item of items) {
+      if (item.id === id) {
+        return item;
+      }
+      const childMatch = this.findItemById(item.items ?? [], id);
+      if (childMatch) {
+        return childMatch;
+      }
+      for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+        const modelMatch = this.findItemById(this.groupItems(group), id);
+        if (modelMatch) {
+          return modelMatch;
+        }
+      }
+    }
+    return null;
+  }
+
+  private itemMatchesFilter(item: AppMenuItem<TId, TContext>, query: string): boolean {
+    return [
+      this.translatedFilterText(this.itemLabel(item)),
+      this.translatedFilterText(this.itemDescription(item)),
+      this.translatedFilterText(this.itemDetail(item))
+    ].some(value => this.normalizedText(value).includes(query));
+  }
+
+  private translatedFilterText(value: string): string {
+    this.i18n.revision();
+    return this.i18n.translate(value);
+  }
+
+  private filterTextParts(value: string): readonly AppMenuFilterTextPart[] {
+    const text = this.translatedFilterText(value);
+    const query = this.normalizedFilterText();
+    if (!query) {
+      return [{ text, match: false }];
+    }
+    const normalizedText = this.normalizedText(text);
+    const parts: AppMenuFilterTextPart[] = [];
+    let offset = 0;
+    let index = normalizedText.indexOf(query, offset);
+    while (index >= 0) {
+      if (index > offset) {
+        parts.push({ text: text.slice(offset, index), match: false });
+      }
+      const nextOffset = index + query.length;
+      parts.push({ text: text.slice(index, nextOffset), match: true });
+      offset = nextOffset;
+      index = normalizedText.indexOf(query, offset);
+    }
+    if (offset < text.length) {
+      parts.push({ text: text.slice(offset), match: false });
+    }
+    return parts.length > 0 ? parts : [{ text, match: false }];
+  }
+
+  private normalizedFilterText(): string {
+    return this.normalizedText(this.tabsFilterText);
+  }
+
+  private normalizedText(value: unknown): string {
+    return `${value ?? ''}`.trim().toLowerCase();
   }
 
   protected itemHref(item: AppMenuItem<TId, TContext>): string {
@@ -888,9 +1249,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.counterLabel(this.itemCounter(item));
   }
 
-  protected itemCounterKey(item: AppMenuItem<TId, TContext>, branch?: AppMenuBranch<TId, TContext>): string {
+  protected itemCounterKey(item: AppMenuItem<TId, TContext>, group?: AppMenuGroup<TId, TContext>): string {
     const itemKey = `${item.kind ?? 'action'}:${item.id}`;
-    return branch ? `node:${branch.id}:${itemKey}` : `item:${itemKey}`;
+    return group ? `node:${group.id}:${itemKey}` : `item:${itemKey}`;
   }
 
   protected isCounterPulsing(key: string): boolean {
@@ -901,8 +1262,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return `${item.kind ?? 'action'}:${item.id || index}`;
   }
 
-  protected trackByBranchId(index: number, branch: AppMenuBranch<TId, TContext>): string {
-    return `${branch.id || index}`;
+  protected trackByGroupId(index: number, group: AppMenuGroup<TId, TContext>): string {
+    return `${group.id || index}`;
   }
 
   protected trackBySegmentId(index: number, segment: AppMenuSegment): string {
@@ -913,11 +1274,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.internalOpen === open) {
       return;
     }
+    const opened = open && !this.internalOpen;
     this.internalOpen = open;
     if (!open) {
       this.activeBranchPath = [];
+      this.tabsFilterText = '';
+    } else if (opened) {
+      this.syncActiveTabsGroup();
     }
     this.openChange.emit(open);
+  }
+
+  private safeDomId(value: string): string {
+    return `${value || 'group'}`.replace(/[^a-zA-Z0-9_-]+/g, '-');
   }
 
   private syncMobileViewport(): void {
@@ -1002,27 +1371,28 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private estimatedPanelHeight(): number {
     const titleHeight = this.resolvedTitle ? 34 : 0;
     const itemCount = Math.max(1, this.visibleListItems.length);
-    const branchHeaderHeight = this.visibleListItems.some(item => (item.children?.length ?? 0) > 0) ? 38 : 0;
+    const branchHeaderHeight = this.visibleListItems.some(item => (item.items?.length ?? 0) > 0) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
   private syncCounterPulseState(): void {
     const visibleCounterKeys = new Set<string>();
+    const triggerCounter = this.triggerCounter();
     this.observeCounterPulse(
       this.triggerCounterKey(),
-      this.trigger?.counter ?? null,
-      this.isLiveCounter(this.trigger?.counter ?? null),
+      triggerCounter,
+      this.isLiveCounter(triggerCounter),
       visibleCounterKeys
     );
     for (const item of this.items) {
       this.observeItemCounterPulse(item, visibleCounterKeys);
     }
-    for (const branch of this.menuNodes) {
-      for (const action of branch.headerActions ?? []) {
-        this.observeItemCounterPulse(action, visibleCounterKeys, branch);
+    for (const group of this.menuNodes) {
+      for (const action of group.headerActions ?? []) {
+        this.observeItemCounterPulse(action, visibleCounterKeys, group);
       }
-      for (const item of this.branchChildren(branch)) {
-        this.observeItemCounterPulse(item, visibleCounterKeys, branch);
+      for (const item of this.groupItems(group)) {
+        this.observeItemCounterPulse(item, visibleCounterKeys, group);
       }
     }
     for (const key of this.counterValueByKey.keys()) {
@@ -1036,19 +1406,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private observeItemCounterPulse(
     item: AppMenuItem<TId, TContext>,
     visibleCounterKeys: Set<string>,
-    branch?: AppMenuBranch<TId, TContext>
+    group?: AppMenuGroup<TId, TContext>
   ): void {
     this.observeCounterPulse(
-      this.itemCounterKey(item, branch),
+      this.itemCounterKey(item, group),
       this.itemCounter(item),
       this.hasValueCounter(item.id) || this.isLiveCounter(item.counter ?? null),
       visibleCounterKeys
     );
     for (const action of item.headerActions ?? []) {
-      this.observeItemCounterPulse(action, visibleCounterKeys, branch);
+      this.observeItemCounterPulse(action, visibleCounterKeys, group);
     }
-    for (const child of item.children ?? []) {
-      this.observeItemCounterPulse(child, visibleCounterKeys, branch);
+    for (const child of item.items ?? []) {
+      this.observeItemCounterPulse(child, visibleCounterKeys, group);
     }
   }
 

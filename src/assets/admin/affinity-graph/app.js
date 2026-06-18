@@ -48,7 +48,7 @@ const panelExpandedBody = document.querySelector('#panel-expanded-body');
 const helpPanel = document.querySelector('.help-panel');
 const mobilePanelQuery = window.matchMedia('(max-width: 760px)');
 
-const demoNodes = GRAPH_DATA.nodes.filter(node => node.id !== 'u-onboarding');
+const demoNodes = GRAPH_DATA.nodes;
 const hasServerNodeMetrics = demoNodes.some(node => Number(node.degree) > 0 || Number(node.weightedDegree) > 0);
 const nodeById = new Map(demoNodes.map(node => [node.id, {
   ...node,

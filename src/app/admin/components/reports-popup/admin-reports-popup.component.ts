@@ -307,13 +307,13 @@ export class AdminReportsPopupComponent {
       nodes: [
         {
           id: `${source}-actions-root`,
-          children: [
+          items: [
             {
               id: menuId,
               icon: 'more_horiz',
               ariaLabel: source === 'blocked-user' ? 'Blocked user actions' : 'Member moderation actions',
               counter: source === 'blocked-user' ? this.visibleSupportChatUnread(user) : null,
-              children: actions
+              items: actions
             }
           ]
         }
