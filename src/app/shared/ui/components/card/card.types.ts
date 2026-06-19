@@ -145,7 +145,7 @@ export interface InfoCardOverlayAccessory {
 }
 
 export interface InfoCardOverlayAction {
-  actionId?: CardMenuAction | null;
+  actionId?: CardMenuActionId | null;
   actionTone?: CardMenuActionTone | null;
   variant?: InfoCardOverlayVariant;
   layout?: InfoCardOverlayLayout | null;
@@ -166,7 +166,7 @@ export interface InfoCardOverlayAction {
   progressRing?: boolean;
 }
 
-export type CardMenuAction = string;
+export type CardMenuActionId = string;
 
 export interface CardMenuActionConfig {
   label: string;
@@ -174,14 +174,14 @@ export interface CardMenuActionConfig {
   tone?: CardMenuActionTone;
 }
 
-export interface CardResolvedMenuAction {
-  id: CardMenuAction;
+export interface CardMenuAction {
+  id: CardMenuActionId;
   label: string;
   icon: string;
   tone?: CardMenuActionTone;
 }
 
-export const CARD_MENU_ACTIONS: Readonly<Record<string, CardMenuActionConfig>> = {
+export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuActionConfig>> = {
   accept: { label: 'accept', icon: 'done', tone: 'accent' },
   addOrganizerNote: { label: 'add.organizer.note', icon: 'edit_note' },
   askOrganizer: { label: 'ask.organizer', icon: 'support_agent' },
@@ -231,7 +231,7 @@ export interface InfoCardFooterChip {
   label: string;
   toneClass?: string | null;
   icon?: string | null;
-  actionId?: CardMenuAction | null;
+  actionId?: CardMenuActionId | null;
   ariaLabel?: string | null;
 }
 
@@ -242,7 +242,7 @@ export interface DisplayData<TEagerDetail = unknown> {
   distanceMetersExact?: number | null;
   badgeCount?: number | null;
   sortScore?: number | null;
-  menuActions?: readonly CardMenuAction[];
+  menuActions?: readonly CardMenuActionId[];
   ownerId?: string | null;
   ownerUserId?: string | null;
   eagerDetail?: TEagerDetail | null;
@@ -252,7 +252,6 @@ export type SingleRowAvatarShape = 'circle' | 'rounded' | 'square';
 export type SingleRowSurfaceTone = 'default' | 'neutral' | 'info' | 'accent' | 'success' | 'warning' | 'danger' | 'muted';
 export type SingleRowBadgeTone = SingleRowSurfaceTone | 'inverse';
 export type SingleRowBadgePosition = 'inline' | 'side' | 'top-right';
-export type SingleRowActionTone = 'default' | 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
 
 export interface SingleRowBadge {
   label: string;
@@ -261,18 +260,6 @@ export interface SingleRowBadge {
   title?: string | null;
   tone?: SingleRowBadgeTone | null;
   position?: SingleRowBadgePosition | null;
-  className?: string | null;
-}
-
-export interface SingleRowAction {
-  id: string;
-  icon: string;
-  label?: string | null;
-  ariaLabel?: string | null;
-  title?: string | null;
-  tone?: SingleRowActionTone | null;
-  disabled?: boolean;
-  badgeLabel?: string | null;
   className?: string | null;
 }
 
@@ -295,7 +282,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
   hasMenuOptions?: boolean;
-  menuActions?: readonly CardMenuAction[];
+  menuActions?: readonly CardMenuActionId[];
   menuTitle?: string | null;
   menuBadgeCount?: number | null;
   clickable?: boolean;
@@ -363,18 +350,9 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   sideLabelTone?: SingleRowBadgeTone | null;
   metaRows?: readonly string[];
   badges?: readonly SingleRowBadge[];
-  actions?: readonly SingleRowAction[];
   clickable?: boolean;
   unread?: number | null;
   memberCount?: number | null;
-}
-
-export interface SingleRowActionEvent<TCard extends SingleRowData = SingleRowData> {
-  id: string;
-  actionId: string;
-  action: SingleRowAction | CardResolvedMenuAction;
-  row: TCard;
-  originalEvent: Event;
 }
 
 export interface CardClickEvent<TCard extends DisplayData = DisplayData> {
@@ -384,8 +362,8 @@ export interface CardClickEvent<TCard extends DisplayData = DisplayData> {
 
 export interface CardMenuActionEvent<TCard extends DisplayData = DisplayData> {
   id: string;
-  actionId: string;
-  action: CardResolvedMenuAction;
+  actionId: CardMenuActionId;
+  action: CardMenuAction;
   card: TCard;
 }
 
@@ -401,7 +379,7 @@ export interface CardMenuTriggerRect {
 export interface CardMenuRequestEvent<TCard = DisplayData> {
   id: string;
   card: TCard;
-  actions?: readonly CardMenuAction[];
+  actions?: readonly CardMenuActionId[];
   badge?: CardBadgeConfig | null;
   title?: string | null;
   triggerRect: CardMenuTriggerRect | null;

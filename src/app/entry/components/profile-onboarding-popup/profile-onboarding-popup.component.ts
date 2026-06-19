@@ -26,7 +26,15 @@ import {
   type ProfileExperienceEntriesChange
 } from '../../../shared/ui';
 import {
-  ProfileOnboardingService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
+  ProfileOnboardingService,
+  UserExperiencesService,
+  UsersService,
+  type ProfileOnboardingAssessment,
+  type ProfileOnboardingDraft,
+  type ProfileOnboardingStepId,
+  type UserDto,
+  type UserExperiencesRouteConfig
+} from '../../../shared/core';
 import type {
   DetailPrivacy,
   ProfileStatus
@@ -146,6 +154,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected readonly profileDetailValueOptions = APP_STATIC_DATA.profileDetailValueOptions;
   protected readonly beliefsValuesOptionGroups = APP_STATIC_DATA.beliefsValuesOptionGroups;
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
+  protected readonly experienceMemoryRouteConfig: UserExperiencesRouteConfig = { mode: 'memory' };
   protected draft: ProfileOnboardingDraft | null = null;
   protected assessment: ProfileOnboardingAssessment | null = null;
   protected birthdayDate: Date | null = null;
@@ -1384,7 +1393,10 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.experienceEntriesLoading = true;
     this.cdr.markForCheck();
     try {
-      const entries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
+      const entries = await this.userExperiencesService.loadUserExperiences(
+        normalizedUserId,
+        this.experienceMemoryRouteConfig
+      );
       if (token !== this.experienceLoadToken || !this.draft || this.draft.userId !== normalizedUserId) {
         return;
       }

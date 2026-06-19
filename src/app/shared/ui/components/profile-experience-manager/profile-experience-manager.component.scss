@@ -52,18 +52,6 @@
   height: 36px;
 }
 
-.experience-smart-list {
-  display: block;
-  min-height: 0;
-}
-
-:host ::ng-deep .experience-single-row-list {
-  display: grid;
-  align-content: start;
-  gap: 0.56rem;
-  padding-bottom: 0.35rem;
-}
-
 .experience-delete-confirm {
   position: fixed;
   inset: 0;

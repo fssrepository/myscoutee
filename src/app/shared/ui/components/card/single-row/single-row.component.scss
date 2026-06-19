@@ -121,7 +121,6 @@
 
 .ui-single-row__avatar .mat-icon,
 .ui-single-row__badge-pill .mat-icon,
-.ui-single-row__action .mat-icon,
 .ui-single-row__menu-trigger .mat-icon {
   width: 18px;
   height: 18px;
@@ -175,8 +174,7 @@
 }
 
 .ui-single-row__inline-badges,
-.ui-single-row__side-badges,
-.ui-single-row__actions {
+.ui-single-row__side-badges {
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -268,7 +266,6 @@
   margin-left: 0.24rem;
 }
 
-.ui-single-row__action,
 .ui-single-row__menu-trigger {
   position: relative;
   width: 32px;
@@ -291,51 +288,11 @@
     transform 0.16s ease;
 }
 
-.ui-single-row__action span:not(.ui-single-row__action-badge) {
-  display: none;
-}
-
-.ui-single-row__action:hover,
 .ui-single-row__menu-trigger:hover {
   transform: translateY(-1px);
 }
 
-.ui-single-row__action:disabled {
-  cursor: not-allowed;
-  opacity: 0.52;
-  transform: none;
-}
-
-.ui-single-row__action--accent {
-  color: #24598f;
-  border-color: rgba(45, 111, 181, 0.24);
-  background: #eef6ff;
-}
-
-.ui-single-row__action--success {
-  color: #28774e;
-  border-color: rgba(40, 132, 89, 0.24);
-  background: #ebf9f1;
-}
-
-.ui-single-row__action--warning {
-  color: #8c5a16;
-  border-color: rgba(190, 129, 38, 0.26);
-  background: #fff4df;
-}
-
-.ui-single-row__action--danger {
-  color: #a33242;
-  border-color: rgba(190, 60, 76, 0.26);
-  background: #fff0f2;
-}
-
-.ui-single-row__action--neutral {
-  color: #4a5d78;
-  background: #f5f7fa;
-}
-
-.ui-single-row__action-badge {
+.ui-single-row__menu-badge {
   position: absolute;
   top: -0.35rem;
   right: -0.35rem;

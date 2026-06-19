@@ -10,14 +10,15 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPanelAlign,
   type AppMenuPanelMode,
+  type AppMenuPalette,
   type AppMenuTrigger
 } from '../../menu';
-import { cardMenuItemsForActions, type CardActionMenuItemContext } from '../card-menu-items';
 import {
+  CARD_MENU_ACTIONS,
+  type CardMenuAction,
+  type CardMenuActionEvent,
   type CardMenuRequestEvent,
   type CardMenuTriggerRect,
-  type SingleRowAction,
-  type SingleRowActionEvent,
   type SingleRowBadge,
   type SingleRowBadgePosition,
   type SingleRowData
@@ -25,7 +26,7 @@ import {
 
 type SingleRowMenuRequestEvent = CardMenuRequestEvent<SingleRowData> & {
   kind?: AppMenuKind;
-  items?: readonly AppMenuItem<string, CardActionMenuItemContext<SingleRowData>>[];
+  items?: readonly AppMenuItem<string, Record<string, unknown>>[];
   panelAlign?: AppMenuPanelAlign;
   panelMode?: AppMenuPanelMode;
   closeOnSelect?: boolean;
@@ -46,10 +47,10 @@ export class SingleRowComponent {
   @Input() clickable = false;
   @Input() ariaLabel: string | null = null;
   @Input() useSharedMenu = false;
+  @Input() sharedMenuContext: Record<string, unknown> | null = null;
 
   @Output() readonly rowClick = new EventEmitter<Event>();
-  @Output() readonly actionSelect = new EventEmitter<SingleRowActionEvent>();
-  @Output() readonly menuAction = new EventEmitter<SingleRowActionEvent>();
+  @Output() readonly menuAction = new EventEmitter<CardMenuActionEvent<SingleRowData>>();
   @Output() readonly menuRequest = new EventEmitter<SingleRowMenuRequestEvent>();
 
   protected menuOpen = false;
@@ -119,10 +120,6 @@ export class SingleRowComponent {
     ];
   }
 
-  protected rowActions(): readonly SingleRowAction[] {
-    return this.row?.actions ?? [];
-  }
-
   protected hasMenuActions(): boolean {
     return (this.row?.menuActions?.length ?? 0) > 0;
   }
@@ -133,18 +130,6 @@ export class SingleRowComponent {
       `ui-single-row__badge-pill--${badge.tone ?? 'default'}`
     ];
     const className = `${badge.className ?? ''}`.trim();
-    if (className) {
-      classes.push(className);
-    }
-    return classes;
-  }
-
-  protected actionClassList(action: SingleRowAction): string[] {
-    const classes = [
-      'ui-single-row__action',
-      `ui-single-row__action--${action.tone ?? 'default'}`
-    ];
-    const className = `${action.className ?? ''}`.trim();
     if (className) {
       classes.push(className);
     }
@@ -169,16 +154,38 @@ export class SingleRowComponent {
     };
   }
 
-  protected rowMenuItems(): readonly AppMenuItem<string, CardActionMenuItemContext<SingleRowData>>[] {
-    return cardMenuItemsForActions(this.row?.menuActions, this.row);
+  protected rowMenuItems(): readonly AppMenuItem<string, Record<string, unknown>>[] {
+    const row = this.row;
+    if (!row?.menuActions?.length) {
+      return [];
+    }
+    return row.menuActions.flatMap(actionId => {
+      const config = CARD_MENU_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: CardMenuAction = {
+        id: actionId,
+        ...config
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.sharedMenuActionPalette(config.tone),
+        surface: 'tinted',
+        context: {
+          ...(this.sharedMenuContext ?? {}),
+          row,
+          card: row,
+          action
+        }
+      }];
+    });
   }
 
   protected trackByBadge(index: number, badge: SingleRowBadge): string | number {
     return `${badge.position ?? 'side'}:${badge.label}:${badge.icon ?? ''}:${badge.tone ?? ''}:${index}`;
-  }
-
-  protected trackByActionId(index: number, action: SingleRowAction): string | number {
-    return action.id || index;
   }
 
   protected onRowClick(event: Event): void {
@@ -194,21 +201,6 @@ export class SingleRowComponent {
     }
     event.preventDefault();
     this.rowClick.emit(event);
-  }
-
-  protected onActionSelected(action: SingleRowAction, event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!this.row || action.disabled) {
-      return;
-    }
-    this.actionSelect.emit({
-      id: this.row.id,
-      actionId: action.id,
-      action,
-      row: this.row,
-      originalEvent: event
-    });
   }
 
   protected onSharedMenuTriggerPointerDown(event: Event): void {
@@ -244,18 +236,30 @@ export class SingleRowComponent {
   }
 
   protected onMenuActionSelected(event: AppMenuItemSelectEvent<string, unknown>): void {
-    const action = (event.context as CardActionMenuItemContext<SingleRowData> | undefined)?.action;
-    const sourceEvent = event.sourceEvent;
-    if (!this.row || !action || !sourceEvent) {
+    const action = (event.context as { action?: CardMenuAction } | undefined)?.action;
+    if (!this.row || !action) {
       return;
     }
     this.menuAction.emit({
       id: this.row.id,
       actionId: action.id,
       action,
-      row: this.row,
-      originalEvent: sourceEvent
+      card: this.row
     });
+  }
+
+  private sharedMenuActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'brown';
+      case 'warning':
+      case 'review':
+        return 'orange';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'default';
+    }
   }
 
   private badgesFor(position: SingleRowBadgePosition): readonly SingleRowBadge[] {

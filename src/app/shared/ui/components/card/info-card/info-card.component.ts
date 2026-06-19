@@ -28,9 +28,9 @@ import type {
   InfoCardData,
   InfoCardFooterChip,
   CardMenuAction,
+  CardMenuActionId,
   CardMenuActionConfig,
   CardMenuActionEvent,
-  CardResolvedMenuAction,
   CardMenuRequestEvent,
   CardMenuTriggerRect,
   InfoCardOverlayAccessory,
@@ -236,14 +236,14 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected onMenuActionSelected(
-    action: CardMenuAction,
+    action: CardMenuActionId,
     config: CardMenuActionConfig,
     event: Event
   ): void {
     if (!this.card) {
       return;
     }
-    const resolvedAction: CardResolvedMenuAction = {
+    const resolvedAction: CardMenuAction = {
       id: action,
       ...config
     };
@@ -314,7 +314,7 @@ export class InfoCardComponent implements OnDestroy {
     return action?.progressRing === true;
   }
 
-  private resolveOverlayMenuAction(action: InfoCardOverlayAction | null | undefined): CardResolvedMenuAction | null {
+  private resolveOverlayMenuAction(action: InfoCardOverlayAction | null | undefined): CardMenuAction | null {
     const actionId = `${action?.actionId ?? ''}`.trim();
     if (!actionId) {
       return null;
@@ -397,7 +397,7 @@ export class InfoCardComponent implements OnDestroy {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -476,7 +476,7 @@ export class InfoCardComponent implements OnDestroy {
     });
   }
 
-  protected trackByActionId(index: number, action: CardMenuAction): string | number {
+  protected trackByActionId(index: number, action: CardMenuActionId): string | number {
     // Keep menu buttons stable while the menu is open; recreating them can
     // interact badly with the document-level pointerdown closer.
     return action || index;
@@ -486,7 +486,7 @@ export class InfoCardComponent implements OnDestroy {
     return `${chip.label}:${chip.toneClass ?? ''}:${chip.actionId ?? ''}:${this.footerChipIcon(chip)}:${index}`;
   }
 
-  private sharedMenuActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private sharedMenuActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'brown';

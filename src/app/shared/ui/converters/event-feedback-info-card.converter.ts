@@ -6,7 +6,7 @@ import type {
   EventFeedbackPageStateSnapshotDto,
   EventFeedbackReceivedEventDto
 } from '../../core/contracts/activity.interface';
-import type { InfoCardData, CardMenuAction } from '../components/card';
+import type { InfoCardData, CardMenuActionId } from '../components/card';
 
 export interface EventFeedbackPageViewModel {
   items: InfoCardData[];
@@ -183,11 +183,11 @@ export class EventFeedbackInfoCardConverter {
   private static eventFeedbackMenuActions(
     item: AppTypes.EventFeedbackEventCard,
     hasOrganizerNote: boolean
-  ): readonly CardMenuAction[] {
+  ): readonly CardMenuActionId[] {
     if (item.isOwnEvent) {
       return [];
     }
-    const actions: CardMenuAction[] = [];
+    const actions: CardMenuActionId[] = [];
     if (this.isEventFeedbackStartAvailable(item)) {
       actions.push('startFeedback');
     }

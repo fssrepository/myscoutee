@@ -19,7 +19,7 @@ import {
   SmartListComponent,
   type InfoCardData,
   type CardMenuActionEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -36,7 +36,7 @@ type EventFeedbackMenuContext = {
 } | {
   menu: 'info-card';
   card: InfoCardData;
-  action: CardResolvedMenuAction;
+  action: CardMenuAction;
 };
 
 interface OrganizerEventFeedbackCarouselStatItem {

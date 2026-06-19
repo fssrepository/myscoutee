@@ -465,6 +465,8 @@
                 <app-profile-experience-manager
                   [entries]="f.experienceEntries"
                   [initialFilter]="experienceManagerFilter"
+                  [userId]="user.id"
+                  [experienceRouteConfig]="experienceMemoryRouteConfig"
                   [showInlineActions]="true"
                   (entriesChange)="onExperienceManagerEntriesChange($event)"
                 ></app-profile-experience-manager>

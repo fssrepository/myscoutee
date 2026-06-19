@@ -40,7 +40,7 @@ import {
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -70,7 +70,7 @@ type EventExploreMenuContext =
       menu: 'info-card';
       record: ActivityEventRecord;
       card: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     };
 
 @Component({
@@ -551,7 +551,7 @@ export class EventExplorePopupComponent {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -571,7 +571,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';

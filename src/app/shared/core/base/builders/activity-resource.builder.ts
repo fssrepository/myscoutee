@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { InfoCardData, CardMenuAction } from '../../../ui';
+import type { InfoCardData, CardMenuActionId } from '../../../ui';
 import type * as AppTypes from '../models';
 import type * as ContractTypes from '../../contracts';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
@@ -437,8 +437,8 @@ export class ActivityResourceBuilder {
   private static resourceMenuActions(
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardOptions
-  ): readonly CardMenuAction[] {
-    const actions: CardMenuAction[] = ['viewAsset'];
+  ): readonly CardMenuActionId[] {
+    const actions: CardMenuActionId[] = ['viewAsset'];
     if (options.canEditRoute === true) {
       actions.push('editAsset');
     }

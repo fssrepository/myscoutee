@@ -27,7 +27,7 @@ import {
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListLoadPage,
@@ -101,13 +101,13 @@ type EventResourceMenuContext =
       menu: 'resource-card';
       card: AppDTOs.SubEventResourceCardDTO;
       infoCard: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     }
   | {
       menu: 'asset-explore-card';
       card: AppDTOs.AssetCardDTO;
       infoCard: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     };
 
 const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
@@ -1027,7 +1027,7 @@ export class EventResourcePopupComponent implements DoCheck {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -1055,7 +1055,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   }
 
-  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';

@@ -17,12 +17,12 @@ import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/mat
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../app-calendar-date-adapter';
 import { AppUtils } from '../../../app-utils';
-import { UserExperiencesService } from '../../../core';
+import { UserExperiencesService, type UserExperiencesRouteConfig } from '../../../core';
 import type {
   ExperienceEntry,
   ExperienceFilter,
@@ -107,6 +107,8 @@ export interface ProfileExperienceEntriesChange {
 export class ProfileExperienceManagerComponent implements OnChanges {
   @Input() entries: readonly ExperienceEntry[] = [];
   @Input() initialFilter: ExperienceFilter = 'All';
+  @Input() userId = '';
+  @Input() experienceRouteConfig: UserExperiencesRouteConfig | null = null;
   @Input() emptyHint = 'Try switching the type dropdown to All or use Upload.';
   @Input() allowImport = true;
   @Input() showInlineActions = false;
@@ -149,21 +151,14 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     listLayout: 'stack',
     snapMode: 'none',
     desktopColumns: 1,
-    containerClass: 'experience-single-row-list',
+    containerClass: 'experience-card-list',
     emptyLabel: 'No entries in this filter',
     emptyDescription: () => this.emptyHint,
     trackBy: (_index, row) => row.id
   };
-  protected readonly experienceSmartListLoadPage: SmartListLoadPage<ExperienceListRow, ExperienceListFilters> = query => {
-    const rows = this.experienceRowsForFilter(query.filters?.type ?? this.experienceFilter);
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || rows.length || 50));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const start = page * pageSize;
-    return of({
-      items: rows.slice(start, start + pageSize),
-      total: rows.length
-    } satisfies PageResult<ExperienceListRow>);
-  };
+  protected readonly experienceSmartListLoadPage: SmartListLoadPage<ExperienceListRow, ExperienceListFilters> = query => from(
+    this.loadExperienceRowsPage(query)
+  );
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['entries']) {
@@ -172,6 +167,21 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     if (changes['initialFilter']) {
       this.setFilter(this.initialFilter);
     }
+    if ((changes['userId'] || changes['experienceRouteConfig']) && !changes['entries']) {
+      this.bumpExperienceRows();
+    }
+  }
+
+  private async loadExperienceRowsPage(query: ListQuery<ExperienceListFilters>): Promise<PageResult<ExperienceListRow>> {
+    const entries = await this.loadExperienceEntriesForList();
+    const rows = this.experienceRowsForFilter(query.filters?.type ?? this.experienceFilter, entries);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || rows.length || 50));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const start = page * pageSize;
+    return {
+      items: rows.slice(start, start + pageSize),
+      total: rows.length
+    } satisfies PageResult<ExperienceListRow>;
   }
 
   protected get canSaveExperienceEntry(): boolean {
@@ -263,15 +273,14 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     this.cdr.markForCheck();
   }
 
-  protected submitExperienceImport(): void {
+  protected async submitExperienceImport(): Promise<void> {
     if (!this.canSubmitExperienceImport || !this.experienceImportDialog.draft) {
       return;
     }
     const draft = this.experienceImportDialog.draft;
-    this.setLocalEntries(draft.nextEntries, draft.importedIds);
+    await this.commitExperienceEntries(draft.nextEntries, draft.importedIds);
     this.experienceFilter = 'All';
     this.experienceImportDialog = this.createEmptyExperienceImportDialogState();
-    this.emitEntriesChange(this.experienceEntries, draft.importedIds);
     this.syncOverlayState();
     this.cdr.markForCheck();
   }
@@ -451,7 +460,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     this.cdr.markForCheck();
   }
 
-  protected saveExperienceEntry(): void {
+  protected async saveExperienceEntry(): Promise<void> {
     if (!this.canSaveExperienceEntry) {
       return;
     }
@@ -475,11 +484,10 @@ export class ProfileExperienceManagerComponent implements OnChanges {
           ...this.experienceEntries,
           { id: this.createExperienceId(), ...payload }
         ];
-    this.setLocalEntries(nextEntries);
+    await this.commitExperienceEntries(nextEntries);
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.resetExperienceForm();
-    this.emitEntriesChange(nextEntries);
     this.syncOverlayState();
     this.cdr.markForCheck();
   }
@@ -492,14 +500,15 @@ export class ProfileExperienceManagerComponent implements OnChanges {
 
   protected onExperienceRowSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as {
-      menu?: string;
       row?: ExperienceListRow;
+      card?: ExperienceListRow;
       action?: { id?: string };
     } | null | undefined;
-    if (context?.menu !== 'single-row' || !context.row || !context.action?.id) {
+    const row = context?.row ?? context?.card;
+    if (!row || !context?.action?.id) {
       return;
     }
-    const entry = context.row.entry ?? context.row.eagerDetail;
+    const entry = row.entry ?? row.eagerDetail;
     if (!entry) {
       return;
     }
@@ -518,14 +527,13 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     this.cdr.markForCheck();
   }
 
-  protected confirmExperienceDelete(): void {
+  protected async confirmExperienceDelete(): Promise<void> {
     if (!this.pendingExperienceDeleteId) {
       return;
     }
     const nextEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
-    this.setLocalEntries(nextEntries);
+    await this.commitExperienceEntries(nextEntries);
     this.pendingExperienceDeleteId = null;
-    this.emitEntriesChange(nextEntries);
     this.syncOverlayState();
     this.cdr.markForCheck();
   }
@@ -653,6 +661,77 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     };
   }
 
+  private async loadExperienceEntriesForList(): Promise<ExperienceEntry[]> {
+    if (!this.hasExperienceRoute()) {
+      return this.experienceEntries;
+    }
+    const userId = this.normalizedUserId();
+    const routedEntries = await this.userExperiencesService.loadUserExperiences(userId, this.experienceRouteConfig);
+    if (
+      this.experienceEntries.length > 0
+      && this.experienceEntriesSignature(routedEntries) !== this.experienceEntriesSignature(this.experienceEntries)
+    ) {
+      const seededEntries = await this.userExperiencesService.saveUserExperiences(
+        userId,
+        this.experienceEntries,
+        this.experienceRouteConfig
+      );
+      this.replaceLocalEntriesWithoutListRefresh(seededEntries);
+      return seededEntries;
+    }
+    this.replaceLocalEntriesWithoutListRefresh(routedEntries);
+    return routedEntries;
+  }
+
+  private async commitExperienceEntries(
+    entries: readonly ExperienceEntry[],
+    highlightedIds: readonly string[] | null = null
+  ): Promise<void> {
+    const savedEntries = await this.saveExperienceEntries(entries);
+    this.setLocalEntries(savedEntries, highlightedIds);
+    this.emitEntriesChange(savedEntries, highlightedIds ?? undefined);
+  }
+
+  private async saveExperienceEntries(entries: readonly ExperienceEntry[]): Promise<ExperienceEntry[]> {
+    if (!this.hasExperienceRoute()) {
+      return this.cloneExperienceEntries(entries);
+    }
+    return this.userExperiencesService.saveUserExperiences(
+      this.normalizedUserId(),
+      entries,
+      this.experienceRouteConfig
+    );
+  }
+
+  private hasExperienceRoute(): boolean {
+    return Boolean(this.normalizedUserId() && this.experienceRouteConfig?.mode);
+  }
+
+  private normalizedUserId(): string {
+    return this.userId.trim();
+  }
+
+  private replaceLocalEntriesWithoutListRefresh(entries: readonly ExperienceEntry[]): void {
+    const nextEntries = this.cloneExperienceEntries(entries);
+    this.experienceEntries = nextEntries;
+    this.pruneHighlightedExperienceIds(nextEntries);
+  }
+
+  private experienceEntriesSignature(entries: readonly ExperienceEntry[]): string {
+    return entries
+      .map(entry => [
+        entry.id,
+        entry.type,
+        entry.title,
+        entry.org,
+        entry.city,
+        entry.dateFrom,
+        entry.dateTo,
+        entry.description
+      ].join('\u0001'))
+      .join('\u0002');
+  }
+
   private setLocalEntries(entries: readonly ExperienceEntry[], highlightedIds: readonly string[] | null = null): void {
     const nextEntries = this.cloneExperienceEntries(entries);
     this.experienceEntries = nextEntries;
@@ -686,8 +765,11 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     };
   }
 
-  private experienceRowsForFilter(filter: ExperienceFilter): ExperienceListRow[] {
-    const filtered = this.experienceEntries.filter(item => filter === 'All' || item.type === filter);
+  private experienceRowsForFilter(
+    filter: ExperienceFilter,
+    entries: readonly ExperienceEntry[] = this.experienceEntries
+  ): ExperienceListRow[] {
+    const filtered = entries.filter(item => filter === 'All' || item.type === filter);
     return [...filtered]
       .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom))
       .map(entry => this.toExperienceRow(entry));

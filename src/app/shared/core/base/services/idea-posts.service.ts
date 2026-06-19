@@ -3,7 +3,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { LocalIdeaPostsService } from '../../local/source/services/idea-posts.service';
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
 import type { IdeaArticleDetailDto, IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
-import type { InfoCardData, CardMenuAction } from '../../../ui';
+import type { InfoCardData, CardMenuActionId } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 @Injectable({
@@ -117,9 +117,9 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   private adminIdeaInfoCard(post: IdeaPostDto): InfoCardData<IdeaArticleDetailDto> {
     const statusLabel = this.adminPostStatusLabel(post);
-    const publicationAction: CardMenuAction = post.published ? 'unpublish' : 'publish';
-    const featuredAction: CardMenuAction = post.featured ? 'unfeature' : 'feature';
-    const menuActions: readonly CardMenuAction[] = post.trashed
+    const publicationAction: CardMenuActionId = post.published ? 'unpublish' : 'publish';
+    const featuredAction: CardMenuActionId = post.featured ? 'unfeature' : 'feature';
+    const menuActions: readonly CardMenuActionId[] = post.trashed
       ? ['restore']
       : [
           'viewArticle',

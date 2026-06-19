@@ -13,7 +13,7 @@ import {
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type CardResolvedMenuAction
+  type CardMenuAction
 } from '../../../shared/ui/components/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import {
@@ -55,7 +55,7 @@ interface IdeaLanguageMenuContext {
 
 interface IdeaCardMenuContext {
   card: IdeaInfoCard;
-  action: CardResolvedMenuAction;
+  action: CardMenuAction;
 }
 
 interface IdeaPostDraft {
@@ -887,7 +887,7 @@ export class AdminIdeaEditorPopupComponent {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -905,7 +905,7 @@ export class AdminIdeaEditorPopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';

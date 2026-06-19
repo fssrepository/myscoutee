@@ -100,29 +100,6 @@
         }
       </span>
     }
-    <ng-content select="[singleRowSide]"></ng-content>
-    @if (rowActions().length > 0) {
-      <span class="ui-single-row__actions">
-        @for (action of rowActions(); track trackByActionId($index, action)) {
-          <button
-            type="button"
-            [ngClass]="actionClassList(action)"
-            [disabled]="action.disabled"
-            [attr.aria-label]="action.ariaLabel || action.label || action.id"
-            [attr.title]="action.title || action.label || action.ariaLabel || null"
-            (click)="onActionSelected(action, $event)"
-            >
-            <mat-icon>{{ action.icon }}</mat-icon>
-            @if (action.label) {
-              <span>{{ action.label }}</span>
-            }
-            @if (action.badgeLabel) {
-              <span class="card-badge ui-single-row__action-badge">{{ action.badgeLabel }}</span>
-            }
-          </button>
-        }
-      </span>
-    }
     @if (hasMenuActions()) {
       @if (useSharedMenu) {
         <button
@@ -135,7 +112,7 @@
           >
           <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
           @if ((row?.badgeCount ?? 0) > 0) {
-            <span class="card-badge ui-single-row__action-badge">{{ row?.badgeCount | counterBadge }}</span>
+            <span class="card-badge ui-single-row__menu-badge">{{ row?.badgeCount | counterBadge }}</span>
           }
         </button>
       } @else {
@@ -151,6 +128,5 @@
         ></app-menu>
       }
     }
-    <ng-content select="[singleRowActions]"></ng-content>
   </span>
 </article>
