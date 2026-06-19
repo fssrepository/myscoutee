@@ -171,11 +171,13 @@
           ></app-smart-list>
 
           <ng-template #entryFeaturedIdeaCardTemplate let-card>
-            <app-info-card
-              class="entry-idea-info-card"
-              [card]="card"
-              (cardClick)="openIdeaCard(card)"
-            ></app-info-card>
+            <div class="entry-featured-idea-card">
+              <app-info-card
+                class="entry-idea-info-card"
+                [card]="entryFeaturedIdeaInfoCard(card)"
+                (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
+              ></app-info-card>
+            </div>
           </ng-template>
 
           @if (articlesLoading) {

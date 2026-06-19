@@ -310,12 +310,27 @@
   @if (hasFooterChips()) {
     <div class="ui-info-card__footer-chips">
       @for (chip of card?.footerChips ?? []; track trackByFooterChip($index, chip)) {
-        <span
-          class="ui-info-card__footer-chip values-selected-chip"
-          [ngClass]="chip.toneClass"
-          >
-          {{ chip.label | i18n }}
-        </span>
+        @if (isFooterChipInteractive(chip)) {
+          <button
+            type="button"
+            class="ui-info-card__footer-chip ui-info-card__footer-chip--button values-selected-chip"
+            [ngClass]="chip.toneClass"
+            [attr.aria-label]="(chip.ariaLabel || chip.label) | i18n"
+            (click)="onFooterChipActivated(chip, $event)"
+            >
+            @if (footerChipIcon(chip); as icon) {
+              <mat-icon>{{ icon }}</mat-icon>
+            }
+            <span>{{ chip.label | i18n }}</span>
+          </button>
+        } @else {
+          <span
+            class="ui-info-card__footer-chip values-selected-chip"
+            [ngClass]="chip.toneClass"
+            >
+            {{ chip.label | i18n }}
+          </span>
+        }
       }
     </div>
   }

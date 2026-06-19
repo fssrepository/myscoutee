@@ -119,7 +119,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     trackBy: (_index, card) => card.id,
     listLayout: 'card-grid',
     orientation: 'horizontal',
-    desktopColumns: 4,
+    desktopColumns: 3,
     snapMode: 'mandatory',
     headerProgress: {
       enabled: true
@@ -528,13 +528,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.syncLandingPopupScrollLock();
   }
 
-  protected openIdeaCard(card: InfoCardData, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.ideasPopupOpen = false;
-    this.openIdeaArticlePopup(card, event);
-  }
-
   protected openIdeaArticlePopup(card: InfoCardData, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
@@ -564,6 +557,30 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return this.isHowCarouselNativeSnap()
       ? null
       : `translateX(-${this.activeHowSlideIndex * 100}%)`;
+  }
+
+  protected entryFeaturedIdeaInfoCard(card: InfoCardData): InfoCardData {
+    return {
+      ...card,
+      footerChips: (card.footerChips ?? []).map(chip => chip.toneClass === 'entry-idea-read-chip'
+        ? {
+            ...chip,
+            icon: 'auto_stories',
+            actionId: 'viewArticle',
+            ariaLabel: chip.label
+          }
+        : chip),
+      menuActions: [],
+      menuTitle: null,
+      clickable: false
+    };
+  }
+
+  protected onFeaturedIdeaCardAction(card: InfoCardData, actionId: string): void {
+    if (actionId !== 'viewArticle') {
+      return;
+    }
+    this.openIdeaArticlePopup(card);
   }
 
   protected entryIdeaListInfoCard(

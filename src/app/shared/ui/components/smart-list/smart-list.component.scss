@@ -498,15 +498,34 @@
   overflow-y: hidden;
   padding-bottom: 0.72rem;
   scroll-padding-left: 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-color: rgba(105, 128, 164, 0.42) rgba(219, 228, 240, 0.72);
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
+  cursor: grab;
+}
+
+.smart-list--list.smart-list--horizontal-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .smart-list--list.smart-list--horizontal::-webkit-scrollbar {
-  display: none;
+  display: block;
+  height: 0.5rem;
+}
+
+.smart-list--list.smart-list--horizontal::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(219, 228, 240, 0.72);
+}
+
+.smart-list--list.smart-list--horizontal::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(219, 228, 240, 0.72);
+  border-radius: 999px;
+  background: rgba(105, 128, 164, 0.48);
 }
 
 .smart-list--list.smart-list--horizontal.smart-list--snap-proximity {
@@ -1318,6 +1337,12 @@
     flex-direction: row;
     gap: 0.72rem;
     padding-bottom: 2rem;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .smart-list--list.smart-list--horizontal::-webkit-scrollbar {
+    display: none;
   }
 
   .smart-list__surface--horizontal .smart-list__pagination-arrows {

@@ -857,10 +857,17 @@
 }
 
 :host ::ng-deep .entry-ideas-carousel-list {
-  --smart-list-horizontal-item-basis: calc((100% - 2.34rem) / 4);
+  --smart-list-horizontal-item-basis: calc((100% - 1.56rem) / 3);
   border-radius: 14px;
   padding-top: 0.08rem;
   padding-bottom: 2.28rem;
+}
+
+:host ::ng-deep .entry-featured-idea-card {
+  --entry-featured-idea-card-height: 320px;
+  position: relative;
+  height: var(--entry-featured-idea-card-height);
+  min-width: 0;
 }
 
 :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list .smart-list__pagination-arrow--prev {
@@ -873,15 +880,16 @@
 
 :host ::ng-deep app-info-card.entry-idea-info-card {
   display: block;
-  height: 100%;
+  height: var(--entry-featured-idea-card-height, 320px);
   min-width: 0;
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card {
-  height: 320px;
-  min-height: 320px;
+  height: var(--entry-featured-idea-card-height, 320px);
+  min-height: var(--entry-featured-idea-card-height, 320px);
   border-radius: 12px;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-content: start;
+  grid-template-rows: auto auto auto auto;
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__media {
@@ -904,7 +912,8 @@
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__footer-chips {
-  align-self: end;
+  justify-content: flex-end;
+  margin-top: 0.42rem;
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__overlay-action--end.ui-info-card__overlay-action--badge,
@@ -933,9 +942,22 @@
 }
 
 :host ::ng-deep .entry-idea-read-chip {
+  min-height: 32px !important;
+  padding: 0 0.68rem !important;
+  gap: 0.3rem !important;
   background: linear-gradient(180deg, #fff7e9 0%, #ffedc9 100%) !important;
   border-color: rgba(201, 144, 39, 0.3) !important;
   color: #9b6714 !important;
+  box-shadow: 0 8px 18px rgba(132, 82, 8, 0.16) !important;
+  font-size: 0.74rem !important;
+  font-weight: 900 !important;
+}
+
+:host ::ng-deep .entry-idea-read-chip .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
 }
 
 .entry-ideas-article-date {
@@ -1912,8 +1934,8 @@
   }
 
   :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list {
-    height: 352px;
-    min-height: 352px;
+    height: 372px;
+    min-height: 372px;
   }
 
   :host ::ng-deep .entry-ideas-carousel-list {
@@ -1925,9 +1947,8 @@
     touch-action: pan-x pan-y;
   }
 
-  :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card {
-    height: 310px;
-    min-height: 310px;
+  :host ::ng-deep .entry-featured-idea-card {
+    --entry-featured-idea-card-height: 320px;
   }
 
   :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__media {

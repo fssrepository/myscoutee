@@ -230,6 +230,9 @@ export const CARD_MENU_ACTIONS: Readonly<Record<string, CardMenuActionConfig>> =
 export interface InfoCardFooterChip {
   label: string;
   toneClass?: string | null;
+  icon?: string | null;
+  actionId?: CardMenuAction | null;
+  ariaLabel?: string | null;
 }
 
 export interface DisplayData<TEagerDetail = unknown> {

@@ -311,6 +311,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private listSnapSettleGuardTimer: ReturnType<typeof setTimeout> | null = null;
   private horizontalCursorScrollLockTargetIndex: number | null = null;
   private horizontalCursorScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
+  protected isHorizontalDragging = false;
+  private horizontalDragPointerId: number | null = null;
+  private horizontalDragStartX = 0;
+  private horizontalDragStartScrollLeft = 0;
+  private horizontalDragMoved = false;
+  private horizontalDragClickSuppressUntil = 0;
   private suppressListSnapSettle = false;
   private flushScheduled = false;
   private awaitScrollReset = false;
@@ -503,6 +509,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarDeferredPageKeys.clear();
     this.clearListSnapSettleTimers();
     this.clearHorizontalCursorScrollLock();
+    this.clearHorizontalDragState();
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
     this.clearHostedFullscreenTransitionTimer();
@@ -903,6 +910,86 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.itemAnchorKey(item, index) === this.prependRestoreSpacerAnchorKey;
   }
 
+  protected onListClick(event: Event): void {
+    if (!this.isHorizontalList() || performance.now() > this.horizontalDragClickSuppressUntil) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onHorizontalPointerDown(event: PointerEvent): void {
+    if (!this.isHorizontalList() || event.pointerType !== 'mouse' || event.button !== 0) {
+      return;
+    }
+    if (this.shouldIgnoreHorizontalDragTarget(event)) {
+      return;
+    }
+    const target = event.currentTarget as HTMLDivElement | null;
+    if (!target || target.scrollWidth <= target.clientWidth + 1) {
+      return;
+    }
+    this.horizontalDragPointerId = event.pointerId;
+    this.horizontalDragStartX = event.clientX;
+    this.horizontalDragStartScrollLeft = target.scrollLeft;
+    this.horizontalDragMoved = false;
+    this.isHorizontalDragging = true;
+    this.onSurfaceTouchStart();
+    target.setPointerCapture?.(event.pointerId);
+  }
+
+  protected onHorizontalPointerMove(event: PointerEvent): void {
+    if (!this.isHorizontalList() || this.horizontalDragPointerId !== event.pointerId) {
+      return;
+    }
+    const target = event.currentTarget as HTMLDivElement | null;
+    if (!target) {
+      return;
+    }
+    const deltaX = event.clientX - this.horizontalDragStartX;
+    if (Math.abs(deltaX) > 3) {
+      this.horizontalDragMoved = true;
+    }
+    if (this.horizontalDragMoved) {
+      event.preventDefault();
+      target.scrollLeft = this.horizontalDragStartScrollLeft - deltaX;
+      this.updateScrollProgress(target);
+    }
+  }
+
+  protected onHorizontalPointerEnd(event: PointerEvent): void {
+    if (this.horizontalDragPointerId !== event.pointerId) {
+      return;
+    }
+    const target = event.currentTarget as HTMLDivElement | null;
+    target?.releasePointerCapture?.(event.pointerId);
+    if (this.horizontalDragMoved) {
+      this.horizontalDragClickSuppressUntil = performance.now() + 220;
+    }
+    this.horizontalDragPointerId = null;
+    this.horizontalDragMoved = false;
+    this.isHorizontalDragging = false;
+    this.onSurfaceTouchEnd();
+  }
+
+  private clearHorizontalDragState(): void {
+    this.horizontalDragPointerId = null;
+    this.horizontalDragMoved = false;
+    this.isHorizontalDragging = false;
+  }
+
+  private shouldIgnoreHorizontalDragTarget(event: PointerEvent): boolean {
+    const target = event.target;
+    const currentTarget = event.currentTarget;
+    if (!(target instanceof Element) || !(currentTarget instanceof Element)) {
+      return false;
+    }
+    const interactiveTarget = target.closest(
+      'button, a, input, textarea, select, summary, label, [role="button"], [role="link"], [contenteditable="true"], [data-smart-list-drag-ignore]'
+    );
+    return !!interactiveTarget && currentTarget.contains(interactiveTarget);
+  }
+
   protected onListScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
     this.releaseDeferredSnapOnScroll();
@@ -1269,6 +1356,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.resetHostedFullscreenTransition();
     this.clearCalendarSettleTimers();
     this.clearHorizontalCursorScrollLock();
+    this.clearHorizontalDragState();
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
     this.calendarLoadAbortController?.abort();

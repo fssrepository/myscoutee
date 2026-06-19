@@ -911,6 +911,29 @@ button.ui-info-card__overlay-action {
   font-weight: 800;
   display: inline-flex;
   align-items: center;
+  gap: 0.26rem;
+  line-height: 1;
+  font-family: inherit;
+}
+
+button.ui-info-card__footer-chip {
+  cursor: pointer;
+}
+
+.ui-info-card__footer-chip--button {
+  box-shadow: 0 8px 18px rgba(132, 82, 8, 0.12);
+}
+
+.ui-info-card__footer-chip--button .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.ui-info-card__footer-chip--button:focus-visible {
+  outline: 2px solid rgba(79, 124, 255, 0.62);
+  outline-offset: 2px;
 }
 
 .ui-info-card__footer-chip.section-social {

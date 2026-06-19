@@ -420,6 +420,43 @@ export class InfoCardComponent implements OnDestroy {
     return (this.card?.footerChips?.length ?? 0) > 0;
   }
 
+  protected isFooterChipInteractive(chip: InfoCardFooterChip): boolean {
+    const actionId = chip.actionId;
+    return !!actionId && !!CARD_MENU_ACTIONS[actionId];
+  }
+
+  protected footerChipIcon(chip: InfoCardFooterChip): string {
+    const icon = `${chip.icon ?? ''}`.trim();
+    if (icon) {
+      return icon;
+    }
+    const actionId = chip.actionId;
+    return actionId ? `${CARD_MENU_ACTIONS[actionId]?.icon ?? ''}`.trim() : '';
+  }
+
+  protected onFooterChipActivated(chip: InfoCardFooterChip, event: Event): void {
+    if (!this.card || !chip.actionId) {
+      return;
+    }
+    const actionConfig = CARD_MENU_ACTIONS[chip.actionId];
+    if (!actionConfig) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.menuAction.emit({
+      id: this.card.id,
+      actionId: chip.actionId,
+      action: {
+        id: chip.actionId,
+        ...actionConfig,
+        label: chip.label || actionConfig.label,
+        icon: chip.icon || actionConfig.icon
+      },
+      card: this.card
+    });
+  }
+
   protected trackByActionId(index: number, action: CardMenuAction): string | number {
     // Keep menu buttons stable while the menu is open; recreating them can
     // interact badly with the document-level pointerdown closer.
@@ -427,7 +464,7 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected trackByFooterChip(index: number, chip: InfoCardFooterChip): string | number {
-    return `${chip.label}:${chip.toneClass ?? ''}:${index}`;
+    return `${chip.label}:${chip.toneClass ?? ''}:${chip.actionId ?? ''}:${index}`;
   }
 
   private sharedMenuActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
