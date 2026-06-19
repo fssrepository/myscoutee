@@ -506,12 +506,11 @@
   overflow-y: hidden;
   padding-bottom: 0.52rem;
   scroll-padding-left: 0;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(83, 111, 154, 0.38) rgba(222, 230, 242, 0.72);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
-  cursor: grab;
 }
 
 .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1 {
@@ -530,13 +529,18 @@
   --smart-list-horizontal-item-basis: calc((100% - var(--smart-list-horizontal-gap) - var(--smart-list-horizontal-gap) - var(--smart-list-horizontal-gap)) / 4);
 }
 
-.smart-list--list.smart-list--horizontal-dragging {
-  cursor: grabbing;
-  user-select: none;
+.smart-list--list.smart-list--horizontal::-webkit-scrollbar {
+  height: 0.5rem;
 }
 
-.smart-list--list.smart-list--horizontal::-webkit-scrollbar {
-  display: none;
+.smart-list--list.smart-list--horizontal::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(222, 230, 242, 0.72);
+}
+
+.smart-list--list.smart-list--horizontal::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(83, 111, 154, 0.38);
 }
 
 .smart-list--list.smart-list--horizontal.smart-list--snap-proximity {
@@ -1375,6 +1379,14 @@
 
   .smart-list--list.smart-list--horizontal::-webkit-scrollbar {
     display: none;
+  }
+
+  .smart-list--list.smart-list--horizontal.smart-list--snap-proximity {
+    scroll-snap-type: x proximity;
+  }
+
+  .smart-list--list.smart-list--horizontal.smart-list--snap-mandatory {
+    scroll-snap-type: x mandatory;
   }
 
   .smart-list__surface--horizontal .smart-list__pagination-arrows {

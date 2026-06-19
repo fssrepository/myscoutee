@@ -242,18 +242,18 @@
 </section>
 
 @if (previewGuideOpen) {
-  <section class="entry-preview-guide-popup" role="dialog" aria-modal="true" [attr.aria-label]="'landing.preview.guide.title' | i18n: 'Preview version guide'">
-    <div class="entry-preview-guide-backdrop" (click)="closePreviewGuide()"></div>
-    <article class="entry-preview-guide-panel">
-      <header class="entry-preview-guide-header">
+  <section class="app-popup entry-preview-guide-popup" role="dialog" aria-modal="true" [attr.aria-label]="'landing.preview.guide.title' | i18n: 'Preview version guide'">
+    <div class="app-popup-backdrop entry-preview-guide-backdrop" (click)="closePreviewGuide()"></div>
+    <article class="app-popup-panel entry-preview-guide-panel">
+      <header class="popup-header entry-preview-guide-header">
         <span class="entry-preview-guide-pill">
           <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
         </span>
-        <button type="button" class="entry-ideas-popup-close" (click)="closePreviewGuide()" [attr.aria-label]="'landing.preview.close.guide' | i18n: 'Close preview guide'">
+        <button type="button" class="popup-close" (click)="closePreviewGuide()" [attr.aria-label]="'landing.preview.close.guide' | i18n: 'Close preview guide'">
           <mat-icon>close</mat-icon>
         </button>
       </header>
-      <div class="entry-preview-guide-body">
+      <div class="popup-body entry-preview-guide-body">
         <h2>{{ 'landing.preview.guide.title' | i18n: 'Preview version' }}</h2>
         <p>{{ 'landing.preview.guide.intro' | i18n: 'MyScoutee is currently a test version, so some features may still change or break.' }}</p>
         <p class="entry-preview-guide-github-note">
@@ -279,19 +279,19 @@
 }
 
 @if (ideasPopupOpen) {
-  <section class="entry-ideas-popup" role="dialog" aria-modal="true" aria-label="MyScoutee articles">
-    <div class="entry-ideas-popup-backdrop" (click)="closeIdeasPopup()"></div>
-    <div class="entry-ideas-popup-panel">
-      <header class="entry-ideas-popup-header">
-        <div>
+  <section class="app-popup entry-ideas-popup" role="dialog" aria-modal="true" aria-label="MyScoutee articles">
+    <div class="app-popup-backdrop entry-ideas-popup-backdrop" (click)="closeIdeasPopup()"></div>
+    <div class="app-popup-panel popup-panel-full-height entry-ideas-popup-panel">
+      <header class="popup-header entry-ideas-popup-header">
+        <div class="popup-title">
           <h2>MyScoutee articles</h2>
           <p>{{ publishedIdeaCards().length }} article{{ publishedIdeaCards().length === 1 ? '' : 's' }}</p>
         </div>
-        <button type="button" class="entry-ideas-popup-close" (click)="closeIdeasPopup()" aria-label="Close articles">
+        <button type="button" class="popup-close" (click)="closeIdeasPopup()" aria-label="Close articles">
           <mat-icon>close</mat-icon>
         </button>
       </header>
-      <div class="entry-ideas-popup-body">
+      <div class="popup-body entry-ideas-popup-body">
         <app-smart-list
           class="entry-ideas-smart-list"
           [config]="entryIdeaSmartListConfig"
@@ -301,9 +301,9 @@
 
         <ng-template #entryIdeaListCardTemplate let-card let-groupLabel="groupLabel" let-renderState="renderState">
           <app-info-card
-            class="entry-ideas-list-info-card"
+            class="entry-idea-info-card"
             [card]="entryIdeaListInfoCard(card, { groupLabel: groupLabel, renderState: renderState })"
-            (cardClick)="openIdeaArticlePopup(card)"
+            (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
           ></app-info-card>
         </ng-template>
       </div>
@@ -312,11 +312,11 @@
 }
 
 @if (ideaArticlePopupOpen && selectedIdeaDetail(); as post) {
-  <section class="entry-idea-article-popup" role="dialog" aria-modal="true" aria-label="Article">
-    <div class="entry-idea-article-popup-backdrop" (click)="closeIdeaArticlePopup()"></div>
-    <article class="entry-idea-article-popup-panel">
-      <header class="entry-ideas-article-head">
-        <div>
+  <section class="app-popup entry-idea-article-popup" role="dialog" aria-modal="true" aria-label="Article">
+    <div class="app-popup-backdrop entry-idea-article-popup-backdrop" (click)="closeIdeaArticlePopup()"></div>
+    <article class="app-popup-panel popup-panel-full-height entry-idea-article-popup-panel">
+      <header class="popup-header entry-ideas-article-head">
+        <div class="popup-title">
           <span class="entry-ideas-article-date">
             <mat-icon>calendar_today</mat-icon>
             <span>{{ ideaDateLabel(post) }}</span>
@@ -326,7 +326,7 @@
             <p>{{ post.excerpt }}</p>
           }
         </div>
-        <button type="button" class="entry-ideas-popup-close" (click)="closeIdeaArticlePopup()" aria-label="Close article">
+        <button type="button" class="popup-close" (click)="closeIdeaArticlePopup()" aria-label="Close article">
           <mat-icon>close</mat-icon>
         </button>
       </header>

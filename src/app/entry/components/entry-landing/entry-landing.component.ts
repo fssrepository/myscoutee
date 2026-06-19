@@ -117,8 +117,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     trackBy: (_index, card) => card.id,
     listLayout: 'card-grid',
     orientation: 'horizontal',
-    desktopColumns: 3,
-    snapMode: 'mandatory',
+    desktopColumns: 4,
+    snapMode: 'none',
     headerProgress: {
       enabled: true
     },
@@ -576,7 +576,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return {
       ...card,
       groupLabel: options.groupLabel ?? card.groupLabel ?? null,
-      state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : card.state ?? 'default'
+      state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : card.state ?? 'default',
+      clickable: false
     };
   }
 
