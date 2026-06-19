@@ -344,10 +344,10 @@ export class AssetFormPopupComponent implements OnChanges {
 
   private visibilityPalette(option: AppConstants.EventVisibility): AppMenuPalette {
     if (option === 'Public') {
-      return 'blue';
+      return 'green';
     }
     if (option === 'Friends only') {
-      return 'green';
+      return 'blue';
     }
     return 'orange';
   }

@@ -139,7 +139,6 @@ export class ProfileEditorComponent {
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
   protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
-  protected selectedImageIndex = 0;
   protected privacyFabJustSelectedKey: string | null = null;
   protected experienceVisibility: Record<'workspace' | 'school', AppConstants.DetailPrivacy> = {
     workspace: 'Public',
@@ -208,10 +207,6 @@ export class ProfileEditorComponent {
 
   protected get activeUser(): UserDto | null {
     return this.profileUser;
-  }
-
-  protected get selectedImagePreview(): string | null {
-    return this.imageSlots[this.selectedImageIndex] ?? null;
   }
 
   protected get featuredImagePreview(): string | null {
@@ -348,7 +343,6 @@ export class ProfileEditorComponent {
         slots[index] = imageUrl;
       });
     this.imageSlots = slots;
-    this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(this.selectedImageIndex);
     this.persistActiveUserImageSlots();
   }
 
@@ -1380,8 +1374,6 @@ export class ProfileEditorComponent {
     const slots = this.profileImageSlotsByUser[user.id] ?? this.resolveUserImageSlots(user);
     this.profileImageSlotsByUser[user.id] = [...slots];
     this.imageSlots = [...slots];
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
     this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
     this.panel = 'profile';
     void this.loadExperienceEntriesForUser(user.id);
@@ -2120,14 +2112,6 @@ export class ProfileEditorComponent {
     }
     user.completion = this.calculateProfileCompletionPercent();
     this.pushProfileUserToContextAndLegacyMirror(user);
-  }
-
-  private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
-    if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
-      return slotIndex;
-    }
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    return firstFilled >= 0 ? firstFilled : 0;
   }
 
   private async commitProfileForm(showAlert: boolean): Promise<void> {

@@ -146,7 +146,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected experienceRangeStart: Date | null = null;
   protected experienceRangeEnd: Date | null = null;
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
-  protected selectedImageIndex = 0;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']) {
@@ -171,7 +170,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.experienceLoadToken += 1;
       this.experienceEntriesLoadedForUserId = '';
       this.imageSlots = this.createEmptyImageSlots();
-      this.selectedImageIndex = 0;
       return;
     }
     this.assessment = this.onboarding.assessUser(this.user);
@@ -574,10 +572,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.persistDraft();
   }
 
-  protected selectedImagePreview(): string | null {
-    return this.imageSlots[this.selectedImageIndex] ?? null;
-  }
-
   protected imageCount(): number {
     return this.imageSlots.filter(slot => Boolean(slot?.trim())).length;
   }
@@ -600,7 +594,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
         slots[index] = imageUrl;
       });
     this.imageSlots = slots;
-    this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(this.selectedImageIndex);
     this.imageUploadError = '';
     this.syncDraftImagesFromSlots();
   }
@@ -1629,8 +1622,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       slots[index] = image;
     });
     this.imageSlots = slots;
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
   }
 
   private syncDraftImagesFromSlots(): void {
@@ -1657,14 +1648,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       }
     }
     return images;
-  }
-
-  private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
-    if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
-      return slotIndex;
-    }
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    return firstFilled >= 0 ? firstFilled : 0;
   }
 
   private formatDateForDetail(value: string): string {
