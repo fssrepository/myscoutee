@@ -167,6 +167,7 @@ export interface AppMenuItemSelectEvent<TId extends string = string, TContext = 
   context?: TContext;
   sourceEvent: Event;
   value?: unknown;
+  controlValue?: unknown;
   action?: AppMenuItemSelectAction;
 }
 

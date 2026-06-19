@@ -13,6 +13,11 @@ export interface AppMenuModelSummaryResult {
   selectedCount: number;
 }
 
+export interface AppMenuModelSummarySelection {
+  active: boolean;
+  value: unknown;
+}
+
 export function appMenuModelGroups<TId extends string = string, TContext = unknown>(
   model: AppMenuModel<TId, TContext> | null | undefined,
   fallback: readonly AppMenuGroup<TId, TContext>[] = []
@@ -22,7 +27,8 @@ export function appMenuModelGroups<TId extends string = string, TContext = unkno
 
 export function appMenuModelSummary<TId extends string = string, TContext = unknown>(
   model: AppMenuModel<TId, TContext> | null | undefined,
-  fallbackGroups: readonly AppMenuGroup<TId, TContext>[] = []
+  fallbackGroups: readonly AppMenuGroup<TId, TContext>[] = [],
+  selection: AppMenuModelSummarySelection | null = null
 ): AppMenuModelSummaryResult {
   const summary = model?.summary ?? null;
   if (!summary) {
@@ -33,7 +39,7 @@ export function appMenuModelSummary<TId extends string = string, TContext = unkn
     };
   }
 
-  const labels = appMenuSelectedLabels(appMenuModelGroups(model, fallbackGroups));
+  const labels = appMenuSelectedLabels(appMenuModelGroups(model, fallbackGroups), selection);
   const maxLabels = Math.max(1, Math.trunc(Number(summary.maxLabels) || 1));
   const visibleLabels = labels.slice(0, maxLabels);
   const label = visibleLabels.length > 0
@@ -56,13 +62,14 @@ export function appMenuResolveLiveValue<T>(value: AppMenuLiveValue<T> | null | u
 }
 
 function appMenuSelectedLabels<TId extends string, TContext>(
-  groups: readonly AppMenuGroup<TId, TContext>[]
+  groups: readonly AppMenuGroup<TId, TContext>[],
+  selection: AppMenuModelSummarySelection | null
 ): string[] {
   const selectedLabels: string[] = [];
   const seenLabels = new Set<string>();
   for (const group of groups) {
     for (const item of group.items ?? []) {
-      collectSelectedItemLabels(item, selectedLabels, seenLabels);
+      collectSelectedItemLabels(item, selectedLabels, seenLabels, selection);
     }
   }
   return selectedLabels;
@@ -71,10 +78,11 @@ function appMenuSelectedLabels<TId extends string, TContext>(
 function collectSelectedItemLabels<TId extends string, TContext>(
   item: AppMenuItem<TId, TContext>,
   selectedLabels: string[],
-  seenLabels: Set<string>
+  seenLabels: Set<string>,
+  selection: AppMenuModelSummarySelection | null
 ): void {
   const kind = item.kind ?? 'action';
-  if (kind !== 'divider' && kind !== 'section' && isActiveItem(item)) {
+  if (kind !== 'divider' && kind !== 'section' && isActiveItem(item, selection)) {
     const label = `${appMenuResolveLiveValue(item.label) ?? ''}`.trim();
     const key = label.toLowerCase();
     if (label && !seenLabels.has(key)) {
@@ -83,12 +91,32 @@ function collectSelectedItemLabels<TId extends string, TContext>(
     }
   }
   for (const child of item.items ?? []) {
-    collectSelectedItemLabels(child, selectedLabels, seenLabels);
+    collectSelectedItemLabels(child, selectedLabels, seenLabels, selection);
   }
 }
 
-function isActiveItem<TId extends string, TContext>(item: AppMenuItem<TId, TContext>): boolean {
-  return appMenuResolveLiveValue(item.active) === true || appMenuResolveLiveValue(item.checked) === true;
+function isActiveItem<TId extends string, TContext>(
+  item: AppMenuItem<TId, TContext>,
+  selection: AppMenuModelSummarySelection | null
+): boolean {
+  return appMenuResolveLiveValue(item.active) === true
+    || appMenuResolveLiveValue(item.checked) === true
+    || isSelectedByValue(item, selection);
+}
+
+function isSelectedByValue<TId extends string, TContext>(
+  item: AppMenuItem<TId, TContext>,
+  selection: AppMenuModelSummarySelection | null
+): boolean {
+  if (!selection?.active) {
+    return false;
+  }
+  const itemValue = item.value !== undefined ? item.value : item.id;
+  const selectedValue = selection.value;
+  if (Array.isArray(selectedValue)) {
+    return selectedValue.some(value => Object.is(value, itemValue));
+  }
+  return Object.is(selectedValue, itemValue);
 }
 
 function appMenuSummaryCounter(

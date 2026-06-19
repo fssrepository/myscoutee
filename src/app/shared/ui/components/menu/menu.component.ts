@@ -6,6 +6,7 @@ import {
   DoCheck,
   ElementRef,
   EventEmitter,
+  forwardRef,
   HostBinding,
   HostListener,
   Input,
@@ -13,6 +14,10 @@ import {
   Output,
   inject
 } from '@angular/core';
+import {
+  ControlValueAccessor,
+  NG_VALUE_ACCESSOR
+} from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../pipes';
@@ -48,7 +53,9 @@ import type {
 } from './menu.types';
 import {
   appMenuModelGroups,
-  appMenuModelSummary
+  appMenuModelSummary,
+  type AppMenuModelSummaryResult,
+  type AppMenuModelSummarySelection
 } from './menu-summary';
 
 type AppMenuResolvedLayout = 'desktop' | 'mobile';
@@ -63,9 +70,17 @@ type AppMenuFilterTextPart = {
   imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent, ProgressIndicatorComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => AppMenuComponent),
+      multi: true
+    }
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppMenuComponent<TId extends string = string, TContext = unknown> implements DoCheck, OnDestroy {
+export class AppMenuComponent<TId extends string = string, TContext = unknown>
+  implements ControlValueAccessor, DoCheck, OnDestroy {
   private static readonly COUNTER_PULSE_DURATION_MS = 1600;
   private static readonly DESKTOP_MARGIN_PX = 8;
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
@@ -100,6 +115,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private readonly counterValueByKey = new Map<string, string>();
   private readonly counterPulseTimerByKey = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pulsingCounterKeys = new Set<string>();
+  private controlAttached = false;
+  private controlDisabled = false;
+  private controlValue: unknown = null;
+  private onControlChange: (value: unknown) => void = () => undefined;
+  private onControlTouched: () => void = () => undefined;
   protected isMobileViewport = false;
 
   @Input()
@@ -133,6 +153,34 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       clearTimeout(timerId);
     }
     this.counterPulseTimerByKey.clear();
+  }
+
+  writeValue(value: unknown): void {
+    this.controlAttached = true;
+    if (this.controlValuesEqual(this.controlValue, value)) {
+      return;
+    }
+    this.controlValue = value;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  registerOnChange(fn: (value: unknown) => void): void {
+    this.controlAttached = true;
+    this.onControlChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.controlAttached = true;
+    this.onControlTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.controlAttached = true;
+    if (this.controlDisabled === isDisabled) {
+      return;
+    }
+    this.controlDisabled = isDisabled;
+    this.changeDetectorRef.markForCheck();
   }
 
   @HostBinding('class.app-menu-host')
@@ -434,12 +482,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected triggerLabel(): string {
     const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
-    return configuredLabel || appMenuModelSummary(this.model, this.groups).label || this.defaultSelectTriggerLabel();
+    return configuredLabel || this.modelSummary().label || this.defaultSelectTriggerLabel();
   }
 
   protected usesDefaultSelectTriggerLabel(): boolean {
     const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
-    const summaryLabel = appMenuModelSummary(this.model, this.groups).label;
+    const summaryLabel = this.modelSummary().label;
     return !configuredLabel && !summaryLabel && Boolean(this.defaultSelectTriggerLabel());
   }
 
@@ -524,7 +572,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected triggerDisabled(): boolean {
-    return this.resolveBoolean(this.trigger?.disabled);
+    return this.controlDisabled || this.resolveBoolean(this.trigger?.disabled);
   }
 
   protected triggerPalette(): AppMenuPalette {
@@ -575,7 +623,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (configuredCounter !== null && configuredCounter !== undefined) {
       return configuredCounter;
     }
-    return appMenuModelSummary(this.model, this.groups).counter;
+    return this.modelSummary().counter;
   }
 
   protected toggleMenu(event: Event): void {
@@ -598,6 +646,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
         item,
         context: item.context,
         sourceEvent: event,
+        controlValue: this.currentControlEventValue(),
         action: 'select'
       });
       return;
@@ -627,12 +676,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.setOpen(true);
       return;
     }
+    const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'select'
     });
     this.setOpen(false);
@@ -644,12 +695,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
       return;
     }
+    const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'select'
     });
     if (item.closeOnSelect ?? this.closeOnSelect) {
@@ -667,12 +720,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.activeBranchPath = [...this.activeBranchPath, item];
       return;
     }
+    const controlValue = this.selectControlItem(item);
     const selectEvent: AppMenuItemSelectEvent<TId, TContext> = {
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'select'
     };
     this.itemSelect.emit(selectEvent);
@@ -689,12 +744,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
     const closesEmptyBranch = this.activeBranchPath.length > 0
       && this.visibleSelectableListItems().length <= 1;
+    const controlValue = this.removeControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'remove'
     });
     if (closesEmptyBranch) {
@@ -714,12 +771,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       return;
     }
     this.updateRatingBarItemValue(item, score);
+    const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: new Event('ratingScoreSelect'),
       value: item.value,
+      controlValue,
       action: 'select'
     });
     if (this.shouldCloseOnSelect(item)) {
@@ -739,6 +798,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue: this.currentControlEventValue(),
       action: 'select'
     });
     if (this.shouldCloseOnSelect(item)) {
@@ -999,7 +1059,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isItemActive(item: AppMenuItem<TId, TContext>): boolean {
-    return this.resolveBoolean(item.active) || this.resolveBoolean(item.checked);
+    return this.resolveBoolean(item.active)
+      || this.resolveBoolean(item.checked)
+      || this.isControlItemSelected(item);
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
@@ -1021,7 +1083,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isItemDisabled(item: AppMenuItem<TId, TContext>): boolean {
-    return this.resolveBoolean(item.disabled);
+    return this.controlDisabled || this.resolveBoolean(item.disabled);
   }
 
   protected isItemRemovable(item: AppMenuItem<TId, TContext>): boolean {
@@ -1479,6 +1541,111 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.counterPulseTimerByKey.delete(key);
     }
     this.pulsingCounterKeys.delete(key);
+  }
+
+  private modelSummary(): AppMenuModelSummaryResult {
+    return appMenuModelSummary(this.model, this.groups, this.controlSelection());
+  }
+
+  private controlSelection(): AppMenuModelSummarySelection | null {
+    if (!this.controlAttached) {
+      return null;
+    }
+    return {
+      active: true,
+      value: this.controlValue
+    };
+  }
+
+  private currentControlEventValue(): unknown {
+    return this.controlAttached ? this.controlValue : undefined;
+  }
+
+  private selectControlItem(item: AppMenuItem<TId, TContext>): unknown {
+    if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
+      return undefined;
+    }
+    this.markControlTouched();
+    const nextValue = this.nextControlValueForItem(item);
+    this.setControlValue(nextValue);
+    return this.controlValue;
+  }
+
+  private removeControlItem(item: AppMenuItem<TId, TContext>): unknown {
+    if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
+      return this.currentControlEventValue();
+    }
+    this.markControlTouched();
+    const itemValue = this.itemControlValue(item);
+    if (Array.isArray(this.controlValue)) {
+      this.setControlValue(this.controlValue.filter(value => !this.controlValuesEqual(value, itemValue)));
+      return this.controlValue;
+    }
+    if (this.controlValuesEqual(this.controlValue, itemValue)) {
+      this.setControlValue(null);
+    }
+    return this.controlValue;
+  }
+
+  private nextControlValueForItem(item: AppMenuItem<TId, TContext>): unknown {
+    const itemValue = this.itemControlValue(item);
+    switch (item.kind ?? 'action') {
+      case 'checkbox':
+      case 'toggle':
+        return this.toggleControlArrayValue(itemValue);
+      default:
+        return itemValue;
+    }
+  }
+
+  private itemControlValue(item: AppMenuItem<TId, TContext>): unknown {
+    return item.value !== undefined ? item.value : item.id;
+  }
+
+  private toggleControlArrayValue(itemValue: unknown): unknown[] {
+    const values = Array.isArray(this.controlValue)
+      ? [...this.controlValue]
+      : this.controlValue === null || this.controlValue === undefined
+        ? []
+        : [this.controlValue];
+    const existingIndex = values.findIndex(value => this.controlValuesEqual(value, itemValue));
+    if (existingIndex >= 0) {
+      values.splice(existingIndex, 1);
+      return values;
+    }
+    return [...values, itemValue];
+  }
+
+  private setControlValue(value: unknown): void {
+    if (this.controlValuesEqual(this.controlValue, value)) {
+      return;
+    }
+    this.controlValue = value;
+    this.onControlChange(value);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private markControlTouched(): void {
+    this.onControlTouched();
+  }
+
+  private isControlItemSelected(item: AppMenuItem<TId, TContext>): boolean {
+    if (!this.controlAttached || this.isPassiveItem(item)) {
+      return false;
+    }
+    const itemValue = this.itemControlValue(item);
+    if (Array.isArray(this.controlValue)) {
+      return this.controlValue.some(value => this.controlValuesEqual(value, itemValue));
+    }
+    return this.controlValuesEqual(this.controlValue, itemValue);
+  }
+
+  private controlValuesEqual(first: unknown, second: unknown): boolean {
+    if (Array.isArray(first) && Array.isArray(second)) {
+      return first.length === second.length
+        && first.every((value, index) => this.controlValuesEqual(value, second[index]));
+    }
+    return Object.is(first, second);
   }
 
   private resolveBoolean(value: AppMenuLiveValue<boolean | null | undefined> | null | undefined): boolean {

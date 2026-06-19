@@ -92,9 +92,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.physique"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('physique', physiqueOptions, f.physique, 'fitness_center', 'green')"
                     [items]="fieldMenuItems('physique', physiqueOptions, f.physique, 'fitness_center', 'green')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -102,9 +103,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.genderDetail"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('genderDetail', detailOptions('Gender'), f.genderDetail, 'person', 'violet')"
                     [items]="fieldMenuItems('genderDetail', detailOptions('Gender'), f.genderDetail, 'person', 'violet')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -114,9 +116,10 @@
                     kind="select"
                     title="Languages"
                     [filterable]="true"
+                    [(ngModel)]="f.languages"
+                    (ngModelChange)="onStringArrayMenuModelChange('languages', $event)"
                     [trigger]="languageMenuTrigger()"
                     [model]="languageMenuModel()"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -124,9 +127,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.profileStatus"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="profileStatusMenuTrigger(f.profileStatus)"
                     [items]="profileStatusMenuItems(f.profileStatus)"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
               </div>
@@ -139,6 +143,7 @@
                       class="profile-onboarding-menu profile-onboarding-experience-selector-menu"
                       kind="select"
                       [title]="experienceSelectorLabelKey('Workspace') | i18n"
+                      [ngModel]="experienceSelectorMenuValue('Workspace')"
                       [trigger]="experienceSelectorMenuTrigger('Workspace')"
                       [model]="experienceSelectorMenuModel('Workspace')"
                       (itemSelect)="onProfileOnboardingMenuSelect($event)"
@@ -150,6 +155,7 @@
                       class="profile-onboarding-menu profile-onboarding-experience-selector-menu"
                       kind="select"
                       [title]="experienceSelectorLabelKey('School') | i18n"
+                      [ngModel]="experienceSelectorMenuValue('School')"
                       [trigger]="experienceSelectorMenuTrigger('School')"
                       [model]="experienceSelectorMenuModel('School')"
                       (itemSelect)="onProfileOnboardingMenuSelect($event)"
@@ -184,9 +190,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.drinking"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('drinking', detailOptions('Drinking'), f.drinking, 'local_bar', 'orange')"
                     [items]="fieldMenuItems('drinking', detailOptions('Drinking'), f.drinking, 'local_bar', 'orange')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -194,9 +201,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.smoking"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('smoking', detailOptions('Smoking'), f.smoking, 'smoking_rooms', 'slate')"
                     [items]="fieldMenuItems('smoking', detailOptions('Smoking'), f.smoking, 'smoking_rooms', 'slate')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -204,9 +212,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.workout"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('workout', detailOptions('Workout'), f.workout, 'fitness_center', 'green')"
                     [items]="fieldMenuItems('workout', detailOptions('Workout'), f.workout, 'fitness_center', 'green')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -214,9 +223,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.pets"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('pets', detailOptions('Pets'), f.pets, 'pets', 'mint')"
                     [items]="fieldMenuItems('pets', detailOptions('Pets'), f.pets, 'pets', 'mint')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -224,9 +234,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.familyPlans"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('familyPlans', detailOptions('Family plans'), f.familyPlans, 'family_restroom', 'pink')"
                     [items]="fieldMenuItems('familyPlans', detailOptions('Family plans'), f.familyPlans, 'family_restroom', 'pink')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -234,9 +245,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.children"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('children', detailOptions('Children'), f.children, 'child_care', 'amber')"
                     [items]="fieldMenuItems('children', detailOptions('Children'), f.children, 'child_care', 'amber')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -244,9 +256,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.loveStyle"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('loveStyle', detailOptions('Love style'), f.loveStyle, 'favorite', 'red')"
                     [items]="fieldMenuItems('loveStyle', detailOptions('Love style'), f.loveStyle, 'favorite', 'red')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -254,9 +267,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.communicationStyle"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('communicationStyle', detailOptions('Communication style'), f.communicationStyle, 'forum', 'sky')"
                     [items]="fieldMenuItems('communicationStyle', detailOptions('Communication style'), f.communicationStyle, 'forum', 'sky')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -264,9 +278,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.sexualOrientation"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('sexualOrientation', detailOptions('Sexual orientation'), f.sexualOrientation, 'diversity_1', 'violet')"
                     [items]="fieldMenuItems('sexualOrientation', detailOptions('Sexual orientation'), f.sexualOrientation, 'diversity_1', 'violet')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -274,9 +289,10 @@
                   <app-menu
                     class="profile-onboarding-menu"
                     kind="select"
+                    [(ngModel)]="f.religion"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="fieldMenuTrigger('religion', detailOptions('Religion'), f.religion, 'self_improvement', 'gold')"
                     [items]="fieldMenuItems('religion', detailOptions('Religion'), f.religion, 'self_improvement', 'gold')"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -286,9 +302,10 @@
                     kind="select"
                     title="Values"
                     [filterable]="true"
+                    [(ngModel)]="f.values"
+                    (ngModelChange)="onStringArrayMenuModelChange('values', $event)"
                     [trigger]="valuesMenuTrigger()"
                     [model]="valuesMenuModel()"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
                 <label>
@@ -298,9 +315,10 @@
                     kind="select"
                     title="Interests"
                     [filterable]="true"
+                    [(ngModel)]="f.interests"
+                    (ngModelChange)="onStringArrayMenuModelChange('interests', $event)"
                     [trigger]="interestsMenuTrigger()"
                     [model]="interestsMenuModel()"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
                   ></app-menu>
                 </label>
               </div>
@@ -416,32 +434,41 @@
           ></app-menu>
         </footer>
         @if (experienceManagerOpen) {
-          <section class="profile-onboarding-experience-manager-overlay">
-            <div class="profile-onboarding-experience-manager-backdrop" (click)="closeExperienceManager()"></div>
-            <div class="profile-onboarding-experience-manager-popup">
-              <header class="profile-onboarding-experience-manager-header">
-                <div>
+          <section class="profile-onboarding-experience-manager-overlay popup-surface-overlay">
+            <div class="profile-onboarding-experience-manager-backdrop popup-surface-overlay-backdrop" (click)="closeExperienceManager()"></div>
+            <div class="profile-onboarding-experience-manager-popup popup-surface">
+              <header class="profile-onboarding-experience-manager-header popup-surface-header">
+                <div class="popup-surface-header-title">
                   <span>{{ 'Experience' | i18n }}</span>
                   <h3>{{ experienceManagerTitle() | i18n }}</h3>
                 </div>
-                <button type="button" (click)="closeExperienceManager()" aria-label="Close experience manager">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </header>
-              @if (experienceEntriesLoading) {
-                <div class="profile-onboarding-experience-manager-loading" aria-live="polite">
-                  <span class="profile-onboarding-experience-loading-ring" aria-hidden="true">
-                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
-                  </span>
-                  <span>{{ 'Loading experience' | i18n }}</span>
+                <div class="popup-surface-header-controls">
+                  <button
+                    type="button"
+                    class="profile-onboarding-experience-manager-close popup-surface-close-btn"
+                    (click)="closeExperienceManager()"
+                    aria-label="Close experience manager"
+                    >
+                    <mat-icon>close</mat-icon>
+                  </button>
                 </div>
-              }
-              <app-profile-experience-manager
-                [entries]="f.experienceEntries"
-                [initialFilter]="experienceManagerFilter"
-                [showInlineActions]="true"
-                (entriesChange)="onExperienceManagerEntriesChange($event)"
-              ></app-profile-experience-manager>
+              </header>
+              <section class="profile-onboarding-experience-manager-body popup-surface-body">
+                @if (experienceEntriesLoading) {
+                  <div class="profile-onboarding-experience-manager-loading" aria-live="polite">
+                    <span class="profile-onboarding-experience-loading-ring" aria-hidden="true">
+                      <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+                    </span>
+                    <span>{{ 'Loading experience' | i18n }}</span>
+                  </div>
+                }
+                <app-profile-experience-manager
+                  [entries]="f.experienceEntries"
+                  [initialFilter]="experienceManagerFilter"
+                  [showInlineActions]="true"
+                  (entriesChange)="onExperienceManagerEntriesChange($event)"
+                ></app-profile-experience-manager>
+              </section>
             </div>
           </section>
         }
