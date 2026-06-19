@@ -504,7 +504,7 @@
   gap: var(--smart-list-horizontal-gap);
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 0;
+  padding-bottom: 0.52rem;
   scroll-padding-left: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1360,6 +1360,10 @@
     padding-bottom: 2rem;
     scrollbar-width: none;
     -ms-overflow-style: none;
+  }
+
+  .smart-list__surface--horizontal {
+    margin-inline: 0.72rem;
   }
 
   .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1,

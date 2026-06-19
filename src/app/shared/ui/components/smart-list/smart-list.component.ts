@@ -953,7 +953,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.horizontalDragMoved) {
       event.preventDefault();
       target.scrollLeft = this.horizontalDragStartScrollLeft - deltaX;
-      this.updateScrollProgress(target);
     }
   }
 
@@ -970,6 +969,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.horizontalDragMoved = false;
     this.isHorizontalDragging = false;
     this.onSurfaceTouchEnd();
+    if (target) {
+      this.syncListScrollAfterHorizontalDrag(target);
+    }
   }
 
   private clearHorizontalDragState(): void {
@@ -992,6 +994,17 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onListScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    if (this.isHorizontalDragging) {
+      return;
+    }
+    this.syncListScrollState(target);
+  }
+
+  private syncListScrollAfterHorizontalDrag(target: HTMLDivElement): void {
+    this.syncListScrollState(target);
+  }
+
+  private syncListScrollState(target: HTMLDivElement): void {
     this.releaseDeferredSnapOnScroll();
     if (this.shouldShowStickyHeader()) {
       this.updateStickyLabel(target.scrollTop);
