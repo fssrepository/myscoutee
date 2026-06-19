@@ -781,12 +781,6 @@
   padding-top: 1rem;
 }
 
-.entry-ideas-article-image {
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
 .entry-ideas-article-date {
   display: inline-flex;
   align-items: center;
@@ -1108,6 +1102,9 @@
   border-radius: 12px;
   margin: 1rem 0;
   background-color: #edf3fb;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
   box-sizing: border-box;
 }
 
