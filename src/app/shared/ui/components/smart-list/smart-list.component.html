@@ -1,5 +1,6 @@
 <div
   class="smart-list__surface"
+  [class.smart-list__surface--horizontal]="isHorizontalList()"
   [class.smart-list__surface--fullscreen]="resolvedPresentation() === 'fullscreen'"
   [class.smart-list__surface--fullscreen-with-rating-bar]="resolvedPresentation() === 'fullscreen' && shouldRenderPaginationRatingBar()"
 >
@@ -192,6 +193,7 @@
           [class.smart-list--stack]="resolvedListLayout() === 'stack'"
           [class.smart-list--card-grid]="resolvedListLayout() === 'card-grid'"
           [class.smart-list--thread]="resolvedListLayout() === 'thread'"
+          [class.smart-list--horizontal]="isHorizontalList()"
           [class.smart-list--flow-reverse]="isReversedListFlow()"
           [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
           [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
@@ -375,6 +377,21 @@
       >
         <mat-icon>chevron_right</mat-icon>
       </button>
+    </div>
+  }
+
+  @if (shouldRenderHorizontalPaginationDots()) {
+    <div class="smart-list__horizontal-dots" aria-label="List pages">
+      @for (dotIndex of horizontalPaginationDotIndexes(); track dotIndex) {
+        <button
+          type="button"
+          class="smart-list__horizontal-dot"
+          [class.is-active]="isHorizontalPaginationDotActive(dotIndex)"
+          [attr.aria-current]="isHorizontalPaginationDotActive(dotIndex) ? 'true' : null"
+          [attr.aria-label]="'Show item ' + (dotIndex + 1)"
+          (click)="onHorizontalPaginationDotClick(dotIndex, $event)"
+        ></button>
+      }
     </div>
   }
 

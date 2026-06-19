@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Observable, of } from 'rxjs';
@@ -47,12 +47,9 @@ interface HowStepSlide {
   templateUrl: './entry-landing.component.html',
   styleUrl: './entry-landing.component.scss'
 })
-export class EntryLandingComponent implements OnInit, OnDestroy {
+export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @ViewChild('howCarouselViewport')
   private howCarouselViewportRef?: ElementRef<HTMLDivElement>;
-
-  @ViewChild('ideaCarouselViewport')
-  private ideaCarouselViewportRef?: ElementRef<HTMLDivElement>;
 
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -102,13 +99,53 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   ];
 
   protected activeHowSlideIndex = 0;
-  protected activeIdeaCarouselPage = 0;
-  protected ideaCarouselCardsPerPage = 4;
   protected previewGuideOpen = false;
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
   protected appVersionLabel = 'v1.0.0';
+  protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
+
+  protected readonly entryFeaturedIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
+    pageSize: 8,
+    initialPageSize: 8,
+    initialPageCount: 1,
+    emptyLabel: 'No articles yet',
+    emptyDescription: 'Fresh MyScoutee articles will show here.',
+    showStickyHeader: false,
+    showFirstGroupMarker: false,
+    showGroupMarker: () => false,
+    groupBy: null,
+    trackBy: (_index, card) => card.id,
+    listLayout: 'card-grid',
+    orientation: 'horizontal',
+    desktopColumns: 4,
+    snapMode: 'mandatory',
+    headerProgress: {
+      enabled: true
+    },
+    pagination: {
+      mode: 'arrows'
+    },
+    containerClass: {
+      'entry-ideas-carousel-list': true
+    }
+  };
+
+  protected readonly entryFeaturedIdeaSmartListLoadPage: SmartListLoadPage<IdeaInfoCard> = (
+    query: ListQuery
+  ): Observable<PageResult<IdeaInfoCard>> => {
+    const cards = this.featuredIdeaCards();
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryFeaturedIdeaSmartListConfig.pageSize) || 8));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const start = page * pageSize;
+    const items = cards.slice(start, start + pageSize);
+    return of({
+      items,
+      total: cards.length,
+      nextCursor: start + items.length < cards.length ? `${start + items.length}` : null
+    });
+  };
 
   protected readonly entryIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
     pageSize: 10,
@@ -160,26 +197,26 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   private howCarouselTimer: ReturnType<typeof setInterval> | null = null;
   private howCarouselSwipeStartX: number | null = null;
   private howCarouselSwipePointerId: number | null = null;
-  private ideaCarouselSwipeStartX: number | null = null;
-  private ideaCarouselSwipePointerId: number | null = null;
-  private ideaCarouselSwipeStartTarget: EventTarget | null = null;
   private howCarouselScrollLockTargetIndex: number | null = null;
   private howCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
-  private ideaCarouselScrollLockTargetIndex: number | null = null;
-  private ideaCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
   private landingPopupScrollLocked = false;
   private previousBodyOverflow = '';
 
   ngOnInit(): void {
-    this.syncIdeaCarouselPageSize();
+    this.updateFeaturedIdeaSmartListFilters();
     this.startHowCarouselAutoplay();
     void this.loadAppVersionLabel();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['ideaCards']) {
+      this.updateFeaturedIdeaSmartListFilters();
+    }
   }
 
   ngOnDestroy(): void {
     this.stopHowCarouselAutoplay();
     this.clearHowCarouselScrollLock();
-    this.clearIdeaCarouselScrollLock();
     this.restoreLandingPopupScrollLock();
   }
 
@@ -203,7 +240,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   protected onViewportResize(): void {
     this.scheduleHowCarouselViewportSync('auto');
-    this.syncIdeaCarouselPageSize();
   }
 
   protected get isFirebaseAuthMode(): boolean {
@@ -452,16 +488,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     return (featured.length > 0 ? featured : published).slice(0, 8);
   }
 
-  protected featuredIdeaPages(): IdeaInfoCard[][] {
-    const pageSize = Math.max(1, this.ideaCarouselCardsPerPage);
-    const cards = this.featuredIdeaCards();
-    const pages: IdeaInfoCard[][] = [];
-    for (let index = 0; index < cards.length; index += pageSize) {
-      pages.push(cards.slice(index, index + pageSize));
-    }
-    return pages;
-  }
-
   protected publishedIdeaCards(): IdeaInfoCard[] {
     return [...(this.ideaCards ?? [])]
       .map(card => this.asIdeaInfoCard(card))
@@ -484,18 +510,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
   protected ideaCardDetail(card: InfoCardData | null | undefined): IdeaArticleDetailDto | null {
     const detail = card?.eagerDetail;
     return this.isIdeaArticleDetail(detail) ? detail : null;
-  }
-
-  protected ideaCarouselPageCount(): number {
-    return Math.max(1, this.featuredIdeaPages().length);
-  }
-
-  protected get isFirstIdeaCarouselPage(): boolean {
-    return this.activeIdeaCarouselPage <= 0;
-  }
-
-  protected get isLastIdeaCarouselPage(): boolean {
-    return this.activeIdeaCarouselPage >= this.ideaCarouselPageCount() - 1;
   }
 
   protected openIdeasPopup(card?: InfoCardData, event?: Event): void {
@@ -546,109 +560,10 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     this.syncLandingPopupScrollLock();
   }
 
-  protected showIdeaCarouselPage(pageIndex: number, event?: Event): void {
-    event?.stopPropagation();
-    this.activeIdeaCarouselPage = this.clampIdeaCarouselPage(pageIndex);
-    this.scheduleIdeaCarouselViewportSync('smooth');
-  }
-
-  protected showPreviousIdeaCarouselPage(event?: Event): void {
-    this.showIdeaCarouselPage(this.activeIdeaCarouselPage - 1, event);
-  }
-
-  protected showNextIdeaCarouselPage(event?: Event): void {
-    this.showIdeaCarouselPage(this.activeIdeaCarouselPage + 1, event);
-  }
-
-  protected beginIdeaCarouselSwipe(event: PointerEvent): void {
-    if (this.isIdeaCarouselNativeSnap()) {
-      return;
-    }
-
-    if (event.pointerType === 'mouse' && event.button !== 0) {
-      return;
-    }
-
-    this.ideaCarouselSwipeStartX = event.clientX;
-    this.ideaCarouselSwipePointerId = event.pointerId;
-    this.ideaCarouselSwipeStartTarget = event.target;
-
-    const target = event.currentTarget as HTMLElement | null;
-    target?.setPointerCapture?.(event.pointerId);
-  }
-
-  protected endIdeaCarouselSwipe(event: PointerEvent): void {
-    if (this.isIdeaCarouselNativeSnap()) {
-      return;
-    }
-
-    if (this.ideaCarouselSwipePointerId !== event.pointerId) {
-      return;
-    }
-
-    const swipeStartX = this.ideaCarouselSwipeStartX ?? event.clientX;
-    const swipeStartTarget = this.ideaCarouselSwipeStartTarget;
-    const deltaX = event.clientX - swipeStartX;
-    this.resetIdeaCarouselSwipe();
-
-    if (Math.abs(deltaX) < 48) {
-      if (event.pointerType === 'mouse' && Math.abs(deltaX) < 12) {
-        this.openIdeaCardFromCarouselTarget(swipeStartTarget);
-      }
-      return;
-    }
-    if (deltaX < 0) {
-      this.showNextIdeaCarouselPage();
-    } else {
-      this.showPreviousIdeaCarouselPage();
-    }
-  }
-
-  protected cancelIdeaCarouselSwipe(event: PointerEvent): void {
-    if (this.isIdeaCarouselNativeSnap()) {
-      return;
-    }
-
-    if (this.ideaCarouselSwipePointerId !== event.pointerId) {
-      return;
-    }
-    this.resetIdeaCarouselSwipe();
-  }
-
-  protected onIdeaCarouselScroll(): void {
-    if (!this.isIdeaCarouselNativeSnap()) {
-      return;
-    }
-    const viewport = this.ideaCarouselViewportRef?.nativeElement;
-    if (!viewport) {
-      return;
-    }
-    if (this.ideaCarouselScrollLockTargetIndex !== null) {
-      this.scheduleIdeaCarouselScrollLockRelease();
-      return;
-    }
-    const nextPageIndex = this.currentCarouselPageIndex(
-      viewport,
-      '.entry-ideas-carousel-page',
-      this.ideaCarouselPageCount() - 1
-    );
-    if (nextPageIndex === this.activeIdeaCarouselPage) {
-      return;
-    }
-    this.activeIdeaCarouselPage = nextPageIndex;
-    this.cdr.markForCheck();
-  }
-
   protected howCarouselTrackTransform(): string | null {
     return this.isHowCarouselNativeSnap()
       ? null
       : `translateX(-${this.activeHowSlideIndex * 100}%)`;
-  }
-
-  protected ideaCarouselTrackTransform(): string | null {
-    return this.isIdeaCarouselNativeSnap()
-      ? null
-      : `translateX(-${this.activeIdeaCarouselPage * 100}%)`;
   }
 
   protected entryIdeaListInfoCard(
@@ -677,6 +592,14 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
       return;
     }
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private updateFeaturedIdeaSmartListFilters(): void {
+    this.featuredIdeaSmartListFilters = {
+      signature: this.featuredIdeaCards()
+        .map(card => this.ideaCardDetail(card)?.id ?? card.id ?? '')
+        .join('|')
+    };
   }
 
   private asIdeaInfoCard(card: InfoCardData): IdeaInfoCard {
@@ -722,23 +645,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     }).format(new Date(parsed));
   }
 
-  private clampIdeaCarouselPage(index: number): number {
-    return Math.min(Math.max(index, 0), this.ideaCarouselPageCount() - 1);
-  }
-
-  private syncIdeaCarouselPageSize(): void {
-    const width = typeof window === 'undefined' ? 1180 : window.innerWidth;
-    const nextPageSize = width <= 720 ? 1 : width < 1080 ? 3 : 4;
-    if (nextPageSize === this.ideaCarouselCardsPerPage) {
-      this.activeIdeaCarouselPage = this.clampIdeaCarouselPage(this.activeIdeaCarouselPage);
-      this.scheduleIdeaCarouselViewportSync('auto');
-      return;
-    }
-    this.ideaCarouselCardsPerPage = nextPageSize;
-    this.activeIdeaCarouselPage = this.clampIdeaCarouselPage(this.activeIdeaCarouselPage);
-    this.scheduleIdeaCarouselViewportSync('auto');
-  }
-
   private startHowCarouselAutoplay(): void {
     if (typeof window === 'undefined' || this.howCarouselTimer !== null) {
       return;
@@ -769,18 +675,8 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     this.howCarouselSwipePointerId = null;
   }
 
-  private resetIdeaCarouselSwipe(): void {
-    this.ideaCarouselSwipeStartX = null;
-    this.ideaCarouselSwipePointerId = null;
-    this.ideaCarouselSwipeStartTarget = null;
-  }
-
   private isHowCarouselNativeSnap(): boolean {
     return this.readViewportWidth() <= 900;
-  }
-
-  private isIdeaCarouselNativeSnap(): boolean {
-    return this.readViewportWidth() <= 720;
   }
 
   private readViewportWidth(): number {
@@ -805,29 +701,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
           this.scheduleHowCarouselScrollLockRelease();
         } else {
           this.clearHowCarouselScrollLock();
-        }
-      }
-    );
-  }
-
-  private scheduleIdeaCarouselViewportSync(behavior: ScrollBehavior): void {
-    if (!this.isIdeaCarouselNativeSnap()) {
-      this.clearIdeaCarouselScrollLock();
-      this.resetCarouselViewportScroll(this.ideaCarouselViewportRef?.nativeElement);
-      return;
-    }
-    const targetIndex = this.activeIdeaCarouselPage;
-    this.queueCarouselViewportSync(
-      () => this.ideaCarouselViewportRef?.nativeElement,
-      '.entry-ideas-carousel-page',
-      targetIndex,
-      behavior,
-      () => {
-        if (behavior === 'smooth') {
-          this.ideaCarouselScrollLockTargetIndex = targetIndex;
-          this.scheduleIdeaCarouselScrollLockRelease();
-        } else {
-          this.clearIdeaCarouselScrollLock();
         }
       }
     );
@@ -897,33 +770,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     this.howCarouselScrollLockTargetIndex = null;
   }
 
-  private scheduleIdeaCarouselScrollLockRelease(): void {
-    if (this.ideaCarouselScrollLockTimer) {
-      clearTimeout(this.ideaCarouselScrollLockTimer);
-    }
-    this.ideaCarouselScrollLockTimer = setTimeout(() => {
-      this.ideaCarouselScrollLockTimer = null;
-      const viewport = this.ideaCarouselViewportRef?.nativeElement;
-      const finalIndex = viewport
-        ? this.currentCarouselPageIndex(viewport, '.entry-ideas-carousel-page', this.ideaCarouselPageCount() - 1)
-        : this.ideaCarouselScrollLockTargetIndex;
-      this.ideaCarouselScrollLockTargetIndex = null;
-      if (finalIndex === null || finalIndex === this.activeIdeaCarouselPage) {
-        return;
-      }
-      this.activeIdeaCarouselPage = finalIndex;
-      this.cdr.markForCheck();
-    }, 96);
-  }
-
-  private clearIdeaCarouselScrollLock(): void {
-    if (this.ideaCarouselScrollLockTimer) {
-      clearTimeout(this.ideaCarouselScrollLockTimer);
-      this.ideaCarouselScrollLockTimer = null;
-    }
-    this.ideaCarouselScrollLockTargetIndex = null;
-  }
-
   private currentCarouselPageIndex(
     viewport: HTMLDivElement,
     itemSelector: string,
@@ -963,20 +809,6 @@ export class EntryLandingComponent implements OnInit, OnDestroy {
     if (viewport && viewport.scrollLeft !== 0) {
       viewport.scrollLeft = 0;
     }
-  }
-
-  private openIdeaCardFromCarouselTarget(target: EventTarget | null): void {
-    const element = target instanceof Element
-      ? target.closest<HTMLElement>('[data-entry-idea-post-id]')
-      : null;
-    const postId = element?.dataset['entryIdeaPostId'];
-    const card = postId
-      ? this.publishedIdeaCards().find(candidate => this.ideaCardDetail(candidate)?.id === postId)
-      : null;
-    if (!card) {
-      return;
-    }
-    this.openIdeaCard(card);
   }
 
   private syncLandingPopupScrollLock(): void {

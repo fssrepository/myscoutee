@@ -803,7 +803,6 @@
 }
 
 .entry-ideas-carousel {
-  --entry-ideas-per-page: 4;
   position: relative;
   padding: 0.1rem 2rem 0.42rem;
   box-sizing: border-box;
@@ -811,10 +810,6 @@
 
 .entry-ideas-carousel--loading {
   min-height: 352px;
-}
-
-.entry-ideas-carousel--with-dots {
-  padding-bottom: 1.62rem;
 }
 
 .entry-ideas-article-image {
@@ -825,19 +820,6 @@
 
 .entry-ideas-article-image.lazy-bg-error {
   display: none;
-}
-
-.entry-ideas-carousel-window {
-  width: 100%;
-  overflow: hidden;
-  border-radius: 14px;
-  cursor: grab;
-  touch-action: pan-y;
-  user-select: none;
-}
-
-.entry-ideas-carousel-window:active {
-  cursor: grabbing;
 }
 
 .entry-ideas-carousel-loading {
@@ -867,31 +849,26 @@
   overflow-wrap: anywhere;
 }
 
-.entry-ideas-carousel-track {
+:host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list {
   display: flex;
   width: 100%;
-  min-width: 0;
-  transition: transform 0.34s cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: transform;
+  height: 344px;
+  min-height: 344px;
 }
 
-.entry-ideas-carousel-page {
-  flex: 0 0 100%;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(var(--entry-ideas-per-page, 4), minmax(0, 1fr));
-  align-items: stretch;
-  gap: 0.78rem;
-  padding: 0.08rem 0.02rem 0.26rem;
-  box-sizing: border-box;
+:host ::ng-deep .entry-ideas-carousel-list {
+  --smart-list-horizontal-item-basis: calc((100% - 2.34rem) / 4);
+  border-radius: 14px;
+  padding-top: 0.08rem;
+  padding-bottom: 2.28rem;
 }
 
-.entry-ideas-carousel-arrow {
-  top: calc(50% - 2.36rem);
+:host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list .smart-list__pagination-arrow--prev {
+  left: -1.1rem;
 }
 
-.entry-ideas-carousel-dots {
-  bottom: 0.18rem;
+:host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list .smart-list__pagination-arrow--next {
+  right: -1.1rem;
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card {
@@ -984,10 +961,6 @@
 .entry-ideas-more-row {
   justify-content: center;
   padding-top: 0.1rem;
-}
-
-.entry-ideas-carousel--with-dots + .entry-ideas-more-row {
-  padding-top: 0.82rem;
 }
 
 .entry-ideas-more-btn {
@@ -1931,58 +1904,24 @@
   }
 
   .entry-ideas-carousel {
-    --entry-ideas-per-page: 1;
     padding: 0 0.72rem 0.6rem;
-  }
-
-  .entry-ideas-carousel--with-dots {
-    padding-bottom: 2.12rem;
   }
 
   .entry-ideas-carousel--loading {
     min-height: 350px;
   }
 
-  .entry-ideas-carousel-arrow {
-    top: calc(50% - 2.43rem);
+  :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list {
+    height: 352px;
+    min-height: 352px;
   }
 
-  .entry-ideas-carousel .entry-carousel-arrow-prev {
-    left: -0.42rem;
+  :host ::ng-deep .entry-ideas-carousel-list {
+    --smart-list-horizontal-item-basis: 100%;
+    padding-bottom: 2.42rem;
   }
 
-  .entry-ideas-carousel .entry-carousel-arrow-next {
-    right: -0.42rem;
-  }
-
-  .entry-ideas-carousel-window {
-    overflow-x: auto;
-    overflow-y: hidden;
-    touch-action: pan-x pan-y;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-  }
-
-  .entry-ideas-carousel-window::-webkit-scrollbar {
-    display: none;
-  }
-
-  .entry-ideas-carousel-track {
-    transition: none;
-    transform: none;
-  }
-
-  .entry-ideas-carousel-page {
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    contain: layout paint style;
-  }
-
-  :host ::ng-deep .entry-ideas-carousel-window app-info-card.entry-idea-info-card .ui-info-card {
+  :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list .ui-info-card {
     touch-action: pan-x pan-y;
   }
 

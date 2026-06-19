@@ -158,49 +158,26 @@
         <div
           class="entry-ideas-carousel"
           [class.entry-ideas-carousel--loading]="articlesLoading"
-          [class.entry-ideas-carousel--with-dots]="articlesLoading || ideaCarouselPageCount() > 1"
           role="region"
           aria-label="Featured article posts"
           aria-roledescription="carousel"
           >
-          @if (ideaCarouselPageCount() > 1 && !isFirstIdeaCarouselPage) {
-            <button
-              type="button"
-              class="entry-carousel-arrow entry-ideas-carousel-arrow entry-carousel-arrow-prev motion-static"
-              aria-label="Previous articles"
-              matRipple
-              [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
-              (click)="showPreviousIdeaCarouselPage($event)"
-              >
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-          }
-          <div
-            #ideaCarouselViewport
-            class="entry-ideas-carousel-window"
-            (pointerdown)="beginIdeaCarouselSwipe($event)"
-            (pointerup)="endIdeaCarouselSwipe($event)"
-            (pointercancel)="cancelIdeaCarouselSwipe($event)"
-            (scroll)="onIdeaCarouselScroll()"
-            >
-            <div
-              class="entry-ideas-carousel-track"
-              [style.transform]="ideaCarouselTrackTransform()"
-              >
-              @for (page of featuredIdeaPages(); track $index) {
-                <div class="entry-ideas-carousel-page">
-                  @for (card of page; track card.id) {
-                    <app-info-card
-                      class="entry-idea-info-card"
-                      [attr.data-entry-idea-post-id]="ideaCardDetail(card)?.id"
-                      [card]="card"
-                      (cardClick)="openIdeaCard(card)"
-                    ></app-info-card>
-                  }
-                </div>
-              }
-            </div>
-          </div>
+          <app-smart-list
+            class="entry-ideas-carousel-smart-list"
+            [config]="entryFeaturedIdeaSmartListConfig"
+            [filters]="featuredIdeaSmartListFilters"
+            [loadPage]="entryFeaturedIdeaSmartListLoadPage"
+            [itemTemplate]="entryFeaturedIdeaCardTemplate"
+          ></app-smart-list>
+
+          <ng-template #entryFeaturedIdeaCardTemplate let-card>
+            <app-info-card
+              class="entry-idea-info-card"
+              [card]="card"
+              (cardClick)="openIdeaCard(card)"
+            ></app-info-card>
+          </ng-template>
+
           @if (articlesLoading) {
             <div
               class="entry-ideas-carousel-loading"
@@ -213,32 +190,6 @@
                 [durationMs]="articlesLoadingDurationMs"
               ></app-progress-indicator>
               <span class="entry-ideas-carousel-loading-label">{{ 'Loading articles' | i18n }}</span>
-            </div>
-          }
-          @if (ideaCarouselPageCount() > 1 && !isLastIdeaCarouselPage) {
-            <button
-              type="button"
-              class="entry-carousel-arrow entry-ideas-carousel-arrow entry-carousel-arrow-next motion-static"
-              aria-label="Next articles"
-              matRipple
-              [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
-              (click)="showNextIdeaCarouselPage($event)"
-              >
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          }
-          @if (ideaCarouselPageCount() > 1) {
-            <div class="entry-carousel-dots entry-ideas-carousel-dots" aria-label="Article slides">
-              @for (page of featuredIdeaPages(); track $index; let pageIndex = $index) {
-                <button
-                  type="button"
-                  class="entry-carousel-dot"
-                  [class.is-active]="activeIdeaCarouselPage === pageIndex"
-                  [attr.aria-current]="activeIdeaCarouselPage === pageIndex ? 'true' : null"
-                  [attr.aria-label]="'Show article page ' + (pageIndex + 1)"
-                  (click)="showIdeaCarouselPage(pageIndex, $event)"
-                  ></button>
-              }
             </div>
           }
         </div>
