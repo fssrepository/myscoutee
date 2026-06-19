@@ -52,137 +52,16 @@
   height: 36px;
 }
 
-.experience-card-list {
+.experience-smart-list {
+  display: block;
+  min-height: 0;
+}
+
+:host ::ng-deep .experience-single-row-list {
   display: grid;
-  column-gap: 0.34rem;
-  row-gap: 0.9rem;
-  padding-bottom: 0.35rem;
   align-content: start;
-}
-
-.experience-item-card {
-  position: relative;
-  border: 1px solid rgba(58, 81, 114, 0.24);
-  border-radius: 12px;
-  padding: 0.58rem 0.62rem;
-  display: grid;
-  gap: 0.32rem;
-}
-
-.experience-item-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: flex-start;
-  gap: 0.46rem;
-}
-
-.experience-item-icon {
-  width: 28px;
-  height: 28px;
-  margin-top: 1px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.76);
-  border: 1px solid rgba(58, 81, 114, 0.18);
-}
-
-.experience-item-icon .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-}
-
-.experience-item-meta {
-  min-width: 0;
-}
-
-.experience-item-meta h4 {
-  margin: 0;
-  font-size: 0.84rem;
-  font-weight: 800;
-  color: #223d62;
-}
-
-.experience-item-meta p {
-  margin: 0.04rem 0 0;
-  font-size: 0.74rem;
-  color: rgba(23, 41, 66, 0.72);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.experience-item-actions {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-}
-
-.experience-action-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  border: 1px solid rgba(42, 67, 101, 0.26);
-  background: rgba(255, 255, 255, 0.88);
-  color: #2d5ea8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: transform 0.14s ease, box-shadow 0.14s ease;
-}
-
-.experience-action-btn .mat-icon {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-  line-height: 15px;
-}
-
-.experience-action-delete {
-  background: #e84f4f;
-  border-color: #ca2d2d;
-  color: #fff;
-}
-
-.experience-item-dates {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: rgba(24, 44, 72, 0.72);
-}
-
-.experience-item-description {
-  font-size: 0.76rem;
-  color: rgba(20, 37, 61, 0.84);
-}
-
-.experience-item-card.experience-card-school {
-  background: #e8f3ff;
-  border-color: rgba(56, 102, 165, 0.34);
-}
-
-.experience-item-card.experience-card-workspace {
-  background: #ffecee;
-  border-color: rgba(169, 72, 90, 0.34);
-}
-
-.experience-item-card.experience-card-online {
-  background: #ecf7ef;
-  border-color: rgba(49, 129, 85, 0.34);
-}
-
-.experience-item-card.experience-card-project {
-  background: #f4edff;
-  border-color: rgba(102, 76, 164, 0.34);
-}
-
-.experience-item-card.experience-item-card-imported {
-  border-color: rgba(235, 135, 30, 0.92);
-  box-shadow: 0 0 0 1px rgba(235, 135, 30, 0.32), 0 12px 28px rgba(173, 98, 19, 0.14);
+  gap: 0.56rem;
+  padding-bottom: 0.35rem;
 }
 
 .experience-delete-confirm {

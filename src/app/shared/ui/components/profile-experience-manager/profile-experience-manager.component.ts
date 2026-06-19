@@ -17,6 +17,7 @@ import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/mat
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { of } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../app-calendar-date-adapter';
@@ -36,6 +37,18 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../menu';
+import {
+  SingleRowComponent,
+  type SingleRowData
+} from '../card';
+import {
+  SmartListComponent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListFilters,
+  type SmartListLoadPage
+} from '../smart-list';
 
 type ProfileExperienceManagerMenuId = string;
 
@@ -43,6 +56,15 @@ type ProfileExperienceManagerMenuContext =
   | { kind: 'experienceFilter'; value: ExperienceFilter }
   | { kind: 'experienceType'; value: ExperienceEntry['type'] }
   | { kind: 'experienceQuickAction'; action: 'create' | 'upload' };
+
+interface ExperienceListFilters extends SmartListFilters {
+  type: ExperienceFilter;
+  revision: number;
+}
+
+type ExperienceListRow = SingleRowData<ExperienceEntry> & {
+  entry: ExperienceEntry;
+};
 
 interface ExperienceImportDialogState {
   visible: boolean;
@@ -70,7 +92,9 @@ export interface ProfileExperienceEntriesChange {
     MatFormFieldModule,
     MatIconModule,
     MatNativeDateModule,
-    AppMenuComponent
+    AppMenuComponent,
+    SmartListComponent,
+    SingleRowComponent
   ],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
@@ -96,6 +120,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   private readonly userExperiencesService = inject(UserExperiencesService);
   private experienceImportToken = 0;
   private overlayOpen = false;
+  private experienceEntriesRevision = 0;
 
   protected readonly experienceFilterOptions = APP_STATIC_DATA.experienceFilterOptions;
   protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
@@ -110,6 +135,35 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   protected experienceRangeStart: Date | null = null;
   protected experienceRangeEnd: Date | null = null;
   protected experienceForm: Omit<ExperienceEntry, 'id'> = this.createEmptyExperienceForm();
+  protected experienceSmartListQuery: Partial<ListQuery<ExperienceListFilters>> = this.createExperienceSmartListQuery();
+  protected readonly experienceSmartListConfig: SmartListConfig<ExperienceListRow, ExperienceListFilters> = {
+    pageSize: 50,
+    initialPageSize: 50,
+    initialPageCount: 1,
+    loadingDelayMs: 0,
+    loadingWindowMs: 600,
+    defaultView: 'list',
+    showBackgroundLoadingProgress: false,
+    showStickyHeader: false,
+    showFirstGroupMarker: false,
+    listLayout: 'stack',
+    snapMode: 'none',
+    desktopColumns: 1,
+    containerClass: 'experience-single-row-list',
+    emptyLabel: 'No entries in this filter',
+    emptyDescription: () => this.emptyHint,
+    trackBy: (_index, row) => row.id
+  };
+  protected readonly experienceSmartListLoadPage: SmartListLoadPage<ExperienceListRow, ExperienceListFilters> = query => {
+    const rows = this.experienceRowsForFilter(query.filters?.type ?? this.experienceFilter);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || rows.length || 50));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const start = page * pageSize;
+    return of({
+      items: rows.slice(start, start + pageSize),
+      total: rows.length
+    } satisfies PageResult<ExperienceListRow>);
+  };
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['entries']) {
@@ -118,11 +172,6 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     if (changes['initialFilter']) {
       this.setFilter(this.initialFilter);
     }
-  }
-
-  protected get filteredExperienceEntries(): ExperienceEntry[] {
-    const filtered = this.experienceEntries.filter(item => this.experienceFilter === 'All' || item.type === this.experienceFilter);
-    return [...filtered].sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
   }
 
   protected get canSaveExperienceEntry(): boolean {
@@ -153,6 +202,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
 
   setFilter(filter: ExperienceFilter): void {
     this.experienceFilter = this.isExperienceFilter(filter) ? filter : 'All';
+    this.syncExperienceSmartListQuery();
     this.cdr.markForCheck();
   }
 
@@ -324,19 +374,6 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     }
   }
 
-  protected experienceTypeClass(type: ExperienceEntry['type']): string {
-    switch (type) {
-      case 'Workspace':
-        return 'experience-card-workspace';
-      case 'School':
-        return 'experience-card-school';
-      case 'Online Session':
-        return 'experience-card-online';
-      default:
-        return 'experience-card-project';
-    }
-  }
-
   protected experienceFilterIcon(option: ExperienceFilter): string {
     switch (option) {
       case 'Workspace':
@@ -451,6 +488,28 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     this.pendingExperienceDeleteId = entryId;
     this.syncOverlayState();
     this.cdr.markForCheck();
+  }
+
+  protected onExperienceRowSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as {
+      menu?: string;
+      row?: ExperienceListRow;
+      action?: { id?: string };
+    } | null | undefined;
+    if (context?.menu !== 'single-row' || !context.row || !context.action?.id) {
+      return;
+    }
+    const entry = context.row.entry ?? context.row.eagerDetail;
+    if (!entry) {
+      return;
+    }
+    if (context.action.id === 'edit') {
+      this.openExperienceForm(entry);
+      return;
+    }
+    if (context.action.id === 'delete') {
+      this.requestExperienceDelete(entry.id);
+    }
   }
 
   protected cancelExperienceDelete(): void {
@@ -600,9 +659,79 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     if (highlightedIds) {
       const validIds = new Set(nextEntries.map(entry => entry.id));
       this.highlightedImportedExperienceIds = new Set(highlightedIds.filter(id => validIds.has(id)));
+      this.bumpExperienceRows();
       return;
     }
     this.pruneHighlightedExperienceIds(nextEntries);
+    this.bumpExperienceRows();
+  }
+
+  private bumpExperienceRows(): void {
+    this.experienceEntriesRevision += 1;
+    this.syncExperienceSmartListQuery();
+  }
+
+  private syncExperienceSmartListQuery(): void {
+    this.experienceSmartListQuery = this.createExperienceSmartListQuery();
+  }
+
+  private createExperienceSmartListQuery(): Partial<ListQuery<ExperienceListFilters>> {
+    return {
+      page: 0,
+      pageSize: 50,
+      filters: {
+        type: this.experienceFilter,
+        revision: this.experienceEntriesRevision
+      }
+    };
+  }
+
+  private experienceRowsForFilter(filter: ExperienceFilter): ExperienceListRow[] {
+    const filtered = this.experienceEntries.filter(item => filter === 'All' || item.type === filter);
+    return [...filtered]
+      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom))
+      .map(entry => this.toExperienceRow(entry));
+  }
+
+  private toExperienceRow(entry: ExperienceEntry): ExperienceListRow {
+    return {
+      id: entry.id,
+      status: entry.type,
+      dateIso: entry.dateFrom,
+      title: entry.title,
+      subtitle: [entry.org, entry.city].filter(Boolean).join(' · '),
+      detail: entry.description,
+      icon: this.experienceTypeIcon(entry.type),
+      surfaceTone: this.experienceRowSurfaceTone(entry.type),
+      badges: [
+        {
+          label: `${entry.dateFrom} - ${entry.dateTo}`,
+          tone: 'inverse',
+          position: 'top-right'
+        },
+        ...(
+          this.isExperienceEntryHighlighted(entry.id)
+            ? [{ label: 'Imported', icon: 'upload_file', tone: 'warning' as const, position: 'top-right' as const }]
+            : []
+        )
+      ],
+      menuActions: ['edit', 'delete'],
+      entry,
+      eagerDetail: entry
+    };
+  }
+
+  private experienceRowSurfaceTone(type: ExperienceEntry['type']): ExperienceListRow['surfaceTone'] {
+    switch (type) {
+      case 'Workspace':
+        return 'danger';
+      case 'School':
+        return 'info';
+      case 'Online Session':
+        return 'success';
+      default:
+        return 'accent';
+    }
   }
 
   private emitEntriesChange(entries: readonly ExperienceEntry[], highlightedIds?: readonly string[]): void {

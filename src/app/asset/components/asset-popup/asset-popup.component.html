@@ -219,60 +219,36 @@
                 @if (supplyRequestRows().length > 0) {
                   <div class="asset-supply-request-list">
                     @for (row of supplyRequestRows(); track row.id) {
-                      <article
+                      <single-row
                         class="asset-supply-request-row"
-                        [class.asset-supply-request-row--pending]="row.status === 'pending'"
-                        [class.asset-supply-request-row--accepted]="row.status === 'accepted'"
-                        [class.asset-supply-request-row--assigned]="row.status === 'assigned'"
+                        [row]="row"
                         >
-                        <div class="asset-supply-request-avatar">{{ row.avatarInitials }}</div>
-                        <div class="asset-supply-request-copy">
-                          <strong>{{ row.title }}</strong>
-                          @if (row.subtitle) {
-                            <span class="asset-supply-request-event">{{ row.subtitle }}</span>
-                          }
-                          @if ((row.metaRows?.[0] ?? '')) {
-                            <span class="asset-supply-request-schedule">{{ row.metaRows?.[0] }}</span>
-                          }
-                          @if (row.detail) {
-                            <p>{{ row.detail }}</p>
-                          }
-                        </div>
-                        <div class="asset-supply-request-side">
+                        @if (supplyRequestFilter === 'all') {
                           <span
-                            class="asset-supply-request-availability-badge"
-                            [class.asset-supply-request-availability-badge--empty]="supplyRequestRowInventoryState(row) === 'empty'"
-                            [class.asset-supply-request-availability-badge--over]="supplyRequestRowInventoryState(row) === 'over'"
-                            [attr.aria-label]="supplyRequestRowInventoryLabel(row)"
+                            singleRowSide
+                            class="asset-supply-request-status"
+                            [class.asset-supply-request-status--pending]="row.status === 'pending'"
+                            [class.asset-supply-request-status--borrowed]="row.status === 'accepted'"
+                            [class.asset-supply-request-status--assigned]="row.status === 'assigned'"
                             >
-                            {{ row.sideLabel }}
+                            {{ supplyRequestRowStatusLabel(row) | i18n }}
                           </span>
-                          @if (supplyRequestFilter === 'all') {
-                            <span
-                              class="asset-supply-request-status"
-                              [class.asset-supply-request-status--pending]="row.status === 'pending'"
-                              [class.asset-supply-request-status--borrowed]="row.status === 'accepted'"
-                              [class.asset-supply-request-status--assigned]="row.status === 'assigned'"
-                              >
-                              {{ supplyRequestRowStatusLabel(row) | i18n }}
-                            </span>
-                          }
-                          @if (hasSupplyRequestRowActions(row)) {
-                            <div class="asset-supply-request-menu-anchor">
-                              <app-menu-trigger
-                                class="asset-supply-request-row-menu-trigger"
-                                [menuId]="supplyRequestRowActionMenuId(row)"
-                                kind="select"
-                                [title]="row.title"
-                                [trigger]="supplyRequestRowActionMenuTrigger(row)"
-                                [items]="supplyRequestRowActionMenuItems(row)"
-                                [panelAlign]="'auto'"
-                                [mobileBreakpointPx]="900"
-                              ></app-menu-trigger>
-                            </div>
-                          }
-                        </div>
-                      </article>
+                        }
+                        @if (hasSupplyRequestRowActions(row)) {
+                          <span singleRowActions class="asset-supply-request-menu-anchor">
+                            <app-menu-trigger
+                              class="asset-supply-request-row-menu-trigger"
+                              [menuId]="supplyRequestRowActionMenuId(row)"
+                              kind="select"
+                              [title]="row.title"
+                              [trigger]="supplyRequestRowActionMenuTrigger(row)"
+                              [items]="supplyRequestRowActionMenuItems(row)"
+                              [panelAlign]="'auto'"
+                              [mobileBreakpointPx]="900"
+                            ></app-menu-trigger>
+                          </span>
+                        }
+                      </single-row>
                     }
                   </div>
                 } @else {

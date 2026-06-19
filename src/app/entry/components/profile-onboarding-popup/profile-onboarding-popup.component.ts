@@ -69,9 +69,9 @@ type OnboardingMenuContext =
   | { menu: 'navigation'; action: 'back' | 'skip' | 'next' };
 
 interface ExperienceSelectorMenuSnapshot {
-  signature: string;
+  cacheKey: string;
   entries: ExperienceEntry[];
-  value: string[];
+  value: ExperienceEntry[];
   model: AppMenuModel<string, OnboardingMenuContext>;
 }
 
@@ -401,7 +401,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return this.experienceSelectorMenuTriggerByType[type];
   }
 
-  protected experienceSelectorMenuValue(type: OnboardingExperienceSelectorType): string[] {
+  protected experienceSelectorMenuValue(type: OnboardingExperienceSelectorType): ExperienceEntry[] {
     return this.experienceSelectorMenuSnapshot(type).value;
   }
 
@@ -453,6 +453,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       idPrefix: 'onboarding-values',
       groups: this.beliefsValuesOptionGroups,
       selected: this.draft?.form.values ?? [],
+      maxSelected: 5,
       context: value => ({ menu: 'valuesOption', value }),
       summary: {
         emptyLabel: 'select.values',
@@ -477,6 +478,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       idPrefix: 'onboarding-interests',
       groups: this.interestOptionGroups,
       selected: this.draft?.form.interests ?? [],
+      maxSelected: 5,
       context: value => ({ menu: 'interestOption', value }),
       summary: {
         emptyLabel: 'select.interests',
@@ -793,45 +795,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
   }
 
-  protected onStringArrayMenuModelChange(kind: 'languages' | 'values' | 'interests', value: unknown): void {
-    if (!this.draft) {
-      return;
-    }
-    let values = this.normalizedStringArrayValue(value);
-    if (kind === 'values') {
-      values = this.limitStringMenuOptions(values, this.beliefsValuesAllOptions(), 5);
-    }
-    if (kind === 'interests') {
-      values = this.limitStringMenuOptions(values, this.interestAllOptions(), 5);
-    }
-
-    this.draft.form[kind] = values;
-    this.persistDraft();
-    this.cdr.markForCheck();
-  }
-
-  private normalizedStringArrayValue(value: unknown): string[] {
-    const rawValues = Array.isArray(value) ? value : [value];
-    const values: string[] = [];
-    const seen = new Set<string>();
-    for (const rawValue of rawValues) {
-      const normalizedValue = `${rawValue ?? ''}`.trim();
-      const normalizedKey = this.normalizeTopicToken(normalizedValue);
-      if (!normalizedValue || seen.has(normalizedKey)) {
-        continue;
-      }
-      seen.add(normalizedKey);
-      values.push(normalizedValue);
-    }
-    return values;
-  }
-
-  private limitStringMenuOptions(values: readonly string[], allowedOptions: readonly string[], limit: number): string[] {
-    return values
-      .filter(value => this.containsNormalizedOption(allowedOptions, value))
-      .slice(0, Math.max(0, Math.trunc(limit)));
-  }
-
   private languageMenuOptions(): readonly string[] {
     const optionByKey = new Map<string, string>();
     for (const option of [...this.languageSuggestions, ...(this.draft?.form.languages ?? [])]) {
@@ -842,11 +805,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       optionByKey.set(normalized.toLowerCase(), normalized);
     }
     return [...optionByKey.values()];
-  }
-
-  private containsNormalizedOption(options: readonly string[], value: string): boolean {
-    const normalizedValue = this.normalizeTopicToken(value);
-    return options.some(option => this.normalizeTopicToken(option) === normalizedValue);
   }
 
   private normalizeTopicToken(value: unknown): string {
@@ -1546,12 +1504,12 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private experienceSelectorMenuSnapshot(type: OnboardingExperienceSelectorType): ExperienceSelectorMenuSnapshot {
     const cache = this.experienceSelectorMenuCache[type];
     const entries = this.collectExperienceSelectorEntries(type);
-    const signature = this.experienceSelectorEntriesSignature(entries);
-    if (cache.signature === signature) {
+    const cacheKey = this.experienceSelectorEntriesCacheKey(entries);
+    if (cache.cacheKey === cacheKey) {
       return cache;
     }
     const next = this.createExperienceSelectorMenuSnapshot(type, entries);
-    cache.signature = next.signature;
+    cache.cacheKey = next.cacheKey;
     cache.entries = next.entries;
     cache.value = next.value;
     cache.model = next.model;
@@ -1578,15 +1536,14 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     entries: readonly ExperienceEntry[]
   ): ExperienceSelectorMenuSnapshot {
     const palette = this.experienceTypePalette(type);
-    const stableEntries = entries.map(entry => ({ ...entry }));
+    const stableEntries = [...entries];
     return {
-      signature: this.experienceSelectorEntriesSignature(stableEntries),
+      cacheKey: this.experienceSelectorEntriesCacheKey(stableEntries),
       entries: stableEntries,
-      value: stableEntries
-        .map(entry => entry.id.trim())
-        .filter(Boolean),
+      value: stableEntries,
       model: {
         presentation: 'tabs',
+        valueKey: 'id',
         summary: {
           emptyLabel: this.experienceSelectorEmptyLabelKey(type),
           maxLabels: 2,
@@ -1605,7 +1562,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
             removable: false,
             closeOnSelect: false,
             palette,
-            value: entry.id,
+            value: entry,
             context: { menu: 'experienceSelector', value: type }
           }))
         }]
@@ -1613,7 +1570,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     };
   }
 
-  private experienceSelectorEntriesSignature(entries: readonly ExperienceEntry[]): string {
+  private experienceSelectorEntriesCacheKey(entries: readonly ExperienceEntry[]): string {
     return entries
       .map(entry => [
         entry.id,

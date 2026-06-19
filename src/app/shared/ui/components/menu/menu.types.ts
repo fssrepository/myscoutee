@@ -54,6 +54,7 @@ export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
 export type AppMenuPresentation = 'list' | 'tabs';
 export type AppMenuSummaryCounter = 'overflow' | 'count' | 'none';
+export type AppMenuValueKey = string | ((value: unknown) => unknown);
 
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
 export type AppMenuCounterValue = AppMenuLiveValue<number | string | null | undefined>;
@@ -157,6 +158,7 @@ export interface AppMenuSummary {
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
   presentation?: AppMenuPresentation;
   summary?: AppMenuSummary | null;
+  valueKey?: AppMenuValueKey | null;
   groups?: readonly AppMenuGroup<TId, TContext>[];
   nodes?: readonly AppMenuGroup<TId, TContext>[];
 }

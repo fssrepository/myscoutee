@@ -4,7 +4,8 @@ import type {
   AppMenuGroup,
   AppMenuItem,
   AppMenuLiveValue,
-  AppMenuModel
+  AppMenuModel,
+  AppMenuValueKey
 } from './menu.types';
 
 export interface AppMenuModelSummaryResult {
@@ -16,6 +17,7 @@ export interface AppMenuModelSummaryResult {
 export interface AppMenuModelSummarySelection {
   active: boolean;
   value: unknown;
+  valueKey?: AppMenuValueKey | null;
 }
 
 export function appMenuModelGroups<TId extends string = string, TContext = unknown>(
@@ -114,9 +116,26 @@ function isSelectedByValue<TId extends string, TContext>(
   const itemValue = item.value !== undefined ? item.value : item.id;
   const selectedValue = selection.value;
   if (Array.isArray(selectedValue)) {
-    return selectedValue.some(value => Object.is(value, itemValue));
+    return selectedValue.some(value => appMenuValuesEqual(value, itemValue, selection.valueKey));
   }
-  return Object.is(selectedValue, itemValue);
+  return appMenuValuesEqual(selectedValue, itemValue, selection.valueKey);
+}
+
+function appMenuValuesEqual(first: unknown, second: unknown, valueKey: AppMenuValueKey | null | undefined): boolean {
+  if (!valueKey) {
+    return Object.is(first, second);
+  }
+  return Object.is(appMenuValueIdentity(first, valueKey), appMenuValueIdentity(second, valueKey));
+}
+
+function appMenuValueIdentity(value: unknown, valueKey: AppMenuValueKey): unknown {
+  if (typeof valueKey === 'function') {
+    return valueKey(value);
+  }
+  if (value && typeof value === 'object' && valueKey in value) {
+    return (value as Record<string, unknown>)[valueKey];
+  }
+  return value;
 }
 
 function appMenuSummaryCounter(

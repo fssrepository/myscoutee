@@ -19,6 +19,7 @@ export interface BuildTabbedMenuGroupsParams<TId extends string, TContext> {
   idPrefix: string;
   groups: readonly AppMenuStaticOptionGroup[];
   selected?: readonly string[];
+  maxSelected?: number | null;
   context: (option: string, group: AppMenuStaticOptionGroup) => TContext;
   normalize?: (value: string) => string;
   itemKind?: AppMenuItemKind;
@@ -53,6 +54,10 @@ export function buildTabbedMenuGroups<TId extends string = string, TContext = un
 ): readonly AppMenuGroup<TId, TContext>[] {
   const normalize = params.normalize ?? appMenuNormalizeStaticOption;
   const selectedKeys = new Set((params.selected ?? []).map(item => normalize(item)));
+  const maxSelected = params.maxSelected === null || params.maxSelected === undefined
+    ? null
+    : Math.max(0, Math.trunc(Number(params.maxSelected)) || 0);
+  const maxSelectedReached = maxSelected !== null && selectedKeys.size >= maxSelected;
 
   return params.groups.map((group, groupIndex) => ({
     id: `${params.idPrefix}-group-${appMenuSafeId(group.shortTitle || group.title || `${groupIndex}`)}`,
@@ -74,6 +79,7 @@ export function buildTabbedMenuGroups<TId extends string = string, TContext = un
         removeAriaLabel: params.removeAriaLabel?.(option, group) ?? `Remove ${label}`,
         closeOnSelect: params.closeOnSelect ?? false,
         palette: params.itemPalette?.(option, group) ?? appMenuPaletteFromToneClass(group.toneClass),
+        disabled: maxSelectedReached && !selected,
         value: option,
         context: params.context(option, group)
       } satisfies AppMenuItem<TId, TContext>;

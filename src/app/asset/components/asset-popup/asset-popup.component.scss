@@ -881,115 +881,6 @@
   gap: 0.7rem;
 }
 
-.asset-popup .asset-supply-request-row {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 0.7rem;
-  align-items: start;
-  border: 1px solid rgba(58, 81, 114, 0.18);
-  border-radius: 16px;
-  padding: 0.82rem 0.9rem;
-  background: #fff;
-}
-
-.asset-popup .asset-supply-request-row--pending {
-  background: linear-gradient(180deg, #fffaf0 0%, #fff3df 100%);
-  border-color: rgba(190, 138, 53, 0.26);
-}
-
-.asset-popup .asset-supply-request-row--accepted {
-  background: linear-gradient(180deg, #f3f8ff 0%, #e8f1ff 100%);
-  border-color: rgba(52, 103, 173, 0.22);
-}
-
-.asset-popup .asset-supply-request-row--assigned {
-  background: linear-gradient(180deg, #f5fbf7 0%, #e9f5ec 100%);
-  border-color: rgba(55, 125, 82, 0.22);
-}
-
-.asset-popup .asset-supply-request-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, #4d6f9c 0%, #365579 100%);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 800;
-  letter-spacing: 0.03em;
-}
-
-.asset-popup .asset-supply-request-copy {
-  min-width: 0;
-  display: grid;
-  gap: 0.2rem;
-}
-
-.asset-popup .asset-supply-request-copy strong {
-  color: #23446d;
-  font-size: 0.98rem;
-  line-height: 1.2;
-}
-
-.asset-popup .asset-supply-request-copy span,
-.asset-popup .asset-supply-request-copy p {
-  margin: 0;
-  color: rgba(25, 44, 69, 0.74);
-  font-size: 0.8rem;
-  line-height: 1.42;
-}
-
-.asset-popup .asset-supply-request-event {
-  color: #355884;
-  font-size: 0.83rem;
-  font-weight: 700;
-  line-height: 1.38;
-}
-
-.asset-popup .asset-supply-request-schedule {
-  color: rgba(35, 68, 109, 0.82);
-  font-size: 0.79rem;
-  font-weight: 500;
-  line-height: 1.38;
-}
-
-.asset-popup .asset-supply-request-side {
-  display: grid;
-  justify-items: end;
-  align-content: start;
-  gap: 0.42rem;
-}
-
-.asset-popup .asset-supply-request-availability-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 26px;
-  padding: 0.2rem 0.58rem;
-  border-radius: 999px;
-  border: 1px solid rgba(66, 139, 111, 0.22);
-  background: linear-gradient(180deg, #eff9f1 0%, #e1f2e6 100%);
-  color: #2d6e4e;
-  font-size: 0.72rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.asset-popup .asset-supply-request-availability-badge--empty {
-  border-color: rgba(177, 133, 48, 0.24);
-  background: linear-gradient(180deg, #fff7e8 0%, #ffefcf 100%);
-  color: #99661f;
-}
-
-.asset-popup .asset-supply-request-availability-badge--over {
-  border-color: rgba(180, 74, 74, 0.24);
-  background: linear-gradient(180deg, #fff0f0 0%, #ffdede 100%);
-  color: #a13d3d;
-}
-
 .asset-popup .asset-supply-request-status {
   border-radius: 999px;
   border: 1px solid rgba(50, 91, 145, 0.22);
@@ -1398,20 +1289,6 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 0.3rem;
-  }
-
-  .asset-popup .asset-supply-request-row {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 0.54rem;
-    padding: 0.78rem;
-  }
-
-  .asset-popup .asset-supply-request-side {
-    grid-column: auto;
-    grid-row: auto;
-    justify-self: end;
-    justify-items: end;
-    min-width: max-content;
   }
 
   .asset-popup .tickets-scroll-list {

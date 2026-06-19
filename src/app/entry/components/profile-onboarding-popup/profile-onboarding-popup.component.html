@@ -117,7 +117,7 @@
                     title="Languages"
                     [filterable]="true"
                     [(ngModel)]="f.languages"
-                    (ngModelChange)="onStringArrayMenuModelChange('languages', $event)"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="languageMenuTrigger()"
                     [model]="languageMenuModel()"
                   ></app-menu>
@@ -303,7 +303,7 @@
                     title="Values"
                     [filterable]="true"
                     [(ngModel)]="f.values"
-                    (ngModelChange)="onStringArrayMenuModelChange('values', $event)"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="valuesMenuTrigger()"
                     [model]="valuesMenuModel()"
                   ></app-menu>
@@ -316,7 +316,7 @@
                     title="Interests"
                     [filterable]="true"
                     [(ngModel)]="f.interests"
-                    (ngModelChange)="onStringArrayMenuModelChange('interests', $event)"
+                    (ngModelChange)="persistDraft()"
                     [trigger]="interestsMenuTrigger()"
                     [model]="interestsMenuModel()"
                   ></app-menu>

@@ -25,35 +25,21 @@
       </div>
     }
   </div>
-  <div class="experience-card-list">
-    @for (item of filteredExperienceEntries; track item.id) {
-      <article
-        class="experience-item-card"
-        [ngClass]="experienceTypeClass(item.type)"
-        [class.experience-item-card-imported]="isExperienceEntryHighlighted(item.id)"
-        >
-        <div class="experience-item-head">
-          <span class="experience-item-icon">
-            <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
-          </span>
-          <div class="experience-item-meta">
-            <h4>{{ item.title }}</h4>
-            <p>{{ item.org }} · {{ item.city }}</p>
-          </div>
-          <div class="experience-item-actions">
-            <button type="button" class="experience-action-btn experience-action-edit" (click)="openExperienceForm(item)" aria-label="Edit experience">
-              <mat-icon>edit</mat-icon>
-            </button>
-            <button type="button" class="experience-action-btn experience-action-delete" (click)="requestExperienceDelete(item.id)" aria-label="Delete experience">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-        </div>
-        <p class="experience-item-description">{{ item.description }}</p>
-        <p class="experience-item-dates">{{ item.dateFrom }} - {{ item.dateTo }}</p>
-      </article>
-    }
-  </div>
+  <app-smart-list
+    class="experience-smart-list"
+    [config]="experienceSmartListConfig"
+    [loadPage]="experienceSmartListLoadPage"
+    [itemTemplate]="experienceRowTemplate"
+    [query]="experienceSmartListQuery"
+    (menuItemSelect)="onExperienceRowSharedMenuSelect($event)"
+  ></app-smart-list>
+  <ng-template #experienceRowTemplate let-row let-openMenu="openMenu">
+    <single-row
+      [row]="row"
+      [useSharedMenu]="true"
+      (menuRequest)="openMenu($event)"
+    ></single-row>
+  </ng-template>
   @if (pendingExperienceDeleteId) {
     <section class="experience-delete-confirm">
       <div class="experience-delete-confirm-backdrop" (click)="cancelExperienceDelete()"></div>
@@ -242,11 +228,5 @@
         </section>
       </div>
     </section>
-  }
-  @if (filteredExperienceEntries.length === 0) {
-    <div class="editor-list-card">
-      <h4>No entries in this filter</h4>
-      <p>{{ emptyHint }}</p>
-    </div>
   }
 </div>

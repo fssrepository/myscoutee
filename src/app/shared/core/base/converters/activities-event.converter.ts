@@ -49,7 +49,7 @@ export function toActivityEventRow(
   };
 }
 
-function resolveActivityEventRowType(record: ActivityEventCardRecord): AppTypes.ActivityListRow['type'] {
+function resolveActivityEventRowType(record: ActivityEventCardRecord): AppTypes.ActivityInfoCardRow['type'] {
   if (record.isInvitation || record.type === 'invitations') {
     return 'invitations';
   }

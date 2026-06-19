@@ -20,6 +20,7 @@ import {
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
   InfoCardComponent,
+  SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -85,6 +86,7 @@ type AssetPopupMenuContext =
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     InfoCardComponent,
+    SingleRowComponent,
     SmartListComponent,
     ConfirmationDialogComponent,
     I18nPipe,
@@ -956,18 +958,49 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     const eventLabel = this.supplyRequestEventLabel(request);
     const scheduleLabel = this.supplyRequestScheduleLabel(request);
     const note = this.supplyRequestDisplayNote(request);
+    const inventoryState = this.supplyRequestInventoryState(request);
+    const status = this.isAssignedSupplyRequest(request) ? 'assigned' : request.status;
     return {
       id: request.id,
-      status: this.isAssignedSupplyRequest(request) ? 'assigned' : request.status,
+      status,
       title: request.name,
       subtitle: eventLabel,
       detail: note || scheduleLabel,
       dateIso: request.requestedAtIso ?? request.booking?.startAtIso ?? '',
       avatarInitials: request.initials,
-      sideLabel: this.supplyRequestInventoryBadgeLabel(request),
+      surfaceTone: this.supplyRequestRowSurfaceTone(status),
+      badges: [{
+        label: this.supplyRequestInventoryBadgeLabel(request),
+        ariaLabel: this.supplyRequestInventoryLabel(request),
+        tone: this.supplyRequestInventoryBadgeTone(inventoryState),
+        position: 'side'
+      }],
       metaRows: [scheduleLabel].filter(Boolean),
       menuActions: this.supplyRequestMenuActions(request)
     };
+  }
+
+  private supplyRequestRowSurfaceTone(status: AssetSupplyRequestRow['status']): AssetSupplyRequestRow['surfaceTone'] {
+    if (status === 'pending') {
+      return 'warning';
+    }
+    if (status === 'accepted') {
+      return 'info';
+    }
+    return 'success';
+  }
+
+  private supplyRequestInventoryBadgeTone(state: 'available' | 'empty' | 'over' | 'unset'): AssetSupplyRequestRow['sideLabelTone'] {
+    switch (state) {
+      case 'over':
+        return 'danger';
+      case 'empty':
+        return 'warning';
+      case 'available':
+        return 'success';
+      default:
+        return 'neutral';
+    }
   }
 
   private supplyRequestMenuActions(request: AppDTOs.AssetMemberRequestDTO): readonly AssetSupplyRequestRowAction[] {

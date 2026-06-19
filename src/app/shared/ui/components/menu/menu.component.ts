@@ -49,6 +49,7 @@ import type {
   AppMenuSegment,
   AppMenuTrigger,
   AppMenuTriggerShape,
+  AppMenuValueKey,
   AppMenuValueMap
 } from './menu.types';
 import {
@@ -1553,7 +1554,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
     return {
       active: true,
-      value: this.controlValue
+      value: this.controlValue,
+      valueKey: this.model?.valueKey ?? null
     };
   }
 
@@ -1645,7 +1647,21 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return first.length === second.length
         && first.every((value, index) => this.controlValuesEqual(value, second[index]));
     }
+    const valueKey = this.model?.valueKey ?? null;
+    if (valueKey) {
+      return Object.is(this.controlValueIdentity(first, valueKey), this.controlValueIdentity(second, valueKey));
+    }
     return Object.is(first, second);
+  }
+
+  private controlValueIdentity(value: unknown, valueKey: AppMenuValueKey): unknown {
+    if (typeof valueKey === 'function') {
+      return valueKey(value);
+    }
+    if (value && typeof value === 'object' && valueKey in value) {
+      return (value as Record<string, unknown>)[valueKey];
+    }
+    return value;
   }
 
   private resolveBoolean(value: AppMenuLiveValue<boolean | null | undefined> | null | undefined): boolean {

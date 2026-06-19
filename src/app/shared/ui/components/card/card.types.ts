@@ -248,6 +248,34 @@ export interface DisplayData<TEagerDetail = unknown> {
   eagerDetail?: TEagerDetail | null;
 }
 
+export type SingleRowAvatarShape = 'circle' | 'rounded' | 'square';
+export type SingleRowSurfaceTone = 'default' | 'neutral' | 'info' | 'accent' | 'success' | 'warning' | 'danger' | 'muted';
+export type SingleRowBadgeTone = SingleRowSurfaceTone | 'inverse';
+export type SingleRowBadgePosition = 'inline' | 'side' | 'top-right';
+export type SingleRowActionTone = 'default' | 'accent' | 'success' | 'warning' | 'danger' | 'neutral';
+
+export interface SingleRowBadge {
+  label: string;
+  icon?: string | null;
+  ariaLabel?: string | null;
+  title?: string | null;
+  tone?: SingleRowBadgeTone | null;
+  position?: SingleRowBadgePosition | null;
+  className?: string | null;
+}
+
+export interface SingleRowAction {
+  id: string;
+  icon: string;
+  label?: string | null;
+  ariaLabel?: string | null;
+  title?: string | null;
+  tone?: SingleRowActionTone | null;
+  disabled?: boolean;
+  badgeLabel?: string | null;
+  className?: string | null;
+}
+
 export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   status?: string | null;
   groupLabel?: string | null;
@@ -319,17 +347,34 @@ export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEage
 
 export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   title: string;
+  groupLabel?: string | null;
   subtitle?: string | null;
   detail?: string | null;
   avatarInitials?: string | null;
   avatarToneClass?: string | null;
   avatarUrl?: string | null;
+  avatarShape?: SingleRowAvatarShape | null;
+  avatarAriaLabel?: string | null;
   icon?: string | null;
   toneClass?: string | null;
+  surfaceTone?: SingleRowSurfaceTone | null;
   sideLabel?: string | null;
+  sideLabelIcon?: string | null;
+  sideLabelTone?: SingleRowBadgeTone | null;
   metaRows?: readonly string[];
+  badges?: readonly SingleRowBadge[];
+  actions?: readonly SingleRowAction[];
+  clickable?: boolean;
   unread?: number | null;
   memberCount?: number | null;
+}
+
+export interface SingleRowActionEvent<TCard extends SingleRowData = SingleRowData> {
+  id: string;
+  actionId: string;
+  action: SingleRowAction | CardResolvedMenuAction;
+  row: TCard;
+  originalEvent: Event;
 }
 
 export interface CardClickEvent<TCard extends DisplayData = DisplayData> {
