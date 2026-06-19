@@ -130,6 +130,33 @@
                   ></app-menu>
                 </label>
               </div>
+              <section class="profile-onboarding-experience-selectors">
+                <h3>{{ 'Experience' | i18n }}</h3>
+                <div class="profile-onboarding-experience-selector-grid">
+                  <label class="profile-onboarding-experience-selector-row">
+                    <span>{{ experienceSelectorLabelKey('Workspace') | i18n }}</span>
+                    <app-menu
+                      class="profile-onboarding-menu profile-onboarding-experience-selector-menu"
+                      kind="select"
+                      [title]="experienceSelectorLabelKey('Workspace') | i18n"
+                      [trigger]="experienceSelectorMenuTrigger('Workspace')"
+                      [model]="experienceSelectorMenuModel('Workspace')"
+                      (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                    ></app-menu>
+                  </label>
+                  <label class="profile-onboarding-experience-selector-row">
+                    <span>{{ experienceSelectorLabelKey('School') | i18n }}</span>
+                    <app-menu
+                      class="profile-onboarding-menu profile-onboarding-experience-selector-menu"
+                      kind="select"
+                      [title]="experienceSelectorLabelKey('School') | i18n"
+                      [trigger]="experienceSelectorMenuTrigger('School')"
+                      [model]="experienceSelectorMenuModel('School')"
+                      (itemSelect)="onProfileOnboardingMenuSelect($event)"
+                    ></app-menu>
+                  </label>
+                </div>
+              </section>
             </section>
           }
 
@@ -280,71 +307,6 @@
             </section>
           }
 
-          @if (currentStep().id === 'experience') {
-            <section class="profile-onboarding-page">
-              <div class="profile-onboarding-experience-head">
-                <span>{{ f.experienceEntries.length }} {{ 'entries' | i18n }}</span>
-                <button type="button" class="profile-onboarding-add-btn" [disabled]="experienceEntriesLoading" (click)="openExperienceForm()">
-                  <mat-icon>add</mat-icon>
-                </button>
-              </div>
-              @if (experienceEntriesLoading) {
-                <div class="profile-onboarding-experience-loading" aria-live="polite">
-                  <span class="profile-onboarding-experience-loading-ring" aria-hidden="true">
-                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
-                  </span>
-                  <span>{{ 'Loading experience' | i18n }}</span>
-                </div>
-              }
-              @if (experienceFormVisible) {
-                <div class="profile-onboarding-experience-form">
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [trigger]="experienceTypeMenuTrigger(experienceForm.type)"
-                    [items]="experienceTypeMenuItems(experienceForm.type)"
-                    (itemSelect)="onProfileOnboardingMenuSelect($event)"
-                  ></app-menu>
-                  <input type="text" placeholder="Title" [(ngModel)]="experienceForm.title" />
-                  <input type="text" placeholder="Organization" [(ngModel)]="experienceForm.org" />
-                  <input type="text" placeholder="City" [(ngModel)]="experienceForm.city" />
-                  <label class="profile-onboarding-experience-date-range experience-date-range-label">
-                    <span>Date range</span>
-                    <mat-form-field appearance="fill" class="profile-onboarding-date-range-field experience-date-range-field" subscriptSizing="dynamic">
-                      <mat-label>Enter a date range</mat-label>
-                      <mat-date-range-input [rangePicker]="experienceDateRangePicker">
-                        <input matStartDate [(ngModel)]="experienceRangeStart" name="onboardingExperienceRangeStart" placeholder="YYYY/MM/DD" />
-                        <input matEndDate [(ngModel)]="experienceRangeEnd" name="onboardingExperienceRangeEnd" placeholder="YYYY/MM/DD" />
-                      </mat-date-range-input>
-                      <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
-                      <mat-hint>Leave end empty for Present</mat-hint>
-                      <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
-                    </mat-form-field>
-                  </label>
-                  <textarea rows="3" placeholder="Description" [(ngModel)]="experienceForm.description"></textarea>
-                  <div class="profile-onboarding-form-actions">
-                    <button type="button" class="profile-onboarding-secondary-btn" (click)="closeExperienceForm()">Cancel</button>
-                    <button type="button" class="profile-onboarding-primary-btn" [disabled]="!canAddExperience()" (click)="addExperienceEntry()">Add</button>
-                  </div>
-                </div>
-              }
-              <div class="profile-onboarding-experience-list">
-                @for (entry of f.experienceEntries; track entry.id) {
-                  <article>
-                    <mat-icon>{{ experienceTypeIcon(entry.type) }}</mat-icon>
-                    <div>
-                      <h4>{{ entry.title }}</h4>
-                      <p>{{ entry.org }} &middot; {{ entry.dateFrom }} - {{ entry.dateTo }}</p>
-                    </div>
-                    <button type="button" (click)="removeExperienceEntry(entry.id)" [attr.aria-label]="'Remove experience' | i18n">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </article>
-                }
-              </div>
-            </section>
-          }
-
           @if (currentStep().id === 'review') {
             <section class="profile-onboarding-page profile-onboarding-review">
               <div class="profile-onboarding-review-photos">
@@ -453,6 +415,36 @@
             (itemSelect)="onProfileOnboardingMenuSelect($event)"
           ></app-menu>
         </footer>
+        @if (experienceManagerOpen) {
+          <section class="profile-onboarding-experience-manager-overlay">
+            <div class="profile-onboarding-experience-manager-backdrop" (click)="closeExperienceManager()"></div>
+            <div class="profile-onboarding-experience-manager-popup">
+              <header class="profile-onboarding-experience-manager-header">
+                <div>
+                  <span>{{ 'Experience' | i18n }}</span>
+                  <h3>{{ experienceManagerTitle() | i18n }}</h3>
+                </div>
+                <button type="button" (click)="closeExperienceManager()" aria-label="Close experience manager">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </header>
+              @if (experienceEntriesLoading) {
+                <div class="profile-onboarding-experience-manager-loading" aria-live="polite">
+                  <span class="profile-onboarding-experience-loading-ring" aria-hidden="true">
+                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+                  </span>
+                  <span>{{ 'Loading experience' | i18n }}</span>
+                </div>
+              }
+              <app-profile-experience-manager
+                [entries]="f.experienceEntries"
+                [initialFilter]="experienceManagerFilter"
+                [showInlineActions]="true"
+                (entriesChange)="onExperienceManagerEntriesChange($event)"
+              ></app-profile-experience-manager>
+            </div>
+          </section>
+        }
       </div>
     </section>
   }

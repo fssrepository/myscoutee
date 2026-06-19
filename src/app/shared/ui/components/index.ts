@@ -11,6 +11,7 @@ export * from './event-checkout-popup';
 export * from './privacy-policy-popup';
 export * from './terms-policy';
 export * from './demo-bootstrap-selector';
+export * from './profile-experience-manager';
 
 export * from './basket';
 export * from './confirmation-dialog';

@@ -15,22 +15,25 @@ import {
   AppMenuComponent,
   EditableImageCarouselComponent,
   I18nPipe,
+  ProfileExperienceManagerComponent,
   ProgressIndicatorComponent,
   buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuPalette,
-  type AppMenuTrigger
+  type AppMenuTrigger,
+  type ProfileExperienceEntriesChange
 } from '../../../shared/ui';
 import {
-  ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
+  ProfileOnboardingService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
   DetailPrivacy,
   ProfileStatus
 } from '../../../shared/core/common/constants';
 import type {
   ExperienceEntry,
+  ExperienceFilter,
   ProfileDetailFormGroup
 } from '../../../shared/core/contracts/profile.interface';
 
@@ -40,7 +43,7 @@ interface OnboardingStep {
   optional: boolean;
 }
 
-type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
+type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Workspace' | 'School'>;
 
 type OnboardingMenuField =
   | 'physique'
@@ -59,7 +62,7 @@ type OnboardingMenuField =
 
 type OnboardingMenuContext =
   | { menu: 'field'; field: OnboardingMenuField; value: string }
-  | { menu: 'experience-type'; value: ExperienceEntry['type'] }
+  | { menu: 'experienceSelector'; value: OnboardingExperienceSelectorType }
   | { menu: 'languageOption'; value: string }
   | { menu: 'valuesOption'; value: string }
   | { menu: 'interestOption'; value: string }
@@ -79,6 +82,7 @@ type OnboardingMenuContext =
     MatNativeDateModule,
     AppMenuComponent,
     EditableImageCarouselComponent,
+    ProfileExperienceManagerComponent,
     ProgressIndicatorComponent,
     I18nPipe
   ],
@@ -103,7 +107,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   @Output() readonly dismissed = new EventEmitter<void>();
 
   private readonly onboarding = inject(ProfileOnboardingService);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly usersService = inject(UsersService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -115,15 +118,11 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private previousBodyOverscrollBehavior = '';
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
-  private stopDraftAutosave: (() => void) | null = null;
-  private lastDraftAutosaveSignature = '';
-  private isDraftAutosavePending = false;
 
   protected readonly steps: OnboardingStep[] = [
     { id: 'basics', title: 'Basics', optional: false },
     { id: 'photos', title: 'Photos', optional: false },
     { id: 'lifestyle', title: 'Lifestyle', optional: true },
-    { id: 'experience', title: 'Experience', optional: true },
     { id: 'review', title: 'Review', optional: false }
   ];
   protected readonly physiqueOptions = APP_STATIC_DATA.physiqueOptions;
@@ -132,7 +131,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected readonly profileDetailValueOptions = APP_STATIC_DATA.profileDetailValueOptions;
   protected readonly beliefsValuesOptionGroups = APP_STATIC_DATA.beliefsValuesOptionGroups;
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
-  protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
   protected draft: ProfileOnboardingDraft | null = null;
   protected assessment: ProfileOnboardingAssessment | null = null;
   protected birthdayDate: Date | null = null;
@@ -141,10 +139,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected imageUploadError = '';
   protected attemptedContinue = false;
   protected experienceEntriesLoading = false;
-  protected experienceFormVisible = false;
-  protected experienceForm: ExperienceFormDraft = this.createEmptyExperienceForm();
-  protected experienceRangeStart: Date | null = null;
-  protected experienceRangeEnd: Date | null = null;
+  protected experienceManagerOpen = false;
+  protected experienceManagerFilter: ExperienceFilter = 'All';
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -154,9 +150,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!changes['open'] && !changes['user']) {
       return;
     }
+    const previousDraftUserId = this.draft?.userId?.trim() ?? '';
     if (!this.open || !this.user) {
-      this.stopDraftAutosaveLoop();
-      this.resetDraftAutosaveTracking();
+      this.onboarding.clearDraft(previousDraftUserId);
       this.draft = null;
       this.assessment = null;
       this.birthdayDate = null;
@@ -164,24 +160,24 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.imageUploadError = '';
       this.saving = false;
       this.attemptedContinue = false;
-      this.experienceFormVisible = false;
-      this.experienceRangeStart = null;
-      this.experienceRangeEnd = null;
+      this.experienceManagerOpen = false;
+      this.experienceManagerFilter = 'All';
       this.experienceLoadToken += 1;
       this.experienceEntriesLoadedForUserId = '';
       this.imageSlots = this.createEmptyImageSlots();
       return;
     }
+    const nextUserId = this.user.id.trim();
+    if (previousDraftUserId && previousDraftUserId !== nextUserId) {
+      this.onboarding.clearDraft(previousDraftUserId);
+    }
     this.assessment = this.onboarding.assessUser(this.user);
     this.draft = this.onboarding.loadDraft(this.user);
     this.syncBirthdayDateFromDraft();
     this.syncImageSlotsFromDraft();
-    this.seedDraftAutosaveSignature();
-    this.startDraftAutosaveLoop();
   }
 
   ngOnDestroy(): void {
-    this.stopDraftAutosaveLoop();
     this.unlockDocumentScroll();
   }
 
@@ -264,6 +260,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (this.saving) {
       return;
     }
+    const userId = this.draft?.userId?.trim() ?? this.user?.id?.trim() ?? '';
+    this.onboarding.clearDraft(userId);
     this.dismissed.emit();
   }
 
@@ -376,21 +374,56 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }));
   }
 
-  protected experienceTypeMenuTrigger(type: string): AppMenuTrigger {
-    return this.selectMenuTrigger(type, this.experienceTypeIcon(type), this.experienceTypePalette(type));
+  protected experienceSelectorLabelKey(type: OnboardingExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.workplace'
+      : 'profile.experience.school';
   }
 
-  protected experienceTypeMenuItems(type: string): readonly AppMenuItem<string, OnboardingMenuContext>[] {
-    return this.experienceTypeOptions.map(option => ({
-      id: `experience-type-${option}`,
-      label: option,
-      icon: this.experienceTypeIcon(option),
-      kind: 'radio',
-      active: option === type,
-      palette: this.experienceTypePalette(option),
-      surface: 'tinted',
-      context: { menu: 'experience-type', value: option }
-    }));
+  protected experienceSelectorMenuTrigger(type: OnboardingExperienceSelectorType): AppMenuTrigger {
+    const entries = this.experienceSelectorEntries(type);
+    return {
+      icon: this.experienceTypeIcon(type),
+      palette: this.experienceTypePalette(type),
+      shape: 'field',
+      action: 'custom',
+      trailingIcon: 'chevron_right',
+      disabled: () => this.saving,
+      ariaLabel: entries.length > 0
+        ? this.experienceSelectorOpenLabelKey(type)
+        : this.experienceSelectorEmptyLabelKey(type),
+      context: { menu: 'experienceSelector', value: type }
+    };
+  }
+
+  protected experienceSelectorMenuModel(type: OnboardingExperienceSelectorType): AppMenuModel<string, OnboardingMenuContext> {
+    const palette = this.experienceTypePalette(type);
+    return {
+      presentation: 'tabs',
+      summary: {
+        emptyLabel: this.experienceSelectorEmptyLabelKey(type),
+        maxLabels: 2,
+        counter: 'overflow'
+      },
+      groups: [{
+        id: `onboarding-experience-${type.toLowerCase()}`,
+        label: this.experienceSelectorLabelKey(type),
+        icon: this.experienceTypeIcon(type),
+        palette,
+        items: this.experienceSelectorEntries(type).map(entry => ({
+          id: `onboarding-experience-${type}-${entry.id}`,
+          label: this.experienceSelectorEntryLabel(entry),
+          icon: this.experienceTypeIcon(type),
+          kind: 'checkbox',
+          active: true,
+          checked: true,
+          removable: false,
+          closeOnSelect: false,
+          palette,
+          context: { menu: 'experienceSelector', value: type }
+        }))
+      }]
+    };
   }
 
   protected languageMenuTrigger(): AppMenuTrigger {
@@ -524,8 +557,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return;
     }
     switch (context.menu) {
-      case 'experience-type':
-        this.experienceForm.type = context.value;
+      case 'experienceSelector':
+        this.openExperienceManager(context.value);
         return;
       case 'field':
         this.updateOnboardingField(context.field, context.value);
@@ -618,56 +651,24 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.birthdayDate = AppUtils.fromIsoDate(this.draft?.form.birthday ?? '');
   }
 
-  protected openExperienceForm(): void {
-    if (this.saving) {
-      return;
+  protected closeExperienceManager(): void {
+    this.experienceManagerOpen = false;
+  }
+
+  protected experienceManagerTitle(): string {
+    if (this.experienceManagerFilter === 'Workspace' || this.experienceManagerFilter === 'School') {
+      return this.experienceSelectorLabelKey(this.experienceManagerFilter);
     }
-    this.experienceForm = this.createEmptyExperienceForm();
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
-    this.experienceFormVisible = true;
+    return 'Experience';
   }
 
-  protected closeExperienceForm(): void {
-    this.experienceFormVisible = false;
-    this.experienceForm = this.createEmptyExperienceForm();
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
-  }
-
-  protected canAddExperience(): boolean {
-    return Boolean(
-      this.experienceForm.title.trim()
-      && this.experienceForm.org.trim()
-      && this.experienceRangeStart
-    );
-  }
-
-  protected addExperienceEntry(): void {
-    if (!this.draft || !this.canAddExperience()) {
-      return;
-    }
-    const entry: ExperienceEntry = {
-      id: this.createExperienceId(),
-      type: this.experienceForm.type,
-      title: this.experienceForm.title.trim(),
-      org: this.experienceForm.org.trim(),
-      city: this.experienceForm.city.trim(),
-      dateFrom: AppUtils.toYearMonth(this.experienceRangeStart),
-      dateTo: this.experienceRangeEnd ? AppUtils.toYearMonth(this.experienceRangeEnd) : 'Present',
-      description: this.experienceForm.description.trim()
-    };
-    this.draft.form.experienceEntries = [...this.draft.form.experienceEntries, entry];
-    this.closeExperienceForm();
-    this.persistDraft();
-  }
-
-  protected removeExperienceEntry(entryId: string): void {
+  protected onExperienceManagerEntriesChange(event: ProfileExperienceEntriesChange): void {
     if (!this.draft) {
       return;
     }
-    this.draft.form.experienceEntries = this.draft.form.experienceEntries.filter(entry => entry.id !== entryId);
+    this.draft.form.experienceEntries = event.entries.map(entry => ({ ...entry }));
     this.persistDraft();
+    this.cdr.detectChanges();
   }
 
   protected statusIcon(status: ProfileStatus): string {
@@ -1208,19 +1209,15 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.user || !this.draft || !this.canContinue()) {
       return;
     }
-    this.stopDraftAutosaveLoop();
     this.saving = true;
     this.saveError = '';
     this.persistDraft();
     const payload = this.buildUserPayload(this.user, this.draft);
     let completionEmitted = false;
     try {
-      const savedUser = await this.usersService.saveUserProfile(payload);
+      const savedUser = await this.usersService.saveUserProfileExt(payload, this.draft.form.experienceEntries);
       if (!savedUser) {
         throw new Error('Profile save returned no user.');
-      }
-      if (this.draft.form.experienceEntries.length > 0) {
-        await this.userExperiencesService.saveUserExperiences(savedUser.id, this.draft.form.experienceEntries);
       }
       this.onboarding.clearDraft(savedUser.id);
       completionEmitted = true;
@@ -1301,17 +1298,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       profileFormVersion: this.onboarding.currentProfileFormVersion,
       profileDetails: this.buildProfileDetails(user, draft),
       completion: this.completionPercent(draft)
-    };
-  }
-
-  private buildAutosaveUserPayload(user: UserDto, draft: ProfileOnboardingDraft): UserDto {
-    const payload = this.buildUserPayload(user, draft);
-    const currentFormVersion = Math.max(1, Math.trunc(Number(this.onboarding.currentProfileFormVersion) || 1));
-    const existingFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
-    return {
-      ...payload,
-      profileStatus: user.profileStatus === 'onboarding' ? 'onboarding' : payload.profileStatus,
-      profileFormVersion: Math.min(existingFormVersion, currentFormVersion - 1)
     };
   }
 
@@ -1463,9 +1449,15 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.draft.currentStepId = stepId;
     this.attemptedContinue = false;
     this.persistDraft();
-    if (stepId === 'experience') {
-      this.loadExperienceEntriesForCurrentUserOnce();
+  }
+
+  private openExperienceManager(type: OnboardingExperienceSelectorType): void {
+    if (this.saving) {
+      return;
     }
+    this.experienceManagerFilter = type;
+    this.experienceManagerOpen = true;
+    this.loadExperienceEntriesForCurrentUserOnce();
   }
 
   private async loadExistingExperienceEntries(userId: string): Promise<void> {
@@ -1502,79 +1494,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.experienceEntriesLoadedForUserId = userId;
     void this.loadExistingExperienceEntries(userId);
-  }
-
-  private startDraftAutosaveLoop(): void {
-    this.stopDraftAutosaveLoop();
-    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/auth/me/onboarding-draft-autosave', () => {
-      void this.runDraftAutosaveIfNeeded();
-    });
-  }
-
-  private stopDraftAutosaveLoop(): void {
-    if (!this.stopDraftAutosave) {
-      return;
-    }
-    this.stopDraftAutosave();
-    this.stopDraftAutosave = null;
-  }
-
-  private resetDraftAutosaveTracking(): void {
-    this.lastDraftAutosaveSignature = '';
-    this.isDraftAutosavePending = false;
-  }
-
-  private seedDraftAutosaveSignature(): void {
-    this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
-    this.isDraftAutosavePending = false;
-  }
-
-  private shouldAutosaveDraft(): boolean {
-    return this.open
-      && Boolean(this.user)
-      && Boolean(this.draft)
-      && !this.saving
-      && !this.isDraftAutosavePending;
-  }
-
-  private async runDraftAutosaveIfNeeded(): Promise<void> {
-    if (!this.user || !this.draft || !this.shouldAutosaveDraft()) {
-      return;
-    }
-    const nextSignature = this.buildDraftAutosaveSignature();
-    if (!nextSignature || nextSignature === this.lastDraftAutosaveSignature) {
-      return;
-    }
-    this.isDraftAutosavePending = true;
-    try {
-      const savedUser = await this.usersService.saveUserProfile(this.buildAutosaveUserPayload(this.user, this.draft));
-      if (savedUser) {
-        this.user = savedUser;
-        this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
-      }
-    } finally {
-      this.isDraftAutosavePending = false;
-    }
-  }
-
-  private buildDraftAutosaveSignature(): string {
-    if (!this.user || !this.draft) {
-      return '';
-    }
-    return JSON.stringify({
-      userId: this.user.id,
-      currentStepId: this.draft.currentStepId,
-      completedStepIds: [...this.draft.completedStepIds],
-      skippedStepIds: [...this.draft.skippedStepIds],
-      form: {
-        ...this.draft.form,
-        languages: [...this.draft.form.languages],
-        images: [...this.draft.form.images],
-        values: [...this.draft.form.values],
-        interests: [...this.draft.form.interests],
-        experienceEntries: this.draft.form.experienceEntries.map(entry => ({ ...entry }))
-      }
-    });
   }
 
   private completionPercent(draft: ProfileOnboardingDraft): number {
@@ -1657,24 +1576,29 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       : '';
   }
 
-  private createEmptyExperienceForm(): ExperienceFormDraft {
-    return {
-      type: 'Workspace',
-      title: '',
-      org: '',
-      city: '',
-      dateFrom: '',
-      dateTo: '',
-      current: true,
-      description: ''
-    };
+  private experienceSelectorEntries(type: OnboardingExperienceSelectorType): ExperienceEntry[] {
+    return (this.draft?.form.experienceEntries ?? [])
+      .filter(item => item.type === type)
+      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
   }
 
-  private createExperienceId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return `exp-${crypto.randomUUID()}`;
-    }
-    return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  private experienceSelectorEntryLabel(entry: ExperienceEntry): string {
+    return entry.title.trim()
+      || entry.org.trim()
+      || entry.city.trim()
+      || this.experienceSelectorLabelKey(entry.type as OnboardingExperienceSelectorType);
+  }
+
+  private experienceSelectorEmptyLabelKey(type: OnboardingExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.selectWorkplace'
+      : 'profile.experience.selectSchool';
+  }
+
+  private experienceSelectorOpenLabelKey(type: OnboardingExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.openWorkplace'
+      : 'profile.experience.openSchool';
   }
 
 }

@@ -3,7 +3,7 @@ import type {
   ProfileStatus,
   UserGender
 } from '../common/constants';
-import type { ProfileDetailFormGroup } from './profile.interface';
+import type { ExperienceEntry, ProfileDetailFormGroup } from './profile.interface';
 
 export interface LocationCoordinates {
   latitude: number;
@@ -203,6 +203,11 @@ export interface UserByIdQueryResponse {
   counterOverrides?: UserMenuCountersDto | null;
 }
 
+export interface ProfileExtDto {
+  profile: UserDto;
+  experienceEntries: ExperienceEntry[];
+}
+
 export interface UserFeedbackSubmitRequestDto {
   userId?: string;
   category: string;
@@ -249,6 +254,7 @@ export interface UserService {
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;
+  saveUserProfileExt(request: ProfileExtDto, requestTimeoutMs?: number): Promise<UserDto | null>;
   submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
   submitReportUser(request: UserReportUserSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;
   logoutUser(request: UserLogoutRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;

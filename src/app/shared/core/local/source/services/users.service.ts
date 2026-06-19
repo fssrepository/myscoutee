@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalRouteDelayService } from './route-delay.service';
 import type { BootstrapProcessState } from '../../../base/services/bootstrap.service';
 import type {
+  ProfileExtDto,
   UserDto,
   UserByIdQueryResponse,
   UserDeleteRequestDto,
@@ -45,6 +47,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
   private readonly realtimeStateByUserId: Record<string, LocalUserRealtimeSnapshotState> = {};
@@ -279,6 +282,21 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       return null;
     }
     const savedUser = this.usersRepository.upsertUser(user);
+    this.clearRealtimeState(savedUser.id);
+    await this.usersRepository.flushToIndexedDb();
+    return savedUser;
+  }
+
+  async saveUserProfileExt(request: ProfileExtDto, _requestTimeoutMs?: number): Promise<UserDto | null> {
+    const profile = request?.profile;
+    if (!profile?.id?.trim()) {
+      return null;
+    }
+    const savedUser = this.usersRepository.upsertUser(profile);
+    this.profileExperiencesRepository.replaceUserExperienceRecords(
+      savedUser.id,
+      request.experienceEntries ?? []
+    );
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
     return savedUser;

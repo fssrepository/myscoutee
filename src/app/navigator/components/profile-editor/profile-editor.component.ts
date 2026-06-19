@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
@@ -19,7 +19,12 @@ import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
 import { ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
-import { EditableImageCarouselComponent, I18nPipe } from '../../../shared/ui';
+import {
+  EditableImageCarouselComponent,
+  I18nPipe,
+  ProfileExperienceManagerComponent,
+  type ProfileExperienceEntriesChange
+} from '../../../shared/ui';
 import {
   AppMenuComponent,
   AppMenuDispatcher,
@@ -95,6 +100,7 @@ interface ExperienceImportDialogState {
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     EditableImageCarouselComponent,
+    ProfileExperienceManagerComponent,
     I18nPipe
   ],
   providers: [
@@ -106,7 +112,7 @@ interface ExperienceImportDialogState {
   styleUrl: './profile-editor.component.scss'
 })
 export class ProfileEditorComponent {
-  @ViewChild('experienceImportInput') private experienceImportInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
@@ -148,6 +154,7 @@ export class ProfileEditorComponent {
   };
   protected experienceEntries: ProfileContracts.ExperienceEntry[] = [];
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
+  protected experienceManagerOverlayOpen = false;
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
@@ -284,16 +291,12 @@ export class ProfileEditorComponent {
   }
 
   protected async handleCloseAction(): Promise<void> {
-    if (this.experienceImportDialog.visible) {
-      this.cancelExperienceImportDialog();
-      return;
-    }
-    if (this.showExperienceForm) {
-      this.closeExperienceForm();
+    if (this.panel === 'experience' && this.experienceManager?.closeActiveOverlay()) {
       return;
     }
     if (this.panel !== 'profile') {
       this.panel = 'profile';
+      this.experienceManagerOverlayOpen = false;
       return;
     }
     await this.commitProfileForm(false);
@@ -311,6 +314,7 @@ export class ProfileEditorComponent {
 
   protected openExperienceSelector(filter: ProfileContracts.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
+    this.experienceManager?.setFilter(filter);
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
     this.resetExperienceForm();
@@ -385,17 +389,12 @@ export class ProfileEditorComponent {
 
   protected openExperienceCreateAction(event?: Event): void {
     event?.stopPropagation();
-    this.openExperienceForm();
+    this.experienceManager?.openCreate(this.experienceFilter === 'All' ? 'Workspace' : this.experienceFilter);
   }
 
   protected openExperienceUploadAction(event?: Event): void {
     event?.stopPropagation();
-    const input = this.experienceImportInput?.nativeElement;
-    if (!input) {
-      return;
-    }
-    input.value = '';
-    input.click();
+    this.experienceManager?.openImport();
   }
 
   protected experienceQuickActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -713,6 +712,7 @@ export class ProfileEditorComponent {
         return;
       case 'experienceFilter':
         this.experienceFilter = context.value;
+        this.experienceManager?.setFilter(context.value);
         return;
       case 'experienceType':
         this.experienceForm.type = context.value;
@@ -752,6 +752,15 @@ export class ProfileEditorComponent {
     event: AppMenuItemSelectEvent<ProfileEditorMenuId, unknown>
   ): void {
     this.onProfileEditorMenuSelect(event as AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>);
+  }
+
+  protected onExperienceEntriesChange(event: ProfileExperienceEntriesChange): void {
+    this.setExperienceEntries(event.entries, event.highlightedIds ?? null);
+    void this.persistExperienceEntries(event.entries, { highlightedIds: event.highlightedIds ?? [] });
+  }
+
+  protected onExperienceOverlayStateChange(open: boolean): void {
+    this.experienceManagerOverlayOpen = open;
   }
 
   protected onExperienceImportFileChange(event: Event): void {
@@ -2291,6 +2300,7 @@ export class ProfileEditorComponent {
     this.menuDispatcher.close();
     this.panel = 'profile';
     this.privacyFabJustSelectedKey = null;
+    this.experienceManagerOverlayOpen = false;
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.pendingExperienceDeleteId = null;

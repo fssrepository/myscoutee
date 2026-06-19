@@ -271,6 +271,127 @@
   min-width: 0;
 }
 
+.profile-onboarding-experience-selectors {
+  display: grid;
+  gap: 0.58rem;
+  margin-top: 0.68rem;
+  padding: 0.64rem;
+  border: 1px solid rgba(43, 71, 108, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.profile-onboarding-experience-selectors h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #223b60;
+}
+
+.profile-onboarding-experience-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
+}
+
+.profile-onboarding-experience-selector-row {
+  min-width: 0;
+}
+
+.profile-onboarding-experience-selector-menu {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.profile-onboarding-experience-manager-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.9rem;
+}
+
+.profile-onboarding-experience-manager-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 18, 34, 0.48);
+}
+
+.profile-onboarding-experience-manager-popup {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100dvh - 2.4rem));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.74rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(42, 63, 96, 0.24);
+  border-radius: 8px;
+  background: #fbfcff;
+  box-shadow: 0 24px 58px rgba(6, 19, 38, 0.28);
+  padding: 0.78rem;
+}
+
+.profile-onboarding-experience-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(39, 65, 105, 0.12);
+  padding-bottom: 0.62rem;
+}
+
+.profile-onboarding-experience-manager-header span {
+  color: #4f688b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-onboarding-experience-manager-header h3 {
+  margin: 0.08rem 0 0;
+  font-size: 1rem;
+  color: #172234;
+}
+
+.profile-onboarding-experience-manager-header button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(52, 78, 113, 0.18);
+  border-radius: 50%;
+  background: #ffffff;
+  color: #38506e;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.profile-onboarding-experience-manager-header button .mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  line-height: 19px;
+}
+
+.profile-onboarding-experience-manager-loading {
+  min-height: 86px;
+  border: 1px solid rgba(43, 71, 108, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #38506e;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .profile-onboarding-date-input-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px;
@@ -1139,9 +1260,23 @@
 }
 
 .profile-onboarding-shell--mobile .profile-onboarding-grid,
+.profile-onboarding-shell--mobile .profile-onboarding-experience-selector-grid,
 .profile-onboarding-shell--mobile .profile-onboarding-experience-form,
 .profile-onboarding-shell--mobile .profile-onboarding-review {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-onboarding-shell--mobile .profile-onboarding-experience-manager-overlay {
+  align-items: stretch;
+  padding: 0;
+}
+
+.profile-onboarding-shell--mobile .profile-onboarding-experience-manager-popup {
+  width: 100%;
+  max-height: none;
+  border-radius: 0;
+  border: 0;
+  padding: 0.85rem;
 }
 
 .profile-onboarding-shell--mobile .profile-onboarding-photo-preview {
@@ -1215,9 +1350,23 @@
   }
 
   .profile-onboarding-grid,
+  .profile-onboarding-experience-selector-grid,
   .profile-onboarding-experience-form,
   .profile-onboarding-review {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-onboarding-experience-manager-overlay {
+    align-items: stretch;
+    padding: 0;
+  }
+
+  .profile-onboarding-experience-manager-popup {
+    width: 100%;
+    max-height: none;
+    border-radius: 0;
+    border: 0;
+    padding: 0.85rem;
   }
 
   .profile-onboarding-photo-preview {
