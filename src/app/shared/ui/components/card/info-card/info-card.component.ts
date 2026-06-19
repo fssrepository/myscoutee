@@ -425,6 +425,25 @@ export class InfoCardComponent implements OnDestroy {
     return !!actionId && !!CARD_MENU_ACTIONS[actionId];
   }
 
+  protected hasFooterActions(): boolean {
+    return (this.card?.footerChips ?? []).some(chip => this.isFooterChipInteractive(chip));
+  }
+
+  protected footerChipClassList(chip: InfoCardFooterChip): string[] {
+    const classes = ['values-selected-chip'];
+    const toneClass = `${chip.toneClass ?? ''}`.trim();
+    if (toneClass) {
+      classes.push(toneClass);
+    }
+    const actionId = chip.actionId;
+    const actionTone = actionId ? CARD_MENU_ACTIONS[actionId]?.tone ?? 'default' : '';
+    if (this.isFooterChipInteractive(chip)) {
+      classes.push('ui-info-card__footer-chip--button');
+      classes.push(`ui-info-card__footer-chip--action-${actionTone}`);
+    }
+    return classes;
+  }
+
   protected footerChipIcon(chip: InfoCardFooterChip): string {
     const icon = `${chip.icon ?? ''}`.trim();
     if (icon) {
@@ -464,7 +483,7 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected trackByFooterChip(index: number, chip: InfoCardFooterChip): string | number {
-    return `${chip.label}:${chip.toneClass ?? ''}:${chip.actionId ?? ''}:${index}`;
+    return `${chip.label}:${chip.toneClass ?? ''}:${chip.actionId ?? ''}:${this.footerChipIcon(chip)}:${index}`;
   }
 
   private sharedMenuActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {

@@ -391,6 +391,14 @@
   right: 0.6rem;
 }
 
+.smart-list__surface--horizontal .smart-list__pagination-arrow--prev {
+  left: -1.1rem;
+}
+
+.smart-list__surface--horizontal .smart-list__pagination-arrow--next {
+  right: -1.1rem;
+}
+
 .smart-list__horizontal-dots {
   position: absolute;
   left: 0;
@@ -506,6 +514,22 @@
   cursor: grab;
 }
 
+.smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1 {
+  --smart-list-horizontal-item-basis: 100%;
+}
+
+.smart-list--list.smart-list--horizontal.smart-list--desktop-columns-2 {
+  --smart-list-horizontal-item-basis: calc((100% - var(--smart-list-horizontal-gap)) / 2);
+}
+
+.smart-list--list.smart-list--horizontal.smart-list--desktop-columns-3 {
+  --smart-list-horizontal-item-basis: calc((100% - var(--smart-list-horizontal-gap) - var(--smart-list-horizontal-gap)) / 3);
+}
+
+.smart-list--list.smart-list--horizontal.smart-list--desktop-columns-4 {
+  --smart-list-horizontal-item-basis: calc((100% - var(--smart-list-horizontal-gap) - var(--smart-list-horizontal-gap) - var(--smart-list-horizontal-gap)) / 4);
+}
+
 .smart-list--list.smart-list--horizontal-dragging {
   cursor: grabbing;
   user-select: none;
@@ -528,15 +552,25 @@
 }
 
 .smart-list--list.smart-list--horizontal .smart-list__item-shell {
+  display: flex;
+  align-items: stretch;
   flex: 0 0 var(--smart-list-horizontal-item-basis, min(21rem, 78vw));
   width: auto;
+  align-self: stretch;
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
 
 .smart-list--list.smart-list--horizontal .smart-list__item-shell > * {
+  flex: 1 1 auto;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
+  align-self: stretch;
+}
+
+:host ::ng-deep .smart-list--list.smart-list--horizontal .ui-info-card {
+  touch-action: pan-x pan-y;
 }
 
 .smart-list--list.smart-list--horizontal .smart-list__sticky,
@@ -1326,6 +1360,13 @@
     padding-bottom: 2rem;
     scrollbar-width: none;
     -ms-overflow-style: none;
+  }
+
+  .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1,
+  .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-2,
+  .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-3,
+  .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-4 {
+    --smart-list-horizontal-item-basis: 100%;
   }
 
   .smart-list--list.smart-list--horizontal::-webkit-scrollbar {

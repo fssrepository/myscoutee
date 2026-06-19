@@ -108,7 +108,7 @@ export class IdeaPostsService extends BaseRouteModeService {
           }
         : null,
       footerChips: [
-        { label: 'Read more', toneClass: 'entry-idea-read-chip' }
+        { label: 'Read more', actionId: 'viewArticle' }
       ],
       clickable: true,
       eagerDetail: this.ideaArticleDetail(post, 'Fresh article')

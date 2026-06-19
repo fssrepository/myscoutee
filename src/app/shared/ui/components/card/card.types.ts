@@ -222,7 +222,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<string, CardMenuActionConfig>> =
   unfeature: { label: 'unfeature', icon: 'star_outline', tone: 'warning' },
   unpublish: { label: 'unpublish', icon: 'visibility_off', tone: 'warning' },
   view: { label: 'view.event', icon: 'visibility' },
-  viewArticle: { label: 'view', icon: 'visibility' },
+  viewArticle: { label: 'Read more', icon: 'auto_stories', tone: 'accent' },
   viewAsset: { label: 'view.asset', icon: 'edit_square' },
   viewInvitation: { label: 'view.invitation', icon: 'visibility' }
 };

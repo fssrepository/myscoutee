@@ -2,7 +2,7 @@ import { DOCUMENT } from '@angular/common';
 import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable, filter, map, of, take } from 'rxjs';
 
 import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
@@ -10,7 +10,6 @@ import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user
 import {
   InfoCardComponent, type InfoCardData
 } from '../../../shared/ui/components/card';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
 import {
   SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
@@ -37,7 +36,6 @@ interface HowStepSlide {
   standalone: true,
   imports: [
     InfoCardComponent,
-    ProgressIndicatorComponent,
     SmartListComponent,
     LazyBgImageDirective,
     MatRippleModule,
@@ -57,7 +55,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() articlesLoading = false;
-  @Input() articlesLoadingDurationMs = 3000;
   @Input() ideaCards: InfoCardData[] = [];
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'Unavailable in your country';
@@ -105,6 +102,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected selectedIdeaId = '';
   protected appVersionLabel = 'v1.0.0';
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
+  private readonly articlesReadySignal = new BehaviorSubject<number>(0);
 
   protected readonly entryFeaturedIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
     pageSize: 8,
@@ -126,25 +124,20 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     },
     pagination: {
       mode: 'arrows'
-    },
-    containerClass: {
-      'entry-ideas-carousel-list': true
     }
   };
 
   protected readonly entryFeaturedIdeaSmartListLoadPage: SmartListLoadPage<IdeaInfoCard> = (
     query: ListQuery
   ): Observable<PageResult<IdeaInfoCard>> => {
-    const cards = this.featuredIdeaCards();
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryFeaturedIdeaSmartListConfig.pageSize) || 8));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const start = page * pageSize;
-    const items = cards.slice(start, start + pageSize);
-    return of({
-      items,
-      total: cards.length,
-      nextCursor: start + items.length < cards.length ? `${start + items.length}` : null
-    });
+    if (this.articlesLoading) {
+      return this.articlesReadySignal.pipe(
+        filter(() => !this.articlesLoading),
+        take(1),
+        map(() => this.featuredIdeaPageResult(query))
+      );
+    }
+    return of(this.featuredIdeaPageResult(query));
   };
 
   protected readonly entryIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
@@ -209,8 +202,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['ideaCards']) {
+    if (changes['ideaCards'] || changes['articlesLoading']) {
       this.updateFeaturedIdeaSmartListFilters();
+      this.articlesReadySignal.next(Date.now());
     }
   }
 
@@ -562,14 +556,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected entryFeaturedIdeaInfoCard(card: InfoCardData): InfoCardData {
     return {
       ...card,
-      footerChips: (card.footerChips ?? []).map(chip => chip.toneClass === 'entry-idea-read-chip'
-        ? {
-            ...chip,
-            icon: 'auto_stories',
-            actionId: 'viewArticle',
-            ariaLabel: chip.label
-          }
-        : chip),
       menuActions: [],
       menuTitle: null,
       clickable: false
@@ -616,6 +602,19 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       signature: this.featuredIdeaCards()
         .map(card => this.ideaCardDetail(card)?.id ?? card.id ?? '')
         .join('|')
+    };
+  }
+
+  private featuredIdeaPageResult(query: ListQuery): PageResult<IdeaInfoCard> {
+    const cards = this.featuredIdeaCards();
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryFeaturedIdeaSmartListConfig.pageSize) || 8));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const start = page * pageSize;
+    const items = cards.slice(start, start + pageSize);
+    return {
+      items,
+      total: cards.length,
+      nextCursor: start + items.length < cards.length ? `${start + items.length}` : null
     };
   }
 

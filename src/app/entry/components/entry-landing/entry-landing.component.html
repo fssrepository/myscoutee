@@ -156,8 +156,6 @@
     @if (articlesLoading || featuredIdeaCards().length > 0) {
       <section class="entry-ideas" id="articles" aria-label="MyScoutee articles">
         <div
-          class="entry-ideas-carousel"
-          [class.entry-ideas-carousel--loading]="articlesLoading"
           role="region"
           aria-label="Featured article posts"
           aria-roledescription="carousel"
@@ -171,29 +169,12 @@
           ></app-smart-list>
 
           <ng-template #entryFeaturedIdeaCardTemplate let-card>
-            <div class="entry-featured-idea-card">
-              <app-info-card
-                class="entry-idea-info-card"
-                [card]="entryFeaturedIdeaInfoCard(card)"
-                (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
-              ></app-info-card>
-            </div>
+            <app-info-card
+              class="entry-idea-info-card"
+              [card]="entryFeaturedIdeaInfoCard(card)"
+              (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
+            ></app-info-card>
           </ng-template>
-
-          @if (articlesLoading) {
-            <div
-              class="entry-ideas-carousel-loading"
-              aria-live="polite"
-              aria-busy="true"
-              >
-              <app-progress-indicator
-                kind="load-ring"
-                state="loading"
-                [durationMs]="articlesLoadingDurationMs"
-              ></app-progress-indicator>
-              <span class="entry-ideas-carousel-loading-label">{{ 'Loading articles' | i18n }}</span>
-            </div>
-          }
         </div>
         <div class="entry-ideas-more-row">
           <button type="button" class="entry-ideas-more-btn" (click)="openIdeasPopup(undefined, $event)">

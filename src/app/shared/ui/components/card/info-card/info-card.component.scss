@@ -1,10 +1,12 @@
 :host {
-  display: block;
+  display: flex;
+  min-width: 0;
 }
 
 .ui-info-card {
   position: relative;
   display: grid;
+  flex: 1 1 auto;
   gap: 0.32rem;
   width: auto;
   max-width: 100%;
@@ -689,6 +691,13 @@ button.ui-info-card__overlay-action {
   color: #2c7c52;
 }
 
+.ui-info-card__overlay-action--tone-selected.ui-info-card__overlay-action--badge {
+  border-color: rgba(214, 147, 28, 0.58);
+  background: linear-gradient(180deg, #fff8d8 0%, #ffd76a 100%);
+  color: #9b5f00;
+  box-shadow: 0 7px 16px rgba(132, 82, 8, 0.24);
+}
+
 .ui-info-card__overlay-action--tone-woman.ui-info-card__overlay-action--avatar {
   background: linear-gradient(145deg, #d3754c, #ac4a24);
 }
@@ -900,6 +909,11 @@ button.ui-info-card__overlay-action {
   gap: 0.28rem;
 }
 
+.ui-info-card__footer-chips--actions {
+  justify-content: flex-end;
+  margin-top: 0.42rem;
+}
+
 .ui-info-card__footer-chip {
   min-height: 26px;
   padding: 0.14rem 0.46rem;
@@ -924,11 +938,30 @@ button.ui-info-card__footer-chip {
   box-shadow: 0 8px 18px rgba(132, 82, 8, 0.12);
 }
 
+.ui-info-card__footer-chip--action-accent {
+  min-height: 32px;
+  padding: 0 0.68rem;
+  gap: 0.3rem;
+  background: linear-gradient(180deg, #fff7e9 0%, #ffedc9 100%);
+  border-color: rgba(201, 144, 39, 0.3);
+  color: #9b6714;
+  box-shadow: 0 4px 10px rgba(132, 82, 8, 0.1);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
 .ui-info-card__footer-chip--button .mat-icon {
   width: 14px;
   height: 14px;
   font-size: 14px;
   line-height: 14px;
+}
+
+.ui-info-card__footer-chip--action-accent .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
 }
 
 .ui-info-card__footer-chip--button:focus-visible {
