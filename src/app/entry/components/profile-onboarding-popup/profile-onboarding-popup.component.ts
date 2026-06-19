@@ -16,7 +16,6 @@ import {
   EditableImageCarouselComponent,
   I18nPipe,
   ProfileExperienceManagerComponent,
-  ProgressIndicatorComponent,
   buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -27,7 +26,6 @@ import {
 } from '../../../shared/ui';
 import {
   ProfileOnboardingService,
-  UserExperiencesService,
   UsersService,
   type ProfileOnboardingAssessment,
   type ProfileOnboardingDraft,
@@ -98,7 +96,6 @@ interface ExperienceSelectorMenuSnapshot {
     AppMenuComponent,
     EditableImageCarouselComponent,
     ProfileExperienceManagerComponent,
-    ProgressIndicatorComponent,
     I18nPipe
   ],
   providers: [
@@ -123,11 +120,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   private readonly onboarding = inject(ProfileOnboardingService);
   private readonly usersService = inject(UsersService);
-  private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly document = inject(DOCUMENT);
-  private experienceLoadToken = 0;
-  private experienceEntriesLoadedForUserId = '';
   private readonly experienceSelectorMenuCache: Record<OnboardingExperienceSelectorType, ExperienceSelectorMenuSnapshot> = {
     Workspace: this.createExperienceSelectorMenuSnapshot('Workspace', []),
     School: this.createExperienceSelectorMenuSnapshot('School', [])
@@ -162,10 +156,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected saveError = '';
   protected imageUploadError = '';
   protected attemptedContinue = false;
-  protected experienceEntriesLoading = false;
   protected experienceManagerOpen = false;
   protected experienceManagerFilter: ExperienceFilter = 'All';
-  protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']) {
@@ -186,9 +178,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.attemptedContinue = false;
       this.experienceManagerOpen = false;
       this.experienceManagerFilter = 'All';
-      this.experienceLoadToken += 1;
-      this.experienceEntriesLoadedForUserId = '';
-      this.imageSlots = this.createEmptyImageSlots();
       return;
     }
     const nextUserId = this.user.id.trim();
@@ -198,7 +187,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.assessment = this.onboarding.assessUser(this.user);
     this.draft = this.onboarding.loadDraft(this.user);
     this.syncBirthdayDateFromDraft();
-    this.syncImageSlotsFromDraft();
   }
 
   ngOnDestroy(): void {
@@ -590,29 +578,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected imageCount(): number {
-    return this.imageSlots.filter(slot => Boolean(slot?.trim())).length;
-  }
-
-  protected get profileImageUrls(): string[] {
-    return this.collectPersistedProfileImages(this.imageSlots);
-  }
-
-  protected set profileImageUrls(imageUrls: string[]) {
-    this.applyProfileImageUrls(imageUrls);
-  }
-
-  private applyProfileImageUrls(imageUrls: string[]): void {
-    const slots = this.createEmptyImageSlots();
-    imageUrls
-      .map(imageUrl => `${imageUrl ?? ''}`.trim())
-      .filter(Boolean)
-      .slice(0, slots.length)
-      .forEach((imageUrl, index) => {
-        slots[index] = imageUrl;
-      });
-    this.imageSlots = slots;
-    this.imageUploadError = '';
-    this.syncDraftImagesFromSlots();
+    return this.draft?.form.images.length ?? 0;
   }
 
   protected reviewValue(value: string | number | null | undefined): string {
@@ -1217,7 +1183,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       horoscope: birthdayDate ? AppUtils.horoscopeByDate(birthdayDate) : user.horoscope,
       headline: `${user.headline ?? ''}`.trim(),
       about: draft.form.about.trim().slice(0, 160),
-      images: this.collectPersistedProfileImages(draft.form.images),
+      images: [...draft.form.images],
       profileStatus: draft.form.profileStatus,
       profileFormVersion: this.onboarding.currentProfileFormVersion,
       profileDetails: this.buildProfileDetails(user, draft),
@@ -1381,46 +1347,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.experienceManagerFilter = type;
     this.experienceManagerOpen = true;
-    this.loadExperienceEntriesForCurrentUserOnce();
-  }
-
-  private async loadExistingExperienceEntries(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !this.draft) {
-      return;
-    }
-    const token = ++this.experienceLoadToken;
-    this.experienceEntriesLoading = true;
-    this.cdr.markForCheck();
-    try {
-      const entries = await this.userExperiencesService.loadUserExperiences(
-        normalizedUserId,
-        this.experienceMemoryRouteConfig
-      );
-      if (token !== this.experienceLoadToken || !this.draft || this.draft.userId !== normalizedUserId) {
-        return;
-      }
-      if (this.draft.form.experienceEntries.length === 0 && entries.length > 0) {
-        this.draft.form.experienceEntries = entries.map(entry => ({ ...entry }));
-        this.persistDraft();
-      }
-    } catch {
-      // Experience is optional, so onboarding can continue without this enrichment.
-    } finally {
-      if (token === this.experienceLoadToken) {
-        this.experienceEntriesLoading = false;
-        this.cdr.markForCheck();
-      }
-    }
-  }
-
-  private loadExperienceEntriesForCurrentUserOnce(): void {
-    const userId = this.user?.id?.trim() ?? '';
-    if (!userId || this.experienceEntriesLoadedForUserId === userId) {
-      return;
-    }
-    this.experienceEntriesLoadedForUserId = userId;
-    void this.loadExistingExperienceEntries(userId);
   }
 
   private completionPercent(draft: ProfileOnboardingDraft): number {
@@ -1452,48 +1378,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   private interestAllOptions(): string[] {
     return this.interestOptionGroups.flatMap(group => group.options);
-  }
-
-  private createEmptyImageSlots(): Array<string | null> {
-    return Array.from({ length: ProfileOnboardingPopupComponent.MAX_IMAGE_SLOTS }, () => null);
-  }
-
-  private syncImageSlotsFromDraft(): void {
-    const slots = this.createEmptyImageSlots();
-    const images = (this.draft?.form.images ?? [])
-      .map(image => `${image ?? ''}`.trim())
-      .filter(image => image.length > 0)
-      .slice(0, ProfileOnboardingPopupComponent.MAX_IMAGE_SLOTS);
-    images.forEach((image, index) => {
-      slots[index] = image;
-    });
-    this.imageSlots = slots;
-  }
-
-  private syncDraftImagesFromSlots(): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.images = this.collectPersistedProfileImages(this.imageSlots);
-    this.persistDraft();
-    this.cdr.markForCheck();
-  }
-
-  private collectPersistedProfileImages(values: readonly (string | null)[] = []): string[] {
-    const images: string[] = [];
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = `${value ?? ''}`.trim();
-      if (!normalized || seen.has(normalized)) {
-        continue;
-      }
-      images.push(normalized);
-      seen.add(normalized);
-      if (images.length >= ProfileOnboardingPopupComponent.MAX_IMAGE_SLOTS) {
-        break;
-      }
-    }
-    return images;
   }
 
   private formatDateForDetail(value: string): string {

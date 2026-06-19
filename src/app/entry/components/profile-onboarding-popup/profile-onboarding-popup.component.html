@@ -175,7 +175,8 @@
               }
               <app-editable-image-carousel
                 [previewMode]="true"
-                [(ngModel)]="profileImageUrls"
+                [(ngModel)]="f.images"
+                (ngModelChange)="persistDraft()"
                 [disabled]="saving"
                 [uploadOwnerId]="user.id"
               ></app-editable-image-carousel>
@@ -334,7 +335,7 @@
                 </div>
                 @if (imageCount() > 0) {
                   <div class="profile-onboarding-review-photo-carousel" [attr.aria-label]="'Profile photo review' | i18n">
-                    @for (slot of imageSlots; track i; let i = $index) {
+                    @for (slot of f.images; track i; let i = $index) {
                       @if (slot) {
                         <article class="profile-onboarding-review-photo-slide">
                         <img [src]="slot" alt="Profile photo slot {{ i + 1 }}" />
@@ -454,14 +455,6 @@
                 </div>
               </header>
               <section class="profile-onboarding-experience-manager-body popup-surface-body">
-                @if (experienceEntriesLoading) {
-                  <div class="profile-onboarding-experience-manager-loading" aria-live="polite">
-                    <span class="profile-onboarding-experience-loading-ring" aria-hidden="true">
-                      <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
-                    </span>
-                    <span>{{ 'Loading experience' | i18n }}</span>
-                  </div>
-                }
                 <app-profile-experience-manager
                   [entries]="f.experienceEntries"
                   [initialFilter]="experienceManagerFilter"
