@@ -935,6 +935,7 @@
     "select.demo.user": "Select demo user",
     "select.interests": "Select interests",
     "select.languages": "Select languages",
+    "select.option": "Please select",
     "select.values": "Select values",
     "selector.unavailable": "Selector unavailable",
     "service": "Service",

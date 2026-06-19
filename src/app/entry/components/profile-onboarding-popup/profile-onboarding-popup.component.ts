@@ -316,7 +316,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected selectMenuTrigger(value: string | null | undefined, icon = 'tune', palette: AppMenuPalette = 'neutral'): AppMenuTrigger {
     const label = `${value ?? ''}`.trim();
     return {
-      label: label || 'Select',
+      label,
       icon,
       palette,
       shape: 'field',

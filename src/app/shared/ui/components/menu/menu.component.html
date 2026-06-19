@@ -6,6 +6,7 @@
       [ngClass]="triggerPaletteClass()"
       [class.app-menu__trigger--open]="open"
       [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
+      [class.app-menu__trigger--placeholder]="usesDefaultSelectTriggerLabel()"
       [class.app-menu__trigger--shape-field]="triggerShape() === 'field'"
       [class.app-menu__trigger--shape-pill]="triggerShape() === 'pill'"
       [class.app-menu__trigger--shape-icon]="triggerShape() === 'icon'"

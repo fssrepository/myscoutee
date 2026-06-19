@@ -434,7 +434,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected triggerLabel(): string {
     const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
-    return configuredLabel || appMenuModelSummary(this.model, this.groups).label;
+    return configuredLabel || appMenuModelSummary(this.model, this.groups).label || this.defaultSelectTriggerLabel();
+  }
+
+  protected usesDefaultSelectTriggerLabel(): boolean {
+    const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    const summaryLabel = appMenuModelSummary(this.model, this.groups).label;
+    return !configuredLabel && !summaryLabel && Boolean(this.defaultSelectTriggerLabel());
   }
 
   protected triggerIcon(): string {
@@ -556,6 +562,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   private isSelectLikeTrigger(): boolean {
     return this.isSelectKind || this.isTabbedPresentation;
+  }
+
+  private defaultSelectTriggerLabel(): string {
+    return this.isSelectLikeTrigger() && this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true
+      ? 'select.option'
+      : '';
   }
 
   private triggerCounter(): AppMenuCounter | AppMenuCounterValue | null {

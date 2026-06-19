@@ -935,6 +935,7 @@
     "select.demo.user": "Demo felhasználó választása",
     "select.interests": "Érdeklődés választása",
     "select.languages": "Nyelvek választása",
+    "select.option": "Válassz",
     "select.values": "Értékek választása",
     "selector.unavailable": "A választó nem érhető el",
     "service": "Szerviz",
