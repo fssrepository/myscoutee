@@ -102,6 +102,8 @@ interface IdeaPostLangCache {
   providers: [AppMenuDispatcher]
 })
 export class AdminIdeaEditorPopupComponent {
+  private static readonly IMAGE_LIMIT = 8;
+
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
@@ -125,7 +127,6 @@ export class AdminIdeaEditorPopupComponent {
   protected selectedContentLang = 'en';
   protected draftContentLang = 'en';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
-  protected readonly ideaImageSlotCount = 8;
   private stateLoadedForPopup = false;
   private adminPostsLoadPromise: Promise<void> | null = null;
   private adminPostsLoadGeneration = 0;
@@ -1115,7 +1116,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'admin';
+    return this.appCtx.activeUserId().trim();
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {
@@ -1207,7 +1208,10 @@ export class AdminIdeaEditorPopupComponent {
       title: post.title,
       excerpt: post.excerpt,
       contentHtml: this.formatHtmlFragment(post.contentHtml),
-      imageUrls: this.uniqueImageUrls([post.imageUrl, ...post.imageUrls]).slice(0, this.ideaImageSlotCount),
+      imageUrls: this.uniqueImageUrls([post.imageUrl, ...post.imageUrls]).slice(
+        0,
+        AdminIdeaEditorPopupComponent.IMAGE_LIMIT
+      ),
       featured: false,
       published: false,
       submittedAtLocal: this.toDateTimeLocal(post.submittedAtIso || post.updatedAtIso || post.createdAtIso),
@@ -1255,7 +1259,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   private draftImageUrls(draft: Pick<IdeaPostDraft, 'imageUrls'>): string[] {
-    return this.uniqueImageUrls(draft.imageUrls).slice(0, this.ideaImageSlotCount);
+    return this.uniqueImageUrls(draft.imageUrls).slice(0, AdminIdeaEditorPopupComponent.IMAGE_LIMIT);
   }
 
   private normalizeContentLang(lang: string | null | undefined): string {

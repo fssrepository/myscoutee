@@ -300,12 +300,12 @@
                                     <div class="help-editor-preview-section-body help-editor-section-edit">
                                       @if (documentKind === 'explanation') {
                                         <app-editable-image-carousel
-                                          [slotCount]="explanationImageSlotCount"
-                                          [imageUrls]="section.imageUrls"
+                                          [name]="'sectionImages' + sectionIndex"
+                                          [(ngModel)]="section.imageUrls"
                                           [disabled]="saving"
                                           [compact]="true"
+                                          [uploadOwnerId]="actorUserId()"
                                           ariaLabel="Explanation image slots"
-                                          (imageUrlsChange)="setDraftSectionImageUrls(section, $event)"
                                         ></app-editable-image-carousel>
                                       }
                                       @if (section.mode === 'html') {

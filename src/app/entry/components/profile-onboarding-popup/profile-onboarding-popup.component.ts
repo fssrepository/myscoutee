@@ -1,5 +1,5 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
@@ -13,6 +13,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   AppMenuComponent,
+  EditableImageCarouselComponent,
   I18nPipe,
   ProgressIndicatorComponent,
   buildTabbedMenuModel,
@@ -23,7 +24,7 @@ import {
   type AppMenuTrigger
 } from '../../../shared/ui';
 import {
-  MediaService, ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
+  ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
 import type {
   DetailPrivacy,
   ProfileStatus
@@ -77,6 +78,7 @@ type OnboardingMenuContext =
     MatInputModule,
     MatNativeDateModule,
     AppMenuComponent,
+    EditableImageCarouselComponent,
     ProgressIndicatorComponent,
     I18nPipe
   ],
@@ -91,7 +93,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private static readonly MAX_IMAGE_SLOTS = 8;
   private static readonly MIN_REQUIRED_IMAGES = 3;
 
-  @ViewChild('onboardingImageInput') private onboardingImageInput?: ElementRef<HTMLInputElement>;
   @Input() open = false;
   @Input() user: UserDto | null = null;
   @Input() mobile = false;
@@ -104,7 +105,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private readonly onboarding = inject(ProfileOnboardingService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly usersService = inject(UsersService);
-  private readonly mediaService = inject(MediaService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly document = inject(DOCUMENT);
@@ -147,8 +147,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   protected experienceRangeEnd: Date | null = null;
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected selectedImageIndex = 0;
-  protected pendingImageUploadIndex: number | null = null;
-  protected uploadingImageSlotIndex: number | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']) {
@@ -174,8 +172,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.experienceEntriesLoadedForUserId = '';
       this.imageSlots = this.createEmptyImageSlots();
       this.selectedImageIndex = 0;
-      this.pendingImageUploadIndex = null;
-      this.uploadingImageSlotIndex = null;
       return;
     }
     this.assessment = this.onboarding.assessUser(this.user);
@@ -244,7 +240,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected canContinue(): boolean {
-    if (!this.draft || this.saving || this.uploadingImageSlotIndex !== null) {
+    if (!this.draft || this.saving) {
       return false;
     }
     if (this.currentStep().id === 'basics') {
@@ -267,7 +263,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected requestDismiss(): void {
-    if (this.saving || this.uploadingImageSlotIndex !== null) {
+    if (this.saving) {
       return;
     }
     this.dismissed.emit();
@@ -281,7 +277,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected goBack(): void {
-    if (!this.draft || this.saving || this.uploadingImageSlotIndex !== null) {
+    if (!this.draft || this.saving) {
       return;
     }
     const index = this.currentStepIndex();
@@ -292,7 +288,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected skipStep(): void {
-    if (!this.draft || !this.currentStep().optional || this.saving || this.uploadingImageSlotIndex !== null) {
+    if (!this.draft || !this.currentStep().optional || this.saving) {
       return;
     }
     const current = this.currentStep().id;
@@ -301,7 +297,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected goNext(): void {
-    if (!this.draft || this.saving || this.uploadingImageSlotIndex !== null) {
+    if (!this.draft || this.saving) {
       return;
     }
     this.attemptedContinue = true;
@@ -326,7 +322,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       icon,
       palette,
       shape: 'field',
-      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      disabled: () => this.saving,
       ariaLabel: 'Open selector'
     };
   }
@@ -404,7 +400,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       icon: 'language',
       palette: 'blue',
       shape: 'field',
-      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      disabled: () => this.saving,
       ariaLabel: (this.draft?.form.languages.length ?? 0) > 0 ? 'open.languages.selector' : 'select.languages'
     };
   }
@@ -433,7 +429,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       icon: 'auto_awesome',
       palette: this.paletteFromProfileTone(this.valuesDominantToneClass(this.draft?.form.values ?? [])),
       shape: 'field',
-      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      disabled: () => this.saving,
       ariaLabel: (this.draft?.form.values.length ?? 0) > 0 ? 'open.values.selector' : 'select.values'
     };
   }
@@ -457,7 +453,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       icon: 'sell',
       palette: this.paletteFromProfileTone(this.interestDominantToneClass(this.draft?.form.interests ?? [])),
       shape: 'field',
-      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
+      disabled: () => this.saving,
       ariaLabel: (this.draft?.form.interests.length ?? 0) > 0 ? 'open.interests.selector' : 'select.interests'
     };
   }
@@ -486,7 +482,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
         layout: 'action',
         palette: 'neutral',
         surface: 'tinted',
-        disabled: this.saving || this.uploadingImageSlotIndex !== null || this.currentStepIndex() === 0,
+        disabled: this.saving || this.currentStepIndex() === 0,
         ariaLabel: 'Back',
         context: { menu: 'navigation', action: 'back' }
       }
@@ -499,7 +495,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
         layout: 'action',
         palette: 'amber',
         surface: 'tinted',
-        disabled: this.saving || this.uploadingImageSlotIndex !== null,
+        disabled: this.saving,
         ariaLabel: 'Skip',
         context: { menu: 'navigation', action: 'skip' }
       });
@@ -586,51 +582,27 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return this.imageSlots.filter(slot => Boolean(slot?.trim())).length;
   }
 
-  protected selectImageSlot(index: number): void {
-    if (this.uploadingImageSlotIndex !== null || this.saving) {
-      return;
-    }
-    const isSelectedSlot = this.selectedImageIndex === index;
-    const hasImage = Boolean(this.imageSlots[index]);
-    this.selectedImageIndex = index;
-    if (hasImage && !isSelectedSlot) {
-      return;
-    }
-    this.pendingImageUploadIndex = index;
-    this.onboardingImageInput?.nativeElement.click();
+  protected get profileImageUrls(): string[] {
+    return this.collectPersistedProfileImages(this.imageSlots);
   }
 
-  protected removeImage(index: number): void {
-    if (this.uploadingImageSlotIndex === index || this.saving) {
-      return;
-    }
-    this.revokeObjectUrl(this.imageSlots[index]);
-    this.imageSlots[index] = null;
+  protected set profileImageUrls(imageUrls: string[]) {
+    this.applyProfileImageUrls(imageUrls);
+  }
+
+  private applyProfileImageUrls(imageUrls: string[]): void {
+    const slots = this.createEmptyImageSlots();
+    imageUrls
+      .map(imageUrl => `${imageUrl ?? ''}`.trim())
+      .filter(Boolean)
+      .slice(0, slots.length)
+      .forEach((imageUrl, index) => {
+        slots[index] = imageUrl;
+      });
+    this.imageSlots = slots;
+    this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(this.selectedImageIndex);
+    this.imageUploadError = '';
     this.syncDraftImagesFromSlots();
-    if (this.selectedImageIndex === index) {
-      const nearest = this.findNearestFilledImageIndex(index);
-      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
-    }
-  }
-
-  protected onImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0] ?? null;
-    const slotIndex = this.pendingImageUploadIndex;
-    this.pendingImageUploadIndex = null;
-    target.value = '';
-    if (!file || slotIndex === null) {
-      return;
-    }
-    void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
-  }
-
-  protected isImageSlotUploading(index: number): boolean {
-    return this.uploadingImageSlotIndex === index;
-  }
-
-  protected isSelectedImageUploading(): boolean {
-    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
   protected reviewValue(value: string | number | null | undefined): string {
@@ -1492,7 +1464,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected setStep(stepId: ProfileOnboardingStepId): void {
-    if (!this.draft || this.uploadingImageSlotIndex !== null) {
+    if (!this.draft) {
       return;
     }
     this.draft.currentStepId = stepId;
@@ -1569,7 +1541,6 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       && Boolean(this.user)
       && Boolean(this.draft)
       && !this.saving
-      && this.uploadingImageSlotIndex === null
       && !this.isDraftAutosavePending;
   }
 
@@ -1688,63 +1659,12 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return images;
   }
 
-  private findNearestFilledImageIndex(fromIndex: number): number {
-    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
-      const right = fromIndex + distance;
-      if (right < this.imageSlots.length && this.imageSlots[right]) {
-        return right;
-      }
-      const left = fromIndex - distance;
-      if (left >= 0 && this.imageSlots[left]) {
-        return left;
-      }
-    }
-    return this.imageSlots.findIndex(slot => Boolean(slot));
-  }
-
-  private async uploadAndRefreshProfileImageSlot(file: File, slotIndex: number): Promise<void> {
-    if (!this.user || !this.draft) {
-      return;
-    }
-    if (!file.type.toLowerCase().startsWith('image/')) {
-      this.imageUploadError = 'Please choose an image file.';
-      return;
-    }
-    const previousImage = this.imageSlots[slotIndex] ?? null;
-    this.uploadingImageSlotIndex = slotIndex;
-    this.imageUploadError = '';
-    this.cdr.detectChanges();
-    try {
-      this.syncDraftImagesFromSlots();
-      const uploadResult = await this.mediaService.uploadImage(this.user.id, `profile-${slotIndex}`, file);
-      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
-      if (!uploadResult.uploaded || !uploadedImageUrl) {
-        throw new Error('Upload failed.');
-      }
-      this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = uploadedImageUrl;
-      this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-      this.syncDraftImagesFromSlots();
-    } catch {
-      this.imageUploadError = 'Image could not be uploaded. Please try another image.';
-    } finally {
-      this.uploadingImageSlotIndex = null;
-      this.cdr.detectChanges();
-    }
-  }
-
   private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
     if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
       return slotIndex;
     }
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     return firstFilled >= 0 ? firstFilled : 0;
-  }
-
-  private revokeObjectUrl(value: string | null): void {
-    if (value && value.startsWith('blob:') && typeof URL !== 'undefined') {
-      URL.revokeObjectURL(value);
-    }
   }
 
   private formatDateForDetail(value: string): string {

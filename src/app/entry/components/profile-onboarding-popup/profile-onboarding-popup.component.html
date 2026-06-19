@@ -25,7 +25,7 @@
           <button
             type="button"
             class="profile-onboarding-close-btn"
-            [disabled]="saving || uploadingImageSlotIndex !== null"
+            [disabled]="saving"
             (click)="requestDismiss()"
             [attr.aria-label]="'Close profile setup' | i18n"
             >
@@ -40,7 +40,7 @@
               [class.done]="stepDone(step.id)"
               [class.skipped]="stepSkipped(step.id)"
               [class.required-missing]="stepRequiredMissing(step.id)"
-              [disabled]="saving || uploadingImageSlotIndex !== null"
+              [disabled]="saving"
               (click)="setStep(step.id)"
               >
               <mat-icon>{{ stepIcon(step) }}</mat-icon>
@@ -135,48 +135,17 @@
 
           @if (currentStep().id === 'photos') {
             <section class="profile-onboarding-page profile-onboarding-photos-page">
-              <div class="profile-onboarding-photo-preview" [style.backgroundImage]="selectedImagePreview() ? 'url(' + selectedImagePreview() + ')' : 'none'">
-                @if (!selectedImagePreview()) {
-                  <span>Select a slot to upload an image</span>
-                }
-                @if (isSelectedImageUploading()) {
-                  <span class="profile-onboarding-slot-upload-ring profile-onboarding-photo-preview-ring" aria-label="Uploading image">
-                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
-                  </span>
-                }
-              </div>
-              <div class="profile-onboarding-photo-toolbar">
-                <span>{{ imageCount() }}/8 {{ 'images' | i18n }}</span>
-                @if (imageUploadError) {
+              @if (imageUploadError) {
+                <div class="profile-onboarding-photo-toolbar">
                   <span class="profile-onboarding-photo-error">{{ imageUploadError }}</span>
-                }
-              </div>
-              <input #onboardingImageInput class="profile-onboarding-image-file-input" type="file" accept="image/*" (change)="onImageFileChange($event)" />
-              <div class="profile-onboarding-image-grid" [attr.aria-label]="'Profile image slots' | i18n">
-                @for (slot of imageSlots; track i; let i = $index) {
-                  <button
-                    type="button"
-                    [class.slot-selected]="selectedImageIndex === i"
-                    [class.slot-featured]="i === 0"
-                    [class.slot-uploading]="isImageSlotUploading(i)"
-                    [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
-                    [disabled]="isImageSlotUploading(i)"
-                    (click)="selectImageSlot(i)"
-                    >
-                    <span class="profile-onboarding-slot-index">{{ i + 1 }}</span>
-                    @if (isImageSlotUploading(i)) {
-                      <span class="profile-onboarding-slot-upload-ring" aria-label="Uploading image">
-                        <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
-                      </span>
-                    } @else if (!slot) {
-                      <span class="profile-onboarding-slot-add">+</span>
-                    }
-                    @if (slot && !isImageSlotUploading(i)) {
-                      <span class="profile-onboarding-remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
-                    }
-                  </button>
-                }
-              </div>
+                </div>
+              }
+              <app-editable-image-carousel
+                [previewMode]="true"
+                [(ngModel)]="profileImageUrls"
+                [disabled]="saving"
+                [uploadOwnerId]="user.id"
+              ></app-editable-image-carousel>
             </section>
           }
 

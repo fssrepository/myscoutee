@@ -179,12 +179,17 @@
 }
 
 .profile-onboarding-body {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: auto;
   padding: 0.9rem;
 }
 
 .profile-onboarding-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   display: grid;
   gap: 0.82rem;
   align-content: start;
@@ -422,6 +427,8 @@
 }
 
 .profile-onboarding-photos-page {
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
 }
 
@@ -442,9 +449,8 @@
 }
 
 .profile-onboarding-photo-toolbar {
-  min-height: 22px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.6rem;
   color: #52647b;
   font-size: 0.78rem;

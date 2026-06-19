@@ -110,7 +110,7 @@ interface HelpEditorLanguageMenuContext {
   styleUrl: './admin-help-editor-popup.component.scss'
 })
 export class AdminHelpEditorPopupComponent {
-  private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
+  private static readonly IMAGE_LIMIT = 8;
   private static readonly LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private static readonly FALLBACK_SPAN_2_SECTION_IDS = new Set([
     'affinity-network',
@@ -162,7 +162,6 @@ export class AdminHelpEditorPopupComponent {
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected selectedExplanationContextKey = 'home.game';
-  protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
   protected documentMenuModel(): AppMenuModel<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
     const disabled = this.loading() || this.isAnyActionPending();
     return {
@@ -856,10 +855,6 @@ export class AdminHelpEditorPopupComponent {
     });
   }
 
-  protected setDraftSectionImageUrls(section: HelpEditorSectionDraft, imageUrls: readonly string[] | null | undefined): void {
-    section.imageUrls = this.normalizeSectionImageUrls(imageUrls);
-  }
-
   protected openIconPicker(section: HelpEditorSectionDraft, event?: Event): void {
     event?.stopPropagation();
     if (this.iconPickerSectionId === section.localId) {
@@ -1071,7 +1066,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'admin';
+    return this.appCtx.activeUserId().trim();
   }
 
   protected documentLabel(): string {
@@ -1548,7 +1543,7 @@ export class AdminHelpEditorPopupComponent {
       }
       seen.add(normalized);
       result.push(normalized);
-      if (result.length >= this.explanationImageSlotCount) {
+      if (result.length >= AdminHelpEditorPopupComponent.IMAGE_LIMIT) {
         break;
       }
     }

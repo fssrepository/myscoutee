@@ -207,9 +207,10 @@
           </div>
 
           <app-editable-image-carousel
-            [(imageUrls)]="editDraft.imageUrls"
-            [slotCount]="ideaImageSlotCount"
+            name="ideaImages"
+            [(ngModel)]="editDraft.imageUrls"
             [disabled]="saving"
+            [uploadOwnerId]="actorUserId()"
             ariaLabel="Article image slots"
           ></app-editable-image-carousel>
 

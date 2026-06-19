@@ -17,10 +17,9 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
-import { MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import { ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
+import { EditableImageCarouselComponent, I18nPipe } from '../../../shared/ui';
 import {
   AppMenuComponent,
   AppMenuDispatcher,
@@ -93,7 +92,7 @@ interface ExperienceImportDialogState {
     AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
-    ProgressIndicatorComponent,
+    EditableImageCarouselComponent,
     I18nPipe
   ],
   providers: [
@@ -105,7 +104,6 @@ interface ExperienceImportDialogState {
   styleUrl: './profile-editor.component.scss'
 })
 export class ProfileEditorComponent {
-  @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
   @ViewChild('experienceImportInput') private experienceImportInput?: ElementRef<HTMLInputElement>;
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -117,7 +115,6 @@ export class ProfileEditorComponent {
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
-  private readonly mediaService = inject(MediaService);
   private readonly profileDetailsFormByUser: Record<string, ProfileContracts.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
@@ -143,8 +140,6 @@ export class ProfileEditorComponent {
   protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected selectedImageIndex = 0;
-  protected pendingSlotUploadIndex: number | null = null;
-  protected uploadingImageSlotIndex: number | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
   protected experienceVisibility: Record<'workspace' | 'school', AppConstants.DetailPrivacy> = {
     workspace: 'Public',
@@ -227,6 +222,14 @@ export class ProfileEditorComponent {
     return this.imageSlots
       .map((slot, index) => (slot ? index : -1))
       .filter(index => index >= 0);
+  }
+
+  protected get profileImageUrls(): string[] {
+    return this.collectPersistedProfileImages();
+  }
+
+  protected set profileImageUrls(imageUrls: string[]) {
+    this.applyProfileImageUrls(imageUrls);
   }
 
   protected get profileCompletionPercent(): number {
@@ -335,59 +338,18 @@ export class ProfileEditorComponent {
     this.panel = 'experience';
   }
 
-  protected selectImageSlot(index: number): void {
-    if (this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const isSelectedSlot = this.selectedImageIndex === index;
-    const hasImage = Boolean(this.imageSlots[index]);
-    this.selectedImageIndex = index;
-    if (hasImage && !isSelectedSlot) {
-      return;
-    }
-    this.pendingSlotUploadIndex = index;
-    this.slotImageInput?.nativeElement.click();
-  }
-
-  protected selectImageFromStack(index: number): void {
-    if (!this.imageSlots[index]) {
-      return;
-    }
-    this.selectedImageIndex = index;
-  }
-
-  protected removeImage(index: number): void {
-    if (this.uploadingImageSlotIndex === index) {
-      return;
-    }
-    this.revokeObjectUrl(this.imageSlots[index]);
-    this.imageSlots[index] = null;
+  private applyProfileImageUrls(imageUrls: string[]): void {
+    const slots = this.createEmptyImageSlots();
+    imageUrls
+      .map(imageUrl => `${imageUrl ?? ''}`.trim())
+      .filter(Boolean)
+      .slice(0, slots.length)
+      .forEach((imageUrl, index) => {
+        slots[index] = imageUrl;
+      });
+    this.imageSlots = slots;
+    this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(this.selectedImageIndex);
     this.persistActiveUserImageSlots();
-    if (this.selectedImageIndex === index) {
-      const nearest = this.findNearestFilledImageIndex(index);
-      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
-    }
-  }
-
-  protected onSlotImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    const slotIndex = this.pendingSlotUploadIndex;
-    this.pendingSlotUploadIndex = null;
-    if (!file || slotIndex === null) {
-      target.value = '';
-      return;
-    }
-    target.value = '';
-    void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
-  }
-
-  protected isImageSlotUploading(index: number): boolean {
-    return this.uploadingImageSlotIndex === index;
-  }
-
-  protected isSelectedImageUploading(): boolean {
-    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
   protected openExperienceCreateAction(event?: Event): void {
@@ -2160,64 +2122,12 @@ export class ProfileEditorComponent {
     this.pushProfileUserToContextAndLegacyMirror(user);
   }
 
-  private findNearestFilledImageIndex(fromIndex: number): number {
-    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
-      const right = fromIndex + distance;
-      if (right < this.imageSlots.length && this.imageSlots[right]) {
-        return right;
-      }
-      const left = fromIndex - distance;
-      if (left >= 0 && this.imageSlots[left]) {
-        return left;
-      }
-    }
-    return this.imageSlots.findIndex(slot => Boolean(slot));
-  }
-
-  private async uploadAndRefreshProfileImageSlot(file: File, slotIndex: number): Promise<void> {
-    if (!this.profileUser) {
-      return;
-    }
-    const userId = this.profileUser.id;
-    const previousImage = this.imageSlots[slotIndex] ?? null;
-    this.uploadingImageSlotIndex = slotIndex;
-    this.cdr.markForCheck();
-    try {
-      this.syncActiveUserImageSlotsState(true);
-      const uploadResult = await this.mediaService.uploadImage(userId, `profile-${slotIndex}`, file);
-      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
-      if (!uploadResult.uploaded || !uploadedImageUrl) {
-        this.confirmationDialogService.openInfo('Unable to upload image', {
-          title: 'Upload failed',
-          confirmTone: 'neutral'
-        });
-        return;
-      }
-      this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = uploadedImageUrl;
-      this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-      this.syncActiveUserImageSlotsState(false);
-      if (this.profileUser) {
-        await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
-      }
-    } finally {
-      this.uploadingImageSlotIndex = null;
-      this.cdr.markForCheck();
-    }
-  }
-
   private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
     if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
       return slotIndex;
     }
     const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
     return firstFilled >= 0 ? firstFilled : 0;
-  }
-
-  private revokeObjectUrl(value: string | null): void {
-    if (value && value.startsWith('blob:')) {
-      URL.revokeObjectURL(value);
-    }
   }
 
   private async commitProfileForm(showAlert: boolean): Promise<void> {
@@ -2332,7 +2242,6 @@ export class ProfileEditorComponent {
     this.menuDispatcher.close();
     this.panel = 'profile';
     this.privacyFabJustSelectedKey = null;
-    this.pendingSlotUploadIndex = null;
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.pendingExperienceDeleteId = null;

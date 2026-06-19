@@ -2,115 +2,135 @@
 @let slotPages = pages();
 
 <div class="editable-image-carousel" role="region" [attr.aria-label]="ariaLabel" aria-roledescription="carousel">
-  @if (slotPages.length > 1 && carouselIndex > 0) {
-    <button
-      type="button"
-      class="editable-image-carousel__arrow editable-image-carousel__arrow--prev"
-      data-motion="none"
-      [disabled]="disabled || uploadingSlotIndex !== null"
-      (click)="showPreviousPage($event)"
-      aria-label="Previous image slot"
-      title="Previous"
+  @if (previewMode) {
+    @let previewUrl = selectedPreviewUrl(slots);
+    <div
+      class="editable-image-carousel__preview"
+      [class.is-empty]="!previewUrl"
+      [appLazyBgImage]="previewUrl || null"
     >
-      <mat-icon>chevron_left</mat-icon>
-    </button>
-  }
-
-  <div
-    #carouselViewport
-    class="editable-image-carousel__window"
-    (scroll)="onCarouselScroll()"
-  >
-    <div class="editable-image-carousel__strip" [style.transform]="carouselTransform()">
-      @for (page of slotPages; track $index) {
-        <div class="editable-image-carousel__page">
-          @for (slotIndex of page; track slotIndex) {
-            @let imageUrl = slots[slotIndex];
-            <article
-              class="editable-image-carousel__slot"
-              [class.is-primary]="slotIndex === primarySlotIndex"
-              [class.is-filled]="imageUrl"
-              [class.is-uploading]="isUploading(slotIndex)"
-              [appLazyBgImage]="imageUrl || null"
-            >
-              <span class="editable-image-carousel__slot-index">{{ slotIndex + 1 }}</span>
-
-              @if (isUploading(slotIndex)) {
-                <span class="editable-image-carousel__upload-ring" aria-label="Uploading image">
-                  <app-progress-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-progress-indicator>
-                </span>
-              } @else if (imageUrl) {
-                <button
-                  type="button"
-                  class="editable-image-carousel__slot-action editable-image-carousel__slot-action--copy"
-                  (click)="copySlot(imageUrl, slotIndex, $event)"
-                  aria-label="Copy image link"
-                  title="Copy link"
-                >
-                  <mat-icon>content_copy</mat-icon>
-                </button>
-                <button
-                  type="button"
-                  class="editable-image-carousel__slot-action editable-image-carousel__slot-action--remove"
-                  (click)="removeSlot(imageUrl, slotIndex, $event)"
-                  aria-label="Remove image"
-                  title="Remove"
-                >
-                  <mat-icon>close</mat-icon>
-                </button>
-              } @else {
-                <span class="editable-image-carousel__slot-add">+</span>
-              }
-
-              <input
-                #imageSlotInput
-                class="editable-image-carousel__slot-input"
-                type="file"
-                accept="image/*"
-                [disabled]="disabled || uploadingSlotIndex !== null"
-                (change)="uploadFromInput($event, slotIndex)"
-              />
-              <button
-                type="button"
-                class="editable-image-carousel__slot-hit"
-                [disabled]="disabled || uploadingSlotIndex !== null || isUploading(slotIndex)"
-                (click)="openSlot(imageSlotInput, $event)"
-                [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
-                [title]="imageUrl ? 'Replace image' : 'Upload image'"
-              ></button>
-            </article>
-          }
-        </div>
+      @if (!previewUrl) {
+        <span>Select a slot to upload an image</span>
+      }
+      @if (isSelectedPreviewUploading(slots)) {
+        <span class="editable-image-carousel__preview-ring" aria-label="Uploading image">
+          <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+        </span>
       }
     </div>
+  }
+
+  <div class="editable-image-carousel__carousel">
+    @if (slotPages.length > 1 && carouselIndex > 0) {
+      <button
+        type="button"
+        class="editable-image-carousel__arrow editable-image-carousel__arrow--prev"
+        data-motion="none"
+        [disabled]="isDisabled() || uploadingSlotIndex !== null"
+        (click)="showPreviousPage($event)"
+        aria-label="Previous image slot"
+        title="Previous"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+    }
+
+    <div
+      #carouselViewport
+      class="editable-image-carousel__window"
+      (scroll)="onCarouselScroll()"
+    >
+      <div class="editable-image-carousel__strip" [style.transform]="carouselTransform()">
+        @for (page of slotPages; track $index) {
+          <div class="editable-image-carousel__page">
+            @for (slotIndex of page; track slotIndex) {
+              @let imageUrl = slots[slotIndex];
+              <article
+                class="editable-image-carousel__slot"
+                [class.is-selected]="isSelected(slotIndex)"
+                [class.is-filled]="imageUrl"
+                [class.is-uploading]="isUploading(slotIndex)"
+                [appLazyBgImage]="imageUrl || null"
+              >
+                <span class="editable-image-carousel__slot-index">{{ slotIndex + 1 }}</span>
+
+                @if (isUploading(slotIndex)) {
+                  <span class="editable-image-carousel__upload-ring" aria-label="Uploading image">
+                    <app-progress-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-progress-indicator>
+                  </span>
+                } @else if (imageUrl) {
+                  <button
+                    type="button"
+                    class="editable-image-carousel__slot-action editable-image-carousel__slot-action--copy"
+                    (click)="copySlot(imageUrl, slotIndex, $event)"
+                    aria-label="Copy image link"
+                    title="Copy link"
+                  >
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="editable-image-carousel__slot-action editable-image-carousel__slot-action--remove"
+                    (click)="removeSlot(imageUrl, slotIndex, $event)"
+                    aria-label="Remove image"
+                    title="Remove"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                } @else {
+                  <span class="editable-image-carousel__slot-add">+</span>
+                }
+
+                <input
+                  #imageSlotInput
+                  class="editable-image-carousel__slot-input"
+                  type="file"
+                  accept="image/*"
+                  [disabled]="isDisabled() || uploadingSlotIndex !== null"
+                  (change)="uploadFromInput($event, slotIndex)"
+                />
+                <button
+                  type="button"
+                  class="editable-image-carousel__slot-hit"
+                  [disabled]="isDisabled() || uploadingSlotIndex !== null || isUploading(slotIndex)"
+                  (click)="openSlot(imageSlotInput, slotIndex, imageUrl, $event)"
+                  [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
+                  [title]="imageUrl ? 'Replace image' : 'Upload image'"
+                ></button>
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (slotPages.length > 1 && carouselIndex < slotPages.length - 1) {
+      <button
+        type="button"
+        class="editable-image-carousel__arrow editable-image-carousel__arrow--next"
+        data-motion="none"
+        [disabled]="isDisabled() || uploadingSlotIndex !== null"
+        (click)="showNextPage($event)"
+        aria-label="Next image slot"
+        title="Next"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    }
+
+    @if (slotPages.length > 1) {
+      <div class="editable-image-carousel__dots" aria-label="Image slot pages">
+        @for (page of slotPages; track $index; let pageIndex = $index) {
+          <button
+            type="button"
+            class="editable-image-carousel__dot"
+            [class.is-active]="carouselIndex === pageIndex"
+            [attr.aria-current]="carouselIndex === pageIndex ? 'true' : null"
+            [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
+            (click)="showPage(pageIndex, $event)"
+          ></button>
+        }
+      </div>
+    }
   </div>
-
-  @if (slotPages.length > 1 && carouselIndex < slotPages.length - 1) {
-    <button
-      type="button"
-      class="editable-image-carousel__arrow editable-image-carousel__arrow--next"
-      data-motion="none"
-      [disabled]="disabled || uploadingSlotIndex !== null"
-      (click)="showNextPage($event)"
-      aria-label="Next image slot"
-      title="Next"
-    >
-      <mat-icon>chevron_right</mat-icon>
-    </button>
-  }
-
-  @if (slotPages.length > 1) {
-    <div class="editable-image-carousel__dots" aria-label="Image slot pages">
-      @for (page of slotPages; track $index; let pageIndex = $index) {
-        <button
-          type="button"
-          class="editable-image-carousel__dot"
-          [class.is-active]="carouselIndex === pageIndex"
-          [attr.aria-current]="carouselIndex === pageIndex ? 'true' : null"
-          [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
-          (click)="showPage(pageIndex, $event)"
-        ></button>
-      }
-    </div>
-  }
 </div>

@@ -326,43 +326,11 @@
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
           @if (panel === 'image') {
             <div class="image-editor-wrap">
-              <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
-                @if (!selectedImagePreview) {
-                  <span>Select a slot to upload image</span>
-                }
-                @if (isSelectedImageUploading()) {
-                  <span class="slot-upload-ring image-editor-main-upload-ring" aria-label="Uploading image">
-                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
-                  </span>
-                }
-              </div>
-              <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
-              <input #slotImageInput class="image-file-input-hidden" type="file" accept="image/*" (change)="onSlotImageFileChange($event)" />
-              <div class="image-editor-grid">
-                @for (slot of imageSlots; track slot; let i = $index) {
-                  <button
-                    type="button"
-                    [class.slot-selected]="selectedImageIndex === i"
-                    [class.slot-featured]="i === 0"
-                    [class.slot-uploading]="isImageSlotUploading(i)"
-                    [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
-                    [disabled]="isImageSlotUploading(i)"
-                    (click)="selectImageSlot(i)"
-                    >
-                    <span class="slot-index">{{ i + 1 }}</span>
-                    @if (isImageSlotUploading(i)) {
-                      <span class="slot-upload-ring" aria-label="Uploading image">
-                        <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
-                      </span>
-                    } @else if (!slot) {
-                      <span class="slot-add">+</span>
-                    }
-                    @if (slot && !isImageSlotUploading(i)) {
-                      <span class="remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
-                    }
-                  </button>
-                }
-              </div>
+              <app-editable-image-carousel
+                [previewMode]="true"
+                [(ngModel)]="profileImageUrls"
+                [uploadOwnerId]="user.id"
+              ></app-editable-image-carousel>
             </div>
           }
           @if (panel === 'experience') {
