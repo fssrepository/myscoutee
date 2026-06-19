@@ -852,21 +852,18 @@
 :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list {
   display: flex;
   width: 100%;
-  height: 344px;
-  min-height: 344px;
+  height: auto;
+  min-height: 0;
 }
 
 :host ::ng-deep .entry-ideas-carousel-list {
   --smart-list-horizontal-item-basis: calc((100% - 1.56rem) / 3);
   border-radius: 14px;
   padding-top: 0.08rem;
-  padding-bottom: 2.28rem;
 }
 
 :host ::ng-deep .entry-featured-idea-card {
-  --entry-featured-idea-card-height: 320px;
   position: relative;
-  height: var(--entry-featured-idea-card-height);
   min-width: 0;
 }
 
@@ -880,20 +877,18 @@
 
 :host ::ng-deep app-info-card.entry-idea-info-card {
   display: block;
-  height: var(--entry-featured-idea-card-height, 320px);
   min-width: 0;
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card {
-  height: var(--entry-featured-idea-card-height, 320px);
-  min-height: var(--entry-featured-idea-card-height, 320px);
   border-radius: 12px;
   align-content: start;
   grid-template-rows: auto auto auto auto;
+  box-shadow: 0 4px 10px rgba(18, 35, 58, 0.04);
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__media {
-  height: 138px;
+  height: 130px;
 }
 
 :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__title {
@@ -948,7 +943,7 @@
   background: linear-gradient(180deg, #fff7e9 0%, #ffedc9 100%) !important;
   border-color: rgba(201, 144, 39, 0.3) !important;
   color: #9b6714 !important;
-  box-shadow: 0 8px 18px rgba(132, 82, 8, 0.16) !important;
+  box-shadow: 0 4px 10px rgba(132, 82, 8, 0.1) !important;
   font-size: 0.74rem !important;
   font-weight: 900 !important;
 }
@@ -1933,11 +1928,6 @@
     min-height: 350px;
   }
 
-  :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list {
-    height: 372px;
-    min-height: 372px;
-  }
-
   :host ::ng-deep .entry-ideas-carousel-list {
     --smart-list-horizontal-item-basis: 100%;
     padding-bottom: 2.42rem;
@@ -1945,10 +1935,6 @@
 
   :host ::ng-deep app-smart-list.entry-ideas-carousel-smart-list .ui-info-card {
     touch-action: pan-x pan-y;
-  }
-
-  :host ::ng-deep .entry-featured-idea-card {
-    --entry-featured-idea-card-height: 320px;
   }
 
   :host ::ng-deep app-info-card.entry-idea-info-card .ui-info-card__media {

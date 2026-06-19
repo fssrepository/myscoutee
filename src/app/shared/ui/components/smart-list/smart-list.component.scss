@@ -496,11 +496,10 @@
   gap: var(--smart-list-horizontal-gap);
   overflow-x: auto;
   overflow-y: hidden;
-  padding-bottom: 0.72rem;
+  padding-bottom: 0;
   scroll-padding-left: 0;
-  scrollbar-color: rgba(105, 128, 164, 0.42) rgba(219, 228, 240, 0.72);
-  scrollbar-width: thin;
-  -ms-overflow-style: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
@@ -513,19 +512,7 @@
 }
 
 .smart-list--list.smart-list--horizontal::-webkit-scrollbar {
-  display: block;
-  height: 0.5rem;
-}
-
-.smart-list--list.smart-list--horizontal::-webkit-scrollbar-track {
-  border-radius: 999px;
-  background: rgba(219, 228, 240, 0.72);
-}
-
-.smart-list--list.smart-list--horizontal::-webkit-scrollbar-thumb {
-  border: 2px solid rgba(219, 228, 240, 0.72);
-  border-radius: 999px;
-  background: rgba(105, 128, 164, 0.48);
+  display: none;
 }
 
 .smart-list--list.smart-list--horizontal.smart-list--snap-proximity {
