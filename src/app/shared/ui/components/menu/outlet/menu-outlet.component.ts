@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  ElementRef,
   EventEmitter,
   HostBinding,
   HostListener,
@@ -55,6 +56,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
 
   private readonly dispatcher = inject(AppMenuDispatcher);
+  private readonly hostRef = inject(ElementRef<HTMLElement>);
   @Input() menu: AppMenuDispatchState<TId, TContext> | null = null;
   @Input() items: readonly AppMenuItem<TId, TContext>[] | null = null;
 
@@ -268,10 +270,10 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
       right: this.viewportWidth(),
       bottom: this.viewportHeight()
     };
-    const triggerElement = menu.triggerElement;
-    if (!triggerElement || typeof window === 'undefined') {
+    if (typeof window === 'undefined') {
       return viewport;
     }
+    const triggerElement = menu.triggerElement ?? this.hostRef.nativeElement;
     let parent = triggerElement.parentElement;
     while (parent && parent !== document.body && parent !== document.documentElement) {
       const style = window.getComputedStyle(parent);
