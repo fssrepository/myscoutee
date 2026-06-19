@@ -624,9 +624,10 @@
   color: rgba(26, 44, 69, 0.88);
 }
 
-.experience-selector-row .profile-details-values-btn {
-  width: 345px;
+.experience-selector-row .experience-selector-menu {
+  width: 320px;
   max-width: 100%;
+  min-height: 36px;
   justify-self: start;
 }
 
@@ -1447,7 +1448,7 @@
   .profile-details-select,
   .profile-details-values-menu,
   .profile-details-values-btn,
-  .experience-selector-row .profile-details-values-btn {
+  .experience-selector-row .experience-selector-menu {
     width: 100%;
     max-width: none;
     min-width: 0;

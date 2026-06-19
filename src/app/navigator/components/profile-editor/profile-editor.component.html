@@ -271,18 +271,16 @@
                     <h4>Experience</h4>
                     <div class="experience-selector-grid">
                       <div class="experience-selector-row">
-                        <span>Workspace</span>
+                        <span>{{ experienceSelectorLabelKey('Workspace') | i18n }}</span>
                         <div class="profile-details-control-row">
-                          <button
-                            type="button"
-                            class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
-                            (click)="openWorkspaceSelector()"
-                            >
-                            <span class="status-option-content">
-                              <span>{{ workspaceExperienceSummary }}</span>
-                            </span>
-                            <mat-icon>chevron_right</mat-icon>
-                          </button>
+                          <app-menu
+                            class="experience-selector-menu"
+                            kind="select"
+                            [title]="experienceSelectorLabelKey('Workspace') | i18n"
+                            [trigger]="experienceSelectorMenuTrigger('Workspace')"
+                            [model]="experienceSelectorMenuModel('Workspace')"
+                            (itemSelect)="onProfileEditorMenuSelect($event)"
+                          ></app-menu>
                           <div class="profile-details-privacy-fab">
                             <app-menu-trigger
                               kind="select"
@@ -294,18 +292,16 @@
                         </div>
                       </div>
                       <div class="experience-selector-row">
-                        <span>School</span>
+                        <span>{{ experienceSelectorLabelKey('School') | i18n }}</span>
                         <div class="profile-details-control-row">
-                          <button
-                            type="button"
-                            class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
-                            (click)="openSchoolSelector()"
-                            >
-                            <span class="status-option-content">
-                              <span>{{ schoolExperienceSummary }}</span>
-                            </span>
-                            <mat-icon>chevron_right</mat-icon>
-                          </button>
+                          <app-menu
+                            class="experience-selector-menu"
+                            kind="select"
+                            [title]="experienceSelectorLabelKey('School') | i18n"
+                            [trigger]="experienceSelectorMenuTrigger('School')"
+                            [model]="experienceSelectorMenuModel('School')"
+                            (itemSelect)="onProfileEditorMenuSelect($event)"
+                          ></app-menu>
                           <div class="profile-details-privacy-fab">
                             <app-menu-trigger
                               kind="select"

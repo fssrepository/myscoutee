@@ -39,12 +39,14 @@ import type * as ProfileContracts from '../../../shared/core/contracts/profile.i
 import type * as AppConstants from '../../../shared/core/common/constants';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
+type ProfileEditorExperienceSelectorType = Extract<ProfileContracts.ExperienceEntry['type'], 'Workspace' | 'School'>;
 
 type ProfileEditorMenuContext =
   | { kind: 'profileStatus'; value: AppConstants.ProfileStatus }
   | { kind: 'physique'; value: string }
   | { kind: 'detailValue'; groupIndex: number; rowIndex: number; value: string }
   | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppConstants.DetailPrivacy }
+  | { kind: 'experienceSelector'; value: ProfileEditorExperienceSelectorType }
   | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppConstants.DetailPrivacy }
   | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
   | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
@@ -251,16 +253,6 @@ export class ProfileEditorComponent {
     return [...filtered].sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
   }
 
-  protected get workspaceExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'Workspace').length;
-    return `${count} items`;
-  }
-
-  protected get schoolExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'School').length;
-    return `${count} items`;
-  }
-
   protected get canSaveExperienceEntry(): boolean {
     return Boolean(this.experienceForm.title.trim() && this.experienceForm.org.trim() && this.experienceRangeStart);
   }
@@ -317,20 +309,65 @@ export class ProfileEditorComponent {
     this.panel = 'image';
   }
 
-  protected openWorkspaceSelector(): void {
-    this.openExperienceSelector('Workspace');
-  }
-
-  protected openSchoolSelector(): void {
-    this.openExperienceSelector('School');
-  }
-
   protected openExperienceSelector(filter: ProfileContracts.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
     this.resetExperienceForm();
     this.panel = 'experience';
+  }
+
+  protected experienceSelectorLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.workplace'
+      : 'profile.experience.school';
+  }
+
+  protected experienceSelectorMenuTrigger(type: ProfileEditorExperienceSelectorType): AppMenuTrigger {
+    const entries = this.experienceSelectorEntries(type);
+    return {
+      icon: this.experienceTypeIcon(type),
+      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(type)),
+      shape: 'field',
+      action: 'custom',
+      trailingIcon: 'chevron_right',
+      ariaLabel: entries.length > 0
+        ? this.experienceSelectorOpenLabelKey(type)
+        : this.experienceSelectorEmptyLabelKey(type),
+      context: { kind: 'experienceSelector', value: type }
+    };
+  }
+
+  protected experienceSelectorMenuModel(
+    type: ProfileEditorExperienceSelectorType
+  ): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
+    const palette = this.paletteFromProfileTone(this.experienceTypeToneClass(type));
+    return {
+      presentation: 'tabs',
+      summary: {
+        emptyLabel: this.experienceSelectorEmptyLabelKey(type),
+        maxLabels: 2,
+        counter: 'overflow'
+      },
+      groups: [{
+        id: `experience-selector-${type.toLowerCase().replace(/\s+/g, '-')}`,
+        label: this.experienceSelectorLabelKey(type),
+        icon: this.experienceTypeIcon(type),
+        palette,
+        items: this.experienceSelectorEntries(type).map(entry => ({
+          id: `experience-selector-${type}:${entry.id}`,
+          label: this.experienceSelectorEntryLabel(entry),
+          icon: this.experienceTypeIcon(type),
+          kind: 'checkbox',
+          active: true,
+          checked: true,
+          removable: false,
+          closeOnSelect: false,
+          palette,
+          context: { kind: 'experienceSelector', value: type }
+        }))
+      }]
+    };
   }
 
   private applyProfileImageUrls(imageUrls: string[]): void {
@@ -671,6 +708,9 @@ export class ProfileEditorComponent {
       case 'experiencePrivacy':
         this.experienceVisibility[context.type] = context.value;
         return;
+      case 'experienceSelector':
+        this.openExperienceSelector(context.value);
+        return;
       case 'experienceFilter':
         this.experienceFilter = context.value;
         return;
@@ -925,6 +965,31 @@ export class ProfileEditorComponent {
 
   protected experienceVisibilityValue(type: 'workspace' | 'school'): AppConstants.DetailPrivacy {
     return this.experienceVisibility[type];
+  }
+
+  private experienceSelectorEntries(type: ProfileEditorExperienceSelectorType): ProfileContracts.ExperienceEntry[] {
+    return this.experienceEntries
+      .filter(item => item.type === type)
+      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
+  }
+
+  private experienceSelectorEntryLabel(entry: ProfileContracts.ExperienceEntry): string {
+    return entry.title.trim()
+      || entry.org.trim()
+      || entry.city.trim()
+      || this.experienceSelectorLabelKey(entry.type as ProfileEditorExperienceSelectorType);
+  }
+
+  private experienceSelectorEmptyLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.selectWorkplace'
+      : 'profile.experience.selectSchool';
+  }
+
+  private experienceSelectorOpenLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.openWorkplace'
+      : 'profile.experience.openSchool';
   }
 
   private updateMultiValueDetailRow(
