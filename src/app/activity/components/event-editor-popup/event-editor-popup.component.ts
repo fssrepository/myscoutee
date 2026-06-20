@@ -26,14 +26,15 @@ import {
 import type { ActivityEventDTO } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
+  buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   CounterBadgePipe,
   PricingEditorComponent,
-  ProgressIndicatorComponent,
-  TopicPickerPopupComponent
+  ProgressIndicatorComponent
 } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
 import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
@@ -43,6 +44,8 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'frequency'; frequency: string }
+  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
+  | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
   | { menu: 'save' };
 
@@ -60,7 +63,6 @@ type EventEditorMenuContext =
     MatTimepickerModule,
     MatNativeDateModule,
     AppMenuComponent,
-    TopicPickerPopupComponent,
     EventSubeventsPopupComponent,
     PricingEditorComponent,
     ProgressIndicatorComponent,
@@ -130,7 +132,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.showSlotsPopup = false;
         this.showPoliciesPopup = false;
         this.showPolicyEditorPopup = false;
-        this.showTopicPicker = false;
         this.showSubEventsPopup = false;
         this.resetDraftAutosaveTracking();
         return;
@@ -158,7 +159,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showSlotsPopup = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
-      this.showTopicPicker = false;
       this.showSubEventsPopup = true;
     });
 
@@ -193,14 +193,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
       this.showSubEventsPopup = false;
-      this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showSubEventsPopup = false;
-      this.showTopicPicker = false;
       this.showPoliciesPopup = false;
       this.showPolicyEditorPopup = false;
       this.isLoadingEventData.set(false);
@@ -253,7 +251,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showSlotsPopup = false;
   showPoliciesPopup = false;
   showPolicyEditorPopup = false;
-  showTopicPicker = false;
   showSubEventsPopup = false;
   isSavePending = false;
   workingPolicies: ContractTypes.EventPolicyItem[] = [];
@@ -268,7 +265,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showPoliciesPopup = false;
     this.showPolicyEditorPopup = false;
     this.showSubEventsPopup = false;
-    this.showTopicPicker = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
     this.clearEventEditorExplanationContext();
@@ -316,7 +312,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   requestOpenMembers(): void {
-    this.showTopicPicker = false;
     const eventId = this.currentEventIdentity() || 'draft-event';
     const canManageMembers = !this.eventEditorService.readOnly();
     const row: AppTypes.ActivityListRow = {
@@ -343,32 +338,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   requestOpenSubEvents(): void {
     this.showSlotsPopup = false;
-    this.showTopicPicker = false;
     this.showSubEventsPopup = true;
-  }
-
-  requestOpenTopics(event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (this.eventEditorService.readOnly()) {
-      return;
-    }
-    this.showSlotsPopup = false;
-    this.showPoliciesPopup = false;
-    this.showPolicyEditorPopup = false;
-    this.showSubEventsPopup = false;
-    this.showTopicPicker = true;
-  }
-
-  closeTopicPicker(): void {
-    this.showTopicPicker = false;
-  }
-
-  updateTopicSelection(topics: readonly string[]): void {
-    if (this.eventEditorService.readOnly()) {
-      return;
-    }
-    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics(topics);
   }
 
   closeSubEventsPopup(): void {
@@ -684,6 +654,86 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }));
   }
 
+  protected eventIntelMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    return [
+      {
+        id: 'event-blind-mode',
+        label: this.eventForm.blindMode,
+        detail: this.eventBlindModeDescription(this.eventForm.blindMode),
+        icon: this.eventBlindModeIcon(this.eventForm.blindMode),
+        kind: 'toggle',
+        layout: 'big',
+        active: EventEditorConverter.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
+        checked: EventEditorConverter.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
+        palette: EventEditorConverter.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event' ? 'red' : 'green',
+        disabled: this.eventStructureReadOnly(),
+        closeOnSelect: false,
+        context: { menu: 'event-intel', action: 'toggle-blind-mode' }
+      },
+      {
+        id: 'event-topics',
+        label: 'Topics',
+        icon: 'sell',
+        kind: 'select-trigger',
+        layout: 'big',
+        active: this.eventForm.topics.length > 0,
+        checked: this.eventForm.topics.length > 0,
+        palette: 'violet',
+        disabled: this.eventEditorService.readOnly(),
+        closeOnSelect: false,
+        filterable: true,
+        ariaLabel: 'Open topics',
+        model: this.eventTopicsMenuModel()
+      },
+      {
+        id: 'event-auto-inviter',
+        label: this.eventAutoInviterLabel(this.eventForm.autoInviter),
+        detail: this.eventAutoInviterDescription(this.eventForm.autoInviter),
+        icon: this.eventAutoInviterIcon(this.eventForm.autoInviter),
+        kind: 'toggle',
+        layout: 'big',
+        active: this.eventForm.autoInviter,
+        checked: this.eventForm.autoInviter,
+        palette: this.eventForm.autoInviter ? 'green' : 'slate',
+        disabled: this.eventEditorService.readOnly(),
+        closeOnSelect: false,
+        context: { menu: 'event-intel', action: 'toggle-auto-inviter' }
+      },
+      {
+        id: 'event-ticketing',
+        label: this.eventTicketingLabel(this.eventForm.ticketing),
+        detail: this.eventTicketingDescription(this.eventForm.ticketing),
+        icon: this.eventTicketingIcon(this.eventForm.ticketing),
+        kind: 'toggle',
+        layout: 'big',
+        active: this.eventForm.ticketing,
+        checked: this.eventForm.ticketing,
+        palette: this.eventForm.ticketing ? 'green' : 'blue',
+        disabled: this.eventStructureReadOnly(),
+        closeOnSelect: false,
+        context: { menu: 'event-intel', action: 'toggle-ticketing' }
+      }
+    ];
+  }
+
+  private eventTopicsMenuModel(): AppMenuModel<string, EventEditorMenuContext> {
+    return buildTabbedMenuModel<string, EventEditorMenuContext>({
+      idPrefix: 'event-topic',
+      groups: this.interestOptionGroups,
+      selected: this.eventForm.topics,
+      maxSelected: 5,
+      context: topic => ({ menu: 'topics', topic }),
+      normalize: topic => EventEditorConverter.normalizeEventEditorTopicToken(topic),
+      itemLabel: topic => this.eventTopicLabel(topic),
+      removeAriaLabel: topic => `Remove ${this.eventTopicLabel(topic)}`,
+      summary: {
+        emptyLabel: 'Select topics',
+        maxLabels: 2,
+        counter: 'overflow'
+      }
+    });
+  }
+
   getVisibilityIcon(visibility: string): string {
     switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
@@ -717,10 +767,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
-  eventBlindModeClass(mode: string): string {
-    return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'blind-mode-blind' : 'blind-mode-open';
-  }
-
   eventBlindModeIcon(mode: string): string {
     return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
   }
@@ -729,18 +775,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event'
       ? 'Attendees won\'t see each other before the event.'
       : 'Attendees can preview each other before the event.';
-  }
-
-  eventTopicsPanelClass(): string {
-    return 'section-identity';
-  }
-
-  eventTopicsPanelIcon(): string {
-    return 'sell';
-  }
-
-  eventAutoInviterClass(enabled: boolean): string {
-    return enabled ? 'auto-inviter-on' : 'auto-inviter-off';
   }
 
   eventAutoInviterIcon(enabled: boolean): string {
@@ -755,10 +789,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return enabled
       ? 'Invites people by matching mutual preferences.'
       : 'Manual invites only.';
-  }
-
-  eventTicketingClass(enabled: boolean): string {
-    return enabled ? 'event-ticketing-on' : 'event-ticketing-off';
   }
 
   eventTicketingIcon(enabled: boolean): string {
@@ -871,7 +901,52 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (event.context.menu === 'frequency') {
       event.sourceEvent.stopPropagation();
       this.onEventFrequencyChange(event.context.frequency);
+      return;
     }
+    if (event.context.menu === 'event-intel') {
+      if (event.context.action === 'toggle-blind-mode') {
+        this.toggleEventBlindMode(event.sourceEvent);
+        return;
+      }
+      if (event.context.action === 'toggle-auto-inviter') {
+        this.toggleEventAutoInviter(event.sourceEvent);
+        return;
+      }
+      this.toggleEventTicketing(event.sourceEvent);
+      return;
+    }
+    if (event.context.menu === 'topics') {
+      this.toggleEventTopic(event.context.topic, event.action);
+    }
+  }
+
+  private toggleEventTopic(topic: string, action: AppMenuItemSelectEvent<string, EventEditorMenuContext>['action']): void {
+    if (this.eventEditorService.readOnly()) {
+      return;
+    }
+    const normalizedTopics = EventEditorConverter.normalizeEventEditorTopics(this.eventForm.topics);
+    const normalizedTopic = EventEditorConverter.normalizeEventEditorTopicToken(topic);
+    if (!normalizedTopic) {
+      return;
+    }
+    const existingIndex = normalizedTopics.findIndex(item =>
+      EventEditorConverter.normalizeEventEditorTopicToken(item) === normalizedTopic
+    );
+    if (action === 'remove') {
+      if (existingIndex < 0) {
+        return;
+      }
+      this.eventForm.topics = normalizedTopics.filter((_, index) => index !== existingIndex);
+      return;
+    }
+    if (existingIndex >= 0) {
+      this.eventForm.topics = normalizedTopics.filter((_, index) => index !== existingIndex);
+      return;
+    }
+    if (normalizedTopics.length >= 5) {
+      return;
+    }
+    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics([...normalizedTopics, topic]);
   }
 
   private eventEditorCanContinueCheckoutDraft(draft: EventCheckoutDraft): boolean {
@@ -1095,19 +1170,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   subEventsDisplayModeIcon(mode: string = this.subEventsDisplayMode): string {
     return mode === 'Tournament' ? 'emoji_events' : 'groups';
-  }
-
-  interestOptionToneClass(topic: string): string {
-    const normalizedTopic = EventEditorConverter.normalizeEventEditorTopicToken(topic);
-    if (!normalizedTopic) {
-      return '';
-    }
-    for (const group of this.interestOptionGroups) {
-      if (group.options.some(option => EventEditorConverter.normalizeEventEditorTopicToken(option) === normalizedTopic)) {
-        return group.toneClass;
-      }
-    }
-    return '';
   }
 
   eventTopicLabel(topic: string): string {

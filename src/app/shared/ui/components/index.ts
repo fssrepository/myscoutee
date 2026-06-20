@@ -4,7 +4,6 @@ export * from './editable-image-carousel';
 export * from './progress-indicator';
 export * from './menu';
 export * from './smart-list';
-export * from './topic-picker-popup';
 export * from './pricing-editor';
 export * from './pricing-slot-panel';
 export * from './event-checkout-popup';

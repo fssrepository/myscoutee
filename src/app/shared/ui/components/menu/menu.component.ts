@@ -192,6 +192,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.isButtonRowKind;
   }
 
+  @HostBinding('class.app-menu-host--button-row-big')
+  protected get hostButtonRowBigClass(): boolean {
+    return this.isButtonRowBig;
+  }
+
   @HostBinding('class.app-menu-host--kind-fab')
   protected get hostFabKindClass(): boolean {
     return this.isFabKind;
@@ -316,6 +321,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected get isButtonRowKind(): boolean {
     return this.kind === 'button-row';
+  }
+
+  protected get isButtonRowBig(): boolean {
+    return this.isButtonRowKind && this.actionRowItems.some(item => this.itemLayout(item) === 'big');
   }
 
   protected get isShortcutGridKind(): boolean {
@@ -822,7 +831,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.isSelectTriggerItem(item) || item.layout === 'summary' || (item.layout === 'action' && !!this.actionRowItemLabel(item));
+    return this.itemLayout(item) === 'big'
+      || this.isSelectTriggerItem(item)
+      || item.layout === 'summary'
+      || (item.layout === 'action' && !!this.actionRowItemLabel(item));
   }
 
   protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
@@ -844,6 +856,26 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected actionRowItemLabel(item: AppMenuItem<TId, TContext>): string {
     return this.itemLabel(item);
+  }
+
+  protected actionRowItemDetail(item: AppMenuItem<TId, TContext>): string {
+    const summary = this.actionRowItemModelSummary(item);
+    if (summary.label) {
+      return summary.label;
+    }
+    return this.itemDetail(item) || this.itemDescription(item);
+  }
+
+  protected hasActionRowItemSummaryCounter(item: AppMenuItem<TId, TContext>): boolean {
+    return this.counterVisible(this.actionRowItemModelSummary(item).counter);
+  }
+
+  protected actionRowItemSummaryCounterLabel(item: AppMenuItem<TId, TContext>): string {
+    return this.counterLabel(this.actionRowItemModelSummary(item).counter);
+  }
+
+  protected actionRowItemSummaryCounterKey(item: AppMenuItem<TId, TContext>): string {
+    return `${this.itemCounterKey(item)}:summary`;
   }
 
   protected actionRowItemAriaLabel(item: AppMenuItem<TId, TContext>): string | null {
@@ -1556,6 +1588,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   private modelSummary(): AppMenuModelSummaryResult {
     return appMenuModelSummary(this.model, this.groups, this.controlSelection());
+  }
+
+  private actionRowItemModelSummary(item: AppMenuItem<TId, TContext>): AppMenuModelSummaryResult {
+    return appMenuModelSummary(item.model, item.groups ?? []);
   }
 
   private controlSelection(): AppMenuModelSummarySelection | null {

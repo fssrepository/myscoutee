@@ -82,19 +82,53 @@
             @if (actionRowItemIcon(item)) {
               <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
             }
-            @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
-              <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
-            }
-            @if (hasItemCounter(item)) {
-              <span
-                class="app-menu__counter app-menu__counter--trigger"
-                [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
-                >
-                {{ itemCounterLabel(item) }}
+            @if (isButtonRowBig) {
+              <span class="app-menu__button-row-copy">
+                @if (actionRowItemLabel(item)) {
+                  <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+                }
+                @if (actionRowItemDetail(item); as detail) {
+                  <span class="app-menu__button-row-detail">
+                    <span>{{ detail | i18n }}</span>
+                  </span>
+                }
               </span>
-            }
-            @if (isLabeledActionRowItem(item) && hasNestedItems(item)) {
-              <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
+              @if (hasNestedItems(item)) {
+                <span class="app-menu__button-row-trailing">
+                  <mat-icon class="app-menu__button-row-caret">chevron_right</mat-icon>
+                </span>
+              }
+              @if (hasActionRowItemSummaryCounter(item)) {
+                <span
+                  class="app-menu__counter app-menu__counter--summary-corner"
+                  [class.app-menu__counter--pulse]="isCounterPulsing(actionRowItemSummaryCounterKey(item))"
+                  >
+                  {{ actionRowItemSummaryCounterLabel(item) }}
+                </span>
+              }
+              @if (hasItemCounter(item)) {
+                <span
+                  class="app-menu__counter app-menu__counter--trigger"
+                  [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                  >
+                  {{ itemCounterLabel(item) }}
+                </span>
+              }
+            } @else {
+              @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
+                <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+              }
+              @if (hasItemCounter(item)) {
+                <span
+                  class="app-menu__counter app-menu__counter--trigger"
+                  [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                  >
+                  {{ itemCounterLabel(item) }}
+                </span>
+              }
+              @if (isLabeledActionRowItem(item) && hasNestedItems(item)) {
+                <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
+              }
             }
           </button>
         }
