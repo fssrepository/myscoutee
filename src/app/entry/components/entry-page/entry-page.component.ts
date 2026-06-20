@@ -93,13 +93,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       selection.fail();
       return;
     }
-    selection.complete();
-    await this.waitForDemoSelectorClose();
     try {
       const navigated = await this.router.navigateByUrl(this.redirectUrl());
       if (!navigated) {
         selection.fail();
+        return;
       }
+      selection.complete();
     } catch {
       selection.fail();
     }
@@ -184,16 +184,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private syncMobileView(): void {
     this.isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
-  }
-
-  private waitForDemoSelectorClose(): Promise<void> {
-    return new Promise(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
-        return;
-      }
-      setTimeout(resolve, 0);
-    });
   }
 
   private beginAutoOnboardingIfReady(): void {
