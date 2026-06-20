@@ -82,6 +82,13 @@ export interface ActivityMembersSyncState {
   capacityTotal: number;
 }
 
+export interface ActivityResourceSyncState {
+  updatedMs: number;
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
 export interface AppContextAdminUserDto {
   id: string;
   name: string;
@@ -138,6 +145,7 @@ export class AppContext {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
+  private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
   private readonly _privacyState = signal<HelpCenterState | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
@@ -150,6 +158,7 @@ export class AppContext {
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly activityResourceSync = this._activityResourceSync.asReadonly();
   readonly privacyState = this._privacyState.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
@@ -584,6 +593,20 @@ export class AppContext {
     });
   }
 
+  emitActivityResourceSync(payload: Omit<ActivityResourceSyncState, 'updatedMs'>): void {
+    const ownerId = payload.ownerId.trim();
+    const subEventId = payload.subEventId.trim();
+    const assetOwnerUserId = payload.assetOwnerUserId.trim();
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return;
+    }
+    this._activityResourceSync.set({
+      updatedMs: Date.now(),
+      ownerId,
+      subEventId,
+      assetOwnerUserId
+    });
+  }
 
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {

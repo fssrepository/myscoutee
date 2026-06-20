@@ -144,9 +144,9 @@ export class SeedEventBuilder {
         capacityMax,
         membersAccepted: accepted,
         membersPending: Math.max(0, capacityMax - accepted),
-        carsPending: (seed + index) % 3,
-        accommodationPending: (seed + index + 1) % 3,
-        suppliesPending: (seed + index + 2) % 4
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0
       });
     }
     return this.sortSubEventsByStartAsc(items);
@@ -211,9 +211,9 @@ export class SeedEventBuilder {
         capacityMax: totals.max,
         membersAccepted: accepted,
         membersPending: Math.max(0, totals.max - accepted),
-        carsPending: (seed + index) % 2,
-        accommodationPending: (seed + index + 1) % 2,
-        suppliesPending: (seed + index + 2) % 3,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
         stageStatus,
         stageStatusReason: stageStatus === 'RS'
           ? 'awaiting-tournament-start'
