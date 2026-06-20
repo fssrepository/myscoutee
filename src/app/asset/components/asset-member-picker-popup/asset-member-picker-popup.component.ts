@@ -18,7 +18,7 @@ import { from } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent, BasketComponent, LazyBgImageDirective, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuTrigger, type BasketChip, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemTemplateContext, type SmartListLoaders, type SmartListStateChange
+  AppMenuComponent, BasketComponent, ImageCardComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuTrigger, type BasketChip, type ImageCardData, type ImageCardMediaAction, type ImageCardMediaActionEvent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemTemplateContext, type SmartListLoaders, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
@@ -45,7 +45,7 @@ type AssetMemberPickerMenuContext =
     AppMenuComponent,
     BasketComponent,
     SmartListComponent,
-    LazyBgImageDirective
+    ImageCardComponent
   ],
   templateUrl: './asset-member-picker-popup.component.html',
   styleUrls: ['./asset-member-picker-popup.component.scss'],
@@ -343,6 +343,60 @@ export class AssetMemberPickerPopupComponent {
       ? ''
       : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return dateLabel ? `${entry.metWhere} · ${dateLabel}` : entry.metWhere;
+  }
+
+  protected inviteCandidateCard(candidate: ActivityContracts.ActivityMemberEntry): ImageCardData {
+    return {
+      id: candidate.id,
+      title: candidate.name,
+      subtitle: this.inviteMetLabel(candidate),
+      imageUrl: candidate.avatarUrl,
+      placeholderIcon: 'highlight_off',
+      placeholderLabel: candidate.initials,
+      layout: 'overlay',
+      toneClass: 'asset-invite-candidate-card'
+    };
+  }
+
+  protected inviteCandidateMediaActions(candidate: ActivityContracts.ActivityMemberEntry): readonly ImageCardMediaAction[] {
+    const selected = this.isInviteCandidateSelected(candidate.userId);
+    return [
+      {
+        id: 'toggle',
+        icon: 'add',
+        selectedIcon: 'check',
+        ariaLabel: selected ? 'Unselect friend' : 'Select friend',
+        position: 'top-right',
+        tone: selected ? 'success' : 'default',
+        selected,
+        disabled: this.isConfirmPending,
+        className: this.isInviteCandidatePersisted(candidate.userId) ? 'is-persisted' : null
+      },
+      {
+        id: 'view',
+        icon: 'visibility',
+        ariaLabel: 'View profile',
+        position: 'bottom-right',
+        tone: 'info',
+        disabled: this.isConfirmPending
+      }
+    ];
+  }
+
+  protected onInviteCandidateMediaAction(
+    candidate: ActivityContracts.ActivityMemberEntry,
+    event: ImageCardMediaActionEvent
+  ): void {
+    switch (event.action.id) {
+      case 'toggle':
+        this.toggleInviteCandidate(candidate.userId, event.sourceEvent);
+        return;
+      case 'view':
+        this.viewCandidateProfile(candidate, event.sourceEvent);
+        return;
+      default:
+        return;
+    }
   }
 
   protected viewCandidateProfile(candidate: ActivityContracts.ActivityMemberEntry, event: Event): void {

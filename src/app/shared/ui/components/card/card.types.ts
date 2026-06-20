@@ -1,3 +1,5 @@
+import type { AppMenuPalette } from '../menu/menu.types';
+
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
 export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
@@ -293,6 +295,9 @@ export type ImageCardMode = 'individual' | 'pair' | string;
 export type ImageCardDirection = 'given' | 'received' | 'mutual' | 'met' | string;
 export type ImageCardGender = 'woman' | 'man';
 export type ImageCardSocialContext = 'separated-friends' | 'friends-in-common';
+export type ImageCardLayout = 'stacked' | 'overlay';
+export type ImageCardMediaActionPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+export type ImageCardMediaActionTone = 'default' | 'accent' | 'info' | 'success' | 'warning' | 'destructive';
 
 export interface ImageCardPerson {
   id: string;
@@ -303,10 +308,42 @@ export interface ImageCardPerson {
   profile?: unknown | null;
 }
 
+export interface ImageCardStatusChip {
+  icon?: string | null;
+  label?: string | null;
+  ariaLabel?: string | null;
+  title?: string | null;
+  tone?: ImageCardMediaActionTone | null;
+  palette?: AppMenuPalette | null;
+  className?: string | null;
+}
+
+export interface ImageCardMediaAction {
+  id: string;
+  icon: string;
+  selectedIcon?: string | null;
+  ariaLabel?: string | null;
+  title?: string | null;
+  tone?: ImageCardMediaActionTone | null;
+  position?: ImageCardMediaActionPosition | null;
+  selected?: boolean;
+  disabled?: boolean;
+  className?: string | null;
+}
+
 export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {
   title: string;
   subtitle?: string | null;
   detail?: string | null;
+  imageUrl?: string | null;
+  placeholderIcon?: string | null;
+  placeholderLabel?: string | null;
+  layout?: ImageCardLayout | null;
+  toneClass?: string | null;
+  statusChip?: ImageCardStatusChip | null;
+  mediaActions?: readonly ImageCardMediaAction[];
+  menuTitle?: string | null;
+  menuBadgeCount?: number | null;
   mode?: ImageCardMode | null;
   direction?: ImageCardDirection | null;
   displayedDirection?: ImageCardDirection | null;
@@ -330,6 +367,13 @@ export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEage
   bridgeCount?: number | null;
   scoreGiven?: number | null;
   scoreReceived?: number | null;
+}
+
+export interface ImageCardMediaActionEvent<TCard extends ImageCardData = ImageCardData> {
+  id: string;
+  action: ImageCardMediaAction;
+  card: TCard;
+  sourceEvent: Event;
 }
 
 export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEagerDetail> {

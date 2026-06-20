@@ -20,14 +20,16 @@ import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { ActivityMembersService, ChatsService, EventsService, UsersService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
-  AppMenuTriggerComponent,
   CounterBadgePipe,
-  LazyBgImageDirective,
+  ImageCardComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
+  type ImageCardData,
+  type ImageCardMediaAction,
+  type ImageCardMediaActionEvent,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
@@ -67,9 +69,8 @@ type MembersSummaryState = {
     CommonModule,
     MatButtonModule,
     MatIconModule,
-    AppMenuTriggerComponent,
     SmartListComponent,
-    LazyBgImageDirective,
+    ImageCardComponent,
     CounterBadgePipe
   ],
   templateUrl: './event-members-popup.component.html',
@@ -510,6 +511,62 @@ export class EventMembersPopupComponent {
     return Boolean(`${entry.userId ?? ''}`.trim());
   }
 
+  protected memberImageCard(entry: ActivityContracts.ActivityMemberEntry): ImageCardData {
+    const age = this.age(entry);
+    const pendingDetail = entry.status === 'pending' || entry.status === 'disqualified'
+      ? this.pendingStatusLabel(entry)
+      : null;
+    return {
+      id: entry.id,
+      title: age > 0 ? `${entry.name}, ${age}` : entry.name,
+      subtitle: `${this.roleLabel(entry)} · ${entry.city}`,
+      detail: pendingDetail,
+      imageUrl: entry.avatarUrl,
+      placeholderIcon: 'highlight_off',
+      placeholderLabel: entry.initials,
+      layout: 'overlay',
+      toneClass: [
+        'subevent-member-image-card',
+        'activity-member-image-card',
+        this.memberCardToneClass(entry),
+        this.isActionMenuOpen(entry) ? 'menu-open' : ''
+      ].filter(Boolean).join(' '),
+      statusChip: {
+        icon: this.memberCardStatusIcon(entry),
+        title: this.memberCardStatusLabel(entry),
+        ariaLabel: this.memberCardStatusLabel(entry),
+        palette: this.memberCardStatusPalette(entry),
+        className: this.memberCardStatusClass(entry)
+      }
+    };
+  }
+
+  protected memberImageCardMediaActions(entry: ActivityContracts.ActivityMemberEntry): readonly ImageCardMediaAction[] {
+    if (!this.canViewMemberProfile(entry)) {
+      return [];
+    }
+    return [{
+      id: 'view-profile',
+      icon: 'visibility',
+      ariaLabel: 'View profile',
+      position: 'bottom-right',
+      tone: 'info'
+    }];
+  }
+
+  protected memberImageCardSharedMenuItems(entry: ActivityContracts.ActivityMemberEntry): readonly AppMenuItem<string, unknown>[] {
+    return this.canShowActionMenu(entry) ? this.memberActionMenuItems(entry) : [];
+  }
+
+  protected onMemberImageCardMediaAction(
+    entry: ActivityContracts.ActivityMemberEntry,
+    event: ImageCardMediaActionEvent
+  ): void {
+    if (event.action.id === 'view-profile') {
+      this.viewMemberProfile(entry, event.sourceEvent);
+    }
+  }
+
   protected viewMemberProfile(entry: ActivityContracts.ActivityMemberEntry, event: Event): void {
     event.stopPropagation();
     const userId = `${entry.userId ?? ''}`.trim();
@@ -670,6 +727,25 @@ export class EventMembersPopupComponent {
       return this.roleLabel(entry);
     }
     return this.pendingStatusLabel(entry);
+  }
+
+  protected memberCardStatusPalette(entry: ActivityContracts.ActivityMemberEntry): AppMenuPalette {
+    if (entry.status === 'disqualified') {
+      return 'muted';
+    }
+    if (entry.status === 'accepted') {
+      if (entry.role === 'Admin') {
+        return 'blue';
+      }
+      if (entry.role === 'Manager') {
+        return 'gold';
+      }
+      return 'green';
+    }
+    if (this.isJoinRequest(entry)) {
+      return 'red';
+    }
+    return 'orange';
   }
 
   protected age(entry: ActivityContracts.ActivityMemberEntry): number {

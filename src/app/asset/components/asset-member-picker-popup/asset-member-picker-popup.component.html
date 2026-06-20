@@ -56,35 +56,11 @@
           (stateChange)="onInviteSmartListStateChange($event)"
         ></app-smart-list>
         <ng-template #inviteItemTemplate let-candidate>
-          <article class="experience-item-card friends-picker-card asset-invite-candidate-card" [appLazyBgImage]="candidate.avatarUrl">
-            <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
-              <mat-icon>highlight_off</mat-icon>
-            </span>
-            <button
-              type="button"
-              class="friends-picker-card-view-btn"
-              [disabled]="isConfirmPending"
-              (click)="viewCandidateProfile(candidate, $event)"
-              aria-label="View profile"
-              >
-              <mat-icon>visibility</mat-icon>
-            </button>
-            <button
-              type="button"
-              class="friends-picker-card-add-btn"
-              [class.active]="isInviteCandidateSelected(candidate.userId)"
-              [class.is-persisted]="isInviteCandidatePersisted(candidate.userId)"
-              [disabled]="isConfirmPending"
-              (click)="toggleInviteCandidate(candidate.userId, $event)"
-              [attr.aria-label]="isInviteCandidateSelected(candidate.userId) ? 'Unselect friend' : 'Select friend'"
-              >
-              <mat-icon>{{ isInviteCandidateSelected(candidate.userId) ? 'check' : 'add' }}</mat-icon>
-            </button>
-            <div class="friends-picker-card-meta">
-              <h4>{{ candidate.name }}</h4>
-              <p>{{ inviteMetLabel(candidate) }}</p>
-            </div>
-          </article>
+          <app-image-card
+            [card]="inviteCandidateCard(candidate)"
+            [mediaActions]="inviteCandidateMediaActions(candidate)"
+            (mediaAction)="onInviteCandidateMediaAction(candidate, $event)"
+          ></app-image-card>
         </ng-template>
       </div>
     </div>
