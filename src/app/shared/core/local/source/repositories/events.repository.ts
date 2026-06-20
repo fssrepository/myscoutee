@@ -667,45 +667,17 @@ export class LocalEventsRepository {
         id: `${groupId}-member-${memberIndex + 1}`,
         name: `Member ${memberIndex + 1}`
       }));
-      const scoreRows = members
-        .map((member, memberIndex) => ({
-          memberId: member.id,
-          memberName: member.name,
-          total: Math.max(0, 48 - groupIndex * 4 - memberIndex * 5),
-          updates: 2 + ((groupIndex + memberIndex) % 3)
-        }))
-        .sort((left, right) => right.total - left.total || left.memberName.localeCompare(right.memberName));
-      const fifaRows = members
-        .map((member, memberIndex) => {
-          const points = Math.max(0, 12 - groupIndex - memberIndex * 2);
-          const goalsFor = Math.max(0, 9 - memberIndex);
-          const goalsAgainst = Math.max(0, 3 + memberIndex);
-          return {
-            memberId: member.id,
-            memberName: member.name,
-            points,
-            played: 3,
-            wins: Math.max(0, Math.min(3, Math.floor(points / 3))),
-            draws: points % 3 === 1 ? 1 : 0,
-            losses: Math.max(0, 3 - Math.floor(points / 3) - (points % 3 === 1 ? 1 : 0)),
-            goalsFor,
-            goalsAgainst,
-            goalDiff: goalsFor - goalsAgainst
-          };
-        })
-        .sort((left, right) => right.points - left.points || right.goalDiff - left.goalDiff || left.memberName.localeCompare(right.memberName));
-      const advancingSource = leaderboardType === 'Fifa' ? fifaRows : scoreRows;
       return {
         groupId,
         title: `${group.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
         memberCount,
         advancePerGroup,
-        advancingMemberIds: advancingSource.slice(0, advancePerGroup).map(row => row.memberId),
+        advancingMemberIds: [],
         members,
         scoreEntries: [],
         fifaMatches: [],
-        scoreRows: leaderboardType === 'Score' ? scoreRows : [],
-        fifaRows: leaderboardType === 'Fifa' ? fifaRows : []
+        scoreRows: [],
+        fifaRows: []
       };
     });
     return {

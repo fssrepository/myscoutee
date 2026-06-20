@@ -2,7 +2,7 @@
 
 @include shared.host-motion-vars();
 @include shared.interactive-feedback(
-  '.popup-header-add-btn, .experience-form-close-btn, .subevent-leaderboard-group-head, .subevent-leaderboard-group-add, .subevent-leaderboard-history-back-btn'
+  '.popup-header-add-btn, .experience-form-close-btn, .subevent-leaderboard-group-add, .subevent-leaderboard-history-back-btn'
 );
 
 .experience-form-overlay {
@@ -188,7 +188,19 @@
   gap: 0.3rem;
   background: linear-gradient(180deg, #f8fcff 0%, #edf4ff 100%);
   cursor: pointer;
+  transition: background-color var(--interactive-motion-duration) var(--interactive-motion-ease);
   box-sizing: border-box;
+}
+
+.subevent-leaderboard-group-head:focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .subevent-leaderboard-group-head:hover {
+    background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
+  }
 }
 
 .subevent-leaderboard-group-title {
@@ -263,11 +275,11 @@
 
 .subevent-leaderboard-table th,
 .subevent-leaderboard-table td {
-  padding: 0.2rem 0.16rem;
+  padding: 0.24rem 0.2rem;
   border-bottom: 1px solid rgba(67, 99, 140, 0.16);
   color: #254568;
-  font-size: 0.67rem;
-  line-height: 1.18;
+  font-size: 0.76rem;
+  line-height: 1.22;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -300,7 +312,7 @@
 
 .subevent-leaderboard-table-score th:nth-child(5),
 .subevent-leaderboard-table-score td:nth-child(5) {
-  width: 18px;
+  width: 16px;
 }
 
 .subevent-leaderboard-table-fifa th:nth-child(2),
@@ -327,7 +339,7 @@
 
 .subevent-leaderboard-table-fifa th:nth-child(7),
 .subevent-leaderboard-table-fifa td:nth-child(7) {
-  width: 18px;
+  width: 16px;
 }
 
 .subevent-leaderboard-table tr.is-advance td {
@@ -486,10 +498,10 @@
 }
 
 .subevent-leaderboard-row-forward {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
-  line-height: 14px;
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+  line-height: 12px;
   color: rgba(36, 72, 116, 0.7);
   vertical-align: middle;
 }
@@ -497,21 +509,21 @@
 .subevent-leaderboard-history-head {
   display: inline-flex;
   align-items: center;
-  gap: 0.34rem;
+  gap: 0.42rem;
   min-width: 0;
 }
 
 .subevent-leaderboard-history-head strong {
   color: #22476f;
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   font-weight: 800;
   line-height: 1.1;
   min-width: 0;
 }
 
 .subevent-leaderboard-history-back-btn {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border: 1px solid rgba(63, 95, 133, 0.26);
   border-radius: 50%;
   background: linear-gradient(180deg, #f6f9ff 0%, #eaf1fd 100%);
