@@ -1177,7 +1177,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return;
     }
     if (this.activeBranchPath.length > 0) {
-      if (!this.activeBranch || this.visibleSelectableListItems().length === 0) {
+      if (!this.activeBranch) {
+        this.setOpen(false);
+        return;
+      }
+      if (this.activeBranchTabbedPresentation) {
+        if (this.tabsGroups.length === 0) {
+          this.setOpen(false);
+        }
+        return;
+      }
+      if (this.visibleSelectableListItems().length === 0) {
         this.setOpen(false);
       }
       return;
