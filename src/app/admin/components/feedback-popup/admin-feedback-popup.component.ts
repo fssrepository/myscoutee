@@ -7,9 +7,11 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import type { AdminFeedbackDto } from '../../../shared/core';
 import {
+  SingleRowComponent,
   SmartListComponent,
   type ListQuery,
   type PageResult,
+  type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
@@ -34,7 +36,7 @@ interface AdminFeedbackListItem {
 @Component({
   selector: 'app-admin-feedback-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent],
   templateUrl: './admin-feedback-popup.component.html',
   styleUrl: '../admin-popups.scss'
 })
@@ -87,6 +89,35 @@ export class AdminFeedbackPopupComponent {
     this.feedbackDetail = item.feedback;
   }
 
+  protected feedbackSingleRow(item: AdminFeedbackListItem, groupLabel: string | null): SingleRowData {
+    const feedback = item.feedback;
+    return {
+      id: item.id,
+      groupLabel,
+      title: feedback.userName || 'Feedback',
+      subtitle: feedback.subject || this.feedbackCategoryLabel(feedback),
+      detail: feedback.details || this.feedbackListMeta(feedback),
+      avatarInitials: this.feedbackInitial(feedback),
+      avatarUrl: this.feedbackAvatarUrl(feedback) || null,
+      avatarAriaLabel: feedback.userName || 'Feedback author',
+      surfaceTone: this.feedbackSingleRowTone(feedback),
+      badges: [
+        {
+          label: this.feedbackTime(feedback.createdDate),
+          tone: 'muted',
+          position: 'side'
+        },
+        {
+          label: this.feedbackCategoryLabel(feedback),
+          tone: this.feedbackCategoryBadgeTone(feedback),
+          position: 'side'
+        }
+      ],
+      clickable: true,
+      eagerDetail: feedback
+    };
+  }
+
   protected closeFeedbackDetails(): void {
     this.feedbackDetail = null;
   }
@@ -126,6 +157,25 @@ export class AdminFeedbackPopupComponent {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'general'}`;
+  }
+
+  protected feedbackSingleRowTone(item: AdminFeedbackDto): NonNullable<SingleRowData['surfaceTone']> {
+    switch (this.feedbackCategoryLabel(item)) {
+      case 'Bug report':
+        return 'danger';
+      case 'Feature request':
+        return 'success';
+      case 'UX improvement':
+        return 'accent';
+      case 'Performance':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  }
+
+  protected feedbackCategoryBadgeTone(item: AdminFeedbackDto): NonNullable<SingleRowData['sideLabelTone']> {
+    return this.feedbackSingleRowTone(item);
   }
 
   protected shortDate(value: string | null | undefined): string {

@@ -36,36 +36,11 @@
         ></app-smart-list>
 
         <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel">
-          <button
-            type="button"
-            class="admin-report-card admin-feedback-card activities-card activities-card-btn activities-row-item activities-card-chat"
-            [ngClass]="reportReasonToneClass(item.report)"
-            [attr.data-group-label]="groupLabel"
-            (click)="openReportDetails(item)"
-            >
-            @if (reporterImageUrl(item.report); as reporterImageUrl) {
-              <span
-                class="activities-card-avatar has-photo"
-                [style.backgroundImage]="'url(' + reporterImageUrl + ')'"
-                aria-hidden="true"
-              ></span>
-            } @else {
-              <span class="activities-card-avatar" [ngClass]="'user-color-' + item.user.gender">
-                {{ reporterInitial(item.report) }}
-              </span>
-            }
-            <div class="activities-card-main">
-              <p class="activities-card-title">{{ item.report.reporterName }}</p>
-              <p class="activities-card-subtitle">{{ item.report.reporterName }} reported {{ reportedHandle(item) }}</p>
-              <p class="activities-card-detail">{{ item.report.details }}</p>
-            </div>
-            <span class="admin-report-card-meta">
-              <span class="admin-report-time-badge">{{ reportTime(item.report.createdDate) }}</span>
-              <span class="admin-report-reason-badge">
-                {{ reportBadgeLabel(item.report) }}
-              </span>
-            </span>
-          </button>
+          <single-row
+            [row]="reportSingleRow(item, groupLabel)"
+            [clickable]="true"
+            (rowClick)="openReportDetails(item)"
+          ></single-row>
         </ng-template>
       </div>
     </div>
@@ -116,32 +91,16 @@
                 [class.has-member-image]="memberImageUrl(item.user)"
                 (click)="openSharedUrl(reportMemberUrl(item), $event)"
                 >
-                <app-menu
-                  class="admin-report-member-menu-wrap"
-                  kind="button-row"
-                  [model]="reportDetailActionsMenuModel(item.user)"
-                  (itemSelect)="onReportActionsMenuSelect($event)"
-                ></app-menu>
-                <div class="admin-report-member-image-card">
-                  <span class="admin-member-card-status" aria-hidden="true">
-                    <mat-icon>{{ isUserBlocked(item.user) ? 'person_off' : 'person' }}</mat-icon>
-                  </span>
-                  @if (memberImageUrl(item.user); as imageUrl) {
-                    <img
-                      class="admin-report-member-image"
-                      [src]="imageUrl"
-                      [alt]="reportedHandle(item)"
-                    />
-                  } @else {
-                    <span class="admin-report-member-image admin-report-member-image-empty" [ngClass]="'user-color-' + item.user.gender">
-                      {{ item.user.initials }}
-                    </span>
-                  }
-                  <span class="admin-report-member-image-copy">
-                    <strong>{{ memberCardTitle(item.user, reportedHandle(item)) }}</strong>
-                    <small>{{ memberDescription(item.user) }}</small>
-                  </span>
-                </div>
+                <app-image-card
+                  [card]="reportedUserImageCard(item.user, {
+                    idPrefix: 'report-detail-member',
+                    title: memberCardTitle(item.user, reportedHandle(item))
+                  })"
+                  [menuId]="'report-detail-member-menu-' + (item.user.userId || item.user.name)"
+                  [menuTitle]="memberCardTitle(item.user, reportedHandle(item))"
+                  [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'report-detail')"
+                  [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail')"
+                ></app-image-card>
               </div>
 
               <button
@@ -194,40 +153,23 @@
           [config]="blockedUsersSmartListConfig"
           [loadPage]="blockedUsersSmartListLoadPage"
           [itemTemplate]="blockedUserItemTemplateRef ?? null"
+          (menuItemSelect)="onReportActionsMenuSelect($event)"
         ></app-smart-list>
 
         <ng-template #blockedUserItemTemplate let-item>
-          <article class="admin-blocked-user-card" [class.has-member-image]="memberImageUrl(item.user)">
-            <span class="admin-member-card-status admin-blocked-card-status" aria-hidden="true">
-              <mat-icon>person_off</mat-icon>
-            </span>
-            @if (memberImageUrl(item.user); as imageUrl) {
-              <span
-                class="admin-blocked-user-image"
-                [style.backgroundImage]="'url(' + imageUrl + ')'"
-                aria-hidden="true"
-              ></span>
-            } @else {
-              <span class="admin-blocked-user-image admin-blocked-user-image-empty" [ngClass]="'user-color-' + item.user.gender">
-                {{ item.user.initials }}
-              </span>
-            }
-            <span class="admin-blocked-user-copy">
-              <strong>{{ memberCardTitle(item.user) }}</strong>
-              <small>{{ memberDescription(item.user) }}</small>
-            </span>
-            <app-menu
-              class="admin-report-member-menu-wrap admin-blocked-user-menu-wrap"
-              kind="button-row"
-              [model]="blockedUserActionsMenuModel(item.user)"
-              (itemSelect)="onReportActionsMenuSelect($event)"
-            ></app-menu>
-          </article>
+          <app-image-card
+            [card]="reportedUserImageCard(item.user, { idPrefix: 'blocked-user' })"
+            [menuId]="'blocked-user-menu-' + (item.user.userId || item.user.name)"
+            [menuTitle]="memberCardTitle(item.user)"
+            [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'blocked-user')"
+            [sharedMenuItems]="reportedUserMenuItems(item.user, 'blocked-user')"
+          ></app-image-card>
         </ng-template>
       </div>
     </div>
   </section>
 }
 
+<app-menu-outlet (itemSelect)="onReportActionsMenuSelect($event)"></app-menu-outlet>
 <app-admin-chat-review-popup></app-admin-chat-review-popup>
 <app-admin-item-preview-popup></app-admin-item-preview-popup>

@@ -1,35 +1,39 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
+import { I18nService } from '../../../../../shared/core';
 import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
-  AppMenuComponent,
-  CounterBadgePipe,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger
+  type CardMenuActionEvent,
+  SingleRowComponent,
+  type SingleRowData
 } from '../../../../../shared/ui';
-import { I18nPipe } from '../../../../../shared/ui';
 import {
   buildActivitiesChatTemplateData,
   type ActivitiesChatTemplateData
 } from './activities-chat-template.builder';
 
+type SupportCaseMenuActionId =
+  | 'supportPick'
+  | 'supportUnpick'
+  | 'supportSolve'
+  | 'supportBlock'
+  | 'supportReopen';
+
 @Component({
   selector: 'app-activities-chat-template',
   standalone: true,
-  imports: [CommonModule, MatIconModule, AppMenuComponent, CounterBadgePipe, I18nPipe],
+  imports: [SingleRowComponent],
   templateUrl: './activities-chat-template.component.html',
   styleUrl: './activities-chat-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesChatTemplateComponent implements OnChanges {
+  private readonly i18n = inject(I18nService);
+
   @Input() row: AppTypes.ActivityListRow | null = null;
   @Input() groupLabel: string | null = null;
   @Input() activeUserInitials = '';
@@ -39,10 +43,12 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
   @Output() readonly supportCaseAction = new EventEmitter<ContractTypes.SupportCaseAction>();
 
   protected data: ActivitiesChatTemplateData | null = null;
+  protected singleRow: SingleRowData | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['row'] || changes['groupLabel'] || changes['activeUserInitials'] || changes['adminServiceMode']) {
       this.data = this.buildTemplateData();
+      this.singleRow = this.buildSingleRowData(this.data);
     }
   }
 
@@ -58,78 +64,123 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
     });
   }
 
+  private buildSingleRowData(data: ActivitiesChatTemplateData | null): SingleRowData | null {
+    if (!data) {
+      return null;
+    }
+    return {
+      id: data.id,
+      groupLabel: data.groupLabel,
+      title: data.title,
+      subtitle: data.subtitle,
+      detail: data.detail,
+      unread: data.showSupportControls ? 0 : data.unread,
+      badgeCount: data.showSupportControls ? 0 : data.unread,
+      memberCount: data.showSupportControls ? 0 : data.memberCount,
+      avatarInitials: data.avatarInitials,
+      avatarToneClass: data.avatarClass,
+      surfaceTone: data.showSupportControls
+        ? this.supportCaseSurfaceTone(data.supportCaseStatus)
+        : this.chatSurfaceTone(data.toneClass),
+      badges: data.showSupportControls
+        ? [{
+          label: this.supportCaseBadgeLabel(data),
+          title: this.supportCaseBadgeLabel(data),
+          tone: this.supportCaseBadgeTone(data.supportCaseStatus),
+          position: 'top-right'
+        }]
+        : [],
+      menuActions: data.showSupportControls
+        ? this.supportCaseMenuActionIds(data.supportCaseStatus)
+        : [],
+      clickable: true
+    };
+  }
+
   protected onRowClick(event: Event): void {
     this.rowClick.emit(event);
   }
 
-  protected onRowKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-      return;
-    }
-    event.preventDefault();
-    this.rowClick.emit(event);
-  }
-
-  protected supportCaseMenuTrigger(): AppMenuTrigger {
-    return {
-      icon: 'more_horiz',
-      closeIcon: 'close',
-      ariaLabel: 'activities.support.case.actions',
-      hideLabel: true,
-      palette: 'blue',
-      shape: 'icon'
-    };
-  }
-
-  protected supportCaseMenuItems(): readonly AppMenuItem<string, { action: ContractTypes.SupportCaseAction }>[] {
-    return this.supportCaseActions().map(item => ({
-      id: `support-case-action:${item.action}`,
-      label: item.labelKey,
-      icon: item.icon,
-      palette: this.supportCaseMenuPalette(item.tone),
-      surface: 'tinted',
-      context: { action: item.action }
-    }));
-  }
-
-  protected onSupportCaseMenuSelect(event: AppMenuItemSelectEvent<string, { action: ContractTypes.SupportCaseAction }>): void {
-    const action = event.context?.action;
+  protected onSingleRowMenuAction(event: CardMenuActionEvent<SingleRowData>): void {
+    const action = this.supportCaseActionForMenuAction(event.actionId);
     if (!action) {
       return;
     }
     this.supportCaseAction.emit(action);
   }
 
-  protected supportCaseActions(): Array<{ action: ContractTypes.SupportCaseAction; labelKey: string; icon: string; tone: string }> {
-    const status = this.data?.supportCaseStatus ?? 'pending';
+  private supportCaseMenuActionIds(status: ContractTypes.SupportCaseStatus | null): readonly SupportCaseMenuActionId[] {
     if (status === 'solved' || status === 'blocked') {
-      return [
-        { action: 'reopen', labelKey: 'activities.support.case.action.reopen', icon: 'restart_alt', tone: 'neutral' }
-      ];
+      return ['supportReopen'];
     }
     if (status === 'picked') {
-      return [
-        { action: 'unpick', labelKey: 'activities.support.case.action.unpick', icon: 'person_remove', tone: 'neutral' },
-        { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
-        { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
-      ];
+      return ['supportUnpick', 'supportSolve', 'supportBlock'];
     }
-    return [
-      { action: 'pick', labelKey: 'activities.support.case.action.pick', icon: 'person_add', tone: 'accent' },
-      { action: 'solve', labelKey: 'activities.support.case.action.solve', icon: 'check_circle', tone: 'accent' },
-      { action: 'block', labelKey: 'activities.support.case.action.block', icon: 'block', tone: 'danger' }
-    ];
+    return ['supportPick', 'supportSolve', 'supportBlock'];
   }
 
-  private supportCaseMenuPalette(tone: string): AppMenuPalette {
-    switch (tone) {
-      case 'danger':
-        return 'danger';
-      case 'accent':
-        return 'green';
+  private supportCaseActionForMenuAction(actionId: string): ContractTypes.SupportCaseAction | null {
+    switch (actionId) {
+      case 'supportPick':
+        return 'pick';
+      case 'supportUnpick':
+        return 'unpick';
+      case 'supportSolve':
+        return 'solve';
+      case 'supportBlock':
+        return 'block';
+      case 'supportReopen':
+        return 'reopen';
       default:
-        return 'neutral';
+        return null;
     }
+  }
+
+  private supportCaseBadgeLabel(data: ActivitiesChatTemplateData): string {
+    const assigneeName = data.supportCaseAssigneeName.trim();
+    if (assigneeName) {
+      return `${this.i18n.translate('activities.support.case.assignee.by')} ${assigneeName}`.trim();
+    }
+    return this.i18n.translate(data.supportCaseLabelKey);
+  }
+
+  private supportCaseBadgeTone(status: ContractTypes.SupportCaseStatus | null): NonNullable<SingleRowData['surfaceTone']> {
+    switch (status) {
+      case 'picked':
+        return 'info';
+      case 'solved':
+        return 'success';
+      case 'blocked':
+        return 'danger';
+      default:
+        return 'warning';
+    }
+  }
+
+  private supportCaseSurfaceTone(status: ContractTypes.SupportCaseStatus | null): SingleRowData['surfaceTone'] {
+    return this.supportCaseBadgeTone(status);
+  }
+
+  private chatSurfaceTone(toneClass: string): SingleRowData['surfaceTone'] {
+    if (toneClass.includes('activities-card-chat-group-sub-event')) {
+      return 'success';
+    }
+    if (toneClass.includes('activities-card-chat-optional-sub-event')) {
+      return 'warning';
+    }
+    if (toneClass.includes('activities-card-chat-service-notification')) {
+      return 'danger';
+    }
+    if (
+      toneClass.includes('activities-card-chat-service-event')
+      || toneClass.includes('activities-card-chat-service-asset')
+    ) {
+      return 'neutral';
+    }
+    if (toneClass.includes('activities-card-chat-main-event')) {
+      return 'info';
+    }
+    return 'default';
   }
 }
 

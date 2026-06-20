@@ -15,10 +15,23 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent, BasketComponent, ImageCardComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuTrigger, type BasketChip, type ImageCardData, type ImageCardMediaAction, type ImageCardMediaActionEvent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemTemplateContext, type SmartListLoaders, type SmartListStateChange
+  AppMenuComponent,
+  ImageCardComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  type ImageCardData,
+  type ImageCardMediaAction,
+  type ImageCardMediaActionEvent,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListItemTemplateContext,
+  type SmartListLoaders,
+  type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
@@ -34,6 +47,7 @@ interface ActivityInviteFilters {
 
 type AssetMemberPickerMenuContext =
   | { menu: 'invite-sort'; sort: AppConstants.ActivityInviteSort }
+  | { menu: 'invite-basket'; candidate: ActivityContracts.ActivityMemberEntry }
   | { menu: 'confirm' };
 
 @Component({
@@ -43,7 +57,6 @@ type AssetMemberPickerMenuContext =
     MatButtonModule,
     MatIconModule,
     AppMenuComponent,
-    BasketComponent,
     SmartListComponent,
     ImageCardComponent
   ],
@@ -216,7 +229,21 @@ export class AssetMemberPickerPopupComponent {
 
   protected inviteConfirmMenuItems(): readonly AppMenuItem<string, AssetMemberPickerMenuContext>[] {
     const hasError = !this.isConfirmPending && !!this.confirmErrorMessage;
-    return [{
+    const items: AppMenuItem<string, AssetMemberPickerMenuContext>[] = [];
+    const count = this.selectedInviteCount();
+    if (count > 0) {
+      items.push({
+        id: 'invite-basket',
+        icon: 'groups',
+        openIcon: 'groups',
+        palette: 'blue',
+        kind: 'branch',
+        counter: count,
+        ariaLabel: 'Open selected members',
+        items: this.selectedInviteBasketMenuItems()
+      });
+    }
+    items.push({
       id: 'invite-confirm',
       icon: 'done',
       layout: 'action',
@@ -230,12 +257,36 @@ export class AssetMemberPickerPopupComponent {
           }
         : null,
       context: { menu: 'confirm' }
-    }];
+    });
+    return items;
+  }
+
+  protected selectedInviteBasketMenuItems(): readonly AppMenuItem<string, AssetMemberPickerMenuContext>[] {
+    return this.selectedInviteChips().map(candidate => ({
+      id: `invite-basket-${candidate.userId}`,
+      label: candidate.name,
+      description: this.inviteMetLabel(candidate),
+      icon: 'person',
+      kind: 'action',
+      palette: 'blue',
+      surface: 'tinted',
+      removable: true,
+      removeIcon: 'close',
+      removeAriaLabel: `Remove ${candidate.name}`,
+      closeOnSelect: false,
+      context: { menu: 'invite-basket', candidate }
+    }));
   }
 
   protected onInviteMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     const context = event.context as AssetMemberPickerMenuContext | undefined;
     if (!context) {
+      return;
+    }
+    if (context.menu === 'invite-basket') {
+      if (event.action === 'remove') {
+        this.toggleInviteCandidate(context.candidate.userId, event.sourceEvent);
+      }
       return;
     }
     if (context.menu === 'confirm') {
@@ -315,20 +366,6 @@ export class AssetMemberPickerPopupComponent {
 
   protected selectedInviteCount(): number {
     return this.selectedUserIds.length;
-  }
-
-  protected selectedInviteCountLabel(): string {
-    const count = this.selectedInviteCount();
-    return count === 1 ? '1 selected' : `${count} selected`;
-  }
-
-  protected selectedInviteBasketChips(): BasketChip[] {
-    return this.selectedInviteChips().map(chip => ({
-      id: chip.userId,
-      label: chip.name,
-      avatarLabel: chip.initials,
-      avatarClass: `user-color-${chip.gender}`
-    }));
   }
 
   protected selectedInviteChips(): ActivityContracts.ActivityMemberEntry[] {

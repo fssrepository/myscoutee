@@ -7,21 +7,25 @@ import { from } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { AppContext } from '../../../shared/ui';
 import { AdminModerationService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
 import {
+  AppContext,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  ImageCardComponent,
+  SingleRowComponent,
   SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
+  type ImageCardData,
   type ListQuery,
   type PageResult,
+  type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import {
-  AppMenuComponent,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel
-} from '../../../shared/ui/components/menu';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
@@ -71,13 +75,16 @@ interface AdminReportActionsMenuContext {
   imports: [
     CommonModule,
     MatIconModule,
-    AppMenuComponent,
+    AppMenuOutletComponent,
+    ImageCardComponent,
+    SingleRowComponent,
     SmartListComponent,
     AdminChatReviewPopupComponent,
     AdminItemPreviewPopupComponent
   ],
   templateUrl: './admin-reports-popup.component.html',
-  styleUrl: '../admin-popups.scss'
+  styleUrl: '../admin-popups.scss',
+  providers: [AppMenuDispatcher]
 })
 export class AdminReportsPopupComponent {
   protected readonly admin = inject(AdminShellService);
@@ -148,8 +155,8 @@ export class AdminReportsPopupComponent {
     emptyLabel: 'No blocked users',
     emptyDescription: 'No profiles are currently blocked by moderation.',
     showStickyHeader: true,
-    showFirstGroupMarker: true,
-    showGroupMarker: () => true,
+    showFirstGroupMarker: false,
+    showGroupMarker: ({ groupIndex }) => groupIndex > 0,
     groupBy: item => AppUtils.activityGroupLabel(item.row, 'day', APP_STATIC_DATA.activityGroupLabels),
     listLayout: 'card-grid',
     desktopColumns: 4,
@@ -184,6 +191,36 @@ export class AdminReportsPopupComponent {
   protected openReportDetails(item: AdminReportListItem): void {
     this.reportDetail = item;
     this.admin.openReportDetail(item.user, item.report);
+  }
+
+  protected reportSingleRow(item: AdminReportListItem, groupLabel: string | null): SingleRowData {
+    const report = item.report;
+    return {
+      id: item.id,
+      groupLabel,
+      title: report.reporterName || 'Reporter',
+      subtitle: `${report.reporterName || 'Reporter'} reported ${this.reportedHandle(item)}`,
+      detail: report.details || this.reportListMeta(item),
+      avatarInitials: this.reporterInitial(report),
+      avatarUrl: this.reporterImageUrl(report) || null,
+      avatarToneClass: `user-color-${item.user.gender}`,
+      avatarAriaLabel: report.reporterName || 'Reporter',
+      surfaceTone: this.reportSingleRowTone(report),
+      badges: [
+        {
+          label: this.reportTime(report.createdDate),
+          tone: 'muted',
+          position: 'side'
+        },
+        {
+          label: this.reportBadgeLabel(report),
+          tone: this.reportReasonBadgeTone(report),
+          position: 'side'
+        }
+      ],
+      clickable: true,
+      eagerDetail: item
+    };
   }
 
   protected closeReportDetails(): void {
@@ -225,22 +262,59 @@ export class AdminReportsPopupComponent {
     });
   }
 
-  protected reportDetailActionsMenuModel(
-    user: AdminReportedUserDto
-  ): AppMenuModel<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
-    return this.reportActionsMenuModel(user, 'report-detail');
+  protected reportedUserImageCard(
+    user: AdminReportedUserDto,
+    options: { idPrefix?: string; title?: string | null } = {}
+  ): ImageCardData<AdminReportedUserDto> {
+    const blocked = this.isUserBlocked(user);
+    return {
+      id: `${options.idPrefix ?? 'reported-user'}-${user.userId || user.name || 'member'}`,
+      title: `${options.title ?? this.memberCardTitle(user)}`.trim() || 'Member',
+      subtitle: this.memberDescription(user),
+      imageUrl: this.memberImageUrl(user) || null,
+      placeholderIcon: blocked ? 'person_off' : 'person',
+      placeholderLabel: user.initials,
+      layout: 'overlay',
+      toneClass: [
+        'admin-reported-user-image-card',
+        blocked ? 'admin-reported-user-image-card--blocked' : 'admin-reported-user-image-card--reported'
+      ].join(' '),
+      statusChip: {
+        icon: blocked ? 'person_off' : 'person',
+        title: blocked ? 'Blocked user' : 'Reported user',
+        ariaLabel: blocked ? 'Blocked user' : 'Reported user',
+        palette: blocked ? 'danger' : 'green'
+      },
+      menuBadgeCount: this.visibleSupportChatUnread(user),
+      eagerDetail: user
+    };
   }
 
-  protected blockedUserActionsMenuModel(
-    user: AdminReportedUserDto
-  ): AppMenuModel<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
-    return this.reportActionsMenuModel(user, 'blocked-user');
+  protected reportedUserMenuTrigger(
+    user: AdminReportedUserDto,
+    source: AdminReportMenuSource
+  ): AppMenuTrigger {
+    const unread = source === 'blocked-user' ? this.visibleSupportChatUnread(user) : null;
+    return {
+      icon: 'more_horiz',
+      closeIcon: 'close',
+      hideLabel: true,
+      shape: 'icon',
+      palette: 'default',
+      counter: unread,
+      ariaLabel: source === 'blocked-user' ? 'Blocked user actions' : 'Member moderation actions'
+    };
   }
 
-  protected onReportActionsMenuSelect(
-    event: AppMenuItemSelectEvent<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>
-  ): void {
-    const context = event.context;
+  protected reportedUserMenuItems(
+    user: AdminReportedUserDto,
+    source: AdminReportMenuSource
+  ): readonly AppMenuItem<string, unknown>[] {
+    return this.reportActionItems(user, source) as readonly AppMenuItem<string, unknown>[];
+  }
+
+  protected onReportActionsMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as AdminReportActionsMenuContext | undefined;
     if (!context) {
       return;
     }
@@ -297,41 +371,10 @@ export class AdminReportsPopupComponent {
     });
   }
 
-  private reportActionsMenuModel(
-    user: AdminReportedUserDto,
-    source: AdminReportMenuSource
-  ): AppMenuModel<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
-    const menuId = `${source}:${user.userId || 'member'}:menu` as AdminReportActionsMenuItemId;
-    const actions = this.reportActionItems(user, source);
-    return {
-      nodes: [
-        {
-          id: `${source}-actions-root`,
-          items: [
-            {
-              id: menuId,
-              icon: 'more_horiz',
-              ariaLabel: source === 'blocked-user' ? 'Blocked user actions' : 'Member moderation actions',
-              counter: source === 'blocked-user' ? this.visibleSupportChatUnread(user) : null,
-              items: actions
-            }
-          ]
-        }
-      ]
-    };
-  }
-
   private reportActionItems(
     user: AdminReportedUserDto,
     source: AdminReportMenuSource
-  ): Array<{
-    id: AdminReportActionsMenuItemId;
-    label: string;
-    icon: string;
-    palette?: 'danger';
-    counter?: number | null;
-    context: AdminReportActionsMenuContext;
-  }> {
+  ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] {
     if (source === 'blocked-user' || this.isUserBlocked(user)) {
       return [
         this.reportActionItem(user, source, 'unblock', 'Unblock user', 'lock_open'),
@@ -358,14 +401,7 @@ export class AdminReportsPopupComponent {
     icon: string,
     palette?: 'danger',
     counter?: number | null
-  ): {
-    id: AdminReportActionsMenuItemId;
-    label: string;
-    icon: string;
-    palette?: 'danger';
-    counter?: number | null;
-    context: AdminReportActionsMenuContext;
-  } {
+  ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
     return {
       id: `${source}:${user.userId || 'member'}:${action}` as AdminReportActionsMenuItemId,
       label,
@@ -470,6 +506,24 @@ export class AdminReportsPopupComponent {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'general'}`;
+  }
+
+  protected reportSingleRowTone(report: AdminReportDto): NonNullable<SingleRowData['surfaceTone']> {
+    if (report.sourceType === 'chat' || report.chatId) {
+      return 'info';
+    }
+    if (report.sourceType === 'asset' || report.assetId) {
+      return 'warning';
+    }
+    const label = this.reportBadgeLabel(report).toLowerCase();
+    if (label.includes('harassment') || label.includes('abuse') || label.includes('safety')) {
+      return 'danger';
+    }
+    return 'accent';
+  }
+
+  protected reportReasonBadgeTone(report: AdminReportDto): NonNullable<SingleRowData['sideLabelTone']> {
+    return this.reportSingleRowTone(report);
   }
 
   protected reportTime(value: string | null | undefined): string {

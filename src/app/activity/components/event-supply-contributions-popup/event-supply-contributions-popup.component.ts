@@ -5,12 +5,14 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
-import type * as AppTypes from '../../../shared/core/base/models';
 import {
   ProgressIndicatorComponent,
+  SingleRowComponent,
   SmartListComponent,
+  type CardMenuActionEvent,
   type ListQuery,
   type PageResult,
+  type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage,
@@ -66,8 +68,9 @@ export interface EventSupplyContributionsPopupHost {
     MatButtonModule,
     MatIconModule,
     ProgressIndicatorComponent,
+    SingleRowComponent,
     SmartListComponent
-],
+  ],
   templateUrl: './event-supply-contributions-popup.component.html',
   styleUrls: ['./event-supply-contributions-popup.component.scss']
 })
@@ -177,6 +180,30 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (change.total !== rows.length) {
       this.syncSupplyContributionVisibleRows(rows, change.total);
     }
+  }
+
+  protected supplyContributionSingleRow(row: AppDTOs.SubEventSupplyContributionRowDTO): SingleRowData {
+    return {
+      id: row.id,
+      title: `${row.name}, ${row.age} · ${row.city}`,
+      subtitle: this.host.addedLabel(row.addedAtIso),
+      avatarInitials: row.initials,
+      avatarAriaLabel: row.name,
+      sideLabel: this.host.quantityLabel(row.quantity),
+      sideLabelTone: 'inverse',
+      menuActions: this.host.canDelete(row) ? ['delete'] : [],
+      eagerDetail: row
+    };
+  }
+
+  protected onSupplyContributionMenuAction(
+    row: AppDTOs.SubEventSupplyContributionRowDTO,
+    event: CardMenuActionEvent<SingleRowData>
+  ): void {
+    if (event.actionId !== 'delete' || !this.host.canDelete(row)) {
+      return;
+    }
+    this.host.requestDelete(row);
   }
 
   private syncSupplyContributionVisibleRows(

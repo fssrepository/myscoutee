@@ -1,7 +1,7 @@
 @if (open) {
   <section class="subevents-overlay">
     <div class="subevents-backdrop" (click)="requestClose()"></div>
-    <article class="subevents-panel" (click)="$event.stopPropagation()">
+    <article class="app-popup-panel subevents-panel" (click)="$event.stopPropagation()">
       <header class="subevents-header">
         <button mat-icon-button type="button" class="subevents-back-btn" (click)="requestClose()" aria-label="Back to event editor">
           <mat-icon>arrow_back</mat-icon>

@@ -22,13 +22,13 @@
           ></app-menu>
         </div>
         <div class="popup-header-mobile-actions-row">
-          @if (selectedInviteCount() > 0) {
-            <span class="header-members-count asset-member-picker-header-count">{{ selectedInviteCountLabel() }}</span>
-          }
           <app-menu
             class="asset-member-picker-confirm-menu"
             kind="button-row"
             [items]="inviteConfirmMenuItems()"
+            [panelAlign]="'end'"
+            [mobileBreakpointPx]="900"
+            [closeOnSelect]="false"
             (itemSelect)="onInviteMenuSelect($event)"
           ></app-menu>
           <button type="button" class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
@@ -37,12 +37,6 @@
         </div>
       </div>
       <div class="popup-body popup-body-friends-picker">
-        <app-basket
-          className="friends-picker-chip-row asset-member-picker-chip-row"
-          [chips]="selectedInviteBasketChips()"
-          [disabled]="isConfirmPending"
-          (chipClick)="toggleInviteCandidate($event.chip.id, $event.event)"
-        ></app-basket>
         @if (confirmErrorMessage) {
           <p class="asset-member-picker-confirm-error">{{ confirmErrorMessage }}</p>
         }

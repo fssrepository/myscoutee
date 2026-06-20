@@ -67,22 +67,6 @@
   margin-top: 0.1rem;
 }
 
-.asset-member-picker-popup-shell .asset-member-picker-header-count {
-  min-width: fit-content;
-  height: 24px;
-  border-radius: 999px;
-  padding: 0 10px;
-  border: 1px solid rgba(121, 144, 179, 0.24);
-  background: #dbe4ef;
-  color: rgba(24, 39, 61, 0.88);
-  font-size: 0.72rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
 .asset-member-picker-popup-shell .popup-title p {
   margin: 0.14rem 0 0;
   color: rgba(32, 54, 84, 0.72);
@@ -111,49 +95,4 @@
   min-height: 0;
   height: 100%;
   touch-action: pan-y;
-}
-
-.asset-member-picker-popup-shell .friends-picker-chip-avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 0.58rem;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.asset-member-picker-popup-shell .friends-picker-chip {
-  min-height: 30px;
-  padding: 0.22rem 0.56rem 0.22rem 0.32rem;
-  border-color: rgba(59, 95, 142, 0.3);
-  background: linear-gradient(180deg, #f7faff 0%, #edf3ff 100%);
-  box-shadow: 0 2px 8px rgba(29, 57, 96, 0.08);
-}
-
-.asset-member-picker-popup-shell .friends-picker-chip .friends-picker-chip-remove {
-  opacity: 0.72;
-}
-
-@media (max-width: 760px) {
-  .activity-members-popup-shell .subevent-members-grid {
-    /* Forces 2 equal columns, removing the 250px 'gap' trigger */
-    grid-template-columns: repeat(2, 1fr) !important; 
-    gap: 0.45rem;
-    padding: 0 0.1rem;
-  }
-}
-
-.asset-member-picker-popup-shell .asset-member-picker-chip-row .basket__chip-avatar {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 0.58rem;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }

@@ -455,11 +455,11 @@ const ACTIVITIES_SECONDARY_FILTERS: Array<{ key: ActivitiesSecondaryFilter; labe
   { key: 'past', label: 'Past', icon: 'history' }
 ];
 const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter; label: string; icon: string }> = [
-  { key: 'all', label: 'All', icon: 'forum' },
-  { key: 'event', label: 'Event', icon: 'event' },
-  { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
-  { key: 'group', label: 'Group', icon: 'groups' },
-  { key: 'service', label: 'Service', icon: 'support_agent' }
+  { key: 'all', label: 'all', icon: 'forum' },
+  { key: 'event', label: 'event', icon: 'event' },
+  { key: 'subEvent', label: 'sub.event', icon: 'event_available' },
+  { key: 'group', label: 'group', icon: 'groups' },
+  { key: 'service', label: 'service', icon: 'support_agent' }
 ];
 const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
   { key: 'individual-given', label: 'Given' },

@@ -313,7 +313,7 @@
   font: inherit;
   font-size: 0.78rem;
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.22;
   cursor: pointer;
   box-shadow: 0 8px 18px var(--app-menu-shadow);
   overflow: visible;
@@ -441,6 +441,7 @@
 
 .app-menu__trigger-label {
   min-width: 0;
+  line-height: 1.22;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
