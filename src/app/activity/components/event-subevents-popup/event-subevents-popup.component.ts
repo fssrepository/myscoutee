@@ -804,7 +804,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected groupActionMenuTrigger(row: EventSubeventsStageRow): AppMenuTrigger {
-    return this.actionMenuTrigger(`Open actions for ${row.groupName}`);
+    return this.actionMenuTrigger(`Open actions for ${row.groupName}`, row.totalPendingCount);
   }
 
   protected casualActionMenuTrigger(item: EventSubeventsItem, index: number): AppMenuTrigger {
