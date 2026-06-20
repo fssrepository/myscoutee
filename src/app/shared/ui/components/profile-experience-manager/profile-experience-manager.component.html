@@ -18,7 +18,7 @@
     @if (showInlineActions) {
       <div class="experience-inline-actions">
         <app-menu
-          kind="button-row"
+          kind="inline"
           [items]="experienceQuickActionMenuItems()"
           (itemSelect)="onProfileExperienceMenuSelect($event)"
         ></app-menu>

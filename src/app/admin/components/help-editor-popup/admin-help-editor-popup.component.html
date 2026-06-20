@@ -17,7 +17,7 @@
         <div class="help-editor-header-actions">
           <app-menu
             class="help-editor-document-menu-wrap"
-            kind="button-row"
+            kind="inline"
             [model]="documentMenuModel()"
             (itemSelect)="onDocumentMenuSelect($event)"
           ></app-menu>
@@ -38,7 +38,7 @@
         <div class="help-editor-language-row" aria-label="Content language" data-i18n-ignore>
           <app-menu
             class="help-editor-language-menu-wrap"
-            kind="button-row"
+            kind="inline"
             [model]="languageMenuModel()"
             (itemSelect)="onLanguageMenuSelect($event)"
           ></app-menu>

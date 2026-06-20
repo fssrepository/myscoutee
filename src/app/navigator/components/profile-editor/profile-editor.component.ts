@@ -332,7 +332,7 @@ export class ProfileEditorComponent {
     return {
       icon: this.experienceTypeIcon(type),
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(type)),
-      shape: 'field',
+      layout: 'field',
       action: 'custom',
       trailingIcon: 'chevron_right',
       ariaLabel: entries.length > 0
@@ -347,7 +347,7 @@ export class ProfileEditorComponent {
   ): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
     const palette = this.paletteFromProfileTone(this.experienceTypeToneClass(type));
     return {
-      presentation: 'tabs',
+      layout: 'tabs',
       summary: {
         emptyLabel: this.experienceSelectorEmptyLabelKey(type),
         maxLabels: 2,
@@ -432,7 +432,7 @@ export class ProfileEditorComponent {
       label: this.profileForm.profileStatus,
       icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
       palette: this.profileStatusPalette(this.profileForm.profileStatus),
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'Open profile status selector'
     };
   }
@@ -455,7 +455,7 @@ export class ProfileEditorComponent {
       label: this.profileForm.physique,
       icon: this.getPhysiqueIcon(this.profileForm.physique),
       palette: this.paletteFromProfileTone(this.getPhysiqueClass(this.profileForm.physique)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open physique selector'
     };
   }
@@ -478,7 +478,7 @@ export class ProfileEditorComponent {
       label: row.value,
       icon: this.detailOptionIcon(row.labelKey, row.value),
       palette: this.paletteFromProfileTone(this.detailSelectedClass(row.labelKey, row.value, row.options)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: `Open ${this.i18n.translate(row.labelKey)} selector`
     };
   }
@@ -547,7 +547,7 @@ export class ProfileEditorComponent {
       label: this.experienceFilter,
       icon: this.experienceFilterIcon(this.experienceFilter),
       palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience filter'
     };
   }
@@ -570,7 +570,7 @@ export class ProfileEditorComponent {
       label: this.experienceForm.type,
       icon: this.experienceTypeIcon(this.experienceForm.type),
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience type selector'
     };
   }
@@ -593,7 +593,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'auto_awesome',
       palette: this.paletteFromProfileTone(this.valuesDominantToneClass(row.value)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: selected.length > 0 ? 'open.values.selector' : 'select.values'
     };
   }
@@ -621,7 +621,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'sell',
       palette: this.paletteFromProfileTone(this.interestDominantToneClass(row.value)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: selected.length > 0 ? 'open.interests.selector' : 'select.interests'
     };
   }
@@ -648,7 +648,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'language',
       palette: 'blue',
-      shape: 'field',
+      layout: 'field',
       ariaLabel: this.profileForm.languages.length > 0 ? 'open.languages.selector' : 'select.languages'
     };
   }
@@ -1810,7 +1810,7 @@ export class ProfileEditorComponent {
       icon: this.privacyStatusIcon(value),
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: this.privacyPalette(value),
       ariaLabel
     };

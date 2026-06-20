@@ -29,6 +29,7 @@ import type {
     @if (activeMenu(); as menu) {
       <app-menu
         [kind]="menu.kind"
+        [layout]="menu.layout"
         [title]="menu.title"
         [filterable]="menu.filterable"
         [items]="resolvedItems(menu)"
@@ -213,7 +214,7 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     if (event.action === 'remove') {
       return false;
     }
-    return event.item.closeOnSelect ?? (menu.model?.presentation === 'tabs' ? false : menu.closeOnSelect);
+    return event.item.closeOnSelect ?? (menu.model?.layout === 'tabs' ? false : menu.closeOnSelect);
   }
 
   private isMobileMenu(menu: AppMenuDispatchState<TId, TContext>): boolean {

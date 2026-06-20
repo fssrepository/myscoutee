@@ -113,7 +113,7 @@ export class AssetFormPopupComponent implements OnChanges {
       icon: this.visibilityIcon(this.assetFormVisibility),
       palette: this.visibilityPalette(this.assetFormVisibility),
       disabled: () => this.isSavePending || this.isLoading,
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'Open asset visibility selector'
     };
   }
@@ -137,7 +137,7 @@ export class AssetFormPopupComponent implements OnChanges {
       label: this.assetTypeLabel(this.assetForm.type),
       icon: this.assetTypeIcon(this.assetForm.type),
       palette: this.assetTypePalette(this.assetForm.type),
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.isSavePending || this.isLoading,
       ariaLabel: 'Open asset type'
     };
@@ -162,7 +162,7 @@ export class AssetFormPopupComponent implements OnChanges {
       label: this.assetCategoryLabel(this.assetForm.category),
       icon: this.assetCategoryIcon(this.assetForm.category),
       palette: this.assetCategoryPalette(this.assetForm.category),
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.isSavePending || this.isLoading,
       ariaLabel: 'Open asset category'
     };

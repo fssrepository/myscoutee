@@ -470,7 +470,7 @@ export class EventChatPopupComponent implements OnDestroy {
       palette: this.selectedChatHeaderActionPalette(),
       counter: this.selectedChatHeaderActionBadgeCount(),
       ariaLabel: 'Open chat context menu',
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -489,7 +489,7 @@ export class EventChatPopupComponent implements OnDestroy {
       icon: 'add',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'blue',
       ariaLabel: 'Open chat tools'
     };
@@ -544,7 +544,7 @@ export class EventChatPopupComponent implements OnDestroy {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: message.mine ? 'blue' : 'default',
       ariaLabel: 'More message actions'
     };
@@ -3933,7 +3933,7 @@ export class EventChatPopupComponent implements OnDestroy {
       description: control.summary || undefined,
       icon: this.selectedChatMenuControlIcon(control),
       kind: 'action',
-      layout: control.summary ? 'summary' : 'default',
+      layout: control.summary ? 'pill' : 'default',
       palette: resourceType ? this.resourceTypePalette(resourceType) : 'default',
       surface: resourceType ? 'tinted' : 'plain',
       counter: counter > 0 ? counter : null,

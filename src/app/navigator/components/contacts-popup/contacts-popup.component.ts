@@ -473,7 +473,7 @@ export class ContactsPopupComponent implements OnDestroy {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'neutral',
       ariaLabel: this.isActionMenuOpen(contact) ? 'Close contact actions' : 'Open contact actions'
     };
@@ -518,7 +518,7 @@ export class ContactsPopupComponent implements OnDestroy {
       label: option.label,
       icon: option.icon,
       palette: this.methodMenuPalette(method.type),
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.isFormSavePending(),
       ariaLabel: 'Open contact method type'
     };

@@ -737,7 +737,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       ariaLabel: 'Change sub events mode',
       palette: this.displayModePalette(this.displayMode),
       disabled: this.subEventStructureReadOnly(),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -1042,7 +1042,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       closeIcon: 'close',
       ariaLabel,
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       counter: count > 0 ? { value: count, max: 99 } : null
     };
   }
@@ -1063,7 +1063,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       icon: this.resourceSummaryIcon(options.type),
       palette: this.resourceSummaryPalette(options.type),
       surface: 'tinted',
-      layout: 'summary',
+      layout: 'pill',
       counter: pending > 0 ? { value: pending, max: 99 } : null,
       context: options.context
     };

@@ -24,7 +24,7 @@
           @if (panel === 'experience' && !experienceManagerOverlayOpen) {
             <div class="experience-quick-actions">
               <app-menu
-                kind="button-row"
+                kind="inline"
                 [items]="experienceQuickActionMenuItems()"
                 (itemSelect)="onProfileEditorMenuSelect($event)"
               ></app-menu>

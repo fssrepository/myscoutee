@@ -374,7 +374,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       label: () => this.assetPopup.ticketDateOrderLabel(),
       icon: () => this.assetPopup.ticketDateOrderIcon(),
       palette: 'blue',
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'Open ticket date ordering'
     };
   }
@@ -440,7 +440,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       icon: () => this.supplyRequestFilterIcon(),
       palette: this.supplyRequestFilterPalette(this.supplyRequestFilter),
       counter: () => this.supplyRequestFilterCount(),
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'asset.requests.filter.open'
     };
   }
@@ -467,7 +467,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return {
       icon: 'more_vert',
       closeIcon: 'close',
-      shape: 'icon',
+      layout: 'icon',
       palette: 'slate',
       disabled: () => this.isSupplyRequestRowBusy(row, 'accept')
         || this.isSupplyRequestRowBusy(row, 'remove')

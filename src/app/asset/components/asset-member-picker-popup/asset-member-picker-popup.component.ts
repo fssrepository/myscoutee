@@ -197,7 +197,7 @@ export class AssetMemberPickerPopupComponent {
       icon: this.inviteSort === 'recent' ? 'schedule' : 'auto_awesome',
       palette: this.inviteSort === 'recent' ? 'blue' : 'violet',
       disabled: () => this.isConfirmPending,
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'Open invite sort'
     };
   }

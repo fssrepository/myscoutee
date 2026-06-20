@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 import { from } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { NavigatorService } from '../../../navigator';
 import {
-  CounterBadgePipe,
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
   type CardProfileViewData,
   PairCardComponent,
   SingleCardComponent,
@@ -86,6 +86,11 @@ interface HomeModeOption {
   icon: string;
 }
 
+type HomeHeaderMenuContext =
+  | { action: 'mode'; mode: UserGameMode }
+  | { action: 'filter' }
+  | { action: 'history' };
+
 const PROFILE_DETAIL_LABEL_KEYS: Record<string, string> = {
   name: 'profile.name',
   city: 'profile.city',
@@ -123,15 +128,12 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
-    FormsModule,
-    MatRippleModule,
     MatIconModule,
-    MatSelectModule,
+    AppMenuComponent,
     SmartListComponent,
     SingleCardComponent,
     PairCardComponent,
     HomeGameFilterPopupComponent,
-    CounterBadgePipe,
     I18nPipe
   ],
   templateUrl: './home.component.html',
@@ -616,14 +618,78 @@ export class HomeComponent implements OnDestroy {
     return this.homeModeOptions.find(option => option.key === this.selectedHomeMode)?.icon ?? 'person';
   }
 
-  protected homeModeToneClass(mode: UserGameMode): string {
-    const map: Record<UserGameMode, string> = {
-      single: 'mode-single',
-      'outside-network': 'mode-outside-network',
-      'separated-friends': 'mode-separated-friends',
-      'friends-in-common': 'mode-friends-in-common'
+  protected homeHeaderMenuItems(): readonly AppMenuItem<string, HomeHeaderMenuContext>[] {
+    return [
+      {
+        id: 'home-mode',
+        label: this.selectedHomeModeLabel(),
+        icon: this.selectedHomeModeIcon(),
+        kind: 'select-trigger',
+        layout: 'pill',
+        palette: this.homeModePalette(this.selectedHomeMode),
+        disabled: this.isBlockedUser,
+        ariaLabel: 'Select game mode',
+        items: this.homeModeOptions.map(option => ({
+          id: `home-mode:${option.key}`,
+          label: option.label,
+          icon: option.icon,
+          kind: 'radio',
+          active: option.key === this.selectedHomeMode,
+          checked: option.key === this.selectedHomeMode,
+          palette: this.homeModePalette(option.key),
+          surface: 'tinted',
+          context: { action: 'mode', mode: option.key }
+        }))
+      },
+      {
+        id: 'home-filter',
+        icon: 'filter_alt',
+        kind: 'action',
+        palette: 'filter',
+        disabled: this.isBlockedUser,
+        counter: this.filterBadgeCount > 0 ? { value: this.filterBadgeCount, max: 99 } : null,
+        ariaLabel: 'Open profile filters',
+        context: { action: 'filter' }
+      },
+      {
+        id: 'home-history',
+        icon: 'history',
+        kind: 'action',
+        palette: 'gold',
+        disabled: !this.canOpenHistory || this.isBlockedUser,
+        counter: this.historyBadgeCount > 0 ? { value: this.historyBadgeCount, max: 99 } : null,
+        ariaLabel: 'Open game history',
+        context: { action: 'history' }
+      }
+    ];
+  }
+
+  protected onHomeHeaderMenuSelect(event: AppMenuItemSelectEvent<string, HomeHeaderMenuContext>): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+    switch (context.action) {
+      case 'mode':
+        this.selectHomeMode(context.mode);
+        return;
+      case 'filter':
+        this.openFilter();
+        return;
+      case 'history':
+        this.openHistory();
+        return;
+    }
+  }
+
+  private homeModePalette(mode: UserGameMode): AppMenuPalette {
+    const map: Record<UserGameMode, AppMenuPalette> = {
+      single: 'blue',
+      'outside-network': 'violet',
+      'separated-friends': 'orange',
+      'friends-in-common': 'green'
     };
-    return map[mode] ?? 'mode-single';
+    return map[mode] ?? 'blue';
   }
 
   protected showSocialQueryInputs(): boolean {

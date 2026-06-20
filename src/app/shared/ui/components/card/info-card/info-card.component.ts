@@ -380,7 +380,7 @@ export class InfoCardComponent implements OnDestroy {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'default',
       counter: menuBadgeCount > 0 ? { value: menuBadgeCount, max: 99 } : null,
       ariaLabel: 'Open menu'

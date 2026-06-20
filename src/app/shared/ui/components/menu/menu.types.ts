@@ -7,10 +7,9 @@ import type {
 import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type AppMenuKind =
-  | 'button-row'
   | 'fab'
-  | 'select'
-  | 'shortcut-grid';
+  | 'inline'
+  | 'select';
 
 export type AppMenuItemKind =
   | 'action'
@@ -40,19 +39,20 @@ export type AppMenuPalette =
   | 'amber'
   | 'gold'
   | 'brown'
+  | 'filter'
   | 'muted'
   | 'danger'
   | 'warning'
   | 'success';
 
-export type AppMenuTriggerShape = 'default' | 'field' | 'pill' | 'icon';
+export type AppMenuTriggerLayout = 'default' | 'field' | 'pill' | 'icon';
 export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
-export type AppMenuItemLayout = 'default' | 'summary' | 'action' | 'big';
+export type AppMenuLayout = 'row' | 'grid' | 'list' | 'tabs';
+export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
-export type AppMenuPresentation = 'list' | 'tabs';
 export type AppMenuSummaryCounter = 'overflow' | 'count' | 'none';
 export type AppMenuValueKey = string | ((value: unknown) => unknown);
 
@@ -81,7 +81,7 @@ export interface AppMenuTrigger {
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   hideLabel?: boolean;
-  shape?: AppMenuTriggerShape;
+  layout?: AppMenuTriggerLayout;
   action?: AppMenuTriggerAction;
   context?: unknown;
 }
@@ -156,7 +156,7 @@ export interface AppMenuSummary {
 }
 
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
-  presentation?: AppMenuPresentation;
+  layout?: AppMenuLayout;
   summary?: AppMenuSummary | null;
   valueKey?: AppMenuValueKey | null;
   groups?: readonly AppMenuGroup<TId, TContext>[];
@@ -185,6 +185,7 @@ export interface AppMenuAnchorRect {
 export interface AppMenuDispatchConfig<TId extends string = string, TContext = unknown> {
   id: string;
   kind?: AppMenuKind;
+  layout?: AppMenuLayout;
   title?: AppMenuLiveValue<string | null | undefined>;
   filterable?: boolean;
   items?: readonly AppMenuItem<TId, TContext>[];
@@ -205,6 +206,7 @@ export interface AppMenuDispatchConfig<TId extends string = string, TContext = u
 export interface AppMenuDispatchState<TId extends string = string, TContext = unknown>
   extends AppMenuDispatchConfig<TId, TContext> {
   kind: AppMenuKind;
+  layout: AppMenuLayout;
   filterable: boolean;
   items: readonly AppMenuItem<TId, TContext>[];
   model: AppMenuModel<TId, TContext> | null;

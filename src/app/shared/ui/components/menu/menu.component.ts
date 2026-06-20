@@ -36,6 +36,7 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuLayout,
   AppMenuItemLayout,
   AppMenuItemSurface,
   AppMenuItem,
@@ -48,7 +49,7 @@ import type {
   AppMenuPalette,
   AppMenuSegment,
   AppMenuTrigger,
-  AppMenuTriggerShape,
+  AppMenuTriggerLayout,
   AppMenuValueKey,
   AppMenuValueMap
 } from './menu.types';
@@ -90,7 +91,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly i18n = inject(I18nService);
 
-  @Input() kind: AppMenuKind = 'button-row';
+  @Input() kind: AppMenuKind = 'inline';
+  @Input() layout: AppMenuLayout = 'row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() filterable = false;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
@@ -187,14 +189,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   @HostBinding('class.app-menu-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.app-menu-host--kind-button-row')
-  protected get hostButtonRowKindClass(): boolean {
-    return this.isButtonRowKind;
+  @HostBinding('class.app-menu-host--kind-inline')
+  protected get hostInlineKindClass(): boolean {
+    return this.isInlineMenuKind;
   }
 
-  @HostBinding('class.app-menu-host--button-row-big')
-  protected get hostButtonRowBigClass(): boolean {
-    return this.isButtonRowBig;
+  @HostBinding('class.app-menu-host--layout-row')
+  protected get hostRowLayoutClass(): boolean {
+    return this.isInlineRowLayout;
+  }
+
+  @HostBinding('class.app-menu-host--layout-grid')
+  protected get hostGridLayoutClass(): boolean {
+    return this.isInlineGridLayout;
+  }
+
+  @HostBinding('class.app-menu-host--inline-row-big')
+  protected get hostInlineRowBigClass(): boolean {
+    return this.isInlineRowBig;
   }
 
   @HostBinding('class.app-menu-host--kind-fab')
@@ -207,14 +219,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.kind === 'select';
   }
 
-  @HostBinding('class.app-menu-host--presentation-tabs')
-  protected get hostTabbedPresentationClass(): boolean {
-    return this.isTabbedPresentation || this.activeBranchTabbedPresentation;
-  }
-
-  @HostBinding('class.app-menu-host--kind-shortcut-grid')
-  protected get hostShortcutGridKindClass(): boolean {
-    return this.kind === 'shortcut-grid';
+  @HostBinding('class.app-menu-host--model-layout-tabs')
+  protected get hostTabbedModelLayoutClass(): boolean {
+    return this.isTabbedModelLayout || this.activeBranchTabbedModelLayout;
   }
 
   @HostBinding('class.app-menu-host--layout-desktop')
@@ -234,7 +241,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   @HostBinding('class.app-menu-host--inline-panel')
   protected get hostInlinePanelClass(): boolean {
-    return this.isInlineKind;
+    return this.usesInlinePanel;
   }
 
   @HostBinding('class.app-menu-host--panel-docked')
@@ -257,17 +264,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   @HostBinding('class.app-menu-host--trigger-field')
   protected get hostTriggerFieldClass(): boolean {
-    return this.triggerShape() === 'field';
+    return this.triggerLayout() === 'field';
   }
 
   @HostBinding('class.app-menu-host--trigger-pill')
   protected get hostTriggerPillClass(): boolean {
-    return this.triggerShape() === 'pill';
+    return this.triggerLayout() === 'pill';
   }
 
   @HostBinding('class.app-menu-host--trigger-icon')
   protected get hostTriggerIconClass(): boolean {
-    return this.triggerShape() === 'icon';
+    return this.triggerLayout() === 'icon';
   }
 
   @HostListener('window:resize')
@@ -289,7 +296,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   protected onDocumentPointerDown(event: PointerEvent): void {
     if (
       !this.open
-      || this.isInlineKind
+      || this.usesInlinePanel
       || this.isFixedPanelMode
       || (this.resolvedLayout === 'mobile' && !this.isAnchoredOverlayKind)
     ) {
@@ -315,20 +322,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.isMobileViewport ? 'mobile' : 'desktop';
   }
 
-  protected get isInlineKind(): boolean {
-    return this.kind === 'shortcut-grid' || (this.isTabbedPresentation && !this.hasTrigger);
+  protected get usesInlinePanel(): boolean {
+    return this.isInlineGridLayout || (this.isTabbedModelLayout && !this.hasTrigger);
   }
 
-  protected get isButtonRowKind(): boolean {
-    return this.kind === 'button-row';
+  protected get isInlineMenuKind(): boolean {
+    return this.kind === 'inline';
   }
 
-  protected get isButtonRowBig(): boolean {
-    return this.isButtonRowKind && this.actionRowItems.some(item => this.itemLayout(item) === 'big');
+  protected get isInlineRowLayout(): boolean {
+    return this.isInlineMenuKind && this.layout === 'row';
   }
 
-  protected get isShortcutGridKind(): boolean {
-    return this.kind === 'shortcut-grid';
+  protected get isInlineRowBig(): boolean {
+    return this.isInlineRowLayout && this.actionRowItems.some(item => this.itemVisualLayout(item) === 'big');
+  }
+
+  protected get isInlineGridLayout(): boolean {
+    return this.isInlineMenuKind && this.layout === 'grid';
   }
 
   protected get isFabKind(): boolean {
@@ -339,12 +350,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.kind === 'select';
   }
 
-  protected get isTabbedPresentation(): boolean {
-    return this.model?.presentation === 'tabs';
+  protected get isTabbedModelLayout(): boolean {
+    return this.model?.layout === 'tabs';
   }
 
-  protected get activeBranchTabbedPresentation(): boolean {
-    return this.activeBranch?.model?.presentation === 'tabs';
+  protected get activeBranchTabbedModelLayout(): boolean {
+    return this.activeBranch?.model?.layout === 'tabs';
   }
 
   protected get isDropdownListKind(): boolean {
@@ -352,7 +363,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get isAnchoredOverlayKind(): boolean {
-    return this.isDropdownListKind || this.isButtonRowKind || this.isTabbedPresentation;
+    return this.isDropdownListKind || this.isInlineRowLayout || this.isTabbedModelLayout;
   }
 
   private get isBottomPanelMode(): boolean {
@@ -371,15 +382,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (this.isCustomTriggerAction) {
       return false;
     }
-    return this.isInlineKind || this.open;
+    return this.usesInlinePanel || this.open;
   }
 
   protected get showMobileBackdrop(): boolean {
-    return this.open && !this.isInlineKind && !this.isAnchoredOverlayKind && this.resolvedLayout === 'mobile';
+    return this.open && !this.usesInlinePanel && !this.isAnchoredOverlayKind && this.resolvedLayout === 'mobile';
   }
 
   protected get resolvedOpenUp(): boolean {
-    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.isInlineKind) {
+    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel) {
       return this.openUp;
     }
     if (this.openUp) {
@@ -397,7 +408,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get resolvedPanelAlign(): 'start' | 'end' {
-    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.isInlineKind) {
+    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel) {
       return this.panelAlign === 'start' ? 'start' : 'end';
     }
     const rect = this.hostRect();
@@ -426,7 +437,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get tabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
-    if (this.activeBranchTabbedPresentation && this.activeBranch) {
+    if (this.activeBranchTabbedModelLayout && this.activeBranch) {
       return appMenuModelGroups(this.activeBranch.model, this.activeBranch.groups ?? []);
     }
     return this.menuNodes;
@@ -483,7 +494,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (!this.activeBranch) {
       return false;
     }
-    return this.isButtonRowKind ? this.activeBranchPath.length > 1 : true;
+    return this.isInlineRowLayout ? this.activeBranchPath.length > 1 : true;
   }
 
   protected get resolvedTitle(): string {
@@ -527,7 +538,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private shouldResolveTriggerIconToClose(icon: string): boolean {
-    if (this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true) {
+    if (this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true) {
       return false;
     }
     switch (icon) {
@@ -552,10 +563,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (this.trigger?.hideLabel === true) {
       return '';
     }
-    if (this.isSelectKind && this.triggerShape() !== 'icon') {
+    if (this.isSelectKind && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
-    if (this.isTabbedPresentation && this.triggerShape() !== 'icon') {
+    if (this.isTabbedModelLayout && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
     return '';
@@ -593,9 +604,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.paletteClass(this.triggerPalette());
   }
 
-  protected triggerShape(): AppMenuTriggerShape {
-    if (this.trigger?.shape) {
-      return this.trigger.shape;
+  protected triggerLayout(): AppMenuTriggerLayout {
+    if (this.trigger?.layout) {
+      return this.trigger.layout;
     }
     if (!this.hasTrigger) {
       return 'default';
@@ -619,11 +630,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private isSelectLikeTrigger(): boolean {
-    return this.isSelectKind || this.isTabbedPresentation;
+    return this.isSelectKind || this.isTabbedModelLayout;
   }
 
   private defaultSelectTriggerLabel(): string {
-    return this.isSelectLikeTrigger() && this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true
+    return this.isSelectLikeTrigger() && this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true
       ? 'select.option'
       : '';
   }
@@ -831,14 +842,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.itemLayout(item) === 'big'
+    return this.itemVisualLayout(item) === 'big'
       || this.isSelectTriggerItem(item)
-      || item.layout === 'summary'
-      || (item.layout === 'action' && !!this.actionRowItemLabel(item));
+      || this.itemVisualLayout(item) === 'pill'
+      || (this.itemVisualLayout(item) === 'action' && !!this.actionRowItemLabel(item));
   }
 
   protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
-    return item.layout === 'action';
+    return this.itemVisualLayout(item) === 'action';
   }
 
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
@@ -951,10 +962,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isTabsFilterable(): boolean {
-    if (this.activeBranchTabbedPresentation) {
+    if (this.activeBranchTabbedModelLayout) {
       return this.activeBranch?.filterable === true;
     }
-    return this.isTabbedPresentation && this.filterable === true;
+    return this.isTabbedModelLayout && this.filterable === true;
   }
 
   protected showTabsBar(): boolean {
@@ -1018,7 +1029,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private groupedDropdownItems(): readonly AppMenuItem<TId, TContext>[] {
-    if (this.isShortcutGridKind || !this.hasMenuNodes) {
+    if (this.isInlineGridLayout || !this.hasMenuNodes) {
       return [];
     }
     const items: AppMenuItem<TId, TContext>[] = [];
@@ -1061,7 +1072,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return item.surface ?? 'plain';
   }
 
-  protected itemLayout(item: AppMenuItem<TId, TContext>): AppMenuItemLayout {
+  protected itemVisualLayout(item: AppMenuItem<TId, TContext>): AppMenuItemLayout {
     return item.layout ?? 'default';
   }
 
@@ -1098,7 +1109,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if (((this.isDropdownListKind && !this.isTabbedPresentation) || (this.isButtonRowKind && !this.activeBranchTabbedPresentation)) && item.kind === 'radio') {
+    if (((this.isDropdownListKind && !this.isTabbedModelLayout) || (this.isInlineRowLayout && !this.activeBranchTabbedModelLayout)) && item.kind === 'radio') {
       return false;
     }
     return this.isItemActive(item) && !this.hasNestedItems(item);
@@ -1183,15 +1194,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
-    return ((this.isDropdownListKind && !this.isTabbedPresentation) || this.isButtonRowKind) && this.hasNestedItems(item);
+    return ((this.isDropdownListKind && !this.isTabbedModelLayout) || this.isInlineRowLayout) && this.hasNestedItems(item);
   }
 
   private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
-    return item.closeOnSelect ?? (this.isTabbedPresentation || this.activeBranchTabbedPresentation ? false : this.closeOnSelect);
+    return item.closeOnSelect ?? (this.isTabbedModelLayout || this.activeBranchTabbedModelLayout ? false : this.closeOnSelect);
   }
 
   private syncActiveTabsGroup(): void {
-    if ((!this.isTabbedPresentation && !this.activeBranchTabbedPresentation) || this.tabsGroups.length === 0) {
+    if ((!this.isTabbedModelLayout && !this.activeBranchTabbedModelLayout) || this.tabsGroups.length === 0) {
       return;
     }
     const groups = this.visibleTabsGroups;
@@ -1205,7 +1216,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private syncOpenPanelState(): void {
-    if (!this.open || this.isInlineKind || this.isCustomTriggerAction) {
+    if (!this.open || this.usesInlinePanel || this.isCustomTriggerAction) {
       return;
     }
     if (this.activeBranchPath.length > 0) {
@@ -1213,7 +1224,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
         this.setOpen(false);
         return;
       }
-      if (this.activeBranchTabbedPresentation) {
+      if (this.activeBranchTabbedModelLayout) {
         if (this.tabsGroups.length === 0) {
           this.setOpen(false);
         }
@@ -1224,11 +1235,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       }
       return;
     }
-    if (this.isButtonRowKind) {
+    if (this.isInlineRowLayout) {
       this.setOpen(false);
       return;
     }
-    if (this.isDropdownListKind && !this.isTabbedPresentation && this.visibleSelectableListItems().length === 0) {
+    if (this.isDropdownListKind && !this.isTabbedModelLayout && this.visibleSelectableListItems().length === 0) {
       this.setOpen(false);
     }
   }

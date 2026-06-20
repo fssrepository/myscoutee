@@ -7,9 +7,9 @@
       [class.app-menu__trigger--open]="open"
       [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
       [class.app-menu__trigger--placeholder]="usesDefaultSelectTriggerLabel()"
-      [class.app-menu__trigger--shape-field]="triggerShape() === 'field'"
-      [class.app-menu__trigger--shape-pill]="triggerShape() === 'pill'"
-      [class.app-menu__trigger--shape-icon]="triggerShape() === 'icon'"
+      [class.app-menu__trigger--layout-field]="triggerLayout() === 'field'"
+      [class.app-menu__trigger--layout-pill]="triggerLayout() === 'pill'"
+      [class.app-menu__trigger--layout-icon]="triggerLayout() === 'icon'"
       [disabled]="triggerDisabled()"
       [attr.aria-expanded]="open"
       [attr.aria-haspopup]="triggerAriaHasPopup()"
@@ -41,7 +41,7 @@
     </button>
   }
 
-  @if (isButtonRowKind) {
+  @if (isInlineRowLayout) {
     <div class="app-menu__button-row" role="toolbar">
       @for (item of actionRowItems; track trackByItemId($index, item)) {
         @if (!isDivider(item) && !isSection(item)) {
@@ -82,7 +82,7 @@
             @if (actionRowItemIcon(item)) {
               <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
             }
-            @if (isButtonRowBig) {
+            @if (isInlineRowBig) {
               <span class="app-menu__button-row-copy">
                 @if (actionRowItemLabel(item)) {
                   <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
@@ -100,7 +100,7 @@
               }
               @if (hasActionRowItemSummaryCounter(item)) {
                 <span
-                  class="app-menu__counter app-menu__counter--summary-corner"
+                  class="app-menu__counter app-menu__counter--value-corner"
                   [class.app-menu__counter--pulse]="isCounterPulsing(actionRowItemSummaryCounterKey(item))"
                   >
                   {{ actionRowItemSummaryCounterLabel(item) }}
@@ -148,10 +148,10 @@
 
     <div
       class="app-menu__panel"
-      [class.app-menu__panel--inline]="isInlineKind"
-      [class.app-menu__panel--dropdown-list]="(isDropdownListKind && !isTabbedPresentation) || (isButtonRowKind && !activeBranchTabbedPresentation)"
+      [class.app-menu__panel--inline]="usesInlinePanel"
+      [class.app-menu__panel--dropdown-list]="(isDropdownListKind && !isTabbedModelLayout) || (isInlineRowLayout && !activeBranchTabbedModelLayout)"
       [class.app-menu__panel--fab]="isFabKind"
-      [class.app-menu__panel--tabs]="isTabbedPresentation || activeBranchTabbedPresentation"
+      [class.app-menu__panel--tabs]="isTabbedModelLayout || activeBranchTabbedModelLayout"
       [class.app-menu__panel--has-branch-header]="showBranchBack"
       [class.app-menu__panel--open-up]="resolvedOpenUp"
       [class.app-menu__panel--align-start]="resolvedPanelAlign === 'start'"
@@ -163,7 +163,7 @@
         <div class="app-menu__title">{{ resolvedTitle | i18n }}</div>
       }
 
-      @if (isShortcutGridKind && hasMenuNodes) {
+      @if (isInlineGridLayout && hasMenuNodes) {
         <div class="app-menu__groups">
           @for (group of menuNodes; track trackByGroupId($index, group)) {
             <section class="app-menu__group" role="group" [attr.aria-label]="groupAriaLabel(group)">
@@ -180,20 +180,20 @@
                   <span class="app-menu__group-line"></span>
                 </div>
               }
-              <div class="app-menu__shortcut-grid">
+              <div class="app-menu__tile-grid">
                 @for (item of groupItems(group); track trackByItemId($index, item)) {
                   @if (isDivider(item)) {
-                    <div class="app-menu__divider app-menu__shortcut-divider" role="separator"></div>
+                    <div class="app-menu__divider app-menu__tile-divider" role="separator"></div>
                   } @else if (isSection(item)) {
-                    <div class="app-menu__section-label app-menu__shortcut-section">{{ itemLabel(item) | i18n }}</div>
+                    <div class="app-menu__section-label app-menu__tile-section">{{ itemLabel(item) | i18n }}</div>
                   } @else {
                     <button
                       type="button"
-                      class="app-menu__shortcut-item"
+                      class="app-menu__tile-item"
                       [ngClass]="itemPaletteClass(item)"
-                      [class.app-menu__shortcut-item--active]="isItemActive(item)"
-                      [class.app-menu__shortcut-item--disabled]="isItemDisabled(item)"
-                      [class.app-menu__shortcut-item--segmented]="hasItemSegments(item)"
+                      [class.app-menu__tile-item--active]="isItemActive(item)"
+                      [class.app-menu__tile-item--disabled]="isItemDisabled(item)"
+                      [class.app-menu__tile-item--segmented]="hasItemSegments(item)"
                       [style.grid-column]="itemGridColumn(item)"
                       [disabled]="isItemDisabled(item)"
                       [attr.role]="itemRole(item)"
@@ -222,16 +222,16 @@
                         </span>
                       } @else {
                         @if (itemIcon(item)) {
-                          <mat-icon class="app-menu__shortcut-icon">{{ itemIcon(item) }}</mat-icon>
+                          <mat-icon class="app-menu__tile-icon">{{ itemIcon(item) }}</mat-icon>
                         }
-                        <span class="app-menu__shortcut-label">{{ itemLabel(item) | i18n }}</span>
+                        <span class="app-menu__tile-label">{{ itemLabel(item) | i18n }}</span>
                         @if (itemDescription(item)) {
-                          <span class="app-menu__shortcut-description">{{ itemDescription(item) | i18n }}</span>
+                          <span class="app-menu__tile-description">{{ itemDescription(item) | i18n }}</span>
                         }
                       }
                       @if (hasItemCounter(item)) {
                         <span
-                          class="app-menu__counter app-menu__counter--shortcut"
+                          class="app-menu__counter app-menu__counter--tile"
                           [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
                           >
                           {{ itemCounterLabel(item) }}
@@ -244,7 +244,7 @@
             </section>
           }
         </div>
-      } @else if ((isTabbedPresentation || activeBranchTabbedPresentation) && hasTabsGroups) {
+      } @else if ((isTabbedModelLayout || activeBranchTabbedModelLayout) && hasTabsGroups) {
         <div class="app-menu__tabs">
           @if (isTabsFilterable()) {
             <div class="app-menu__tabs-head">
@@ -457,7 +457,7 @@
                 class="app-menu__item"
                 [ngClass]="itemPaletteClass(item)"
                 [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
-                [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
+                [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
                 [class.app-menu__item--active]="isItemActive(item)"
                 [class.app-menu__item--disabled]="isItemDisabled(item)"
                 [class.app-menu__item--with-description]="itemDescription(item)"
@@ -478,7 +478,7 @@
                   @if (itemDescription(item)) {
                     <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
                   }
-                  @if (itemDetail(item) && itemLayout(item) === 'summary') {
+                  @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
                     <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
                   }
                 </span>
@@ -490,7 +490,7 @@
                     {{ itemCounterLabel(item) }}
                   </span>
                 }
-                @if (itemDetail(item) && itemLayout(item) !== 'summary') {
+                @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                   <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                 }
                 @if (showItemCheck(item)) {
@@ -505,13 +505,13 @@
                 <div
                   class="app-menu__item-row"
                   [ngClass]="itemPaletteClass(item)"
-                  [class.app-menu__item-row--summary]="itemLayout(item) === 'summary'"
+                  [class.app-menu__item-row--pill]="itemVisualLayout(item) === 'pill'"
                   >
                   <button
                     type="button"
                     class="app-menu__item app-menu__item--row-primary"
                     [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
-                    [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
+                    [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
                     [class.app-menu__item--active]="isItemActive(item)"
                     [class.app-menu__item--disabled]="isItemDisabled(item)"
                     [class.app-menu__item--with-description]="itemDescription(item)"
@@ -529,11 +529,11 @@
                       @if (itemDescription(item)) {
                         <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
                       }
-                      @if (itemDetail(item) && itemLayout(item) === 'summary') {
+                      @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
                         <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
                       }
                     </span>
-                    @if (itemDetail(item) && itemLayout(item) !== 'summary') {
+                    @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                       <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                     }
                     @if (hasItemCounter(item)) {
@@ -567,7 +567,7 @@
                   class="app-menu__item"
                   [ngClass]="itemPaletteClass(item)"
                   [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
-                  [class.app-menu__item--layout-summary]="itemLayout(item) === 'summary'"
+                  [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
                   [class.app-menu__item--active]="isItemActive(item)"
                   [class.app-menu__item--disabled]="isItemDisabled(item)"
                   [class.app-menu__item--with-description]="itemDescription(item)"
@@ -585,11 +585,11 @@
                     @if (itemDescription(item)) {
                       <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
                     }
-                    @if (itemDetail(item) && itemLayout(item) === 'summary') {
+                    @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
                       <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
                     }
                   </span>
-                  @if (itemDetail(item) && itemLayout(item) !== 'summary') {
+                  @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                     <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                   }
                   @if (hasItemCounter(item)) {

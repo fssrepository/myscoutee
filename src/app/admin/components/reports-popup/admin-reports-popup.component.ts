@@ -299,7 +299,7 @@ export class AdminReportsPopupComponent {
       icon: 'more_horiz',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'default',
       counter: unread,
       ariaLabel: source === 'blocked-user' ? 'Blocked user actions' : 'Member moderation actions'

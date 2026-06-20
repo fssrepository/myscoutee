@@ -319,7 +319,7 @@ export class EventMembersPopupComponent {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: this.memberActionMenuPalette(entry),
       ariaLabel: `Open actions for ${entry.name}`
     };

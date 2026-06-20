@@ -43,7 +43,7 @@ export function buildTabbedMenuModel<TId extends string = string, TContext = unk
 ): AppMenuModel<TId, TContext> {
   const { summary, ...groupParams } = params;
   return {
-    presentation: 'tabs',
+    layout: 'tabs',
     summary: summary ?? null,
     groups: buildTabbedMenuGroups<TId, TContext>(groupParams)
   };

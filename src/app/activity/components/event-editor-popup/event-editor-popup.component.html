@@ -38,7 +38,7 @@
         @if (!eventEditorService.readOnly()) {
         <app-menu
           class="event-editor-save-menu"
-          kind="button-row"
+          kind="inline"
           [items]="eventEditorSaveMenuItems()"
           (itemSelect)="onEventEditorMenuSelect($event)"
         ></app-menu>
@@ -46,7 +46,7 @@
         @if (eventEditorCheckoutDraft(); as checkoutDraft) {
         <app-menu
           class="event-editor-checkout-status-menu"
-          kind="button-row"
+          kind="inline"
           [items]="eventEditorCheckoutStatusMenuItems(checkoutDraft)"
           (itemSelect)="onEventEditorMenuSelect($event)"
         ></app-menu>
@@ -102,7 +102,7 @@
             <div class="event-intel-row">
               <app-menu
                 class="event-intel-menu"
-                kind="button-row"
+                kind="inline"
                 [items]="eventIntelMenuItems()"
                 (itemSelect)="onEventEditorMenuSelect($event)"
               ></app-menu>

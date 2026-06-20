@@ -243,7 +243,7 @@ export class HomeGameFilterPopupComponent implements OnChanges {
     return {
       icon: this.filterMenuIcon(kind),
       palette: this.filterMenuPalette(kind),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: this.filterMenuTitle(kind)
     };
   }

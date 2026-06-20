@@ -233,7 +233,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       ariaLabel: 'Open event feedback filter',
       palette: this.eventFeedbackFilterPalette(filter),
       counter: count > 0 ? { value: count, max: 99 } : null,
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 

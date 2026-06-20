@@ -636,7 +636,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       ariaLabel: 'Open visibility selector',
       palette: this.eventVisibilityPalette(this.eventForm.visibility),
       disabled: this.eventStructureReadOnly(),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -829,7 +829,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       ariaLabel: 'Open event frequency',
       palette: this.eventFrequencyPalette(this.eventForm.frequency),
       disabled: this.eventStructureReadOnly(),
-      shape: 'field'
+      layout: 'field'
     };
   }
 
@@ -871,7 +871,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       label: this.eventEditorCheckoutStatusLabel(draft),
       icon: this.eventEditorCheckoutStatusIcon(draft),
       kind: 'action',
-      layout: 'summary',
+      layout: 'pill',
       active: true,
       disabled: !canContinue,
       palette: this.eventEditorCheckoutStatusPalette(draft),

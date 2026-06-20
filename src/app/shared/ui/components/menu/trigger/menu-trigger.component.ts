@@ -18,13 +18,14 @@ import type {
   AppMenuGroup,
   AppMenuItem,
   AppMenuKind,
+  AppMenuLayout,
   AppMenuLiveValue,
   AppMenuModel,
   AppMenuPanelAlign,
   AppMenuPanelMode,
   AppMenuPalette,
   AppMenuTrigger,
-  AppMenuTriggerShape,
+  AppMenuTriggerLayout,
   AppMenuValueMap
 } from '../menu.types';
 import { appMenuModelSummary } from '../menu-summary';
@@ -42,9 +43,9 @@ import { appMenuModelSummary } from '../menu-summary';
         [class.app-menu__trigger--open]="isOpen()"
         [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
         [class.app-menu__trigger--placeholder]="usesDefaultSelectTriggerLabel()"
-        [class.app-menu__trigger--shape-field]="triggerShape() === 'field'"
-        [class.app-menu__trigger--shape-pill]="triggerShape() === 'pill'"
-        [class.app-menu__trigger--shape-icon]="triggerShape() === 'icon'"
+        [class.app-menu__trigger--layout-field]="triggerLayout() === 'field'"
+        [class.app-menu__trigger--layout-pill]="triggerLayout() === 'pill'"
+        [class.app-menu__trigger--layout-icon]="triggerLayout() === 'icon'"
         [disabled]="triggerDisabled()"
         [attr.aria-expanded]="isOpen()"
         [attr.aria-haspopup]="triggerAriaHasPopup()"
@@ -86,6 +87,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
 
   @Input() menuId = '';
   @Input() kind: AppMenuKind = 'select';
+  @Input() layout: AppMenuLayout = 'row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() filterable = false;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
@@ -107,9 +109,19 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   @HostBinding('class.app-menu-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.app-menu-host--kind-button-row')
-  protected get hostButtonRowKindClass(): boolean {
-    return this.kind === 'button-row';
+  @HostBinding('class.app-menu-host--kind-inline')
+  protected get hostInlineKindClass(): boolean {
+    return this.kind === 'inline';
+  }
+
+  @HostBinding('class.app-menu-host--layout-row')
+  protected get hostRowLayoutClass(): boolean {
+    return this.kind === 'inline' && this.layout === 'row';
+  }
+
+  @HostBinding('class.app-menu-host--layout-grid')
+  protected get hostGridLayoutClass(): boolean {
+    return this.kind === 'inline' && this.layout === 'grid';
   }
 
   @HostBinding('class.app-menu-host--kind-fab')
@@ -122,14 +134,9 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return this.kind === 'select';
   }
 
-  @HostBinding('class.app-menu-host--presentation-tabs')
-  protected get hostTabbedPresentationClass(): boolean {
-    return this.isTabbedPresentation;
-  }
-
-  @HostBinding('class.app-menu-host--kind-shortcut-grid')
-  protected get hostShortcutGridKindClass(): boolean {
-    return this.kind === 'shortcut-grid';
+  @HostBinding('class.app-menu-host--model-layout-tabs')
+  protected get hostTabbedModelLayoutClass(): boolean {
+    return this.isTabbedModelLayout;
   }
 
   @HostBinding('class.app-menu-host--layout-desktop')
@@ -149,17 +156,17 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
 
   @HostBinding('class.app-menu-host--trigger-field')
   protected get hostTriggerFieldClass(): boolean {
-    return this.triggerShape() === 'field';
+    return this.triggerLayout() === 'field';
   }
 
   @HostBinding('class.app-menu-host--trigger-pill')
   protected get hostTriggerPillClass(): boolean {
-    return this.triggerShape() === 'pill';
+    return this.triggerLayout() === 'pill';
   }
 
   @HostBinding('class.app-menu-host--trigger-icon')
   protected get hostTriggerIconClass(): boolean {
-    return this.triggerShape() === 'icon';
+    return this.triggerLayout() === 'icon';
   }
 
   @HostListener('window:resize')
@@ -175,8 +182,8 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return this.kind === 'fab';
   }
 
-  protected get isTabbedPresentation(): boolean {
-    return this.model?.presentation === 'tabs';
+  protected get isTabbedModelLayout(): boolean {
+    return this.model?.layout === 'tabs';
   }
 
   protected get isCustomTriggerAction(): boolean {
@@ -224,7 +231,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   }
 
   private shouldResolveTriggerIconToClose(icon: string): boolean {
-    if (this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true) {
+    if (this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true) {
       return false;
     }
     switch (icon) {
@@ -249,10 +256,10 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     if (this.trigger?.hideLabel === true) {
       return '';
     }
-    if (this.isSelectKind && this.triggerShape() !== 'icon') {
+    if (this.isSelectKind && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
-    if (this.isTabbedPresentation && this.triggerShape() !== 'icon') {
+    if (this.isTabbedModelLayout && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
     return '';
@@ -290,9 +297,9 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return `app-menu__palette--${this.triggerPalette()}`;
   }
 
-  protected triggerShape(): AppMenuTriggerShape {
-    if (this.trigger?.shape) {
-      return this.trigger.shape;
+  protected triggerLayout(): AppMenuTriggerLayout {
+    if (this.trigger?.layout) {
+      return this.trigger.layout;
     }
     if (this.isFabKind) {
       return 'icon';
@@ -309,11 +316,11 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
   }
 
   private isSelectLikeTrigger(): boolean {
-    return this.isSelectKind || this.isTabbedPresentation;
+    return this.isSelectKind || this.isTabbedModelLayout;
   }
 
   private defaultSelectTriggerLabel(): string {
-    return this.isSelectLikeTrigger() && this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true
+    return this.isSelectLikeTrigger() && this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true
       ? 'select.option'
       : '';
   }
@@ -354,6 +361,7 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     return {
       id: this.resolvedMenuId(),
       kind: this.kind,
+      layout: this.layout,
       title: this.title,
       filterable: this.filterable,
       items: this.items,

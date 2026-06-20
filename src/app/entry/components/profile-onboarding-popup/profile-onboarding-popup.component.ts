@@ -329,7 +329,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       label,
       icon,
       palette,
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.saving,
       ariaLabel: 'Open selector'
     };
@@ -410,7 +410,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return {
       icon: 'language',
       palette: 'blue',
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.saving,
       ariaLabel: (this.draft?.form.languages.length ?? 0) > 0 ? 'open.languages.selector' : 'select.languages'
     };
@@ -439,7 +439,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return {
       icon: 'auto_awesome',
       palette: this.paletteFromProfileTone(this.valuesDominantToneClass(this.draft?.form.values ?? [])),
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.saving,
       ariaLabel: (this.draft?.form.values.length ?? 0) > 0 ? 'open.values.selector' : 'select.values'
     };
@@ -464,7 +464,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return {
       icon: 'sell',
       palette: this.paletteFromProfileTone(this.interestDominantToneClass(this.draft?.form.interests ?? [])),
-      shape: 'field',
+      layout: 'field',
       disabled: () => this.saving,
       ariaLabel: (this.draft?.form.interests.length ?? 0) > 0 ? 'open.interests.selector' : 'select.interests'
     };
@@ -1416,7 +1416,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return {
       icon: this.experienceTypeIcon(type),
       palette: this.experienceTypePalette(type),
-      shape: 'field',
+      layout: 'field',
       action: 'custom',
       trailingIcon: 'chevron_right',
       disabled: () => this.saving,
@@ -1438,7 +1438,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       entries: stableEntries,
       value: stableEntries,
       model: {
-        presentation: 'tabs',
+        layout: 'tabs',
         valueKey: 'id',
         summary: {
           emptyLabel: this.experienceSelectorEmptyLabelKey(type),

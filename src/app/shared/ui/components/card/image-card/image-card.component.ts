@@ -190,7 +190,7 @@ export class ImageCardComponent {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'default',
       counter: counter > 0 ? { value: counter, max: 99 } : null,
       ariaLabel: 'Open menu'

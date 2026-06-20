@@ -329,7 +329,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
       label: this.experienceFilter,
       icon: this.experienceFilterIcon(this.experienceFilter),
       palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience filter'
     };
   }
@@ -352,7 +352,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
       label: this.experienceForm.type,
       icon: this.experienceTypeIcon(this.experienceForm.type),
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience type selector'
     };
   }

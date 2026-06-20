@@ -816,7 +816,7 @@ export class EventResourcePopupComponent implements DoCheck {
       ariaLabel: 'Open asset filter',
       palette: this.resourceTypePalette(filter),
       counter: count > 0 ? { value: count, max: 99 } : null,
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -846,7 +846,7 @@ export class EventResourcePopupComponent implements DoCheck {
       ariaLabel: 'Open sub-event asset actions',
       hideLabel: true,
       palette: 'green',
-      shape: 'icon'
+      layout: 'icon'
     };
   }
 
@@ -877,7 +877,7 @@ export class EventResourcePopupComponent implements DoCheck {
       icon: this.assetExploreOrderIcon(),
       ariaLabel: 'Open asset explore order',
       palette: this.assetExploreOrderPalette(this.assetExploreOrder),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -901,7 +901,7 @@ export class EventResourcePopupComponent implements DoCheck {
       icon: this.assetExploreCategoryIcon(explore.category),
       ariaLabel: 'Open asset explore category',
       palette: this.assetCategoryPalette(explore.category),
-      shape: 'field'
+      layout: 'field'
     };
   }
 

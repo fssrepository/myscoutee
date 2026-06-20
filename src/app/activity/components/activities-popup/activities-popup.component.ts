@@ -1063,7 +1063,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       icon: this.supportCaseFilterIcon(),
       palette: this.supportCasePalette(this.activitiesSupportCaseFilter),
       counter: this.supportCaseFilterCount(),
-      shape: 'pill'
+      layout: 'pill'
     });
   }
 
@@ -1213,7 +1213,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: this.activitiesToolbar.activitiesSecondaryFilterLabel(),
       icon: this.activitiesToolbar.activitiesSecondaryFilterIcon(),
       palette: this.activitiesSecondaryPalette(filter),
-      shape: 'pill',
+      layout: 'pill',
       hideLabel: this.isMobileView
     });
   }
@@ -1234,7 +1234,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: this.activitiesToolbar.activityViewLabel(),
       icon: this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
       palette: this.activitiesViewPalette(this.activitiesView),
-      shape: 'pill',
+      layout: 'pill',
       hideLabel: this.isMobileView
     });
   }
@@ -1256,7 +1256,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       closeIcon: 'close',
       ariaLabel: 'Open event actions',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'green'
     };
   }
@@ -1329,7 +1329,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     icon: string;
     palette: AppMenuPalette;
     counter?: number;
-    shape?: AppMenuTrigger['shape'];
+    layout?: AppMenuTrigger['layout'];
     hideLabel?: boolean;
   }): AppMenuTrigger {
     const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
@@ -1337,7 +1337,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: options.label,
       icon: options.icon,
       palette: options.palette,
-      shape: options.shape ?? 'pill',
+      layout: options.layout ?? 'pill',
       hideLabel: options.hideLabel,
       counter: counter > 0 ? { value: counter, max: 99 } : null
     };
