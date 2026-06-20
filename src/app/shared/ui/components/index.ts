@@ -13,5 +13,4 @@ export * from './terms-policy';
 export * from './demo-bootstrap-selector';
 export * from './profile-experience-manager';
 
-export * from './basket';
 export * from './confirmation-dialog';
