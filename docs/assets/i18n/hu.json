@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.06.18.hu.3",
+  "version": "2026.06.19.hu.1",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -888,8 +888,12 @@
     "profile.details.values": "Értékek",
     "profile.details.workout": "Edzés",
     "profile.experience.education": "Tanulmány",
+    "profile.experience.openSchool": "Iskolai tapasztalatok megnyitása",
+    "profile.experience.openWorkplace": "Munkahelyi tapasztalatok megnyitása",
     "profile.experience.profession": "Szakma",
     "profile.experience.school": "Iskola",
+    "profile.experience.selectSchool": "Iskola választása",
+    "profile.experience.selectWorkplace": "Munkahely választása",
     "profile.experience.workplace": "Munkahely",
     "profile.gender": "Nem",
     "profile.height": "Magasság",
@@ -935,6 +939,7 @@
     "select.demo.user": "Demo felhasználó választása",
     "select.interests": "Érdeklődés választása",
     "select.languages": "Nyelvek választása",
+    "select.option": "Válassz",
     "select.values": "Értékek választása",
     "selector.unavailable": "A választó nem érhető el",
     "service": "Szerviz",
