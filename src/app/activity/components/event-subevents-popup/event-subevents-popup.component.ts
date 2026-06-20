@@ -28,7 +28,6 @@ import {
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
-  CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -246,8 +245,7 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     AppMenuTriggerComponent,
     EventSubeventStageFormPopupComponent,
     EventSubeventGroupFormPopupComponent,
-    EventSubeventLeaderboardPopupComponent,
-    CounterBadgePipe
+    EventSubeventLeaderboardPopupComponent
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss',
