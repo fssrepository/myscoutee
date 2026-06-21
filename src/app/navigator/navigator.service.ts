@@ -531,6 +531,9 @@ export class NavigatorService {
     if (popup === 'terms') {
       void this.termsPolicy.prepareOpen();
     }
+    if (popup === 'help') {
+      void this.helpCenterService.preload('help');
+    }
     this.settingsPopupRef.set(popup);
   }
 

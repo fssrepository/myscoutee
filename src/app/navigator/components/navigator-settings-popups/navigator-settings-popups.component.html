@@ -1,20 +1,16 @@
 @if (activePopup() === 'privacy') {
-  <app-privacy-policy-popup
-    [open]="true"
-    shell="popup"
-    [viewOnly]="true"
-    [source]="'settings'"
-    [activeUserId]="activeUserId()"
-    [approvalRequired]="privacyConsentRequired()"
-    (closeRequested)="closePopup()"
-    (acceptRequested)="completePrivacyPopup()"
-  ></app-privacy-policy-popup>
+  <app-document-viewer
+    [config]="privacyDocumentConfig()"
+    (action)="onPrivacyDocumentAction($event)"
+  ></app-document-viewer>
 } @else if (activePopup() === 'terms') {
-  <app-terms-policy
-    [open]="true"
-    shell="popup"
-    (closeRequested)="closePopup()"
-  ></app-terms-policy>
+  <app-document-viewer
+    [config]="termsDocumentConfig()"
+  ></app-document-viewer>
+} @else if (activePopup() === 'help') {
+  <app-document-viewer
+    [config]="helpDocumentConfig()"
+  ></app-document-viewer>
 } @else if (activePopup(); as popup) {
   <section
     class="app-popup navigator-settings-popup-shell"
@@ -22,26 +18,17 @@
     >
     <div class="app-popup-backdrop" (click)="closePopup()"></div>
     <div class="app-popup-panel navigator-settings-popup-panel" (click)="$event.stopPropagation()">
-      <div class="popup-header" [ngClass]="popupHeaderClass(popup)">
+      <div class="popup-header">
         <div class="popup-title">
           <h2>
-            <span>{{ popupHeaderTitle(popup) }}</span>
+            <span>{{ popupTitle(popup) }}</span>
           </h2>
-          @if (popupHeaderDescription(popup); as description) {
-            <p class="navigator-settings-popup-description">{{ description }}</p>
-          }
         </div>
-        @if (popupVersionLabel(popup); as versionLabel) {
-          <span class="navigator-settings-popup-version">{{ versionLabel }}</span>
-        }
         <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
       <div class="popup-body">
-        @if (popup === 'help') {
-          <app-navigator-help-popup></app-navigator-help-popup>
-        }
         @if (popup === 'feedback') {
           <app-navigator-feedback-popup></app-navigator-feedback-popup>
         }

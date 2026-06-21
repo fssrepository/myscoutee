@@ -209,6 +209,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.isInlineRowBig;
   }
 
+  @HostBinding('class.app-menu-host--inline-row-labelled-action')
+  protected get hostInlineRowLabelledActionClass(): boolean {
+    return this.isInlineRowLayout
+      && this.actionRowItems.some(item => this.itemVisualLayout(item) === 'action' && !!this.actionRowItemLabel(item));
+  }
+
   @HostBinding('class.app-menu-host--kind-fab')
   protected get hostFabKindClass(): boolean {
     return this.isFabKind;

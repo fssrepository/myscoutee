@@ -1,0 +1,174 @@
+@if (isOpen()) {
+  <section
+    [class.document-viewer-overlay]="isPopupShell()"
+    [class.document-viewer-page]="!isPopupShell()"
+    [attr.aria-label]="ariaLabel()"
+    >
+    @if (isPopupShell()) {
+      <div class="document-viewer-backdrop" (click)="closeFromBackdrop($event)"></div>
+    }
+    <article
+      [class.document-viewer-panel]="isPopupShell()"
+      [class.document-viewer-page-panel]="!isPopupShell()"
+      >
+      <header class="document-viewer-head" [ngClass]="headerPaletteClass()">
+        @if (showBrand()) {
+          <a class="document-viewer-brand" href="/">
+            <img src="assets/icon/android-chrome-192x192.png" alt="" width="40" height="40" />
+            <span>MyScoutee</span>
+          </a>
+        }
+        <div class="document-viewer-head-row" [class.has-close]="isPopupShell()">
+          <div class="document-viewer-title-wrap">
+            <h2>
+              <span data-i18n-ignore>{{ title() }}</span>
+            </h2>
+            @if (description()) {
+              <p data-i18n-ignore>{{ description() }}</p>
+            }
+          </div>
+          @if (versionLabel()) {
+            <span class="document-viewer-version">{{ versionLabel() }}</span>
+          }
+          @if (isPopupShell()) {
+            <button
+              type="button"
+              class="document-viewer-close"
+              matRipple
+              [matRippleColor]="'rgba(41, 78, 128, 0.12)'"
+              (click)="requestClose($event)"
+              [attr.aria-label]="closeAriaLabel()"
+              >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+      </header>
+
+      <div class="document-viewer-content">
+        @if (loading()) {
+          <article class="document-viewer-status document-viewer-status-loading">
+            <app-progress-indicator
+              kind="load-ring"
+              state="loading"
+            ></app-progress-indicator>
+            <span>{{ loadingLabel() }}</span>
+          </article>
+        } @else if (activeConfig()?.sections?.length) {
+          <div class="document-viewer-accordion">
+            @for (section of activeConfig()?.sections ?? []; track section.id) {
+              <article
+                class="document-viewer-section"
+                [ngClass]="sectionToneClass(section)"
+                [class.is-open]="openSectionId === section.id"
+                [class.is-selected]="isSectionSelected(section)"
+                [class.is-toggleable]="section.toggleable === true"
+                >
+                <div class="document-viewer-section-head">
+                  <button
+                    type="button"
+                    class="document-viewer-section-toggle"
+                    [attr.aria-expanded]="openSectionId === section.id"
+                    (click)="toggleSection(section.id, $event)"
+                    (keydown)="onSectionKeydown(section.id, $event)"
+                    >
+                    <span class="document-viewer-section-title">
+                      @if (section.icon) {
+                        <mat-icon>{{ section.icon }}</mat-icon>
+                      }
+                      <span data-i18n-ignore>{{ section.title }}</span>
+                    </span>
+                  </button>
+                  <span class="document-viewer-section-actions">
+                    @if (section.toggleable) {
+                      <button
+                        type="button"
+                        class="document-viewer-section-check"
+                        [class.is-selected]="isSectionSelected(section)"
+                        [attr.aria-pressed]="isSectionSelected(section)"
+                        [attr.aria-label]="selectionAriaLabel(section)"
+                        (pointerover)="stopNestedEvent($event)"
+                        (mouseover)="stopNestedEvent($event)"
+                        (mousedown)="stopNestedEvent($event)"
+                        (keydown)="stopNestedEvent($event)"
+                        (click)="toggleSectionSelection(section, $event)"
+                        >
+                        @if (isSectionSelected(section)) {
+                          <mat-icon>check</mat-icon>
+                        } @else {
+                          <span class="document-viewer-section-check-glyph" aria-hidden="true"></span>
+                        }
+                      </button>
+                    }
+                    <button
+                      type="button"
+                      class="document-viewer-section-caret-btn"
+                      [attr.aria-expanded]="openSectionId === section.id"
+                      [attr.aria-label]="uiText(openSectionId === section.id ? 'Collapse section' : 'Expand section')"
+                      (click)="toggleSection(section.id, $event)"
+                      >
+                      <mat-icon class="document-viewer-section-caret">expand_more</mat-icon>
+                    </button>
+                  </span>
+                </div>
+                @if (openSectionId === section.id) {
+                  <div class="document-viewer-section-body">
+                    @if (section.blurb) {
+                      <p class="document-viewer-lead" data-i18n-ignore>{{ section.blurb }}</p>
+                    }
+                    @if (section.contentHtml) {
+                      <div
+                        class="document-viewer-html"
+                        appLazyBgImage
+                        [appLazyHtmlImages]="true"
+                        data-i18n-ignore
+                        [innerHTML]="section.contentHtml"
+                      ></div>
+                    }
+                    @if (section.points?.length) {
+                      <ul class="document-viewer-list">
+                        @for (point of section.points; track point) {
+                          <li data-i18n-ignore>{{ point }}</li>
+                        }
+                      </ul>
+                    }
+                    @if (section.details?.length) {
+                      <ul class="document-viewer-list">
+                        @for (detail of section.details; track detail) {
+                          <li data-i18n-ignore>{{ detail }}</li>
+                        }
+                      </ul>
+                    }
+                  </div>
+                }
+              </article>
+            }
+          </div>
+        } @else {
+          <article class="document-viewer-status">
+            <mat-icon>{{ emptyIcon() }}</mat-icon>
+            <h4>{{ emptyTitle() }}</h4>
+            <p>{{ emptyDescription() }}</p>
+          </article>
+        }
+      </div>
+
+      @if (statusMessage() || visibleActions().length > 0) {
+        <footer class="document-viewer-actions" [class.document-viewer-actions-single]="visibleActions().length <= 1">
+          @if (statusMessage()) {
+            <span class="document-viewer-status-message" [ngClass]="statusToneClass()" role="status">{{ statusMessage() }}</span>
+          }
+          @if (visibleActions().length > 0) {
+            <app-menu
+              class="document-viewer-action-menu"
+              kind="inline"
+              layout="row"
+              [items]="actionMenuItems()"
+              (itemSelect)="onActionMenuSelect($event)"
+            ></app-menu>
+          }
+        </footer>
+      }
+    </article>
+  </section>
+}

@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Injector, Input, NgZone, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 
 import { AppPopupContext } from '../../../shared/ui';
-import { LandingContentService, PrivacyPolicyService, UsersService, type UserLocationEligibilityResponseDto } from '../../../shared/core';
+import { HelpCenterService, LandingContentService, PrivacyPolicyService, TermsPolicyService, UsersService, type UserLocationEligibilityResponseDto } from '../../../shared/core';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
@@ -9,6 +9,7 @@ import type {
   FirebaseAuthRequestDto,
   LocationCoordinates
 } from '../../../shared/core/contracts/user.interface';
+import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/contracts';
 import type { AuthMode } from '../../../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
@@ -16,8 +17,14 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { I18nService } from '../../../shared/core';
 import { SeedStaticContentService } from '../../../shared/core/local/seed';
 import type { InfoCardData } from '../../../shared/ui';
-import { PrivacyPolicyPopupComponent } from '../../../shared/ui/components/privacy-policy-popup';
-import { TermsPolicyComponent } from '../../../shared/ui/components/terms-policy';
+import {
+  DocumentViewerComponent,
+  type DocumentViewerAction,
+  type DocumentViewerActionEvent,
+  type DocumentViewerActionVisibility,
+  type DocumentViewerConfig,
+  type DocumentViewerHeaderPalette
+} from '../../../shared/ui/components/document-viewer';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 
@@ -37,8 +44,7 @@ export interface EntryDemoNewProfileRequestEvent {
   standalone: true,
   imports: [
     EntryLandingComponent,
-    PrivacyPolicyPopupComponent,
-    TermsPolicyComponent,
+    DocumentViewerComponent,
     EntryFirebaseAuthPopupComponent,
     ConfirmationDialogComponent
   ],
@@ -56,7 +62,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
+  private readonly termsPolicy = inject(TermsPolicyService);
   private readonly landingContent = inject(LandingContentService);
   private readonly staticContentSeed = inject(SeedStaticContentService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -81,6 +89,9 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   protected showEntryTermsPopup = false;
   protected entryConsentViewOnly = false;
   protected entryPrivacyLoading = true;
+  protected entryPrivacySaving = false;
+  protected entryPrivacySaveMessage = '';
+  protected entryPrivacySaveError = '';
   protected landingArticlesLoading = true;
   protected landingIdeaCards: InfoCardData[] = [];
   protected entryAuthUnavailable = false;
@@ -96,6 +107,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
   private grantedLocationEligibilityPromise: Promise<void> | null = null;
   private grantedLocationEligibilityRequestToken = 0;
   private browserLocationAutoRequestAttempted = false;
+  private entryApprovedPrivacySectionIds = new Set<string>();
+  private entryOptionalApprovalsLoadedForRevision = '';
   private geolocationPermissionStatus: PermissionStatus | null = null;
   private geolocationPermissionState: PermissionState | null = null;
   private readonly geolocationPermissionChangeHandler = (): void => {
@@ -203,6 +216,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       this.entryPrivacyLoading = true;
       void this.loadEntryContent();
     }
+    this.syncEntryPrivacyApprovalsForRevision();
     this.entryConsentViewOnly = viewOnly;
     this.showEntryConsentPopup = true;
   }
@@ -213,19 +227,98 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     }
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryPrivacySaveMessage = '';
+    this.entryPrivacySaveError = '';
   }
 
   protected openEntryTermsPopup(): void {
     this.showEntryTermsPopup = true;
+    void this.termsPolicy.prepareOpen();
   }
 
   protected closeEntryTermsPopup(): void {
     this.showEntryTermsPopup = false;
   }
 
-  protected acceptEntryConsent(): void {
+  protected entryPrivacyDocumentConfig(): DocumentViewerConfig {
+    const revision = this.privacyPolicy.activeRevision();
+    const sections = revision?.sections ?? [];
+    return {
+      open: this.showEntryConsentPopup,
+      shell: 'popup',
+      onClose: () => this.closeEntryConsentPopup(),
+      ariaLabel: this.uiText('GDPR consent'),
+      closeAriaLabel: this.uiText('Close privacy popup'),
+      closeOnBackdrop: this.entryConsentViewOnly,
+      title: revision?.summary?.trim() || this.uiText('Privacy first'),
+      description: revision?.description?.trim() || this.uiText('Privacy first'),
+      versionLabel: this.privacyPolicy.activeVersionLabel(),
+      headerPalette: this.normalizeDocumentHeaderPalette(revision?.headerColor),
+      loading: this.entryPrivacyLoading,
+      loadingLabel: this.uiText('Loading privacy content'),
+      emptyState: {
+        icon: 'policy',
+        title: this.uiText('Privacy is not available'),
+        description: this.uiText('Privacy content is not available right now.')
+      },
+      sections: sections.map(section => this.mapPrivacySection(section)),
+      selectedSectionIds: Array.from(this.entryApprovedPrivacySectionIds),
+      actions: this.entryPrivacyDocumentActions(),
+      statusMessage: this.entryPrivacySaveError || this.entryPrivacySaveMessage,
+      statusTone: this.entryPrivacySaveError ? 'error' : 'default'
+    };
+  }
+
+  protected entryTermsDocumentConfig(): DocumentViewerConfig {
+    const revision = this.helpCenter.activeTermsRevision();
+    return {
+      open: this.showEntryTermsPopup,
+      shell: 'popup',
+      onClose: () => this.closeEntryTermsPopup(),
+      ariaLabel: this.uiText('Terms of service'),
+      closeAriaLabel: this.uiText('Close terms popup'),
+      title: revision?.summary?.trim() || this.uiText('Usage terms'),
+      description: revision?.description?.trim() || this.uiText('Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.'),
+      versionLabel: this.helpCenter.activeTermsVersionLabel(),
+      headerPalette: this.normalizeDocumentHeaderPalette(revision?.headerColor),
+      loading: this.termsPolicy.loading() || (this.landingArticlesLoading && !revision),
+      loadingLabel: this.uiText('Loading terms content'),
+      emptyState: {
+        icon: 'rule',
+        title: this.uiText('Terms are not available'),
+        description: this.uiText('Terms content is not available right now.')
+      },
+      sections: (revision?.sections ?? []).map(section => this.mapDocumentSection(section))
+    };
+  }
+
+  protected onEntryPrivacyDocumentAction(event: DocumentViewerActionEvent): void {
+    if (event.id === 'entry-privacy-save') {
+      void this.saveEntryPrivacyChoices(event.selectedSectionIds);
+      return;
+    }
+    if (event.id === 'entry-privacy-accept') {
+      void this.acceptEntryConsent(event.selectedSectionIds);
+      return;
+    }
+    if (event.id === 'entry-privacy-reject') {
+      this.rejectEntryConsent();
+    }
+  }
+
+  protected async acceptEntryConsent(selectedSectionIds: readonly string[] = Array.from(this.entryApprovedPrivacySectionIds)): Promise<void> {
     const version = this.entryConsentVersion();
-    if (this.entryPrivacyLoading || !version) {
+    if (this.entryPrivacyLoading || !version || this.entryPrivacySaving) {
+      return;
+    }
+    this.entryPrivacySaving = true;
+    this.entryPrivacySaveMessage = '';
+    this.entryPrivacySaveError = '';
+    try {
+      this.saveEntryPrivacyApprovalState(selectedSectionIds);
+    } catch {
+      this.entryPrivacySaveError = this.uiText('Privacy choices could not be saved.');
+      this.entryPrivacySaving = false;
       return;
     }
     const nowIso = new Date().toISOString();
@@ -238,6 +331,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.appendEntryConsentAudit('accepted', nowIso);
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryPrivacySaving = false;
     this.entryConsentStateChanged.emit(true);
   }
 
@@ -247,6 +341,8 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.appendEntryConsentAudit('rejected', nowIso);
     this.showEntryConsentPopup = false;
     this.entryConsentViewOnly = false;
+    this.entryPrivacySaveMessage = '';
+    this.entryPrivacySaveError = '';
     this.entryConsentStateChanged.emit(false);
   }
 
@@ -595,6 +691,7 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return;
     }
     this.endEntryPrivacyLoadingWindow();
+    this.syncEntryPrivacyApprovalsForRevision();
     if (!this.entryNetworkUnavailable && !this.entryConsentViewOnly) {
       this.showEntryConsentPopup = this.shouldPromptEntryConsent();
     }
@@ -608,6 +705,183 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
       return '';
     }
     return `privacy:${revision.id}:v${revision.version}`;
+  }
+
+  private entryPrivacyDocumentActions(): readonly DocumentViewerAction[] {
+    if (!this.showEntryConsentPopup) {
+      return [];
+    }
+    if (this.entryConsentViewOnly) {
+      return [{
+        id: 'entry-privacy-save',
+        label: this.entryPrivacySaveButtonLabel(),
+        icon: 'check_circle',
+        palette: 'blue',
+        disabled: !this.canRunEntryPrivacySaveAction(),
+        visible: this.entryPrivacySaveActionVisibility(),
+        progress: this.entryPrivacySaving
+          ? {
+              state: 'loading',
+              shape: 'button'
+            }
+          : null
+      }];
+    }
+    return [
+      {
+        id: 'entry-privacy-reject',
+        label: this.uiText('Cancel'),
+        palette: 'slate',
+        disabled: this.entryPrivacySaving
+      },
+      {
+        id: 'entry-privacy-accept',
+        label: this.uiText('Accept and continue'),
+        icon: this.entryPrivacySaving ? 'hourglass_top' : null,
+        palette: 'blue',
+        disabled: !this.canAcceptEntryPrivacy(),
+        progress: this.entryPrivacySaving
+          ? {
+              state: 'loading',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
+  }
+
+  private mapPrivacySection(section: HelpCenterSection) {
+    const optional = section.optional === true;
+    return {
+      ...this.mapDocumentSection(section),
+      tone: optional ? 'optional' as const : 'mandatory' as const,
+      selected: this.entryApprovedPrivacySectionIds.has(section.id),
+      toggleable: optional
+    };
+  }
+
+  private mapDocumentSection(section: HelpCenterSection) {
+    return {
+      id: section.id,
+      icon: section.icon,
+      title: section.title,
+      blurb: section.blurb,
+      contentHtml: section.contentHtml,
+      points: section.points,
+      details: section.details
+    };
+  }
+
+  private entryPrivacySaveActionVisibility(): DocumentViewerActionVisibility {
+    const revision = this.privacyPolicy.activeRevision();
+    if (!this.entryConsentViewOnly || !revision) {
+      return false;
+    }
+    if (!this.hasEntryConsent) {
+      return true;
+    }
+    return this.hasOptionalPrivacySections(revision) ? 'dirty' : false;
+  }
+
+  private canRunEntryPrivacySaveAction(): boolean {
+    return !this.entryPrivacyLoading && !this.entryPrivacySaving;
+  }
+
+  private canAcceptEntryPrivacy(): boolean {
+    const revision = this.privacyPolicy.activeRevision();
+    return !this.entryConsentViewOnly
+      && !this.entryPrivacyLoading
+      && !this.entryPrivacySaving
+      && Boolean(revision)
+      && (revision?.sections.length ?? 0) > 0;
+  }
+
+  private entryPrivacySaveButtonLabel(): string {
+    if (this.entryPrivacySaving) {
+      return this.uiText('Saving...');
+    }
+    return this.uiText(!this.hasEntryConsent ? 'Approve privacy' : 'Save choices');
+  }
+
+  private async saveEntryPrivacyChoices(selectedSectionIds: readonly string[]): Promise<void> {
+    if (!this.canRunEntryPrivacySaveAction()) {
+      return;
+    }
+    this.entryPrivacySaving = true;
+    this.entryPrivacySaveMessage = '';
+    this.entryPrivacySaveError = '';
+    try {
+      this.saveEntryPrivacyApprovalState(selectedSectionIds);
+      this.entryPrivacySaveMessage = this.uiText('Privacy choices saved.');
+      if (!this.hasEntryConsent) {
+        this.entryPrivacySaving = false;
+        await this.acceptEntryConsent(selectedSectionIds);
+        return;
+      } else {
+        this.closeEntryConsentPopup();
+      }
+    } catch {
+      this.entryPrivacySaveError = this.uiText('Privacy choices could not be saved.');
+    } finally {
+      this.entryPrivacySaving = false;
+    }
+  }
+
+  private saveEntryPrivacyApprovalState(selectedSectionIds: readonly string[]): void {
+    const revision = this.privacyPolicy.activeRevision();
+    if (!revision) {
+      return;
+    }
+    const optionalSectionIds = this.optionalPrivacySectionIds(revision.sections);
+    const approvedSectionIds = Array.from(new Set(selectedSectionIds))
+      .filter(sectionId => optionalSectionIds.has(sectionId))
+      .sort();
+    this.privacyPolicy.saveEntryOptionalApprovals(revision, approvedSectionIds);
+    this.entryApprovedPrivacySectionIds = new Set(approvedSectionIds);
+    this.entryOptionalApprovalsLoadedForRevision = this.privacyPolicy.revisionKey(revision);
+  }
+
+  private syncEntryPrivacyApprovalsForRevision(): void {
+    const revision = this.privacyPolicy.activeRevision();
+    const optionalSectionIds = this.optionalPrivacySectionIds(revision?.sections ?? []);
+    if (!revision) {
+      this.entryApprovedPrivacySectionIds = this.filteredSectionIds(this.entryApprovedPrivacySectionIds, optionalSectionIds);
+      return;
+    }
+    const revisionKey = this.privacyPolicy.revisionKey(revision);
+    if (this.entryOptionalApprovalsLoadedForRevision !== revisionKey) {
+      this.entryApprovedPrivacySectionIds = this.privacyPolicy.loadEntryOptionalApprovals(revision);
+      this.entryOptionalApprovalsLoadedForRevision = revisionKey;
+      return;
+    }
+    this.entryApprovedPrivacySectionIds = this.filteredSectionIds(this.entryApprovedPrivacySectionIds, optionalSectionIds);
+  }
+
+  private hasOptionalPrivacySections(revision: HelpCenterRevision): boolean {
+    return revision.sections.some(section => section.optional === true);
+  }
+
+  private optionalPrivacySectionIds(sections: readonly HelpCenterSection[]): Set<string> {
+    return new Set(sections.filter(section => section.optional === true).map(section => section.id));
+  }
+
+  private filteredSectionIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): Set<string> {
+    return new Set(Array.from(source).filter(sectionId => allowedIds.has(sectionId)));
+  }
+
+  private normalizeDocumentHeaderPalette(value: string | null | undefined): DocumentViewerHeaderPalette {
+    const normalized = `${value ?? ''}`.trim();
+    switch (normalized) {
+      case 'blue':
+      case 'green':
+      case 'rose':
+      case 'violet':
+      case 'slate':
+      case 'teal':
+        return normalized;
+      default:
+        return 'amber';
+    }
   }
 
   private startEntryPrivacyLoadingWindow(): void {

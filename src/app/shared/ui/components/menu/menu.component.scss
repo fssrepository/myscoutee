@@ -124,6 +124,11 @@
   --app-menu-bg: linear-gradient(180deg, #ffffff 0%, #eef5ff 100%);
   --app-menu-bg-hover: linear-gradient(180deg, #f4f9ff 0%, #e6f1ff 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #5f82b5 0%, #436a9f 100%);
+  --app-menu-action-bg: #eef3f8;
+  --app-menu-action-bg-hover: #e8eef6;
+  --app-menu-action-fg: #36547d;
+  --app-menu-action-border: transparent;
+  --app-menu-action-shadow: none;
   --app-menu-border: rgba(51, 79, 114, 0.2);
   --app-menu-fg: #27496f;
   --app-menu-icon: #426a98;
@@ -136,6 +141,11 @@
   --app-menu-bg: linear-gradient(180deg, #f4f6f9 0%, #e7edf4 100%);
   --app-menu-bg-hover: linear-gradient(180deg, #f9fbfd 0%, #edf2f7 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #7d8ba0 0%, #5e6c80 100%);
+  --app-menu-action-bg: #eef3f8;
+  --app-menu-action-bg-hover: #e8eef6;
+  --app-menu-action-fg: #36547d;
+  --app-menu-action-border: transparent;
+  --app-menu-action-shadow: none;
   --app-menu-border: rgba(82, 101, 126, 0.28);
   --app-menu-fg: #536174;
   --app-menu-icon: #64748a;
@@ -147,6 +157,11 @@
   --app-menu-bg: linear-gradient(180deg, #f2f7ff 0%, #e3efff 100%);
   --app-menu-bg-hover: linear-gradient(180deg, #f7fbff 0%, #dcecff 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #4f87cf 0%, #3169ae 100%);
+  --app-menu-action-bg: linear-gradient(135deg, #3f7bc8 0%, #7556d8 100%);
+  --app-menu-action-bg-hover: linear-gradient(135deg, #4a87d5 0%, #8061e2 100%);
+  --app-menu-action-fg: #fff;
+  --app-menu-action-border: transparent;
+  --app-menu-action-shadow: 0 12px 24px rgba(60, 92, 167, 0.24);
   --app-menu-border: rgba(58, 115, 184, 0.32);
   --app-menu-fg: #2b5d98;
   --app-menu-icon: #3f74b2;
@@ -632,13 +647,16 @@
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
   flex: 0 0 auto;
   min-width: 108px;
-  height: 42px;
-  min-height: 42px;
-  border-color: transparent;
-  padding: 0 1rem;
+  height: 40px;
+  min-height: 40px;
+  border-color: var(--app-menu-action-border, transparent);
+  border-radius: 999px;
+  padding: 0 18px;
+  background: var(--app-menu-action-bg, var(--app-menu-bg-strong));
+  color: var(--app-menu-action-fg, #fff);
   font-size: 0.78rem;
   font-weight: 800;
-  box-shadow: 0 16px 30px var(--app-menu-shadow);
+  box-shadow: var(--app-menu-action-shadow, 0 10px 22px var(--app-menu-shadow));
 }
 
 .app-menu__button-row-item--selected-value {
@@ -667,8 +685,20 @@
   box-shadow: 0 18px 34px var(--app-menu-shadow);
 }
 
+.app-menu__button-row-item--action.app-menu__button-row-item--labelled:not(:disabled):hover {
+  background: var(--app-menu-action-bg-hover, var(--app-menu-action-bg, var(--app-menu-bg-strong)));
+  color: var(--app-menu-action-fg, #fff);
+  box-shadow: var(--app-menu-action-shadow, 0 10px 22px var(--app-menu-shadow));
+  filter: brightness(1.02);
+  transform: none;
+}
+
 .app-menu__button-row-item:not(:disabled):active {
   transform: scale(0.92);
+}
+
+.app-menu__button-row-item--action.app-menu__button-row-item--labelled:not(:disabled):active {
+  transform: translateY(1px);
 }
 
 .app-menu__button-row-item--open {
@@ -2348,6 +2378,29 @@ a.app-menu__item {
   flex: 0 1 auto;
   min-width: 0;
   max-width: min(8.4rem, 31vw);
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) {
+  display: block;
+  width: 100%;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) .app-menu {
+  display: block;
+  width: 100%;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) .app-menu__button-row {
+  display: flex;
+  width: 100%;
+  justify-content: stretch;
+  gap: 0.78rem;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action) .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
+  flex: 1 1 0;
+  min-width: 0;
+  padding-inline: 16px;
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--inline-row-big) .app-menu__button-row {
