@@ -5,7 +5,7 @@ import type {
   EventFeedbackCardSourceDto,
   EventFeedbackDeckResultDto
 } from '../../core/contracts/activity.interface';
-import type { InfoCardData } from '../components/card';
+import type { ImageCardData, InfoCardData } from '../components/card';
 
 export class EventFeedbackDeckConverter {
   static convert(result: EventFeedbackDeckResultDto): AppTypes.EventFeedbackCard[] {
@@ -25,6 +25,27 @@ export class EventFeedbackDeckConverter {
         icon: card.icon
       },
       clickable: false
+    };
+  }
+
+  static imageCard(card: AppTypes.EventFeedbackCard): ImageCardData {
+    const isEventCard = card.kind === 'event';
+    return {
+      id: card.id,
+      title: isEventCard ? card.heading : card.identityTitle || card.heading,
+      subtitle: isEventCard ? card.subheading : card.identitySubtitle || card.subheading,
+      detail: isEventCard ? card.identityTitle : null,
+      imageUrl: card.imageUrl,
+      layout: 'overlay',
+      toneClass: card.toneClass,
+      placeholderIcon: card.icon,
+      placeholderLabel: isEventCard ? 'Event' : 'Member',
+      statusChip: {
+        icon: card.icon,
+        tone: isEventCard ? 'info' : 'success',
+        palette: isEventCard ? 'blue' : 'green',
+        ariaLabel: isEventCard ? 'Event feedback' : 'Member feedback'
+      }
     };
   }
 

@@ -1,0 +1,368 @@
+<section
+  class="form-flow"
+  [class.is-loading]="loading"
+  [class.form-flow--carousel]="isCarouselLayout()"
+  [attr.aria-busy]="loading"
+  (pointerdown)="beginSurfaceSwipe($event)"
+  (pointermove)="moveSurfaceSwipe($event)"
+  (pointerup)="endSurfaceSwipe($event)"
+  (pointercancel)="cancelSurfaceSwipe($event)"
+>
+  <ng-template #progressControls>
+    <div class="form-flow__progress" [attr.aria-label]="pageCounterLabel()">
+      @if (showSaveAction()) {
+        <button
+          type="button"
+          class="form-flow__save"
+          [class.is-missing]="totalMissingRequiredCount() > 0"
+          [disabled]="!canSave()"
+          (click)="emitSave($event)"
+          [attr.aria-label]="saveAriaLabel()"
+          [attr.title]="totalMissingRequiredCount() > 0 ? totalMissingRequiredCount() + ' required field missing' : saveAriaLabel()"
+        >
+          <mat-icon>{{ saveIcon() }}</mat-icon>
+          <span>{{ saveLabel() }}</span>
+        </button>
+      } @else {
+        <span
+          class="form-flow__counter"
+          [class.is-missing]="currentPageMissingRequired()"
+          [attr.title]="currentPageMissingRequired() ? currentMissingRequiredCount() + ' required field missing' : pageCounterLabel()"
+        >
+          {{ pageCounterLabel() }}
+        </span>
+      }
+      <div class="form-flow__progress-track" [class.is-missing]="currentPageMissingRequired()">
+        <span [style.width.%]="progressPercent()"></span>
+      </div>
+    </div>
+  </ng-template>
+
+  <ng-template #stepNavControls>
+    <div class="form-flow__slide-nav" aria-label="Form step navigation">
+      <button
+        type="button"
+        class="form-flow__nav form-flow__nav--prev"
+        data-motion="none"
+        [disabled]="isDisabled() || visiblePageIndex() <= 0"
+        (click)="goPrevious($event)"
+        aria-label="Previous step"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+      <button
+        type="button"
+        class="form-flow__nav form-flow__nav--next"
+        data-motion="none"
+        [class.is-blocked]="nextStepBlocked()"
+        [disabled]="isDisabled() || visiblePageIndex() >= totalPageCount() - 1 || nextStepBlocked()"
+        (click)="goNext($event)"
+        [attr.aria-label]="nextStepBlocked() ? 'Complete required fields before continuing' : 'Next step'"
+        [attr.title]="nextStepBlocked() ? currentMissingRequiredCount() + ' required field missing' : 'Next step'"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    </div>
+  </ng-template>
+
+  @if (!isCarouselLayout()) {
+    <header class="form-flow__header">
+      <div class="form-flow__title-block">
+        <span class="form-flow__kicker">{{ model?.title }}</span>
+        <h2>{{ activeTitle() }}</h2>
+        @if (activeSubtitle()) {
+          <p>{{ activeSubtitle() }}</p>
+        }
+      </div>
+
+      <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+    </header>
+  }
+
+  @if (loading) {
+    <article class="form-flow__loading">
+      <app-progress-indicator kind="load-ring" state="loading"></app-progress-indicator>
+      <span>{{ model?.loadingLabel || 'Loading form' }}</span>
+    </article>
+  } @else if (model && totalPageCount() > 0) {
+    <main
+      #flowViewport
+      class="form-flow__body"
+      [class.form-flow__body--mobile]="isMobileViewport"
+      (scroll)="onFlowViewportScroll()"
+    >
+      <div class="form-flow__track" [style.transform]="pageTrackTransform()">
+        @for (step of pages(); track step.id; let stepIndex = $index) {
+          <section
+            class="form-flow__slide"
+            [class.is-active]="isPageActive(stepIndex)"
+            [class.is-missing]="isStepMissingRequired(step)"
+            [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
+            [attr.inert]="isPageActive(stepIndex) ? null : ''"
+            [attr.aria-labelledby]="'form-flow-step-' + step.id"
+          >
+            <div class="form-flow__slide-inner">
+              @if (isCarouselLayout()) {
+                <div class="form-flow__carousel-progress-slot">
+                  <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+                </div>
+              }
+              @if (step.header) {
+                <div
+                  class="form-flow__step-header"
+                  [class.form-flow__step-header--card]="!!(step.header.imageCard || step.header.infoCard)"
+                  [class.form-flow__step-header--image-card]="!!step.header.imageCard"
+                  [class.form-flow__step-header--info-card]="!!step.header.infoCard"
+                >
+                  @if (step.header.imageCard) {
+                    <h3 class="form-flow__step-title-sr" id="form-flow-step-{{ step.id }}">
+                      {{ step.header.title || step.title }}
+                    </h3>
+                    <app-image-card
+                      class="form-flow__step-image-card"
+                      [card]="step.header.imageCard"
+                    ></app-image-card>
+                  } @else if (step.header.infoCard) {
+                    <h3 class="form-flow__step-title-sr" id="form-flow-step-{{ step.id }}">
+                      {{ step.header.title || step.title }}
+                    </h3>
+                    <app-info-card
+                      class="form-flow__step-info-card"
+                      [card]="step.header.infoCard"
+                    ></app-info-card>
+                  } @else {
+                    @if (step.header.imageUrl) {
+                      <img [src]="step.header.imageUrl" alt="" />
+                    }
+                    <div>
+                      @if (step.header.icon) {
+                        <mat-icon>{{ step.header.icon }}</mat-icon>
+                      }
+                      <h3 id="form-flow-step-{{ step.id }}">{{ step.header.title || step.title }}</h3>
+                      @if (step.header.subtitle) {
+                        <p>{{ step.header.subtitle }}</p>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
+              @if (isCarouselLayout()) {
+                <ng-container [ngTemplateOutlet]="stepNavControls"></ng-container>
+              }
+
+              <div class="form-flow__controls">
+                @for (control of step.controls; track control.id) {
+                  <div
+                    class="form-flow__control"
+                    [class.form-flow__control--wide]="control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'"
+                    [class.is-required-missing]="isRequiredControlMissing(control)"
+                  >
+                    @if (control.kind === 'section') {
+                      <div class="form-flow__section-title">
+                        <h4>{{ control.label }}</h4>
+                        @if (control.description) {
+                          <p>{{ control.description }}</p>
+                        }
+                      </div>
+                    } @else if (control.kind === 'menu') {
+                      @if (control.label) {
+                        <label class="form-flow__label">
+                          <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                        </label>
+                      }
+                      <app-menu
+                        class="form-flow__menu"
+                        [kind]="menuKind(control)"
+                        [layout]="menuLayout(control)"
+                        [title]="menuTitle(control)"
+                        [filterable]="menuFilterable(control)"
+                        [trigger]="menuTrigger(control)"
+                        [model]="menuModel(control)"
+                        [items]="menuItems(control)"
+                        [panelMode]="menuPanelMode(control)"
+                        [ngModel]="controlValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                        [closeOnSelect]="menuCloseOnSelect(control)"
+                      ></app-menu>
+                    } @else if (control.kind === 'image-carousel') {
+                      @if (control.label) {
+                        <label class="form-flow__label">
+                          <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                        </label>
+                      }
+                      @let image = imageConfig(control);
+                      <app-editable-image-carousel
+                        [slotCount]="image.slotCount ?? 8"
+                        [compact]="image.compact === true"
+                        [previewMode]="image.previewMode === true"
+                        [ariaLabel]="image.ariaLabel || control.label || 'Images'"
+                        [uploadOwnerId]="image.uploadOwnerId || ''"
+                        [uploadEntityId]="image.uploadEntityId || 'image'"
+                        [ngModel]="controlStringArrayValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-editable-image-carousel>
+                    } @else if (control.kind === 'textarea') {
+                      <label class="form-flow__label">
+                        <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                        @if (control.maxLength) {
+                          <small>{{ controlTextValue(control).length }}/{{ control.maxLength }}</small>
+                        }
+                      </label>
+                      <textarea
+                        [rows]="control.rows ?? 3"
+                        [attr.maxlength]="control.maxLength ?? null"
+                        [placeholder]="control.placeholder || ''"
+                        [disabled]="isControlDisabled(control)"
+                        [ngModel]="controlTextValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></textarea>
+                    } @else if (control.kind === 'static' || control.kind === 'review') {
+                      <article class="form-flow__static">
+                        @if (control.label) {
+                          <h4>{{ control.label }}</h4>
+                        }
+                        <p>{{ summaryValue(control) }}</p>
+                      </article>
+                    } @else {
+                      <label class="form-flow__label">
+                        <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                      </label>
+                      <input
+                        [type]="inputType(control)"
+                        [attr.min]="control.min ?? null"
+                        [attr.max]="control.max ?? null"
+                        [attr.step]="control.step ?? null"
+                        [attr.maxlength]="control.maxLength ?? null"
+                        [placeholder]="control.placeholder || ''"
+                        [disabled]="isControlDisabled(control)"
+                        [ngModel]="control.kind === 'number' ? controlNumberValue(control) : controlTextValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      />
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </section>
+        }
+
+        @if (hasSummaryPage()) {
+          <section
+            class="form-flow__slide form-flow__slide--summary"
+            [class.is-active]="isSummaryPage()"
+            [class.is-missing]="totalMissingRequiredCount() > 0"
+            [attr.aria-hidden]="isSummaryPage() ? null : 'true'"
+            [attr.inert]="isSummaryPage() ? null : ''"
+            [attr.aria-label]="summaryTitle()"
+          >
+            <div class="form-flow__slide-inner">
+              @if (isCarouselLayout()) {
+                <div class="form-flow__carousel-progress-slot">
+                  <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+                </div>
+              }
+              <div class="form-flow__summary-head">
+                <mat-icon>{{ model.summary?.icon || 'fact_check' }}</mat-icon>
+                <div>
+                  <h3>{{ summaryTitle() }}</h3>
+                  @if (model.summary?.subtitle) {
+                    <p>{{ model.summary?.subtitle }}</p>
+                  }
+                </div>
+              </div>
+
+              @if (isCarouselLayout()) {
+                <ng-container [ngTemplateOutlet]="stepNavControls"></ng-container>
+              }
+
+              <div class="form-flow__summary-panels">
+                @for (step of pages(); track step.id) {
+                  <article class="form-flow__summary-panel" [class.is-missing]="isStepMissingRequired(step)">
+                    <header>
+                      @if (step.icon) {
+                        <mat-icon>{{ step.icon }}</mat-icon>
+                      }
+                      <h4>{{ step.title }}</h4>
+                    </header>
+                    @let controls = summaryControls(step);
+                    @if (controls.length > 0) {
+                      <dl>
+                        @for (control of controls; track control.id) {
+                          <div [class.is-empty]="isSummaryValueEmpty(control)">
+                            <dt>{{ summaryLabel(control) }}</dt>
+                            <dd>{{ summaryValue(control) }}</dd>
+                          </div>
+                        }
+                      </dl>
+                    } @else {
+                      <p class="form-flow__summary-empty">{{ summaryEmptyLabel() }}</p>
+                    }
+                  </article>
+                }
+              </div>
+            </div>
+          </section>
+        }
+      </div>
+    </main>
+
+    <footer class="form-flow__footer" [class.form-flow__footer--carousel]="isCarouselLayout()">
+      @if (!isCarouselLayout()) {
+        <button
+          type="button"
+          class="form-flow__nav form-flow__nav--prev"
+          data-motion="none"
+          [disabled]="isDisabled() || visiblePageIndex() <= 0"
+          (click)="goPrevious($event)"
+          aria-label="Previous step"
+        >
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+      }
+      <div class="form-flow__dots" aria-label="Form steps">
+        @for (step of pages(); track step.id; let index = $index) {
+          <button
+            type="button"
+            [class.is-active]="isPageActive(index)"
+            [class.is-missing]="isStepMissingRequired(step)"
+            [attr.aria-current]="isPageActive(index) ? 'step' : null"
+            [attr.aria-label]="step.title"
+            [disabled]="isDisabled() || isForwardNavigationBlocked(index)"
+            (click)="goToPage(index, $event)"
+          ></button>
+        }
+        @if (hasSummaryPage()) {
+          <button
+            type="button"
+            [class.is-active]="isSummaryPage()"
+            [class.is-missing]="totalMissingRequiredCount() > 0"
+            [attr.aria-current]="isSummaryPage() ? 'step' : null"
+            [attr.aria-label]="summaryTitle()"
+            [disabled]="isDisabled() || isForwardNavigationBlocked(pages().length)"
+            (click)="goToPage(pages().length, $event)"
+          ></button>
+        }
+      </div>
+      @if (!isCarouselLayout()) {
+        <button
+          type="button"
+          class="form-flow__nav form-flow__nav--next"
+          data-motion="none"
+          [class.is-blocked]="nextStepBlocked()"
+          [disabled]="isDisabled() || visiblePageIndex() >= totalPageCount() - 1 || nextStepBlocked()"
+          (click)="goNext($event)"
+          [attr.aria-label]="nextStepBlocked() ? 'Complete required fields before continuing' : 'Next step'"
+          [attr.title]="nextStepBlocked() ? currentMissingRequiredCount() + ' required field missing' : 'Next step'"
+        >
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      }
+    </footer>
+  } @else {
+    <article class="form-flow__empty">
+      <mat-icon>dynamic_form</mat-icon>
+      <h3>No form available</h3>
+    </article>
+  }
+</section>

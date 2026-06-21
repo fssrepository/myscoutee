@@ -33,6 +33,13 @@ export {
 } from './help-center-revision-document-viewer.converter';
 export { EventFeedbackDeckConverter } from './event-feedback-deck.converter';
 export {
+  EventFeedbackFormFlowConverter,
+  type EventFeedbackFormCardValue,
+  type EventFeedbackFormFlowConverterOptions,
+  type EventFeedbackFormSubmitResult,
+  type EventFeedbackFormValue
+} from './event-feedback-form-flow.converter';
+export {
   EventFeedbackInfoCardConverter,
   type EventFeedbackInfoCardConverterOptions,
   type EventFeedbackOrganizerInfoCardInput,

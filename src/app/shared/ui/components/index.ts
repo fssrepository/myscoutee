@@ -3,6 +3,7 @@ export * from './rating-star-bar';
 export * from './editable-image-carousel';
 export * from './progress-indicator';
 export * from './document-viewer';
+export * from './form-flow';
 export * from './menu';
 export * from './smart-list';
 export * from './pricing-editor';

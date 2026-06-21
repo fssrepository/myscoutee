@@ -1,5 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type { UserGameFilterPreferencesDto } from '../../core/contracts/activity.interface';
+import type {
+  EventFeedbackSubmitRequestDto,
+  UserGameFilterPreferencesDto
+} from '../../core/contracts/activity.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
 
@@ -89,6 +92,11 @@ export interface ActivityResourceSyncState {
   assetOwnerUserId: string;
 }
 
+export interface ActivityEventFeedbackSubmitSyncState {
+  updatedMs: number;
+  dto: EventFeedbackSubmitRequestDto;
+}
+
 export interface AppContextAdminUserDto {
   id: string;
   name: string;
@@ -146,6 +154,7 @@ export class AppContext {
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
   private readonly _privacyState = signal<HelpCenterStateDto | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
@@ -159,6 +168,7 @@ export class AppContext {
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
   readonly privacyState = this._privacyState.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
@@ -606,6 +616,40 @@ export class AppContext {
       subEventId,
       assetOwnerUserId
     });
+  }
+
+  emitActivityEventFeedbackSubmit(dto: EventFeedbackSubmitRequestDto): void {
+    const userId = dto.userId.trim();
+    const eventId = dto.eventId.trim();
+    if (!userId || !eventId) {
+      return;
+    }
+    this._activityEventFeedbackSubmitSync.set({
+      updatedMs: Date.now(),
+      dto: this.cloneEventFeedbackSubmitRequest({
+        ...dto,
+        userId,
+        eventId
+      })
+    });
+  }
+
+  private cloneEventFeedbackSubmitRequest(dto: EventFeedbackSubmitRequestDto): EventFeedbackSubmitRequestDto {
+    return {
+      userId: dto.userId.trim(),
+      eventId: dto.eventId.trim(),
+      answers: (dto.answers ?? []).map(answer => ({
+        cardId: answer.cardId?.trim() ?? '',
+        kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+        targetUserId: answer.targetUserId?.trim() || null,
+        targetRole: answer.targetRole,
+        primaryValue: answer.primaryValue?.trim() ?? '',
+        secondaryValue: answer.secondaryValue?.trim() ?? '',
+        personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
+        tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
+        submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+      }))
+    };
   }
 
   private normalizeCounterValue(value: number): number {

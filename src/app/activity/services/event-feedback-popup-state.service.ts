@@ -3,15 +3,9 @@ import type * as AppTypes from '../../shared/core/base/models';
 import type * as ActivityContracts from '../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
-import { EventsService } from '../../shared/core/base';
 import {
   AppContext,
-  EventFeedbackDeckConverter,
-  EventFeedbackInfoCardConverter,
   type EventFeedbackPageViewModel,
-  type InfoCardData,
-  type ListQuery,
-  type PageResult
 } from '../../shared/ui';
 import type { EventFeedbackListFilter } from '../../shared/core/common/constants';
 
@@ -75,29 +69,22 @@ interface EventFeedbackStateOverride {
   providedIn: 'root'
 })
 export class EventFeedbackPopupStateService {
-  private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
 
   public readonly isPopupOpen = signal<boolean>(false);
   public readonly isStackedPopupOpen = signal<boolean>(false);
   public readonly stackedPopupMode = signal<'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null>(null);
 
-  public readonly eventFeedbackCards = signal<AppTypes.EventFeedbackCard[]>([]);
-  public readonly eventFeedbackIndex = signal<number>(0);
   public readonly eventFeedbackListFilter = signal<EventFeedbackListFilter>('pending');
   public readonly eventFeedbackListSubmitMessage = signal<string>('');
   public readonly selectedEventFeedbackEventId = signal<string | null>(null);
   public readonly selectedOrganizerEventFeedbackEventId = signal<string | null>(null);
   public readonly eventFeedbackSubmittedState = signal<boolean>(false);
   public readonly eventFeedbackSubmitMessage = signal<string>('');
-  public readonly eventFeedbackDeckLoading = signal<boolean>(false);
   
   public readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   public readonly eventFeedbackNoteSubmitted = signal<boolean>(false);
   public readonly eventFeedbackNoteSubmitMessage = signal<string>('');
-
-  private eventFeedbackTouchStartX: number | null = null;
-  private eventFeedbackTouchStartY: number | null = null;
 
   private readonly submittedEventFeedbackByUser = signal<Record<string, Record<string, true>>>({});
   private readonly submittedEventFeedbackAnswersByUser = signal<Record<string, Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>>>({});
@@ -109,7 +96,6 @@ export class EventFeedbackPopupStateService {
   private readonly receivedEventFeedbackByEventId = signal<Record<string, ActivityContracts.EventFeedbackReceivedEventDto>>({});
   private readonly loadedEventFeedbackItems = signal<AppTypes.EventFeedbackEventCard[]>([]);
   private readonly loadedOrganizerEventFeedbackItems = signal<AppTypes.EventFeedbackEventCard[]>([]);
-  private readonly loadedEventFeedbackCardsByEventId = signal<Record<string, AppTypes.EventFeedbackCard[]>>({});
   private readonly loadedEventFeedbackTitleById = signal<Record<string, string>>({});
 
   public readonly eventFeedbackEventOverallOptions = APP_STATIC_DATA.eventFeedbackEventOverallOptions;
@@ -124,13 +110,9 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackListSubmitMessage.set('');
     this.selectedEventFeedbackEventId.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
-    this.eventFeedbackCards.set([]);
-    this.eventFeedbackIndex.set(0);
     this.eventFeedbackSubmittedState.set(false);
     this.eventFeedbackSubmitMessage.set('');
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    this.clearEventFeedbackListState(this.activeUserId());
+    this.clearEventFeedbackListView(this.activeUserId());
     this.isPopupOpen.set(true);
   }
 
@@ -142,7 +124,6 @@ export class EventFeedbackPopupStateService {
     this.isStackedPopupOpen.set(false);
     this.stackedPopupMode.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
-    this.eventFeedbackDeckLoading.set(false);
   }
 
   public selectEventFeedbackListFilter(filter: EventFeedbackListFilter, event?: Event): void {
@@ -192,37 +173,28 @@ export class EventFeedbackPopupStateService {
     this.isStackedPopupOpen.set(true);
   }
 
-  public async startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
+  public openEventFeedbackDeck(item: AppTypes.EventFeedbackEventCard, event?: Event): void {
     event?.stopPropagation();
     this.selectedEventFeedbackEventId.set(item.eventId);
-    this.eventFeedbackCards.set([]);
-    this.eventFeedbackIndex.set(0);
     this.eventFeedbackSubmittedState.set(false);
     this.eventFeedbackSubmitMessage.set('');
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    this.eventFeedbackDeckLoading.set(true);
     this.stackedPopupMode.set('eventFeedback');
     this.isStackedPopupOpen.set(true);
+  }
 
-    const cards = await this.loadEventFeedbackDeckCards(item);
-    if (this.selectedEventFeedbackEventId() !== item.eventId || this.stackedPopupMode() !== 'eventFeedback') {
-      this.eventFeedbackDeckLoading.set(false);
-      return;
-    }
-    this.eventFeedbackDeckLoading.set(false);
-    this.eventFeedbackCards.set(cards);
-    if (cards.length === 0) {
-      this.eventFeedbackListSubmitMessage.set(`${item.title} is already in Feedbacked.`);
-      this.eventFeedbackListFilter.set('feedbacked');
-      this.closeStackedPopup();
-      return;
-    }
+  public isEventFeedbackDeckLoadCurrent(eventId: string): boolean {
+    return this.selectedEventFeedbackEventId() === eventId.trim()
+      && this.stackedPopupMode() === 'eventFeedback';
+  }
+
+  public completeEmptyEventFeedbackDeck(title: string): void {
+    this.eventFeedbackListSubmitMessage.set(`${title} is already in Feedbacked.`);
+    this.eventFeedbackListFilter.set('feedbacked');
+    this.closeStackedPopup();
   }
 
   public async removeEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
     event?.stopPropagation();
-    await this.persistEventRemovedState(item.eventId, true);
     this.markEventFeedbackEventRemoved(item.eventId);
     this.mergeEventFeedbackStateOverride(this.activeUserId(), item.eventId, {
       removed: true,
@@ -233,7 +205,6 @@ export class EventFeedbackPopupStateService {
 
   public async restoreRemovedEventFeedbackItem(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
     event?.stopPropagation();
-    await this.persistEventRemovedState(item.eventId, false);
     this.restoreEventFeedbackEvent(item.eventId);
     this.mergeEventFeedbackStateOverride(this.activeUserId(), item.eventId, {
       removed: false,
@@ -262,7 +233,7 @@ export class EventFeedbackPopupStateService {
     return this.eventFeedbackNoteForm().text.trim().length >= 8;
   }
 
-  public submitEventFeedbackNote(): void {
+  public applyEventFeedbackNoteSubmitted(): void {
     if (!this.canSubmitEventFeedbackNote()) {
       return;
     }
@@ -281,11 +252,6 @@ export class EventFeedbackPopupStateService {
     this.mergeEventFeedbackStateOverride(userId, eventId, {
       organizerNote: trimmedText
     });
-    void this.eventsService.saveEventFeedbackNote({
-      userId,
-      eventId,
-      text: trimmedText
-    });
 
     this.eventFeedbackNoteSubmitted.set(true);
     const msg = `Organizer feedback saved for ${this.eventTitleById(eventId)}.`;
@@ -293,258 +259,10 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackListSubmitMessage.set(msg);
   }
 
-  public selectEventFeedbackSlide(index: number, event?: Event): void {
-    event?.stopPropagation();
-    const cards = this.eventFeedbackCards();
-    if (index < 0 || index >= cards.length) {
-      return;
-    }
-    const currentIndex = this.eventFeedbackIndex();
-    if (index === currentIndex) {
-      return;
-    }
-    this.eventFeedbackIndex.set(index);
-  }
-
-  public previousEventFeedbackSlide(event?: Event): void {
-    event?.stopPropagation();
-    const currentIndex = this.eventFeedbackIndex();
-    if (!this.hasEventFeedbackCards() || currentIndex <= 0) {
-      return;
-    }
-    this.eventFeedbackIndex.set(currentIndex - 1);
-  }
-
-  public nextEventFeedbackSlide(event?: Event): void {
-    event?.stopPropagation();
-    const currentIndex = this.eventFeedbackIndex();
-    if (!this.hasEventFeedbackCards() || currentIndex >= this.eventFeedbackCards().length - 1) {
-      return;
-    }
-    this.eventFeedbackIndex.set(currentIndex + 1);
-  }
-
-  public setEventFeedbackPrimaryValue(cardId: string, value: unknown): void {
-    const optionValue = this.normalizeFeedbackControlValue(value);
-    this.updateEventFeedbackCardById(cardId, card => {
-      if (!optionValue || !card.primaryOptions.some(option => option.value === optionValue)) {
-        return card;
-      }
-      return card.answerPrimary === optionValue ? card : { ...card, answerPrimary: optionValue };
-    });
-  }
-
-  public setEventFeedbackSecondaryValue(cardId: string, value: unknown): void {
-    const optionValue = this.normalizeFeedbackControlValue(value);
-    this.updateEventFeedbackCardById(cardId, card => {
-      if (!optionValue || !card.secondaryOptions.some(option => option.value === optionValue)) {
-        return card;
-      }
-      return card.answerSecondary === optionValue ? card : { ...card, answerSecondary: optionValue };
-    });
-  }
-
-  public setEventFeedbackTraitValues(cardId: string, value: unknown): void {
-    const requestedValues = Array.isArray(value)
-      ? value
-      : value === null || value === undefined || value === ''
-        ? []
-        : [value];
-    this.updateEventFeedbackCardById(cardId, card => {
-      const allowedTraitIds = new Set(card.traitOptions.map(option => option.id));
-      const selectedTraitIds: string[] = [];
-      for (const requestedValue of requestedValues) {
-        const traitId = this.normalizeFeedbackControlValue(requestedValue);
-        if (!traitId || !allowedTraitIds.has(traitId) || selectedTraitIds.includes(traitId)) {
-          continue;
-        }
-        selectedTraitIds.push(traitId);
-        if (selectedTraitIds.length >= 3) {
-          break;
-        }
-      }
-      if (this.areStringArraysEqual(card.selectedTraitIds, selectedTraitIds)) {
-        return card;
-      }
-      return { ...card, selectedTraitIds };
-    });
-  }
-
-  private updateEventFeedbackCardById(
-    cardId: string,
-    updater: (card: AppTypes.EventFeedbackCard) => AppTypes.EventFeedbackCard
-  ): void {
-    const normalizedCardId = cardId.trim();
-    if (!normalizedCardId) {
-      return;
-    }
-    this.eventFeedbackCards.update(cards => {
-      const cardIndex = cards.findIndex(card => card.id === normalizedCardId);
-      if (cardIndex < 0) {
-        return cards;
-      }
-      const currentCard = cards[cardIndex];
-      const updatedCard = updater(currentCard);
-      if (updatedCard === currentCard) {
-        return cards;
-      }
-      const updatedCards = [...cards];
-      updatedCards[cardIndex] = updatedCard;
-      return updatedCards;
-    });
-  }
-
-  private normalizeFeedbackControlValue(value: unknown): string {
-    return typeof value === 'string' ? value.trim() : `${value ?? ''}`.trim();
-  }
-
-  private areStringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
-    return left.length === right.length && left.every((value, index) => value === right[index]);
-  }
-
-  public canSubmitActiveEventFeedback(): boolean {
-    const card = this.activeEventFeedbackCard();
-    if (!card) {
-      return false;
-    }
-    return !this.isSelfAttendeeFeedbackCard(card);
-  }
-
-  public submitActiveEventFeedback(): void {
-    if (this.eventFeedbackSubmittedState()) {
-      return;
-    }
-    const userId = this.activeUserId();
-    const card = this.activeEventFeedbackCard();
-    if (!userId || !card || this.isSelfAttendeeFeedbackCard(card)) {
-      return;
-    }
-    this.eventFeedbackSubmittedState.set(true);
-    const eventId = card.eventId;
-    const eventTitle = this.eventTitleById(eventId);
-    const cardsToSubmit = [...this.eventFeedbackCards()];
-    const submittedAtIso = AppUtils.toIsoDateTime(new Date());
-    const submittedAnswersByCardId: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer> = {};
-    const requestAnswers: ActivityContracts.EventFeedbackAnswerSubmitDto[] = [];
-    for (const feedbackCard of cardsToSubmit) {
-      const impressionSummary = this.selectedImpressionTagsForCard(feedbackCard);
-      const personalityTraitIds = [...(feedbackCard.selectedTraitIds ?? [])];
-      this.markEventFeedbackSubmitted(feedbackCard.id);
-      const submittedAnswer = this.recordSubmittedEventFeedbackAnswer(
-        feedbackCard,
-        impressionSummary,
-        personalityTraitIds,
-        submittedAtIso
-      );
-      submittedAnswersByCardId[submittedAnswer.cardId] = submittedAnswer;
-      requestAnswers.push({
-        cardId: submittedAnswer.cardId,
-        kind: submittedAnswer.kind,
-        targetUserId: submittedAnswer.targetUserId,
-        targetRole: submittedAnswer.targetRole,
-        primaryValue: submittedAnswer.primaryValue,
-        secondaryValue: submittedAnswer.secondaryValue,
-        personalityTraitIds: [...submittedAnswer.personalityTraitIds],
-        tags: [...submittedAnswer.tags],
-        submittedAtIso: submittedAnswer.submittedAtIso
-      });
-    }
-    this.markEventFeedbackEventSubmitted(eventId);
-    this.restoreEventFeedbackEvent(eventId);
-    this.mergeEventFeedbackStateOverride(userId, eventId, {
-      removed: false,
-      removedAtIso: null,
-      submittedAtIso,
-      answersByCardId: submittedAnswersByCardId
-    });
-    void this.eventsService.submitEventFeedback({
-      userId,
-      eventId,
-      answers: requestAnswers
-    });
-    this.eventFeedbackCards.set([]);
-    this.eventFeedbackIndex.set(0);
-    this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${eventTitle}.`);
-    this.eventFeedbackListSubmitMessage.set(`${eventTitle} moved to Feedbacked.`);
-    this.eventFeedbackListFilter.set('feedbacked');
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-  }
-
-  public onEventFeedbackTouchStart(event: TouchEvent): void {
-    if (!this.hasEventFeedbackCards()) {
-      return;
-    }
-    const touch = event.touches?.[0];
-    if (!touch) {
-      return;
-    }
-    this.eventFeedbackTouchStartX = touch.clientX;
-    this.eventFeedbackTouchStartY = touch.clientY;
-  }
-
-  public onEventFeedbackTouchEnd(event: TouchEvent): void {
-    if (!this.hasEventFeedbackCards() || this.eventFeedbackTouchStartX === null || this.eventFeedbackTouchStartY === null) {
-      this.eventFeedbackTouchStartX = null;
-      this.eventFeedbackTouchStartY = null;
-      return;
-    }
-    const touch = event.changedTouches?.[0];
-    if (!touch) {
-      this.eventFeedbackTouchStartX = null;
-      this.eventFeedbackTouchStartY = null;
-      return;
-    }
-    const deltaX = touch.clientX - this.eventFeedbackTouchStartX;
-    const deltaY = touch.clientY - this.eventFeedbackTouchStartY;
-    this.eventFeedbackTouchStartX = null;
-    this.eventFeedbackTouchStartY = null;
-    if (Math.abs(deltaX) < 46 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.1) {
-      return;
-    }
-    if (deltaX < 0) {
-      this.nextEventFeedbackSlide();
-      return;
-    }
-    this.previousEventFeedbackSlide();
-  }
-
-  public async loadEventFeedbackPage(
-    query: ListQuery<EventFeedbackListFilters>
-  ): Promise<PageResult<InfoCardData>> {
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const filter = query.filters?.filter ?? this.eventFeedbackListFilter();
-    const normalizedUserId = (query.filters?.userId?.trim() || this.activeUserId()).trim();
-    if (!normalizedUserId) {
-      this.clearEventFeedbackListState('');
-      return { items: [], total: 0 };
-    }
-    const result = await this.eventsService.loadEventFeedbackPage({
-      userId: normalizedUserId,
-      filter,
-      page,
-      pageSize
-    });
-    if (this.activeUserId() !== normalizedUserId) {
-      return { items: [], total: 0 };
-    }
-    const viewModel = EventFeedbackInfoCardConverter.convertPage(result, {
-      hasOrganizerNote: eventId => this.hasEventFeedbackOrganizerNote(eventId)
-    });
-    this.applyEventFeedbackPageResult(normalizedUserId, viewModel);
-    const items = this.eventFeedbackVisibleInfoCards();
-    return {
-      items: items.slice(page * pageSize, (page * pageSize) + pageSize),
-      total: items.length
-    };
-  }
-
-  private clearEventFeedbackListState(userId: string): void {
+  public clearEventFeedbackListView(userId: string): void {
     this.receivedEventFeedbackByEventId.set({});
     this.loadedEventFeedbackItems.set([]);
     this.loadedOrganizerEventFeedbackItems.set([]);
-    this.loadedEventFeedbackCardsByEventId.set({});
     this.loadedEventFeedbackTitleById.set({});
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -558,7 +276,7 @@ export class EventFeedbackPopupStateService {
     this.organizerEventFeedbackNotesByUser.update(state => ({ ...state, [normalizedUserId]: {} }));
   }
 
-  private applyEventFeedbackPageResult(userId: string, result: EventFeedbackPageViewModel): void {
+  public applyEventFeedbackPageViewModel(userId: string, result: EventFeedbackPageViewModel): void {
     const submittedCards = { ...result.state.submittedCardsById };
     const submittedAnswers = this.clonePersistedAnswersByCardId(result.state.submittedAnswersByCardId);
     const submittedEvents = { ...result.state.submittedEventsById };
@@ -619,19 +337,6 @@ export class EventFeedbackPopupStateService {
       };
     }
     this.receivedEventFeedbackByEventId.set(next);
-  }
-
-  private async persistEventRemovedState(eventId: string, removed: boolean): Promise<void> {
-    const userId = this.activeUserId();
-    const normalizedEventId = eventId.trim();
-    if (!userId || !normalizedEventId) {
-      return;
-    }
-    if (removed) {
-      await this.eventsService.removeEventFeedbackEvent(userId, normalizedEventId);
-      return;
-    }
-    await this.eventsService.restoreEventFeedbackEvent(userId, normalizedEventId);
   }
 
   private mergeEventFeedbackStateOverride(
@@ -740,66 +445,7 @@ export class EventFeedbackPopupStateService {
     return next;
   }
 
-  private cloneCardsByEventId(
-    cardsByEventId: Record<string, AppTypes.EventFeedbackCard[]>
-  ): Record<string, AppTypes.EventFeedbackCard[]> {
-    const next: Record<string, AppTypes.EventFeedbackCard[]> = {};
-    for (const [eventId, cards] of Object.entries(cardsByEventId)) {
-      const normalizedEventId = eventId.trim();
-      if (!normalizedEventId) {
-        continue;
-      }
-      next[normalizedEventId] = cards.map(card => ({
-        ...card,
-        primaryOptions: [...(card.primaryOptions ?? [])],
-        secondaryOptions: [...(card.secondaryOptions ?? [])],
-        traitOptions: [...(card.traitOptions ?? [])],
-        selectedTraitIds: [...(card.selectedTraitIds ?? [])]
-      }));
-    }
-    return next;
-  }
-
-  private async loadEventFeedbackDeckCards(
-    item: AppTypes.EventFeedbackEventCard
-  ): Promise<AppTypes.EventFeedbackCard[]> {
-    const userId = this.activeUserId();
-    const eventId = item.eventId.trim();
-    if (!userId || !eventId) {
-      return [];
-    }
-    const deck = await this.eventsService.loadEventFeedbackDeck({ userId, eventId });
-    const cards = EventFeedbackDeckConverter.convert(deck)
-      .filter(card => card.eventId === eventId && !this.isSelfAttendeeFeedbackCard(card));
-    this.loadedEventFeedbackCardsByEventId.update(state => ({
-      ...state,
-      [eventId]: cards.map(card => ({
-        ...card,
-        primaryOptions: [...(card.primaryOptions ?? [])],
-        secondaryOptions: [...(card.secondaryOptions ?? [])],
-        traitOptions: [...(card.traitOptions ?? [])],
-        selectedTraitIds: [...(card.selectedTraitIds ?? [])]
-      }))
-    }));
-    return this.pendingEventFeedbackCardsForEvent(eventId).map(card => ({ ...card }));
-  }
-
   // --- Computed Properties ---
-
-  public readonly hasEventFeedbackCards = computed(() => this.eventFeedbackCards().length > 0);
-  
-  public readonly activeEventFeedbackCard = computed(() => this.eventFeedbackCards()[this.eventFeedbackIndex()] ?? null);
-  
-  public readonly eventFeedbackDotIndices = computed(() => this.eventFeedbackCards().map((_, index) => index));
-  
-  public readonly eventFeedbackOnLastSlide = computed(() => this.hasEventFeedbackCards() && this.eventFeedbackIndex() >= this.eventFeedbackCards().length - 1);
-  
-  public readonly eventFeedbackSlideCounterLabel = computed(() => {
-    if (!this.hasEventFeedbackCards()) {
-      return '0 / 0';
-    }
-    return `${this.eventFeedbackIndex() + 1} / ${this.eventFeedbackCards().length}`;
-  });
 
   public readonly eventFeedbackFilterLabel = computed(() => 
     this.eventFeedbackListFilters.find(item => item.key === this.eventFeedbackListFilter())?.label ?? 'Pending'
@@ -1021,14 +667,6 @@ export class EventFeedbackPopupStateService {
     }
   });
 
-  public readonly eventFeedbackVisibleInfoCards = computed<InfoCardData[]>(() =>
-    this.eventFeedbackVisibleItems().map(item =>
-      EventFeedbackInfoCardConverter.convert(item, {
-        hasOrganizerNote: eventId => this.hasEventFeedbackOrganizerNote(eventId)
-      })
-    )
-  );
-
   // --- Internal Data Helpers ---
 
   private activeUserId(): string {
@@ -1122,33 +760,33 @@ export class EventFeedbackPopupStateService {
     return options.find(option => option.value === normalizedValue)?.label ?? null;
   }
 
-  private pendingEventFeedbackCardsForEvent(eventId: string): AppTypes.EventFeedbackCard[] {
-    const normalizedEventId = eventId.trim();
-    return [...(this.loadedEventFeedbackCardsByEventId()[normalizedEventId] ?? [])].filter(card =>
-      card.eventId === normalizedEventId &&
-      !this.isSelfAttendeeFeedbackCard(card) &&
-      !this.isEventFeedbackEventSubmitted(card.eventId) &&
-      !this.isEventFeedbackSubmitted(card.id)
-    );
-  }
-
-  private isSelfAttendeeFeedbackCard(card: AppTypes.EventFeedbackCard): boolean {
-    return card.kind === 'attendee' && card.attendeeUserId === this.activeUserId();
-  }
-
   private isEventFeedbackSubmitted(cardId: string): boolean {
     const userId = this.activeUserId();
     if (!userId) return false;
     return Boolean(this.submittedEventFeedbackByUser()[userId]?.[cardId]);
   }
 
-  private markEventFeedbackSubmitted(cardId: string): void {
-    const userId = this.activeUserId();
-    if (!userId) return;
+  private markEventFeedbackSubmittedAnswers(
+    userId: string,
+    submittedAnswersByCardId: Record<string, ActivityContracts.SubmittedEventFeedbackAnswer>
+  ): void {
+    const cardIds = Object.keys(submittedAnswersByCardId).map(cardId => cardId.trim()).filter(Boolean);
+    if (!userId || cardIds.length === 0) {
+      return;
+    }
     this.submittedEventFeedbackByUser.update(state => {
       const current = { ...(state[userId] ?? {}) };
-      current[cardId] = true;
+      for (const cardId of cardIds) {
+        current[cardId] = true;
+      }
       return { ...state, [userId]: current };
+    });
+    this.submittedEventFeedbackAnswersByUser.update(state => {
+      const byUser = { ...(state[userId] ?? {}) };
+      for (const [cardId, answer] of Object.entries(this.clonePersistedAnswersByCardId(submittedAnswersByCardId))) {
+        byUser[cardId] = answer;
+      }
+      return { ...state, [userId]: byUser };
     });
   }
 
@@ -1242,63 +880,16 @@ export class EventFeedbackPopupStateService {
     return direction === 'asc' ? left - right : right - left;
   }
 
-  private selectedImpressionTagsForCard(card: AppTypes.EventFeedbackCard): string[] {
-    const tags = new Set<string>();
-    const primary = card.primaryOptions.find(option => option.value === card.answerPrimary)?.impressionTag;
-    const secondary = card.secondaryOptions.find(option => option.value === card.answerSecondary)?.impressionTag;
-    if (primary) tags.add(primary);
-    if (secondary) tags.add(secondary);
-    return [...tags];
-  }
-
-  private recordSubmittedEventFeedbackAnswer(
-    card: AppTypes.EventFeedbackCard,
-    tags: string[],
-    personalityTraitIds: string[],
-    submittedAtIso: string
-  ): ActivityContracts.SubmittedEventFeedbackAnswer {
-    const submittedAnswer: ActivityContracts.SubmittedEventFeedbackAnswer = {
-      cardId: card.id,
-      eventId: card.eventId,
-      kind: card.kind,
-      targetUserId: card.targetUserId ?? null,
-      targetRole: card.targetRole ?? 'Member',
-      primaryValue: card.answerPrimary,
-      secondaryValue: card.answerSecondary,
-      personalityTraitIds: [...personalityTraitIds],
-      tags: [...tags],
-      submittedAtIso
-    };
-    const userId = this.activeUserId();
-    if (userId) {
-      this.submittedEventFeedbackAnswersByUser.update(state => {
-        const byUser = { ...(state[userId] ?? {}) };
-        byUser[card.id] = submittedAnswer;
-        return { ...state, [userId]: byUser };
-      });
-    }
-    return submittedAnswer;
-  }
-
   public readonly eventFeedbackAllItems = computed(() => {
     return this.loadedEventFeedbackItems().map(item => {
       const eventId = item.eventId.trim();
-      const cardsByEventId = this.loadedEventFeedbackCardsByEventId();
-      const hasLoadedDeck = Object.prototype.hasOwnProperty.call(cardsByEventId, eventId);
-      const cards = (cardsByEventId[eventId] ?? [])
-        .filter(card => !this.isSelfAttendeeFeedbackCard(card));
       const eventSubmitted = this.isEventFeedbackEventSubmitted(eventId);
-      const pendingCards = eventSubmitted
-        ? 0
-        : hasLoadedDeck
-          ? cards.filter(card => !this.isEventFeedbackSubmitted(card.id)).length
-          : item.pendingCards;
+      const pendingCards = eventSubmitted ? 0 : item.pendingCards;
       const isRemoved = this.isEventFeedbackEventRemoved(eventId);
       const feedbackedAtMs = this.eventFeedbackEventSubmittedAtMs(eventId) ?? item.feedbackedAtMs;
       return {
         ...item,
         pendingCards,
-        totalCards: hasLoadedDeck ? (cards.length || item.totalCards) : item.totalCards,
         isRemoved,
         isFeedbacked: !isRemoved && pendingCards === 0,
         feedbackedAtMs,

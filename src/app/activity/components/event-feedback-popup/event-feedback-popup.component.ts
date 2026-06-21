@@ -1,7 +1,6 @@
-import { Component, ElementRef, OnDestroy, TemplateRef, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, TemplateRef, ViewChild, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
@@ -9,11 +8,12 @@ import { from } from 'rxjs';
 import {
   AppMenuComponent,
   AppContext,
-  EventFeedbackDeckConverter,
+  EventFeedbackFormFlowConverter,
+  type EventFeedbackFormValue,
   EventFeedbackInfoCardConverter,
+  FormFlowComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   InfoCardComponent,
@@ -22,12 +22,15 @@ import {
   type CardMenuActionEvent,
   type CardMenuAction,
   type ListQuery,
+  type PageResult,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
+import { EventsService } from '../../../shared/core/base';
 import { EventFeedbackPopupStateService, type EventFeedbackListFilters } from '../../services/event-feedback-popup-state.service';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
@@ -38,11 +41,6 @@ type EventFeedbackMenuContext = {
   menu: 'info-card';
   card: InfoCardData;
   action: CardMenuAction;
-};
-
-type EventFeedbackOptionMenuContext = {
-  cardId: string;
-  group: 'primary' | 'secondary' | 'traits';
 };
 
 interface OrganizerEventFeedbackCarouselStatItem {
@@ -69,36 +67,33 @@ interface OrganizerEventFeedbackCarouselSection {
 @Component({
   selector: 'app-event-feedback-popup',
   standalone: true,
-  host: {
-    '(window:resize)': 'onViewportResize()'
-  },
   imports: [
     CommonModule,
     FormsModule,
-    MatRippleModule,
     MatIconModule,
     MatButtonModule,
     AppMenuComponent,
+    FormFlowComponent,
     SmartListComponent,
     InfoCardComponent
   ],
   templateUrl: './event-feedback-popup.component.html',
   styleUrl: './event-feedback-popup.component.scss'
 })
-export class EventFeedbackPopupComponent implements OnDestroy {
+export class EventFeedbackPopupComponent {
   public readonly feedback = inject(EventFeedbackPopupStateService);
   private readonly appCtx = inject(AppContext);
+  private readonly eventsService = inject(EventsService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private eventFeedbackViewportScrollLockTargetIndex: number | null = null;
-  private eventFeedbackViewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
-  private eventFeedbackSurfaceSwipePointerId: number | null = null;
-  private eventFeedbackSurfaceSwipeStartX = 0;
-  private eventFeedbackSurfaceSwipeStartY = 0;
-  private eventFeedbackSurfaceSwipeStartScrollLeft = 0;
-  private eventFeedbackSurfaceSwipeActive = false;
+  private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
+  protected readonly eventFeedbackDeckDto = signal<ActivityContracts.EventFeedbackDeckResultDto | null>(null);
+  protected readonly eventFeedbackDeckValue = signal<EventFeedbackFormValue>(EventFeedbackFormFlowConverter.emptyValue());
+  protected readonly eventFeedbackDeckLoading = signal(false);
+  protected readonly eventFeedbackSubmitMessage = signal('');
+  protected readonly eventFeedbackSubmitted = signal(false);
+  protected readonly hasEventFeedbackCards = computed(() => (this.eventFeedbackDeckDto()?.cards.length ?? 0) > 0);
+  private readonly eventFeedbackFilterCountDelta = signal<Partial<Record<EventFeedbackListFilter, number>>>({});
 
-  protected readonly isMobileEventFeedbackViewport = signal(this.readViewportWidth() <= 720);
-  protected readonly eventFeedbackPendingIndicatorIndex = signal<number | null>(null);
   protected readonly organizerEventFeedbackCarouselIndex = signal(0);
   protected readonly organizerEventFeedbackCarouselSections = computed<OrganizerEventFeedbackCarouselSection[]>(() => {
     const totalEntries = this.feedback.selectedOrganizerEventFeedbackEntries().length;
@@ -191,16 +186,13 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     this.eventFeedbackItemTemplateRef = value;
   }
 
-  @ViewChild('eventFeedbackViewport')
-  private eventFeedbackViewportRef?: ElementRef<HTMLDivElement>;
-
   @ViewChild('eventFeedbackSmartList')
   private eventFeedbackSmartList?: SmartListComponent<InfoCardData, EventFeedbackListFilters>;
 
   protected readonly eventFeedbackSmartListLoadPage: SmartListLoadPage<
     InfoCardData,
     EventFeedbackListFilters
-  > = (query) => from(this.feedback.loadEventFeedbackPage(query));
+  > = (query) => from(this.loadEventFeedbackPage(query));
 
   protected readonly eventFeedbackSmartListConfig: SmartListConfig<
     InfoCardData,
@@ -232,7 +224,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
 
   protected eventFeedbackFilterMenuTrigger(): AppMenuTrigger {
     const filter = this.feedback.eventFeedbackListFilter();
-    const count = this.feedback.eventFeedbackFilterCount(filter);
+    const count = this.eventFeedbackFilterCount(filter);
     return {
       label: this.feedback.eventFeedbackFilterLabel(),
       icon: this.feedback.eventFeedbackFilterIcon(),
@@ -246,7 +238,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
   protected eventFeedbackFilterMenuItems(): readonly AppMenuItem<string, EventFeedbackMenuContext>[] {
     const active = this.feedback.eventFeedbackListFilter();
     return this.feedback.eventFeedbackListFilters.map(option => {
-      const count = this.feedback.eventFeedbackFilterCount(option.key);
+      const count = this.eventFeedbackFilterCount(option.key);
       return {
         id: `feedback-filter-${option.key}`,
         label: option.label,
@@ -295,169 +287,6 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     }
   }
 
-  protected eventFeedbackPrimaryOptionModel(
-    card: AppTypes.EventFeedbackCard
-  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
-    return this.eventFeedbackOptionModel(
-      `${card.id}-primary-options`,
-      card.primaryOptions.map(option => this.eventFeedbackOptionMenuItem(card, 'primary', option))
-    );
-  }
-
-  protected eventFeedbackSecondaryOptionModel(
-    card: AppTypes.EventFeedbackCard
-  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
-    return this.eventFeedbackOptionModel(
-      `${card.id}-secondary-options`,
-      card.secondaryOptions.map(option => this.eventFeedbackOptionMenuItem(card, 'secondary', option))
-    );
-  }
-
-  protected eventFeedbackTraitOptionModel(
-    card: AppTypes.EventFeedbackCard,
-    cardIndex: number
-  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
-    const selectedTraitIds = new Set(card.selectedTraitIds);
-    const isActiveCard = this.feedback.eventFeedbackIndex() === cardIndex;
-    const items = card.traitOptions.map((trait): AppMenuItem<string, EventFeedbackOptionMenuContext> => {
-      const selected = selectedTraitIds.has(trait.id);
-      return {
-        id: `${card.id}-trait-${trait.id}`,
-        label: trait.label,
-        icon: trait.icon,
-        kind: 'checkbox',
-        value: trait.id,
-        palette: this.eventFeedbackTraitPalette(trait),
-        surface: 'tinted',
-        active: selected,
-        checked: selected,
-        disabled: !isActiveCard,
-        closeOnSelect: false,
-        context: {
-          cardId: card.id,
-          group: 'traits'
-        }
-      };
-    });
-    return this.eventFeedbackOptionModel(`${card.id}-trait-options`, items, 3);
-  }
-
-  private eventFeedbackOptionMenuItem(
-    card: AppTypes.EventFeedbackCard,
-    group: 'primary' | 'secondary',
-    option: AppTypes.EventFeedbackOption
-  ): AppMenuItem<string, EventFeedbackOptionMenuContext> {
-    const selectedValue = group === 'primary' ? card.answerPrimary : card.answerSecondary;
-    return {
-      id: `${card.id}-${group}-${option.value}`,
-      label: option.label,
-      icon: option.icon,
-      kind: 'radio',
-      value: option.value,
-      palette: this.eventFeedbackOptionPalette(option),
-      surface: 'tinted',
-      active: selectedValue === option.value,
-      checked: selectedValue === option.value,
-      closeOnSelect: false,
-      context: { cardId: card.id, group }
-    };
-  }
-
-  private eventFeedbackOptionModel(
-    id: string,
-    items: readonly AppMenuItem<string, EventFeedbackOptionMenuContext>[],
-    maxSelected: number | null = null
-  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
-    return {
-      layout: 'tabs',
-      maxSelected,
-      groups: [{
-        id,
-        items
-      }]
-    };
-  }
-
-  private eventFeedbackOptionPalette(option: AppTypes.EventFeedbackOption): AppMenuPalette {
-    const impressionTag = `${option.impressionTag ?? ''}`.trim().toLowerCase();
-    if (impressionTag.includes('reliab') || impressionTag.includes('trust') || impressionTag.includes('teamwork')) {
-      return 'green';
-    }
-    if (impressionTag.includes('communicat') || impressionTag.includes('compat')) {
-      return 'violet';
-    }
-    if (impressionTag.includes('organization') || impressionTag.includes('timing')) {
-      return 'amber';
-    }
-    if (impressionTag.includes('planning') || impressionTag.includes('resource') || impressionTag.includes('quality')) {
-      return 'mint';
-    }
-    if (impressionTag.includes('consistency') || impressionTag.includes('neutral')) {
-      return 'slate';
-    }
-    if (impressionTag.includes('risk')) {
-      return 'red';
-    }
-    if (impressionTag.includes('fit')) {
-      return 'orange';
-    }
-    switch (option.value.trim().toLowerCase()) {
-      case 'excellent':
-      case 'great':
-      case 'yes':
-        return 'sky';
-      case 'good':
-      case 'reliable':
-        return 'cyan';
-      case 'mixed':
-      case 'communication':
-      case 'neutral':
-      case 'maybe':
-        return 'violet';
-      case 'needs-work':
-      case 'resources':
-      case 'context':
-        return 'mint';
-      case 'timing':
-      case 'rough':
-        return 'amber';
-      case 'none':
-      case 'no':
-        return 'slate';
-      default:
-        return 'sky';
-    }
-  }
-
-  private eventFeedbackTraitPalette(trait: AppTypes.EventFeedbackTraitOption): AppMenuPalette {
-    const lookup = `${trait.id} ${trait.label} ${trait.coreVibe}`.toLowerCase();
-    if (lookup.includes('creative')) {
-      return 'violet';
-    }
-    if (lookup.includes('empath') || lookup.includes('kind') || lookup.includes('nurtur')) {
-      return 'pink';
-    }
-    if (lookup.includes('reliable') || lookup.includes('trust') || lookup.includes('stable')) {
-      return 'green';
-    }
-    if (lookup.includes('adventur') || lookup.includes('energetic') || lookup.includes('bold')) {
-      return 'cyan';
-    }
-    if (lookup.includes('think') || lookup.includes('reflect') || lookup.includes('intellectual')) {
-      return 'blue';
-    }
-    if (lookup.includes('social') || lookup.includes('magnetic') || lookup.includes('talk')) {
-      return 'teal';
-    }
-    if (lookup.includes('playful') || lookup.includes('fun') || lookup.includes('lighthearted')) {
-      return 'orange';
-    }
-    if (lookup.includes('ambitious') || lookup.includes('driven') || lookup.includes('goal')) {
-      return 'sky';
-    }
-    return 'blue';
-  }
-
   constructor() {
     effect(() => {
       const filter = this.feedback.eventFeedbackListFilter();
@@ -473,20 +302,6 @@ export class EventFeedbackPopupComponent implements OnDestroy {
           userId
         }
       };
-    });
-
-    effect(() => {
-      const isFeedbackPopupOpen = this.feedback.isStackedPopupOpen() && this.feedback.stackedPopupMode() === 'eventFeedback';
-      const isMobileViewport = this.isMobileEventFeedbackViewport();
-      const cardCount = this.feedback.eventFeedbackCards().length;
-
-      if (!isFeedbackPopupOpen || !isMobileViewport || cardCount === 0) {
-        this.clearEventFeedbackViewportScrollLock();
-        return;
-      }
-
-      const targetIndex = untracked(() => this.feedback.eventFeedbackIndex());
-      this.queueMobileEventFeedbackViewportSync('auto', targetIndex);
     });
 
     effect(() => {
@@ -511,6 +326,15 @@ export class EventFeedbackPopupComponent implements OnDestroy {
         this.organizerEventFeedbackCarouselIndex.set(sections.length - 1);
       }
     });
+
+    effect(() => {
+      const sync = this.appCtx.activityEventFeedbackSubmitSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedEventFeedbackSubmitUpdatedMs) {
+        return;
+      }
+      this.lastAppliedEventFeedbackSubmitUpdatedMs = sync.updatedMs;
+      this.applyActivityEventFeedbackSubmitSync(sync.dto);
+    });
   }
 
   protected onEventFeedbackCardPrimaryAction(card: InfoCardData): void {
@@ -525,7 +349,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     if (!this.feedback.isEventFeedbackStartAvailable(item)) {
       return;
     }
-    this.feedback.startEventFeedback(item);
+    void this.startEventFeedback(item);
   }
 
   protected onEventFeedbackCardMenuAction(card: InfoCardData, event: CardMenuActionEvent<InfoCardData>): void {
@@ -537,7 +361,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       return;
     }
     if (event.actionId === 'startFeedback') {
-      this.feedback.startEventFeedback(item);
+      void this.startEventFeedback(item);
       return;
     }
     if (event.actionId === 'removeFeedback') {
@@ -561,6 +385,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       confirmTone: 'danger',
       failureMessage: 'Unable to remove this feedback item.',
       onConfirm: async () => {
+        await this.eventsService.removeEventFeedbackEvent(this.activeUserId(), item.eventId);
         await this.feedback.removeEventFeedbackItem(item);
         this.removeVisibleEventFeedbackItem(item.eventId);
       }
@@ -576,6 +401,7 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       confirmTone: 'accent',
       failureMessage: 'Unable to restore this feedback item.',
       onConfirm: async () => {
+        await this.eventsService.restoreEventFeedbackEvent(this.activeUserId(), item.eventId);
         await this.feedback.restoreRemovedEventFeedbackItem(item);
         this.removeVisibleEventFeedbackItem(item.eventId);
       }
@@ -598,8 +424,257 @@ export class EventFeedbackPopupComponent implements OnDestroy {
     });
   }
 
-  protected eventFeedbackCarouselInfoCard(card: AppTypes.EventFeedbackCard): InfoCardData {
-    return EventFeedbackDeckConverter.infoCard(card);
+  private async loadEventFeedbackPage(
+    query: ListQuery<EventFeedbackListFilters>
+  ): Promise<PageResult<InfoCardData>> {
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const filter = query.filters?.filter ?? this.feedback.eventFeedbackListFilter();
+    const normalizedUserId = (query.filters?.userId?.trim() || this.activeUserId()).trim();
+    if (!normalizedUserId) {
+      this.feedback.clearEventFeedbackListView('');
+      return { items: [], total: 0 };
+    }
+    const result = await this.eventsService.loadEventFeedbackPage({
+      userId: normalizedUserId,
+      filter,
+      page,
+      pageSize
+    });
+    if (this.activeUserId() !== normalizedUserId) {
+      return { items: [], total: 0 };
+    }
+    const viewModel = EventFeedbackInfoCardConverter.convertPage(result, {
+      hasOrganizerNote: eventId => this.feedback.hasEventFeedbackOrganizerNote(eventId)
+    });
+    this.feedback.applyEventFeedbackPageViewModel(normalizedUserId, viewModel);
+    this.eventFeedbackFilterCountDelta.set({});
+    const items = this.feedback.eventFeedbackVisibleItems().map(item =>
+      EventFeedbackInfoCardConverter.convert(item, {
+        hasOrganizerNote: eventId => this.feedback.hasEventFeedbackOrganizerNote(eventId)
+      })
+    );
+    return {
+      items: items.slice(page * pageSize, (page * pageSize) + pageSize),
+      total: items.length
+    };
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
+  }
+
+  private async startEventFeedback(item: AppTypes.EventFeedbackEventCard, event?: Event): Promise<void> {
+    event?.stopPropagation();
+    if (!this.feedback.isEventFeedbackStartAvailable(item)) {
+      return;
+    }
+    const userId = this.activeUserId();
+    const eventId = item.eventId.trim();
+    this.feedback.openEventFeedbackDeck(item);
+    this.clearLoadedEventFeedbackDeck(eventId);
+    this.eventFeedbackDeckLoading.set(true);
+    this.eventFeedbackSubmitted.set(false);
+    this.eventFeedbackSubmitMessage.set('');
+    if (!userId || !eventId) {
+      this.applyLoadedEventFeedbackDeck({
+        eventId,
+        title: item.title,
+        cards: []
+      }, item.title);
+      this.eventFeedbackDeckLoading.set(false);
+      return;
+    }
+    try {
+      const deck = await this.eventsService.loadEventFeedbackDeck({ userId, eventId });
+      this.applyLoadedEventFeedbackDeck(deck, item.title);
+    } finally {
+      if (this.feedback.isEventFeedbackDeckLoadCurrent(eventId)) {
+        this.eventFeedbackDeckLoading.set(false);
+      }
+    }
+  }
+
+  protected readonly eventFeedbackFlowModel = computed(() => EventFeedbackFormFlowConverter.convert(
+    this.eventFeedbackDeckDto(),
+    { eventTitle: this.feedback.eventFeedbackCurrentEventTitle() }
+  ));
+
+  protected async onEventFeedbackFlowSave(): Promise<void> {
+    if (this.eventFeedbackSubmitted()) {
+      return;
+    }
+    const submittedAtIso = new Date().toISOString();
+    const submitResult = EventFeedbackFormFlowConverter.submitResult({
+      userId: this.activeUserId(),
+      deck: this.eventFeedbackDeckDto(),
+      value: this.eventFeedbackDeckValue(),
+      submittedAtIso
+    });
+    if (!submitResult) {
+      return;
+    }
+    await this.eventsService.submitEventFeedback(submitResult.request);
+    this.appCtx.emitActivityEventFeedbackSubmit(submitResult.request);
+    this.eventFeedbackSubmitted.set(true);
+    this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.feedback.eventFeedbackCurrentEventTitle()}.`);
+    this.clearLoadedEventFeedbackDeck(submitResult.request.eventId);
+  }
+
+  protected setEventFeedbackDeckValue(value: unknown): void {
+    this.eventFeedbackDeckValue.set(EventFeedbackFormFlowConverter.normalizeValue(value, this.eventFeedbackDeckDto()));
+  }
+
+  private applyLoadedEventFeedbackDeck(
+    deck: ActivityContracts.EventFeedbackDeckResultDto,
+    fallbackTitle: string
+  ): void {
+    if (!this.feedback.isEventFeedbackDeckLoadCurrent(deck.eventId)) {
+      return;
+    }
+    const pendingDeck = this.pendingEventFeedbackDeck({
+      ...deck,
+      title: deck.title?.trim() || fallbackTitle.trim()
+    });
+    if (pendingDeck.cards.length === 0) {
+      this.clearLoadedEventFeedbackDeck(pendingDeck.eventId);
+      this.feedback.completeEmptyEventFeedbackDeck(fallbackTitle);
+      return;
+    }
+    this.eventFeedbackDeckDto.set(pendingDeck);
+    this.eventFeedbackDeckValue.set(EventFeedbackFormFlowConverter.initialValue(pendingDeck));
+  }
+
+  private pendingEventFeedbackDeck(
+    deck: ActivityContracts.EventFeedbackDeckResultDto
+  ): ActivityContracts.EventFeedbackDeckResultDto {
+    const eventId = deck.eventId?.trim() ?? '';
+    return {
+      eventId,
+      title: deck.title?.trim() ?? '',
+      cards: (deck.cards ?? [])
+        .map(card => ({
+          ...card,
+          id: card.id?.trim() ?? '',
+          eventId: card.eventId?.trim() ?? '',
+          attendeeUserId: card.attendeeUserId?.trim() || undefined
+        }))
+        .filter(card =>
+          card.id.length > 0
+          && card.eventId === eventId
+          && !(card.kind === 'attendee' && card.attendeeUserId === this.activeUserId())
+        )
+    };
+  }
+
+  private clearLoadedEventFeedbackDeck(eventId = ''): void {
+    this.eventFeedbackDeckDto.set(null);
+    this.eventFeedbackDeckValue.set(EventFeedbackFormFlowConverter.emptyValue(eventId));
+  }
+
+  private applyActivityEventFeedbackSubmitSync(dto: ActivityContracts.EventFeedbackSubmitRequestDto): void {
+    const userId = dto.userId.trim();
+    const eventId = dto.eventId.trim();
+    if (!userId || userId !== this.activeUserId() || !eventId) {
+      return;
+    }
+    const sourceItem = this.feedback.eventFeedbackItemById(eventId);
+    if (!sourceItem || sourceItem.isOwnEvent) {
+      return;
+    }
+    const submittedAtMs = this.eventFeedbackSubmitTimestampMs(dto);
+    const pendingCards = Math.max(0, sourceItem.pendingCards - dto.answers.length);
+    const nextItem: AppTypes.EventFeedbackEventCard = {
+      ...sourceItem,
+      pendingCards,
+      isRemoved: false,
+      isFeedbacked: pendingCards === 0,
+      feedbackedAtMs: pendingCards === 0 ? submittedAtMs : sourceItem.feedbackedAtMs,
+      removedAtMs: null
+    };
+    this.applyEventFeedbackFilterCountDelta(sourceItem, nextItem);
+    if (!this.eventFeedbackSmartList) {
+      return;
+    }
+    const currentItems = [...this.eventFeedbackSmartList.itemsSnapshot()];
+    const currentIndex = currentItems.findIndex(item => item.id === eventId);
+    if (currentIndex < 0) {
+      return;
+    }
+    const nextItems = [...currentItems];
+    if (!this.eventFeedbackItemMatchesFilter(nextItem, this.feedback.eventFeedbackListFilter())) {
+      nextItems.splice(currentIndex, 1);
+      this.eventFeedbackSmartList.replaceVisibleItems(nextItems, {
+        total: Math.max(nextItems.length, this.eventFeedbackSmartList.totalItemCount() - 1)
+      });
+      return;
+    }
+    nextItems[currentIndex] = EventFeedbackInfoCardConverter.convert(nextItem, {
+      hasOrganizerNote: feedbackEventId => this.feedback.hasEventFeedbackOrganizerNote(feedbackEventId)
+    });
+    this.eventFeedbackSmartList.replaceVisibleItems(nextItems, {
+      total: this.eventFeedbackSmartList.totalItemCount()
+    });
+  }
+
+  private eventFeedbackFilterCount(filter: EventFeedbackListFilter): number {
+    return Math.max(0, this.feedback.eventFeedbackFilterCount(filter) + (this.eventFeedbackFilterCountDelta()[filter] ?? 0));
+  }
+
+  private applyEventFeedbackFilterCountDelta(
+    before: AppTypes.EventFeedbackEventCard,
+    after: AppTypes.EventFeedbackEventCard
+  ): void {
+    const beforePending = !before.isRemoved && before.pendingCards > 0;
+    const afterPending = !after.isRemoved && after.pendingCards > 0;
+    const beforeFeedbacked = before.isFeedbacked;
+    const afterFeedbacked = after.isFeedbacked;
+    if (beforePending === afterPending && beforeFeedbacked === afterFeedbacked) {
+      return;
+    }
+    this.eventFeedbackFilterCountDelta.update(current => ({
+      ...current,
+      pending: (current.pending ?? 0) + (beforePending && !afterPending ? -1 : !beforePending && afterPending ? 1 : 0),
+      feedbacked: (current.feedbacked ?? 0) + (!beforeFeedbacked && afterFeedbacked ? 1 : beforeFeedbacked && !afterFeedbacked ? -1 : 0)
+    }));
+  }
+
+  private eventFeedbackItemMatchesFilter(
+    item: AppTypes.EventFeedbackEventCard,
+    filter: EventFeedbackListFilter
+  ): boolean {
+    switch (filter) {
+      case 'own-events':
+        return item.isOwnEvent === true;
+      case 'feedbacked':
+        return item.isFeedbacked === true;
+      case 'removed':
+        return item.isRemoved === true;
+      case 'pending':
+      default:
+        return !item.isRemoved && item.pendingCards > 0;
+    }
+  }
+
+  private eventFeedbackSubmitTimestampMs(dto: ActivityContracts.EventFeedbackSubmitRequestDto): number {
+    const submittedAtIso = dto.answers.map(answer => answer.submittedAtIso.trim()).find(Boolean) ?? '';
+    const submittedAtMs = submittedAtIso ? new Date(submittedAtIso).getTime() : Date.now();
+    return Number.isNaN(submittedAtMs) ? Date.now() : submittedAtMs;
+  }
+
+  protected submitEventFeedbackNote(): void {
+    if (!this.feedback.canSubmitEventFeedbackNote()) {
+      return;
+    }
+    const userId = this.activeUserId();
+    const noteForm = this.feedback.eventFeedbackNoteForm();
+    const eventId = noteForm.eventId.trim();
+    const text = noteForm.text.trim();
+    if (!userId || !eventId) {
+      return;
+    }
+    void this.eventsService.saveEventFeedbackNote({ userId, eventId, text });
+    this.feedback.applyEventFeedbackNoteSubmitted();
   }
 
   protected organizerEventFeedbackDetailInfoCard(item: {
@@ -624,171 +699,6 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       return;
     }
     this.organizerEventFeedbackCarouselIndex.set(index);
-  }
-
-  protected onViewportResize(): void {
-    const nextIsMobileViewport = this.readViewportWidth() <= 720;
-    if (nextIsMobileViewport === this.isMobileEventFeedbackViewport()) {
-      return;
-    }
-    this.isMobileEventFeedbackViewport.set(nextIsMobileViewport);
-    if (!nextIsMobileViewport) {
-      this.clearEventFeedbackViewportScrollLock();
-      this.resetEventFeedbackViewportScroll();
-      return;
-    }
-    this.queueMobileEventFeedbackViewportSync('auto');
-  }
-
-  protected previousEventFeedbackSlide(event: Event): void {
-    if (this.isMobileEventFeedbackViewport()) {
-      event.stopPropagation();
-      const currentIndex = this.feedback.eventFeedbackIndex();
-      if (currentIndex <= 0) {
-        return;
-      }
-      this.queueMobileEventFeedbackViewportSync('smooth', currentIndex - 1);
-      return;
-    }
-    this.feedback.previousEventFeedbackSlide(event);
-  }
-
-  protected nextEventFeedbackSlide(event: Event): void {
-    if (this.isMobileEventFeedbackViewport()) {
-      event.stopPropagation();
-      const currentIndex = this.feedback.eventFeedbackIndex();
-      const lastIndex = this.feedback.eventFeedbackCards().length - 1;
-      if (currentIndex >= lastIndex) {
-        return;
-      }
-      this.queueMobileEventFeedbackViewportSync('smooth', currentIndex + 1);
-      return;
-    }
-    this.feedback.nextEventFeedbackSlide(event);
-  }
-
-  protected selectEventFeedbackSlide(index: number, event: Event): void {
-    if (this.isMobileEventFeedbackViewport()) {
-      event.stopPropagation();
-      const cards = this.feedback.eventFeedbackCards();
-      if (index < 0 || index >= cards.length || index === this.feedback.eventFeedbackIndex()) {
-        return;
-      }
-      this.queueMobileEventFeedbackViewportSync('smooth', index);
-      return;
-    }
-    this.feedback.selectEventFeedbackSlide(index, event);
-  }
-
-  protected onEventFeedbackViewportScroll(): void {
-    if (!this.isMobileEventFeedbackViewport()) {
-      return;
-    }
-    const viewport = this.eventFeedbackViewportRef?.nativeElement;
-    if (!viewport) {
-      return;
-    }
-    if (this.eventFeedbackViewportScrollLockTargetIndex !== null) {
-      this.scheduleEventFeedbackViewportScrollLockRelease();
-      return;
-    }
-    const nextIndex = this.currentMobileEventFeedbackSlideIndex(viewport);
-    if (nextIndex === this.feedback.eventFeedbackIndex()) {
-      return;
-    }
-    this.eventFeedbackPendingIndicatorIndex.set(null);
-    this.feedback.eventFeedbackIndex.set(nextIndex);
-  }
-
-  protected eventFeedbackVisibleSlideIndex(): number {
-    const cards = this.feedback.eventFeedbackCards();
-    if (cards.length === 0) {
-      return 0;
-    }
-    const pendingIndex = this.eventFeedbackPendingIndicatorIndex();
-    const rawIndex = pendingIndex ?? this.feedback.eventFeedbackIndex();
-    return Math.max(0, Math.min(rawIndex, cards.length - 1));
-  }
-
-  protected eventFeedbackVisibleSlideCounterLabel(): string {
-    const cards = this.feedback.eventFeedbackCards();
-    if (cards.length === 0) {
-      return '';
-    }
-    return `${this.eventFeedbackVisibleSlideIndex() + 1} / ${cards.length}`;
-  }
-
-  protected isEventFeedbackDotActive(index: number): boolean {
-    return this.eventFeedbackVisibleSlideIndex() === index;
-  }
-
-  protected beginEventFeedbackSurfaceSwipe(event: PointerEvent): void {
-    if (!this.isMobileEventFeedbackViewport() || event.pointerType === 'mouse' && event.button !== 0) {
-      return;
-    }
-    if (this.isEventFeedbackInteractiveSwipeTarget(event.target)) {
-      return;
-    }
-    const viewport = this.eventFeedbackViewportRef?.nativeElement;
-    if (!viewport) {
-      return;
-    }
-    this.eventFeedbackSurfaceSwipePointerId = event.pointerId;
-    this.eventFeedbackSurfaceSwipeStartX = event.clientX;
-    this.eventFeedbackSurfaceSwipeStartY = event.clientY;
-    this.eventFeedbackSurfaceSwipeStartScrollLeft = viewport.scrollLeft;
-    this.eventFeedbackSurfaceSwipeActive = false;
-    const target = event.currentTarget as HTMLElement | null;
-    target?.setPointerCapture?.(event.pointerId);
-  }
-
-  protected moveEventFeedbackSurfaceSwipe(event: PointerEvent): void {
-    if (this.eventFeedbackSurfaceSwipePointerId !== event.pointerId) {
-      return;
-    }
-    const viewport = this.eventFeedbackViewportRef?.nativeElement;
-    if (!viewport) {
-      this.resetEventFeedbackSurfaceSwipe();
-      return;
-    }
-    const deltaX = event.clientX - this.eventFeedbackSurfaceSwipeStartX;
-    const deltaY = event.clientY - this.eventFeedbackSurfaceSwipeStartY;
-    if (!this.eventFeedbackSurfaceSwipeActive) {
-      if (Math.abs(deltaX) < 10 || Math.abs(deltaX) <= Math.abs(deltaY)) {
-        return;
-      }
-      this.eventFeedbackSurfaceSwipeActive = true;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    viewport.scrollLeft = this.eventFeedbackSurfaceSwipeStartScrollLeft - deltaX;
-  }
-
-  protected endEventFeedbackSurfaceSwipe(event: PointerEvent): void {
-    if (this.eventFeedbackSurfaceSwipePointerId !== event.pointerId) {
-      return;
-    }
-    const viewport = this.eventFeedbackViewportRef?.nativeElement;
-    const wasActive = this.eventFeedbackSurfaceSwipeActive;
-    this.resetEventFeedbackSurfaceSwipe();
-    if (!viewport || !wasActive) {
-      return;
-    }
-    const nextIndex = this.currentMobileEventFeedbackSlideIndex(viewport);
-    this.queueMobileEventFeedbackViewportSync('smooth', nextIndex);
-  }
-
-  protected cancelEventFeedbackSurfaceSwipe(event: PointerEvent): void {
-    if (this.eventFeedbackSurfaceSwipePointerId !== event.pointerId) {
-      return;
-    }
-    this.resetEventFeedbackSurfaceSwipe();
-  }
-
-  ngOnDestroy(): void {
-    this.clearEventFeedbackViewportScrollLock();
-    this.resetEventFeedbackSurfaceSwipe();
   }
 
   private eventFeedbackGroupLabel(
@@ -828,142 +738,6 @@ export class EventFeedbackPopupComponent implements OnDestroy {
 
   private validEventFeedbackTimestamp(value: number | null | undefined): number | null {
     return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
-  }
-
-  private queueMobileEventFeedbackViewportSync(behavior: ScrollBehavior, targetIndex = this.feedback.eventFeedbackIndex()): void {
-    if (!this.isMobileEventFeedbackViewport()) {
-      this.clearEventFeedbackViewportScrollLock();
-      this.resetEventFeedbackViewportScroll();
-      return;
-    }
-
-    const cards = this.feedback.eventFeedbackCards();
-    if (cards.length === 0) {
-      this.clearEventFeedbackViewportScrollLock();
-      return;
-    }
-
-    const normalizedTargetIndex = Math.max(0, Math.min(targetIndex, cards.length - 1));
-    if (behavior === 'smooth' && normalizedTargetIndex !== this.feedback.eventFeedbackIndex()) {
-      this.eventFeedbackPendingIndicatorIndex.set(normalizedTargetIndex);
-    }
-    if (behavior === 'smooth') {
-      this.eventFeedbackViewportScrollLockTargetIndex = normalizedTargetIndex;
-      this.scheduleEventFeedbackViewportScrollLockRelease();
-    } else {
-      this.eventFeedbackPendingIndicatorIndex.set(null);
-      this.clearEventFeedbackViewportScrollLock();
-    }
-
-    const sync = () => {
-      const viewport = this.eventFeedbackViewportRef?.nativeElement;
-      if (!viewport) {
-        return;
-      }
-      const targetLeft = this.mobileEventFeedbackSlideOffsetLeft(viewport, normalizedTargetIndex);
-      if (targetLeft < 0) {
-        return;
-      }
-      const previousScrollBehavior = viewport.style.scrollBehavior;
-      viewport.style.scrollBehavior = behavior;
-      viewport.scrollLeft = targetLeft;
-      const restore = () => {
-        viewport.style.scrollBehavior = previousScrollBehavior;
-      };
-      if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => restore());
-      } else {
-        setTimeout(restore, 0);
-      }
-    };
-
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
-      return;
-    }
-    setTimeout(sync, 0);
-  }
-
-  private scheduleEventFeedbackViewportScrollLockRelease(): void {
-    if (this.eventFeedbackViewportScrollLockTimer) {
-      clearTimeout(this.eventFeedbackViewportScrollLockTimer);
-    }
-    this.eventFeedbackViewportScrollLockTimer = setTimeout(() => {
-      this.eventFeedbackViewportScrollLockTimer = null;
-      const viewport = this.eventFeedbackViewportRef?.nativeElement;
-      const finalIndex = viewport
-        ? this.currentMobileEventFeedbackSlideIndex(viewport)
-        : this.eventFeedbackViewportScrollLockTargetIndex;
-      this.eventFeedbackViewportScrollLockTargetIndex = null;
-      this.eventFeedbackPendingIndicatorIndex.set(null);
-      if (finalIndex === null || finalIndex === this.feedback.eventFeedbackIndex()) {
-        return;
-      }
-      this.feedback.eventFeedbackIndex.set(finalIndex);
-    }, 96);
-  }
-
-  private clearEventFeedbackViewportScrollLock(): void {
-    if (this.eventFeedbackViewportScrollLockTimer) {
-      clearTimeout(this.eventFeedbackViewportScrollLockTimer);
-      this.eventFeedbackViewportScrollLockTimer = null;
-    }
-    this.eventFeedbackViewportScrollLockTargetIndex = null;
-    this.eventFeedbackPendingIndicatorIndex.set(null);
-  }
-
-  private resetEventFeedbackSurfaceSwipe(): void {
-    this.eventFeedbackSurfaceSwipePointerId = null;
-    this.eventFeedbackSurfaceSwipeStartX = 0;
-    this.eventFeedbackSurfaceSwipeStartY = 0;
-    this.eventFeedbackSurfaceSwipeStartScrollLeft = 0;
-    this.eventFeedbackSurfaceSwipeActive = false;
-  }
-
-  private isEventFeedbackInteractiveSwipeTarget(target: EventTarget | null): boolean {
-    const element = target instanceof Element ? target : null;
-    return !!element?.closest('button, a, input, textarea, select, [role="button"], .event-feedback-form');
-  }
-
-  private currentMobileEventFeedbackSlideIndex(viewport: HTMLDivElement): number {
-    const slides = Array.from(viewport.querySelectorAll<HTMLElement>('.event-feedback-card-slide'));
-    if (slides.length === 0) {
-      return 0;
-    }
-    const currentLeft = viewport.scrollLeft;
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-
-    slides.forEach((slide, index) => {
-      const distance = Math.abs(slide.offsetLeft - currentLeft);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-
-    return Math.max(0, Math.min(closestIndex, slides.length - 1));
-  }
-
-  private mobileEventFeedbackSlideOffsetLeft(viewport: HTMLDivElement, slideIndex: number): number {
-    const slides = Array.from(viewport.querySelectorAll<HTMLElement>('.event-feedback-card-slide'));
-    if (slides.length === 0) {
-      return -1;
-    }
-    const normalizedIndex = Math.max(0, Math.min(slideIndex, slides.length - 1));
-    const targetSlide = slides[normalizedIndex] ?? null;
-    return targetSlide ? Math.max(0, targetSlide.offsetLeft) : -1;
-  }
-
-  private resetEventFeedbackViewportScroll(): void {
-    const viewport = this.eventFeedbackViewportRef?.nativeElement;
-    if (viewport && viewport.scrollLeft !== 0) {
-      viewport.scrollLeft = 0;
-    }
-  }
-
-  private readViewportWidth(): number {
-    return typeof window === 'undefined' ? 1280 : window.innerWidth;
   }
 
   private eventFeedbackEmptyDescription(filter: EventFeedbackListFilter): string {
