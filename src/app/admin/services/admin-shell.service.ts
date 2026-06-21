@@ -9,7 +9,6 @@ export type AdminPopupKind =
   | 'chat'
   | 'chat-review'
   | 'warn-chat'
-  | 'profile'
   | 'help-editor'
   | 'idea-editor'
   | 'notifications'
@@ -45,10 +44,6 @@ export class AdminShellService {
 
   openChat(): void {
     this.popupCtx.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
-  }
-
-  openProfile(): void {
-    this.activePopupRef.set('profile');
   }
 
   openHelpEditor(): void {
