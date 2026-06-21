@@ -81,28 +81,24 @@
       <span>{{ model?.loadingLabel || 'Loading form' }}</span>
     </article>
   } @else if (model && totalPageCount() > 0) {
-    <main
-      #flowViewport
-      class="form-flow__body"
-      [class.form-flow__body--mobile]="isMobileViewport"
-      (scroll)="onFlowViewportScroll()"
-    >
-      <div class="form-flow__track" [style.transform]="pageTrackTransform()">
-        @for (step of pages(); track step.id; let stepIndex = $index) {
-          <section
-            class="form-flow__slide"
-            [class.is-active]="isPageActive(stepIndex)"
-            [class.is-missing]="isStepMissingRequired(step)"
-            [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
-            [attr.inert]="isPageActive(stepIndex) ? null : ''"
-            [attr.aria-labelledby]="'form-flow-step-' + step.id"
-          >
-            <div class="form-flow__slide-inner">
-              @if (isCarouselLayout()) {
-                <div class="form-flow__carousel-progress-slot">
-                  <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
-                </div>
-              }
+    <div class="form-flow__stage" [class.form-flow__stage--carousel]="isCarouselLayout()">
+      <main
+        #flowViewport
+        class="form-flow__body"
+        [class.form-flow__body--mobile]="isMobileViewport"
+        (scroll)="onFlowViewportScroll()"
+      >
+        <div class="form-flow__track" [style.transform]="pageTrackTransform()">
+          @for (step of pages(); track step.id; let stepIndex = $index) {
+            <section
+              class="form-flow__slide"
+              [class.is-active]="isPageActive(stepIndex)"
+              [class.is-missing]="isStepMissingRequired(step)"
+              [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
+              [attr.inert]="isPageActive(stepIndex) ? null : ''"
+              [attr.aria-labelledby]="'form-flow-step-' + step.id"
+            >
+              <div class="form-flow__slide-inner">
               @if (step.header) {
                 <div
                   class="form-flow__step-header"
@@ -143,11 +139,7 @@
                 </div>
               }
 
-              @if (isCarouselLayout()) {
-                <ng-container [ngTemplateOutlet]="stepNavControls"></ng-container>
-              }
-
-              <div class="form-flow__controls">
+                <div class="form-flow__controls">
                 @for (control of step.controls; track control.id) {
                   <div
                     class="form-flow__control"
@@ -238,26 +230,21 @@
                     }
                   </div>
                 }
-              </div>
-            </div>
-          </section>
-        }
-
-        @if (hasSummaryPage()) {
-          <section
-            class="form-flow__slide form-flow__slide--summary"
-            [class.is-active]="isSummaryPage()"
-            [class.is-missing]="totalMissingRequiredCount() > 0"
-            [attr.aria-hidden]="isSummaryPage() ? null : 'true'"
-            [attr.inert]="isSummaryPage() ? null : ''"
-            [attr.aria-label]="summaryTitle()"
-          >
-            <div class="form-flow__slide-inner">
-              @if (isCarouselLayout()) {
-                <div class="form-flow__carousel-progress-slot">
-                  <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
                 </div>
-              }
+              </div>
+            </section>
+          }
+
+          @if (hasSummaryPage()) {
+            <section
+              class="form-flow__slide form-flow__slide--summary"
+              [class.is-active]="isSummaryPage()"
+              [class.is-missing]="totalMissingRequiredCount() > 0"
+              [attr.aria-hidden]="isSummaryPage() ? null : 'true'"
+              [attr.inert]="isSummaryPage() ? null : ''"
+              [attr.aria-label]="summaryTitle()"
+            >
+              <div class="form-flow__slide-inner">
               <div class="form-flow__summary-head">
                 <mat-icon>{{ model.summary?.icon || 'fact_check' }}</mat-icon>
                 <div>
@@ -267,10 +254,6 @@
                   }
                 </div>
               </div>
-
-              @if (isCarouselLayout()) {
-                <ng-container [ngTemplateOutlet]="stepNavControls"></ng-container>
-              }
 
               <div class="form-flow__summary-panels">
                 @for (step of pages(); track step.id) {
@@ -297,11 +280,19 @@
                   </article>
                 }
               </div>
-            </div>
-          </section>
-        }
-      </div>
-    </main>
+              </div>
+            </section>
+          }
+        </div>
+      </main>
+
+      @if (isCarouselLayout()) {
+        <div class="form-flow__carousel-progress-slot">
+          <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+        </div>
+        <ng-container [ngTemplateOutlet]="stepNavControls"></ng-container>
+      }
+    </div>
 
     <footer class="form-flow__footer" [class.form-flow__footer--carousel]="isCarouselLayout()">
       @if (!isCarouselLayout()) {

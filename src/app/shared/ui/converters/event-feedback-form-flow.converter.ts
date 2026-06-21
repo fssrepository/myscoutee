@@ -212,6 +212,7 @@ export class EventFeedbackFormFlowConverter {
             label: card.traitQuestion,
             description: 'Pick up to 3',
             bind: ['cards', cardIndex, 'selectedTraitIds'],
+            required: true,
             config: this.inlineTabsMenuConfig(this.traitOptionModel(card))
           }
         ]
