@@ -17,14 +17,14 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render the extracted entry shell', async () => {
+  it('should render the entry page', async () => {
     const fixture = TestBed.createComponent(App);
     const router = TestBed.inject(Router);
     await router.navigateByUrl('/');
     fixture.detectChanges();
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('app-entry-shell')).not.toBeNull();
+    expect(compiled.querySelector('app-entry-page')).not.toBeNull();
     expect(compiled.querySelector('.entry-brand-text')?.textContent).toContain('yScoutee');
   });
 });

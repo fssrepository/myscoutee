@@ -34,3 +34,13 @@
 ></app-entry-firebase-auth-popup>
 
 <app-confirmation-dialog></app-confirmation-dialog>
+
+<app-profile-onboarding-popup
+  [open]="onboardingOpen"
+  [user]="onboardingUser"
+  [mobile]="isMobileView"
+  [title]="onboardingTitle"
+  [message]="onboardingMessage"
+  (completed)="onOnboardingCompleted($event)"
+  (dismissed)="onOnboardingDismissed()"
+></app-profile-onboarding-popup>
