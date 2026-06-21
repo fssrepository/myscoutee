@@ -8,6 +8,12 @@
   --app-menu-grid-columns: 5;
   --app-menu-grid-gap: 0.46rem;
   --app-menu-tile-height: 60px;
+  --app-menu-tabs-items-gap: 0.34rem;
+  --app-menu-tabs-item-flex-basis: 9.5rem;
+  --app-menu-tabs-item-min-width: 9.5rem;
+  --app-menu-tabs-item-min-height: 38px;
+  --app-menu-tabs-item-padding: 0.38rem 0.46rem;
+  --app-menu-tabs-item-font-size: 0.78rem;
   --app-menu-text: #243f62;
   --app-menu-muted-text: rgba(32, 53, 82, 0.66);
 }
@@ -1316,26 +1322,26 @@
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  gap: 0.34rem;
+  gap: var(--app-menu-tabs-items-gap);
   min-width: 0;
 }
 
 .app-menu__tabs-item {
   appearance: none;
   -webkit-appearance: none;
-  flex: 1 1 9.5rem;
-  min-width: min(9.5rem, 100%);
-  min-height: 38px;
+  flex: 1 1 var(--app-menu-tabs-item-flex-basis);
+  min-width: min(var(--app-menu-tabs-item-min-width), 100%);
+  min-height: var(--app-menu-tabs-item-min-height);
   border: 1px solid var(--app-menu-border);
   border-radius: 9px;
-  padding: 0.38rem 0.46rem;
+  padding: var(--app-menu-tabs-item-padding);
   background: var(--app-menu-bg);
   color: var(--app-menu-fg);
   display: flex;
   align-items: center;
   gap: 0.34rem;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: var(--app-menu-tabs-item-font-size);
   font-weight: 800;
   text-align: left;
   cursor: pointer;

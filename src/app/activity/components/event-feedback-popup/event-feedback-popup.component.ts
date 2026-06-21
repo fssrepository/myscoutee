@@ -13,6 +13,7 @@ import {
   EventFeedbackInfoCardConverter,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   InfoCardComponent,
@@ -37,6 +38,11 @@ type EventFeedbackMenuContext = {
   menu: 'info-card';
   card: InfoCardData;
   action: CardMenuAction;
+};
+
+type EventFeedbackOptionMenuContext = {
+  cardId: string;
+  group: 'primary' | 'secondary' | 'traits';
 };
 
 interface OrganizerEventFeedbackCarouselStatItem {
@@ -287,6 +293,169 @@ export class EventFeedbackPopupComponent implements OnDestroy {
       default:
         return 'amber';
     }
+  }
+
+  protected eventFeedbackPrimaryOptionModel(
+    card: AppTypes.EventFeedbackCard
+  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
+    return this.eventFeedbackOptionModel(
+      `${card.id}-primary-options`,
+      card.primaryOptions.map(option => this.eventFeedbackOptionMenuItem(card, 'primary', option))
+    );
+  }
+
+  protected eventFeedbackSecondaryOptionModel(
+    card: AppTypes.EventFeedbackCard
+  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
+    return this.eventFeedbackOptionModel(
+      `${card.id}-secondary-options`,
+      card.secondaryOptions.map(option => this.eventFeedbackOptionMenuItem(card, 'secondary', option))
+    );
+  }
+
+  protected eventFeedbackTraitOptionModel(
+    card: AppTypes.EventFeedbackCard,
+    cardIndex: number
+  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
+    const selectedTraitIds = new Set(card.selectedTraitIds);
+    const isActiveCard = this.feedback.eventFeedbackIndex() === cardIndex;
+    const items = card.traitOptions.map((trait): AppMenuItem<string, EventFeedbackOptionMenuContext> => {
+      const selected = selectedTraitIds.has(trait.id);
+      return {
+        id: `${card.id}-trait-${trait.id}`,
+        label: trait.label,
+        icon: trait.icon,
+        kind: 'checkbox',
+        value: trait.id,
+        palette: this.eventFeedbackTraitPalette(trait),
+        surface: 'tinted',
+        active: selected,
+        checked: selected,
+        disabled: !isActiveCard,
+        closeOnSelect: false,
+        context: {
+          cardId: card.id,
+          group: 'traits'
+        }
+      };
+    });
+    return this.eventFeedbackOptionModel(`${card.id}-trait-options`, items, 3);
+  }
+
+  private eventFeedbackOptionMenuItem(
+    card: AppTypes.EventFeedbackCard,
+    group: 'primary' | 'secondary',
+    option: AppTypes.EventFeedbackOption
+  ): AppMenuItem<string, EventFeedbackOptionMenuContext> {
+    const selectedValue = group === 'primary' ? card.answerPrimary : card.answerSecondary;
+    return {
+      id: `${card.id}-${group}-${option.value}`,
+      label: option.label,
+      icon: option.icon,
+      kind: 'radio',
+      value: option.value,
+      palette: this.eventFeedbackOptionPalette(option),
+      surface: 'tinted',
+      active: selectedValue === option.value,
+      checked: selectedValue === option.value,
+      closeOnSelect: false,
+      context: { cardId: card.id, group }
+    };
+  }
+
+  private eventFeedbackOptionModel(
+    id: string,
+    items: readonly AppMenuItem<string, EventFeedbackOptionMenuContext>[],
+    maxSelected: number | null = null
+  ): AppMenuModel<string, EventFeedbackOptionMenuContext> {
+    return {
+      layout: 'tabs',
+      maxSelected,
+      groups: [{
+        id,
+        items
+      }]
+    };
+  }
+
+  private eventFeedbackOptionPalette(option: AppTypes.EventFeedbackOption): AppMenuPalette {
+    const impressionTag = `${option.impressionTag ?? ''}`.trim().toLowerCase();
+    if (impressionTag.includes('reliab') || impressionTag.includes('trust') || impressionTag.includes('teamwork')) {
+      return 'green';
+    }
+    if (impressionTag.includes('communicat') || impressionTag.includes('compat')) {
+      return 'violet';
+    }
+    if (impressionTag.includes('organization') || impressionTag.includes('timing')) {
+      return 'amber';
+    }
+    if (impressionTag.includes('planning') || impressionTag.includes('resource') || impressionTag.includes('quality')) {
+      return 'mint';
+    }
+    if (impressionTag.includes('consistency') || impressionTag.includes('neutral')) {
+      return 'slate';
+    }
+    if (impressionTag.includes('risk')) {
+      return 'red';
+    }
+    if (impressionTag.includes('fit')) {
+      return 'orange';
+    }
+    switch (option.value.trim().toLowerCase()) {
+      case 'excellent':
+      case 'great':
+      case 'yes':
+        return 'sky';
+      case 'good':
+      case 'reliable':
+        return 'cyan';
+      case 'mixed':
+      case 'communication':
+      case 'neutral':
+      case 'maybe':
+        return 'violet';
+      case 'needs-work':
+      case 'resources':
+      case 'context':
+        return 'mint';
+      case 'timing':
+      case 'rough':
+        return 'amber';
+      case 'none':
+      case 'no':
+        return 'slate';
+      default:
+        return 'sky';
+    }
+  }
+
+  private eventFeedbackTraitPalette(trait: AppTypes.EventFeedbackTraitOption): AppMenuPalette {
+    const lookup = `${trait.id} ${trait.label} ${trait.coreVibe}`.toLowerCase();
+    if (lookup.includes('creative')) {
+      return 'violet';
+    }
+    if (lookup.includes('empath') || lookup.includes('kind') || lookup.includes('nurtur')) {
+      return 'pink';
+    }
+    if (lookup.includes('reliable') || lookup.includes('trust') || lookup.includes('stable')) {
+      return 'green';
+    }
+    if (lookup.includes('adventur') || lookup.includes('energetic') || lookup.includes('bold')) {
+      return 'cyan';
+    }
+    if (lookup.includes('think') || lookup.includes('reflect') || lookup.includes('intellectual')) {
+      return 'blue';
+    }
+    if (lookup.includes('social') || lookup.includes('magnetic') || lookup.includes('talk')) {
+      return 'teal';
+    }
+    if (lookup.includes('playful') || lookup.includes('fun') || lookup.includes('lighthearted')) {
+      return 'orange';
+    }
+    if (lookup.includes('ambitious') || lookup.includes('driven') || lookup.includes('goal')) {
+      return 'sky';
+    }
+    return 'blue';
   }
 
   constructor() {

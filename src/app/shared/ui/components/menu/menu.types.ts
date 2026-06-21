@@ -159,6 +159,7 @@ export interface AppMenuModel<TId extends string = string, TContext = unknown> {
   layout?: AppMenuLayout;
   summary?: AppMenuSummary | null;
   valueKey?: AppMenuValueKey | null;
+  maxSelected?: number | null;
   groups?: readonly AppMenuGroup<TId, TContext>[];
   nodes?: readonly AppMenuGroup<TId, TContext>[];
 }

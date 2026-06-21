@@ -449,6 +449,8 @@ export class EventExplorePopupComponent {
       idPrefix: 'topic',
       groups: this.topicFilterGroups,
       selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
+      maxSelected: 1,
+      kind: 'radio',
       context: topic => ({ menu: 'topic-filter', topic }),
       itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
       removeAriaLabel: topic => `Clear ${topic}`,

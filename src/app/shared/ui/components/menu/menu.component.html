@@ -149,9 +149,9 @@
     <div
       class="app-menu__panel"
       [class.app-menu__panel--inline]="usesInlinePanel"
-      [class.app-menu__panel--dropdown-list]="(isDropdownListKind && !isTabbedModelLayout) || (isInlineRowLayout && !activeBranchTabbedModelLayout)"
+      [class.app-menu__panel--dropdown-list]="!currentTabbedModelLayout && (isDropdownListKind || isInlineRowLayout || activeBranch)"
       [class.app-menu__panel--fab]="isFabKind"
-      [class.app-menu__panel--tabs]="isTabbedModelLayout || activeBranchTabbedModelLayout"
+      [class.app-menu__panel--tabs]="currentTabbedModelLayout"
       [class.app-menu__panel--has-branch-header]="showBranchBack"
       [class.app-menu__panel--open-up]="resolvedOpenUp"
       [class.app-menu__panel--align-start]="resolvedPanelAlign === 'start'"
@@ -244,7 +244,7 @@
             </section>
           }
         </div>
-      } @else if ((isTabbedModelLayout || activeBranchTabbedModelLayout) && hasTabsGroups) {
+      } @else if (currentTabbedModelLayout && hasTabsGroups) {
         <div class="app-menu__tabs">
           @if (isTabsFilterable()) {
             <div class="app-menu__tabs-head">
@@ -357,9 +357,11 @@
                           {{ itemCounterLabel(item) }}
                         </span>
                       }
-                      <span class="app-menu__tabs-toggle" [class.app-menu__tabs-toggle--active]="isItemActive(item)" aria-hidden="true">
-                        <span></span>
-                      </span>
+                      @if (showTabsItemToggle(item)) {
+                        <span class="app-menu__tabs-toggle" [class.app-menu__tabs-toggle--active]="isItemActive(item)" aria-hidden="true">
+                          <span></span>
+                        </span>
+                      }
                     </button>
                   }
                 }

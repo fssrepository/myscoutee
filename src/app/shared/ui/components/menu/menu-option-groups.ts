@@ -22,7 +22,7 @@ export interface BuildTabbedMenuGroupsParams<TId extends string, TContext> {
   maxSelected?: number | null;
   context: (option: string, group: AppMenuStaticOptionGroup) => TContext;
   normalize?: (value: string) => string;
-  itemKind?: AppMenuItemKind;
+  kind?: AppMenuItemKind;
   closeOnSelect?: boolean;
   itemLabel?: (option: string, group: AppMenuStaticOptionGroup) => string;
   itemIcon?: (option: string, group: AppMenuStaticOptionGroup) => string;
@@ -45,6 +45,7 @@ export function buildTabbedMenuModel<TId extends string = string, TContext = unk
   return {
     layout: 'tabs',
     summary: summary ?? null,
+    maxSelected: params.maxSelected ?? null,
     groups: buildTabbedMenuGroups<TId, TContext>(groupParams)
   };
 }
@@ -54,10 +55,6 @@ export function buildTabbedMenuGroups<TId extends string = string, TContext = un
 ): readonly AppMenuGroup<TId, TContext>[] {
   const normalize = params.normalize ?? appMenuNormalizeStaticOption;
   const selectedKeys = new Set((params.selected ?? []).map(item => normalize(item)));
-  const maxSelected = params.maxSelected === null || params.maxSelected === undefined
-    ? null
-    : Math.max(0, Math.trunc(Number(params.maxSelected)) || 0);
-  const maxSelectedReached = maxSelected !== null && selectedKeys.size >= maxSelected;
 
   return params.groups.map((group, groupIndex) => ({
     id: `${params.idPrefix}-group-${appMenuSafeId(group.shortTitle || group.title || `${groupIndex}`)}`,
@@ -72,14 +69,13 @@ export function buildTabbedMenuGroups<TId extends string = string, TContext = un
         id: `${params.idPrefix}-${appMenuSafeId(option)}` as TId,
         label,
         icon: params.itemIcon?.(option, group) ?? appMenuIconFromToneClass(group.toneClass),
-        kind: params.itemKind ?? 'checkbox',
+        kind: params.kind ?? 'checkbox',
         active: selected,
         checked: selected,
         removable: params.removable?.(option, group, selected) ?? selected,
         removeAriaLabel: params.removeAriaLabel?.(option, group) ?? `Remove ${label}`,
         closeOnSelect: params.closeOnSelect ?? false,
         palette: params.itemPalette?.(option, group) ?? appMenuPaletteFromToneClass(group.toneClass),
-        disabled: maxSelectedReached && !selected,
         value: option,
         context: params.context(option, group)
       } satisfies AppMenuItem<TId, TContext>;

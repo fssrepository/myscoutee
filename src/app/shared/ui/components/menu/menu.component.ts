@@ -361,7 +361,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get activeBranchTabbedModelLayout(): boolean {
-    return this.activeBranch?.model?.layout === 'tabs';
+    return this.activeBranch !== null && this.currentTabbedModelLayout;
+  }
+
+  protected get currentTabbedModelLayout(): boolean {
+    return this.currentMenuModel()?.layout === 'tabs';
   }
 
   protected get isDropdownListKind(): boolean {
@@ -443,8 +447,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected get tabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
-    if (this.activeBranchTabbedModelLayout && this.activeBranch) {
-      return appMenuModelGroups(this.activeBranch.model, this.activeBranch.groups ?? []);
+    const model = this.currentMenuModel();
+    if (model?.layout === 'tabs') {
+      return appMenuModelGroups(model, this.currentMenuGroupFallback());
     }
     return this.menuNodes;
   }
@@ -488,7 +493,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.activeBranch) {
-      return this.activeBranch.items ?? [];
+      return this.branchListItems(this.activeBranch);
     }
     if (this.items.length > 0) {
       return this.items;
@@ -745,6 +750,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
     if (this.shouldOpenItemBranch(item)) {
       this.activeBranchPath = [...this.activeBranchPath, item];
+      this.tabsFilterText = '';
+      this.syncActiveTabsGroup();
       return;
     }
     const controlValue = this.selectControlItem(item);
@@ -837,6 +844,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     event.preventDefault();
     event.stopPropagation();
     this.activeBranchPath = this.activeBranchPath.slice(0, -1);
+    this.tabsFilterText = '';
+    this.syncActiveTabsGroup();
   }
 
   protected isActionRowItemOpen(item: AppMenuItem<TId, TContext>): boolean {
@@ -968,10 +977,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected isTabsFilterable(): boolean {
-    if (this.activeBranchTabbedModelLayout) {
+    if (this.activeBranch) {
       return this.activeBranch?.filterable === true;
     }
-    return this.isTabbedModelLayout && this.filterable === true;
+    return this.currentTabbedModelLayout && this.filterable === true;
   }
 
   protected showTabsBar(): boolean {
@@ -1038,8 +1047,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (this.isInlineGridLayout || !this.hasMenuNodes) {
       return [];
     }
+    return this.groupedMenuItems(this.menuNodes);
+  }
+
+  private groupedMenuItems(groups: readonly AppMenuGroup<TId, TContext>[]): readonly AppMenuItem<TId, TContext>[] {
     const items: AppMenuItem<TId, TContext>[] = [];
-    for (const group of this.menuNodes) {
+    for (const group of groups) {
       const groupItems = this.groupItems(group);
       if (groupItems.length === 0) {
         continue;
@@ -1115,7 +1128,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if (((this.isDropdownListKind && !this.isTabbedModelLayout) || (this.isInlineRowLayout && !this.activeBranchTabbedModelLayout)) && item.kind === 'radio') {
+    if (((this.isDropdownListKind && !this.currentTabbedModelLayout) || (this.isInlineRowLayout && !this.currentTabbedModelLayout)) && item.kind === 'radio') {
       return false;
     }
     return this.isItemActive(item) && !this.hasNestedItems(item);
@@ -1132,8 +1145,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return item.kind === 'toggle';
   }
 
+  protected showTabsItemToggle(item: AppMenuItem<TId, TContext>): boolean {
+    return this.currentModelMaxSelected() !== 1 && (item.kind === 'checkbox' || item.kind === 'toggle');
+  }
+
   protected isItemDisabled(item: AppMenuItem<TId, TContext>): boolean {
-    return this.controlDisabled || this.resolveBoolean(item.disabled);
+    return this.controlDisabled || this.resolveBoolean(item.disabled) || this.isMaxSelectedLimitDisablingItem(item);
   }
 
   protected isItemRemovable(item: AppMenuItem<TId, TContext>): boolean {
@@ -1196,19 +1213,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected hasNestedItems(item: AppMenuItem<TId, TContext>): boolean {
-    return (item.items?.length ?? 0) > 0 || appMenuModelGroups(item.model, item.groups ?? []).length > 0;
+    return this.itemChildItems(item).length > 0 || this.itemMenuGroups(item).length > 0;
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
-    return ((this.isDropdownListKind && !this.isTabbedModelLayout) || this.isInlineRowLayout) && this.hasNestedItems(item);
+    return !this.isInlineGridLayout && this.hasNestedItems(item);
   }
 
   private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
-    return item.closeOnSelect ?? (this.isTabbedModelLayout || this.activeBranchTabbedModelLayout ? false : this.closeOnSelect);
+    return item.closeOnSelect ?? (this.currentTabbedModelLayout ? false : this.closeOnSelect);
   }
 
   private syncActiveTabsGroup(): void {
-    if ((!this.isTabbedModelLayout && !this.activeBranchTabbedModelLayout) || this.tabsGroups.length === 0) {
+    if (!this.currentTabbedModelLayout || this.tabsGroups.length === 0) {
       return;
     }
     const groups = this.visibleTabsGroups;
@@ -1230,7 +1247,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
         this.setOpen(false);
         return;
       }
-      if (this.activeBranchTabbedModelLayout) {
+      if (this.currentTabbedModelLayout) {
         if (this.tabsGroups.length === 0) {
           this.setOpen(false);
         }
@@ -1277,11 +1294,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       if (item.id === id) {
         return item;
       }
-      const childMatch = this.findItemById(item.items ?? [], id);
+      const childMatch = this.findItemById(this.itemChildItems(item), id);
       if (childMatch) {
         return childMatch;
       }
-      for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+      for (const group of this.itemMenuGroups(item)) {
         const modelMatch = this.findItemById(this.groupItems(group), id);
         if (modelMatch) {
           return modelMatch;
@@ -1505,7 +1522,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private estimatedPanelHeight(): number {
     const titleHeight = this.resolvedTitle ? 34 : 0;
     const itemCount = Math.max(1, this.visibleListItems.length);
-    const branchHeaderHeight = this.visibleListItems.some(item => (item.items?.length ?? 0) > 0) ? 38 : 0;
+    const branchHeaderHeight = this.visibleListItems.some(item => this.hasNestedItems(item)) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
@@ -1551,8 +1568,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     for (const action of item.headerActions ?? []) {
       this.observeItemCounterPulse(action, visibleCounterKeys, group);
     }
-    for (const child of item.items ?? []) {
+    for (const child of this.itemChildItems(item)) {
       this.observeItemCounterPulse(child, visibleCounterKeys, group);
+    }
+    for (const childGroup of this.itemMenuGroups(item)) {
+      for (const action of childGroup.headerActions ?? []) {
+        this.observeItemCounterPulse(action, visibleCounterKeys, childGroup);
+      }
+      for (const child of this.groupItems(childGroup)) {
+        this.observeItemCounterPulse(child, visibleCounterKeys, childGroup);
+      }
     }
   }
 
@@ -1626,6 +1651,73 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.controlAttached ? this.controlValue : undefined;
   }
 
+  private isMaxSelectedLimitDisablingItem(item: AppMenuItem<TId, TContext>): boolean {
+    const maxSelected = this.currentModelMaxSelected();
+    if (maxSelected === null || maxSelected === 1 || !this.isMultiSelectItem(item) || this.isItemActive(item)) {
+      return false;
+    }
+    return this.currentSelectedMultiSelectCount() >= maxSelected;
+  }
+
+  private currentModelMaxSelected(): number | null {
+    const rawMaxSelected = this.currentMenuModel()?.maxSelected;
+    if (rawMaxSelected === null || rawMaxSelected === undefined) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(rawMaxSelected)) || 0);
+  }
+
+  private currentMenuModel(): AppMenuModel<TId, TContext> | null {
+    if (this.activeBranch) {
+      return this.activeBranch.model ?? null;
+    }
+    return this.model;
+  }
+
+  private currentSelectedMultiSelectCount(): number {
+    if (this.controlAttached) {
+      if (Array.isArray(this.controlValue)) {
+        return this.controlValue.length;
+      }
+      return this.controlValue === null || this.controlValue === undefined || this.controlValue === '' ? 0 : 1;
+    }
+    return this.currentRenderedItems().filter(item => this.isMultiSelectItem(item) && this.isItemActive(item)).length;
+  }
+
+  private currentRenderedItems(): readonly AppMenuItem<TId, TContext>[] {
+    if (this.currentTabbedModelLayout && this.tabsGroups.length > 0) {
+      return this.tabsGroups.flatMap(group => this.groupItems(group));
+    }
+    if (this.isInlineRowLayout) {
+      return this.actionRowItems;
+    }
+    return this.visibleListItems;
+  }
+
+  private isMultiSelectItem(item: AppMenuItem<TId, TContext>): boolean {
+    return item.kind === 'checkbox' || item.kind === 'toggle';
+  }
+
+  private currentMenuGroupFallback(): readonly AppMenuGroup<TId, TContext>[] {
+    return this.activeBranch?.groups ?? this.groups;
+  }
+
+  private branchListItems(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    const childItems = this.itemChildItems(item);
+    if (childItems.length > 0) {
+      return childItems;
+    }
+    return this.groupedMenuItems(this.itemMenuGroups(item));
+  }
+
+  private itemChildItems(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return item.items ?? [];
+  }
+
+  private itemMenuGroups(item: AppMenuItem<TId, TContext>): readonly AppMenuGroup<TId, TContext>[] {
+    return appMenuModelGroups(item.model, item.groups ?? []);
+  }
+
   private selectControlItem(item: AppMenuItem<TId, TContext>): unknown {
     if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
       return undefined;
@@ -1657,6 +1749,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     switch (item.kind ?? 'action') {
       case 'checkbox':
       case 'toggle':
+        if (this.currentModelMaxSelected() === 1) {
+          return this.isControlItemSelected(item) ? [] : [itemValue];
+        }
         return this.toggleControlArrayValue(itemValue);
       default:
         return itemValue;

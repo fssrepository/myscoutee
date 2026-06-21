@@ -95,6 +95,11 @@ function collectSelectedItemLabels<TId extends string, TContext>(
   for (const child of item.items ?? []) {
     collectSelectedItemLabels(child, selectedLabels, seenLabels, selection);
   }
+  for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+    for (const child of group.items ?? []) {
+      collectSelectedItemLabels(child, selectedLabels, seenLabels, selection);
+    }
+  }
 }
 
 function isActiveItem<TId extends string, TContext>(
