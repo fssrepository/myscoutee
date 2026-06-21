@@ -4,10 +4,10 @@ import { LocalHelpCenterService } from '../../local/source/services/help-center.
 import { HttpHelpCenterService } from '../../http/services/help-center.service';
 import type {
   HelpCenterDocumentKind,
-  HelpCenterRevisionSaveRequest,
-  HelpCenterState,
-  PrivacyConsentRecord,
-  PrivacyConsentSaveRequest
+  HelpCenterRevisionSaveRequestDto,
+  HelpCenterStateDto,
+  PrivacyConsentDto,
+  PrivacyConsentSaveRequestDto
 } from '../../contracts';
 import { AppContext } from '../../../ui/context/app.context';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -21,11 +21,11 @@ export class HelpCenterService extends BaseRouteModeService {
   private readonly localHelpCenterService = inject(LocalHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
   private readonly appCtx = inject(AppContext);
-  private readonly helpStateRef = signal<HelpCenterState | null>(null);
-  private readonly privacyStateRef = signal<HelpCenterState | null>(null);
-  private readonly termsStateRef = signal<HelpCenterState | null>(null);
-  private readonly explanationStateRef = signal<HelpCenterState | null>(null);
-  private preloadPromises: Partial<Record<HelpCenterDocumentKind, Promise<HelpCenterState>>> = {};
+  private readonly helpStateRef = signal<HelpCenterStateDto | null>(null);
+  private readonly privacyStateRef = signal<HelpCenterStateDto | null>(null);
+  private readonly termsStateRef = signal<HelpCenterStateDto | null>(null);
+  private readonly explanationStateRef = signal<HelpCenterStateDto | null>(null);
+  private preloadPromises: Partial<Record<HelpCenterDocumentKind, Promise<HelpCenterStateDto>>> = {};
 
   readonly state = this.helpStateRef.asReadonly();
   readonly privacyState = this.privacyStateRef.asReadonly();
@@ -44,7 +44,7 @@ export class HelpCenterService extends BaseRouteModeService {
   readonly activeTermsVersionLabel = computed(() => this.versionLabel(this.activeTermsRevision()?.version));
   readonly activeExplanationVersionLabel = computed(() => this.versionLabel(this.activeExplanationRevision()?.version));
 
-  async preload(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async preload(kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     if (!this.preloadPromises[documentKind]) {
       this.preloadPromises[documentKind] = this.loadState(documentKind).finally(() => {
@@ -62,15 +62,15 @@ export class HelpCenterService extends BaseRouteModeService {
     ]);
   }
 
-  applyState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {
+  applyState(kind: HelpCenterDocumentKind, state: HelpCenterStateDto): void {
     this.setState(this.normalizeKind(kind), state);
   }
 
-  async refresh(kind: HelpCenterDocumentKind = 'help', contextKey?: string | null): Promise<HelpCenterState> {
+  async refresh(kind: HelpCenterDocumentKind = 'help', contextKey?: string | null): Promise<HelpCenterStateDto> {
     return this.loadState(this.normalizeKind(kind), undefined, contextKey);
   }
 
-  async loadExplanationState(contextKey: string, lang?: string | null): Promise<HelpCenterState> {
+  async loadExplanationState(contextKey: string, lang?: string | null): Promise<HelpCenterStateDto> {
     return this.loadState('explanation', lang, contextKey);
   }
 
@@ -78,16 +78,16 @@ export class HelpCenterService extends BaseRouteModeService {
     userId: string,
     revisionId: string,
     revisionVersion?: number
-  ): Promise<PrivacyConsentRecord | null> {
+  ): Promise<PrivacyConsentDto | null> {
     const consent = await this.privacyConsentService().loadPrivacyConsent(userId, revisionId, revisionVersion);
     return consent ? this.clonePrivacyConsent(consent) : null;
   }
 
-  async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+  async savePrivacyConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
     return this.clonePrivacyConsent(await this.privacyConsentService().savePrivacyConsent(request));
   }
 
-  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterState> {
+  async loadAdminState(adminUserId: string, kind: HelpCenterDocumentKind = 'help', lang = 'en', contextKey?: string | null): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const service = this.helpService(documentKind);
     const state = await service.loadAdminState(adminUserId, documentKind, lang, contextKey);
@@ -95,28 +95,28 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.cloneState(state);
   }
 
-  async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async saveRevision(request: HelpCenterRevisionSaveRequestDto, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).saveRevision(request, documentKind);
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
-  async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).activateRevision(revisionId, actorUserId, documentKind);
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
-  async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const state = await this.helpService(documentKind).deleteRevision(revisionId, actorUserId, documentKind);
     this.setState(documentKind, state);
     return this.cloneState(state);
   }
 
-  private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
+  private async loadState(kind: HelpCenterDocumentKind, lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
     const state = await this.helpService(kind).loadState(kind, lang, contextKey);
     this.setState(kind, state);
     return this.cloneState(state);
@@ -130,7 +130,7 @@ export class HelpCenterService extends BaseRouteModeService {
     return this.resolveRouteService('/privacy/consents', this.localHelpCenterService, this.httpHelpCenterService);
   }
 
-  private setState(kind: HelpCenterDocumentKind, state: HelpCenterState): void {
+  private setState(kind: HelpCenterDocumentKind, state: HelpCenterStateDto): void {
     const cloned = this.cloneState(state);
     if (kind === 'privacy') {
       this.privacyStateRef.set(cloned);
@@ -159,7 +159,7 @@ export class HelpCenterService extends BaseRouteModeService {
     return Number.isFinite(Number(version)) && Number(version) > 0 ? `v${Math.trunc(Number(version))}` : '';
   }
 
-  private cloneState(state: HelpCenterState): HelpCenterState {
+  private cloneState(state: HelpCenterStateDto): HelpCenterStateDto {
     return {
       activeRevision: state.activeRevision
         ? {
@@ -182,7 +182,7 @@ export class HelpCenterService extends BaseRouteModeService {
     };
   }
 
-  private clonePrivacyConsent(consent: PrivacyConsentRecord): PrivacyConsentRecord {
+  private clonePrivacyConsent(consent: PrivacyConsentDto): PrivacyConsentDto {
     return {
       ...consent,
       approvedOptionalSectionIds: [...consent.approvedOptionalSectionIds]

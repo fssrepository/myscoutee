@@ -5,15 +5,15 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppContext } from '../../../shared/ui';
 import { HelpCenterService, PrivacyPolicyService } from '../../../shared/core';
-import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/contracts';
+import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
 import {
   DocumentViewerComponent,
   type DocumentViewerAction,
   type DocumentViewerActionEvent,
   type DocumentViewerActionVisibility,
-  type DocumentViewerConfig,
-  type DocumentViewerHeaderPalette
+  type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
+import { HelpCenterRevisionDocumentViewerConverter } from '../../../shared/ui/converters';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
@@ -90,17 +90,16 @@ export class NavigatorSettingsPopupsComponent {
 
   protected privacyDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activePrivacyRevision();
-    return {
+    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+      revision,
       open: this.activePopup() === 'privacy',
       shell: 'popup',
       onClose: () => this.closePopup(),
       ariaLabel: 'GDPR consent',
       closeAriaLabel: 'Close privacy popup',
       closeOnBackdrop: !this.privacyConsentRequired(),
-      title: revision?.summary?.trim() || 'Privacy first',
-      description: revision?.description?.trim() || '',
+      titleFallback: 'Privacy first',
       versionLabel: this.helpCenter.activePrivacyVersionLabel(),
-      headerPalette: this.normalizeDocumentHeaderPalette(revision?.headerColor),
       loading: !revision,
       loadingLabel: 'Loading privacy content',
       emptyState: {
@@ -108,49 +107,48 @@ export class NavigatorSettingsPopupsComponent {
         title: 'Privacy is not available',
         description: 'Privacy content is not available right now.'
       },
-      sections: (revision?.sections ?? []).map(section => this.mapPrivacySection(section)),
-      selectedSectionIds: Array.from(this.settingsApprovedPrivacySectionIds),
+      sectionMode: 'privacy',
+      selectedSectionIds: this.settingsApprovedPrivacySectionIds,
       actions: this.privacyDocumentActions(),
       statusMessage: this.settingsPrivacySaveError || this.settingsPrivacySaveMessage,
       statusTone: this.settingsPrivacySaveError ? 'error' : 'default'
-    };
+    });
   }
 
   protected termsDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeTermsRevision();
-    return {
+    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+      revision,
       open: this.activePopup() === 'terms',
       shell: 'popup',
       onClose: () => this.closePopup(),
       ariaLabel: 'Terms of service',
       closeAriaLabel: 'Close terms popup',
-      title: revision?.summary?.trim() || 'Usage terms',
-      description: revision?.description?.trim() || 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.',
+      titleFallback: 'Usage terms',
+      descriptionFallback: 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.',
       versionLabel: this.helpCenter.activeTermsVersionLabel(),
-      headerPalette: this.normalizeDocumentHeaderPalette(revision?.headerColor),
       loading: !revision,
       loadingLabel: 'Loading terms content',
       emptyState: {
         icon: 'rule',
         title: 'Terms are not available',
         description: 'Terms content is not available right now.'
-      },
-      sections: (revision?.sections ?? []).map(section => this.mapDocumentSection(section))
-    };
+      }
+    });
   }
 
   protected helpDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeRevision();
-    return {
+    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+      revision,
       open: this.activePopup() === 'help',
       shell: 'popup',
       onClose: () => this.closePopup(),
       ariaLabel: 'Help',
       closeAriaLabel: 'Close help popup',
-      title: revision?.summary?.trim() || 'Help',
-      description: revision?.description?.trim() || '',
+      titleFallback: 'Help',
       versionLabel: this.helpCenter.activeVersionLabel(),
-      headerPalette: this.helpDocumentHeaderPalette(revision?.headerColor),
+      headerPalette: HelpCenterRevisionDocumentViewerConverter.helpHeaderPalette(revision?.headerColor),
       loading: !revision,
       loadingLabel: 'Loading help content',
       emptyState: {
@@ -158,8 +156,7 @@ export class NavigatorSettingsPopupsComponent {
         title: 'Help is not available',
         description: 'Help content is not available right now.'
       },
-      sections: (revision?.sections ?? []).map(section => this.mapDocumentSection(section))
-    };
+    });
   }
 
   protected onPrivacyDocumentAction(event: DocumentViewerActionEvent): void {
@@ -183,28 +180,6 @@ export class NavigatorSettingsPopupsComponent {
           }
         : null
     }];
-  }
-
-  private mapPrivacySection(section: HelpCenterSection) {
-    const optional = section.optional === true;
-    return {
-      ...this.mapDocumentSection(section),
-      tone: optional ? 'optional' as const : 'mandatory' as const,
-      selected: this.settingsApprovedPrivacySectionIds.has(section.id),
-      toggleable: optional
-    };
-  }
-
-  private mapDocumentSection(section: HelpCenterSection) {
-    return {
-      id: section.id,
-      icon: section.icon,
-      title: section.title,
-      blurb: section.blurb,
-      contentHtml: section.contentHtml,
-      points: section.points,
-      details: section.details
-    };
   }
 
   private settingsPrivacySaveActionVisibility(): DocumentViewerActionVisibility {
@@ -308,11 +283,11 @@ export class NavigatorSettingsPopupsComponent {
       });
   }
 
-  private hasOptionalPrivacySections(revision: HelpCenterRevision): boolean {
+  private hasOptionalPrivacySections(revision: HelpCenterRevisionDto): boolean {
     return revision.sections.some(section => section.optional === true);
   }
 
-  private optionalPrivacySectionIds(sections: readonly HelpCenterSection[]): Set<string> {
+  private optionalPrivacySectionIds(sections: readonly HelpCenterSectionDto[]): Set<string> {
     return new Set(sections.filter(section => section.optional === true).map(section => section.id));
   }
 
@@ -322,7 +297,7 @@ export class NavigatorSettingsPopupsComponent {
 
   private isPrivacyConsentCurrent(
     consent: { revisionId?: string | null; revisionVersion?: number | null } | null,
-    revision: HelpCenterRevision
+    revision: HelpCenterRevisionDto
   ): boolean {
     if (!consent) {
       return false;
@@ -333,27 +308,4 @@ export class NavigatorSettingsPopupsComponent {
     return consentRevisionId === revision.id && consentVersion >= currentVersion && currentVersion > 0;
   }
 
-  private normalizeDocumentHeaderPalette(
-    value: string | null | undefined,
-    fallback: DocumentViewerHeaderPalette = 'amber'
-  ): DocumentViewerHeaderPalette {
-    const normalized = `${value ?? ''}`.trim();
-    switch (normalized) {
-      case 'amber':
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-      case 'teal':
-        return normalized;
-      default:
-        return fallback;
-    }
-  }
-
-  private helpDocumentHeaderPalette(value: string | null | undefined): DocumentViewerHeaderPalette {
-    const normalized = this.normalizeDocumentHeaderPalette(value, 'teal');
-    return normalized === 'amber' ? 'teal' : normalized;
-  }
 }

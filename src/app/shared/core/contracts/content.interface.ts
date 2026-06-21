@@ -48,7 +48,7 @@ export interface IdeaArticleDetailDto {
   featured: boolean;
 }
 
-export interface HelpCenterSection {
+export interface HelpCenterSectionDto {
   id: string;
   icon: string;
   title: string;
@@ -82,7 +82,7 @@ export interface ExplainableSurface {
   enabled: boolean;
 }
 
-export interface HelpCenterRevision {
+export interface HelpCenterRevisionDto {
   id: string;
   documentKind?: HelpCenterDocumentKind;
   contextKey?: string | null;
@@ -93,7 +93,7 @@ export interface HelpCenterRevision {
   summary: string;
   description: string;
   headerColor?: HelpCenterHeaderColor;
-  sections: HelpCenterSection[];
+  sections: HelpCenterSectionDto[];
   active: boolean;
   createdAtIso: string;
   createdByUserId: string;
@@ -101,7 +101,7 @@ export interface HelpCenterRevision {
   updatedByUserId: string;
 }
 
-export interface HelpCenterAuditEntry {
+export interface HelpCenterAuditEntryDto {
   id: string;
   documentKind?: HelpCenterDocumentKind;
   lang?: string;
@@ -114,16 +114,16 @@ export interface HelpCenterAuditEntry {
   message: string;
 }
 
-export interface HelpCenterState {
-  activeRevision: HelpCenterRevision | null;
-  revisions: HelpCenterRevision[];
-  auditTrail: HelpCenterAuditEntry[];
+export interface HelpCenterStateDto {
+  activeRevision: HelpCenterRevisionDto | null;
+  revisions: HelpCenterRevisionDto[];
+  auditTrail: HelpCenterAuditEntryDto[];
   availableLanguages: ContentLanguage[];
 }
 
 export type PrivacyConsentSource = 'entry' | 'settings';
 
-export interface PrivacyConsentRecord {
+export interface PrivacyConsentDto {
   id: string;
   userId: string;
   revisionId: string;
@@ -134,7 +134,7 @@ export interface PrivacyConsentRecord {
   source: PrivacyConsentSource;
 }
 
-export interface PrivacyConsentSaveRequest {
+export interface PrivacyConsentSaveRequestDto {
   userId: string;
   revisionId: string;
   revisionVersion: number;
@@ -142,7 +142,7 @@ export interface PrivacyConsentSaveRequest {
   source?: PrivacyConsentSource;
 }
 
-export interface HelpCenterRevisionSaveRequest {
+export interface HelpCenterRevisionSaveRequestDto {
   actorUserId: string;
   baseRevisionId?: string | null;
   contextKey?: string | null;
@@ -151,12 +151,12 @@ export interface HelpCenterRevisionSaveRequest {
   summary: string;
   description: string;
   headerColor?: HelpCenterHeaderColor;
-  sections: HelpCenterSection[];
+  sections: HelpCenterSectionDto[];
 }
 
-export interface LandingContentState {
-  privacy: HelpCenterState;
-  terms: HelpCenterState;
+export interface LandingContentStateDto {
+  privacy: HelpCenterStateDto;
+  terms: HelpCenterStateDto;
   ideas: IdeaPostDto[];
   loginAvailability: UserLocationEligibilityResponseDto | null;
 }

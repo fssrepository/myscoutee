@@ -2,7 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { type ActivityCounters } from '../shared/ui';
 import { NavigationEnd, Router } from '@angular/router';
 import { AppContext } from '../shared/ui';
-import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevision, type PrivacyConsentRecord, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
+import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
 import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
@@ -300,7 +300,7 @@ export class NavigatorService {
     });
   }
 
-  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevision, checkKey: string): Promise<void> {
+  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevisionDto, checkKey: string): Promise<void> {
     const requestToken = ++this.privacyConsentCheckToken;
     try {
       const existingConsent = await this.privacyPolicy.loadConsent(userId, revision.id, revision.version);
@@ -331,7 +331,7 @@ export class NavigatorService {
     }
   }
 
-  private async syncAnonymousEntryConsent(userId: string, revision: HelpCenterRevision): Promise<boolean> {
+  private async syncAnonymousEntryConsent(userId: string, revision: HelpCenterRevisionDto): Promise<boolean> {
     const entryConsent = this.loadAnonymousEntryConsent(revision);
     if (!entryConsent) {
       return false;
@@ -346,7 +346,7 @@ export class NavigatorService {
     return true;
   }
 
-  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentStateDto | null {
+  private loadAnonymousEntryConsent(revision: HelpCenterRevisionDto): EntryConsentStateDto | null {
     if (typeof localStorage === 'undefined') {
       return null;
     }
@@ -374,7 +374,7 @@ export class NavigatorService {
     }
   }
 
-  private loadAnonymousOptionalApprovalIds(revision: HelpCenterRevision): string[] {
+  private loadAnonymousOptionalApprovalIds(revision: HelpCenterRevisionDto): string[] {
     if (typeof localStorage === 'undefined') {
       return [];
     }
@@ -410,7 +410,7 @@ export class NavigatorService {
       && this.privacyConsentCheckKeyRef() === checkKey;
   }
 
-  private isPrivacyConsentCurrent(consent: PrivacyConsentRecord | null, revision: HelpCenterRevision): boolean {
+  private isPrivacyConsentCurrent(consent: PrivacyConsentDto | null, revision: HelpCenterRevisionDto): boolean {
     if (!consent) {
       return false;
     }
@@ -420,7 +420,7 @@ export class NavigatorService {
     return consentRevisionId === revision.id && consentVersion >= currentVersion && currentVersion > 0;
   }
 
-  private privacyConsentKey(userId: string, revision: HelpCenterRevision): string {
+  private privacyConsentKey(userId: string, revision: HelpCenterRevisionDto): string {
     return `${userId.trim()}::${revision.id}:v${revision.version}`;
   }
 
@@ -434,11 +434,11 @@ export class NavigatorService {
     return requiredKey === this.privacyConsentKey(activeUserId, revision);
   }
 
-  private entryConsentVersion(revision: HelpCenterRevision): string {
+  private entryConsentVersion(revision: HelpCenterRevisionDto): string {
     return `privacy:${revision.id}:v${revision.version}`;
   }
 
-  private optionalPrivacyRevisionKey(revision: HelpCenterRevision): string {
+  private optionalPrivacyRevisionKey(revision: HelpCenterRevisionDto): string {
     return `${revision.id}:v${revision.version}`;
   }
 

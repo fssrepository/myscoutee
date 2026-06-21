@@ -5,7 +5,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { HelpCenterService, I18nService } from '../../../core';
-import type { HelpCenterDocumentKind, HelpCenterRevision } from '../../../core/contracts';
+import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent } from '../menu';
 import { ProgressIndicatorComponent } from '../progress-indicator';
@@ -330,7 +330,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
 
   private createRouteConfig(
     data: DocumentViewerRouteData,
-    revision: HelpCenterRevision | null,
+    revision: HelpCenterRevisionDto | null,
     loading: boolean
   ): DocumentViewerConfig {
     const kind = this.normalizeDocumentKind(data.documentKind);
@@ -361,7 +361,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
     };
   }
 
-  private activeRevision(kind: HelpCenterDocumentKind): HelpCenterRevision | null {
+  private activeRevision(kind: HelpCenterDocumentKind): HelpCenterRevisionDto | null {
     if (kind === 'privacy') {
       return this.helpCenter.activePrivacyRevision();
     }

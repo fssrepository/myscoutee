@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type { HelpCenterRevision, HelpCenterState } from '../../contracts';
+import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../contracts';
 import { HelpCenterService } from './help-center.service';
 
 export interface TermsPolicyOpenOptions {
@@ -16,11 +16,11 @@ export class TermsPolicyService {
 
   readonly loading = this.loadingRef.asReadonly();
   readonly state = this.helpCenter.termsState;
-  readonly activeRevision = computed<HelpCenterRevision | null>(() => this.helpCenter.activeTermsRevision());
+  readonly activeRevision = computed<HelpCenterRevisionDto | null>(() => this.helpCenter.activeTermsRevision());
   readonly hasActiveRevision = computed(() => Boolean(this.activeRevision()));
   readonly activeVersionLabel = this.helpCenter.activeTermsVersionLabel;
 
-  async prepareOpen(options: TermsPolicyOpenOptions = {}): Promise<HelpCenterRevision | null> {
+  async prepareOpen(options: TermsPolicyOpenOptions = {}): Promise<HelpCenterRevisionDto | null> {
     const lazy = options.lazy !== false;
     const current = this.activeRevision();
     if (current || !lazy) {
@@ -35,7 +35,7 @@ export class TermsPolicyService {
     }
   }
 
-  applyState(state: HelpCenterState): void {
+  applyState(state: HelpCenterStateDto): void {
     this.helpCenter.applyState('terms', state);
   }
 }

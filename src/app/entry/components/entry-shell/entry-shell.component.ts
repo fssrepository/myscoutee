@@ -9,7 +9,7 @@ import type {
   FirebaseAuthRequestDto,
   LocationCoordinates
 } from '../../../shared/core/contracts/user.interface';
-import type { HelpCenterRevision, HelpCenterSection } from '../../../shared/core/contracts';
+import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
 import type { AuthMode } from '../../../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
@@ -22,9 +22,9 @@ import {
   type DocumentViewerAction,
   type DocumentViewerActionEvent,
   type DocumentViewerActionVisibility,
-  type DocumentViewerConfig,
-  type DocumentViewerHeaderPalette
+  type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
+import { HelpCenterRevisionDocumentViewerConverter } from '../../../shared/ui/converters';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 
@@ -242,18 +242,17 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
 
   protected entryPrivacyDocumentConfig(): DocumentViewerConfig {
     const revision = this.privacyPolicy.activeRevision();
-    const sections = revision?.sections ?? [];
-    return {
+    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+      revision,
       open: this.showEntryConsentPopup,
       shell: 'popup',
       onClose: () => this.closeEntryConsentPopup(),
       ariaLabel: this.uiText('GDPR consent'),
       closeAriaLabel: this.uiText('Close privacy popup'),
       closeOnBackdrop: this.entryConsentViewOnly,
-      title: revision?.summary?.trim() || this.uiText('Privacy first'),
-      description: revision?.description?.trim() || this.uiText('Privacy first'),
+      titleFallback: this.uiText('Privacy first'),
+      descriptionFallback: this.uiText('Privacy first'),
       versionLabel: this.privacyPolicy.activeVersionLabel(),
-      headerPalette: this.normalizeDocumentHeaderPalette(revision?.headerColor),
       loading: this.entryPrivacyLoading,
       loadingLabel: this.uiText('Loading privacy content'),
       emptyState: {
@@ -261,35 +260,34 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
         title: this.uiText('Privacy is not available'),
         description: this.uiText('Privacy content is not available right now.')
       },
-      sections: sections.map(section => this.mapPrivacySection(section)),
-      selectedSectionIds: Array.from(this.entryApprovedPrivacySectionIds),
+      sectionMode: 'privacy',
+      selectedSectionIds: this.entryApprovedPrivacySectionIds,
       actions: this.entryPrivacyDocumentActions(),
       statusMessage: this.entryPrivacySaveError || this.entryPrivacySaveMessage,
       statusTone: this.entryPrivacySaveError ? 'error' : 'default'
-    };
+    });
   }
 
   protected entryTermsDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeTermsRevision();
-    return {
+    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+      revision,
       open: this.showEntryTermsPopup,
       shell: 'popup',
       onClose: () => this.closeEntryTermsPopup(),
       ariaLabel: this.uiText('Terms of service'),
       closeAriaLabel: this.uiText('Close terms popup'),
-      title: revision?.summary?.trim() || this.uiText('Usage terms'),
-      description: revision?.description?.trim() || this.uiText('Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.'),
+      titleFallback: this.uiText('Usage terms'),
+      descriptionFallback: this.uiText('Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.'),
       versionLabel: this.helpCenter.activeTermsVersionLabel(),
-      headerPalette: this.normalizeDocumentHeaderPalette(revision?.headerColor),
       loading: this.termsPolicy.loading() || (this.landingArticlesLoading && !revision),
       loadingLabel: this.uiText('Loading terms content'),
       emptyState: {
         icon: 'rule',
         title: this.uiText('Terms are not available'),
         description: this.uiText('Terms content is not available right now.')
-      },
-      sections: (revision?.sections ?? []).map(section => this.mapDocumentSection(section))
-    };
+      }
+    });
   }
 
   protected onEntryPrivacyDocumentAction(event: DocumentViewerActionEvent): void {
@@ -750,28 +748,6 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     ];
   }
 
-  private mapPrivacySection(section: HelpCenterSection) {
-    const optional = section.optional === true;
-    return {
-      ...this.mapDocumentSection(section),
-      tone: optional ? 'optional' as const : 'mandatory' as const,
-      selected: this.entryApprovedPrivacySectionIds.has(section.id),
-      toggleable: optional
-    };
-  }
-
-  private mapDocumentSection(section: HelpCenterSection) {
-    return {
-      id: section.id,
-      icon: section.icon,
-      title: section.title,
-      blurb: section.blurb,
-      contentHtml: section.contentHtml,
-      points: section.points,
-      details: section.details
-    };
-  }
-
   private entryPrivacySaveActionVisibility(): DocumentViewerActionVisibility {
     const revision = this.privacyPolicy.activeRevision();
     if (!this.entryConsentViewOnly || !revision) {
@@ -857,31 +833,16 @@ export class EntryShellComponent implements OnChanges, OnDestroy {
     this.entryApprovedPrivacySectionIds = this.filteredSectionIds(this.entryApprovedPrivacySectionIds, optionalSectionIds);
   }
 
-  private hasOptionalPrivacySections(revision: HelpCenterRevision): boolean {
+  private hasOptionalPrivacySections(revision: HelpCenterRevisionDto): boolean {
     return revision.sections.some(section => section.optional === true);
   }
 
-  private optionalPrivacySectionIds(sections: readonly HelpCenterSection[]): Set<string> {
+  private optionalPrivacySectionIds(sections: readonly HelpCenterSectionDto[]): Set<string> {
     return new Set(sections.filter(section => section.optional === true).map(section => section.id));
   }
 
   private filteredSectionIds(source: ReadonlySet<string>, allowedIds: ReadonlySet<string>): Set<string> {
     return new Set(Array.from(source).filter(sectionId => allowedIds.has(sectionId)));
-  }
-
-  private normalizeDocumentHeaderPalette(value: string | null | undefined): DocumentViewerHeaderPalette {
-    const normalized = `${value ?? ''}`.trim();
-    switch (normalized) {
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-      case 'teal':
-        return normalized;
-      default:
-        return 'amber';
-    }
   }
 
   private startEntryPrivacyLoadingWindow(): void {
