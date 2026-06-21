@@ -3,10 +3,6 @@
   [class.is-loading]="loading"
   [class.form-flow--carousel]="isCarouselLayout()"
   [attr.aria-busy]="loading"
-  (pointerdown)="beginSurfaceSwipe($event)"
-  (pointermove)="moveSurfaceSwipe($event)"
-  (pointerup)="endSurfaceSwipe($event)"
-  (pointercancel)="cancelSurfaceSwipe($event)"
 >
   <ng-template #progressControls>
     <div class="form-flow__progress" [attr.aria-label]="pageCounterLabel()">

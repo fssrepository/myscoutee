@@ -17,6 +17,8 @@
 
 .form-flow--carousel {
   grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
 }
 
 .form-flow__header {
@@ -562,6 +564,39 @@
 
 .form-flow--carousel .form-flow__body {
   background: #ffffff;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.form-flow--carousel .form-flow__body::-webkit-scrollbar {
+  display: none;
+}
+
+.form-flow--carousel .form-flow__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  width: auto;
+  min-width: 100%;
+  align-items: stretch;
+  transform: none !important;
+  transition: none;
+}
+
+.form-flow--carousel .form-flow__slide {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .form-flow--carousel .form-flow__slide-inner {
@@ -573,6 +608,10 @@
 
 .form-flow--carousel .form-flow__step-header {
   margin-bottom: 0;
+}
+
+:host ::ng-deep .form-flow--carousel .form-flow__step-info-card .ui-info-card {
+  touch-action: pan-x pan-y;
 }
 
 .form-flow--carousel .form-flow__controls {
@@ -596,6 +635,45 @@
 
 .form-flow--carousel .form-flow__summary-panels {
   margin-top: 20px;
+}
+
+.form-flow__body.form-flow__body--mobile {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.form-flow__body.form-flow__body--mobile::-webkit-scrollbar {
+  display: none;
+}
+
+.form-flow__body--mobile .form-flow__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 100%;
+  width: auto;
+  min-width: 100%;
+  align-items: stretch;
+  height: 100%;
+  min-height: 100%;
+  transform: none !important;
+  transition: none;
+}
+
+.form-flow__body--mobile .form-flow__slide {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  contain: layout paint style;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .form-flow__loading,
@@ -627,38 +705,6 @@
     width: 100%;
   }
 
-  .form-flow__body.form-flow__body--mobile {
-    overflow-x: auto;
-    overflow-y: hidden;
-    touch-action: pan-x;
-    scroll-snap-type: x mandatory;
-    scroll-behavior: smooth;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-  }
-
-  .form-flow__body.form-flow__body--mobile::-webkit-scrollbar {
-    display: none;
-  }
-
-  .form-flow__body--mobile .form-flow__track {
-    height: 100%;
-    min-height: 100%;
-    transform: none !important;
-    transition: none;
-  }
-
-  .form-flow__body--mobile .form-flow__slide {
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-    contain: layout paint style;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-  }
-
   .form-flow--carousel .form-flow__slide-inner {
     height: 100%;
     min-height: 100%;
@@ -666,7 +712,8 @@
     overflow-y: auto;
     padding: 10px 10px 0;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overscroll-behavior-x: auto;
+    overscroll-behavior-y: contain;
   }
 
   .form-flow--carousel .form-flow__slide-nav {

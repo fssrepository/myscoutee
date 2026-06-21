@@ -88,11 +88,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private onControlTouched: () => void = () => undefined;
   private viewportScrollLockTargetIndex: number | null = null;
   private viewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
-  private surfaceSwipePointerId: number | null = null;
-  private surfaceSwipeStartX = 0;
-  private surfaceSwipeStartY = 0;
-  private surfaceSwipeStartScrollLeft = 0;
-  private surfaceSwipeActive = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
@@ -104,7 +99,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   ngOnDestroy(): void {
     this.clearViewportScrollLock();
-    this.resetSurfaceSwipe();
   }
 
   @HostListener('window:resize')
@@ -113,7 +107,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     this.isMobileViewport = this.readViewportWidth() <= FormFlowComponent.MOBILE_BREAKPOINT_PX;
     if (wasMobile !== this.isMobileViewport) {
       this.clearViewportScrollLock();
-      this.resetSurfaceSwipe();
       this.resetViewportScroll();
     }
     this.queueViewportSync('auto');
@@ -231,7 +224,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     if (this.isForwardNavigationBlocked(nextIndex) || nextIndex === this.visiblePageIndex()) {
       return;
     }
-    if (this.isMobileViewport) {
+    if (this.isCarouselLayout()) {
       this.queueViewportSync('smooth', nextIndex);
       return;
     }
@@ -429,11 +422,11 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected pageTrackTransform(): string | null {
-    return this.isMobileViewport ? null : `translate3d(-${this.pageIndex * 100}%, 0, 0)`;
+    return this.isCarouselLayout() || this.isMobileViewport ? null : `translate3d(-${this.pageIndex * 100}%, 0, 0)`;
   }
 
   protected onFlowViewportScroll(): void {
-    if (!this.isMobileViewport) {
+    if (!this.isCarouselLayout() && !this.isMobileViewport) {
       return;
     }
     const viewport = this.flowViewportRef?.nativeElement;
@@ -445,83 +438,11 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       return;
     }
     const nextIndex = this.currentMobilePageIndex(viewport);
-    if (this.isForwardNavigationBlocked(nextIndex)) {
-      this.queueViewportSync('smooth', this.pageIndex);
-      return;
-    }
     if (nextIndex === this.pageIndex) {
       return;
     }
     this.pendingPageIndex = null;
     this.setPageIndex(nextIndex);
-  }
-
-  protected beginSurfaceSwipe(event: PointerEvent): void {
-    if (!this.isMobileViewport || event.pointerType === 'mouse' && event.button !== 0) {
-      return;
-    }
-    if (this.isInteractiveSwipeTarget(event.target)) {
-      return;
-    }
-    const viewport = this.flowViewportRef?.nativeElement;
-    if (!viewport) {
-      return;
-    }
-    this.surfaceSwipePointerId = event.pointerId;
-    this.surfaceSwipeStartX = event.clientX;
-    this.surfaceSwipeStartY = event.clientY;
-    this.surfaceSwipeStartScrollLeft = viewport.scrollLeft;
-    this.surfaceSwipeActive = false;
-    const target = event.currentTarget as HTMLElement | null;
-    target?.setPointerCapture?.(event.pointerId);
-  }
-
-  protected moveSurfaceSwipe(event: PointerEvent): void {
-    if (this.surfaceSwipePointerId !== event.pointerId) {
-      return;
-    }
-    const viewport = this.flowViewportRef?.nativeElement;
-    if (!viewport) {
-      this.resetSurfaceSwipe();
-      return;
-    }
-    const deltaX = event.clientX - this.surfaceSwipeStartX;
-    const deltaY = event.clientY - this.surfaceSwipeStartY;
-    if (!this.surfaceSwipeActive) {
-      if (Math.abs(deltaX) < 10 || Math.abs(deltaX) <= Math.abs(deltaY)) {
-        return;
-      }
-      this.surfaceSwipeActive = true;
-    }
-    if (event.cancelable) {
-      event.preventDefault();
-    }
-    viewport.scrollLeft = this.surfaceSwipeStartScrollLeft - deltaX;
-  }
-
-  protected endSurfaceSwipe(event: PointerEvent): void {
-    if (this.surfaceSwipePointerId !== event.pointerId) {
-      return;
-    }
-    const viewport = this.flowViewportRef?.nativeElement;
-    const wasActive = this.surfaceSwipeActive;
-    this.resetSurfaceSwipe();
-    if (!viewport || !wasActive) {
-      return;
-    }
-    const nextIndex = this.currentMobilePageIndex(viewport);
-    if (this.isForwardNavigationBlocked(nextIndex)) {
-      this.queueViewportSync('smooth', this.pageIndex);
-      return;
-    }
-    this.queueViewportSync('smooth', nextIndex);
-  }
-
-  protected cancelSurfaceSwipe(event: PointerEvent): void {
-    if (this.surfaceSwipePointerId !== event.pointerId) {
-      return;
-    }
-    this.resetSurfaceSwipe();
   }
 
   protected trackByStepId(_index: number, step: FormFlowStepModel): string {
@@ -731,7 +652,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   private queueViewportSync(behavior: ScrollBehavior, targetIndex = this.visiblePageIndex()): void {
-    if (!this.isMobileViewport) {
+    if (!this.isCarouselLayout() && !this.isMobileViewport) {
       this.clearViewportScrollLock();
       this.resetViewportScroll();
       return;
@@ -810,14 +731,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     }
   }
 
-  private resetSurfaceSwipe(): void {
-    this.surfaceSwipePointerId = null;
-    this.surfaceSwipeStartX = 0;
-    this.surfaceSwipeStartY = 0;
-    this.surfaceSwipeStartScrollLeft = 0;
-    this.surfaceSwipeActive = false;
-  }
-
   private currentMobilePageIndex(viewport: HTMLDivElement): number {
     const slides = Array.from(viewport.querySelectorAll<HTMLElement>('.form-flow__slide'));
     if (slides.length === 0) {
@@ -839,11 +752,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private mobilePageOffsetLeft(viewport: HTMLDivElement, index: number): number {
     const slides = Array.from(viewport.querySelectorAll<HTMLElement>('.form-flow__slide'));
     return slides[index]?.offsetLeft ?? -1;
-  }
-
-  private isInteractiveSwipeTarget(target: EventTarget | null): boolean {
-    const element = target instanceof Element ? target : null;
-    return !!element?.closest('button, a, input, textarea, select, [role="button"], app-menu, app-editable-image-carousel');
   }
 
   private readViewportWidth(): number {
