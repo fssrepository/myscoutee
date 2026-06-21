@@ -35,12 +35,12 @@ import {
   GAME_FILTER_AGE_MIN,
   GAME_FILTER_HEIGHT_MAX_CM,
   GAME_FILTER_HEIGHT_MIN_CM
-} from './home-game-filter.shared';
+} from '../../shared/home-game-filter.shared';
 import type {
   GameFilterMenuKind,
   GameFilterOptionGroup,
   HomeGameFilterPopupContext
-} from './home-game-filter.shared';
+} from '../../shared/home-game-filter.shared';
 
 type GameFilterMenuId = string;
 type GameFilterMenuContext = {
