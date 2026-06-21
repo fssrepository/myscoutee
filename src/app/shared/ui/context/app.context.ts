@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 import type { UserGameFilterPreferencesDto } from '../../core/contracts/activity.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
-import type { HelpCenterRevision, HelpCenterState } from '../../core/contracts';
+import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
 export type ActivityCounterKey =
@@ -82,6 +82,13 @@ export interface ActivityMembersSyncState {
   capacityTotal: number;
 }
 
+export interface ActivityResourceSyncState {
+  updatedMs: number;
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
 export interface AppContextAdminUserDto {
   id: string;
   name: string;
@@ -138,7 +145,8 @@ export class AppContext {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
-  private readonly _privacyState = signal<HelpCenterState | null>(null);
+  private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _privacyState = signal<HelpCenterStateDto | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
 
@@ -150,6 +158,7 @@ export class AppContext {
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly activityResourceSync = this._activityResourceSync.asReadonly();
   readonly privacyState = this._privacyState.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
@@ -215,7 +224,7 @@ export class AppContext {
     this._connectivityState.set(isOnline ? 'online' : 'offline');
   }
 
-  setPrivacyState(state: HelpCenterState | null): void {
+  setPrivacyState(state: HelpCenterStateDto | null): void {
     this._privacyState.set(state ? this.cloneHelpCenterState(state) : null);
   }
 
@@ -584,6 +593,20 @@ export class AppContext {
     });
   }
 
+  emitActivityResourceSync(payload: Omit<ActivityResourceSyncState, 'updatedMs'>): void {
+    const ownerId = payload.ownerId.trim();
+    const subEventId = payload.subEventId.trim();
+    const assetOwnerUserId = payload.assetOwnerUserId.trim();
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return;
+    }
+    this._activityResourceSync.set({
+      updatedMs: Date.now(),
+      ownerId,
+      subEventId,
+      assetOwnerUserId
+    });
+  }
 
   private normalizeCounterValue(value: number): number {
     if (!Number.isFinite(value)) {
@@ -826,7 +849,7 @@ export class AppContext {
     }));
   }
 
-  private cloneHelpCenterState(state: HelpCenterState): HelpCenterState {
+  private cloneHelpCenterState(state: HelpCenterStateDto): HelpCenterStateDto {
     return {
       activeRevision: state.activeRevision ? this.cloneHelpCenterRevision(state.activeRevision) : null,
       revisions: state.revisions.map(revision => this.cloneHelpCenterRevision(revision)),
@@ -835,7 +858,7 @@ export class AppContext {
     };
   }
 
-  private cloneHelpCenterRevision(revision: HelpCenterRevision): HelpCenterRevision {
+  private cloneHelpCenterRevision(revision: HelpCenterRevisionDto): HelpCenterRevisionDto {
     return {
       ...revision,
       sections: revision.sections.map(section => ({

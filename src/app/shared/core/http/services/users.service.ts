@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type {
+  ProfileExtDto,
   UserSelectorListItemDto,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
@@ -34,6 +35,7 @@ import { SessionService } from '../../base/services/session.service';
 export class HttpUsersService implements UserService {
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
+  private static readonly USER_PROFILE_EXT_ROUTE = '/auth/me/profile-ext';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
@@ -218,6 +220,24 @@ export class HttpUsersService implements UserService {
     );
     if (!response) {
       return this.cloneUser(user);
+    }
+    return this.cloneUser(response);
+  }
+
+  async saveUserProfileExt(request: ProfileExtDto, requestTimeoutMs?: number): Promise<UserDto | null> {
+    if (!request?.profile?.id?.trim()) {
+      return null;
+    }
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpUsersService.USER_PROFILE_EXT_ROUTE,
+      this.http
+        .post<UserDto | null>(`${this.apiBaseUrl}${HttpUsersService.USER_PROFILE_EXT_ROUTE}`, request)
+        .toPromise(),
+      'Profile save request timeout.',
+      requestTimeoutMs
+    );
+    if (!response) {
+      return this.cloneUser(request.profile);
     }
     return this.cloneUser(response);
   }

@@ -7,10 +7,13 @@ import type {
   UserExperiencesPersistenceService
 } from '../../contracts/profile.interface';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
-import { BaseRouteModeService } from './base-route-mode.service';
+import { BaseRouteModeService, type RouteModeConfig } from './base-route-mode.service';
 import { ExperienceDocumentImportService } from './experience-document-import.service';
 import { LocalUserExperiencesService } from '../../local';
 import { HttpUserExperiencesService } from '../../http';
+import { MemoryUserExperiencesService } from '../../memory';
+
+export type UserExperiencesRouteConfig = RouteModeConfig;
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +23,7 @@ export class UserExperiencesService extends BaseRouteModeService {
   private readonly parser = inject(ExperienceDocumentImportService);
   private localServiceRef: LocalUserExperiencesService | null = null;
   private httpServiceRef: HttpUserExperiencesService | null = null;
+  private memoryServiceRef: MemoryUserExperiencesService | null = null;
 
   private get localService(): LocalUserExperiencesService {
     if (!this.localServiceRef) {
@@ -35,25 +39,40 @@ export class UserExperiencesService extends BaseRouteModeService {
     return this.httpServiceRef;
   }
 
-  private get persistenceService(): UserExperiencesPersistenceService {
-    return this.resolveRouteService('/auth/me/experiences', this.localService, this.httpService);
+  private get memoryService(): MemoryUserExperiencesService {
+    if (!this.memoryServiceRef) {
+      this.memoryServiceRef = this.injector.get(MemoryUserExperiencesService);
+    }
+    return this.memoryServiceRef;
   }
 
-  async loadUserExperiences(userId: string): Promise<ExperienceEntry[]> {
+  private persistenceService(config: UserExperiencesRouteConfig | null = null): UserExperiencesPersistenceService {
+    const mode = config?.mode ?? null;
+    return this.resolveRouteService('/auth/me/experiences', this.localService, this.httpService, {
+      mode,
+      memoryService: mode === 'memory' ? this.memoryService : null
+    });
+  }
+
+  async loadUserExperiences(userId: string, config: UserExperiencesRouteConfig | null = null): Promise<ExperienceEntry[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
-    return this.cloneEntries(await this.persistenceService.queryUserExperiences(normalizedUserId));
+    return this.cloneEntries(await this.persistenceService(config).queryUserExperiences(normalizedUserId));
   }
 
-  async saveUserExperiences(userId: string, entries: readonly ExperienceEntry[]): Promise<ExperienceEntry[]> {
+  async saveUserExperiences(
+    userId: string,
+    entries: readonly ExperienceEntry[],
+    config: UserExperiencesRouteConfig | null = null
+  ): Promise<ExperienceEntry[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
     const normalizedEntries = this.normalizeEntries(entries);
-    return this.cloneEntries(await this.persistenceService.saveUserExperiences(normalizedUserId, normalizedEntries));
+    return this.cloneEntries(await this.persistenceService(config).saveUserExperiences(normalizedUserId, normalizedEntries));
   }
 
   prepareUserExperienceImport(
@@ -68,7 +87,8 @@ export class UserExperiencesService extends BaseRouteModeService {
     userId: string,
     file: File,
     existingEntries: readonly ExperienceEntry[],
-    onProgress?: ExperienceImportProgressCallback
+    onProgress?: ExperienceImportProgressCallback,
+    config: UserExperiencesRouteConfig | null = null
   ): Promise<UserExperienceImportResult> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -88,7 +108,7 @@ export class UserExperiencesService extends BaseRouteModeService {
         warnings: draft.warnings
       };
     }
-    const savedEntries = await this.saveUserExperiences(normalizedUserId, draft.nextEntries);
+    const savedEntries = await this.saveUserExperiences(normalizedUserId, draft.nextEntries, config);
     return {
       entries: this.cloneEntries(savedEntries.length > 0 ? savedEntries : draft.nextEntries),
       importedIds: [...draft.importedIds],

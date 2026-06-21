@@ -1,12 +1,16 @@
 import { HELP_CENTER_TABLE_NAME } from '../../source/entity/content.entity';
-import type { HelpCenterTable } from '../../source/entity/content.entity';
+import type {
+  HelpCenterRevisionRecord,
+  HelpCenterTable
+} from '../../source/entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 
-import type { HelpCenterAuditEntry, HelpCenterDocumentKind, HelpCenterRevision } from '../../../contracts';
+import type { HelpCenterAuditEntryDto, HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../contracts';
 import { HelpCenterContentBuilder } from '../../../base/builders';
+import { LocalHelpCenterMapper } from '../../source/mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -65,12 +69,12 @@ export class SeedHelpCenterRepository {
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
-            [revision.id]: revision
+            [revision.id]: LocalHelpCenterMapper.toRevisionRecord(revision)
           },
           revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
           auditById: {
             ...current.auditById,
-            [audit.id]: audit
+            [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
           },
           auditIds: [...current.auditIds, audit.id]
         }
@@ -84,7 +88,7 @@ export class SeedHelpCenterRepository {
     kind: HelpCenterDocumentKind,
     lang: string,
     contextKey: string | null,
-    revisions: readonly HelpCenterRevision[]
+    revisions: readonly HelpCenterRevisionDto[]
   ): boolean {
     const activeKey = this.activeRevisionKey(kind, lang, contextKey);
     const activeRevisionId = table.activeRevisionIdsByKind?.[activeKey] ?? null;
@@ -119,40 +123,41 @@ export class SeedHelpCenterRepository {
     kind: HelpCenterDocumentKind,
     lang = 'en',
     contextKey?: string | null
-  ): HelpCenterRevision[] {
+  ): HelpCenterRevisionDto[] {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey);
     return table.revisionIds
       .map(id => table.revisionsById[id])
-      .filter((revision): revision is HelpCenterRevision => Boolean(revision))
+      .filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision))
+      .map(revision => LocalHelpCenterMapper.toRevisionDTO(revision))
       .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language)
       .filter(revision => kind !== 'explanation' || !context || this.revisionContextKey(revision) === context);
   }
 
-  private normalizedRevisionsById(table: HelpCenterTable): Record<string, HelpCenterRevision> {
+  private normalizedRevisionsById(table: HelpCenterTable): Record<string, HelpCenterRevisionRecord> {
     return Object.fromEntries(
       table.revisionIds
         .filter(id => Boolean(table.revisionsById[id]))
         .map(id => {
-          const revision = table.revisionsById[id]!;
+          const revision = LocalHelpCenterMapper.toRevisionDTO(table.revisionsById[id]!);
           const lang = this.revisionLang(revision);
-          return [id, {
+          return [id, LocalHelpCenterMapper.toRevisionRecord({
             ...revision,
             documentKind: this.revisionKind(revision),
             contextKey: this.revisionContextKey(revision),
             lang,
             languageLabel: this.languageLabel(lang)
-          }];
+          })];
         })
-    ) as Record<string, HelpCenterRevision>;
+    ) as Record<string, HelpCenterRevisionRecord>;
   }
 
   private auditEntry(options: {
-    action: HelpCenterAuditEntry['action'];
+    action: HelpCenterAuditEntryDto['action'];
     actorUserId: string;
-    revision: HelpCenterRevision;
+    revision: HelpCenterRevisionDto;
     message: string;
-  }): HelpCenterAuditEntry {
+  }): HelpCenterAuditEntryDto {
     const documentKind = this.revisionKind(options.revision);
     return {
       id: `${documentKind}-audit-${options.revision.id}`,
@@ -168,7 +173,7 @@ export class SeedHelpCenterRepository {
     };
   }
 
-  private cloneRevision(revision: HelpCenterRevision, kind = this.revisionKind(revision)): HelpCenterRevision {
+  private cloneRevision(revision: HelpCenterRevisionDto, kind = this.revisionKind(revision)): HelpCenterRevisionDto {
     const lang = this.revisionLang(revision);
     return {
       ...revision,
@@ -185,7 +190,7 @@ export class SeedHelpCenterRepository {
     };
   }
 
-  private revisionKind(revision: HelpCenterRevision | null | undefined): HelpCenterDocumentKind {
+  private revisionKind(revision: HelpCenterRevisionDto | null | undefined): HelpCenterDocumentKind {
     const kind = revision?.documentKind;
     if (kind === 'privacy' || kind === 'terms' || kind === 'explanation') {
       return kind;
@@ -193,11 +198,11 @@ export class SeedHelpCenterRepository {
     return 'help';
   }
 
-  private revisionLang(revision: HelpCenterRevision | null | undefined): string {
+  private revisionLang(revision: HelpCenterRevisionDto | null | undefined): string {
     return this.normalizeLang(revision?.lang);
   }
 
-  private revisionContextKey(revision: HelpCenterRevision | null | undefined): string | null {
+  private revisionContextKey(revision: HelpCenterRevisionDto | null | undefined): string | null {
     return this.normalizeContextKey(this.revisionKind(revision), revision?.contextKey);
   }
 

@@ -1,3 +1,7 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+
 :host {
   display: block;
   font-family: var(--entry-font-family, 'Nunito Sans', 'Segoe UI', sans-serif);
@@ -179,12 +183,17 @@
 }
 
 .profile-onboarding-body {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: auto;
   padding: 0.9rem;
 }
 
 .profile-onboarding-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
   display: grid;
   gap: 0.82rem;
   align-content: start;
@@ -266,6 +275,141 @@
   min-width: 0;
 }
 
+.profile-onboarding-experience-selectors {
+  display: grid;
+  gap: 0.58rem;
+  margin-top: 0.68rem;
+  padding: 0.64rem;
+  border: 1px solid rgba(43, 71, 108, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.profile-onboarding-experience-selectors h3 {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #223b60;
+}
+
+.profile-onboarding-experience-selector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
+}
+
+.profile-onboarding-experience-selector-row {
+  min-width: 0;
+}
+
+.profile-onboarding-experience-selector-menu {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.profile-onboarding-experience-manager-overlay.popup-surface-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+}
+
+.profile-onboarding-experience-manager-backdrop.popup-surface-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 18, 34, 0.48);
+}
+
+.profile-onboarding-experience-manager-popup.popup-surface {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 0;
+  background: #fbfcff;
+  box-shadow: none;
+  padding: 0;
+  contain: none;
+}
+
+.profile-onboarding-experience-manager-body.popup-surface-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: #fbfcff;
+  margin: 0;
+  padding: 0.78rem;
+  align-items: stretch;
+  align-content: start;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.profile-onboarding-experience-manager-body.popup-surface-body app-profile-experience-manager {
+  display: block;
+  min-height: 0;
+}
+
+.profile-onboarding-experience-manager-header.popup-surface-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid rgba(39, 65, 105, 0.12);
+  padding: 0.78rem 1rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.profile-onboarding-experience-manager-header span {
+  color: #4f688b;
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.profile-onboarding-experience-manager-header h3 {
+  margin: 0.08rem 0 0;
+  font-size: 1rem;
+  color: #172234;
+}
+
+.profile-onboarding-experience-manager-close.popup-surface-close-btn {
+  width: 34px;
+  height: 34px;
+}
+
+.profile-onboarding-experience-manager-close.popup-surface-close-btn .mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+  line-height: 19px;
+}
+
+.profile-onboarding-experience-manager-loading {
+  min-height: 86px;
+  border: 1px solid rgba(43, 71, 108, 0.14);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #38506e;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
 .profile-onboarding-date-input-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 40px;
@@ -292,23 +436,8 @@
   line-height: 19px;
 }
 
-.profile-onboarding-language-field,
 .profile-onboarding-about {
   grid-column: 1 / -1;
-}
-
-.profile-onboarding-language-trigger {
-  width: 100%;
-  max-width: none;
-  min-width: 0;
-  justify-content: space-between;
-  font: inherit;
-  cursor: pointer;
-}
-
-.profile-onboarding-language-trigger:disabled {
-  cursor: not-allowed;
-  opacity: 0.62;
 }
 
 .mobile-profile-language-entry {
@@ -437,6 +566,8 @@
 }
 
 .profile-onboarding-photos-page {
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
 }
 
@@ -457,9 +588,8 @@
 }
 
 .profile-onboarding-photo-toolbar {
-  min-height: 22px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 0.6rem;
   color: #52647b;
   font-size: 0.78rem;
@@ -560,8 +690,14 @@
   backdrop-filter: blur(2px);
 }
 
+.profile-onboarding-about-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .profile-onboarding-about textarea {
-  min-height: 150px;
   resize: vertical;
 }
 
@@ -1021,6 +1157,10 @@
   border-top: 1px solid rgba(39, 65, 105, 0.12);
 }
 
+.profile-onboarding-action-menu {
+  flex: 0 0 auto;
+}
+
 .profile-onboarding-primary-btn,
 .profile-onboarding-secondary-btn {
   min-width: 92px;
@@ -1039,43 +1179,6 @@
 .profile-onboarding-primary-btn {
   background: #237988;
   color: #ffffff;
-}
-
-.profile-onboarding-save-shell {
-  position: relative;
-  display: inline-flex;
-  width: 108px;
-  min-width: 108px;
-  height: 44px;
-  padding: 2px;
-  border-radius: 999px;
-  box-sizing: border-box;
-}
-
-.profile-onboarding-save-shell .profile-onboarding-primary-btn {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  min-width: 0;
-  height: 100%;
-  border-radius: 999px;
-  box-shadow: none;
-}
-
-.profile-onboarding-save-ring {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.profile-onboarding-save-shell.is-loading .profile-onboarding-primary-btn,
-.profile-onboarding-save-shell.is-loading .profile-onboarding-primary-btn:hover,
-.profile-onboarding-save-shell.is-loading .profile-onboarding-primary-btn:disabled {
-  border-color: rgba(181, 117, 23, 0.76);
-  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
-  color: #8e4f0d;
-  opacity: 1;
-  cursor: wait;
 }
 
 .profile-onboarding-secondary-btn {
@@ -1175,9 +1278,22 @@
 }
 
 .profile-onboarding-shell--mobile .profile-onboarding-grid,
+.profile-onboarding-shell--mobile .profile-onboarding-experience-selector-grid,
 .profile-onboarding-shell--mobile .profile-onboarding-experience-form,
 .profile-onboarding-shell--mobile .profile-onboarding-review {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.profile-onboarding-shell--mobile .profile-onboarding-experience-manager-overlay {
+  padding: 0;
+}
+
+.profile-onboarding-shell--mobile .profile-onboarding-experience-manager-popup.popup-surface {
+  padding: 0;
+}
+
+.profile-onboarding-shell--mobile .profile-onboarding-experience-manager-body.popup-surface-body {
+  padding: 0.85rem;
 }
 
 .profile-onboarding-shell--mobile .profile-onboarding-photo-preview {
@@ -1251,9 +1367,22 @@
   }
 
   .profile-onboarding-grid,
+  .profile-onboarding-experience-selector-grid,
   .profile-onboarding-experience-form,
   .profile-onboarding-review {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .profile-onboarding-experience-manager-overlay {
+    padding: 0;
+  }
+
+  .profile-onboarding-experience-manager-popup.popup-surface {
+    padding: 0;
+  }
+
+  .profile-onboarding-experience-manager-body.popup-surface-body {
+    padding: 0.85rem;
   }
 
   .profile-onboarding-photo-preview {

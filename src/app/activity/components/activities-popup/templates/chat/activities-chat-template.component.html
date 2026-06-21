@@ -1,48 +1,8 @@
-<article
-  role="button"
-  tabindex="0"
-  class="activities-card activities-card-btn activities-row-item activities-card-chat activities-row-item-clickable motion-static"
-  [ngClass]="data?.toneClass"
-  [attr.data-group-label]="data?.groupLabel"
-  [attr.data-chat-id]="data?.id"
-  (click)="onRowClick($event)"
-  (keydown)="onRowKeydown($event)"
-  >
-  <span class="activities-card-avatar" [ngClass]="data?.avatarClass">
-    {{ data?.avatarInitials }}
-  </span>
-  <div class="activities-card-main">
-    <p class="activities-card-title">{{ data?.title }}</p>
-    <p class="activities-card-subtitle">{{ data?.subtitle }}</p>
-    <p class="activities-card-detail">{{ data?.detail }}</p>
-  </div>
-  @if (data?.showSupportControls) {
-    <div
-      class="activities-support-case"
-      (click)="$event.stopPropagation()"
-      >
-      <span class="activities-support-case-badge" [ngClass]="data?.supportCaseBadgeClass">
-        {{ data?.supportCaseLabelKey | i18n }}
-      </span>
-      @if (data?.supportCaseAssigneeName) {
-        <span class="activities-support-case-assignee">
-          {{ 'activities.support.case.assignee.by' | i18n }} {{ data?.supportCaseAssigneeName }}
-        </span>
-      }
-      <app-menu
-        class="activities-support-case-menu-app"
-        kind="select"
-        [trigger]="supportCaseMenuTrigger()"
-        [items]="supportCaseMenuItems()"
-        (itemSelect)="onSupportCaseMenuSelect($event)"
-      ></app-menu>
-    </div>
-  } @else {
-    <span class="activities-chat-members-badge">
-      <span>{{ data?.memberCount ?? 0 }} members</span>
-      @if ((data?.unread ?? 0) > 0) {
-        <span class="card-badge asset-request-badge activities-chat-unread-badge">{{ (data?.unread ?? 0) | counterBadge }}</span>
-      }
-    </span>
-  }
-</article>
+@if (singleRow) {
+  <single-row
+    [row]="singleRow"
+    [clickable]="true"
+    (rowClick)="onRowClick($event)"
+    (menuAction)="onSingleRowMenuAction($event)"
+  ></single-row>
+}

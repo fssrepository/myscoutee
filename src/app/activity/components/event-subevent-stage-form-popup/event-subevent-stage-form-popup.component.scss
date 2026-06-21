@@ -421,12 +421,6 @@
   width: max-content;
 }
 
-:host ::ng-deep .subevent-optional-menu .app-menu__trigger {
-  min-height: 38px;
-  padding-inline: 0.72rem;
-  font-size: 0.82rem;
-}
-
 .subevent-stage-insert-field {
   width: 100%;
 }
@@ -481,13 +475,6 @@
   display: block;
   width: 100%;
   min-width: 0;
-}
-
-:host ::ng-deep .subevent-stage-insert-target-menu .app-menu__trigger,
-:host ::ng-deep .subevent-tournament-type-menu .app-menu__trigger {
-  min-height: 32px;
-  font-size: 0.75rem;
-  font-weight: 700;
 }
 
 .subevent-tournament-fieldset {

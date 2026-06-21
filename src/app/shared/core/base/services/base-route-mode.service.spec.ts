@@ -9,6 +9,13 @@ class TestRouteModeService extends BaseRouteModeService {
   resolve(route: string): 'local' | 'http' {
     return this.resolveRouteService(route, 'local' as const, 'http' as const);
   }
+
+  resolveWithMode(route: string, mode: 'local' | 'http' | 'memory' | null): 'local' | 'http' | 'memory' {
+    return this.resolveRouteService(route, 'local' as const, 'http' as const, {
+      mode,
+      memoryService: 'memory' as const
+    });
+  }
 }
 
 describe('BaseRouteModeService', () => {
@@ -55,6 +62,24 @@ describe('BaseRouteModeService', () => {
     const service = createService();
 
     expect(service.resolve('/privacy/consents')).toBe('local');
+  });
+
+  it('uses memory mode when the caller explicitly requests it', () => {
+    environment.activitiesDataSource = 'http';
+    environment.firebaseLoginEnabled = true;
+    currentSession = {
+      kind: 'firebase',
+      profile: {
+        id: 'real-user',
+        name: 'Real User',
+        email: 'real@example.com',
+        initials: 'RU'
+      }
+    };
+
+    const service = createService();
+
+    expect(service.resolveWithMode('/auth/me/experiences', 'memory')).toBe('memory');
   });
 });
 

@@ -58,6 +58,7 @@ export class AppMenuDispatcher {
     return {
       ...config,
       kind: config.kind ?? 'select',
+      layout: config.layout ?? 'row',
       filterable: config.filterable === true,
       items: config.items ?? [],
       model: config.model ?? null,

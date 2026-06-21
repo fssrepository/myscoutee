@@ -573,6 +573,49 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
   ]
 };
 
+const SEED_EVENT_FEEDBACK_SHOWCASE_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
+  u3: [
+    {
+      id: 'feedback-showcase-nagy-eszter-studio',
+      avatar: 'NE',
+      title: 'Feedback Demo · Studio Recap',
+      shortDescription: 'Past creator meetup seeded so event feedback is always available for carousel testing.',
+      timeframe: 'Feedback demo',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u11',
+      startAt: '2026-01-12T18:00:00',
+      endAt: '2026-01-12T21:00:00',
+      generated: true,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Seattle · Demo Studio',
+      acceptedMemberUserIds: ['u3', 'u4', 'u5'],
+      pendingMemberUserIds: [],
+      topics: ['Feedback', 'Creative', 'Demo']
+    },
+    {
+      id: 'feedback-showcase-nagy-eszter-social',
+      avatar: 'NE',
+      title: 'Feedback Demo · Social Lab',
+      shortDescription: 'Second past event for checking multi-card event feedback carousel behavior.',
+      timeframe: 'Feedback demo',
+      activity: 2,
+      isAdmin: false,
+      creatorUserId: 'u7',
+      startAt: '2026-01-13T19:00:00',
+      endAt: '2026-01-13T22:00:00',
+      generated: true,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Seattle · Demo Lounge',
+      acceptedMemberUserIds: ['u3', 'u1', 'u2'],
+      pendingMemberUserIds: [],
+      topics: ['Feedback', 'Social', 'Demo']
+    }
+  ]
+};
+
 const SEED_HOSTING_BY_USER: Record<string, ActivityHostingSeedItem[]> = {
   u1: [
     {
@@ -679,7 +722,10 @@ export class SeedEventsBuilder {
 
   static buildSeedEventItemsByUser(): Record<string, ActivityEventSeedItem[]> {
     const seeded = Object.fromEntries(
-      Object.entries(SEED_EVENTS_BY_USER).map(([userId, items]) => [
+      Object.entries(this.mergeSeedEventItemGroups(
+        SEED_EVENTS_BY_USER,
+        SEED_EVENT_FEEDBACK_SHOWCASE_EVENTS_BY_USER
+      )).map(([userId, items]) => [
         userId,
         items.map(item => ({
           ...item,
@@ -696,6 +742,18 @@ export class SeedEventsBuilder {
 
     this.rebalanceSeedExploreItems(seeded);
     return seeded;
+  }
+
+  private static mergeSeedEventItemGroups(
+    ...groups: ReadonlyArray<Record<string, readonly ActivityEventSeedItem[]>>
+  ): Record<string, ActivityEventSeedItem[]> {
+    const merged: Record<string, ActivityEventSeedItem[]> = {};
+    for (const group of groups) {
+      for (const [userId, items] of Object.entries(group)) {
+        merged[userId] = [...(merged[userId] ?? []), ...items];
+      }
+    }
+    return merged;
   }
 
 
@@ -909,6 +967,18 @@ export class SeedEventsBuilder {
       const recordKey = this.buildRecordKey(canonical.userId, canonical.type, canonical.id);
       byId[recordKey] = canonical;
       ids.push(recordKey);
+
+      for (const record of records) {
+        if (record.type !== 'events' || record.isAdmin || record.generated !== true || record.userId === canonical.userId) {
+          continue;
+        }
+        const generatedRecordKey = this.buildRecordKey(record.userId, record.type, record.id);
+        if (byId[generatedRecordKey]) {
+          continue;
+        }
+        byId[generatedRecordKey] = this.cloneRecord(record);
+        ids.push(generatedRecordKey);
+      }
     }
 
     return {
@@ -1733,7 +1803,8 @@ export class SeedEventsBuilder {
       subEventsDisplayMode: 'subEventsDisplayMode' in item ? item.subEventsDisplayMode : undefined,
       rating: 'rating' in item ? item.rating : undefined,
       boost: 'boost' in item ? item.boost : undefined,
-      affinity: 'affinity' in item ? item.affinity : undefined
+      affinity: 'affinity' in item ? item.affinity : undefined,
+      generated: 'generated' in item ? item.generated : undefined
     };
     if (Object.values(overrides).every(value => value === undefined)) {
       return undefined;

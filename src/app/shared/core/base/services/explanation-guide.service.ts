@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type { HelpCenterRevision } from '../../contracts';
+import type { HelpCenterRevisionDto } from '../../contracts';
 import { HelpCenterService } from './help-center.service';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 
@@ -15,7 +15,7 @@ export class ExplanationGuideService {
   private readonly currentContextRef = signal<string | null>(null);
   private readonly popupOpenRef = signal(false);
   private readonly loadingRef = signal(false);
-  private readonly visibleRevisionRef = signal<HelpCenterRevision | null>(null);
+  private readonly visibleRevisionRef = signal<HelpCenterRevisionDto | null>(null);
   private readonly dismissedContexts = new Set<string>(this.readDismissedContexts());
   private readonly contextStack: string[] = [];
   private loadSerial = 0;

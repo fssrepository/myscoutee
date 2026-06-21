@@ -3,17 +3,11 @@ import { Injectable } from '@angular/core';
 import type { UserDto } from '../../contracts/user.interface';
 import type { ProfileStatus } from '../../common/constants';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
-import { profileOnboardingDraftStorageKey } from '../../common/storage-scope';
 
 export type ProfileOnboardingStepId =
   | 'basics'
   | 'photos'
-  | 'identity'
-  | 'about'
   | 'lifestyle'
-  | 'values'
-  | 'interests'
-  | 'experience'
   | 'review';
 
 export interface ProfileOnboardingForm {
@@ -24,7 +18,6 @@ export interface ProfileOnboardingForm {
   physique: string;
   languages: string[];
   images: string[];
-  headline: string;
   about: string;
   profileStatus: ProfileStatus;
   genderDetail: string;
@@ -65,6 +58,7 @@ export interface ProfileOnboardingAssessment {
 })
 export class ProfileOnboardingService {
   private static readonly MIN_REQUIRED_IMAGES = 3;
+  private activeDraft: ProfileOnboardingDraft | null = null;
   readonly currentProfileFormVersion = 2;
 
   assessUser(user: UserDto | null | undefined): ProfileOnboardingAssessment {
@@ -92,11 +86,12 @@ export class ProfileOnboardingService {
   }
 
   loadDraft(user: UserDto): ProfileOnboardingDraft {
-    const stored = this.readStoredDraft(user.id);
-    if (stored) {
-      return this.mergeDraftWithUser(stored, user);
-    }
-    return this.createDraft(user);
+    const userId = user.id.trim();
+    const draft = this.activeDraft?.userId === userId
+      ? this.mergeDraftWithUser(this.activeDraft, user)
+      : this.createDraft(user);
+    this.activeDraft = draft;
+    return draft;
   }
 
   saveDraft(draft: ProfileOnboardingDraft): void {
@@ -104,19 +99,15 @@ export class ProfileOnboardingService {
     if (!normalizedDraft.userId) {
       return;
     }
-    this.writeJson(this.storageKey(normalizedDraft.userId), normalizedDraft);
+    this.activeDraft = normalizedDraft;
   }
 
   clearDraft(userId: string): void {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || typeof localStorage === 'undefined') {
+    if (!normalizedUserId || this.activeDraft?.userId !== normalizedUserId) {
       return;
     }
-    try {
-      localStorage.removeItem(this.storageKey(normalizedUserId));
-    } catch {
-      // Storage cleanup is best-effort.
-    }
+    this.activeDraft = null;
   }
 
   createDraft(user: UserDto): ProfileOnboardingDraft {
@@ -157,14 +148,6 @@ export class ProfileOnboardingService {
     return missing;
   }
 
-  private readStoredDraft(userId: string): ProfileOnboardingDraft | null {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    return this.readJson<ProfileOnboardingDraft>(this.storageKey(normalizedUserId));
-  }
-
   private mergeDraftWithUser(draft: ProfileOnboardingDraft, user: UserDto): ProfileOnboardingDraft {
     const fallback = this.initialForm(user);
     const normalized = this.normalizeDraft({
@@ -197,7 +180,6 @@ export class ProfileOnboardingService {
       physique: `${user.physique ?? ''}`.trim(),
       languages: this.normalizeStringList(user.languages),
       images: this.normalizeStringList(user.images).slice(0, 8),
-      headline: `${user.headline ?? ''}`.trim(),
       about: `${user.about ?? ''}`.trim().slice(0, 160),
       profileStatus: this.normalizeProfileStatus(user.profileStatus),
       genderDetail: emptyProfile
@@ -247,7 +229,6 @@ export class ProfileOnboardingService {
         physique: `${draft.form?.physique ?? ''}`.trim(),
         languages: this.normalizeStringList(draft.form?.languages),
         images: this.normalizeStringList(draft.form?.images).slice(0, 8),
-        headline: `${draft.form?.headline ?? ''}`.trim(),
         about: `${draft.form?.about ?? ''}`.trim().slice(0, 160),
         profileStatus: this.normalizeProfileStatus(draft.form?.profileStatus),
         genderDetail: `${draft.form?.genderDetail ?? ''}`.trim(),
@@ -327,7 +308,7 @@ export class ProfileOnboardingService {
   }
 
   private stepIds(): ProfileOnboardingStepId[] {
-    return ['basics', 'photos', 'identity', 'about', 'lifestyle', 'values', 'interests', 'experience', 'review'];
+    return ['basics', 'photos', 'lifestyle', 'review'];
   }
 
   private normalizeProfileStatus(value: unknown): ProfileStatus {
@@ -380,32 +361,5 @@ export class ProfileOnboardingService {
 
   private normalizeToken(value: unknown): string {
     return `${value ?? ''}`.trim().toLowerCase();
-  }
-
-  private storageKey(userId: string): string {
-    return profileOnboardingDraftStorageKey(userId);
-  }
-
-  private readJson<T>(key: string): T | null {
-    if (typeof localStorage === 'undefined') {
-      return null;
-    }
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) as T : null;
-    } catch {
-      return null;
-    }
-  }
-
-  private writeJson(key: string, value: unknown): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-    } catch {
-      // Keep the runtime draft even when persistent storage is unavailable.
-    }
   }
 }

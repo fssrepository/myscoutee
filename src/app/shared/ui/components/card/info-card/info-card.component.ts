@@ -28,9 +28,9 @@ import type {
   InfoCardData,
   InfoCardFooterChip,
   CardMenuAction,
+  CardMenuActionId,
   CardMenuActionConfig,
   CardMenuActionEvent,
-  CardResolvedMenuAction,
   CardMenuRequestEvent,
   CardMenuTriggerRect,
   InfoCardOverlayAccessory,
@@ -236,14 +236,14 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected onMenuActionSelected(
-    action: CardMenuAction,
+    action: CardMenuActionId,
     config: CardMenuActionConfig,
     event: Event
   ): void {
     if (!this.card) {
       return;
     }
-    const resolvedAction: CardResolvedMenuAction = {
+    const resolvedAction: CardMenuAction = {
       id: action,
       ...config
     };
@@ -314,7 +314,7 @@ export class InfoCardComponent implements OnDestroy {
     return action?.progressRing === true;
   }
 
-  private resolveOverlayMenuAction(action: InfoCardOverlayAction | null | undefined): CardResolvedMenuAction | null {
+  private resolveOverlayMenuAction(action: InfoCardOverlayAction | null | undefined): CardMenuAction | null {
     const actionId = `${action?.actionId ?? ''}`.trim();
     if (!actionId) {
       return null;
@@ -380,7 +380,7 @@ export class InfoCardComponent implements OnDestroy {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'default',
       counter: menuBadgeCount > 0 ? { value: menuBadgeCount, max: 99 } : null,
       ariaLabel: 'Open menu'
@@ -397,7 +397,7 @@ export class InfoCardComponent implements OnDestroy {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -420,17 +420,73 @@ export class InfoCardComponent implements OnDestroy {
     return (this.card?.footerChips?.length ?? 0) > 0;
   }
 
-  protected trackByActionId(index: number, action: CardMenuAction): string | number {
+  protected isFooterChipInteractive(chip: InfoCardFooterChip): boolean {
+    const actionId = chip.actionId;
+    return !!actionId && !!CARD_MENU_ACTIONS[actionId];
+  }
+
+  protected hasFooterActions(): boolean {
+    return (this.card?.footerChips ?? []).some(chip => this.isFooterChipInteractive(chip));
+  }
+
+  protected footerChipClassList(chip: InfoCardFooterChip): string[] {
+    const classes = ['values-selected-chip'];
+    const toneClass = `${chip.toneClass ?? ''}`.trim();
+    if (toneClass) {
+      classes.push(toneClass);
+    }
+    const actionId = chip.actionId;
+    const actionTone = actionId ? CARD_MENU_ACTIONS[actionId]?.tone ?? 'default' : '';
+    if (this.isFooterChipInteractive(chip)) {
+      classes.push('ui-info-card__footer-chip--button');
+      classes.push(`ui-info-card__footer-chip--action-${actionTone}`);
+    }
+    return classes;
+  }
+
+  protected footerChipIcon(chip: InfoCardFooterChip): string {
+    const icon = `${chip.icon ?? ''}`.trim();
+    if (icon) {
+      return icon;
+    }
+    const actionId = chip.actionId;
+    return actionId ? `${CARD_MENU_ACTIONS[actionId]?.icon ?? ''}`.trim() : '';
+  }
+
+  protected onFooterChipActivated(chip: InfoCardFooterChip, event: Event): void {
+    if (!this.card || !chip.actionId) {
+      return;
+    }
+    const actionConfig = CARD_MENU_ACTIONS[chip.actionId];
+    if (!actionConfig) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.menuAction.emit({
+      id: this.card.id,
+      actionId: chip.actionId,
+      action: {
+        id: chip.actionId,
+        ...actionConfig,
+        label: chip.label || actionConfig.label,
+        icon: chip.icon || actionConfig.icon
+      },
+      card: this.card
+    });
+  }
+
+  protected trackByActionId(index: number, action: CardMenuActionId): string | number {
     // Keep menu buttons stable while the menu is open; recreating them can
     // interact badly with the document-level pointerdown closer.
     return action || index;
   }
 
   protected trackByFooterChip(index: number, chip: InfoCardFooterChip): string | number {
-    return `${chip.label}:${chip.toneClass ?? ''}:${index}`;
+    return `${chip.label}:${chip.toneClass ?? ''}:${chip.actionId ?? ''}:${this.footerChipIcon(chip)}:${index}`;
   }
 
-  private sharedMenuActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private sharedMenuActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'brown';

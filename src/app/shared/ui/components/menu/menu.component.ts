@@ -6,6 +6,7 @@ import {
   DoCheck,
   ElementRef,
   EventEmitter,
+  forwardRef,
   HostBinding,
   HostListener,
   Input,
@@ -13,6 +14,10 @@ import {
   Output,
   inject
 } from '@angular/core';
+import {
+  ControlValueAccessor,
+  NG_VALUE_ACCESSOR
+} from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../pipes';
@@ -31,6 +36,7 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuLayout,
   AppMenuItemLayout,
   AppMenuItemSurface,
   AppMenuItem,
@@ -43,12 +49,15 @@ import type {
   AppMenuPalette,
   AppMenuSegment,
   AppMenuTrigger,
-  AppMenuTriggerShape,
+  AppMenuTriggerLayout,
+  AppMenuValueKey,
   AppMenuValueMap
 } from './menu.types';
 import {
   appMenuModelGroups,
-  appMenuModelSummary
+  appMenuModelSummary,
+  type AppMenuModelSummaryResult,
+  type AppMenuModelSummarySelection
 } from './menu-summary';
 
 type AppMenuResolvedLayout = 'desktop' | 'mobile';
@@ -63,9 +72,17 @@ type AppMenuFilterTextPart = {
   imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent, ProgressIndicatorComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => AppMenuComponent),
+      multi: true
+    }
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class AppMenuComponent<TId extends string = string, TContext = unknown> implements DoCheck, OnDestroy {
+export class AppMenuComponent<TId extends string = string, TContext = unknown>
+  implements ControlValueAccessor, DoCheck, OnDestroy {
   private static readonly COUNTER_PULSE_DURATION_MS = 1600;
   private static readonly DESKTOP_MARGIN_PX = 8;
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
@@ -74,7 +91,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly i18n = inject(I18nService);
 
-  @Input() kind: AppMenuKind = 'button-row';
+  @Input() kind: AppMenuKind = 'inline';
+  @Input() layout: AppMenuLayout = 'row';
   @Input() title: AppMenuLiveValue<string | null | undefined> = null;
   @Input() filterable = false;
   @Input() items: readonly AppMenuItem<TId, TContext>[] = [];
@@ -100,6 +118,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private readonly counterValueByKey = new Map<string, string>();
   private readonly counterPulseTimerByKey = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly pulsingCounterKeys = new Set<string>();
+  private controlAttached = false;
+  private controlDisabled = false;
+  private controlValue: unknown = null;
+  private onControlChange: (value: unknown) => void = () => undefined;
+  private onControlTouched: () => void = () => undefined;
   protected isMobileViewport = false;
 
   @Input()
@@ -135,12 +158,61 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     this.counterPulseTimerByKey.clear();
   }
 
+  writeValue(value: unknown): void {
+    this.controlAttached = true;
+    if (this.controlValuesEqual(this.controlValue, value)) {
+      return;
+    }
+    this.controlValue = value;
+    this.changeDetectorRef.markForCheck();
+  }
+
+  registerOnChange(fn: (value: unknown) => void): void {
+    this.controlAttached = true;
+    this.onControlChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.controlAttached = true;
+    this.onControlTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.controlAttached = true;
+    if (this.controlDisabled === isDisabled) {
+      return;
+    }
+    this.controlDisabled = isDisabled;
+    this.changeDetectorRef.markForCheck();
+  }
+
   @HostBinding('class.app-menu-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.app-menu-host--kind-button-row')
-  protected get hostButtonRowKindClass(): boolean {
-    return this.isButtonRowKind;
+  @HostBinding('class.app-menu-host--kind-inline')
+  protected get hostInlineKindClass(): boolean {
+    return this.isInlineMenuKind;
+  }
+
+  @HostBinding('class.app-menu-host--layout-row')
+  protected get hostRowLayoutClass(): boolean {
+    return this.isInlineRowLayout;
+  }
+
+  @HostBinding('class.app-menu-host--layout-grid')
+  protected get hostGridLayoutClass(): boolean {
+    return this.isInlineGridLayout;
+  }
+
+  @HostBinding('class.app-menu-host--inline-row-big')
+  protected get hostInlineRowBigClass(): boolean {
+    return this.isInlineRowBig;
+  }
+
+  @HostBinding('class.app-menu-host--inline-row-labelled-action')
+  protected get hostInlineRowLabelledActionClass(): boolean {
+    return this.isInlineRowLayout
+      && this.actionRowItems.some(item => this.itemVisualLayout(item) === 'action' && !!this.actionRowItemLabel(item));
   }
 
   @HostBinding('class.app-menu-host--kind-fab')
@@ -153,14 +225,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.kind === 'select';
   }
 
-  @HostBinding('class.app-menu-host--presentation-tabs')
-  protected get hostTabbedPresentationClass(): boolean {
-    return this.isTabbedPresentation || this.activeBranchTabbedPresentation;
-  }
-
-  @HostBinding('class.app-menu-host--kind-shortcut-grid')
-  protected get hostShortcutGridKindClass(): boolean {
-    return this.kind === 'shortcut-grid';
+  @HostBinding('class.app-menu-host--model-layout-tabs')
+  protected get hostTabbedModelLayoutClass(): boolean {
+    return this.isTabbedModelLayout || this.activeBranchTabbedModelLayout;
   }
 
   @HostBinding('class.app-menu-host--layout-desktop')
@@ -180,7 +247,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @HostBinding('class.app-menu-host--inline-panel')
   protected get hostInlinePanelClass(): boolean {
-    return this.isInlineKind;
+    return this.usesInlinePanel;
   }
 
   @HostBinding('class.app-menu-host--panel-docked')
@@ -203,17 +270,17 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   @HostBinding('class.app-menu-host--trigger-field')
   protected get hostTriggerFieldClass(): boolean {
-    return this.triggerShape() === 'field';
+    return this.triggerLayout() === 'field';
   }
 
   @HostBinding('class.app-menu-host--trigger-pill')
   protected get hostTriggerPillClass(): boolean {
-    return this.triggerShape() === 'pill';
+    return this.triggerLayout() === 'pill';
   }
 
   @HostBinding('class.app-menu-host--trigger-icon')
   protected get hostTriggerIconClass(): boolean {
-    return this.triggerShape() === 'icon';
+    return this.triggerLayout() === 'icon';
   }
 
   @HostListener('window:resize')
@@ -235,7 +302,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   protected onDocumentPointerDown(event: PointerEvent): void {
     if (
       !this.open
-      || this.isInlineKind
+      || this.usesInlinePanel
       || this.isFixedPanelMode
       || (this.resolvedLayout === 'mobile' && !this.isAnchoredOverlayKind)
     ) {
@@ -261,16 +328,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.isMobileViewport ? 'mobile' : 'desktop';
   }
 
-  protected get isInlineKind(): boolean {
-    return this.kind === 'shortcut-grid' || (this.isTabbedPresentation && !this.hasTrigger);
+  protected get usesInlinePanel(): boolean {
+    return this.isInlineGridLayout || (this.isTabbedModelLayout && !this.hasTrigger);
   }
 
-  protected get isButtonRowKind(): boolean {
-    return this.kind === 'button-row';
+  protected get isInlineMenuKind(): boolean {
+    return this.kind === 'inline';
   }
 
-  protected get isShortcutGridKind(): boolean {
-    return this.kind === 'shortcut-grid';
+  protected get isInlineRowLayout(): boolean {
+    return this.isInlineMenuKind && this.layout === 'row';
+  }
+
+  protected get isInlineRowBig(): boolean {
+    return this.isInlineRowLayout && this.actionRowItems.some(item => this.itemVisualLayout(item) === 'big');
+  }
+
+  protected get isInlineGridLayout(): boolean {
+    return this.isInlineMenuKind && this.layout === 'grid';
   }
 
   protected get isFabKind(): boolean {
@@ -281,12 +356,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.kind === 'select';
   }
 
-  protected get isTabbedPresentation(): boolean {
-    return this.model?.presentation === 'tabs';
+  protected get isTabbedModelLayout(): boolean {
+    return this.model?.layout === 'tabs';
   }
 
-  protected get activeBranchTabbedPresentation(): boolean {
-    return this.activeBranch?.model?.presentation === 'tabs';
+  protected get activeBranchTabbedModelLayout(): boolean {
+    return this.activeBranch !== null && this.currentTabbedModelLayout;
+  }
+
+  protected get currentTabbedModelLayout(): boolean {
+    return this.currentMenuModel()?.layout === 'tabs';
   }
 
   protected get isDropdownListKind(): boolean {
@@ -294,7 +373,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get isAnchoredOverlayKind(): boolean {
-    return this.isDropdownListKind || this.isButtonRowKind || this.isTabbedPresentation;
+    return this.isDropdownListKind || this.isInlineRowLayout || this.isTabbedModelLayout;
   }
 
   private get isBottomPanelMode(): boolean {
@@ -313,15 +392,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isCustomTriggerAction) {
       return false;
     }
-    return this.isInlineKind || this.open;
+    return this.usesInlinePanel || this.open;
   }
 
   protected get showMobileBackdrop(): boolean {
-    return this.open && !this.isInlineKind && !this.isAnchoredOverlayKind && this.resolvedLayout === 'mobile';
+    return this.open && !this.usesInlinePanel && !this.isAnchoredOverlayKind && this.resolvedLayout === 'mobile';
   }
 
   protected get resolvedOpenUp(): boolean {
-    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.isInlineKind) {
+    if (this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel) {
       return this.openUp;
     }
     if (this.openUp) {
@@ -339,7 +418,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get resolvedPanelAlign(): 'start' | 'end' {
-    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.isInlineKind) {
+    if (this.panelAlign !== 'auto' || this.resolvedLayout === 'mobile' || !this.panelVisible || this.usesInlinePanel) {
       return this.panelAlign === 'start' ? 'start' : 'end';
     }
     const rect = this.hostRect();
@@ -368,8 +447,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected get tabsGroups(): readonly AppMenuGroup<TId, TContext>[] {
-    if (this.activeBranchTabbedPresentation && this.activeBranch) {
-      return appMenuModelGroups(this.activeBranch.model, this.activeBranch.groups ?? []);
+    const model = this.currentMenuModel();
+    if (model?.layout === 'tabs') {
+      return appMenuModelGroups(model, this.currentMenuGroupFallback());
     }
     return this.menuNodes;
   }
@@ -413,7 +493,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected get visibleListItems(): readonly AppMenuItem<TId, TContext>[] {
     if (this.activeBranch) {
-      return this.activeBranch.items ?? [];
+      return this.branchListItems(this.activeBranch);
     }
     if (this.items.length > 0) {
       return this.items;
@@ -425,7 +505,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (!this.activeBranch) {
       return false;
     }
-    return this.isButtonRowKind ? this.activeBranchPath.length > 1 : true;
+    return this.isInlineRowLayout ? this.activeBranchPath.length > 1 : true;
   }
 
   protected get resolvedTitle(): string {
@@ -434,7 +514,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected triggerLabel(): string {
     const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
-    return configuredLabel || appMenuModelSummary(this.model, this.groups).label;
+    return configuredLabel || this.modelSummary().label || this.defaultSelectTriggerLabel();
+  }
+
+  protected usesDefaultSelectTriggerLabel(): boolean {
+    const configuredLabel = `${this.resolveLiveValue(this.trigger?.label) ?? ''}`.trim();
+    const summaryLabel = this.modelSummary().label;
+    return !configuredLabel && !summaryLabel && Boolean(this.defaultSelectTriggerLabel());
   }
 
   protected triggerIcon(): string {
@@ -463,7 +549,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   private shouldResolveTriggerIconToClose(icon: string): boolean {
-    if (this.triggerShape() !== 'icon' && this.trigger?.hideLabel !== true) {
+    if (this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true) {
       return false;
     }
     switch (icon) {
@@ -488,10 +574,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.trigger?.hideLabel === true) {
       return '';
     }
-    if (this.isSelectKind && this.triggerShape() !== 'icon') {
+    if (this.isSelectKind && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
-    if (this.isTabbedPresentation && this.triggerShape() !== 'icon') {
+    if (this.isTabbedModelLayout && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
     return '';
@@ -518,7 +604,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected triggerDisabled(): boolean {
-    return this.resolveBoolean(this.trigger?.disabled);
+    return this.controlDisabled || this.resolveBoolean(this.trigger?.disabled);
   }
 
   protected triggerPalette(): AppMenuPalette {
@@ -529,9 +615,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return this.paletteClass(this.triggerPalette());
   }
 
-  protected triggerShape(): AppMenuTriggerShape {
-    if (this.trigger?.shape) {
-      return this.trigger.shape;
+  protected triggerLayout(): AppMenuTriggerLayout {
+    if (this.trigger?.layout) {
+      return this.trigger.layout;
     }
     if (!this.hasTrigger) {
       return 'default';
@@ -555,7 +641,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   private isSelectLikeTrigger(): boolean {
-    return this.isSelectKind || this.isTabbedPresentation;
+    return this.isSelectKind || this.isTabbedModelLayout;
+  }
+
+  private defaultSelectTriggerLabel(): string {
+    return this.isSelectLikeTrigger() && this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true
+      ? 'select.option'
+      : '';
   }
 
   private triggerCounter(): AppMenuCounter | AppMenuCounterValue | null {
@@ -563,7 +655,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (configuredCounter !== null && configuredCounter !== undefined) {
       return configuredCounter;
     }
-    return appMenuModelSummary(this.model, this.groups).counter;
+    return this.modelSummary().counter;
   }
 
   protected toggleMenu(event: Event): void {
@@ -586,6 +678,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
         item,
         context: item.context,
         sourceEvent: event,
+        controlValue: this.currentControlEventValue(),
         action: 'select'
       });
       return;
@@ -615,12 +708,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.setOpen(true);
       return;
     }
+    const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'select'
     });
     this.setOpen(false);
@@ -632,12 +727,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
       return;
     }
+    const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'select'
     });
     if (item.closeOnSelect ?? this.closeOnSelect) {
@@ -653,14 +750,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
     if (this.shouldOpenItemBranch(item)) {
       this.activeBranchPath = [...this.activeBranchPath, item];
+      this.tabsFilterText = '';
+      this.syncActiveTabsGroup();
       return;
     }
+    const controlValue = this.selectControlItem(item);
     const selectEvent: AppMenuItemSelectEvent<TId, TContext> = {
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'select'
     };
     this.itemSelect.emit(selectEvent);
@@ -677,12 +778,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     }
     const closesEmptyBranch = this.activeBranchPath.length > 0
       && this.visibleSelectableListItems().length <= 1;
+    const controlValue = this.removeControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue,
       action: 'remove'
     });
     if (closesEmptyBranch) {
@@ -702,12 +805,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       return;
     }
     this.updateRatingBarItemValue(item, score);
+    const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
       item,
       context: item.context,
       sourceEvent: new Event('ratingScoreSelect'),
       value: item.value,
+      controlValue,
       action: 'select'
     });
     if (this.shouldCloseOnSelect(item)) {
@@ -727,6 +832,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       context: item.context,
       sourceEvent: event,
       value: item.value,
+      controlValue: this.currentControlEventValue(),
       action: 'select'
     });
     if (this.shouldCloseOnSelect(item)) {
@@ -738,6 +844,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     event.preventDefault();
     event.stopPropagation();
     this.activeBranchPath = this.activeBranchPath.slice(0, -1);
+    this.tabsFilterText = '';
+    this.syncActiveTabsGroup();
   }
 
   protected isActionRowItemOpen(item: AppMenuItem<TId, TContext>): boolean {
@@ -749,11 +857,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isLabeledActionRowItem(item: AppMenuItem<TId, TContext>): boolean {
-    return this.isSelectTriggerItem(item) || item.layout === 'summary' || (item.layout === 'action' && !!this.actionRowItemLabel(item));
+    return this.itemVisualLayout(item) === 'big'
+      || this.isSelectTriggerItem(item)
+      || this.itemVisualLayout(item) === 'pill'
+      || (this.itemVisualLayout(item) === 'action' && !!this.actionRowItemLabel(item));
   }
 
   protected isActionLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
-    return item.layout === 'action';
+    return this.itemVisualLayout(item) === 'action';
   }
 
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
@@ -771,6 +882,26 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
 
   protected actionRowItemLabel(item: AppMenuItem<TId, TContext>): string {
     return this.itemLabel(item);
+  }
+
+  protected actionRowItemDetail(item: AppMenuItem<TId, TContext>): string {
+    const summary = this.actionRowItemModelSummary(item);
+    if (summary.label) {
+      return summary.label;
+    }
+    return this.itemDetail(item) || this.itemDescription(item);
+  }
+
+  protected hasActionRowItemSummaryCounter(item: AppMenuItem<TId, TContext>): boolean {
+    return this.counterVisible(this.actionRowItemModelSummary(item).counter);
+  }
+
+  protected actionRowItemSummaryCounterLabel(item: AppMenuItem<TId, TContext>): string {
+    return this.counterLabel(this.actionRowItemModelSummary(item).counter);
+  }
+
+  protected actionRowItemSummaryCounterKey(item: AppMenuItem<TId, TContext>): string {
+    return `${this.itemCounterKey(item)}:summary`;
   }
 
   protected actionRowItemAriaLabel(item: AppMenuItem<TId, TContext>): string | null {
@@ -846,10 +977,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isTabsFilterable(): boolean {
-    if (this.activeBranchTabbedPresentation) {
+    if (this.activeBranch) {
       return this.activeBranch?.filterable === true;
     }
-    return this.isTabbedPresentation && this.filterable === true;
+    return this.currentTabbedModelLayout && this.filterable === true;
   }
 
   protected showTabsBar(): boolean {
@@ -913,11 +1044,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   private groupedDropdownItems(): readonly AppMenuItem<TId, TContext>[] {
-    if (this.isShortcutGridKind || !this.hasMenuNodes) {
+    if (this.isInlineGridLayout || !this.hasMenuNodes) {
       return [];
     }
+    return this.groupedMenuItems(this.menuNodes);
+  }
+
+  private groupedMenuItems(groups: readonly AppMenuGroup<TId, TContext>[]): readonly AppMenuItem<TId, TContext>[] {
     const items: AppMenuItem<TId, TContext>[] = [];
-    for (const group of this.menuNodes) {
+    for (const group of groups) {
       const groupItems = this.groupItems(group);
       if (groupItems.length === 0) {
         continue;
@@ -956,7 +1091,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return item.surface ?? 'plain';
   }
 
-  protected itemLayout(item: AppMenuItem<TId, TContext>): AppMenuItemLayout {
+  protected itemVisualLayout(item: AppMenuItem<TId, TContext>): AppMenuItemLayout {
     return item.layout ?? 'default';
   }
 
@@ -987,11 +1122,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected isItemActive(item: AppMenuItem<TId, TContext>): boolean {
-    return this.resolveBoolean(item.active) || this.resolveBoolean(item.checked);
+    return this.resolveBoolean(item.active)
+      || this.resolveBoolean(item.checked)
+      || this.isControlItemSelected(item);
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
-    if (((this.isDropdownListKind && !this.isTabbedPresentation) || (this.isButtonRowKind && !this.activeBranchTabbedPresentation)) && item.kind === 'radio') {
+    if (((this.isDropdownListKind && !this.currentTabbedModelLayout) || (this.isInlineRowLayout && !this.currentTabbedModelLayout)) && item.kind === 'radio') {
       return false;
     }
     return this.isItemActive(item) && !this.hasNestedItems(item);
@@ -1008,8 +1145,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     return item.kind === 'toggle';
   }
 
+  protected showTabsItemToggle(item: AppMenuItem<TId, TContext>): boolean {
+    return this.currentModelMaxSelected() !== 1 && (item.kind === 'checkbox' || item.kind === 'toggle');
+  }
+
   protected isItemDisabled(item: AppMenuItem<TId, TContext>): boolean {
-    return this.resolveBoolean(item.disabled);
+    return this.controlDisabled || this.resolveBoolean(item.disabled) || this.isMaxSelectedLimitDisablingItem(item);
   }
 
   protected isItemRemovable(item: AppMenuItem<TId, TContext>): boolean {
@@ -1072,19 +1213,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   protected hasNestedItems(item: AppMenuItem<TId, TContext>): boolean {
-    return (item.items?.length ?? 0) > 0 || appMenuModelGroups(item.model, item.groups ?? []).length > 0;
+    return this.itemChildItems(item).length > 0 || this.itemMenuGroups(item).length > 0;
   }
 
   protected shouldOpenItemBranch(item: AppMenuItem<TId, TContext>): boolean {
-    return ((this.isDropdownListKind && !this.isTabbedPresentation) || this.isButtonRowKind) && this.hasNestedItems(item);
+    return !this.isInlineGridLayout && this.hasNestedItems(item);
   }
 
   private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
-    return item.closeOnSelect ?? (this.isTabbedPresentation || this.activeBranchTabbedPresentation ? false : this.closeOnSelect);
+    return item.closeOnSelect ?? (this.currentTabbedModelLayout ? false : this.closeOnSelect);
   }
 
   private syncActiveTabsGroup(): void {
-    if ((!this.isTabbedPresentation && !this.activeBranchTabbedPresentation) || this.tabsGroups.length === 0) {
+    if (!this.currentTabbedModelLayout || this.tabsGroups.length === 0) {
       return;
     }
     const groups = this.visibleTabsGroups;
@@ -1098,20 +1239,30 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   }
 
   private syncOpenPanelState(): void {
-    if (!this.open || this.isInlineKind || this.isCustomTriggerAction) {
+    if (!this.open || this.usesInlinePanel || this.isCustomTriggerAction) {
       return;
     }
     if (this.activeBranchPath.length > 0) {
-      if (!this.activeBranch || this.visibleSelectableListItems().length === 0) {
+      if (!this.activeBranch) {
+        this.setOpen(false);
+        return;
+      }
+      if (this.currentTabbedModelLayout) {
+        if (this.tabsGroups.length === 0) {
+          this.setOpen(false);
+        }
+        return;
+      }
+      if (this.visibleSelectableListItems().length === 0) {
         this.setOpen(false);
       }
       return;
     }
-    if (this.isButtonRowKind) {
+    if (this.isInlineRowLayout) {
       this.setOpen(false);
       return;
     }
-    if (this.isDropdownListKind && !this.isTabbedPresentation && this.visibleSelectableListItems().length === 0) {
+    if (this.isDropdownListKind && !this.isTabbedModelLayout && this.visibleSelectableListItems().length === 0) {
       this.setOpen(false);
     }
   }
@@ -1143,11 +1294,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       if (item.id === id) {
         return item;
       }
-      const childMatch = this.findItemById(item.items ?? [], id);
+      const childMatch = this.findItemById(this.itemChildItems(item), id);
       if (childMatch) {
         return childMatch;
       }
-      for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+      for (const group of this.itemMenuGroups(item)) {
         const modelMatch = this.findItemById(this.groupItems(group), id);
         if (modelMatch) {
           return modelMatch;
@@ -1371,7 +1522,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
   private estimatedPanelHeight(): number {
     const titleHeight = this.resolvedTitle ? 34 : 0;
     const itemCount = Math.max(1, this.visibleListItems.length);
-    const branchHeaderHeight = this.visibleListItems.some(item => (item.items?.length ?? 0) > 0) ? 38 : 0;
+    const branchHeaderHeight = this.visibleListItems.some(item => this.hasNestedItems(item)) ? 38 : 0;
     return Math.min(448, titleHeight + branchHeaderHeight + itemCount * 40 + 18);
   }
 
@@ -1417,8 +1568,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
     for (const action of item.headerActions ?? []) {
       this.observeItemCounterPulse(action, visibleCounterKeys, group);
     }
-    for (const child of item.items ?? []) {
+    for (const child of this.itemChildItems(item)) {
       this.observeItemCounterPulse(child, visibleCounterKeys, group);
+    }
+    for (const childGroup of this.itemMenuGroups(item)) {
+      for (const action of childGroup.headerActions ?? []) {
+        this.observeItemCounterPulse(action, visibleCounterKeys, childGroup);
+      }
+      for (const child of this.groupItems(childGroup)) {
+        this.observeItemCounterPulse(child, visibleCounterKeys, childGroup);
+      }
     }
   }
 
@@ -1467,6 +1626,200 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown> i
       this.counterPulseTimerByKey.delete(key);
     }
     this.pulsingCounterKeys.delete(key);
+  }
+
+  private modelSummary(): AppMenuModelSummaryResult {
+    return appMenuModelSummary(this.model, this.groups, this.controlSelection());
+  }
+
+  private actionRowItemModelSummary(item: AppMenuItem<TId, TContext>): AppMenuModelSummaryResult {
+    return appMenuModelSummary(item.model, item.groups ?? []);
+  }
+
+  private controlSelection(): AppMenuModelSummarySelection | null {
+    if (!this.controlAttached) {
+      return null;
+    }
+    return {
+      active: true,
+      value: this.controlValue,
+      valueKey: this.model?.valueKey ?? null
+    };
+  }
+
+  private currentControlEventValue(): unknown {
+    return this.controlAttached ? this.controlValue : undefined;
+  }
+
+  private isMaxSelectedLimitDisablingItem(item: AppMenuItem<TId, TContext>): boolean {
+    const maxSelected = this.currentModelMaxSelected();
+    if (maxSelected === null || maxSelected === 1 || !this.isMultiSelectItem(item) || this.isItemActive(item)) {
+      return false;
+    }
+    return this.currentSelectedMultiSelectCount() >= maxSelected;
+  }
+
+  private currentModelMaxSelected(): number | null {
+    const rawMaxSelected = this.currentMenuModel()?.maxSelected;
+    if (rawMaxSelected === null || rawMaxSelected === undefined) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(rawMaxSelected)) || 0);
+  }
+
+  private currentMenuModel(): AppMenuModel<TId, TContext> | null {
+    if (this.activeBranch) {
+      return this.activeBranch.model ?? null;
+    }
+    return this.model;
+  }
+
+  private currentSelectedMultiSelectCount(): number {
+    if (this.controlAttached) {
+      if (Array.isArray(this.controlValue)) {
+        return this.controlValue.length;
+      }
+      return this.controlValue === null || this.controlValue === undefined || this.controlValue === '' ? 0 : 1;
+    }
+    return this.currentRenderedItems().filter(item => this.isMultiSelectItem(item) && this.isItemActive(item)).length;
+  }
+
+  private currentRenderedItems(): readonly AppMenuItem<TId, TContext>[] {
+    if (this.currentTabbedModelLayout && this.tabsGroups.length > 0) {
+      return this.tabsGroups.flatMap(group => this.groupItems(group));
+    }
+    if (this.isInlineRowLayout) {
+      return this.actionRowItems;
+    }
+    return this.visibleListItems;
+  }
+
+  private isMultiSelectItem(item: AppMenuItem<TId, TContext>): boolean {
+    return item.kind === 'checkbox' || item.kind === 'toggle';
+  }
+
+  private currentMenuGroupFallback(): readonly AppMenuGroup<TId, TContext>[] {
+    return this.activeBranch?.groups ?? this.groups;
+  }
+
+  private branchListItems(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    const childItems = this.itemChildItems(item);
+    if (childItems.length > 0) {
+      return childItems;
+    }
+    return this.groupedMenuItems(this.itemMenuGroups(item));
+  }
+
+  private itemChildItems(item: AppMenuItem<TId, TContext>): readonly AppMenuItem<TId, TContext>[] {
+    return item.items ?? [];
+  }
+
+  private itemMenuGroups(item: AppMenuItem<TId, TContext>): readonly AppMenuGroup<TId, TContext>[] {
+    return appMenuModelGroups(item.model, item.groups ?? []);
+  }
+
+  private selectControlItem(item: AppMenuItem<TId, TContext>): unknown {
+    if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
+      return undefined;
+    }
+    this.markControlTouched();
+    const nextValue = this.nextControlValueForItem(item);
+    this.setControlValue(nextValue);
+    return this.controlValue;
+  }
+
+  private removeControlItem(item: AppMenuItem<TId, TContext>): unknown {
+    if (!this.controlAttached || this.controlDisabled || this.isPassiveItem(item)) {
+      return this.currentControlEventValue();
+    }
+    this.markControlTouched();
+    const itemValue = this.itemControlValue(item);
+    if (Array.isArray(this.controlValue)) {
+      this.setControlValue(this.controlValue.filter(value => !this.controlValuesEqual(value, itemValue)));
+      return this.controlValue;
+    }
+    if (this.controlValuesEqual(this.controlValue, itemValue)) {
+      this.setControlValue(null);
+    }
+    return this.controlValue;
+  }
+
+  private nextControlValueForItem(item: AppMenuItem<TId, TContext>): unknown {
+    const itemValue = this.itemControlValue(item);
+    switch (item.kind ?? 'action') {
+      case 'checkbox':
+      case 'toggle':
+        if (this.currentModelMaxSelected() === 1) {
+          return this.isControlItemSelected(item) ? [] : [itemValue];
+        }
+        return this.toggleControlArrayValue(itemValue);
+      default:
+        return itemValue;
+    }
+  }
+
+  private itemControlValue(item: AppMenuItem<TId, TContext>): unknown {
+    return item.value !== undefined ? item.value : item.id;
+  }
+
+  private toggleControlArrayValue(itemValue: unknown): unknown[] {
+    const values = Array.isArray(this.controlValue)
+      ? [...this.controlValue]
+      : this.controlValue === null || this.controlValue === undefined
+        ? []
+        : [this.controlValue];
+    const existingIndex = values.findIndex(value => this.controlValuesEqual(value, itemValue));
+    if (existingIndex >= 0) {
+      values.splice(existingIndex, 1);
+      return values;
+    }
+    return [...values, itemValue];
+  }
+
+  private setControlValue(value: unknown): void {
+    if (this.controlValuesEqual(this.controlValue, value)) {
+      return;
+    }
+    this.controlValue = value;
+    this.onControlChange(value);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private markControlTouched(): void {
+    this.onControlTouched();
+  }
+
+  private isControlItemSelected(item: AppMenuItem<TId, TContext>): boolean {
+    if (!this.controlAttached || this.isPassiveItem(item)) {
+      return false;
+    }
+    const itemValue = this.itemControlValue(item);
+    if (Array.isArray(this.controlValue)) {
+      return this.controlValue.some(value => this.controlValuesEqual(value, itemValue));
+    }
+    return this.controlValuesEqual(this.controlValue, itemValue);
+  }
+
+  private controlValuesEqual(first: unknown, second: unknown): boolean {
+    if (Array.isArray(first) && Array.isArray(second)) {
+      return first.length === second.length
+        && first.every((value, index) => this.controlValuesEqual(value, second[index]));
+    }
+    const valueKey = this.model?.valueKey ?? null;
+    if (valueKey) {
+      return Object.is(this.controlValueIdentity(first, valueKey), this.controlValueIdentity(second, valueKey));
+    }
+    return Object.is(first, second);
+  }
+
+  private controlValueIdentity(value: unknown, valueKey: AppMenuValueKey): unknown {
+    if (typeof valueKey === 'function') {
+      return valueKey(value);
+    }
+    if (value && typeof value === 'object' && valueKey in value) {
+      return (value as Record<string, unknown>)[valueKey];
+    }
+    return value;
   }
 
   private resolveBoolean(value: AppMenuLiveValue<boolean | null | undefined> | null | undefined): boolean {

@@ -1,8 +1,8 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { type ActivityCounters } from '../shared/ui';
-import { Router } from '@angular/router';
+import { NavigationEnd, Router } from '@angular/router';
 import { AppContext } from '../shared/ui';
-import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevision, type PrivacyConsentRecord, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
+import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
 import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
@@ -68,6 +68,7 @@ export class NavigatorService {
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly assetPopupService = inject(AssetPopupStateService);
+  private readonly currentRouteUrlRef = signal(this.normalizeRouteUrl(this.router.url));
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
@@ -108,6 +109,13 @@ export class NavigatorService {
   readonly navigatorCoveredByAssetPopup = computed(() => this.assetPopupService.visible());
 
   constructor() {
+    this.router.events.subscribe(event => {
+      if (!(event instanceof NavigationEnd)) {
+        return;
+      }
+      this.currentRouteUrlRef.set(this.normalizeRouteUrl(event.urlAfterRedirects));
+    });
+
     effect(() => {
       const session = this.sessionService.session();
       if (!session) {
@@ -128,12 +136,13 @@ export class NavigatorService {
     effect(() => {
       const session = this.sessionService.session();
       const activeUserId = this.appCtx.activeUserId().trim();
+      const routeUrl = this.currentRouteUrlRef();
 
       if (!session) {
         this.clearHydrationState();
         return;
       }
-      if (this.isAdminWorkspaceRoute()) {
+      if (this.isAdminWorkspaceRoute(routeUrl) || !this.isNavigatorHydrationRoute(routeUrl)) {
         this.clearHydrationState();
         return;
       }
@@ -291,7 +300,7 @@ export class NavigatorService {
     });
   }
 
-  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevision, checkKey: string): Promise<void> {
+  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevisionDto, checkKey: string): Promise<void> {
     const requestToken = ++this.privacyConsentCheckToken;
     try {
       const existingConsent = await this.privacyPolicy.loadConsent(userId, revision.id, revision.version);
@@ -322,7 +331,7 @@ export class NavigatorService {
     }
   }
 
-  private async syncAnonymousEntryConsent(userId: string, revision: HelpCenterRevision): Promise<boolean> {
+  private async syncAnonymousEntryConsent(userId: string, revision: HelpCenterRevisionDto): Promise<boolean> {
     const entryConsent = this.loadAnonymousEntryConsent(revision);
     if (!entryConsent) {
       return false;
@@ -337,7 +346,7 @@ export class NavigatorService {
     return true;
   }
 
-  private loadAnonymousEntryConsent(revision: HelpCenterRevision): EntryConsentStateDto | null {
+  private loadAnonymousEntryConsent(revision: HelpCenterRevisionDto): EntryConsentStateDto | null {
     if (typeof localStorage === 'undefined') {
       return null;
     }
@@ -365,7 +374,7 @@ export class NavigatorService {
     }
   }
 
-  private loadAnonymousOptionalApprovalIds(revision: HelpCenterRevision): string[] {
+  private loadAnonymousOptionalApprovalIds(revision: HelpCenterRevisionDto): string[] {
     if (typeof localStorage === 'undefined') {
       return [];
     }
@@ -401,7 +410,7 @@ export class NavigatorService {
       && this.privacyConsentCheckKeyRef() === checkKey;
   }
 
-  private isPrivacyConsentCurrent(consent: PrivacyConsentRecord | null, revision: HelpCenterRevision): boolean {
+  private isPrivacyConsentCurrent(consent: PrivacyConsentDto | null, revision: HelpCenterRevisionDto): boolean {
     if (!consent) {
       return false;
     }
@@ -411,7 +420,7 @@ export class NavigatorService {
     return consentRevisionId === revision.id && consentVersion >= currentVersion && currentVersion > 0;
   }
 
-  private privacyConsentKey(userId: string, revision: HelpCenterRevision): string {
+  private privacyConsentKey(userId: string, revision: HelpCenterRevisionDto): string {
     return `${userId.trim()}::${revision.id}:v${revision.version}`;
   }
 
@@ -425,11 +434,11 @@ export class NavigatorService {
     return requiredKey === this.privacyConsentKey(activeUserId, revision);
   }
 
-  private entryConsentVersion(revision: HelpCenterRevision): string {
+  private entryConsentVersion(revision: HelpCenterRevisionDto): string {
     return `privacy:${revision.id}:v${revision.version}`;
   }
 
-  private optionalPrivacyRevisionKey(revision: HelpCenterRevision): string {
+  private optionalPrivacyRevisionKey(revision: HelpCenterRevisionDto): string {
     return `${revision.id}:v${revision.version}`;
   }
 
@@ -521,6 +530,9 @@ export class NavigatorService {
     }
     if (popup === 'terms') {
       void this.termsPolicy.prepareOpen();
+    }
+    if (popup === 'help') {
+      void this.helpCenterService.preload('help');
     }
     this.settingsPopupRef.set(popup);
   }
@@ -759,13 +771,23 @@ export class NavigatorService {
       : NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
   }
 
-  private isAdminWorkspaceRoute(): boolean {
-    const [pathWithQuery] = (this.router.url || '').split('?');
-    const [path] = pathWithQuery.split('#');
+  private isAdminWorkspaceRoute(routeUrl = this.currentRouteUrlRef()): boolean {
+    const path = this.normalizeRouteUrl(routeUrl);
     return path === '/admin'
       || path === '/admin/'
       || path === '/admin/workspace'
       || path === '/admin/workspace/';
+  }
+
+  private isNavigatorHydrationRoute(routeUrl = this.currentRouteUrlRef()): boolean {
+    const path = this.normalizeRouteUrl(routeUrl);
+    return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
+  }
+
+  private normalizeRouteUrl(url: string): string {
+    const [pathWithQuery] = (url || '/').split('?');
+    const [path] = pathWithQuery.split('#');
+    return path.trim() || '/';
   }
 
   private isAdminProfileActive(userId: string): boolean {

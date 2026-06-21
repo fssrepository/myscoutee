@@ -1,21 +1,27 @@
-import type { HelpCenterTable } from '../entity/content.entity';
+import type {
+  HelpCenterAuditRecord,
+  HelpCenterRevisionRecord,
+  HelpCenterTable,
+  PrivacyConsentLocalRecord
+} from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import type {
-  HelpCenterAuditEntry,
+  HelpCenterAuditEntryDto,
   HelpCenterDocumentKind,
-  HelpCenterRevision,
-  HelpCenterRevisionSaveRequest,
-  HelpCenterSection,
-  HelpCenterState,
-  PrivacyConsentRecord,
-  PrivacyConsentSaveRequest
+  HelpCenterRevisionDto,
+  HelpCenterRevisionSaveRequestDto,
+  HelpCenterSectionDto,
+  HelpCenterStateDto,
+  PrivacyConsentDto,
+  PrivacyConsentSaveRequestDto
 } from '../../../contracts';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
 import { HelpCenterContentBuilder } from '../../../base/builders';
 
 import { LocalHelpCenterRepository } from '../repositories/help-center.repository';
+import { LocalHelpCenterMapper } from '../mappers';
 
 const SEEDED_HELP_IMAGE_REF_PREFIX = 'help-seeded-image:';
 const LAZY_HELP_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
@@ -27,7 +33,7 @@ export class LocalHelpCenterService {
   private readonly helpCenterRepository = inject(LocalHelpCenterRepository);
   private readonly routeDelay = inject(RouteDelayService);
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const language = this.requestContentLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
@@ -45,7 +51,7 @@ export class LocalHelpCenterService {
     kind: HelpCenterDocumentKind = 'help',
     lang = 'en',
     contextKey?: string | null
-  ): Promise<HelpCenterState> {
+  ): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(documentKind, contextKey, false);
@@ -62,7 +68,7 @@ export class LocalHelpCenterService {
     userId: string,
     revisionId: string,
     revisionVersion?: number
-  ): Promise<PrivacyConsentRecord | null> {
+  ): Promise<PrivacyConsentDto | null> {
     await this.helpCenterRepository.whenReady();
     const normalizedUserId = this.nonEmptyText(userId, '');
     const normalizedRevisionId = this.nonEmptyText(revisionId, '');
@@ -73,12 +79,12 @@ export class LocalHelpCenterService {
     const consentId = this.privacyConsentRecordId(normalizedUserId, normalizedRevisionId);
     const consent = table.privacyConsentsById?.[consentId] ?? null;
     if (consent) {
-      return this.clonePrivacyConsent(consent);
+      return LocalHelpCenterMapper.toPrivacyConsentDTO(consent);
     }
     return this.latestPrivacyConsentForUser(table, normalizedUserId);
   }
 
-  async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+  async savePrivacyConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
     await this.helpCenterRepository.whenReady();
     const userId = this.nonEmptyText(request?.userId, '');
     const revisionId = this.nonEmptyText(request?.revisionId, '');
@@ -87,24 +93,25 @@ export class LocalHelpCenterService {
     }
     const table = this.table();
     const revision = table.revisionsById[revisionId];
-    if (!revision || this.revisionKind(revision) !== 'privacy') {
+    const revisionDto = revision ? LocalHelpCenterMapper.toRevisionDTO(revision) : null;
+    if (!revisionDto || this.revisionKind(revisionDto) !== 'privacy') {
       throw new Error('Privacy revision not found.');
     }
     const id = this.privacyConsentRecordId(userId, revisionId);
     const current = table.privacyConsentsById?.[id] ?? null;
     const nowIso = new Date().toISOString();
-    const revisionVersion = Math.max(1, Math.trunc(Number(revision.version || request?.revisionVersion) || 1));
+    const revisionVersion = Math.max(1, Math.trunc(Number(revisionDto.version || request?.revisionVersion) || 1));
     const currentRevisionVersion = Math.max(0, Math.trunc(Number(current?.revisionVersion) || 0));
-    const consent: PrivacyConsentRecord = {
+    const consent = LocalHelpCenterMapper.toPrivacyConsentRecord({
       id,
       userId,
       revisionId,
       revisionVersion,
-      approvedOptionalSectionIds: this.approvedOptionalSectionIds(request?.approvedOptionalSectionIds, revision),
+      approvedOptionalSectionIds: this.approvedOptionalSectionIds(request?.approvedOptionalSectionIds, revisionDto),
       acceptedAtIso: currentRevisionVersion >= revisionVersion && current?.acceptedAtIso ? current.acceptedAtIso : nowIso,
       updatedAtIso: nowIso,
       source: this.normalizeConsentSource(request?.source)
-    };
+    });
     this.helpCenterRepository.updateTable(currentTable => {
       const consentsById = {
         ...(currentTable.privacyConsentsById ?? {}),
@@ -120,10 +127,10 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay('/privacy/consents')
     ]);
-    return this.clonePrivacyConsent(consent);
+    return LocalHelpCenterMapper.toPrivacyConsentDTO(consent);
   }
 
-  async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async saveRevision(request: HelpCenterRevisionSaveRequestDto, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(request?.lang);
@@ -133,7 +140,7 @@ export class LocalHelpCenterService {
     const actorUserId = this.normalizeActor(request.actorUserId);
     const version = this.nextVersion(table, documentKind, language, contextKey);
     const revisionId = this.newId(`${documentKind}-rev`);
-    const revision: HelpCenterRevision = {
+    const revision: HelpCenterRevisionDto = {
       id: revisionId,
       documentKind,
       contextKey,
@@ -168,12 +175,12 @@ export class LocalHelpCenterService {
         activeRevisionIdsByKind: { ...(current.activeRevisionIdsByKind ?? {}) },
         revisionsById: {
           ...this.normalizedRevisionsById(current),
-          [revisionId]: revision
+          [revisionId]: LocalHelpCenterMapper.toRevisionRecord(revision)
         },
         revisionIds: [...current.revisionIds.filter(id => id !== revisionId), revisionId],
         auditById: {
           ...current.auditById,
-          [audit.id]: audit
+          [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
         },
         auditIds: [...current.auditIds, audit.id]
       };
@@ -185,33 +192,34 @@ export class LocalHelpCenterService {
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
-  async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const language = this.normalizeLang(this.table().revisionsById[revisionId.trim()]?.lang);
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
-    if (!revision || this.revisionKind(revision) !== documentKind) {
+    const revisionDto = revision ? LocalHelpCenterMapper.toRevisionDTO(revision) : null;
+    if (!revisionDto || this.revisionKind(revisionDto) !== documentKind) {
       throw new Error(`${this.documentLabel(documentKind)} revision not found.`);
     }
-    const contextKey = this.revisionContextKey(revision);
+    const contextKey = this.revisionContextKey(revisionDto);
     const audit = this.auditEntry({
       action: 'activate',
       actorUserId: this.normalizeActor(actorUserId),
-      revision,
-      message: `Activated v${revision.version}.`
+      revision: revisionDto,
+      message: `Activated v${revisionDto.version}.`
     });
     this.helpCenterRepository.updateTable(current => {
       const revisionsById = Object.fromEntries(
         current.revisionIds
           .filter(id => Boolean(current.revisionsById[id]))
           .map(id => {
-            const item = current.revisionsById[id];
+            const item = LocalHelpCenterMapper.toRevisionDTO(current.revisionsById[id]);
             const itemKind = this.revisionKind(item);
             const itemLang = this.revisionLang(item);
             const itemContext = this.revisionContextKey(item);
-            return [id, {
+            return [id, LocalHelpCenterMapper.toRevisionRecord({
               ...item,
               documentKind: itemKind,
               contextKey: itemContext,
@@ -220,9 +228,9 @@ export class LocalHelpCenterService {
               active: itemKind === documentKind && itemLang === language && itemContext === contextKey
                 ? id === normalizedRevisionId
                 : item.active
-            }];
+            })];
           })
-      ) as Record<string, HelpCenterRevision>;
+      ) as Record<string, HelpCenterRevisionRecord>;
       return {
         ...current,
         activeRevisionId: documentKind === 'help' && language === 'en' ? normalizedRevisionId : current.activeRevisionId,
@@ -233,7 +241,7 @@ export class LocalHelpCenterService {
         revisionsById,
         auditById: {
           ...current.auditById,
-          [audit.id]: audit
+          [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
         },
         auditIds: [...current.auditIds, audit.id]
       };
@@ -245,21 +253,23 @@ export class LocalHelpCenterService {
     return this.stateFromTable(this.table(), documentKind, language, contextKey);
   }
 
-  async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     await this.helpCenterRepository.whenReady();
     const documentKind = this.normalizeKind(kind);
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
-    const language = this.normalizeLang(revision?.lang);
-    const contextKey = this.revisionContextKey(revision);
-    if (!revision || this.revisionKind(revision) !== documentKind) {
+    const revisionDto = revision ? LocalHelpCenterMapper.toRevisionDTO(revision) : null;
+    const language = this.normalizeLang(revisionDto?.lang);
+    const contextKey = this.revisionContextKey(revisionDto);
+    if (!revisionDto || this.revisionKind(revisionDto) !== documentKind) {
       return this.stateFromTable(table, documentKind);
     }
     const remainingIds = table.revisionIds.filter(id => id !== normalizedRevisionId);
     const remainingRevisions = remainingIds
       .map(id => table.revisionsById[id])
-      .filter((item): item is HelpCenterRevision => Boolean(item))
+      .filter((item): item is HelpCenterRevisionRecord => Boolean(item))
+      .map(item => LocalHelpCenterMapper.toRevisionDTO(item))
       .filter(item => this.revisionKind(item) === documentKind && this.revisionLang(item) === language && this.revisionContextKey(item) === contextKey)
       .sort((left, right) => right.version - left.version);
     const currentActiveRevisionId = this.activeRevisionId(table, documentKind, language, contextKey);
@@ -269,8 +279,8 @@ export class LocalHelpCenterService {
     const audit = this.auditEntry({
       action: 'delete',
       actorUserId: this.normalizeActor(actorUserId),
-      revision,
-      message: `Deleted v${revision.version}.`
+      revision: revisionDto,
+      message: `Deleted v${revisionDto.version}.`
     });
 
     this.helpCenterRepository.updateTable(current => {
@@ -279,11 +289,11 @@ export class LocalHelpCenterService {
         remainingIds
           .filter(id => Boolean(revisionsById[id]))
           .map(id => {
-            const item = revisionsById[id];
+            const item = LocalHelpCenterMapper.toRevisionDTO(revisionsById[id]);
             const itemKind = this.revisionKind(item);
             const itemLang = this.revisionLang(item);
             const itemContext = this.revisionContextKey(item);
-            return [id, {
+            return [id, LocalHelpCenterMapper.toRevisionRecord({
               ...item,
               documentKind: itemKind,
               contextKey: itemContext,
@@ -292,9 +302,9 @@ export class LocalHelpCenterService {
               active: itemKind === documentKind && itemLang === language && itemContext === contextKey
                 ? id === nextActiveRevisionId
                 : item.active
-            }];
+            })];
           })
-      ) as Record<string, HelpCenterRevision>;
+      ) as Record<string, HelpCenterRevisionRecord>;
       return {
         ...current,
         seeded: true,
@@ -307,7 +317,7 @@ export class LocalHelpCenterService {
         revisionIds: remainingIds,
         auditById: {
           ...current.auditById,
-          [audit.id]: audit
+          [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
         },
         auditIds: [...current.auditIds, audit.id]
       };
@@ -336,7 +346,7 @@ export class LocalHelpCenterService {
     throw new Error(`Demo ${this.documentLabel(kind).toLowerCase()} content is not bootstrapped.`);
   }
 
-  private latestRevision(revisions: readonly HelpCenterRevision[]): HelpCenterRevision | null {
+  private latestRevision(revisions: readonly HelpCenterRevisionDto[]): HelpCenterRevisionDto | null {
     return [...revisions].sort((left, right) => {
       const versionOrder = (right.version ?? 0) - (left.version ?? 0);
       if (versionOrder !== 0) {
@@ -356,15 +366,15 @@ export class LocalHelpCenterService {
     return `${userId.trim()}::${revisionId.trim()}`;
   }
 
-  private latestPrivacyConsentForUser(table: HelpCenterTable, userId: string): PrivacyConsentRecord | null {
+  private latestPrivacyConsentForUser(table: HelpCenterTable, userId: string): PrivacyConsentDto | null {
     const consentsById = table.privacyConsentsById ?? {};
     const latest = Object.values(consentsById)
       .filter(consent => consent?.userId?.trim() === userId)
       .sort((left, right) => this.privacyConsentSortValue(right) - this.privacyConsentSortValue(left))[0] ?? null;
-    return latest ? this.clonePrivacyConsent(latest) : null;
+    return latest ? LocalHelpCenterMapper.toPrivacyConsentDTO(latest) : null;
   }
 
-  private privacyConsentSortValue(consent: PrivacyConsentRecord): number {
+  private privacyConsentSortValue(consent: PrivacyConsentDto | PrivacyConsentLocalRecord): number {
     const updatedAtMs = Date.parse(consent.updatedAtIso || consent.acceptedAtIso || '');
     if (Number.isFinite(updatedAtMs)) {
       return updatedAtMs;
@@ -374,7 +384,7 @@ export class LocalHelpCenterService {
 
   private approvedOptionalSectionIds(
     approvedSectionIds: readonly string[] | null | undefined,
-    revision: HelpCenterRevision
+    revision: HelpCenterRevisionDto
   ): string[] {
     const optionalSectionIds = new Set(
       this.normalizeSections(revision.sections, 'privacy')
@@ -388,14 +398,7 @@ export class LocalHelpCenterService {
     )).sort();
   }
 
-  private clonePrivacyConsent(consent: PrivacyConsentRecord): PrivacyConsentRecord {
-    return {
-      ...consent,
-      approvedOptionalSectionIds: [...consent.approvedOptionalSectionIds]
-    };
-  }
-
-  private stateFromTable(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterState {
+  private stateFromTable(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterStateDto {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey, false);
     const revisions = this.revisionsForState(table, kind, language, context)
@@ -407,7 +410,8 @@ export class LocalHelpCenterService {
       : null;
     const auditTrail = table.auditIds
       .map(id => table.auditById[id])
-      .filter((entry): entry is HelpCenterAuditEntry => Boolean(entry))
+      .filter((entry): entry is HelpCenterAuditRecord => Boolean(entry))
+      .map(entry => LocalHelpCenterMapper.toAuditDTO(entry))
       .filter(entry => this.auditKind(entry) === kind)
       .map(entry => {
         const entryLang = this.normalizeLang(entry.lang);
@@ -422,7 +426,7 @@ export class LocalHelpCenterService {
     };
   }
 
-  private revisionsForState(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision[] {
+  private revisionsForState(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto[] {
     const language = this.normalizeLang(lang);
     if (kind === 'explanation' && this.normalizeContextKey(kind, contextKey, false)) {
       return this.revisionsForKind(table, kind, language, null);
@@ -456,40 +460,41 @@ export class LocalHelpCenterService {
     return this.revisionsForKind(table, kind, language, context).find(revision => revision.active)?.id ?? null;
   }
 
-  private revisionsForKind(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision[] {
+  private revisionsForKind(table: HelpCenterTable, kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto[] {
     const language = this.normalizeLang(lang);
     const context = this.normalizeContextKey(kind, contextKey, false);
     return table.revisionIds
       .map(id => table.revisionsById[id])
-      .filter((revision): revision is HelpCenterRevision => Boolean(revision))
+      .filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision))
+      .map(revision => LocalHelpCenterMapper.toRevisionDTO(revision))
       .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language)
       .filter(revision => kind !== 'explanation' || !context || this.revisionContextKey(revision) === context);
   }
 
-  private normalizedRevisionsById(table: HelpCenterTable): Record<string, HelpCenterRevision> {
+  private normalizedRevisionsById(table: HelpCenterTable): Record<string, HelpCenterRevisionRecord> {
     return Object.fromEntries(
       table.revisionIds
         .filter(id => Boolean(table.revisionsById[id]))
         .map(id => {
-          const revision = table.revisionsById[id];
+          const revision = LocalHelpCenterMapper.toRevisionDTO(table.revisionsById[id]);
           const lang = this.revisionLang(revision);
-          return [id, {
+          return [id, LocalHelpCenterMapper.toRevisionRecord({
             ...revision,
             documentKind: this.revisionKind(revision),
             contextKey: this.revisionContextKey(revision),
             lang,
             languageLabel: this.languageLabel(lang)
-          }];
+          })];
         })
-    ) as Record<string, HelpCenterRevision>;
+    ) as Record<string, HelpCenterRevisionRecord>;
   }
 
   private auditEntry(options: {
-    action: HelpCenterAuditEntry['action'];
+    action: HelpCenterAuditEntryDto['action'];
     actorUserId: string;
-    revision: HelpCenterRevision;
+    revision: HelpCenterRevisionDto;
     message: string;
-  }): HelpCenterAuditEntry {
+  }): HelpCenterAuditEntryDto {
     const documentKind = this.revisionKind(options.revision);
     return {
       id: this.newId(`${documentKind}-audit`),
@@ -505,19 +510,19 @@ export class LocalHelpCenterService {
     };
   }
 
-  private normalizeSections(sections: readonly HelpCenterSection[], kind: HelpCenterDocumentKind): HelpCenterSection[] {
+  private normalizeSections(sections: readonly HelpCenterSectionDto[], kind: HelpCenterDocumentKind): HelpCenterSectionDto[] {
     const seenIds = new Set<string>();
     return (Array.isArray(sections) ? sections : [])
       .map((section, index) => this.normalizeSection(section, index, seenIds, kind))
-      .filter((section): section is HelpCenterSection => section !== null);
+      .filter((section): section is HelpCenterSectionDto => section !== null);
   }
 
   private normalizeSection(
-    section: HelpCenterSection,
+    section: HelpCenterSectionDto,
     index: number,
     seenIds: Set<string>,
     kind: HelpCenterDocumentKind
-  ): HelpCenterSection | null {
+  ): HelpCenterSectionDto | null {
     const title = this.nonEmptyText(section?.title, `${this.documentLabel(kind)} section ${index + 1}`);
     const baseId = this.slugify(section?.id || title) || `section-${index + 1}`;
     let id = baseId;
@@ -542,7 +547,7 @@ export class LocalHelpCenterService {
     };
   }
 
-  private normalizePanelSpan(value: string | null | undefined): HelpCenterSection['panelSpan'] {
+  private normalizePanelSpan(value: string | null | undefined): HelpCenterSectionDto['panelSpan'] {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
       return 'span-1';
@@ -573,7 +578,7 @@ export class LocalHelpCenterService {
     return result;
   }
 
-  private htmlFromLegacySection(section: HelpCenterSection | null | undefined): string {
+  private htmlFromLegacySection(section: HelpCenterSectionDto | null | undefined): string {
     const details = Array.isArray(section?.details) ? section.details : [];
     const points = Array.isArray(section?.points) ? section.points : [];
     return [
@@ -653,7 +658,7 @@ export class LocalHelpCenterService {
       .replace(/'/g, '&#039;');
   }
 
-  private cloneRevision(revision: HelpCenterRevision, kind = this.revisionKind(revision)): HelpCenterRevision {
+  private cloneRevision(revision: HelpCenterRevisionDto, kind = this.revisionKind(revision)): HelpCenterRevisionDto {
     const lang = this.revisionLang(revision);
     return {
       ...revision,
@@ -667,7 +672,7 @@ export class LocalHelpCenterService {
     };
   }
 
-  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision {
+  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto {
     return this.cloneRevision(HelpCenterContentBuilder.defaultRevision(kind, lang, contextKey), kind);
   }
 
@@ -683,14 +688,14 @@ export class LocalHelpCenterService {
     return HelpCenterContentBuilder.defaultDescription(kind, lang);
   }
 
-  private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevision['headerColor'] {
+  private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevisionDto['headerColor'] {
     switch (`${value ?? ''}`.trim()) {
       case 'blue':
       case 'green':
       case 'rose':
       case 'violet':
       case 'slate':
-        return value as HelpCenterRevision['headerColor'];
+        return value as HelpCenterRevisionDto['headerColor'];
       default:
         return 'amber';
     }
@@ -704,15 +709,15 @@ export class LocalHelpCenterService {
     return HelpCenterContentBuilder.defaultSectionIcon(kind);
   }
 
-  private revisionKind(revision: HelpCenterRevision | null | undefined): HelpCenterDocumentKind {
+  private revisionKind(revision: HelpCenterRevisionDto | null | undefined): HelpCenterDocumentKind {
     return this.normalizeKind(revision?.documentKind);
   }
 
-  private revisionLang(revision: HelpCenterRevision | null | undefined): string {
+  private revisionLang(revision: HelpCenterRevisionDto | null | undefined): string {
     return this.normalizeLang(revision?.lang);
   }
 
-  private auditKind(entry: HelpCenterAuditEntry | null | undefined): HelpCenterDocumentKind {
+  private auditKind(entry: HelpCenterAuditEntryDto | null | undefined): HelpCenterDocumentKind {
     return this.normalizeKind(entry?.documentKind);
   }
 
@@ -738,7 +743,7 @@ export class LocalHelpCenterService {
     return null;
   }
 
-  private revisionContextKey(revision: HelpCenterRevision | null | undefined): string | null {
+  private revisionContextKey(revision: HelpCenterRevisionDto | null | undefined): string | null {
     return this.normalizeContextKey(this.revisionKind(revision), revision?.contextKey, false);
   }
 
@@ -811,7 +816,7 @@ export class LocalHelpCenterService {
     return this.nonEmptyText(actorUserId, 'admin');
   }
 
-  private normalizeConsentSource(source: string | null | undefined): PrivacyConsentRecord['source'] {
+  private normalizeConsentSource(source: string | null | undefined): PrivacyConsentDto['source'] {
     return source === 'entry' ? 'entry' : 'settings';
   }
 

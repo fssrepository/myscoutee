@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.06.18.en.3",
+  "version": "2026.06.19.en.1",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -888,8 +888,12 @@
     "profile.details.values": "Values",
     "profile.details.workout": "Workout",
     "profile.experience.education": "Education",
+    "profile.experience.openSchool": "Open school experience",
+    "profile.experience.openWorkplace": "Open workplace experience",
     "profile.experience.profession": "Profession",
     "profile.experience.school": "School",
+    "profile.experience.selectSchool": "Select school",
+    "profile.experience.selectWorkplace": "Select workplace",
     "profile.experience.workplace": "Workplace",
     "profile.gender": "Gender",
     "profile.height": "Height",
@@ -935,6 +939,7 @@
     "select.demo.user": "Select demo user",
     "select.interests": "Select interests",
     "select.languages": "Select languages",
+    "select.option": "Please select",
     "select.values": "Select values",
     "selector.unavailable": "Selector unavailable",
     "service": "Service",

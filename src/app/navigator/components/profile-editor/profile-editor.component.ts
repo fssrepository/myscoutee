@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
@@ -17,10 +17,14 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
-import { MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import { ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  EditableImageCarouselComponent,
+  I18nPipe,
+  ProfileExperienceManagerComponent,
+  type ProfileExperienceEntriesChange
+} from '../../../shared/ui';
 import {
   AppMenuComponent,
   AppMenuDispatcher,
@@ -40,12 +44,14 @@ import type * as ProfileContracts from '../../../shared/core/contracts/profile.i
 import type * as AppConstants from '../../../shared/core/common/constants';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
+type ProfileEditorExperienceSelectorType = Extract<ProfileContracts.ExperienceEntry['type'], 'Workspace' | 'School'>;
 
 type ProfileEditorMenuContext =
   | { kind: 'profileStatus'; value: AppConstants.ProfileStatus }
   | { kind: 'physique'; value: string }
   | { kind: 'detailValue'; groupIndex: number; rowIndex: number; value: string }
   | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppConstants.DetailPrivacy }
+  | { kind: 'experienceSelector'; value: ProfileEditorExperienceSelectorType }
   | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppConstants.DetailPrivacy }
   | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
   | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
@@ -93,7 +99,8 @@ interface ExperienceImportDialogState {
     AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
-    ProgressIndicatorComponent,
+    EditableImageCarouselComponent,
+    ProfileExperienceManagerComponent,
     I18nPipe
   ],
   providers: [
@@ -105,8 +112,7 @@ interface ExperienceImportDialogState {
   styleUrl: './profile-editor.component.scss'
 })
 export class ProfileEditorComponent {
-  @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('experienceImportInput') private experienceImportInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
@@ -117,7 +123,6 @@ export class ProfileEditorComponent {
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
-  private readonly mediaService = inject(MediaService);
   private readonly profileDetailsFormByUser: Record<string, ProfileContracts.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
@@ -142,9 +147,6 @@ export class ProfileEditorComponent {
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
   protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
-  protected selectedImageIndex = 0;
-  protected pendingSlotUploadIndex: number | null = null;
-  protected uploadingImageSlotIndex: number | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
   protected experienceVisibility: Record<'workspace' | 'school', AppConstants.DetailPrivacy> = {
     workspace: 'Public',
@@ -152,6 +154,7 @@ export class ProfileEditorComponent {
   };
   protected experienceEntries: ProfileContracts.ExperienceEntry[] = [];
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
+  protected experienceManagerOverlayOpen = false;
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
@@ -215,10 +218,6 @@ export class ProfileEditorComponent {
     return this.profileUser;
   }
 
-  protected get selectedImagePreview(): string | null {
-    return this.imageSlots[this.selectedImageIndex] ?? null;
-  }
-
   protected get featuredImagePreview(): string | null {
     return this.imageSlots[0] ?? null;
   }
@@ -227,6 +226,14 @@ export class ProfileEditorComponent {
     return this.imageSlots
       .map((slot, index) => (slot ? index : -1))
       .filter(index => index >= 0);
+  }
+
+  protected get profileImageUrls(): string[] {
+    return this.collectPersistedProfileImages();
+  }
+
+  protected set profileImageUrls(imageUrls: string[]) {
+    this.applyProfileImageUrls(imageUrls);
   }
 
   protected get profileCompletionPercent(): number {
@@ -251,16 +258,6 @@ export class ProfileEditorComponent {
       return item.type === this.experienceFilter;
     });
     return [...filtered].sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
-  }
-
-  protected get workspaceExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'Workspace').length;
-    return `${count} items`;
-  }
-
-  protected get schoolExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'School').length;
-    return `${count} items`;
   }
 
   protected get canSaveExperienceEntry(): boolean {
@@ -294,16 +291,12 @@ export class ProfileEditorComponent {
   }
 
   protected async handleCloseAction(): Promise<void> {
-    if (this.experienceImportDialog.visible) {
-      this.cancelExperienceImportDialog();
-      return;
-    }
-    if (this.showExperienceForm) {
-      this.closeExperienceForm();
+    if (this.panel === 'experience' && this.experienceManager?.closeActiveOverlay()) {
       return;
     }
     if (this.panel !== 'profile') {
       this.panel = 'profile';
+      this.experienceManagerOverlayOpen = false;
       return;
     }
     await this.commitProfileForm(false);
@@ -319,90 +312,89 @@ export class ProfileEditorComponent {
     this.panel = 'image';
   }
 
-  protected openWorkspaceSelector(): void {
-    this.openExperienceSelector('Workspace');
-  }
-
-  protected openSchoolSelector(): void {
-    this.openExperienceSelector('School');
-  }
-
   protected openExperienceSelector(filter: ProfileContracts.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
+    this.experienceManager?.setFilter(filter);
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
     this.resetExperienceForm();
     this.panel = 'experience';
   }
 
-  protected selectImageSlot(index: number): void {
-    if (this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const isSelectedSlot = this.selectedImageIndex === index;
-    const hasImage = Boolean(this.imageSlots[index]);
-    this.selectedImageIndex = index;
-    if (hasImage && !isSelectedSlot) {
-      return;
-    }
-    this.pendingSlotUploadIndex = index;
-    this.slotImageInput?.nativeElement.click();
+  protected experienceSelectorLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.workplace'
+      : 'profile.experience.school';
   }
 
-  protected selectImageFromStack(index: number): void {
-    if (!this.imageSlots[index]) {
-      return;
-    }
-    this.selectedImageIndex = index;
+  protected experienceSelectorMenuTrigger(type: ProfileEditorExperienceSelectorType): AppMenuTrigger {
+    const entries = this.experienceSelectorEntries(type);
+    return {
+      icon: this.experienceTypeIcon(type),
+      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(type)),
+      layout: 'field',
+      action: 'custom',
+      trailingIcon: 'chevron_right',
+      ariaLabel: entries.length > 0
+        ? this.experienceSelectorOpenLabelKey(type)
+        : this.experienceSelectorEmptyLabelKey(type),
+      context: { kind: 'experienceSelector', value: type }
+    };
   }
 
-  protected removeImage(index: number): void {
-    if (this.uploadingImageSlotIndex === index) {
-      return;
-    }
-    this.revokeObjectUrl(this.imageSlots[index]);
-    this.imageSlots[index] = null;
+  protected experienceSelectorMenuModel(
+    type: ProfileEditorExperienceSelectorType
+  ): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
+    const palette = this.paletteFromProfileTone(this.experienceTypeToneClass(type));
+    return {
+      layout: 'tabs',
+      summary: {
+        emptyLabel: this.experienceSelectorEmptyLabelKey(type),
+        maxLabels: 2,
+        counter: 'overflow'
+      },
+      groups: [{
+        id: `experience-selector-${type.toLowerCase().replace(/\s+/g, '-')}`,
+        label: this.experienceSelectorLabelKey(type),
+        icon: this.experienceTypeIcon(type),
+        palette,
+        items: this.experienceSelectorEntries(type).map(entry => ({
+          id: `experience-selector-${type}:${entry.id}`,
+          label: this.experienceSelectorEntryLabel(entry),
+          icon: this.experienceTypeIcon(type),
+          kind: 'checkbox',
+          active: true,
+          checked: true,
+          removable: false,
+          closeOnSelect: false,
+          palette,
+          context: { kind: 'experienceSelector', value: type }
+        }))
+      }]
+    };
+  }
+
+  private applyProfileImageUrls(imageUrls: string[]): void {
+    const slots = this.createEmptyImageSlots();
+    imageUrls
+      .map(imageUrl => `${imageUrl ?? ''}`.trim())
+      .filter(Boolean)
+      .slice(0, slots.length)
+      .forEach((imageUrl, index) => {
+        slots[index] = imageUrl;
+      });
+    this.imageSlots = slots;
     this.persistActiveUserImageSlots();
-    if (this.selectedImageIndex === index) {
-      const nearest = this.findNearestFilledImageIndex(index);
-      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
-    }
-  }
-
-  protected onSlotImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    const slotIndex = this.pendingSlotUploadIndex;
-    this.pendingSlotUploadIndex = null;
-    if (!file || slotIndex === null) {
-      target.value = '';
-      return;
-    }
-    target.value = '';
-    void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
-  }
-
-  protected isImageSlotUploading(index: number): boolean {
-    return this.uploadingImageSlotIndex === index;
-  }
-
-  protected isSelectedImageUploading(): boolean {
-    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
   protected openExperienceCreateAction(event?: Event): void {
     event?.stopPropagation();
-    this.openExperienceForm();
+    this.experienceManager?.openCreate(this.experienceFilter === 'All' ? 'Workspace' : this.experienceFilter);
   }
 
   protected openExperienceUploadAction(event?: Event): void {
     event?.stopPropagation();
-    const input = this.experienceImportInput?.nativeElement;
-    if (!input) {
-      return;
-    }
-    input.value = '';
-    input.click();
+    this.experienceManager?.openImport();
   }
 
   protected experienceQuickActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -440,7 +432,7 @@ export class ProfileEditorComponent {
       label: this.profileForm.profileStatus,
       icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
       palette: this.profileStatusPalette(this.profileForm.profileStatus),
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'Open profile status selector'
     };
   }
@@ -463,7 +455,7 @@ export class ProfileEditorComponent {
       label: this.profileForm.physique,
       icon: this.getPhysiqueIcon(this.profileForm.physique),
       palette: this.paletteFromProfileTone(this.getPhysiqueClass(this.profileForm.physique)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open physique selector'
     };
   }
@@ -486,7 +478,7 @@ export class ProfileEditorComponent {
       label: row.value,
       icon: this.detailOptionIcon(row.labelKey, row.value),
       palette: this.paletteFromProfileTone(this.detailSelectedClass(row.labelKey, row.value, row.options)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: `Open ${this.i18n.translate(row.labelKey)} selector`
     };
   }
@@ -555,7 +547,7 @@ export class ProfileEditorComponent {
       label: this.experienceFilter,
       icon: this.experienceFilterIcon(this.experienceFilter),
       palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience filter'
     };
   }
@@ -578,7 +570,7 @@ export class ProfileEditorComponent {
       label: this.experienceForm.type,
       icon: this.experienceTypeIcon(this.experienceForm.type),
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience type selector'
     };
   }
@@ -601,7 +593,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'auto_awesome',
       palette: this.paletteFromProfileTone(this.valuesDominantToneClass(row.value)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: selected.length > 0 ? 'open.values.selector' : 'select.values'
     };
   }
@@ -629,7 +621,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'sell',
       palette: this.paletteFromProfileTone(this.interestDominantToneClass(row.value)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: selected.length > 0 ? 'open.interests.selector' : 'select.interests'
     };
   }
@@ -656,7 +648,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'language',
       palette: 'blue',
-      shape: 'field',
+      layout: 'field',
       ariaLabel: this.profileForm.languages.length > 0 ? 'open.languages.selector' : 'select.languages'
     };
   }
@@ -715,8 +707,12 @@ export class ProfileEditorComponent {
       case 'experiencePrivacy':
         this.experienceVisibility[context.type] = context.value;
         return;
+      case 'experienceSelector':
+        this.openExperienceSelector(context.value);
+        return;
       case 'experienceFilter':
         this.experienceFilter = context.value;
+        this.experienceManager?.setFilter(context.value);
         return;
       case 'experienceType':
         this.experienceForm.type = context.value;
@@ -756,6 +752,15 @@ export class ProfileEditorComponent {
     event: AppMenuItemSelectEvent<ProfileEditorMenuId, unknown>
   ): void {
     this.onProfileEditorMenuSelect(event as AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>);
+  }
+
+  protected onExperienceEntriesChange(event: ProfileExperienceEntriesChange): void {
+    this.setExperienceEntries(event.entries, event.highlightedIds ?? null);
+    void this.persistExperienceEntries(event.entries, { highlightedIds: event.highlightedIds ?? [] });
+  }
+
+  protected onExperienceOverlayStateChange(open: boolean): void {
+    this.experienceManagerOverlayOpen = open;
   }
 
   protected onExperienceImportFileChange(event: Event): void {
@@ -971,6 +976,31 @@ export class ProfileEditorComponent {
     return this.experienceVisibility[type];
   }
 
+  private experienceSelectorEntries(type: ProfileEditorExperienceSelectorType): ProfileContracts.ExperienceEntry[] {
+    return this.experienceEntries
+      .filter(item => item.type === type)
+      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
+  }
+
+  private experienceSelectorEntryLabel(entry: ProfileContracts.ExperienceEntry): string {
+    return entry.title.trim()
+      || entry.org.trim()
+      || entry.city.trim()
+      || this.experienceSelectorLabelKey(entry.type as ProfileEditorExperienceSelectorType);
+  }
+
+  private experienceSelectorEmptyLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.selectWorkplace'
+      : 'profile.experience.selectSchool';
+  }
+
+  private experienceSelectorOpenLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.openWorkplace'
+      : 'profile.experience.openSchool';
+  }
+
   private updateMultiValueDetailRow(
     groupIndex: number,
     rowIndex: number,
@@ -1090,7 +1120,7 @@ export class ProfileEditorComponent {
         return 'pets';
       }
       if (normalizedOption.includes('cat')) {
-        return 'cat';
+        return 'pets';
       }
       if (normalizedOption.includes('all')) {
         return 'cruelty_free';
@@ -1418,8 +1448,6 @@ export class ProfileEditorComponent {
     const slots = this.profileImageSlotsByUser[user.id] ?? this.resolveUserImageSlots(user);
     this.profileImageSlotsByUser[user.id] = [...slots];
     this.imageSlots = [...slots];
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
     this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
     this.panel = 'profile';
     void this.loadExperienceEntriesForUser(user.id);
@@ -1782,7 +1810,7 @@ export class ProfileEditorComponent {
       icon: this.privacyStatusIcon(value),
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: this.privacyPalette(value),
       ariaLabel
     };
@@ -2160,66 +2188,6 @@ export class ProfileEditorComponent {
     this.pushProfileUserToContextAndLegacyMirror(user);
   }
 
-  private findNearestFilledImageIndex(fromIndex: number): number {
-    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
-      const right = fromIndex + distance;
-      if (right < this.imageSlots.length && this.imageSlots[right]) {
-        return right;
-      }
-      const left = fromIndex - distance;
-      if (left >= 0 && this.imageSlots[left]) {
-        return left;
-      }
-    }
-    return this.imageSlots.findIndex(slot => Boolean(slot));
-  }
-
-  private async uploadAndRefreshProfileImageSlot(file: File, slotIndex: number): Promise<void> {
-    if (!this.profileUser) {
-      return;
-    }
-    const userId = this.profileUser.id;
-    const previousImage = this.imageSlots[slotIndex] ?? null;
-    this.uploadingImageSlotIndex = slotIndex;
-    this.cdr.markForCheck();
-    try {
-      this.syncActiveUserImageSlotsState(true);
-      const uploadResult = await this.mediaService.uploadImage(userId, `profile-${slotIndex}`, file);
-      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
-      if (!uploadResult.uploaded || !uploadedImageUrl) {
-        this.confirmationDialogService.openInfo('Unable to upload image', {
-          title: 'Upload failed',
-          confirmTone: 'neutral'
-        });
-        return;
-      }
-      this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = uploadedImageUrl;
-      this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-      this.syncActiveUserImageSlotsState(false);
-      if (this.profileUser) {
-        await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
-      }
-    } finally {
-      this.uploadingImageSlotIndex = null;
-      this.cdr.markForCheck();
-    }
-  }
-
-  private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
-    if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
-      return slotIndex;
-    }
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    return firstFilled >= 0 ? firstFilled : 0;
-  }
-
-  private revokeObjectUrl(value: string | null): void {
-    if (value && value.startsWith('blob:')) {
-      URL.revokeObjectURL(value);
-    }
-  }
-
   private async commitProfileForm(showAlert: boolean): Promise<void> {
     if (!this.profileUser) {
       return;
@@ -2332,7 +2300,7 @@ export class ProfileEditorComponent {
     this.menuDispatcher.close();
     this.panel = 'profile';
     this.privacyFabJustSelectedKey = null;
-    this.pendingSlotUploadIndex = null;
+    this.experienceManagerOverlayOpen = false;
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.pendingExperienceDeleteId = null;

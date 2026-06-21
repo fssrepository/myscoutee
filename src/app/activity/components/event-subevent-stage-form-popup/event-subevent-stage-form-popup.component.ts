@@ -170,7 +170,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       icon: this.view.modeIcon,
       palette: this.model.optional ? 'blue' : 'red',
       ariaLabel: 'Sub event optional mode',
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -205,7 +205,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       icon: 'vertical_align_bottom',
       palette: 'default',
       ariaLabel: this.view.insertFieldLabel,
-      shape: 'field'
+      layout: 'field'
     };
   }
 
@@ -227,7 +227,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       icon: this.view.tournamentLeaderboardTypeIcon,
       palette: this.tournamentLeaderboardPalette(value),
       ariaLabel: 'Leaderboard type',
-      shape: 'field'
+      layout: 'field'
     };
   }
 

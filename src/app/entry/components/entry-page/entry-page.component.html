@@ -1,0 +1,46 @@
+<app-entry-landing
+  [authMode]="authMode"
+  [firebaseAuthProfile]="firebaseAuthProfile"
+  [articlesLoading]="landingArticlesLoading"
+  [ideaCards]="landingIdeaCards"
+  [authUnavailable]="entryAuthUnavailable"
+  [authUnavailableLabel]="entryAuthUnavailableLabel"
+  [authLocationRequired]="entryAuthLocationRequired"
+  [authLocationRequiredLabel]="entryAuthLocationRequiredLabel"
+  [networkUnavailable]="entryNetworkUnavailable"
+  [networkUnavailableLabel]="entryNetworkUnavailableLabel"
+  (demoRequested)="openEntryDemo()"
+  (firebaseAuthRequested)="openEntryFirebaseAuth()"
+  (consentRequested)="openEntryConsentPopup(true)"
+  (termsRequested)="openEntryTermsPopup()"
+></app-entry-landing>
+
+<app-document-viewer
+  [config]="entryPrivacyDocumentConfig()"
+  (action)="onEntryPrivacyDocumentAction($event)"
+></app-document-viewer>
+
+<app-document-viewer
+  [config]="entryTermsDocumentConfig()"
+></app-document-viewer>
+
+<app-entry-firebase-auth-popup
+  [open]="showFirebaseAuthPopup"
+  [busy]="firebaseAuthIsBusy"
+  [statusMessage]="firebaseAuthMessage"
+  [isMobileView]="isMobileView"
+  (closeRequested)="closeFirebaseAuthPopup()"
+  (authRequested)="onRequestFirebaseAuth($event)"
+></app-entry-firebase-auth-popup>
+
+<app-confirmation-dialog></app-confirmation-dialog>
+
+<app-profile-onboarding-popup
+  [open]="onboardingOpen"
+  [user]="onboardingUser"
+  [mobile]="isMobileView"
+  [title]="onboardingTitle"
+  [message]="onboardingMessage"
+  (completed)="onOnboardingCompleted($event)"
+  (dismissed)="onOnboardingDismissed()"
+></app-profile-onboarding-popup>

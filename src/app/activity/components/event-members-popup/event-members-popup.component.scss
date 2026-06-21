@@ -271,134 +271,13 @@
   right: -8px;
 }
 
-.activity-members-popup-shell .friends-picker-card {
-  position: relative;
-  /* Changed from min(100%, 320px) to 100% to allow stretching */
-  width: 100%; 
-  min-height: 250px;
-  border-radius: 13px;
-  border: 1px solid rgba(30, 51, 81, 0.24);
-  background-size: cover;
-  background-position: center;
-  overflow: hidden;
-
-  /* Offloads rendering to the GPU to prevent stuttering */
-  will-change: transform;
-}
-
-.activity-members-popup-shell .friends-picker-card.lazy-bg-error {
-  background: linear-gradient(180deg, rgba(251, 243, 243, 0.98) 0%, rgba(233, 218, 220, 0.96) 100%);
-}
-
-.activity-members-popup-shell .friends-picker-card-avatar-fallback {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 2;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  border: 1px solid rgba(198, 61, 61, 0.22);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(249, 232, 232, 0.92) 100%);
-  box-shadow: 0 10px 24px rgba(74, 18, 18, 0.16);
-  color: #c63d3d;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  transform: translate(-50%, -58%);
-  pointer-events: none;
-}
-
-.activity-members-popup-shell .friends-picker-card-avatar-fallback .mat-icon {
-  width: 28px;
-  height: 28px;
-  font-size: 28px;
-  line-height: 28px;
-}
-
-.activity-members-popup-shell .friends-picker-card.lazy-bg-error .friends-picker-card-avatar-fallback {
-  display: inline-flex;
-}
-
-.activity-members-popup-shell .friends-picker-card-add-btn {
-  position: absolute;
-  top: 0.48rem;
-  right: 0.48rem;
-  z-index: 2;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  background: rgba(243, 249, 255, 0.92);
-  color: #275b98;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.activity-members-popup-shell .friends-picker-card-add-btn .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.activity-members-popup-shell .friends-picker-card-add-btn.active {
-  background: #2d7d47;
-  border-color: #20613a;
-  color: #fff;
-}
-
-.activity-members-popup-shell .friends-picker-card-meta {
-  position: absolute;
-  left: 0.52rem;
-  right: 0.52rem;
-  bottom: 0.46rem;
-  z-index: 2;
-}
-
-.activity-members-popup-shell .friends-picker-card-meta h4 {
-  margin: 0;
-  color: #fff;
-  font-size: 0.9rem;
-  font-weight: 800;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
-}
-
-.activity-members-popup-shell .friends-picker-card-meta p {
-  margin: 0.1rem 0 0;
-  color: rgba(245, 249, 255, 0.96);
-  font-size: 0.74rem;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.58);
-}
-
 .activity-members-popup-shell .activity-members-grid {
   align-content: start;
 }
 
 .activity-members-popup-shell .subevent-member-image-card {
-  min-height: 240px;
-  overflow: visible;
-  z-index: 0;
-  isolation: isolate;
-}
-
-.activity-members-popup-shell .activity-member-image-card {
   min-height: 220px;
-}
-
-.activity-members-popup-shell .subevent-member-image-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  z-index: 1;
-  background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
+  z-index: 0;
 }
 
 .activity-members-popup-shell .subevent-member-image-card.member-card-tone-awaiting-approval::before,
@@ -429,94 +308,6 @@
 
 .activity-members-popup-shell .subevent-member-image-card.menu-open {
   z-index: 18;
-}
-
-.activity-members-popup-shell .member-card-status-chip {
-  position: absolute;
-  top: 0.48rem;
-  left: 0.48rem;
-  z-index: 4;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.88);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  box-shadow: 0 3px 10px rgba(10, 20, 34, 0.28);
-}
-
-.activity-members-popup-shell .member-card-status-chip .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-}
-
-.activity-members-popup-shell .subevent-member-menu-anchor {
-  position: absolute;
-  top: 0.48rem;
-  right: 0.48rem;
-  z-index: 24;
-}
-
-.activity-members-popup-shell .subevent-member-profile-trigger {
-  position: absolute;
-  top: auto;
-  right: 0.48rem;
-  bottom: 0.48rem;
-  z-index: 25;
-  border-color: rgba(41, 99, 143, 0.24);
-  background: rgba(232, 246, 251, 0.94);
-  color: #226d83;
-}
-
-.activity-members-popup-shell .subevent-member-menu-anchor.has-profile-view {
-  right: 0.48rem;
-}
-
-.activity-members-popup-shell .subevent-member-menu-trigger {
-  display: block;
-  width: 32px;
-  height: 32px;
-}
-
-:host ::ng-deep .activity-members-popup-shell .subevent-member-menu-trigger .app-menu__trigger {
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
-  border-color: rgba(255, 255, 255, 0.86);
-  background: rgba(243, 249, 255, 0.92);
-  color: #214d85;
-  box-shadow: none;
-}
-
-:host ::ng-deep .activity-members-popup-shell .subevent-member-menu-trigger .app-menu__trigger--open {
-  border-color: rgba(255, 255, 255, 0.92);
-  background: #1f3f63;
-  color: #fff;
-}
-
-:host ::ng-deep .activity-members-popup-shell .subevent-member-menu-trigger .app-menu__trigger .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-}
-
-.activity-members-popup-shell .subevent-member-card-meta h4 {
-  color: #fff;
-}
-
-.activity-members-popup-shell .subevent-member-card-meta p {
-  color: rgba(245, 249, 255, 0.96);
-}
-
-.activity-members-popup-shell .subevent-member-card-status {
-  color: rgba(245, 249, 255, 0.92) !important;
-  font-size: 0.72rem !important;
 }
 
 .activity-members-popup-shell .subevent-member-menu-chevron {
@@ -618,20 +409,6 @@
     aspect-ratio: 3 / 4;
     min-height: 0;
     will-change: transform;
-  }
-
-  .activity-members-popup-shell .friends-picker-card-meta {
-    left: 0.5rem;
-    right: 0.5rem;
-    bottom: 0.5rem;
-  }
-
-  .activity-members-popup-shell .friends-picker-card-meta h4 {
-    font-size: 0.8rem;
-  }
-
-  .activity-members-popup-shell .friends-picker-card-meta p {
-    font-size: 0.67rem;
   }
 
   .activity-members-popup-shell .popup-chat-title-block p {

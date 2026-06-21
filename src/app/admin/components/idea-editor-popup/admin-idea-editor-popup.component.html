@@ -9,7 +9,7 @@
         <div class="idea-editor-header-actions">
           <app-menu
             class="idea-editor-filter-wrap"
-            kind="button-row"
+            kind="inline"
             [model]="ideaFilterMenuModel()"
             (itemSelect)="onIdeaFilterMenuSelect($event)"
           ></app-menu>
@@ -31,7 +31,7 @@
         <div class="idea-editor-language-row" aria-label="Content language" data-i18n-ignore>
           <app-menu
             class="idea-editor-language-menu-wrap"
-            kind="button-row"
+            kind="inline"
             [model]="listLanguageMenuModel()"
             (itemSelect)="onContentLanguageMenuSelect($event)"
           ></app-menu>
@@ -176,7 +176,7 @@
           <div class="idea-editor-language-row idea-editor-form-language-row" aria-label="Content language" data-i18n-ignore>
             <app-menu
               class="idea-editor-language-menu-wrap"
-              kind="button-row"
+              kind="inline"
               [model]="formLanguageMenuModel()"
               (itemSelect)="onContentLanguageMenuSelect($event)"
             ></app-menu>
@@ -207,9 +207,10 @@
           </div>
 
           <app-editable-image-carousel
-            [(imageUrls)]="editDraft.imageUrls"
-            [slotCount]="ideaImageSlotCount"
+            name="ideaImages"
+            [(ngModel)]="editDraft.imageUrls"
             [disabled]="saving"
+            [uploadOwnerId]="actorUserId()"
             ariaLabel="Article image slots"
           ></app-editable-image-carousel>
 

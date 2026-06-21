@@ -1,10 +1,12 @@
 :host {
-  display: block;
+  display: flex;
+  min-width: 0;
 }
 
 .ui-info-card {
   position: relative;
   display: grid;
+  flex: 1 1 auto;
   gap: 0.32rem;
   width: auto;
   max-width: 100%;
@@ -660,6 +662,13 @@ button.ui-info-card__overlay-action {
     inset 0 0 0 1px rgba(111, 38, 38, 0.6);
 }
 
+.ui-info-card__overlay-action--tone-public.ui-info-card__overlay-action--badge {
+  border-color: rgba(46, 111, 178, 0.4);
+  background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);
+  color: #2f6cae;
+  box-shadow: 0 7px 16px rgba(35, 89, 149, 0.18);
+}
+
 .ui-info-card__overlay-action--tone-inactive {
   background: rgba(84, 102, 128, 0.74);
   color: rgba(248, 250, 255, 0.9);
@@ -687,6 +696,13 @@ button.ui-info-card__overlay-action {
 .ui-info-card__overlay-action--tone-selected.ui-info-card__overlay-action--toggle {
   background: linear-gradient(180deg, #e9f7ee 0%, #d6f0de 100%);
   color: #2c7c52;
+}
+
+.ui-info-card__overlay-action--tone-selected.ui-info-card__overlay-action--badge {
+  border-color: rgba(214, 147, 28, 0.58);
+  background: linear-gradient(180deg, #fff8d8 0%, #ffd76a 100%);
+  color: #9b5f00;
+  box-shadow: 0 7px 16px rgba(132, 82, 8, 0.24);
 }
 
 .ui-info-card__overlay-action--tone-woman.ui-info-card__overlay-action--avatar {
@@ -753,14 +769,14 @@ button.ui-info-card__overlay-action {
   align-items: center;
 }
 
-.ui-info-card__actions .app-menu-host--trigger-icon .app-menu__trigger--shape-icon {
+.ui-info-card__actions .app-menu-host--trigger-icon .app-menu__trigger--layout-icon {
   width: 28px;
   height: 28px;
   min-width: 28px;
   min-height: 28px;
 }
 
-.ui-info-card__actions .app-menu-host--trigger-icon .app-menu__trigger--shape-icon .mat-icon {
+.ui-info-card__actions .app-menu-host--trigger-icon .app-menu__trigger--layout-icon .mat-icon {
   width: 15px;
   height: 15px;
   font-size: 15px;
@@ -900,6 +916,11 @@ button.ui-info-card__overlay-action {
   gap: 0.28rem;
 }
 
+.ui-info-card__footer-chips--actions {
+  justify-content: flex-end;
+  margin-top: 0.42rem;
+}
+
 .ui-info-card__footer-chip {
   min-height: 26px;
   padding: 0.14rem 0.46rem;
@@ -911,6 +932,48 @@ button.ui-info-card__overlay-action {
   font-weight: 800;
   display: inline-flex;
   align-items: center;
+  gap: 0.26rem;
+  line-height: 1;
+  font-family: inherit;
+}
+
+button.ui-info-card__footer-chip {
+  cursor: pointer;
+}
+
+.ui-info-card__footer-chip--button {
+  box-shadow: 0 8px 18px rgba(132, 82, 8, 0.12);
+}
+
+.ui-info-card__footer-chip--action-accent {
+  min-height: 32px;
+  padding: 0 0.68rem;
+  gap: 0.3rem;
+  background: linear-gradient(180deg, #fff7e9 0%, #ffedc9 100%);
+  border-color: rgba(201, 144, 39, 0.3);
+  color: #9b6714;
+  box-shadow: 0 4px 10px rgba(132, 82, 8, 0.1);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.ui-info-card__footer-chip--button .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.ui-info-card__footer-chip--action-accent .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+.ui-info-card__footer-chip--button:focus-visible {
+  outline: 2px solid rgba(79, 124, 255, 0.62);
+  outline-offset: 2px;
 }
 
 .ui-info-card__footer-chip.section-social {

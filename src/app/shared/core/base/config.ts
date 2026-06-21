@@ -3,8 +3,11 @@ export interface RouteConfigEntry {
   demoDelayMs?: number;
   requestTimeoutMs?: number;
   intervalMs?: number;
+  mode?: RouteMode | null;
   http?: boolean;
 }
+
+export type RouteMode = 'local' | 'http' | 'memory';
 
 export interface RouteConfig {
   defaultDemoDelayMs: number;
@@ -18,6 +21,7 @@ export interface ResolvedRouteConfig {
   demoDelayMs: number;
   requestTimeoutMs: number;
   intervalMs: number;
+  mode: RouteMode | null;
   http: boolean;
 }
 
@@ -299,12 +303,14 @@ export function resolveRouteConfigEntry(url: string): RouteConfigEntry | null {
 export function resolveRouteConfig(url: string): ResolvedRouteConfig {
   const normalizedUrl = normalizeRouteUrl(url);
   const entry = resolveRouteConfigEntry(normalizedUrl);
+  const configuredMode = normalizeRouteMode(entry?.mode ?? null);
   return {
     routePrefix: entry?.routePrefix ?? normalizedUrl,
     demoDelayMs: normalizeDelayMs(entry?.demoDelayMs ?? ROUTE_CONFIG.defaultDemoDelayMs),
     requestTimeoutMs: normalizeDelayMs(entry?.requestTimeoutMs ?? ROUTE_CONFIG.defaultRequestTimeoutMs),
     intervalMs: normalizeDelayMs(entry?.intervalMs ?? ROUTE_CONFIG.defaultIntervalMs),
-    http: entry?.http === true
+    mode: configuredMode,
+    http: entry?.http === true || configuredMode === 'http'
   };
 }
 
@@ -327,4 +333,8 @@ function isRoutePrefixMatch(url: string, prefix: string): boolean {
 
 function normalizeDelayMs(value: number): number {
   return Math.max(0, Math.trunc(value));
+}
+
+function normalizeRouteMode(value: RouteMode | null | undefined): RouteMode | null {
+  return value === 'local' || value === 'http' || value === 'memory' ? value : null;
 }

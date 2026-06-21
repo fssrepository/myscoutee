@@ -1,19 +1,97 @@
-<article class="ui-image-card">
-  <div class="ui-image-card__media" [appLazyBgImage]="imageUrl">
-    @if (!imageUrl) {
-      <span class="ui-image-card__placeholder">{{ placeholder }}</span>
+<article
+  [ngClass]="rootClassList()"
+  [appLazyBgImage]="resolvedLayout() === 'overlay' ? (resolvedImageUrl() || null) : null"
+  >
+  @if (resolvedLayout() === 'stacked') {
+    <div class="ui-image-card__media" [appLazyBgImage]="resolvedImageUrl() || null">
+      @if (!resolvedImageUrl()) {
+        <span class="ui-image-card__placeholder">{{ resolvedPlaceholderLabel() }}</span>
+      }
+      @if (resolvedLabel()) {
+        <span class="ui-image-card__label">{{ resolvedLabel() }}</span>
+      }
+    </div>
+    <div class="ui-image-card__body">
+      <p class="ui-image-card__title">{{ resolvedTitle() }}</p>
+      @if (resolvedSubtitle()) {
+        <p class="ui-image-card__subtitle">{{ resolvedSubtitle() }}</p>
+      }
+      @if (resolvedDetail()) {
+        <p class="ui-image-card__detail">{{ resolvedDetail() }}</p>
+      }
+    </div>
+  } @else {
+    <span
+      class="ui-image-card__overlay-placeholder"
+      [class.ui-image-card__overlay-placeholder--has-image]="!!resolvedImageUrl()"
+      aria-hidden="true"
+      >
+      <mat-icon>{{ resolvedPlaceholderIcon() }}</mat-icon>
+      @if (resolvedPlaceholderLabel()) {
+        <span>{{ resolvedPlaceholderLabel() }}</span>
+      }
+    </span>
+
+    @if (resolvedLabel()) {
+      <span class="ui-image-card__label ui-image-card__label--overlay">{{ resolvedLabel() }}</span>
     }
-    @if (label) {
-      <span class="ui-image-card__label">{{ label }}</span>
+
+    @if (resolvedStatusChip(); as chip) {
+      <span
+        [ngClass]="statusChipClassList(chip)"
+        [attr.aria-label]="chip.ariaLabel || null"
+        [attr.title]="chip.title || null"
+        >
+        @if (chip.icon) {
+          <mat-icon>{{ chip.icon }}</mat-icon>
+        }
+        @if (chip.label) {
+          <span>{{ chip.label }}</span>
+        }
+      </span>
     }
-  </div>
-  <div class="ui-image-card__body">
-    <p class="ui-image-card__title">{{ title }}</p>
-    @if (subtitle) {
-      <p class="ui-image-card__subtitle">{{ subtitle }}</p>
+
+    @for (position of mediaActionPositions; track position) {
+      @if (hasPositionControls(position)) {
+        <div
+          class="ui-image-card__actions"
+          [ngClass]="'ui-image-card__actions--' + position"
+          >
+          @for (action of mediaActionsFor(position); track action.id) {
+            <button
+              type="button"
+              [ngClass]="mediaActionClassList(action)"
+              [disabled]="action.disabled"
+              [attr.aria-label]="action.ariaLabel || null"
+              [attr.title]="action.title || action.ariaLabel || null"
+              (click)="onMediaAction(action, $event)"
+              >
+              <mat-icon>{{ mediaActionIcon(action) }}</mat-icon>
+            </button>
+          }
+          @if (hasMenuAt(position)) {
+            <app-menu-trigger
+              class="ui-image-card__menu-trigger"
+              [menuId]="sharedMenuId()"
+              kind="select"
+              [title]="sharedMenuTitle()"
+              [trigger]="resolvedSharedMenuTrigger()"
+              [items]="resolvedSharedMenuItems()"
+              [context]="sharedMenuContext"
+            ></app-menu-trigger>
+          }
+        </div>
+      }
     }
-    @if (detail) {
-      <p class="ui-image-card__detail">{{ detail }}</p>
-    }
-  </div>
+
+    <div class="ui-image-card__overlay-meta">
+      <h4 class="ui-image-card__title">{{ resolvedTitle() }}</h4>
+      @if (resolvedSubtitle()) {
+        <p class="ui-image-card__subtitle">{{ resolvedSubtitle() }}</p>
+      }
+      @if (resolvedDetail()) {
+        <p class="ui-image-card__detail">{{ resolvedDetail() }}</p>
+      }
+    </div>
+  }
 </article>

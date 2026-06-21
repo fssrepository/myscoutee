@@ -28,7 +28,6 @@ import {
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
-  CounterBadgePipe,
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -246,8 +245,7 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     AppMenuTriggerComponent,
     EventSubeventStageFormPopupComponent,
     EventSubeventGroupFormPopupComponent,
-    EventSubeventLeaderboardPopupComponent,
-    CounterBadgePipe
+    EventSubeventLeaderboardPopupComponent
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss',
@@ -326,6 +324,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private ownerHydrationSequence = 0;
   private localMutationVersion = 0;
   private casualListRevision = 0;
+  private lastAppliedActivityResourceSyncMs = 0;
 
   protected casualSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
     filters: { revision: 0 }
@@ -353,7 +352,16 @@ export class EventSubeventsPopupComponent implements OnChanges {
   constructor() {
     effect(() => {
       this.ownedAssets.assetListRevision();
+      const resourceSync = this.appCtx.activityResourceSync();
       this.rebuildRenderModel();
+      if (!resourceSync || resourceSync.updatedMs <= this.lastAppliedActivityResourceSyncMs) {
+        return;
+      }
+      this.lastAppliedActivityResourceSyncMs = resourceSync.updatedMs;
+      if (`${this.ownerId ?? ''}`.trim() !== resourceSync.ownerId) {
+        return;
+      }
+      this.bumpCasualSmartListRevision();
     });
   }
 
@@ -729,7 +737,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       ariaLabel: 'Change sub events mode',
       palette: this.displayModePalette(this.displayMode),
       disabled: this.subEventStructureReadOnly(),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -804,7 +812,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected groupActionMenuTrigger(row: EventSubeventsStageRow): AppMenuTrigger {
-    return this.actionMenuTrigger(`Open actions for ${row.groupName}`);
+    return this.actionMenuTrigger(`Open actions for ${row.groupName}`, row.totalPendingCount);
   }
 
   protected casualActionMenuTrigger(item: EventSubeventsItem, index: number): AppMenuTrigger {
@@ -1034,7 +1042,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       closeIcon: 'close',
       ariaLabel,
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       counter: count > 0 ? { value: count, max: 99 } : null
     };
   }
@@ -1055,7 +1063,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       icon: this.resourceSummaryIcon(options.type),
       palette: this.resourceSummaryPalette(options.type),
       surface: 'tinted',
-      layout: 'summary',
+      layout: 'pill',
       counter: pending > 0 ? { value: pending, max: 99 } : null,
       context: options.context
     };
@@ -1624,18 +1632,18 @@ export class EventSubeventsPopupComponent implements OnChanges {
         ? Math.max(0, Math.trunc(Number(this.subEventForm.tournamentAdvancePerGroup) || 0))
         : undefined,
       groups: forceMandatoryTournament
-        ? this.ensureStageGroups(this.subEventFormMode, this.subEventFormSourceIndex, {
+        ? this.resolveStageGroups(this.subEventFormMode, this.subEventFormSourceIndex, {
           ...this.subEventForm,
           groups: this.cloneGroups(baseGroupsSource)
         })
         : [],
-      membersAccepted: existingItem ? this.toPendingCount(existingItem.membersAccepted ?? 0) : Math.min(2, normalizedCapacityMin),
+      membersAccepted: existingItem ? this.toPendingCount(existingItem.membersAccepted ?? 0) : 0,
       membersPending: existingItem
         ? this.toPendingCount(existingItem.membersPending ?? 0)
-        : Math.max(0, normalizedCapacityMax - Math.min(2, normalizedCapacityMin)),
-      carsPending: existingItem ? this.toPendingCount(existingItem.carsPending ?? 0) : 1,
-      accommodationPending: existingItem ? this.toPendingCount(existingItem.accommodationPending ?? 0) : 2,
-      suppliesPending: existingItem ? this.toPendingCount(existingItem.suppliesPending ?? 0) : 3,
+        : 0,
+      carsPending: existingItem ? this.toPendingCount(existingItem.carsPending ?? 0) : 0,
+      accommodationPending: existingItem ? this.toPendingCount(existingItem.accommodationPending ?? 0) : 0,
+      suppliesPending: existingItem ? this.toPendingCount(existingItem.suppliesPending ?? 0) : 0,
       stageStatus: existingItem?.stageStatus ?? (isFirstTournamentStage ? 'RS' : 'A'),
       stageStatusReason: existingItem?.stageStatusReason ?? (isFirstTournamentStage ? 'awaiting-tournament-start' : null),
       stageStatusUpdatedAt: existingItem?.stageStatusUpdatedAt ?? (isFirstTournamentStage ? new Date().toISOString() : null),
@@ -1644,16 +1652,22 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
     if (forceMandatoryTournament) {
       const reconciledGroups = this.reconcileTournamentGroupsForStage(baseItem, this.cloneGroups(baseItem.groups));
-      const totals = this.groupCapacityTotals(reconciledGroups);
-      const accepted = Math.min(this.toPendingCount(baseItem.membersAccepted ?? 0), totals.max);
+      const totals = reconciledGroups.length > 0
+        ? this.groupCapacityTotals(reconciledGroups)
+        : null;
+      const accepted = totals
+        ? Math.min(this.toPendingCount(baseItem.membersAccepted ?? 0), totals.max)
+        : this.toPendingCount(baseItem.membersAccepted ?? 0);
       baseItem = {
         ...baseItem,
         groups: this.cloneGroups(reconciledGroups),
-        tournamentGroupCount: reconciledGroups.length,
-        capacityMin: totals.min,
-        capacityMax: totals.max,
+        tournamentGroupCount: reconciledGroups.length > 0 ? reconciledGroups.length : undefined,
+        capacityMin: totals?.min ?? normalizedCapacityMin,
+        capacityMax: totals?.max ?? normalizedCapacityMax,
         membersAccepted: accepted,
-        membersPending: Math.max(0, totals.max - accepted)
+        membersPending: totals
+          ? Math.max(0, totals.max - accepted)
+          : this.toPendingCount(baseItem.membersPending ?? 0)
       };
     }
 
@@ -2383,26 +2397,19 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private stageRowsForItem(item: EventSubeventsPreparedItem, stageSourceIndex: number, stageId: string): EventSubeventsStageRow[] {
     const groups = this.cloneGroups(item.groups);
     const toneByIndex: Array<'amber' | 'green' | 'mint' | 'teal'> = ['amber', 'green', 'mint', 'teal'];
-    const explicitGroupCount = this.normalizedNonNegativeInt(item.tournamentGroupCount);
-    const stageCapacityMax = Math.max(0, Math.trunc(Number(item.capacityMax) || 0));
-    const groupCapacityMin = Math.max(1, Math.trunc(Number(item.tournamentGroupCapacityMin) || 0) || 1);
-    const inferredGroupCount = stageCapacityMax > 0
-      ? Math.max(1, Math.ceil(stageCapacityMax / groupCapacityMin))
-      : 0;
-    const targetGroupCount = Math.max(groups.length, explicitGroupCount ?? inferredGroupCount, 1);
     const rows: EventSubeventsStageRow[] = [];
     const membersAccepted = this.toPendingCount(item.membersAccepted);
     const carMetrics = item.resourceMetrics.Car;
     const accommodationMetrics = item.resourceMetrics.Accommodation;
     const suppliesMetrics = item.resourceMetrics.Supplies;
 
-    for (let index = 0; index < targetGroupCount; index += 1) {
+    for (let index = 0; index < groups.length; index += 1) {
       const group = groups[index] ?? null;
       const letter = String.fromCharCode(65 + (index % 26));
       const groupName = `${group?.name ?? `Group ${letter}`}`.trim() || `Group ${letter}`;
       const source = group ? this.normalizeGroupSource(group.source) : 'generated';
       const tone = toneByIndex[index % toneByIndex.length];
-      const membersPendingCount = this.toPendingCount(group?.membersPending ?? item.membersPending ?? 6);
+      const membersPendingCount = this.toPendingCount(group?.membersPending ?? item.membersPending ?? 0);
       const membersCapacityMin = Math.max(0, Number(group?.capacityMin ?? item.capacityMin) || 0);
       const membersCapacityMax = Math.max(membersCapacityMin, Number(group?.capacityMax ?? item.capacityMax) || membersCapacityMin);
       rows.push({
@@ -2538,7 +2545,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       name: `Group ${letter}`,
       capacityMin,
       capacityMax,
-      membersPending: 6
+      membersPending: 0
     };
     this.showGroupForm = true;
   }
@@ -2589,7 +2596,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     void this.loadLeaderboardState(stage);
   }
 
-  private ensureStageGroups(
+  private resolveStageGroups(
     mode: 'create' | 'edit',
     sourceIndex: number | null,
     draft: SubEventFormModel
@@ -2609,14 +2616,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return this.cloneGroups(draft.groups);
     }
 
-    return [{
-      id: this.nextId('group'),
-      name: 'Group A',
-      source: 'generated',
-      capacityMin: this.defaultTournamentGroupCapacityMin(draft),
-      capacityMax: this.defaultTournamentGroupCapacityMax(this.defaultTournamentGroupCapacityMin(draft), draft),
-      membersPending: 6
-    }];
+    return [];
   }
 
   private normalizedInputDateRange(startInput: string, endInput: string): { startAt: string; endAt: string } {
@@ -3162,6 +3162,12 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (stage.optional) {
       return {
         groups: this.cloneGroups(reconciledGroups)
+      };
+    }
+    if (reconciledGroups.length === 0) {
+      return {
+        groups: [],
+        tournamentGroupCount: undefined
       };
     }
     const totals = this.groupCapacityTotals(reconciledGroups);
@@ -3921,7 +3927,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       name: '',
       capacityMin: 4,
       capacityMax: 7,
-      membersPending: 6
+      membersPending: 0
     };
   }
 

@@ -4,7 +4,7 @@ import type {
 } from '../components/menu';
 import {
   CARD_MENU_ACTIONS,
-  type CardResolvedMenuAction
+  type CardMenuAction
 } from '../components/card';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
@@ -22,7 +22,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
 export interface ActivityEventInfoCardMenuContext {
   menu: 'activity-event-card';
   subject: ActivityEventInfoCardMenuSubject;
-  action: CardResolvedMenuAction;
+  action: CardMenuAction;
 }
 
 export interface ActivityEventInfoCardMenuConverterOptions {
@@ -74,7 +74,7 @@ export class ActivityEventInfoCardMenuConverter {
     if (!config) {
       return [];
     }
-    const action: CardResolvedMenuAction = {
+    const action: CardMenuAction = {
       id: actionId,
       ...config
     };
@@ -228,7 +228,7 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 
-  private static actionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private static actionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'brown';

@@ -5,14 +5,14 @@ import { environment } from '../../../../../environments/environment';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type {
   ContentLanguage,
-  HelpCenterAuditEntry,
+  HelpCenterAuditEntryDto,
   HelpCenterDocumentKind,
-  HelpCenterRevision,
-  HelpCenterRevisionSaveRequest,
-  HelpCenterSection,
-  HelpCenterState,
-  PrivacyConsentRecord,
-  PrivacyConsentSaveRequest
+  HelpCenterRevisionDto,
+  HelpCenterRevisionSaveRequestDto,
+  HelpCenterSectionDto,
+  HelpCenterStateDto,
+  PrivacyConsentDto,
+  PrivacyConsentSaveRequestDto
 } from '../../contracts';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
@@ -24,7 +24,7 @@ export class HttpHelpCenterService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterState> {
+  async loadState(kind: HelpCenterDocumentKind = 'help', lang?: string | null, contextKey?: string | null): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const requestLang = this.requestLang(lang);
     const params: Record<string, string> = { lang: requestLang };
@@ -34,7 +34,7 @@ export class HttpHelpCenterService {
     }
     const route = `/${documentKind}/active`;
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/${documentKind}/active`, {
+      .get<Partial<HelpCenterStateDto> | null>(`${this.apiBaseUrl}/${documentKind}/active`, {
         params
       })
       .toPromise(), 'Help center request timed out.');
@@ -45,7 +45,7 @@ export class HttpHelpCenterService {
     userId: string,
     revisionId: string,
     revisionVersion?: number
-  ): Promise<PrivacyConsentRecord | null> {
+  ): Promise<PrivacyConsentDto | null> {
     const normalizedUserId = userId.trim();
     const normalizedRevisionId = revisionId.trim();
     if (!normalizedUserId || !normalizedRevisionId) {
@@ -54,7 +54,7 @@ export class HttpHelpCenterService {
     const minimumRevisionVersion = Math.trunc(Number(revisionVersion) || 0);
     const route = '/privacy/consents';
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .get<Partial<PrivacyConsentRecord> | null>(`${this.apiBaseUrl}/privacy/consents`, {
+      .get<Partial<PrivacyConsentDto> | null>(`${this.apiBaseUrl}/privacy/consents`, {
         params: {
           userId: normalizedUserId,
           revisionId: normalizedRevisionId,
@@ -65,10 +65,10 @@ export class HttpHelpCenterService {
     return this.normalizePrivacyConsent(response);
   }
 
-  async savePrivacyConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+  async savePrivacyConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
     const route = '/privacy/consents';
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .post<Partial<PrivacyConsentRecord> | null>(`${this.apiBaseUrl}/privacy/consents`, request)
+      .post<Partial<PrivacyConsentDto> | null>(`${this.apiBaseUrl}/privacy/consents`, request)
       .toPromise(), 'Help center request timed out.');
     const consent = this.normalizePrivacyConsent(response);
     if (!consent) {
@@ -82,7 +82,7 @@ export class HttpHelpCenterService {
     kind: HelpCenterDocumentKind = 'help',
     lang = 'en',
     contextKey?: string | null
-  ): Promise<HelpCenterState> {
+  ): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const params: Record<string, string> = { lang: this.normalizeLang(lang) };
     if (adminUserId.trim()) {
@@ -94,27 +94,27 @@ export class HttpHelpCenterService {
     }
     const route = this.adminRoute(documentKind);
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .get<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}`, {
+      .get<Partial<HelpCenterStateDto> | null>(`${this.apiBaseUrl}/admin/${documentKind}`, {
         params
       })
       .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
-  async saveRevision(request: HelpCenterRevisionSaveRequest, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async saveRevision(request: HelpCenterRevisionSaveRequestDto, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const route = `/admin/${documentKind}/revisions`;
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .post<Partial<HelpCenterState> | null>(`${this.apiBaseUrl}/admin/${documentKind}/revisions`, request)
+      .post<Partial<HelpCenterStateDto> | null>(`${this.apiBaseUrl}/admin/${documentKind}/revisions`, request)
       .toPromise(), 'Help center request timed out.');
     return this.normalizeState(response, documentKind);
   }
 
-  async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async activateRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const route = `/admin/${documentKind}/revisions/activate`;
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .post<Partial<HelpCenterState> | null>(
+      .post<Partial<HelpCenterStateDto> | null>(
         `${this.apiBaseUrl}/admin/${documentKind}/revisions/${encodeURIComponent(revisionId)}/activate`,
         { actorUserId }
       )
@@ -122,11 +122,11 @@ export class HttpHelpCenterService {
     return this.normalizeState(response, documentKind);
   }
 
-  async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterState> {
+  async deleteRevision(revisionId: string, actorUserId: string, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
     const documentKind = this.normalizeKind(kind);
     const route = `/admin/${documentKind}/revisions/delete`;
     const response = await this.routeDelay.withRequestTimeout(route, this.http
-      .request<Partial<HelpCenterState> | null>(
+      .request<Partial<HelpCenterStateDto> | null>(
         'delete',
         `${this.apiBaseUrl}/admin/${documentKind}/revisions/${encodeURIComponent(revisionId)}`,
         { body: { actorUserId } }
@@ -135,19 +135,19 @@ export class HttpHelpCenterService {
     return this.normalizeState(response, documentKind);
   }
 
-  normalizeExternalState(response: Partial<HelpCenterState> | null | undefined, kind: HelpCenterDocumentKind = 'help'): HelpCenterState {
+  normalizeExternalState(response: Partial<HelpCenterStateDto> | null | undefined, kind: HelpCenterDocumentKind = 'help'): HelpCenterStateDto {
     return this.normalizeState(response, this.normalizeKind(kind));
   }
 
-  private normalizeState(response: Partial<HelpCenterState> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterState {
+  private normalizeState(response: Partial<HelpCenterStateDto> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterStateDto {
     const revisions = Array.isArray(response?.revisions)
-      ? response.revisions.map(revision => this.normalizeRevision(revision, kind)).filter((revision): revision is HelpCenterRevision => Boolean(revision))
+      ? response.revisions.map(revision => this.normalizeRevision(revision, kind)).filter((revision): revision is HelpCenterRevisionDto => Boolean(revision))
       : [];
     const activeRevision = response?.activeRevision
       ? this.normalizeRevision(response.activeRevision, kind)
       : null;
     const auditTrail = Array.isArray(response?.auditTrail)
-      ? response.auditTrail.map(entry => this.normalizeAudit(entry, kind)).filter((entry): entry is HelpCenterAuditEntry => Boolean(entry))
+      ? response.auditTrail.map(entry => this.normalizeAudit(entry, kind)).filter((entry): entry is HelpCenterAuditEntryDto => Boolean(entry))
       : [];
     return {
       activeRevision,
@@ -157,7 +157,7 @@ export class HttpHelpCenterService {
     };
   }
 
-  private normalizeRevision(value: Partial<HelpCenterRevision> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterRevision | null {
+  private normalizeRevision(value: Partial<HelpCenterRevisionDto> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterRevisionDto | null {
     const id = `${value?.id ?? ''}`.trim();
     const version = Math.max(0, Math.trunc(Number(value?.version) || 0));
     if (!id || version <= 0) {
@@ -176,7 +176,7 @@ export class HttpHelpCenterService {
         || this.defaultDescription(kind),
       headerColor: this.normalizeHeaderColor(value?.headerColor),
       sections: Array.isArray(value?.sections)
-        ? value.sections.map(section => this.normalizeSection(section)).filter((section): section is HelpCenterSection => Boolean(section))
+        ? value.sections.map(section => this.normalizeSection(section)).filter((section): section is HelpCenterSectionDto => Boolean(section))
         : [],
       active: value?.active === true,
       createdAtIso: `${value?.createdAtIso ?? ''}`.trim(),
@@ -186,7 +186,7 @@ export class HttpHelpCenterService {
     };
   }
 
-  private normalizeSection(value: Partial<HelpCenterSection> | null | undefined): HelpCenterSection | null {
+  private normalizeSection(value: Partial<HelpCenterSectionDto> | null | undefined): HelpCenterSectionDto | null {
     const id = `${value?.id ?? ''}`.trim();
     const title = `${value?.title ?? ''}`.trim();
     const contentHtml = `${value?.contentHtml ?? ''}`.trim();
@@ -205,7 +205,7 @@ export class HttpHelpCenterService {
     };
   }
 
-  private normalizePanelSpan(value: string | null | undefined): HelpCenterSection['panelSpan'] {
+  private normalizePanelSpan(value: string | null | undefined): HelpCenterSectionDto['panelSpan'] {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     if (normalized === 'span-1' || normalized === 'compact' || normalized === 'single' || normalized === 'one' || normalized === '1') {
       return 'span-1';
@@ -236,7 +236,7 @@ export class HttpHelpCenterService {
     return result;
   }
 
-  private normalizeAudit(value: Partial<HelpCenterAuditEntry> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterAuditEntry | null {
+  private normalizeAudit(value: Partial<HelpCenterAuditEntryDto> | null | undefined, kind: HelpCenterDocumentKind): HelpCenterAuditEntryDto | null {
     const id = `${value?.id ?? ''}`.trim();
     const action = value?.action;
     if (!id || (action !== 'seed' && action !== 'create' && action !== 'update' && action !== 'activate' && action !== 'delete')) {
@@ -256,7 +256,7 @@ export class HttpHelpCenterService {
     };
   }
 
-  private normalizePrivacyConsent(value: Partial<PrivacyConsentRecord> | null | undefined): PrivacyConsentRecord | null {
+  private normalizePrivacyConsent(value: Partial<PrivacyConsentDto> | null | undefined): PrivacyConsentDto | null {
     const userId = `${value?.userId ?? ''}`.trim();
     const revisionId = `${value?.revisionId ?? ''}`.trim();
     if (!userId || !revisionId) {
@@ -397,14 +397,14 @@ export class HttpHelpCenterService {
       });
   }
 
-  private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevision['headerColor'] {
+  private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevisionDto['headerColor'] {
     switch (`${value ?? ''}`.trim()) {
       case 'blue':
       case 'green':
       case 'rose':
       case 'violet':
       case 'slate':
-        return value as HelpCenterRevision['headerColor'];
+        return value as HelpCenterRevisionDto['headerColor'];
       default:
         return 'amber';
     }

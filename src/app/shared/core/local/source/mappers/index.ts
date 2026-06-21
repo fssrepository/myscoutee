@@ -8,6 +8,7 @@ export {
 } from './activity.mapper';
 export { LocalContactsMapper } from './contacts.mapper';
 export { LocalActivityEventsMapper } from './event.mapper';
+export { LocalHelpCenterMapper } from './help-center.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
 export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';
 export { LocalChatThreadMapper } from './chat-thread.mapper';

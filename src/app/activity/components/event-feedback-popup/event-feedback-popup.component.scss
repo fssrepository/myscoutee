@@ -957,8 +957,7 @@ app-smart-list.event-feedback-list-surface {
 .event-feedback-card-viewport-mobile .event-feedback-carousel-identity-card,
 .event-feedback-card-viewport-mobile .event-feedback-form,
 .event-feedback-card-viewport-mobile .event-feedback-question,
-.event-feedback-card-viewport-mobile .event-feedback-options,
-.event-feedback-card-viewport-mobile .event-feedback-option-btn {
+.event-feedback-card-viewport-mobile .event-feedback-option-menu {
   touch-action: pan-x pan-y;
 }
 
@@ -1166,131 +1165,27 @@ app-info-card.event-feedback-carousel-info-card {
   color: rgba(38, 63, 97, 0.58);
 }
 
-.event-feedback-options {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1rem;
+.event-feedback-option-menu {
+  --app-menu-tabs-items-gap: 1rem;
+  --app-menu-tabs-item-flex-basis: 9rem;
+  --app-menu-tabs-item-min-width: 8rem;
+  --app-menu-tabs-item-min-height: 32px;
+  --app-menu-tabs-item-padding: 0.28rem 0.48rem;
+  --app-menu-tabs-item-font-size: 0.66rem;
 }
 
-.event-feedback-option-btn {
-  border: 1px solid rgba(33, 63, 103, 0.2);
-  border-radius: 10px;
-  color: #1f3f67;
-  min-height: 32px;
-  padding: 0.28rem 0.34rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.18rem;
-  font-size: 0.66rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease;
+.event-feedback-option-menu-primary,
+.event-feedback-option-menu-secondary {
+  --app-menu-tabs-item-flex-basis: 9rem;
+  --app-menu-tabs-item-min-width: 8rem;
 }
 
-.event-feedback-option-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.event-feedback-options-traits {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-
-.event-feedback-option-btn-trait {
-  justify-content: flex-start;
-  min-height: 38px;
-  padding-inline: 0.5rem;
-}
-
-.event-feedback-option-btn:active {
-  transform: scale(0.98);
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-sky {
-  border-color: rgba(58, 106, 171, 0.28);
-  background: linear-gradient(180deg, #f4f9ff 0%, #e8f2ff 100%);
-  color: #295689;
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-aqua {
-  border-color: rgba(63, 143, 154, 0.28);
-  background: linear-gradient(180deg, #f1fbfc 0%, #e2f5f8 100%);
-  color: #2c6b73;
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-violet {
-  border-color: rgba(132, 93, 179, 0.3);
-  background: linear-gradient(180deg, #f8f3ff 0%, #efe6ff 100%);
-  color: #5e3e8f;
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-mint {
-  border-color: rgba(59, 136, 94, 0.28);
-  background: linear-gradient(180deg, #f2fbf4 0%, #e6f4eb 100%);
-  color: #2b6a47;
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-amber {
-  border-color: rgba(183, 132, 62, 0.28);
-  background: linear-gradient(180deg, #fff8ef 0%, #ffefda 100%);
-  color: #94601f;
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-slate {
-  border-color: rgba(96, 112, 139, 0.28);
-  background: linear-gradient(180deg, #f5f7fb 0%, #e8edf5 100%);
-  color: #4f607c;
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-sky.is-selected {
-  border-color: rgba(36, 89, 156, 0.5);
-  background: linear-gradient(180deg, #deecff 0%, #d0e2ff 100%);
-  color: #1f4e82;
-  box-shadow: inset 0 0 0 1px rgba(33, 85, 153, 0.18);
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-aqua.is-selected {
-  border-color: rgba(42, 124, 134, 0.48);
-  background: linear-gradient(180deg, #d8f2f5 0%, #c8e8ed 100%);
-  color: #225a61;
-  box-shadow: inset 0 0 0 1px rgba(42, 124, 134, 0.18);
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-violet.is-selected {
-  border-color: rgba(119, 67, 168, 0.5);
-  background: linear-gradient(180deg, #eeddff 0%, #e3d1ff 100%);
-  color: #532f86;
-  box-shadow: inset 0 0 0 1px rgba(119, 67, 168, 0.2);
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-mint.is-selected {
-  border-color: rgba(51, 127, 87, 0.5);
-  background: linear-gradient(180deg, #def5e5 0%, #d1ebdc 100%);
-  color: #22623f;
-  box-shadow: inset 0 0 0 1px rgba(51, 127, 87, 0.2);
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-amber.is-selected {
-  border-color: rgba(165, 113, 40, 0.5);
-  background: linear-gradient(180deg, #ffe9c8 0%, #ffddb1 100%);
-  color: #805018;
-  box-shadow: inset 0 0 0 1px rgba(165, 113, 40, 0.18);
-}
-
-.event-feedback-option-btn.event-feedback-option-tone-slate.is-selected {
-  border-color: rgba(81, 98, 128, 0.48);
-  background: linear-gradient(180deg, #dde5f0 0%, #d0dbe8 100%);
-  color: #41516b;
-  box-shadow: inset 0 0 0 1px rgba(81, 98, 128, 0.18);
-}
-
-.event-feedback-option-btn .mat-icon {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
-  line-height: 14px;
+.event-feedback-option-menu-traits {
+  --app-menu-tabs-items-gap: 0.5rem;
+  --app-menu-tabs-item-flex-basis: calc(50% - 0.25rem);
+  --app-menu-tabs-item-min-width: min(24rem, 100%);
+  --app-menu-tabs-item-min-height: 38px;
+  --app-menu-tabs-item-padding: 0.36rem 0.5rem;
 }
 
 .event-feedback-carousel {
@@ -1500,19 +1395,24 @@ app-info-card.event-feedback-carousel-info-card {
     padding: 0.08rem 0.36rem;
   }
 
-  .event-feedback-options {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.24rem;
+  .event-feedback-option-menu {
+    --app-menu-tabs-items-gap: 0.24rem;
+    --app-menu-tabs-item-flex-basis: 9rem;
+    --app-menu-tabs-item-min-width: 8rem;
+    --app-menu-tabs-item-min-height: 30px;
+    --app-menu-tabs-item-padding: 0.22rem 0.38rem;
+    --app-menu-tabs-item-font-size: 0.63rem;
   }
 
   .event-feedback-question h5 {
     font-size: 0.74rem;
   }
 
-  .event-feedback-option-btn {
-    min-height: 30px;
-    padding: 0.22rem 0.3rem;
-    font-size: 0.63rem;
+  .event-feedback-option-menu-primary,
+  .event-feedback-option-menu-secondary,
+  .event-feedback-option-menu-traits {
+    --app-menu-tabs-item-flex-basis: 9rem;
+    --app-menu-tabs-item-min-width: 8rem;
   }
 
   .event-feedback-form {

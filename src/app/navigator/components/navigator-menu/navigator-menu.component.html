@@ -11,7 +11,7 @@
         >
         <app-menu
           class="navigator-header-actions"
-          kind="button-row"
+          kind="inline"
           [model]="navigatorHeaderActionMenuModel()"
           (itemSelect)="onNavigatorHeaderActionMenuSelect($event)"
         ></app-menu>
@@ -80,14 +80,16 @@
         }
         @if (isAdminMode()) {
           <app-menu
-            kind="shortcut-grid"
+            kind="inline"
+            layout="grid"
             [model]="adminNavigatorMenuModel()"
             [value]="adminNavigatorMenuValues()"
             (itemSelect)="onAdminNavigatorMenuSelect($event)"
           ></app-menu>
         } @else {
           <app-menu
-            kind="shortcut-grid"
+            kind="inline"
+            layout="grid"
             [model]="navigatorMenuModel()"
             [value]="navigatorMenuValues()"
             (itemSelect)="onNavigatorMenuSelect($event)"

@@ -324,114 +324,82 @@ export class EventFeedbackPopupStateService {
     this.eventFeedbackIndex.set(currentIndex + 1);
   }
 
-  public selectEventFeedbackPrimary(optionValue: string, event?: Event): void {
-    event?.stopPropagation();
-    const card = this.activeEventFeedbackCard();
-    if (!card || !card.primaryOptions.some(option => option.value === optionValue)) {
-      return;
-    }
-    this.eventFeedbackCards.update(cards => {
-      const idx = this.eventFeedbackIndex();
-      const updated = [...cards];
-      updated[idx] = { ...updated[idx], answerPrimary: optionValue };
-      return updated;
+  public setEventFeedbackPrimaryValue(cardId: string, value: unknown): void {
+    const optionValue = this.normalizeFeedbackControlValue(value);
+    this.updateEventFeedbackCardById(cardId, card => {
+      if (!optionValue || !card.primaryOptions.some(option => option.value === optionValue)) {
+        return card;
+      }
+      return card.answerPrimary === optionValue ? card : { ...card, answerPrimary: optionValue };
     });
   }
 
-  public selectEventFeedbackSecondary(optionValue: string, event?: Event): void {
-    event?.stopPropagation();
-    const card = this.activeEventFeedbackCard();
-    if (!card || !card.secondaryOptions.some(option => option.value === optionValue)) {
-      return;
-    }
-    this.eventFeedbackCards.update(cards => {
-      const idx = this.eventFeedbackIndex();
-      const updated = [...cards];
-      updated[idx] = { ...updated[idx], answerSecondary: optionValue };
-      return updated;
+  public setEventFeedbackSecondaryValue(cardId: string, value: unknown): void {
+    const optionValue = this.normalizeFeedbackControlValue(value);
+    this.updateEventFeedbackCardById(cardId, card => {
+      if (!optionValue || !card.secondaryOptions.some(option => option.value === optionValue)) {
+        return card;
+      }
+      return card.answerSecondary === optionValue ? card : { ...card, answerSecondary: optionValue };
     });
   }
 
-  public isEventFeedbackPrimarySelected(optionValue: string): boolean {
-    return this.activeEventFeedbackCard()?.answerPrimary === optionValue;
+  public setEventFeedbackTraitValues(cardId: string, value: unknown): void {
+    const requestedValues = Array.isArray(value)
+      ? value
+      : value === null || value === undefined || value === ''
+        ? []
+        : [value];
+    this.updateEventFeedbackCardById(cardId, card => {
+      const allowedTraitIds = new Set(card.traitOptions.map(option => option.id));
+      const selectedTraitIds: string[] = [];
+      for (const requestedValue of requestedValues) {
+        const traitId = this.normalizeFeedbackControlValue(requestedValue);
+        if (!traitId || !allowedTraitIds.has(traitId) || selectedTraitIds.includes(traitId)) {
+          continue;
+        }
+        selectedTraitIds.push(traitId);
+        if (selectedTraitIds.length >= 3) {
+          break;
+        }
+      }
+      if (this.areStringArraysEqual(card.selectedTraitIds, selectedTraitIds)) {
+        return card;
+      }
+      return { ...card, selectedTraitIds };
+    });
   }
 
-  public isEventFeedbackSecondarySelected(optionValue: string): boolean {
-    return this.activeEventFeedbackCard()?.answerSecondary === optionValue;
-  }
-
-  public toggleEventFeedbackTrait(traitId: string, event?: Event): void {
-    event?.stopPropagation();
-    const card = this.activeEventFeedbackCard();
-    const normalizedTraitId = traitId.trim();
-    if (!card || !normalizedTraitId || !card.traitOptions.some(option => option.id === normalizedTraitId)) {
+  private updateEventFeedbackCardById(
+    cardId: string,
+    updater: (card: AppTypes.EventFeedbackCard) => AppTypes.EventFeedbackCard
+  ): void {
+    const normalizedCardId = cardId.trim();
+    if (!normalizedCardId) {
       return;
     }
     this.eventFeedbackCards.update(cards => {
-      const idx = this.eventFeedbackIndex();
-      const currentCard = cards[idx];
-      if (!currentCard) {
+      const cardIndex = cards.findIndex(card => card.id === normalizedCardId);
+      if (cardIndex < 0) {
         return cards;
       }
-      const selected = new Set(currentCard.selectedTraitIds ?? []);
-      if (selected.has(normalizedTraitId)) {
-        selected.delete(normalizedTraitId);
-      } else if (selected.size < 3) {
-        selected.add(normalizedTraitId);
+      const currentCard = cards[cardIndex];
+      const updatedCard = updater(currentCard);
+      if (updatedCard === currentCard) {
+        return cards;
       }
-      const updated = [...cards];
-      updated[idx] = {
-        ...currentCard,
-        selectedTraitIds: [...selected]
-      };
-      return updated;
+      const updatedCards = [...cards];
+      updatedCards[cardIndex] = updatedCard;
+      return updatedCards;
     });
   }
 
-  public isEventFeedbackTraitSelected(traitId: string): boolean {
-    return Boolean(this.activeEventFeedbackCard()?.selectedTraitIds?.includes(traitId));
+  private normalizeFeedbackControlValue(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : `${value ?? ''}`.trim();
   }
 
-  public isEventFeedbackTraitDisabled(traitId: string): boolean {
-    const card = this.activeEventFeedbackCard();
-    if (!card) {
-      return false;
-    }
-    return !card.selectedTraitIds.includes(traitId) && card.selectedTraitIds.length >= 3;
-  }
-
-  public eventFeedbackOptionToneClass(card: AppTypes.EventFeedbackCard, option: AppTypes.EventFeedbackOption): string {
-    const tone = this.feedbackToneFromOptionValue(option.value);
-    return `event-feedback-option-tone-${tone}`;
-  }
-
-  private feedbackToneFromOptionValue(optionValue: string): string {
-    switch (optionValue.trim().toLowerCase()) {
-      case 'excellent':
-      case 'great':
-      case 'yes':
-        return 'sky';
-      case 'good':
-      case 'reliable':
-        return 'aqua';
-      case 'mixed':
-      case 'communication':
-      case 'neutral':
-      case 'maybe':
-        return 'violet';
-      case 'needs-work':
-      case 'resources':
-      case 'context':
-        return 'mint';
-      case 'timing':
-      case 'rough':
-        return 'amber';
-      case 'none':
-      case 'no':
-        return 'slate';
-      default:
-        return 'sky';
-    }
+  private areStringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
+    return left.length === right.length && left.every((value, index) => value === right[index]);
   }
 
   public canSubmitActiveEventFeedback(): boolean {

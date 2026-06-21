@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { HelpCenterState, LandingContentState } from '../../contracts';
+import type { HelpCenterStateDto, LandingContentStateDto } from '../../contracts';
 import type { UserLocationEligibilityResponseDto } from '../../contracts/user.interface';
 import { HttpHelpCenterService } from './help-center.service';
 import { HttpIdeaPostsService } from './idea-posts.service';
@@ -16,10 +16,10 @@ export class HttpLandingContentService {
   private readonly ideaPosts = inject(HttpIdeaPostsService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadContent(): Promise<LandingContentState> {
+  async loadContent(): Promise<LandingContentStateDto> {
     type LandingContentResponse = {
-      privacy?: Partial<HelpCenterState> | null;
-      terms?: Partial<HelpCenterState> | null;
+      privacy?: Partial<HelpCenterStateDto> | null;
+      terms?: Partial<HelpCenterStateDto> | null;
       ideas?: unknown;
       loginAvailability?: Partial<UserLocationEligibilityResponseDto> | null;
     };

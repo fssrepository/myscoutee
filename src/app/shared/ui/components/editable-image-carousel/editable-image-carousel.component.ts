@@ -3,16 +3,16 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
-  EventEmitter,
+  forwardRef,
   HostBinding,
   HostListener,
   inject,
   Input,
   OnChanges,
-  Output,
   SimpleChanges,
   ViewChild
 } from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { MediaService } from '../../../core';
@@ -23,28 +23,38 @@ import { ProgressIndicatorComponent } from '../progress-indicator';
   selector: 'app-editable-image-carousel',
   standalone: true,
   imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent],
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => EditableImageCarouselComponent),
+      multi: true
+    }
+  ],
   templateUrl: './editable-image-carousel.component.html',
   styleUrl: './editable-image-carousel.component.scss'
 })
-export class EditableImageCarouselComponent implements OnChanges {
+export class EditableImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @ViewChild('carouselViewport')
   private carouselViewportRef?: ElementRef<HTMLDivElement>;
 
   private readonly media = inject(MediaService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
-  @Input() imageUrls: readonly string[] | null = [];
   @Input() slotCount = 8;
   @Input() disabled = false;
   @Input() compact = false;
+  @Input() previewMode = false;
   @Input() ariaLabel = 'Image slots';
-  @Input() primarySlotIndex = 0;
-
-  @Output() imageUrlsChange = new EventEmitter<string[]>();
+  @Input() uploadOwnerId = '';
+  @Input() uploadEntityId = 'image';
 
   protected carouselIndex = 0;
   protected uploadingSlotIndex: number | null = null;
   private localImageUrls: string[] = [];
+  private controlDisabled = false;
+  private onValueChange: (imageUrls: string[]) => void = () => {};
+  private onTouched: () => void = () => {};
+  private internalSelectedSlotIndex = 0;
   private carouselScrollLockTargetIndex: number | null = null;
   private carouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -56,20 +66,45 @@ export class EditableImageCarouselComponent implements OnChanges {
     return this.compact;
   }
 
+  @HostBinding('class.editable-image-carousel-host--preview')
+  protected get previewClass(): boolean {
+    return this.previewMode;
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['imageUrls']) {
-      this.localImageUrls = this.normalizedInputImageUrls();
-    }
     if (changes['slotCount']) {
       this.carouselIndex = this.clampPageIndex(this.carouselIndex);
       this.scheduleViewportSync('auto');
     }
+    this.internalSelectedSlotIndex = this.clampSlotIndex(this.internalSelectedSlotIndex);
+    this.emitVisibleSlotSelection();
+  }
+
+  writeValue(imageUrls: readonly string[] | null | undefined): void {
+    this.localImageUrls = this.normalizedImageUrls(imageUrls);
+    this.internalSelectedSlotIndex = this.clampSlotIndex(this.internalSelectedSlotIndex);
+    this.emitVisibleSlotSelection();
+    this.refreshView();
+  }
+
+  registerOnChange(fn: (imageUrls: string[]) => void): void {
+    this.onValueChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.controlDisabled = isDisabled;
+    this.refreshView();
   }
 
   @HostListener('window:resize')
   protected onResize(): void {
     this.carouselIndex = this.clampPageIndex(this.carouselIndex);
     this.scheduleViewportSync('auto');
+    this.emitVisibleSlotSelection();
   }
 
   protected imageSlots(): Array<string | null> {
@@ -105,6 +140,7 @@ export class EditableImageCarouselComponent implements OnChanges {
     event?.stopPropagation();
     this.carouselIndex = this.clampPageIndex(index);
     this.scheduleViewportSync('smooth');
+    this.emitVisibleSlotSelection();
   }
 
   protected onCarouselScroll(): void {
@@ -124,16 +160,38 @@ export class EditableImageCarouselComponent implements OnChanges {
       return;
     }
     this.carouselIndex = nextPageIndex;
+    this.emitVisibleSlotSelection();
   }
 
   protected isUploading(slotIndex: number): boolean {
     return this.uploadingSlotIndex === this.clampSlotIndex(slotIndex);
   }
 
-  protected openSlot(input: HTMLInputElement, event?: Event): void {
+  protected isSelected(slotIndex: number): boolean {
+    return this.normalizedSelectedSlotIndex() === this.clampSlotIndex(slotIndex);
+  }
+
+  protected selectedPreviewUrl(slots: readonly (string | null)[]): string | null {
+    return slots[this.previewSlotIndex(slots)] ?? null;
+  }
+
+  protected isSelectedPreviewUploading(slots: readonly (string | null)[]): boolean {
+    return this.uploadingSlotIndex !== null && this.uploadingSlotIndex === this.previewSlotIndex(slots);
+  }
+
+  protected openSlot(input: HTMLInputElement, slotIndex: number, imageUrl: string | null, event?: Event): void {
     event?.stopPropagation();
-    if (this.disabled || this.uploadingSlotIndex !== null) {
+    this.onTouched();
+    if (this.isDisabled() || this.uploadingSlotIndex !== null) {
       return;
+    }
+    const normalizedSlotIndex = this.clampSlotIndex(slotIndex);
+    if (this.previewMode) {
+      const shouldOnlySelect = Boolean(imageUrl) && !this.isSelected(normalizedSlotIndex);
+      this.emitSlotSelection(normalizedSlotIndex);
+      if (shouldOnlySelect) {
+        return;
+      }
     }
     input.click();
   }
@@ -143,7 +201,8 @@ export class EditableImageCarouselComponent implements OnChanges {
     const input = event.target instanceof HTMLInputElement ? event.target : null;
     const file = input?.files?.[0] ?? null;
     const normalizedSlotIndex = this.clampSlotIndex(slotIndex);
-    if (!file || this.disabled || this.uploadingSlotIndex !== null) {
+    this.onTouched();
+    if (!file || this.isDisabled() || this.uploadingSlotIndex !== null) {
       return;
     }
     this.carouselIndex = this.pageForSlot(normalizedSlotIndex);
@@ -151,14 +210,17 @@ export class EditableImageCarouselComponent implements OnChanges {
     this.uploadingSlotIndex = normalizedSlotIndex;
     this.refreshView();
     try {
-      const result = await this.media.uploadImage('admin', 'shared', file);
+      const result = await this.media.uploadImage(
+        this.uploadOwnerIdForRequest(),
+        `${this.uploadEntityId ?? ''}`.trim(),
+        file
+      );
       if (!result.uploaded || !result.imageUrl) {
         return;
       }
       const slots = this.imageSlots();
       slots[normalizedSlotIndex] = result.imageUrl;
       this.updateUrls(slots);
-      void this.copyToClipboard(result.imageUrl);
     } finally {
       this.uploadingSlotIndex = null;
       if (input) {
@@ -175,18 +237,28 @@ export class EditableImageCarouselComponent implements OnChanges {
 
   protected removeSlot(_imageUrl: string, slotIndex: number, event?: Event): void {
     event?.stopPropagation();
+    this.onTouched();
     const slots = this.imageSlots();
     slots[this.clampSlotIndex(slotIndex)] = null;
     this.updateUrls(slots);
   }
 
-  private normalizedInputImageUrls(): string[] {
-    return Array.from(new Set((this.imageUrls ?? []).map(url => `${url ?? ''}`.trim()).filter(Boolean)));
+  protected isDisabled(): boolean {
+    return this.disabled || this.controlDisabled;
+  }
+
+  private normalizedImageUrls(imageUrls: readonly string[] | null | undefined): string[] {
+    return Array.from(new Set((imageUrls ?? []).map(url => `${url ?? ''}`.trim()).filter(Boolean)));
+  }
+
+  private uploadOwnerIdForRequest(): string {
+    const ownerId = `${this.uploadOwnerId ?? ''}`.trim();
+    return ownerId;
   }
 
   private updateUrls(slots: readonly (string | null)[]): void {
     this.localImageUrls = this.urlsFromSlots(slots);
-    this.imageUrlsChange.emit([...this.localImageUrls]);
+    this.onValueChange([...this.localImageUrls]);
     this.refreshView();
   }
 
@@ -273,6 +345,44 @@ export class EditableImageCarouselComponent implements OnChanges {
       return 1;
     }
     return Math.max(1, Math.min(24, parsed));
+  }
+
+  private normalizedSelectedSlotIndex(): number | null {
+    if (!this.previewMode) {
+      return null;
+    }
+    const parsed = Math.trunc(Number(this.internalSelectedSlotIndex));
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed >= this.normalizedSlotCount()) {
+      return null;
+    }
+    return parsed;
+  }
+
+  private emitSlotSelection(slotIndex: number): void {
+    this.internalSelectedSlotIndex = this.clampSlotIndex(slotIndex);
+  }
+
+  private previewSlotIndex(slots: readonly (string | null)[]): number {
+    const selectedSlotIndex = this.normalizedSelectedSlotIndex();
+    if (selectedSlotIndex !== null) {
+      return selectedSlotIndex;
+    }
+    const firstFilledSlotIndex = slots.findIndex(slot => Boolean(slot?.trim()));
+    return firstFilledSlotIndex >= 0 ? firstFilledSlotIndex : 0;
+  }
+
+  private emitVisibleSlotSelection(): void {
+    if (!this.previewMode || this.slotsPerPage() !== 1) {
+      return;
+    }
+    const visibleSlotIndex = this.pages()[this.carouselIndex]?.[0];
+    if (visibleSlotIndex === undefined) {
+      return;
+    }
+    if (this.normalizedSelectedSlotIndex() === this.clampSlotIndex(visibleSlotIndex)) {
+      return;
+    }
+    this.emitSlotSelection(visibleSlotIndex);
   }
 
   private refreshView(): void {

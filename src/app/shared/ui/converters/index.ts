@@ -26,6 +26,11 @@ export {
   type ActivityRateMenuSelection,
   type ActivityRateMenuSubject
 } from './activity-rate-menu.converter';
+export {
+  HelpCenterRevisionDocumentViewerConverter,
+  type HelpCenterRevisionDocumentViewerConfigOptions,
+  type HelpCenterRevisionDocumentViewerSectionMode
+} from './help-center-revision-document-viewer.converter';
 export { EventFeedbackDeckConverter } from './event-feedback-deck.converter';
 export {
   EventFeedbackInfoCardConverter,

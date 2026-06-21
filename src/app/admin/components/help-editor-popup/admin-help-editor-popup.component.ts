@@ -10,10 +10,10 @@ import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
   HelpCenterHeaderColor,
-  HelpCenterRevision,
+  HelpCenterRevisionDto,
   HelpCenterSectionPanelSpan,
-  HelpCenterSection,
-  HelpCenterState
+  HelpCenterSectionDto,
+  HelpCenterStateDto
 } from '../../../shared/core/contracts';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
@@ -69,7 +69,7 @@ interface HelpEditorRevisionDraft {
 interface HelpEditorRevisionRow {
   id: string;
   kind: 'revision' | 'draft';
-  revision: HelpCenterRevision | null;
+  revision: HelpCenterRevisionDto | null;
 }
 
 type HelpEditorDocumentMenuItemId =
@@ -110,7 +110,7 @@ interface HelpEditorLanguageMenuContext {
   styleUrl: './admin-help-editor-popup.component.scss'
 })
 export class AdminHelpEditorPopupComponent {
-  private static readonly EXPLANATION_IMAGE_SLOT_COUNT = 8;
+  private static readonly IMAGE_LIMIT = 8;
   private static readonly LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
   private static readonly FALLBACK_SPAN_2_SECTION_IDS = new Set([
     'affinity-network',
@@ -162,7 +162,6 @@ export class AdminHelpEditorPopupComponent {
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected selectedExplanationContextKey = 'home.game';
-  protected readonly explanationImageSlotCount = AdminHelpEditorPopupComponent.EXPLANATION_IMAGE_SLOT_COUNT;
   protected documentMenuModel(): AppMenuModel<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
     const disabled = this.loading() || this.isAnyActionPending();
     return {
@@ -372,7 +371,7 @@ export class AdminHelpEditorPopupComponent {
     this.error = '';
     try {
       const adminUserId = this.actorUserId();
-      const stateLoads: Array<Promise<HelpCenterState>> = [
+      const stateLoads: Array<Promise<HelpCenterStateDto>> = [
         this.helpCenter.loadAdminState(
           adminUserId,
           this.documentKind,
@@ -635,7 +634,7 @@ export class AdminHelpEditorPopupComponent {
     this.beginEditingDraft(this.emptyDraft(null));
   }
 
-  protected currentState(): HelpCenterState | null {
+  protected currentState(): HelpCenterStateDto | null {
     if (this.documentKind === 'privacy') {
       return this.helpCenter.privacyState();
     }
@@ -648,7 +647,7 @@ export class AdminHelpEditorPopupComponent {
     return this.helpCenter.state();
   }
 
-  protected revisions(): HelpCenterRevision[] {
+  protected revisions(): HelpCenterRevisionDto[] {
     const revisions = this.currentState()?.revisions ?? [];
     if (this.documentKind !== 'explanation') {
       return revisions;
@@ -678,7 +677,7 @@ export class AdminHelpEditorPopupComponent {
     return rows;
   }
 
-  protected activeRevision(): HelpCenterRevision | null {
+  protected activeRevision(): HelpCenterRevisionDto | null {
     const active = this.currentState()?.activeRevision ?? null;
     if (this.documentKind !== 'explanation') {
       return active;
@@ -689,7 +688,7 @@ export class AdminHelpEditorPopupComponent {
     return this.revisions().find(revision => revision.active) ?? null;
   }
 
-  protected selectedRevision(): HelpCenterRevision | null {
+  protected selectedRevision(): HelpCenterRevisionDto | null {
     const revisions = this.revisions();
     return revisions.find(revision => revision.id === this.selectedRevisionId)
       ?? this.activeRevision()
@@ -697,11 +696,11 @@ export class AdminHelpEditorPopupComponent {
       ?? null;
   }
 
-  protected isRevisionOpen(revision: HelpCenterRevision): boolean {
+  protected isRevisionOpen(revision: HelpCenterRevisionDto): boolean {
     return this.openRevisionId === revision.id;
   }
 
-  protected toggleRevision(revision: HelpCenterRevision, event?: Event): void {
+  protected toggleRevision(revision: HelpCenterRevisionDto, event?: Event): void {
     event?.stopPropagation();
     this.selectedRevisionId = revision.id;
     this.openRevisionId = this.openRevisionId === revision.id ? '' : revision.id;
@@ -719,7 +718,7 @@ export class AdminHelpEditorPopupComponent {
     this.beginEditingDraft(revision ? this.draftFromRevision(revision) : this.emptyDraft());
   }
 
-  protected startEditingRevision(revision: HelpCenterRevision, event?: Event): void {
+  protected startEditingRevision(revision: HelpCenterRevisionDto, event?: Event): void {
     event?.stopPropagation();
     this.selectedRevisionId = revision.id;
     this.beginEditingDraft(this.draftFromRevision(revision));
@@ -856,10 +855,6 @@ export class AdminHelpEditorPopupComponent {
     });
   }
 
-  protected setDraftSectionImageUrls(section: HelpEditorSectionDraft, imageUrls: readonly string[] | null | undefined): void {
-    section.imageUrls = this.normalizeSectionImageUrls(imageUrls);
-  }
-
   protected openIconPicker(section: HelpEditorSectionDraft, event?: Event): void {
     event?.stopPropagation();
     if (this.iconPickerSectionId === section.localId) {
@@ -981,7 +976,7 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
-  protected async activateRevision(revision: HelpCenterRevision, event?: Event): Promise<void> {
+  protected async activateRevision(revision: HelpCenterRevisionDto, event?: Event): Promise<void> {
     event?.stopPropagation();
     if (revision.active || this.saving || this.activatingRevisionId) {
       return;
@@ -999,7 +994,7 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
-  protected deleteRevision(revision: HelpCenterRevision, event?: Event): void {
+  protected deleteRevision(revision: HelpCenterRevisionDto, event?: Event): void {
     event?.stopPropagation();
     if (this.saving || this.activatingRevisionId) {
       return;
@@ -1026,12 +1021,12 @@ export class AdminHelpEditorPopupComponent {
     });
   }
 
-  protected revisionSubtitle(revision: HelpCenterRevision): string {
+  protected revisionSubtitle(revision: HelpCenterRevisionDto): string {
     const count = revision.sections.length;
     return `${this.uiText(`${count} section${count === 1 ? '' : 's'}`)} · ${this.fullDate(revision.updatedAtIso || revision.createdAtIso)}`;
   }
 
-  protected revisionDescription(revision: Pick<HelpCenterRevision, 'description'>): string {
+  protected revisionDescription(revision: Pick<HelpCenterRevisionDto, 'description'>): string {
     return revision.description?.trim() || this.defaultDescription();
   }
 
@@ -1071,7 +1066,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.appCtx.activeUserId().trim() || 'admin';
+    return this.appCtx.activeUserId().trim();
   }
 
   protected documentLabel(): string {
@@ -1250,21 +1245,21 @@ export class AdminHelpEditorPopupComponent {
     this.closeColorPicker();
   }
 
-  private selectInitialRevision(revisions: HelpCenterRevision[], activeRevision: HelpCenterRevision | null): void {
+  private selectInitialRevision(revisions: HelpCenterRevisionDto[], activeRevision: HelpCenterRevisionDto | null): void {
     const selected = activeRevision ?? revisions[0] ?? null;
     this.selectedRevisionId = selected?.id ?? '';
     this.openRevisionId = selected?.id ?? '';
     this.openPreviewSectionId = selected?.sections[0]?.id ?? '';
   }
 
-  private selectNewestRevision(revisions: HelpCenterRevision[], activeRevision: HelpCenterRevision | null): void {
+  private selectNewestRevision(revisions: HelpCenterRevisionDto[], activeRevision: HelpCenterRevisionDto | null): void {
     const newest = [...revisions].sort((left, right) => right.version - left.version)[0] ?? activeRevision ?? null;
     this.selectedRevisionId = newest?.id ?? '';
     this.openRevisionId = newest?.id ?? '';
     this.openPreviewSectionId = newest?.sections[0]?.id ?? '';
   }
 
-  private revisionRow(revision: HelpCenterRevision): HelpEditorRevisionRow {
+  private revisionRow(revision: HelpCenterRevisionDto): HelpEditorRevisionRow {
     return {
       id: `revision-${revision.id}`,
       kind: 'revision',
@@ -1292,7 +1287,7 @@ export class AdminHelpEditorPopupComponent {
     this.editing = true;
   }
 
-  private draftFromRevision(revision: HelpCenterRevision): HelpEditorRevisionDraft {
+  private draftFromRevision(revision: HelpCenterRevisionDto): HelpEditorRevisionDraft {
     const contextKey = this.normalizeExplanationContextKey(revision.contextKey);
     if (this.documentKind === 'explanation') {
       this.selectedExplanationContextKey = contextKey;
@@ -1347,7 +1342,7 @@ export class AdminHelpEditorPopupComponent {
     };
   }
 
-  private toSections(drafts: HelpEditorSectionDraft[]): HelpCenterSection[] {
+  private toSections(drafts: HelpEditorSectionDraft[]): HelpCenterSectionDto[] {
     const seenIds = new Set<string>();
     return drafts
       .map((draft, index) => {
@@ -1472,7 +1467,7 @@ export class AdminHelpEditorPopupComponent {
     return `New item ${nextIndex}`;
   }
 
-  private explanationRevisionForSurface(surface: ExplainableSurface): HelpCenterRevision | null {
+  private explanationRevisionForSurface(surface: ExplainableSurface): HelpCenterRevisionDto | null {
     return this.helpCenter.explanationState()?.revisions
       ?.filter(revision => this.normalizeExplanationContextKey(revision.contextKey) === surface.key)
       ?.sort((left, right) => {
@@ -1524,7 +1519,7 @@ export class AdminHelpEditorPopupComponent {
       .trim();
   }
 
-  private sectionContentHtml(section: HelpCenterSection): string {
+  private sectionContentHtml(section: HelpCenterSectionDto): string {
     const contentHtml = `${section.contentHtml ?? ''}`.trim();
     if (contentHtml) {
       return contentHtml;
@@ -1548,7 +1543,7 @@ export class AdminHelpEditorPopupComponent {
       }
       seen.add(normalized);
       result.push(normalized);
-      if (result.length >= this.explanationImageSlotCount) {
+      if (result.length >= AdminHelpEditorPopupComponent.IMAGE_LIMIT) {
         break;
       }
     }

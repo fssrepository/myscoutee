@@ -21,10 +21,10 @@
           <div class="popup-title">
             <h2>{{ popupTitle() }}</h2>
           </div>
-          @if (panel === 'experience' && !showExperienceForm) {
+          @if (panel === 'experience' && !experienceManagerOverlayOpen) {
             <div class="experience-quick-actions">
               <app-menu
-                kind="button-row"
+                kind="inline"
                 [items]="experienceQuickActionMenuItems()"
                 (itemSelect)="onProfileEditorMenuSelect($event)"
               ></app-menu>
@@ -271,18 +271,16 @@
                     <h4>Experience</h4>
                     <div class="experience-selector-grid">
                       <div class="experience-selector-row">
-                        <span>Workspace</span>
+                        <span>{{ experienceSelectorLabelKey('Workspace') | i18n }}</span>
                         <div class="profile-details-control-row">
-                          <button
-                            type="button"
-                            class="profile-status-select-wrap selector-like profile-details-values-btn section-social"
-                            (click)="openWorkspaceSelector()"
-                            >
-                            <span class="status-option-content">
-                              <span>{{ workspaceExperienceSummary }}</span>
-                            </span>
-                            <mat-icon>chevron_right</mat-icon>
-                          </button>
+                          <app-menu
+                            class="experience-selector-menu"
+                            kind="select"
+                            [title]="experienceSelectorLabelKey('Workspace') | i18n"
+                            [trigger]="experienceSelectorMenuTrigger('Workspace')"
+                            [model]="experienceSelectorMenuModel('Workspace')"
+                            (itemSelect)="onProfileEditorMenuSelect($event)"
+                          ></app-menu>
                           <div class="profile-details-privacy-fab">
                             <app-menu-trigger
                               kind="select"
@@ -294,18 +292,16 @@
                         </div>
                       </div>
                       <div class="experience-selector-row">
-                        <span>School</span>
+                        <span>{{ experienceSelectorLabelKey('School') | i18n }}</span>
                         <div class="profile-details-control-row">
-                          <button
-                            type="button"
-                            class="profile-status-select-wrap selector-like profile-details-values-btn section-arts"
-                            (click)="openSchoolSelector()"
-                            >
-                            <span class="status-option-content">
-                              <span>{{ schoolExperienceSummary }}</span>
-                            </span>
-                            <mat-icon>chevron_right</mat-icon>
-                          </button>
+                          <app-menu
+                            class="experience-selector-menu"
+                            kind="select"
+                            [title]="experienceSelectorLabelKey('School') | i18n"
+                            [trigger]="experienceSelectorMenuTrigger('School')"
+                            [model]="experienceSelectorMenuModel('School')"
+                            (itemSelect)="onProfileEditorMenuSelect($event)"
+                          ></app-menu>
                           <div class="profile-details-privacy-fab">
                             <app-menu-trigger
                               kind="select"
@@ -326,291 +322,20 @@
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
           @if (panel === 'image') {
             <div class="image-editor-wrap">
-              <div class="image-editor-main" [style.backgroundImage]="selectedImagePreview ? 'url(' + selectedImagePreview + ')' : 'none'">
-                @if (!selectedImagePreview) {
-                  <span>Select a slot to upload image</span>
-                }
-                @if (isSelectedImageUploading()) {
-                  <span class="slot-upload-ring image-editor-main-upload-ring" aria-label="Uploading image">
-                    <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
-                  </span>
-                }
-              </div>
-              <p class="image-editor-hint">Click a thumbnail to upload or replace image.</p>
-              <input #slotImageInput class="image-file-input-hidden" type="file" accept="image/*" (change)="onSlotImageFileChange($event)" />
-              <div class="image-editor-grid">
-                @for (slot of imageSlots; track slot; let i = $index) {
-                  <button
-                    type="button"
-                    [class.slot-selected]="selectedImageIndex === i"
-                    [class.slot-featured]="i === 0"
-                    [class.slot-uploading]="isImageSlotUploading(i)"
-                    [style.backgroundImage]="slot ? 'url(' + slot + ')' : 'none'"
-                    [disabled]="isImageSlotUploading(i)"
-                    (click)="selectImageSlot(i)"
-                    >
-                    <span class="slot-index">{{ i + 1 }}</span>
-                    @if (isImageSlotUploading(i)) {
-                      <span class="slot-upload-ring" aria-label="Uploading image">
-                        <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
-                      </span>
-                    } @else if (!slot) {
-                      <span class="slot-add">+</span>
-                    }
-                    @if (slot && !isImageSlotUploading(i)) {
-                      <span class="remove-slot" (click)="$event.stopPropagation(); removeImage(i)">×</span>
-                    }
-                  </button>
-                }
-              </div>
+              <app-editable-image-carousel
+                [previewMode]="true"
+                [(ngModel)]="profileImageUrls"
+                [uploadOwnerId]="user.id"
+              ></app-editable-image-carousel>
             </div>
           }
           @if (panel === 'experience') {
-            <div class="experience-popup">
-              <input
-                #experienceImportInput
-                type="file"
-                class="image-file-input-hidden"
-                accept=".pdf,.doc,.docx,.odt,.rtf,.txt"
-                (change)="onExperienceImportFileChange($event)"
-              />
-              <div class="experience-toolbar">
-                <app-menu
-                  class="experience-filter-select"
-                  kind="select"
-                  title="Experience"
-                  [trigger]="experienceFilterMenuTrigger()"
-                  [items]="experienceFilterMenuItems()"
-                  (itemSelect)="onProfileEditorMenuSelect($event)"
-                ></app-menu>
-              </div>
-              <div class="experience-card-list">
-                @for (item of filteredExperienceEntries; track item) {
-                  <article
-                    class="experience-item-card"
-                    [ngClass]="experienceTypeClass(item.type)"
-                    [class.experience-item-card-imported]="isExperienceEntryHighlighted(item.id)"
-                    >
-                    <div class="experience-item-head">
-                      <span class="experience-item-icon">
-                        <mat-icon>{{ experienceTypeIcon(item.type) }}</mat-icon>
-                      </span>
-                      <div class="experience-item-meta">
-                        <h4>{{ item.title }}</h4>
-                        <p>{{ item.org }} · {{ item.city }}</p>
-                      </div>
-                      <div class="experience-item-actions">
-                        <button type="button" class="experience-action-btn experience-action-edit" (click)="openExperienceForm(item)" aria-label="Edit experience">
-                          <mat-icon>edit</mat-icon>
-                        </button>
-                        <button type="button" class="experience-action-btn experience-action-delete" (click)="requestExperienceDelete(item.id)" aria-label="Delete experience">
-                          <mat-icon>delete</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                    <p class="experience-item-description">{{ item.description }}</p>
-                    <p class="experience-item-dates">{{ item.dateFrom }} - {{ item.dateTo }}</p>
-                  </article>
-                }
-              </div>
-              @if (pendingExperienceDeleteId) {
-                <section class="experience-delete-confirm">
-                  <div class="experience-delete-confirm-backdrop" (click)="cancelExperienceDelete()"></div>
-                  <div class="experience-delete-confirm-panel">
-                    <h4>Delete experience?</h4>
-                    <p>This entry will be removed from your profile.</p>
-                    <div class="popup-actions">
-                      <button type="button" class="link-btn neutral-btn" (click)="cancelExperienceDelete()">Cancel</button>
-                      <button type="button" class="link-btn experience-delete-btn" (click)="confirmExperienceDelete()">Delete</button>
-                    </div>
-                  </div>
-                </section>
-              }
-              @if (experienceImportDialog.visible) {
-                <section class="experience-import-dialog popup-surface-overlay">
-                  <div class="experience-form-overlay-backdrop popup-surface-overlay-backdrop" (click)="cancelExperienceImportDialog()"></div>
-                  <div class="experience-import-popup popup-surface">
-                    <div class="experience-form-header popup-surface-header">
-                      <div class="popup-surface-header-title">
-                        <h3>Import Experience</h3>
-                        @if (experienceImportDialog.fileName) {
-                          <p>{{ experienceImportDialog.fileName }}</p>
-                        }
-                      </div>
-                      <div class="experience-form-header-controls popup-surface-header-controls">
-                        <button
-                          type="button"
-                          class="experience-form-close-btn popup-surface-close-btn"
-                          [disabled]="experienceImportDialog.busy && experienceImportDialog.progress.stage === 'saving'"
-                          (click)="cancelExperienceImportDialog()"
-                          aria-label="Close import dialog"
-                          >
-                          <mat-icon>close</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                    <section class="experience-import-panel popup-surface-body">
-                      <div class="experience-import-progress-card">
-                        <div class="experience-import-progress-meta">
-                          <span>{{ experienceImportDialog.progress.label || 'Preparing upload' }}</span>
-                          <strong>{{ experienceImportDialog.progress.percent }}%</strong>
-                        </div>
-                        <div class="experience-import-progress-bar">
-                          <span [style.width.%]="experienceImportDialog.progress.percent"></span>
-                        </div>
-                      </div>
-                      @if (experienceImportDialog.error) {
-                        <div class="experience-import-error">
-                          <mat-icon>error</mat-icon>
-                          <div>
-                            <strong>Invalid document</strong>
-                            <p>{{ experienceImportDialog.error }}</p>
-                          </div>
-                        </div>
-                      }
-                      @if (!experienceImportDialog.error) {
-                        <div class="experience-import-stats">
-                          <div class="experience-import-stat">
-                            <span>Detected</span>
-                            <strong>{{ experienceImportDialog.statistics.detectedCount }}</strong>
-                          </div>
-                          <div class="experience-import-stat">
-                            <span>Ready to add</span>
-                            <strong>{{ experienceImportDialog.statistics.importedCount }}</strong>
-                          </div>
-                          <div class="experience-import-stat">
-                            <span>Duplicates skipped</span>
-                            <strong>{{ experienceImportDialog.statistics.duplicateCount }}</strong>
-                          </div>
-                        </div>
-                      }
-                      @if (!experienceImportDialog.error) {
-                        <div class="experience-import-type-stats">
-                          @for (option of experienceTypeOptions; track option) {
-                            <div class="experience-import-type-chip" [ngClass]="experienceTypeToneClass(option)">
-                              <mat-icon>{{ experienceTypeIcon(option) }}</mat-icon>
-                              <span>{{ option }}</span>
-                              <strong>{{ experienceImportTypeCount(option) }}</strong>
-                            </div>
-                          }
-                        </div>
-                      }
-                      @if (!experienceImportDialog.error && experienceImportDialog.statistics.detectedCount === 0) {
-                        <div class="editor-list-card">
-                          <h4>No categorized items found</h4>
-                          <p>The document was parsed, but no experience cards were recognized in any category.</p>
-                        </div>
-                      }
-                      @if (experienceImportDialog.warnings.length > 0) {
-                        <div class="experience-import-warnings">
-                          <h4>Import notes</h4>
-                          <ul>
-                            @for (warning of experienceImportDialog.warnings; track warning) {
-                              <li>{{ warning }}</li>
-                            }
-                          </ul>
-                        </div>
-                      }
-                      <div class="popup-actions experience-import-actions">
-                        <button
-                          type="button"
-                          class="link-btn neutral-btn"
-                          [disabled]="experienceImportDialog.busy && experienceImportDialog.progress.stage === 'saving'"
-                          (click)="cancelExperienceImportDialog()"
-                          >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          class="link-btn primary-btn"
-                          [disabled]="!canSubmitExperienceImport"
-                          (click)="submitExperienceImport()"
-                          >
-                          Submit
-                        </button>
-                      </div>
-                    </section>
-                  </div>
-                </section>
-              }
-              @if (showExperienceForm) {
-                <section class="experience-form-overlay popup-surface-overlay">
-                  <div class="experience-form-overlay-backdrop popup-surface-overlay-backdrop" (click)="closeExperienceForm()"></div>
-                  <div class="experience-form-popup popup-surface">
-                    <div class="experience-form-header popup-surface-header">
-                      <div class="popup-surface-header-title">
-                        <h3>{{ editingExperienceId ? 'Edit Experience' : 'Add Experience' }}</h3>
-                      </div>
-                      <div class="experience-form-header-controls popup-surface-header-controls">
-                        <button
-                          type="button"
-                          class="popup-header-add-btn subevent-leaderboard-save-btn"
-                          [class.form-save-invalid]="!canSaveExperienceEntry"
-                          [disabled]="!canSaveExperienceEntry"
-                          (click)="saveExperienceEntry()"
-                          aria-label="Save experience"
-                          >
-                          <mat-icon>done</mat-icon>
-                        </button>
-                        <button type="button" class="experience-form-close-btn popup-surface-close-btn" (click)="closeExperienceForm()" aria-label="Close add experience">
-                          <mat-icon>close</mat-icon>
-                        </button>
-                      </div>
-                    </div>
-                    <section class="experience-form-panel popup-surface-body">
-                      <div class="experience-form-grid popup-surface-form-grid">
-                        <label class="experience-type-field">
-                          <span>Type</span>
-                          <app-menu
-                            class="experience-type-select"
-                            kind="select"
-                            title="Experience Type"
-                            [trigger]="experienceTypeMenuTrigger()"
-                            [items]="experienceTypeMenuItems()"
-                            (itemSelect)="onProfileEditorMenuSelect($event)"
-                          ></app-menu>
-                        </label>
-                        <label class="experience-title-field">
-                          <span>Title</span>
-                          <input type="text" [(ngModel)]="experienceForm.title" />
-                        </label>
-                        <label class="experience-org-field">
-                          <span>Organization</span>
-                          <input type="text" [(ngModel)]="experienceForm.org" />
-                        </label>
-                        <label class="experience-city-field">
-                          <span>City</span>
-                          <input type="text" [(ngModel)]="experienceForm.city" />
-                        </label>
-                        <label class="experience-date-range-label">
-                          <span>Date range</span>
-                          <mat-form-field appearance="fill" class="experience-date-range-field" subscriptSizing="dynamic">
-                            <mat-label>Enter a date range</mat-label>
-                            <mat-date-range-input [rangePicker]="experienceDateRangePicker">
-                              <input matStartDate [(ngModel)]="experienceRangeStart" name="experienceRangeStart" placeholder="YYYY/MM/DD" />
-                              <input matEndDate [(ngModel)]="experienceRangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM/DD" />
-                            </mat-date-range-input>
-                            <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
-                            <mat-hint>YYYY/MM - YYYY/MM</mat-hint>
-                            <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
-                          </mat-form-field>
-                        </label>
-                        <label class="experience-description-field popup-surface-description-field">
-                          <span>Description</span>
-                          <textarea rows="4" [(ngModel)]="experienceForm.description"></textarea>
-                        </label>
-                      </div>
-                    </section>
-                  </div>
-                </section>
-              }
-              @if (filteredExperienceEntries.length === 0) {
-                <div class="editor-list-card">
-                  <h4>No entries in this filter</h4>
-                  <p>Try switching the type dropdown to All or use Upload.</p>
-                </div>
-              }
-            </div>
+            <app-profile-experience-manager
+              [entries]="experienceEntries"
+              [initialFilter]="experienceFilter"
+              (entriesChange)="onExperienceEntriesChange($event)"
+              (overlayStateChange)="onExperienceOverlayStateChange($event)"
+            ></app-profile-experience-manager>
           }
         </div>
       </div>

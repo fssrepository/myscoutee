@@ -160,7 +160,7 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
       icon: 'person',
       palette: 'blue',
       ariaLabel: 'Select member',
-      shape: 'field'
+      layout: 'field'
     };
   }
 

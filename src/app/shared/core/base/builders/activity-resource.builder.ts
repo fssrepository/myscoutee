@@ -1,5 +1,5 @@
 import { AppUtils } from '../../../app-utils';
-import type { InfoCardData, CardMenuAction } from '../../../ui';
+import type { InfoCardData, CardMenuActionId } from '../../../ui';
 import type * as AppTypes from '../models';
 import type * as ContractTypes from '../../contracts';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
@@ -253,8 +253,11 @@ export class ActivityResourceBuilder {
         ), 0);
       }
       return assignedCards.reduce((sum, card) => (
-        sum + card.requests.filter(request => request.status === 'accepted').length
+        sum + this.subEventOccupancyRequestCount(card, subEvent.id, 'accepted')
       ), 0);
+    }
+    if (state) {
+      return 0;
     }
     if (type === 'Car') {
       return Math.max(0, Math.trunc(Number(subEvent.carsAccepted) || 0));
@@ -277,8 +280,11 @@ export class ActivityResourceBuilder {
         return 0;
       }
       return assignedCards.reduce((sum, card) => (
-        sum + card.requests.filter(request => request.status === 'pending').length
+        sum + this.subEventOccupancyRequestCount(card, subEvent.id, 'pending')
       ), 0);
+    }
+    if (state) {
+      return 0;
     }
     if (type === 'Car') {
       return Math.max(0, Math.trunc(Number(subEvent.carsPending) || 0));
@@ -306,6 +312,9 @@ export class ActivityResourceBuilder {
           sum + Math.max(0, Math.trunc(Number(settings[card.id]?.capacityMax ?? card.capacityTotal) || 0))
         ), 0)
       };
+    }
+    if (state) {
+      return { capacityMin: 0, capacityMax: 0 };
     }
 
     const observed = Math.max(accepted, accepted + pending);
@@ -373,6 +382,34 @@ export class ActivityResourceBuilder {
     );
   }
 
+  static isSubEventScopedAssetRequest(request: AppDTOs.AssetMemberRequestDTO, subEventId: string): boolean {
+    const normalizedSubEventId = subEventId.trim();
+    return this.isSubEventManualAssignmentRequest(request, normalizedSubEventId)
+      || `${request.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId;
+  }
+
+  static assetRequestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
+    return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+  }
+
+  static subEventOccupancyRequestCount(
+    card: AppDTOs.AssetCardDTO,
+    subEventId: string,
+    status: AppConstants.AssetRequestStatus
+  ): number {
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedSubEventId) {
+      return 0;
+    }
+    return card.requests
+      .filter(request =>
+        request.status === status
+        && this.isSubEventScopedAssetRequest(request, normalizedSubEventId)
+        && !this.isSubEventManualAssignmentRequest(request, normalizedSubEventId)
+      )
+      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+  }
+
   static assetRequestSyncSignature(request: AppDTOs.AssetMemberRequestDTO): string {
     return JSON.stringify({
       id: request.id,
@@ -437,8 +474,8 @@ export class ActivityResourceBuilder {
   private static resourceMenuActions(
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardOptions
-  ): readonly CardMenuAction[] {
-    const actions: CardMenuAction[] = ['viewAsset'];
+  ): readonly CardMenuActionId[] {
+    const actions: CardMenuActionId[] = ['viewAsset'];
     if (options.canEditRoute === true) {
       actions.push('editAsset');
     }

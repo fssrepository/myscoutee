@@ -40,7 +40,7 @@ import {
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -70,7 +70,7 @@ type EventExploreMenuContext =
       menu: 'info-card';
       record: ActivityEventRecord;
       card: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     };
 
 @Component({
@@ -357,7 +357,7 @@ export class EventExplorePopupComponent {
       icon: this.eventExploreOrderIcon(),
       ariaLabel: 'Open event explore order',
       palette: this.eventExploreOrderPalette(this.eventExploreOrder),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -381,7 +381,7 @@ export class EventExplorePopupComponent {
       icon: this.eventExploreCurrentViewIcon(),
       ariaLabel: 'Open event explore view',
       palette: this.eventExploreViewPalette(this.eventExploreView),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -406,7 +406,7 @@ export class EventExplorePopupComponent {
         label: 'Friends going',
         icon: 'groups',
         kind: 'toggle',
-        layout: 'summary',
+        layout: 'pill',
         active: this.eventExploreFilterFriendsOnly,
         checked: this.eventExploreFilterFriendsOnly,
         closeOnSelect: false,
@@ -418,7 +418,7 @@ export class EventExplorePopupComponent {
         label: 'Open spots',
         icon: 'hotel',
         kind: 'toggle',
-        layout: 'summary',
+        layout: 'pill',
         active: this.eventExploreFilterHasRooms,
         checked: this.eventExploreFilterHasRooms,
         closeOnSelect: false,
@@ -432,7 +432,7 @@ export class EventExplorePopupComponent {
           : 'Topic',
         icon: 'sell',
         kind: 'select-trigger',
-        layout: 'summary',
+        layout: 'pill',
         active: !!this.eventExploreFilterTopic,
         checked: !!this.eventExploreFilterTopic,
         closeOnSelect: false,
@@ -449,6 +449,8 @@ export class EventExplorePopupComponent {
       idPrefix: 'topic',
       groups: this.topicFilterGroups,
       selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
+      maxSelected: 1,
+      kind: 'radio',
       context: topic => ({ menu: 'topic-filter', topic }),
       itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
       removeAriaLabel: topic => `Clear ${topic}`,
@@ -551,7 +553,7 @@ export class EventExplorePopupComponent {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -571,7 +573,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -810,7 +812,7 @@ export class EventExplorePopupComponent {
       ariaLabel: count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`,
       counter: count,
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'orange'
     };
   }
@@ -831,7 +833,7 @@ export class EventExplorePopupComponent {
         kind: 'action',
         palette: this.checkoutDraftMenuPalette(entry),
         surface: 'tinted',
-        layout: 'summary',
+        layout: 'pill',
         disabled: clearing,
         removable: true,
         removeIcon: 'close',
