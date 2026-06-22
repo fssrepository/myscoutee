@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
 import type {
@@ -203,6 +204,13 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
       return null;
     }
     return slot.slides[this.activeIndex(slot)] ?? slot.slides[0] ?? null;
+  }
+
+  protected currentSlideImageUrl(slot: PairCardSlot): string {
+    return AppUtils.mediaImageVariantUrl(
+      this.currentSlide(slot)?.imageUrl,
+      this.resolvedPresentation() === 'fullscreen' ? 'large' : 'medium'
+    );
   }
 
   protected activeIndex(slot: PairCardSlot): number {

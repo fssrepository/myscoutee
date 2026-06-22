@@ -389,7 +389,10 @@ export class EventChatPopupComponent implements OnDestroy {
       return [];
     }
     const maxVisible = Math.max(1, Math.trunc(Number(control.visual.maxVisible) || 4));
-    return control.visual.thumbs.slice(0, maxVisible).map(thumb => ({ ...thumb }));
+    return control.visual.thumbs.slice(0, maxVisible).map(thumb => ({
+      ...thumb,
+      imageUrl: AppUtils.mediaImageVariantUrl(thumb.imageUrl, 'small') || null
+    }));
   }
 
   protected chatHeaderControlBadgeValue(control: AppTypes.PopupHeaderControl): number {
@@ -2189,10 +2192,12 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!upload.uploaded || !upload.imageUrl) {
       throw new Error('Unable to upload chat image.');
     }
+    const mediaUrl = upload.imageSet?.largeUrl ?? upload.imageUrl;
+    const previewUrl = upload.imageSet?.mediumUrl ?? upload.imageUrl;
     return {
       ...attachment,
-      url: upload.imageUrl,
-      previewUrl: upload.imageUrl
+      url: mediaUrl,
+      previewUrl
     };
   }
 
@@ -3335,7 +3340,7 @@ export class EventChatPopupComponent implements OnDestroy {
         id: activeUser?.id?.trim() || activeUserId || 'self',
         initials: initials || 'ME',
         gender: activeUser?.gender ?? 'man',
-        imageUrl: activeUser?.images?.map(image => image.trim()).find(Boolean) ?? null
+        imageUrl: AppUtils.mediaImageVariantUrl(activeUser?.images?.map(image => image.trim()).find(Boolean), 'small') || null
       }
     };
   }

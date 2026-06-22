@@ -51,12 +51,63 @@ export class AppUtils {
       .find(image => image.length > 0) ?? '';
   }
 
+  static mediaImageVariantUrl(
+    imageUrl: string | null | undefined,
+    variant: 'small' | 'medium' | 'large'
+  ): string {
+    const normalized = `${imageUrl ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    const publicKey = this.mediaPublicObjectKey(normalized);
+    if (!publicKey) {
+      return normalized;
+    }
+    const variantKey = this.mediaVariantObjectKey(publicKey, variant);
+    if (!variantKey) {
+      return normalized;
+    }
+    return normalized.replace(/([?&]key=)([^&#]*)/, (_match, prefix: string) =>
+      `${prefix}${encodeURIComponent(variantKey)}`
+    );
+  }
+
   static uniqueTrimmedStrings(values: Iterable<string | null | undefined> | null | undefined): string[] {
     return Array.from(new Set(
       Array.from(values ?? [])
         .map(value => `${value ?? ''}`.trim())
         .filter(Boolean)
     ));
+  }
+
+  private static mediaPublicObjectKey(imageUrl: string): string | null {
+    const match = imageUrl.match(/[?&]key=([^&#]+)/);
+    if (!match?.[1]) {
+      return null;
+    }
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return null;
+    }
+  }
+
+  private static mediaVariantObjectKey(
+    objectKey: string,
+    variant: 'small' | 'medium' | 'large'
+  ): string | null {
+    if (!objectKey.startsWith('images/')) {
+      return null;
+    }
+    const slashIndex = objectKey.lastIndexOf('/');
+    if (slashIndex <= 0 || slashIndex >= objectKey.length - 1) {
+      return null;
+    }
+    const objectName = objectKey.slice(slashIndex + 1);
+    if (!/^(?:small|medium|large)\.webp$/.test(objectName)) {
+      return null;
+    }
+    return `${objectKey.slice(0, slashIndex)}/${variant}.webp`;
   }
 
   static enumValue<T extends string>(

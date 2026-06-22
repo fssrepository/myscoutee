@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
 import type {
@@ -148,6 +149,17 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
       return null;
     }
     return slides[this.clampedActiveIndex()] ?? slides[0] ?? null;
+  }
+
+  protected currentSlideImageUrl(): string {
+    return AppUtils.mediaImageVariantUrl(
+      this.currentSlide()?.imageUrl,
+      this.resolvedPresentation() === 'fullscreen' ? 'large' : 'medium'
+    );
+  }
+
+  protected contextBadgeImageUrl(badge: CardContextBadgeConfig): string {
+    return AppUtils.mediaImageVariantUrl(badge.imageUrl, 'small');
   }
 
   protected clampedActiveIndex(): number {

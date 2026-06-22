@@ -66,8 +66,8 @@
               }
             </div>
           }
-          <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="currentSlide(slot)?.imageUrl ?? ''">
-            @if (currentSlide(slot)?.imageUrl) {
+          <div class="activities-rate-pair-inline-layer" [appLazyBgImage]="currentSlideImageUrl(slot)">
+            @if (currentSlideImageUrl(slot)) {
               <span class="activities-rate-image-loader" aria-hidden="true">
                 <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
               </span>

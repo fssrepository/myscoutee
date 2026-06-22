@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import {
   AppMenuTriggerComponent,
@@ -74,7 +75,10 @@ export class ImageCardComponent {
   }
 
   protected resolvedImageUrl(): string {
-    return `${this.card?.imageUrl ?? this.card?.singleImageUrls?.[0] ?? this.imageUrl ?? ''}`.trim();
+    return AppUtils.mediaImageVariantUrl(
+      `${this.card?.imageUrl ?? this.card?.singleImageUrls?.[0] ?? this.imageUrl ?? ''}`.trim(),
+      'medium'
+    );
   }
 
   protected resolvedTitle(): string {

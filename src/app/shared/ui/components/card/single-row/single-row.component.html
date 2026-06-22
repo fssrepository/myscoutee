@@ -28,8 +28,8 @@
 
   @if (hasLeadingVisual()) {
     <span [ngClass]="avatarClassList()" [attr.aria-label]="row?.avatarAriaLabel">
-      @if (row?.avatarUrl) {
-        <img [src]="row?.avatarUrl" alt="" />
+      @if (avatarImageUrl()) {
+        <img [src]="avatarImageUrl()" alt="" />
       } @else if (row?.icon) {
         <mat-icon>{{ row?.icon }}</mat-icon>
       } @else {

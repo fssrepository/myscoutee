@@ -8,7 +8,7 @@
   <div
     class="ui-info-card__media"
     [class.ui-info-card__media--placeholder]="!card?.imageUrl"
-    [appLazyBgImage]="card?.imageUrl || null"
+    [appLazyBgImage]="cardImageUrl()"
     >
       @if (card?.imageUrl) {
         <span class="ui-info-card__image-loader" aria-hidden="true">

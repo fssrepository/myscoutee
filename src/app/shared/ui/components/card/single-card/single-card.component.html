@@ -55,9 +55,9 @@
 
     <div
       class="activities-rate-profile-layer activities-rate-profile-layer-active"
-      [appLazyBgImage]="currentSlide()?.imageUrl ?? ''"
+      [appLazyBgImage]="currentSlideImageUrl()"
       >
-      @if (currentSlide()?.imageUrl) {
+      @if (currentSlideImageUrl()) {
         <span class="activities-rate-image-loader" aria-hidden="true">
           <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
         </span>
@@ -98,8 +98,8 @@
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           (click)="onContextBadgeClick(contextBadge, $event)"
           >
-          @if (contextBadge.imageUrl) {
-            <img [src]="contextBadge.imageUrl" alt="" />
+          @if (contextBadgeImageUrl(contextBadge)) {
+            <img [src]="contextBadgeImageUrl(contextBadge)" alt="" />
           } @else {
             <span>{{ contextBadgeLabel(contextBadge) }}</span>
           }
@@ -113,8 +113,8 @@
           [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'Related profile'"
           [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
           >
-          @if (contextBadge.imageUrl) {
-            <img [src]="contextBadge.imageUrl" alt="" />
+          @if (contextBadgeImageUrl(contextBadge)) {
+            <img [src]="contextBadgeImageUrl(contextBadge)" alt="" />
           } @else {
             <span>{{ contextBadgeLabel(contextBadge) }}</span>
           }

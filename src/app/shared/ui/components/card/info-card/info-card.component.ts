@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import { I18nPipe } from '../../../pipes';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
@@ -124,6 +125,11 @@ export class InfoCardComponent implements OnDestroy {
       id: this.card.id,
       card: this.card
     });
+  }
+
+  protected cardImageUrl(): string | null {
+    const imageUrl = AppUtils.mediaImageVariantUrl(this.card?.imageUrl, 'medium');
+    return imageUrl || null;
   }
 
   protected onMediaStartActivated(event: Event): void {
