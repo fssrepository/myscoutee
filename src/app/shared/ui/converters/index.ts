@@ -55,19 +55,20 @@ export {
   type HelpCenterRevisionDocumentViewerSectionMode
 } from './help-center-revision-document-viewer.converter';
 export {
-  EventFeedbackDeckConverter,
-  EventFeedbackDeckImageCardConverter,
-  EventFeedbackDeckInfoCardConverter,
-  eventFeedbackDeckConverter,
-  eventFeedbackDeckImageCardConverter,
-  eventFeedbackDeckInfoCardConverter
-} from './event-feedback-deck.converter';
+  EventFeedbackDetailConverter,
+  EventFeedbackDetailImageCardConverter,
+  EventFeedbackDetailInfoCardConverter,
+  eventFeedbackDetailConverter,
+  eventFeedbackDetailImageCardConverter,
+  eventFeedbackDetailInfoCardConverter
+} from './event-feedback-detail.converter';
 export {
   EventFeedbackFormFlowConverter,
-  type EventFeedbackFormCardValue,
-  type EventFeedbackFormFlowConverterOptions,
-  type EventFeedbackFormSubmitResult,
-  type EventFeedbackFormValue
+  EventFeedbackFormInitialValueConverter,
+  EventFeedbackFormValueConverter,
+  eventFeedbackFormInitialValueConverter,
+  eventFeedbackFormValueConverter,
+  type EventFeedbackFormFlowConverterOptions
 } from './event-feedback-form-flow.converter';
 export {
   EventFeedbackInfoCardConverter,

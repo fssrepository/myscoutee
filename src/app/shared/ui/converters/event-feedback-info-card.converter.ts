@@ -1,5 +1,5 @@
 import type {
-  EventFeedbackPageItemDto,
+  EventFeedbackDto,
   EventFeedbackPageStateSnapshotDto,
 } from '../../core/contracts/activity.interface';
 import type { InfoCardData, CardMenuActionId } from '../components/card';
@@ -63,7 +63,7 @@ export class EventFeedbackOrganizerInfoCardConverter {
 
 export class EventFeedbackInfoCardConverter {
   static convert(
-    item: EventFeedbackPageItemDto,
+    item: EventFeedbackDto,
     options: EventFeedbackInfoCardConverterOptions = {}
   ): InfoCardData {
     if (item.isOwnEvent) {
@@ -106,17 +106,17 @@ export class EventFeedbackInfoCardConverter {
   }
 
   static convertList(
-    items: readonly EventFeedbackPageItemDto[],
+    items: readonly EventFeedbackDto[],
     options: EventFeedbackInfoCardConverterOptions = {}
   ): InfoCardData[] {
     return items.map(item => this.convert(item, options));
   }
 
-  private static isEventFeedbackStartAvailable(item: EventFeedbackPageItemDto): boolean {
+  private static isEventFeedbackStartAvailable(item: EventFeedbackDto): boolean {
     return !item.isRemoved && item.pendingCards > 0;
   }
 
-  private static eventFeedbackItemStatusLine(item: EventFeedbackPageItemDto): string {
+  private static eventFeedbackItemStatusLine(item: EventFeedbackDto): string {
     if (item.isRemoved) {
       return 'Removed without feedback.';
     }
@@ -126,7 +126,7 @@ export class EventFeedbackInfoCardConverter {
     return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
   }
 
-  private static eventFeedbackLeadingIcon(item: EventFeedbackPageItemDto): string {
+  private static eventFeedbackLeadingIcon(item: EventFeedbackDto): string {
     if (item.isOwnEvent) {
       return 'stadium';
     }
@@ -139,7 +139,7 @@ export class EventFeedbackInfoCardConverter {
     return 'rate_review';
   }
 
-  private static eventFeedbackStartBadgeLabel(item: EventFeedbackPageItemDto): string {
+  private static eventFeedbackStartBadgeLabel(item: EventFeedbackDto): string {
     if (item.isOwnEvent) {
       return 'View Feedbacks';
     }
@@ -153,7 +153,7 @@ export class EventFeedbackInfoCardConverter {
   }
 
   private static eventFeedbackMenuActions(
-    item: EventFeedbackPageItemDto,
+    item: EventFeedbackDto,
     hasOrganizerNote: boolean
   ): readonly CardMenuActionId[] {
     if (item.isOwnEvent) {
@@ -188,7 +188,7 @@ export class EventFeedbackInfoCardConverter {
 
 export const eventFeedbackInfoCardConverter =
   EventFeedbackInfoCardConverter satisfies UiListConverter<
-    EventFeedbackPageItemDto,
+    EventFeedbackDto,
     InfoCardData,
     EventFeedbackInfoCardConverterOptions | undefined
   >;

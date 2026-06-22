@@ -80,9 +80,13 @@ export interface IEventsService {
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
-  loadEventFeedbackDeck(
-    query: EventFeedbackDeckQueryDto
-  ): Promise<EventFeedbackDeckResultDto>;
+  loadEventFeedback(
+    query: EventFeedbackQueryDto
+  ): Promise<EventFeedbackDetailDto>;
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void>;
+  saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void>;
+  removeEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
+  restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
   saveActivityEvent(
     payload: ActivityEventSaveDTO
   ): Promise<ActivityEventDTO | null>;
@@ -654,7 +658,7 @@ export interface EventFeedbackPageQueryDto {
   pageSize: number;
 }
 
-export interface EventFeedbackDeckQueryDto {
+export interface EventFeedbackQueryDto {
   userId: string;
   eventId: string;
 }
@@ -675,7 +679,7 @@ export interface EventFeedbackPageStateSnapshotDto {
   organizerNotesByEventId: Record<string, string>;
 }
 
-export interface EventFeedbackPageItemDto {
+export interface EventFeedbackDto {
   eventId: string;
   title: string;
   subtitle: string;
@@ -691,7 +695,7 @@ export interface EventFeedbackPageItemDto {
   isOwnEvent?: boolean;
 }
 
-export interface EventFeedbackCardSourceDto {
+export interface EventFeedbackCardDto {
   id: string;
   eventId: string;
   kind: 'event' | 'attendee';
@@ -710,40 +714,101 @@ export interface EventFeedbackCardSourceDto {
   targetGender?: UserGender;
   targetTraitLabel?: string;
   targetImageUrl?: string;
+  answerPrimary?: string;
+  answerSecondary?: string;
+  selectedTraitIds?: string[];
 }
 
 export interface EventFeedbackPageResultDto {
-  items: EventFeedbackPageItemDto[];
+  items: EventFeedbackDto[];
   total: number;
-  allItems: EventFeedbackPageItemDto[];
-  organizerItems: EventFeedbackPageItemDto[];
+  allItems: EventFeedbackDto[];
+  organizerItems: EventFeedbackDto[];
   receivedEvents: EventFeedbackReceivedEventDto[];
   state: EventFeedbackPageStateSnapshotDto;
   counts: EventFeedbackPageCountsDto;
 }
 
-export interface EventFeedbackDeckResultDto {
-  eventId: string;
-  title: string;
-  cards: EventFeedbackCardSourceDto[];
+export interface EventFeedbackDetailPendingOptions {
+  activeUserId?: string | null;
+  fallbackTitle?: string | null;
 }
 
-export interface EventFeedbackAnswerSubmitDto {
-  cardId: string;
-  kind: 'event' | 'attendee';
-  targetUserId: string | null;
-  targetRole: ActivityMemberRole;
-  primaryValue: string;
-  secondaryValue: string;
-  personalityTraitIds: string[];
-  tags: string[];
-  submittedAtIso: string;
-}
+export class EventFeedbackDetailDto {
+  readonly eventId: string;
+  readonly title: string;
+  readonly submittedAtIso: string;
+  readonly cards: EventFeedbackCardDto[];
 
-export interface EventFeedbackSubmitRequestDto {
-  userId: string;
-  eventId: string;
-  answers: EventFeedbackAnswerSubmitDto[];
+  static normalize(result: Partial<EventFeedbackDetailDto> | null | undefined): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto(result);
+  }
+
+  constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
+    this.eventId = result?.eventId?.trim() ?? '';
+    this.title = result?.title?.trim() ?? '';
+    this.submittedAtIso = result?.submittedAtIso?.trim() ?? '';
+    this.cards = EventFeedbackDetailDto.cloneCards(result?.cards);
+  }
+
+  pending(options: EventFeedbackDetailPendingOptions = {}): EventFeedbackDetailDto {
+    const activeUserId = options.activeUserId?.trim() ?? '';
+    return new EventFeedbackDetailDto({
+      ...this,
+      title: this.title || options.fallbackTitle?.trim() || '',
+      cards: this.cards.filter(card =>
+        card.eventId === this.eventId
+        && !(card.kind === 'attendee' && card.attendeeUserId === activeUserId)
+      )
+    });
+  }
+
+  submitted(options: { submittedAtIso: string }): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
+      ...this,
+      submittedAtIso: options.submittedAtIso
+    });
+  }
+
+  private static cloneCards(cards: readonly EventFeedbackCardDto[] | undefined): EventFeedbackCardDto[] {
+    return (cards ?? []).map(card => ({
+      id: card.id?.trim() ?? '',
+      eventId: card.eventId?.trim() ?? '',
+      kind: card.kind === 'attendee' ? 'attendee' as const : 'event' as const,
+      attendeeUserId: card.attendeeUserId?.trim() || undefined,
+      targetUserId: card.targetUserId?.trim() || undefined,
+      targetRole: EventFeedbackDetailDto.normalizeRole(card.targetRole),
+      eventTitle: card.eventTitle?.trim() ?? '',
+      eventSubtitle: card.eventSubtitle?.trim() ?? '',
+      eventImageUrl: card.eventImageUrl?.trim() ?? '',
+      eventTimeframe: card.eventTimeframe?.trim() ?? '',
+      eventStartAtIso: card.eventStartAtIso?.trim() ?? '',
+      eventLabel: card.eventLabel?.trim() ?? '',
+      targetName: card.targetName?.trim() ?? '',
+      targetAge: EventFeedbackDetailDto.numberOrUndefined(card.targetAge),
+      targetCity: card.targetCity?.trim() || undefined,
+      targetGender: card.targetGender === 'woman' ? 'woman' as const : 'man' as const,
+      targetTraitLabel: card.targetTraitLabel?.trim() || undefined,
+      targetImageUrl: card.targetImageUrl?.trim() || undefined,
+      answerPrimary: card.answerPrimary?.trim() ?? '',
+      answerSecondary: card.answerSecondary?.trim() ?? '',
+      selectedTraitIds: [...(card.selectedTraitIds ?? [])]
+        .map(traitId => traitId.trim())
+        .filter(Boolean)
+    })).filter(card => card.id.length > 0 && card.eventId.length > 0);
+  }
+
+  private static normalizeRole(role: ActivityMemberRole | undefined): ActivityMemberRole | undefined {
+    if (role === 'Admin' || role === 'Manager' || role === 'Member') {
+      return role;
+    }
+    return undefined;
+  }
+
+  private static numberOrUndefined(value: number | null | undefined): number | undefined {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
+  }
 }
 
 export interface EventFeedbackNoteRequestDto {

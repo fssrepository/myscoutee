@@ -1,7 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type {
-  EventFeedbackSubmitRequestDto,
-  UserGameFilterPreferencesDto
+import {
+  EventFeedbackDetailDto,
+  type UserGameFilterPreferencesDto
 } from '../../core/contracts/activity.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
@@ -94,7 +94,7 @@ export interface ActivityResourceSyncState {
 
 export interface ActivityEventFeedbackSubmitSyncState {
   updatedMs: number;
-  dto: EventFeedbackSubmitRequestDto;
+  dto: EventFeedbackDetailDto;
 }
 
 export interface AppContextAdminUserDto {
@@ -618,38 +618,18 @@ export class AppContext {
     });
   }
 
-  emitActivityEventFeedbackSubmit(dto: EventFeedbackSubmitRequestDto): void {
-    const userId = dto.userId.trim();
+  emitActivityEventFeedbackSubmit(dto: EventFeedbackDetailDto): void {
     const eventId = dto.eventId.trim();
-    if (!userId || !eventId) {
+    if (!eventId) {
       return;
     }
     this._activityEventFeedbackSubmitSync.set({
       updatedMs: Date.now(),
-      dto: this.cloneEventFeedbackSubmitRequest({
+      dto: EventFeedbackDetailDto.normalize({
         ...dto,
-        userId,
         eventId
       })
     });
-  }
-
-  private cloneEventFeedbackSubmitRequest(dto: EventFeedbackSubmitRequestDto): EventFeedbackSubmitRequestDto {
-    return {
-      userId: dto.userId.trim(),
-      eventId: dto.eventId.trim(),
-      answers: (dto.answers ?? []).map(answer => ({
-        cardId: answer.cardId?.trim() ?? '',
-        kind: answer.kind === 'attendee' ? 'attendee' : 'event',
-        targetUserId: answer.targetUserId?.trim() || null,
-        targetRole: answer.targetRole,
-        primaryValue: answer.primaryValue?.trim() ?? '',
-        secondaryValue: answer.secondaryValue?.trim() ?? '',
-        personalityTraitIds: (answer.personalityTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
-        tags: (answer.tags ?? []).map(tag => tag.trim()).filter(Boolean),
-        submittedAtIso: answer.submittedAtIso?.trim() ?? ''
-      }))
-    };
   }
 
   private normalizeCounterValue(value: number): number {

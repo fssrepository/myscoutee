@@ -102,8 +102,8 @@
                     <app-form-flow
                       class="event-feedback-form-flow"
                       [model]="eventFeedbackFlowModel()"
-                      [ngModel]="eventFeedbackDeckValue()"
-                      (ngModelChange)="setEventFeedbackDeckValue($event)"
+                      [ngModel]="eventFeedbackDetailValue()"
+                      (ngModelChange)="setEventFeedbackDetailValue($event)"
                       (save)="onEventFeedbackFlowSave()"
                     ></app-form-flow>
                     @if (eventFeedbackSubmitMessage()) {

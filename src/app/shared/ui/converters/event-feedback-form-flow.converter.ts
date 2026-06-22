@@ -1,46 +1,20 @@
 import type * as AppTypes from '../../core/base/models';
-import type {
-  EventFeedbackAnswerSubmitDto,
-  EventFeedbackDeckResultDto,
-  EventFeedbackSubmitRequestDto,
-  SubmittedEventFeedbackAnswer
-} from '../../core/contracts/activity.interface';
+import { EventFeedbackDetailDto } from '../../core/contracts/activity.interface';
 import type {
   AppMenuItem,
   AppMenuModel,
   AppMenuPalette
 } from '../components/menu';
 import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
+import type { UiConverter } from './converter.types';
 import {
-  EventFeedbackDeckConverter,
-  EventFeedbackDeckImageCardConverter,
-  EventFeedbackDeckInfoCardConverter
-} from './event-feedback-deck.converter';
+  EventFeedbackDetailConverter,
+  EventFeedbackDetailImageCardConverter,
+  EventFeedbackDetailInfoCardConverter
+} from './event-feedback-detail.converter';
 
 export interface EventFeedbackFormFlowConverterOptions {
   eventTitle?: string | null;
-}
-
-export interface EventFeedbackPendingDeckOptions {
-  activeUserId?: string | null;
-  fallbackTitle?: string | null;
-}
-
-export interface EventFeedbackFormCardValue {
-  id: string;
-  answerPrimary: string;
-  answerSecondary: string;
-  selectedTraitIds: string[];
-}
-
-export interface EventFeedbackFormValue {
-  eventId: string;
-  cards: EventFeedbackFormCardValue[];
-}
-
-export interface EventFeedbackFormSubmitResult {
-  request: EventFeedbackSubmitRequestDto;
-  submittedAnswersByCardId: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
 type EventFeedbackOptionMenuContext = {
@@ -48,54 +22,42 @@ type EventFeedbackOptionMenuContext = {
   group: 'primary' | 'secondary' | 'traits';
 };
 
-export class EventFeedbackFormFlowConverter {
-  static pendingDeck(
-    deck: EventFeedbackDeckResultDto | null | undefined,
-    options: EventFeedbackPendingDeckOptions = {}
-  ): EventFeedbackDeckResultDto {
-    const normalizedDeck = this.normalizeDeck(deck);
-    const eventId = normalizedDeck.eventId;
-    const activeUserId = options.activeUserId?.trim() ?? '';
-    return {
-      ...normalizedDeck,
-      title: normalizedDeck.title || options.fallbackTitle?.trim() || '',
-      cards: normalizedDeck.cards.filter(card =>
-        card.eventId === eventId
-        && !(card.kind === 'attendee' && card.attendeeUserId === activeUserId)
-      )
-    };
-  }
-
-  static emptyValue(eventId = ''): EventFeedbackFormValue {
-    return {
-      eventId: eventId.trim(),
-      cards: []
-    };
-  }
-
-  static initialValue(deck: EventFeedbackDeckResultDto | null | undefined): EventFeedbackFormValue {
-    const normalizedDeck = this.normalizeDeck(deck);
-    return {
-      eventId: normalizedDeck.eventId,
-      cards: normalizedDeck.cards.map(card => ({
+export class EventFeedbackFormInitialValueConverter {
+  static convert(detail: EventFeedbackDetailDto | null | undefined): EventFeedbackDetailDto {
+    const normalizedDetail = EventFeedbackDetailDto.normalize(detail);
+    return new EventFeedbackDetailDto({
+      eventId: normalizedDetail.eventId,
+      title: normalizedDetail.title,
+      submittedAtIso: normalizedDetail.submittedAtIso,
+      cards: normalizedDetail.cards.map(card => ({
+        ...card,
         id: card.id,
         answerPrimary: '',
         answerSecondary: '',
         selectedTraitIds: []
       }))
-    };
+    });
   }
+}
 
-  static normalizeValue(
-    value: unknown,
-    deck: EventFeedbackDeckResultDto | null | undefined
-  ): EventFeedbackFormValue {
-    const normalizedDeck = this.normalizeDeck(deck);
-    const input = this.isRecord(value) ? value : {};
-    const inputCards = Array.isArray(input['cards']) ? input['cards'] : [];
+export const eventFeedbackFormInitialValueConverter =
+  EventFeedbackFormInitialValueConverter satisfies UiConverter<
+    EventFeedbackDetailDto | null | undefined,
+    EventFeedbackDetailDto
+  >;
+
+export class EventFeedbackFormValueConverter {
+  static convert(input: {
+    value: unknown;
+    detail: EventFeedbackDetailDto | null | undefined;
+  }): EventFeedbackDetailDto {
+    const normalizedDetail = EventFeedbackDetailDto.normalize(input.detail);
+    const value = input.value;
+    const record = isRecord(value) ? value : {};
+    const inputCards = Array.isArray(record['cards']) ? record['cards'] : [];
     const cardInputById = new Map<string, Record<string, unknown>>();
     for (const item of inputCards) {
-      if (!this.isRecord(item)) {
+      if (!isRecord(item)) {
         continue;
       }
       const cardId = `${item['id'] ?? ''}`.trim();
@@ -103,92 +65,55 @@ export class EventFeedbackFormFlowConverter {
         cardInputById.set(cardId, item);
       }
     }
-    const uiCards = this.cardsForDeck(normalizedDeck);
-    return {
-      eventId: normalizedDeck.eventId,
-      cards: uiCards.map(card => {
+    const uiCardById = new Map(EventFeedbackDetailConverter.convert(normalizedDetail).map(card => [card.id, card]));
+    return new EventFeedbackDetailDto({
+      eventId: normalizedDetail.eventId,
+      title: normalizedDetail.title,
+      submittedAtIso: normalizedDetail.submittedAtIso,
+      cards: normalizedDetail.cards.map(sourceCard => {
+        const card = uiCardById.get(sourceCard.id);
+        if (!card) {
+          return sourceCard;
+        }
         const inputCard = cardInputById.get(card.id) ?? {};
-        const answerPrimary = this.normalizeOptionValue(
+        const answerPrimary = normalizeOptionValue(
           inputCard['answerPrimary'],
           card.primaryOptions.map(option => option.value)
         );
-        const answerSecondary = this.normalizeOptionValue(
+        const answerSecondary = normalizeOptionValue(
           inputCard['answerSecondary'],
           card.secondaryOptions.map(option => option.value)
         );
         return {
-          id: card.id,
+          ...sourceCard,
           answerPrimary,
           answerSecondary,
-          selectedTraitIds: this.normalizeTraitIds(
+          selectedTraitIds: normalizeTraitIds(
             inputCard['selectedTraitIds'],
             card.traitOptions.map(option => option.id)
           )
         };
       })
-    };
+    });
   }
+}
 
-  static submitResult(options: {
-    userId: string;
-    deck: EventFeedbackDeckResultDto | null | undefined;
-    value: unknown;
-    submittedAtIso: string;
-  }): EventFeedbackFormSubmitResult | null {
-    const userId = options.userId.trim();
-    const deck = this.normalizeDeck(options.deck);
-    if (!userId || !deck.eventId || deck.cards.length === 0) {
-      return null;
-    }
-    const value = this.normalizeValue(options.value, deck);
-    const valueByCardId = new Map(value.cards.map(card => [card.id, card]));
-    const answers: EventFeedbackAnswerSubmitDto[] = [];
-    const submittedAnswersByCardId: Record<string, SubmittedEventFeedbackAnswer> = {};
-    for (const card of this.cardsForDeck(deck)) {
-      const cardValue = valueByCardId.get(card.id);
-      if (!cardValue) {
-        continue;
-      }
-      const tags = this.selectedImpressionTags(card, cardValue);
-      const answer: EventFeedbackAnswerSubmitDto = {
-        cardId: card.id,
-        kind: card.kind,
-        targetUserId: card.targetUserId ?? null,
-        targetRole: card.targetRole ?? 'Member',
-        primaryValue: cardValue.answerPrimary,
-        secondaryValue: cardValue.answerSecondary,
-        personalityTraitIds: [...cardValue.selectedTraitIds],
-        tags,
-        submittedAtIso: options.submittedAtIso
-      };
-      answers.push(answer);
-      submittedAnswersByCardId[card.id] = {
-        ...answer,
-        eventId: card.eventId
-      };
-    }
-    if (answers.length === 0) {
-      return null;
-    }
-    return {
-      request: {
-        userId,
-        eventId: deck.eventId,
-        answers
-      },
-      submittedAnswersByCardId
-    };
-  }
+export const eventFeedbackFormValueConverter =
+  EventFeedbackFormValueConverter satisfies UiConverter<
+    Parameters<typeof EventFeedbackFormValueConverter.convert>[0],
+    EventFeedbackDetailDto
+  >;
 
+export class EventFeedbackFormFlowConverter {
   static convert(
-    deck: EventFeedbackDeckResultDto | null | undefined,
+    detail: EventFeedbackDetailDto | null | undefined,
     options: EventFeedbackFormFlowConverterOptions = {}
   ): FormFlowModel {
-    const normalizedDeck = this.normalizeDeck(deck);
-    const cards = this.cardsForDeck(normalizedDeck);
+    const normalizedDetail = EventFeedbackDetailDto.normalize(detail);
+    const cards = this.cardsForDetail(normalizedDetail);
     return {
       title: 'Event Feedback',
-      subtitle: options.eventTitle?.trim() || normalizedDeck.title,
+      subtitle: options.eventTitle?.trim() || normalizedDetail.title,
       layout: 'carousel',
       loadingLabel: 'Loading feedback',
       save: {
@@ -210,8 +135,8 @@ export class EventFeedbackFormFlowConverter {
         header: {
           title: card.kind === 'event' ? card.heading : card.identityTitle || card.heading,
           subtitle: card.kind === 'event' ? card.subheading : card.identitySubtitle || card.subheading,
-          imageCard: card.kind === 'event' ? null : EventFeedbackDeckImageCardConverter.convert(card),
-          infoCard: card.kind === 'event' ? EventFeedbackDeckInfoCardConverter.convert(card) : null,
+          imageCard: card.kind === 'event' ? null : EventFeedbackDetailImageCardConverter.convert(card),
+          infoCard: card.kind === 'event' ? EventFeedbackDetailInfoCardConverter.convert(card) : null,
           imageUrl: card.imageUrl,
           icon: card.icon
         },
@@ -411,77 +336,36 @@ export class EventFeedbackFormFlowConverter {
     return 'blue';
   }
 
-  private static cardsForDeck(deck: EventFeedbackDeckResultDto): AppTypes.EventFeedbackCard[] {
-    return EventFeedbackDeckConverter.convert(deck);
+  private static cardsForDetail(detail: EventFeedbackDetailDto): AppTypes.EventFeedbackCard[] {
+    return EventFeedbackDetailConverter.convert(detail);
   }
+}
 
-  private static normalizeDeck(deck: EventFeedbackDeckResultDto | null | undefined): EventFeedbackDeckResultDto {
-    return {
-      eventId: deck?.eventId?.trim() ?? '',
-      title: deck?.title?.trim() ?? '',
-      cards: (deck?.cards ?? []).map(card => ({
-        ...card,
-        id: card.id?.trim() ?? '',
-        eventId: card.eventId?.trim() ?? '',
-        kind: card.kind === 'attendee' ? 'attendee' as const : 'event' as const,
-        attendeeUserId: card.attendeeUserId?.trim() || undefined,
-        targetUserId: card.targetUserId?.trim() || undefined,
-        eventTitle: card.eventTitle?.trim() ?? '',
-        eventSubtitle: card.eventSubtitle?.trim() ?? '',
-        eventImageUrl: card.eventImageUrl?.trim() ?? '',
-        eventTimeframe: card.eventTimeframe?.trim() ?? '',
-        eventStartAtIso: card.eventStartAtIso?.trim() ?? '',
-        eventLabel: card.eventLabel?.trim() ?? '',
-        targetName: card.targetName?.trim() ?? '',
-        targetCity: card.targetCity?.trim() || undefined,
-        targetTraitLabel: card.targetTraitLabel?.trim() || undefined,
-        targetImageUrl: card.targetImageUrl?.trim() || undefined
-      })).filter(card => card.id.length > 0 && card.eventId.length > 0)
-    };
-  }
+function normalizeOptionValue(value: unknown, allowedValues: readonly string[]): string {
+  const normalizedValue = `${value ?? ''}`.trim();
+  return allowedValues.includes(normalizedValue) ? normalizedValue : '';
+}
 
-  private static selectedImpressionTags(
-    card: AppTypes.EventFeedbackCard,
-    value: EventFeedbackFormCardValue
-  ): string[] {
-    const tags = new Set<string>();
-    const primary = card.primaryOptions.find(option => option.value === value.answerPrimary)?.impressionTag;
-    const secondary = card.secondaryOptions.find(option => option.value === value.answerSecondary)?.impressionTag;
-    if (primary) {
-      tags.add(primary);
+function normalizeTraitIds(value: unknown, allowedValues: readonly string[]): string[] {
+  const requestedValues = Array.isArray(value)
+    ? value
+    : value === null || value === undefined || value === ''
+      ? []
+      : [value];
+  const selectedTraitIds: string[] = [];
+  for (const requestedValue of requestedValues) {
+    const traitId = `${requestedValue ?? ''}`.trim();
+    if (!traitId || !allowedValues.includes(traitId) || selectedTraitIds.includes(traitId)) {
+      continue;
     }
-    if (secondary) {
-      tags.add(secondary);
+    selectedTraitIds.push(traitId);
+    if (selectedTraitIds.length >= 3) {
+      break;
     }
-    return [...tags];
   }
+  return selectedTraitIds;
+}
 
-  private static normalizeOptionValue(value: unknown, allowedValues: readonly string[]): string {
-    const normalizedValue = `${value ?? ''}`.trim();
-    return allowedValues.includes(normalizedValue) ? normalizedValue : '';
-  }
-
-  private static normalizeTraitIds(value: unknown, allowedValues: readonly string[]): string[] {
-    const requestedValues = Array.isArray(value)
-      ? value
-      : value === null || value === undefined || value === ''
-        ? []
-        : [value];
-    const selectedTraitIds: string[] = [];
-    for (const requestedValue of requestedValues) {
-      const traitId = `${requestedValue ?? ''}`.trim();
-      if (!traitId || !allowedValues.includes(traitId) || selectedTraitIds.includes(traitId)) {
-        continue;
-      }
-      selectedTraitIds.push(traitId);
-      if (selectedTraitIds.length >= 3) {
-        break;
-      }
-    }
-    return selectedTraitIds;
-  }
-
-  private static isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value);
-  }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

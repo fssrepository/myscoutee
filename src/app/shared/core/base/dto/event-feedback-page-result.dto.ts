@@ -1,9 +1,9 @@
 import type { EventFeedbackListFilter } from '../../common/constants';
 import type {
-  EventFeedbackPageItemDto,
+  EventFeedbackDto,
   EventFeedbackPageResultDto,
   EventFeedbackReceivedEntryDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackDetailDto
 } from '../../contracts/activity.interface';
 
 export type EventFeedbackFilterCountDelta = Partial<Record<EventFeedbackListFilter, number>>;
@@ -15,7 +15,7 @@ export class EventFeedbackPageResult {
     return new EventFeedbackPageResult(dto);
   }
 
-  get items(): readonly EventFeedbackPageItemDto[] {
+  get items(): readonly EventFeedbackDto[] {
     return this.dto.items;
   }
 
@@ -23,15 +23,15 @@ export class EventFeedbackPageResult {
     return this.dto.total;
   }
 
-  get allItems(): readonly EventFeedbackPageItemDto[] {
+  get allItems(): readonly EventFeedbackDto[] {
     return this.dto.allItems;
   }
 
-  get organizerItems(): readonly EventFeedbackPageItemDto[] {
+  get organizerItems(): readonly EventFeedbackDto[] {
     return this.dto.organizerItems;
   }
 
-  itemById(eventId: string): EventFeedbackPageItemDto | null {
+  itemById(eventId: string): EventFeedbackDto | null {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -68,7 +68,7 @@ export class EventFeedbackPageResult {
     return Math.max(0, this.filterCount(filter) + (delta[filter] ?? 0));
   }
 
-  itemMatchesFilter(item: EventFeedbackPageItemDto, filter: EventFeedbackListFilter): boolean {
+  itemMatchesFilter(item: EventFeedbackDto, filter: EventFeedbackListFilter): boolean {
     switch (filter) {
       case 'own-events':
         return item.isOwnEvent === true;
@@ -83,11 +83,11 @@ export class EventFeedbackPageResult {
   }
 
   applySubmitToItem(
-    item: EventFeedbackPageItemDto,
-    dto: EventFeedbackSubmitRequestDto
-  ): EventFeedbackPageItemDto {
+    item: EventFeedbackDto,
+    dto: EventFeedbackDetailDto
+  ): EventFeedbackDto {
     const submittedAtMs = this.submitTimestampMs(dto);
-    const pendingCards = Math.max(0, item.pendingCards - dto.answers.length);
+    const pendingCards = Math.max(0, item.pendingCards - dto.cards.length);
     return {
       ...item,
       pendingCards,
@@ -99,8 +99,8 @@ export class EventFeedbackPageResult {
   }
 
   filterCountDelta(
-    before: EventFeedbackPageItemDto,
-    after: EventFeedbackPageItemDto
+    before: EventFeedbackDto,
+    after: EventFeedbackDto
   ): EventFeedbackFilterCountDelta {
     return {
       pending: this.filterMembershipDelta(before, after, 'pending'),
@@ -110,8 +110,8 @@ export class EventFeedbackPageResult {
     };
   }
 
-  patchItem(item: EventFeedbackPageItemDto): EventFeedbackPageResult {
-    const patchList = (items: readonly EventFeedbackPageItemDto[]) =>
+  patchItem(item: EventFeedbackDto): EventFeedbackPageResult {
+    const patchList = (items: readonly EventFeedbackDto[]) =>
       items.map(current => current.eventId === item.eventId ? { ...item } : { ...current });
     return new EventFeedbackPageResult({
       ...this.dto,
@@ -167,7 +167,7 @@ export class EventFeedbackPageResult {
     return latestAtMs;
   }
 
-  groupTimestampMs(item: EventFeedbackPageItemDto, filter: EventFeedbackListFilter): number | null {
+  groupTimestampMs(item: EventFeedbackDto, filter: EventFeedbackListFilter): number | null {
     switch (filter) {
       case 'feedbacked':
         return this.numberOrNull(item.feedbackedAtMs ?? item.startAtMs);
@@ -180,15 +180,15 @@ export class EventFeedbackPageResult {
     }
   }
 
-  private submitTimestampMs(dto: EventFeedbackSubmitRequestDto): number {
-    const submittedAtIso = dto.answers.map(answer => answer.submittedAtIso.trim()).find(Boolean) ?? '';
+  private submitTimestampMs(dto: EventFeedbackDetailDto): number {
+    const submittedAtIso = dto.submittedAtIso.trim();
     const submittedAtMs = submittedAtIso ? new Date(submittedAtIso).getTime() : Date.now();
     return Number.isNaN(submittedAtMs) ? Date.now() : submittedAtMs;
   }
 
   private filterMembershipDelta(
-    before: EventFeedbackPageItemDto,
-    after: EventFeedbackPageItemDto,
+    before: EventFeedbackDto,
+    after: EventFeedbackDto,
     filter: EventFeedbackListFilter
   ): number {
     const wasVisible = this.itemMatchesFilter(before, filter);

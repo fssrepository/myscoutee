@@ -8,14 +8,13 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
-  EventFeedbackDeckQueryDto,
-  EventFeedbackDeckResultDto,
+  EventFeedbackQueryDto,
+  EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
   EventFeedbackPageResultDto,
-  EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
@@ -174,20 +173,20 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
   }
 
-  async loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
+  async loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
-      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
     const users = this.usersRepository.queryAllUsers();
     const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
     if (!activeUser) {
-      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
     }
-    return EventFeedbackBuilder.buildDeckResult({
+    return EventFeedbackBuilder.buildDetail({
       query: {
         userId: normalizedUserId,
         eventId: normalizedEventId
@@ -198,9 +197,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     });
   }
 
-  async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
+  async submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    this.eventFeedbackRepository.submitEventFeedback(request);
+    this.eventFeedbackRepository.submitEventFeedback(userId, request);
     await this.eventFeedbackRepository.flushToIndexedDb();
   }
 

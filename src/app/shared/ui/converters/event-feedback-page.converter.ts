@@ -3,7 +3,7 @@ import { APP_STATIC_DATA } from '../../app-static-data';
 import type { EventFeedbackFilterCountDelta, EventFeedbackPageResult } from '../../core/base';
 import type { EventFeedbackListFilter } from '../../core/common/constants';
 import type {
-  EventFeedbackPageItemDto,
+  EventFeedbackDto,
   EventFeedbackReceivedEntryDto,
   SubmittedEventFeedbackAnswer
 } from '../../core/contracts/activity.interface';
@@ -183,7 +183,7 @@ export interface EventFeedbackOrganizerItemConverterOptions {
 
 export class EventFeedbackOrganizerItemConverter {
   static convert(
-    item: EventFeedbackPageItemDto,
+    item: EventFeedbackDto,
     options: EventFeedbackOrganizerItemConverterOptions
   ): EventFeedbackOrganizerItemData {
     const eventId = item.eventId?.trim() ?? '';
@@ -202,7 +202,7 @@ export class EventFeedbackOrganizerItemConverter {
   }
 
   static convertList(
-    items: readonly EventFeedbackPageItemDto[],
+    items: readonly EventFeedbackDto[],
     options: EventFeedbackOrganizerItemConverterOptions
   ): EventFeedbackOrganizerItemData[] {
     return items
@@ -217,7 +217,7 @@ export class EventFeedbackOrganizerItemConverter {
 
 export const eventFeedbackOrganizerItemConverter =
   EventFeedbackOrganizerItemConverter satisfies UiListConverter<
-    EventFeedbackPageItemDto,
+    EventFeedbackDto,
     EventFeedbackOrganizerItemData,
     EventFeedbackOrganizerItemConverterOptions
   >;

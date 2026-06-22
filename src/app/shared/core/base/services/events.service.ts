@@ -7,14 +7,13 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
-  EventFeedbackDeckQueryDto,
-  EventFeedbackDeckResultDto,
+  EventFeedbackQueryDto,
+  EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
   EventFeedbackPageResultDto,
-  EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import { LocalEventsService } from '../../local';
 import { HttpEventsService } from '../../http';
@@ -224,12 +223,12 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.loadEventFeedbackPage(query);
   }
 
-  loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
-    return this.eventsService.loadEventFeedbackDeck(query);
+  loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
+    return this.eventsService.loadEventFeedback(query);
   }
 
-  submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
-    return this.eventsService.submitEventFeedback(request);
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void> {
+    return this.eventsService.submitEventFeedback(userId, request);
   }
 
   saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {

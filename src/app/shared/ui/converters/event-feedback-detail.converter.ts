@@ -2,17 +2,17 @@ import { APP_STATIC_DATA } from '../../app-static-data';
 import type * as AppTypes from '../../core/base/models';
 import type { ActivityMemberRole } from '../../core/common/constants';
 import type {
-  EventFeedbackCardSourceDto,
-  EventFeedbackDeckResultDto
+  EventFeedbackCardDto,
+  EventFeedbackDetailDto
 } from '../../core/contracts/activity.interface';
 import type { ImageCardData, InfoCardData } from '../components/card';
 import type { UiConverter } from './converter.types';
 
-export class EventFeedbackDeckConverter {
-  static convert(result: EventFeedbackDeckResultDto): AppTypes.EventFeedbackCard[] {
+export class EventFeedbackDetailConverter {
+  static convert(result: EventFeedbackDetailDto): AppTypes.EventFeedbackCard[] {
     return (result.cards ?? []).map(card => this.convertCard(card));
   }
-  private static convertCard(source: EventFeedbackCardSourceDto): AppTypes.EventFeedbackCard {
+  private static convertCard(source: EventFeedbackCardDto): AppTypes.EventFeedbackCard {
     const eventId = source.eventId.trim();
     const eventTitle = source.eventTitle.trim() || 'Event';
     const eventSubtitle = source.eventSubtitle.trim();
@@ -46,9 +46,9 @@ export class EventFeedbackDeckConverter {
         secondaryOptions: [...APP_STATIC_DATA.eventFeedbackAttendeeRejoinOptions],
         traitQuestion: `Which personality traits best matched ${targetName} in this event?`,
         traitOptions: [...APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions],
-        selectedTraitIds: [],
-        answerPrimary: '',
-        answerSecondary: ''
+        selectedTraitIds: [...(source.selectedTraitIds ?? [])],
+        answerPrimary: source.answerPrimary?.trim() ?? '',
+        answerSecondary: source.answerSecondary?.trim() ?? ''
       };
     }
 
@@ -73,9 +73,9 @@ export class EventFeedbackDeckConverter {
       secondaryOptions: [...APP_STATIC_DATA.eventFeedbackHostImproveOptions],
       traitQuestion: `Which traits describe ${targetName} best as the event creator?`,
       traitOptions: [...APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions],
-      selectedTraitIds: [],
-      answerPrimary: '',
-      answerSecondary: ''
+      selectedTraitIds: [...(source.selectedTraitIds ?? [])],
+      answerPrimary: source.answerPrimary?.trim() ?? '',
+      answerSecondary: source.answerSecondary?.trim() ?? ''
     };
   }
 
@@ -125,7 +125,7 @@ export class EventFeedbackDeckConverter {
   }
 }
 
-export class EventFeedbackDeckInfoCardConverter {
+export class EventFeedbackDetailInfoCardConverter {
   static convert(card: AppTypes.EventFeedbackCard): InfoCardData {
     const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
     return {
@@ -143,7 +143,7 @@ export class EventFeedbackDeckInfoCardConverter {
   }
 }
 
-export class EventFeedbackDeckImageCardConverter {
+export class EventFeedbackDetailImageCardConverter {
   static convert(card: AppTypes.EventFeedbackCard): ImageCardData {
     const isEventCard = card.kind === 'event';
     return {
@@ -166,20 +166,20 @@ export class EventFeedbackDeckImageCardConverter {
   }
 }
 
-export const eventFeedbackDeckConverter =
-  EventFeedbackDeckConverter satisfies UiConverter<
-    EventFeedbackDeckResultDto,
+export const eventFeedbackDetailConverter =
+  EventFeedbackDetailConverter satisfies UiConverter<
+    EventFeedbackDetailDto,
     AppTypes.EventFeedbackCard[]
   >;
 
-export const eventFeedbackDeckInfoCardConverter =
-  EventFeedbackDeckInfoCardConverter satisfies UiConverter<
+export const eventFeedbackDetailInfoCardConverter =
+  EventFeedbackDetailInfoCardConverter satisfies UiConverter<
     AppTypes.EventFeedbackCard,
     InfoCardData
   >;
 
-export const eventFeedbackDeckImageCardConverter =
-  EventFeedbackDeckImageCardConverter satisfies UiConverter<
+export const eventFeedbackDetailImageCardConverter =
+  EventFeedbackDetailImageCardConverter satisfies UiConverter<
     AppTypes.EventFeedbackCard,
     ImageCardData
   >;

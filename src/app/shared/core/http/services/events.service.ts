@@ -12,14 +12,13 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
-  EventFeedbackDeckQueryDto,
-  EventFeedbackDeckResultDto,
+  EventFeedbackQueryDto,
+  EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
   EventFeedbackPageResultDto,
-  EventFeedbackStateDto,
-  EventFeedbackSubmitRequestDto
+  EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
   ActivityEventActivitiesListQueryResult,
@@ -532,26 +531,29 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
-  async loadEventFeedbackDeck(query: EventFeedbackDeckQueryDto): Promise<EventFeedbackDeckResultDto> {
+  async loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
-      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
     }
     try {
       const response = await this.http
-        .post<EventFeedbackDeckResultDto | null>(`${this.apiBaseUrl}/activities/events/feedback/deck`, {
+        .post<EventFeedbackDetailDto | null>(`${this.apiBaseUrl}/activities/events/feedback/detail`, {
           userId: normalizedUserId,
           eventId: normalizedEventId
         })
         .toPromise();
-      return EventFeedbackBuilder.cloneDeckResult(response);
+      return EventFeedbackBuilder.cloneDetail({
+        ...(response ?? {}),
+        eventId: response?.eventId?.trim() || normalizedEventId
+      });
     } catch {
-      return EventFeedbackBuilder.emptyDeckResult(normalizedEventId);
+      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
     }
   }
 
-  async submitEventFeedback(request: EventFeedbackSubmitRequestDto): Promise<void> {
+  async submitEventFeedback(_userId: string, request: EventFeedbackDetailDto): Promise<void> {
     await this.postVoid('/activities/events/feedback/submit', request);
   }
 

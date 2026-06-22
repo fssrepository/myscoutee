@@ -10,7 +10,8 @@ import {
   AppContext,
   AppPopupContext,
   EventFeedbackFormFlowConverter,
-  type EventFeedbackFormValue,
+  EventFeedbackFormInitialValueConverter,
+  EventFeedbackFormValueConverter,
   EventFeedbackFilterMenuConverter,
   EventFeedbackInfoCardConverter,
   EventFeedbackListPresentationConverter,
@@ -34,7 +35,7 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
 import { EventFeedbackPageResult, EventsService } from '../../../shared/core/base';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -86,12 +87,14 @@ export class EventFeedbackPopupComponent {
   protected readonly eventFeedbackNoteSubmitted = signal(false);
   protected readonly eventFeedbackNoteSubmitMessage = signal('');
   private readonly eventFeedbackPageResult = signal<EventFeedbackPageResult | null>(null);
-  protected readonly eventFeedbackDeckDto = signal<ActivityContracts.EventFeedbackDeckResultDto | null>(null);
-  protected readonly eventFeedbackDeckValue = signal<EventFeedbackFormValue>(EventFeedbackFormFlowConverter.emptyValue());
-  protected readonly eventFeedbackDeckLoading = signal(false);
+  protected readonly eventFeedbackDetailDto = signal<ActivityContracts.EventFeedbackDetailDto | null>(null);
+  protected readonly eventFeedbackDetailValue = signal<ActivityContracts.EventFeedbackDetailDto>(
+    new ActivityContracts.EventFeedbackDetailDto()
+  );
+  protected readonly eventFeedbackDetailLoading = signal(false);
   protected readonly eventFeedbackSubmitMessage = signal('');
   protected readonly eventFeedbackSubmitted = signal(false);
-  protected readonly hasEventFeedbackCards = computed(() => (this.eventFeedbackDeckDto()?.cards.length ?? 0) > 0);
+  protected readonly hasEventFeedbackCards = computed(() => (this.eventFeedbackDetailDto()?.cards.length ?? 0) > 0);
   private readonly eventFeedbackFilterCountDelta = signal<Partial<Record<EventFeedbackListFilter, number>>>({});
 
   protected readonly eventFeedbackFilterMenu = computed(() => EventFeedbackFilterMenuConverter.convert({
@@ -310,25 +313,25 @@ export class EventFeedbackPopupComponent {
     return this.eventFeedbackPageResult()?.eventTitleById(eventId) ?? 'this event';
   }
 
-  private openEventFeedbackDeck(item: ActivityContracts.EventFeedbackPageItemDto, event?: Event): void {
+  private openEventFeedbackDetail(item: ActivityContracts.EventFeedbackDto, event?: Event): void {
     event?.stopPropagation();
     this.selectedEventFeedbackEventId.set(item.eventId);
     this.stackedPopupMode.set('eventFeedback');
     this.isStackedPopupOpen.set(true);
   }
 
-  private isEventFeedbackDeckLoadCurrent(eventId: string): boolean {
+  private isEventFeedbackDetailLoadCurrent(eventId: string): boolean {
     return this.selectedEventFeedbackEventId() === eventId.trim()
       && this.stackedPopupMode() === 'eventFeedback';
   }
 
-  private completeEmptyEventFeedbackDeck(title: string): void {
+  private completeEmptyEventFeedbackDetail(title: string): void {
     this.eventFeedbackListSubmitMessage.set(`${title} is already in Feedbacked.`);
     this.eventFeedbackListFilter.set('feedbacked');
     this.closeStackedPopup();
   }
 
-  private openEventFeedbackNotePopup(item: ActivityContracts.EventFeedbackPageItemDto, event?: Event): void {
+  private openEventFeedbackNotePopup(item: ActivityContracts.EventFeedbackDto, event?: Event): void {
     event?.stopPropagation();
     this.selectedEventFeedbackEventId.set(item.eventId);
     this.eventFeedbackNoteForm.set({
@@ -360,8 +363,8 @@ export class EventFeedbackPopupComponent {
   }
 
   private patchEventFeedbackItem(
-    before: ActivityContracts.EventFeedbackPageItemDto,
-    after: ActivityContracts.EventFeedbackPageItemDto
+    before: ActivityContracts.EventFeedbackDto,
+    after: ActivityContracts.EventFeedbackDto
   ): void {
     const pageResult = this.eventFeedbackPageResult();
     const delta = pageResult?.filterCountDelta(before, after) ?? {};
@@ -375,7 +378,7 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackPageResult.set(pageResult?.patchItem(after) ?? null);
   }
 
-  private applyEventFeedbackItemRemoved(item: ActivityContracts.EventFeedbackPageItemDto): void {
+  private applyEventFeedbackItemRemoved(item: ActivityContracts.EventFeedbackDto): void {
     this.patchEventFeedbackItem(item, {
       ...item,
       isRemoved: true,
@@ -385,7 +388,7 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackListSubmitMessage.set(`${item.title} moved to Removed without feedback.`);
   }
 
-  private applyEventFeedbackItemRestored(item: ActivityContracts.EventFeedbackPageItemDto): void {
+  private applyEventFeedbackItemRestored(item: ActivityContracts.EventFeedbackDto): void {
     this.patchEventFeedbackItem(item, {
       ...item,
       isRemoved: false,
@@ -433,7 +436,7 @@ export class EventFeedbackPopupComponent {
     this.openEventFeedbackNotePopup(item);
   }
 
-  private openRemoveEventFeedbackDialog(item: ActivityContracts.EventFeedbackPageItemDto): void {
+  private openRemoveEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
     this.confirmationDialogService.open({
       title: 'Remove feedback?',
       message: `${item.title} will be moved to Removed without feedback.`,
@@ -450,7 +453,7 @@ export class EventFeedbackPopupComponent {
     });
   }
 
-  private openRestoreEventFeedbackDialog(item: ActivityContracts.EventFeedbackPageItemDto): void {
+  private openRestoreEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
     this.confirmationDialogService.open({
       title: 'Restore feedback?',
       message: `${item.title} will move back to Pending.`,
@@ -515,39 +518,39 @@ export class EventFeedbackPopupComponent {
     return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
   }
 
-  private async startEventFeedback(item: ActivityContracts.EventFeedbackPageItemDto, event?: Event): Promise<void> {
+  private async startEventFeedback(item: ActivityContracts.EventFeedbackDto, event?: Event): Promise<void> {
     event?.stopPropagation();
     if (!(this.eventFeedbackPageResult()?.itemMatchesFilter(item, 'pending') ?? false)) {
       return;
     }
     const userId = this.activeUserId();
     const eventId = item.eventId.trim();
-    this.openEventFeedbackDeck(item);
-    this.clearLoadedEventFeedbackDeck(eventId);
-    this.eventFeedbackDeckLoading.set(true);
+    this.openEventFeedbackDetail(item);
+    this.clearLoadedEventFeedbackDetail(eventId);
+    this.eventFeedbackDetailLoading.set(true);
     this.eventFeedbackSubmitted.set(false);
     this.eventFeedbackSubmitMessage.set('');
     if (!userId || !eventId) {
-      this.applyLoadedEventFeedbackDeck({
+      this.applyLoadedEventFeedbackDetail(new ActivityContracts.EventFeedbackDetailDto({
         eventId,
         title: item.title,
         cards: []
-      }, item.title);
-      this.eventFeedbackDeckLoading.set(false);
+      }), item.title);
+      this.eventFeedbackDetailLoading.set(false);
       return;
     }
     try {
-      const deck = await this.eventsService.loadEventFeedbackDeck({ userId, eventId });
-      this.applyLoadedEventFeedbackDeck(deck, item.title);
+      const detail = await this.eventsService.loadEventFeedback({ userId, eventId });
+      this.applyLoadedEventFeedbackDetail(detail, item.title);
     } finally {
-      if (this.isEventFeedbackDeckLoadCurrent(eventId)) {
-        this.eventFeedbackDeckLoading.set(false);
+      if (this.isEventFeedbackDetailLoadCurrent(eventId)) {
+        this.eventFeedbackDetailLoading.set(false);
       }
     }
   }
 
   protected readonly eventFeedbackFlowModel = computed(() => EventFeedbackFormFlowConverter.convert(
-    this.eventFeedbackDeckDto(),
+    this.eventFeedbackDetailDto(),
     { eventTitle: this.eventFeedbackCurrentEventTitle() }
   ));
 
@@ -556,55 +559,52 @@ export class EventFeedbackPopupComponent {
       return;
     }
     const submittedAtIso = new Date().toISOString();
-    const submitResult = EventFeedbackFormFlowConverter.submitResult({
-      userId: this.activeUserId(),
-      deck: this.eventFeedbackDeckDto(),
-      value: this.eventFeedbackDeckValue(),
-      submittedAtIso
-    });
-    if (!submitResult) {
+    const feedback = this.eventFeedbackDetailValue().submitted({ submittedAtIso });
+    if (!feedback.eventId || feedback.cards.length === 0) {
       return;
     }
-    await this.eventsService.submitEventFeedback(submitResult.request);
-    this.appCtx.emitActivityEventFeedbackSubmit(submitResult.request);
+    await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
+    this.appCtx.emitActivityEventFeedbackSubmit(feedback);
     this.eventFeedbackSubmitted.set(true);
     this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
-    this.clearLoadedEventFeedbackDeck(submitResult.request.eventId);
+    this.clearLoadedEventFeedbackDetail(feedback.eventId);
   }
 
-  protected setEventFeedbackDeckValue(value: unknown): void {
-    this.eventFeedbackDeckValue.set(EventFeedbackFormFlowConverter.normalizeValue(value, this.eventFeedbackDeckDto()));
+  protected setEventFeedbackDetailValue(value: unknown): void {
+    this.eventFeedbackDetailValue.set(EventFeedbackFormValueConverter.convert({
+      value,
+      detail: this.eventFeedbackDetailDto()
+    }));
   }
 
-  private applyLoadedEventFeedbackDeck(
-    deck: ActivityContracts.EventFeedbackDeckResultDto,
+  private applyLoadedEventFeedbackDetail(
+    detail: ActivityContracts.EventFeedbackDetailDto,
     fallbackTitle: string
   ): void {
-    if (!this.isEventFeedbackDeckLoadCurrent(deck.eventId)) {
+    if (!this.isEventFeedbackDetailLoadCurrent(detail.eventId)) {
       return;
     }
-    const pendingDeck = EventFeedbackFormFlowConverter.pendingDeck(deck, {
+    const pendingDetail = detail.pending({
       activeUserId: this.activeUserId(),
       fallbackTitle
     });
-    if (pendingDeck.cards.length === 0) {
-      this.clearLoadedEventFeedbackDeck(pendingDeck.eventId);
-      this.completeEmptyEventFeedbackDeck(fallbackTitle);
+    if (pendingDetail.cards.length === 0) {
+      this.clearLoadedEventFeedbackDetail(pendingDetail.eventId);
+      this.completeEmptyEventFeedbackDetail(fallbackTitle);
       return;
     }
-    this.eventFeedbackDeckDto.set(pendingDeck);
-    this.eventFeedbackDeckValue.set(EventFeedbackFormFlowConverter.initialValue(pendingDeck));
+    this.eventFeedbackDetailDto.set(pendingDetail);
+    this.eventFeedbackDetailValue.set(EventFeedbackFormInitialValueConverter.convert(pendingDetail));
   }
 
-  private clearLoadedEventFeedbackDeck(eventId = ''): void {
-    this.eventFeedbackDeckDto.set(null);
-    this.eventFeedbackDeckValue.set(EventFeedbackFormFlowConverter.emptyValue(eventId));
+  private clearLoadedEventFeedbackDetail(eventId = ''): void {
+    this.eventFeedbackDetailDto.set(null);
+    this.eventFeedbackDetailValue.set(new ActivityContracts.EventFeedbackDetailDto({ eventId }));
   }
 
-  private applyActivityEventFeedbackSubmitSync(dto: ActivityContracts.EventFeedbackSubmitRequestDto): void {
-    const userId = dto.userId.trim();
+  private applyActivityEventFeedbackSubmitSync(dto: ActivityContracts.EventFeedbackDetailDto): void {
     const eventId = dto.eventId.trim();
-    if (!userId || userId !== this.activeUserId() || !eventId) {
+    if (!eventId) {
       return;
     }
     const pageResult = this.eventFeedbackPageResult();

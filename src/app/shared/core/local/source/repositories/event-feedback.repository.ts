@@ -4,7 +4,12 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { EventFeedbackReceivedEventDto, EventFeedbackNoteRequestDto, EventFeedbackStateDto, EventFeedbackSubmitRequestDto } from '../../../contracts/activity.interface';
+import { EventFeedbackDetailDto } from '../../../contracts/activity.interface';
+import type {
+  EventFeedbackReceivedEventDto,
+  EventFeedbackNoteRequestDto,
+  EventFeedbackStateDto
+} from '../../../contracts/activity.interface';
 
 
 import { LocalEventsRepository } from './events.repository';
@@ -101,32 +106,31 @@ export class LocalEventFeedbackRepository {
       .sort((left, right) => right.eventId.localeCompare(left.eventId));
   }
 
-  submitEventFeedback(request: EventFeedbackSubmitRequestDto): void {
-    const normalizedUserId = request.userId.trim();
-    const normalizedEventId = request.eventId.trim();
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): void {
+    const feedback = EventFeedbackDetailDto.normalize(request);
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = feedback.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
       return;
     }
-    const submittedAtIso = request.answers
-      .map(answer => answer.submittedAtIso.trim())
-      .find(Boolean) ?? new Date().toISOString();
+    const submittedAtIso = feedback.submittedAtIso || new Date().toISOString();
     const nextAnswersByCardId: Record<string, EventFeedbackPersistedState['answersByCardId'][string]> = {};
-    for (const answer of request.answers) {
-      const cardId = answer.cardId.trim();
+    for (const card of feedback.cards) {
+      const cardId = card.id.trim();
       if (!cardId) {
         continue;
       }
       nextAnswersByCardId[cardId] = {
         cardId,
         eventId: normalizedEventId,
-        kind: answer.kind === 'attendee' ? 'attendee' : 'event',
-        targetUserId: answer.targetUserId?.trim() || null,
-        targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
-        primaryValue: answer.primaryValue.trim(),
-        secondaryValue: answer.secondaryValue.trim(),
-        personalityTraitIds: answer.personalityTraitIds.map(traitId => traitId.trim()).filter(Boolean),
-        tags: answer.tags.map(tag => tag.trim()).filter(Boolean),
-        submittedAtIso: answer.submittedAtIso.trim() || submittedAtIso
+        kind: card.kind === 'attendee' ? 'attendee' : 'event',
+        targetUserId: card.targetUserId?.trim() || null,
+        targetRole: card.targetRole === 'Admin' || card.targetRole === 'Manager' ? card.targetRole : 'Member',
+        primaryValue: card.answerPrimary?.trim() ?? '',
+        secondaryValue: card.answerSecondary?.trim() ?? '',
+        personalityTraitIds: (card.selectedTraitIds ?? []).map(traitId => traitId.trim()).filter(Boolean),
+        tags: [],
+        submittedAtIso
       };
     }
     this.updateEventFeedbackState(normalizedUserId, normalizedEventId, current => ({
