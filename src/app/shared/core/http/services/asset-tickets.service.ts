@@ -86,7 +86,7 @@ export class HttpAssetTicketsService {
       .filter(record => record.type !== 'invitations')
       .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => toActivityEventRow(ActivityEventDtoMapper.toDTO(record))));
+      .map(record => toActivityEventRow(ActivityEventDtoMapper.toDto(record))));
   }
 
   private pageRows(

@@ -80,7 +80,7 @@ export class LocalHelpCenterService {
     const consentId = this.privacyConsentRecordId(normalizedUserId, normalizedRevisionId);
     const consent = table.privacyConsentsById?.[consentId] ?? null;
     if (consent) {
-      return LocalHelpCenterMapper.toPrivacyConsentDTO(consent);
+      return LocalHelpCenterMapper.toDto(consent);
     }
     return this.latestPrivacyConsentForUser(table, normalizedUserId);
   }
@@ -94,7 +94,7 @@ export class LocalHelpCenterService {
     }
     const table = this.table();
     const revision = table.revisionsById[revisionId];
-    const revisionDto = revision ? LocalHelpCenterMapper.toRevisionDTO(revision) : null;
+    const revisionDto = revision ? LocalHelpCenterMapper.toDto(revision) : null;
     if (!revisionDto || this.revisionKind(revisionDto) !== 'privacy') {
       throw new Error('Privacy revision not found.');
     }
@@ -103,7 +103,7 @@ export class LocalHelpCenterService {
     const nowIso = new Date().toISOString();
     const revisionVersion = Math.max(1, Math.trunc(Number(revisionDto.version || request?.revisionVersion) || 1));
     const currentRevisionVersion = Math.max(0, Math.trunc(Number(current?.revisionVersion) || 0));
-    const consent = LocalHelpCenterMapper.toPrivacyConsentRecord({
+    const consent = LocalHelpCenterMapper.toRecord({
       id,
       userId,
       revisionId,
@@ -128,7 +128,7 @@ export class LocalHelpCenterService {
       this.helpCenterRepository.flushToIndexedDb(),
       this.routeDelay.waitForRouteDelay('/privacy/consents')
     ]);
-    return LocalHelpCenterMapper.toPrivacyConsentDTO(consent);
+    return LocalHelpCenterMapper.toDto(consent);
   }
 
   async saveRevision(request: HelpCenterRevisionSaveRequestDto, kind: HelpCenterDocumentKind = 'help'): Promise<HelpCenterStateDto> {
@@ -176,12 +176,12 @@ export class LocalHelpCenterService {
         activeRevisionIdsByKind: { ...(current.activeRevisionIdsByKind ?? {}) },
         revisionsById: {
           ...this.normalizedRevisionsById(current),
-          [revisionId]: LocalHelpCenterMapper.toRevisionRecord(revision)
+          [revisionId]: LocalHelpCenterMapper.toRecord(revision)
         },
         revisionIds: [...current.revisionIds.filter(id => id !== revisionId), revisionId],
         auditById: {
           ...current.auditById,
-          [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
+          [audit.id]: LocalHelpCenterMapper.toRecord(audit)
         },
         auditIds: [...current.auditIds, audit.id]
       };
@@ -200,7 +200,7 @@ export class LocalHelpCenterService {
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
-    const revisionDto = revision ? LocalHelpCenterMapper.toRevisionDTO(revision) : null;
+    const revisionDto = revision ? LocalHelpCenterMapper.toDto(revision) : null;
     if (!revisionDto || this.revisionKind(revisionDto) !== documentKind) {
       throw new Error(`${this.documentLabel(documentKind)} revision not found.`);
     }
@@ -216,11 +216,11 @@ export class LocalHelpCenterService {
         current.revisionIds
           .filter(id => Boolean(current.revisionsById[id]))
           .map(id => {
-            const item = LocalHelpCenterMapper.toRevisionDTO(current.revisionsById[id]);
+            const item = LocalHelpCenterMapper.toDto(current.revisionsById[id]);
             const itemKind = this.revisionKind(item);
             const itemLang = this.revisionLang(item);
             const itemContext = this.revisionContextKey(item);
-            return [id, LocalHelpCenterMapper.toRevisionRecord({
+            return [id, LocalHelpCenterMapper.toRecord({
               ...item,
               documentKind: itemKind,
               contextKey: itemContext,
@@ -242,7 +242,7 @@ export class LocalHelpCenterService {
         revisionsById,
         auditById: {
           ...current.auditById,
-          [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
+          [audit.id]: LocalHelpCenterMapper.toRecord(audit)
         },
         auditIds: [...current.auditIds, audit.id]
       };
@@ -260,7 +260,7 @@ export class LocalHelpCenterService {
     const normalizedRevisionId = revisionId.trim();
     const table = this.table();
     const revision = table.revisionsById[normalizedRevisionId];
-    const revisionDto = revision ? LocalHelpCenterMapper.toRevisionDTO(revision) : null;
+    const revisionDto = revision ? LocalHelpCenterMapper.toDto(revision) : null;
     const language = this.normalizeLang(revisionDto?.lang);
     const contextKey = this.revisionContextKey(revisionDto);
     if (!revisionDto || this.revisionKind(revisionDto) !== documentKind) {
@@ -270,7 +270,7 @@ export class LocalHelpCenterService {
     const remainingRevisions = remainingIds
       .map(id => table.revisionsById[id])
       .filter((item): item is HelpCenterRevisionRecord => Boolean(item))
-      .map(item => LocalHelpCenterMapper.toRevisionDTO(item))
+      .map(item => LocalHelpCenterMapper.toDto(item))
       .filter(item => this.revisionKind(item) === documentKind && this.revisionLang(item) === language && this.revisionContextKey(item) === contextKey)
       .sort((left, right) => right.version - left.version);
     const currentActiveRevisionId = this.activeRevisionId(table, documentKind, language, contextKey);
@@ -290,11 +290,11 @@ export class LocalHelpCenterService {
         remainingIds
           .filter(id => Boolean(revisionsById[id]))
           .map(id => {
-            const item = LocalHelpCenterMapper.toRevisionDTO(revisionsById[id]);
+            const item = LocalHelpCenterMapper.toDto(revisionsById[id]);
             const itemKind = this.revisionKind(item);
             const itemLang = this.revisionLang(item);
             const itemContext = this.revisionContextKey(item);
-            return [id, LocalHelpCenterMapper.toRevisionRecord({
+            return [id, LocalHelpCenterMapper.toRecord({
               ...item,
               documentKind: itemKind,
               contextKey: itemContext,
@@ -318,7 +318,7 @@ export class LocalHelpCenterService {
         revisionIds: remainingIds,
         auditById: {
           ...current.auditById,
-          [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
+          [audit.id]: LocalHelpCenterMapper.toRecord(audit)
         },
         auditIds: [...current.auditIds, audit.id]
       };
@@ -372,7 +372,7 @@ export class LocalHelpCenterService {
     const latest = Object.values(consentsById)
       .filter(consent => consent?.userId?.trim() === userId)
       .sort((left, right) => this.privacyConsentSortValue(right) - this.privacyConsentSortValue(left))[0] ?? null;
-    return latest ? LocalHelpCenterMapper.toPrivacyConsentDTO(latest) : null;
+    return latest ? LocalHelpCenterMapper.toDto(latest) : null;
   }
 
   private privacyConsentSortValue(consent: PrivacyConsentDto | PrivacyConsentLocalRecord): number {
@@ -412,7 +412,7 @@ export class LocalHelpCenterService {
     const auditTrail = table.auditIds
       .map(id => table.auditById[id])
       .filter((entry): entry is HelpCenterAuditRecord => Boolean(entry))
-      .map(entry => LocalHelpCenterMapper.toAuditDTO(entry))
+      .map(entry => LocalHelpCenterMapper.toDto(entry))
       .filter(entry => this.auditKind(entry) === kind)
       .map(entry => {
         const entryLang = this.normalizeLang(entry.lang);
@@ -467,7 +467,7 @@ export class LocalHelpCenterService {
     return table.revisionIds
       .map(id => table.revisionsById[id])
       .filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision))
-      .map(revision => LocalHelpCenterMapper.toRevisionDTO(revision))
+      .map(revision => LocalHelpCenterMapper.toDto(revision))
       .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language)
       .filter(revision => kind !== 'explanation' || !context || this.revisionContextKey(revision) === context);
   }
@@ -477,9 +477,9 @@ export class LocalHelpCenterService {
       table.revisionIds
         .filter(id => Boolean(table.revisionsById[id]))
         .map(id => {
-          const revision = LocalHelpCenterMapper.toRevisionDTO(table.revisionsById[id]);
+          const revision = LocalHelpCenterMapper.toDto(table.revisionsById[id]);
           const lang = this.revisionLang(revision);
-          return [id, LocalHelpCenterMapper.toRevisionRecord({
+          return [id, LocalHelpCenterMapper.toRecord({
             ...revision,
             documentKind: this.revisionKind(revision),
             contextKey: this.revisionContextKey(revision),

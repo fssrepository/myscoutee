@@ -236,7 +236,7 @@ export class SeedActivityMembersRepository {
       record.creatorCity,
       record.creatorGender
     );
-    const row = toActivityEventRow(ActivityEventDtoMapper.toDTO({
+    const row = toActivityEventRow(ActivityEventDtoMapper.toDto({
       ...record,
       type: 'events',
       adminIds: this.isEventAdminRecord(record, record.userId)

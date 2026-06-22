@@ -65,7 +65,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async queryHostingItemsByUser(userId: string): Promise<ActivityEventDTO[]> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    return LocalActivityEventsMapper.toDTOList(this.eventsRepository.queryHostingItemsByUser(userId));
+    return LocalActivityEventsMapper.toDtoList(this.eventsRepository.queryHostingItemsByUser(userId));
   }
 
   async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
@@ -89,7 +89,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE, signal);
-    return LocalActivityEventsMapper.toDTOPage(this.eventsRepository.queryActivitiesEventListPage({
+    return LocalActivityEventsMapper.toDtoPage(this.eventsRepository.queryActivitiesEventListPage({
       ...query,
       userId: this.resolveDemoActivityUserId(query.userId)
     }));
@@ -113,7 +113,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ...this.peekItemsByUser(userId),
       ...this.peekExploreItems(userId)
     ].find(item => item.id === normalizedItemId);
-    return record ? LocalActivityEventsMapper.toDTO(record) : null;
+    return record ? LocalActivityEventsMapper.toDto(record) : null;
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
@@ -233,7 +233,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.syncEventSnapshot(payload);
     await this.eventsRepository.flushToIndexedDb();
-    return record ? LocalActivityEventsMapper.toDTO(record) : null;
+    return record ? LocalActivityEventsMapper.toDto(record) : null;
   }
 
   async trashItem(userId: string, sourceId: string): Promise<void> {

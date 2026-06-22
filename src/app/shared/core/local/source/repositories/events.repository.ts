@@ -313,7 +313,7 @@ export class LocalEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords.map(record => ActivityEventDtoMapper.toDTO(record)),
+        records: normalizedRecords.map(record => ActivityEventDtoMapper.toDto(record)),
         total,
         nextCursor: null
       };
@@ -330,7 +330,7 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records: records.map(record => ActivityEventDtoMapper.toDTO(record)),
+      records: records.map(record => ActivityEventDtoMapper.toDto(record)),
       total,
       nextCursor
     };

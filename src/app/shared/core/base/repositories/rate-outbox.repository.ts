@@ -70,7 +70,7 @@ export class RateOutboxRepository {
       if (!payload || outboxRecord.status !== 'pending') {
         continue;
       }
-      const item = this.toActivityRateDTO(payload);
+      const item = this.toRateDto(payload);
       if (!this.shouldExcludePendingItemFromHome(item)) {
         continue;
       }
@@ -112,7 +112,7 @@ export class RateOutboxRepository {
       ) {
         continue;
       }
-      const item = this.toActivityRateDTO(payload);
+      const item = this.toRateDto(payload);
       if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
         continue;
       }
@@ -314,7 +314,7 @@ export class RateOutboxRepository {
     const normalizedBridgeCount = normalizedSocialContext === 'friends-in-common' && Number.isFinite(Number(bridgeCount))
       ? Math.max(1, Math.trunc(Number(bridgeCount)))
       : undefined;
-    return LocalUserRatesMapper.toUserRateRecord(normalizedRaterId, {
+    return LocalUserRatesMapper.toRecord(normalizedRaterId, {
       id: `game-card:${normalizedRaterId}:${normalizedRatedUserId}`,
       userId: normalizedRatedUserId,
       mode: mode === 'pair' ? 'pair' : 'individual',
@@ -345,7 +345,7 @@ export class RateOutboxRepository {
     if (!nextDirection) {
       return null;
     }
-    return LocalUserRatesMapper.toUserRateRecord(normalizedOwnerUserId, {
+    return LocalUserRatesMapper.toRecord(normalizedOwnerUserId, {
       ...item,
       userId: normalizedUserId,
       secondaryUserId: item.secondaryUserId?.trim() || undefined,
@@ -389,7 +389,7 @@ export class RateOutboxRepository {
     }
     const [fromUserId, toUserId] = [normalizedFirstUserId, normalizedSecondUserId].sort((left, right) => left.localeCompare(right));
     const nowIso = new Date().toISOString();
-    return LocalUserRatesMapper.toUserRateRecord(normalizedOwnerUserId, {
+    return LocalUserRatesMapper.toRecord(normalizedOwnerUserId, {
       id: `game-card-pair:${normalizedOwnerUserId}:${fromUserId}:${toUserId}`,
       userId: fromUserId,
       secondaryUserId: toUserId,
@@ -452,7 +452,7 @@ export class RateOutboxRepository {
     const outboxTable = this.memoryDb.read()[USER_RATES_OUTBOX_TABLE_NAME];
     for (const id of outboxTable.ids) {
       const record = outboxTable.byId[id];
-      const item = record?.payload ? this.toActivityRateDTO(record.payload) : null;
+      const item = record?.payload ? this.toRateDto(record.payload) : null;
       if (!item?.id?.trim()) {
         continue;
       }
@@ -462,8 +462,8 @@ export class RateOutboxRepository {
       .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
   }
 
-  protected toActivityRateDTO(record: UserRateRecord): ActivityRateDTO | null {
-    return LocalUserRatesMapper.toActivityRateDTO(record);
+  protected toRateDto(record: UserRateRecord): ActivityRateDTO | null {
+    return LocalUserRatesMapper.toDto(record);
   }
 
   protected normalizeRateDirection(direction: ActivityRateDTO['direction'] | string | null | undefined): ActivityRateDTO['direction'] | null {

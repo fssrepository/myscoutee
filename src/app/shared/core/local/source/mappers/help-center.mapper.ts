@@ -19,7 +19,37 @@ import { AppUtils } from '../../../../app-utils';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 
 export class LocalHelpCenterMapper {
-  static toRevisionDTO(record: HelpCenterRevisionRecord): HelpCenterRevisionDto {
+  static toDto(record: HelpCenterRevisionRecord): HelpCenterRevisionDto;
+  static toDto(record: HelpCenterAuditRecord): HelpCenterAuditEntryDto;
+  static toDto(record: PrivacyConsentLocalRecord): PrivacyConsentDto;
+  static toDto(
+    record: HelpCenterRevisionRecord | HelpCenterAuditRecord | PrivacyConsentLocalRecord
+  ): HelpCenterRevisionDto | HelpCenterAuditEntryDto | PrivacyConsentDto {
+    if ('approvedOptionalSectionIds' in record) {
+      return this.privacyConsentDto(record);
+    }
+    if ('action' in record) {
+      return this.auditDto(record);
+    }
+    return this.revisionDto(record);
+  }
+
+  static toRecord(dto: HelpCenterRevisionDto): HelpCenterRevisionRecord;
+  static toRecord(dto: HelpCenterAuditEntryDto): HelpCenterAuditRecord;
+  static toRecord(dto: PrivacyConsentDto): PrivacyConsentLocalRecord;
+  static toRecord(
+    dto: HelpCenterRevisionDto | HelpCenterAuditEntryDto | PrivacyConsentDto
+  ): HelpCenterRevisionRecord | HelpCenterAuditRecord | PrivacyConsentLocalRecord {
+    if ('approvedOptionalSectionIds' in dto) {
+      return this.privacyConsentRecord(dto);
+    }
+    if ('action' in dto) {
+      return this.auditRecord(dto);
+    }
+    return this.revisionRecord(dto);
+  }
+
+  private static revisionDto(record: HelpCenterRevisionRecord): HelpCenterRevisionDto {
     return {
       id: record.id,
       documentKind: this.toDocumentKind(record.documentKind),
@@ -40,7 +70,7 @@ export class LocalHelpCenterMapper {
     };
   }
 
-  static toRevisionRecord(dto: HelpCenterRevisionDto): HelpCenterRevisionRecord {
+  private static revisionRecord(dto: HelpCenterRevisionDto): HelpCenterRevisionRecord {
     return {
       id: dto.id,
       documentKind: dto.documentKind,
@@ -61,7 +91,7 @@ export class LocalHelpCenterMapper {
     };
   }
 
-  static toAuditDTO(record: HelpCenterAuditRecord): HelpCenterAuditEntryDto {
+  private static auditDto(record: HelpCenterAuditRecord): HelpCenterAuditEntryDto {
     return {
       id: record.id,
       documentKind: this.toDocumentKind(record.documentKind),
@@ -76,7 +106,7 @@ export class LocalHelpCenterMapper {
     };
   }
 
-  static toAuditRecord(dto: HelpCenterAuditEntryDto): HelpCenterAuditRecord {
+  private static auditRecord(dto: HelpCenterAuditEntryDto): HelpCenterAuditRecord {
     return {
       id: dto.id,
       documentKind: dto.documentKind,
@@ -91,7 +121,7 @@ export class LocalHelpCenterMapper {
     };
   }
 
-  static toPrivacyConsentDTO(record: PrivacyConsentLocalRecord): PrivacyConsentDto {
+  private static privacyConsentDto(record: PrivacyConsentLocalRecord): PrivacyConsentDto {
     return {
       id: record.id,
       userId: record.userId,
@@ -104,7 +134,7 @@ export class LocalHelpCenterMapper {
     };
   }
 
-  static toPrivacyConsentRecord(dto: PrivacyConsentDto): PrivacyConsentLocalRecord {
+  private static privacyConsentRecord(dto: PrivacyConsentDto): PrivacyConsentLocalRecord {
     return {
       id: dto.id,
       userId: dto.userId,

@@ -2161,7 +2161,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: toActivityEventRow(ActivityEventDtoMapper.toDTO(eventRecord), { activeUserId: this.activeUserId() }),
+      row: toActivityEventRow(ActivityEventDtoMapper.toDto(eventRecord), { activeUserId: this.activeUserId() }),
       readOnly: true
     });
   }
@@ -3764,7 +3764,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const eventId = `${chat.eventId ?? ''}`.trim();
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const eventRow = eventRecord
-      ? toActivityEventRow(ActivityEventDtoMapper.toDTO(eventRecord), { activeUserId: this.activeUserId() })
+      ? toActivityEventRow(ActivityEventDtoMapper.toDto(eventRecord), { activeUserId: this.activeUserId() })
       : this.chatEventFallbackRow(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
     const resourceState = rawSubEvent && eventId

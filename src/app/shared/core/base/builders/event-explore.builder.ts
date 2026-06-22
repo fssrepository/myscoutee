@@ -103,7 +103,7 @@ export class EventExploreBuilder {
   }
 
   static buildActivityRow(record: ActivityEventRecord): AppTypes.ActivityListRow {
-    const row = toActivityEventRow(ActivityEventDtoMapper.toDTO(record));
+    const row = toActivityEventRow(ActivityEventDtoMapper.toDto(record));
     return {
       ...row,
       isAdmin: false

@@ -41,7 +41,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     _options: { chatItems?: readonly ChatRecord[] } = {}
   ): Promise<ActivitiesChatPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return LocalChatThreadMapper.toDTOPage(
+    return LocalChatThreadMapper.toDtoPage(
       this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), request)
     );
   }

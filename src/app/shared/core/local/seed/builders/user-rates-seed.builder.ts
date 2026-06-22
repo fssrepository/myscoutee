@@ -127,7 +127,7 @@ export class SeedUserRatesBuilder {
   ): UserRateRecord[] {
     return users.flatMap(user =>
       this.buildGeneratedRateItemsForUser(users, user.id, options)
-        .map(item => LocalUserRatesMapper.toUserRateRecord(user.id, item))
+        .map(item => LocalUserRatesMapper.toRecord(user.id, item))
     );
   }
 

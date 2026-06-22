@@ -239,7 +239,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       if (eventRecord) {
         this.popupCtx.requestActivitiesNavigation({
           type: 'eventEditor',
-          row: toActivityEventRow(ActivityEventDtoMapper.toDTO(eventRecord), { activeUserId: userId }),
+          row: toActivityEventRow(ActivityEventDtoMapper.toDto(eventRecord), { activeUserId: userId }),
           readOnly: true
         });
       } else {

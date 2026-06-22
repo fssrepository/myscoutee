@@ -4,9 +4,10 @@ import {
   type ActivityEventRecord
 } from '../../contracts/activity.interface';
 import type { SubEventFormItem } from '../../contracts/event.interface';
+import type { DtoListMapper } from './mapper.types';
 
 export class ActivityEventDtoMapper {
-  static toDTO(record: ActivityEventRecord): ActivityEventDTO {
+  static toDto(record: ActivityEventRecord): ActivityEventDTO {
     return new ActivityEventDTO({
       id: record.id,
       userId: record.userId,
@@ -70,8 +71,8 @@ export class ActivityEventDtoMapper {
     });
   }
 
-  static toDTOList(records: readonly ActivityEventRecord[]): ActivityEventDTO[] {
-    return records.map(record => this.toDTO(record));
+  static toDtoList(records: readonly ActivityEventRecord[]): ActivityEventDTO[] {
+    return records.map(record => this.toDto(record));
   }
 
   private static cloneLocationCoordinates(
@@ -94,3 +95,6 @@ export class ActivityEventDtoMapper {
     }));
   }
 }
+
+export const activityEventDtoMapper =
+  ActivityEventDtoMapper satisfies DtoListMapper<ActivityEventRecord, ActivityEventDTO>;

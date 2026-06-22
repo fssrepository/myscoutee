@@ -51,7 +51,7 @@ export class LocalEventEditorDataService {
       this.eventsService.queryExploreItems(userId)
     ]);
     const record = [...owned, ...explore].find(item => item.id === normalizedItemId) ?? null;
-    return record ? LocalActivityEventsMapper.toDTO(record) : null;
+    return record ? LocalActivityEventsMapper.toDto(record) : null;
   }
 
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
