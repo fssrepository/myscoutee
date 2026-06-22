@@ -25,7 +25,9 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   @Input() appLazyHtmlImages: boolean | string | null = false;
   @Input() appLazyImageFallback: string | null = null;
 
-  private static readonly PRELOAD_ROOT_MARGIN = '1200px 0px';
+  private static readonly PRELOAD_ROOT_MARGIN_PX = 0;
+  private static readonly PRELOAD_ROOT_MARGIN = '0px 0px';
+  private static readonly IMAGE_LOAD_TIMEOUT_MS = 3000;
   private static readonly SEEDED_IMAGE_REF_PREFIX = 'help-seeded-image:';
   private static readonly SEEDED_IMAGE_ASSET_ROOT = 'assets/help-center/explanations';
   private static readonly HTML_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
@@ -53,7 +55,9 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private readonly errorClass = 'lazy-bg-error';
   private observer: IntersectionObserver | null = null;
   private htmlImageObserver: MutationObserver | null = null;
+  private backgroundVisibilityCheckId: number | null = null;
   private readonly htmlImageFrameSpinners = new Map<HTMLElement, ComponentRef<ProgressIndicatorComponent>>();
+  private readonly htmlImageTimeouts = new Map<HTMLImageElement, number>();
   private hasLoaded = false;
   private isViewReady = false;
   private currentUrl: string | null = null;
@@ -103,11 +107,38 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
 
     const existingPromise = LazyBgImageDirective.loadingPromises.get(cacheKey);
     if (existingPromise) {
-      return existingPromise;
+      return LazyBgImageDirective.withImageLoadTimeout(
+        existingPromise,
+        false,
+        () => LazyBgImageDirective.loadingPromises.delete(cacheKey)
+      );
     }
 
     const loadingPromise = new Promise<boolean>(resolve => {
       const img = new Image();
+      let isSettled = false;
+      let timeoutId: number | null = null;
+      const finish = (loaded: boolean): void => {
+        if (isSettled) {
+          return;
+        }
+        isSettled = true;
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        img.onload = null;
+        img.onerror = null;
+        if (loaded) {
+          LazyBgImageDirective.loadedUrls.add(cacheKey);
+        }
+        LazyBgImageDirective.loadingPromises.delete(cacheKey);
+        resolve(loaded);
+      };
+      timeoutId = window.setTimeout(
+        () => finish(false),
+        LazyBgImageDirective.IMAGE_LOAD_TIMEOUT_MS
+      );
       if (options.crossOrigin !== undefined) {
         img.crossOrigin = options.crossOrigin ?? '';
       }
@@ -115,16 +146,9 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         const decodePromise = typeof img.decode === 'function'
           ? img.decode().catch(() => undefined)
           : Promise.resolve();
-        decodePromise.then(() => {
-          LazyBgImageDirective.loadedUrls.add(cacheKey);
-          LazyBgImageDirective.loadingPromises.delete(cacheKey);
-          resolve(true);
-        });
+        decodePromise.then(() => finish(true));
       };
-      img.onerror = () => {
-        LazyBgImageDirective.loadingPromises.delete(cacheKey);
-        resolve(false);
-      };
+      img.onerror = () => finish(false);
       img.decoding = 'async';
       img.loading = 'eager';
       img.src = normalizedUrl;
@@ -132,6 +156,33 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
 
     LazyBgImageDirective.loadingPromises.set(cacheKey, loadingPromise);
     return loadingPromise;
+  }
+
+  private static withImageLoadTimeout<T>(
+    promise: Promise<T>,
+    fallbackValue: T,
+    onTimeout?: () => void
+  ): Promise<T> {
+    return new Promise<T>(resolve => {
+      let isSettled = false;
+      let timeoutId: number | null = null;
+      const finish = (value: T): void => {
+        if (isSettled) {
+          return;
+        }
+        isSettled = true;
+        if (timeoutId !== null) {
+          window.clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        resolve(value);
+      };
+      timeoutId = window.setTimeout(() => {
+        onTimeout?.();
+        finish(fallbackValue);
+      }, LazyBgImageDirective.IMAGE_LOAD_TIMEOUT_MS);
+      promise.then(finish, () => finish(fallbackValue));
+    });
   }
 
   ngAfterViewInit(): void {
@@ -160,8 +211,10 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   ngOnDestroy(): void {
     this.i18nRevisionEffect.destroy();
     this.disconnectObserver();
+    this.cancelBackgroundVisibilityCheck();
     this.disconnectHtmlImageObserver();
     this.detachHtmlImageHandlers();
+    this.clearHtmlImageLoadTimeouts();
     this.destroyHtmlImageFrameSpinners();
   }
 
@@ -176,6 +229,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
 
   private setupObserver(): void {
     this.disconnectObserver();
+    this.cancelBackgroundVisibilityCheck();
     this.renderer.addClass(this.elementRef.nativeElement, this.loadingClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.errorClass);
@@ -199,16 +253,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     }
 
     if (typeof IntersectionObserver === 'undefined') {
-      this.loadRenderableUrl(url).then(loadedUrl => {
-        if (this.currentUrl !== url) {
-          return;
-        }
-        if (loadedUrl) {
-          this.applyBackground(loadedUrl);
-          return;
-        }
-        this.applyBackgroundFallback();
-      });
+      this.loadBackgroundUrl(url);
       return;
     }
 
@@ -217,28 +262,114 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
         if (!entries.some(entry => entry.isIntersecting)) {
           return;
         }
-        this.loadRenderableUrl(url).then(loadedUrl => {
-          if (this.currentUrl !== url) {
-            return;
-          }
-          if (loadedUrl) {
-            this.applyBackground(loadedUrl);
-            return;
-          }
-          this.applyBackgroundFallback();
-        });
+        this.loadBackgroundUrl(url);
         this.disconnectObserver();
       },
       { rootMargin: LazyBgImageDirective.PRELOAD_ROOT_MARGIN }
     );
 
     this.observer.observe(this.elementRef.nativeElement);
+    this.scheduleVisibleBackgroundLoad(url);
+  }
+
+  private loadBackgroundUrl(url: string): void {
+    LazyBgImageDirective.withImageLoadTimeout(this.loadRenderableUrl(url), null).then(loadedUrl => {
+      if (this.currentUrl !== url) {
+        return;
+      }
+      if (loadedUrl) {
+        this.applyBackground(loadedUrl);
+        return;
+      }
+      this.applyBackgroundFallback();
+    });
+  }
+
+  private scheduleVisibleBackgroundLoad(url: string): void {
+    this.cancelBackgroundVisibilityCheck();
+    this.backgroundVisibilityCheckId = window.setTimeout(() => {
+      this.backgroundVisibilityCheckId = null;
+      if (this.currentUrl !== url || this.hasLoaded || !this.isElementWithinPreloadRange()) {
+        return;
+      }
+      this.loadBackgroundUrl(url);
+      this.disconnectObserver();
+    });
+  }
+
+  private cancelBackgroundVisibilityCheck(): void {
+    if (this.backgroundVisibilityCheckId === null) {
+      return;
+    }
+    window.clearTimeout(this.backgroundVisibilityCheckId);
+    this.backgroundVisibilityCheckId = null;
+  }
+
+  private isElementWithinPreloadRange(): boolean {
+    let visibleRect = this.elementRef.nativeElement.getBoundingClientRect();
+    if (visibleRect.width <= 0 || visibleRect.height <= 0) {
+      return false;
+    }
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const margin = LazyBgImageDirective.PRELOAD_ROOT_MARGIN_PX;
+    visibleRect = this.intersectRects(visibleRect, {
+      top: -margin,
+      right: viewportWidth + margin,
+      bottom: viewportHeight + margin,
+      left: -margin
+    });
+    if (visibleRect.width <= 0 || visibleRect.height <= 0) {
+      return false;
+    }
+    let parent = this.elementRef.nativeElement.parentElement;
+    while (parent && parent !== document.documentElement) {
+      if (this.clipsOverflow(parent)) {
+        visibleRect = this.intersectRects(visibleRect, parent.getBoundingClientRect());
+        if (visibleRect.width <= 0 || visibleRect.height <= 0) {
+          return false;
+        }
+      }
+      parent = parent.parentElement;
+    }
+    return true;
+  }
+
+  private intersectRects(
+    first: Pick<DOMRectReadOnly, 'top' | 'right' | 'bottom' | 'left'>,
+    second: Pick<DOMRectReadOnly, 'top' | 'right' | 'bottom' | 'left'>
+  ): DOMRectReadOnly {
+    const left = Math.max(first.left, second.left);
+    const right = Math.min(first.right, second.right);
+    const top = Math.max(first.top, second.top);
+    const bottom = Math.min(first.bottom, second.bottom);
+    return {
+      top,
+      right,
+      bottom,
+      left,
+      width: Math.max(0, right - left),
+      height: Math.max(0, bottom - top),
+      x: left,
+      y: top,
+      toJSON: () => ({ top, right, bottom, left })
+    };
+  }
+
+  private clipsOverflow(element: HTMLElement): boolean {
+    const style = window.getComputedStyle(element);
+    return this.clipsOverflowValue(style.overflowX) || this.clipsOverflowValue(style.overflowY);
+  }
+
+  private clipsOverflowValue(value: string): boolean {
+    return value === 'auto' || value === 'scroll' || value === 'hidden' || value === 'clip';
   }
 
   private applyBackground(url: string): void {
     if (this.hasLoaded && this.appliedUrl === url) {
       return;
     }
+    this.cancelBackgroundVisibilityCheck();
     this.renderer.setStyle(this.elementRef.nativeElement, 'background-image', `url("${url}")`);
     this.renderer.removeClass(this.elementRef.nativeElement, this.errorClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
@@ -249,6 +380,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private applyLoadError(): void {
+    this.cancelBackgroundVisibilityCheck();
     this.renderer.removeStyle(this.elementRef.nativeElement, 'background-image');
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
@@ -258,6 +390,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private applyBackgroundFallback(): void {
+    this.cancelBackgroundVisibilityCheck();
     const fallbackUrl = this.imageFallbackUrl();
     this.renderer.setStyle(this.elementRef.nativeElement, 'background-image', `url("${fallbackUrl}")`);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
@@ -268,6 +401,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   }
 
   private clearBackgroundState(): void {
+    this.cancelBackgroundVisibilityCheck();
     this.renderer.removeStyle(this.elementRef.nativeElement, 'background-image');
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadingClass);
     this.renderer.removeClass(this.elementRef.nativeElement, this.loadedClass);
@@ -382,10 +516,52 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     frame?.classList.toggle('lazy-image-frame-loading', loading);
     frame?.classList.toggle('lazy-image-frame-loaded', !loading);
     if (loading) {
+      this.startHtmlImageLoadTimeout(image);
       this.ensureHtmlImageFrameSpinner(frame);
     } else {
+      this.clearHtmlImageLoadTimeout(image);
       this.destroyHtmlImageFrameSpinner(frame);
     }
+  }
+
+  private startHtmlImageLoadTimeout(image: HTMLImageElement): void {
+    this.clearHtmlImageLoadTimeout(image);
+    const expectedSrc = image.dataset['lazyImageManagedSrc'] || image.currentSrc || image.src;
+    const timeoutId = window.setTimeout(() => {
+      this.htmlImageTimeouts.delete(image);
+      if (!image.isConnected) {
+        return;
+      }
+      if (image.complete && image.naturalWidth > 0) {
+        this.setHtmlImageLoadingState(image, false);
+        return;
+      }
+      const activeSrc = image.dataset['lazyImageManagedSrc'] || image.currentSrc || image.src;
+      if (expectedSrc && activeSrc && activeSrc !== expectedSrc) {
+        this.startHtmlImageLoadTimeout(image);
+        return;
+      }
+      if (!expectedSrc || activeSrc === expectedSrc) {
+        this.applyHtmlImageFallback(image);
+      }
+    }, LazyBgImageDirective.IMAGE_LOAD_TIMEOUT_MS);
+    this.htmlImageTimeouts.set(image, timeoutId);
+  }
+
+  private clearHtmlImageLoadTimeout(image: HTMLImageElement): void {
+    const timeoutId = this.htmlImageTimeouts.get(image);
+    if (timeoutId === undefined) {
+      return;
+    }
+    window.clearTimeout(timeoutId);
+    this.htmlImageTimeouts.delete(image);
+  }
+
+  private clearHtmlImageLoadTimeouts(): void {
+    for (const timeoutId of this.htmlImageTimeouts.values()) {
+      window.clearTimeout(timeoutId);
+    }
+    this.htmlImageTimeouts.clear();
   }
 
   private setHtmlImageFallbackState(image: HTMLImageElement, active: boolean): void {
@@ -401,6 +577,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       'lazy-image-frame-loaded',
       'lazy-image-frame-fallback-active'
     );
+    this.clearHtmlImageLoadTimeout(image);
     this.destroyHtmlImageFrameSpinner(frame);
   }
 
@@ -512,7 +689,9 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     image.dataset['lazyImageSvgOriginalSrc'] = originalSrc;
     image.dataset['lazyImageSvgRevision'] = revision;
     this.prepareRenderableImageUrl(originalSrc, this.forceSvgLocalization(image)).then(localizedUrl => {
-      if (!localizedUrl || image.dataset['lazyImageSvgOriginalSrc'] !== originalSrc) {
+      if (!localizedUrl
+        || image.dataset['lazyImageSvgOriginalSrc'] !== originalSrc
+        || image.dataset['lazyImageFallbackActive'] === 'true') {
         return;
       }
       if (localizedUrl === image.getAttribute('src')) {
@@ -520,6 +699,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
       }
       image.dataset['lazyImageManagedSrc'] = localizedUrl;
       image.src = localizedUrl;
+      this.setHtmlImageLoadingState(image, true);
     });
     return true;
   }
