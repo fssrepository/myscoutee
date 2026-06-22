@@ -49,6 +49,34 @@
   background-color: #dfe8f7;
 }
 
+.ui-image-card__image-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ui-image-card__image-loader app-progress-indicator {
+  position: relative;
+  z-index: 1;
+}
+
+.ui-image-card__media.lazy-bg-loading .ui-image-card__image-loader,
+.ui-image-card.lazy-bg-loading > .ui-image-card__image-loader {
+  opacity: 1;
+}
+
+.ui-image-card__media.lazy-bg-loaded .ui-image-card__image-loader,
+.ui-image-card.lazy-bg-loaded > .ui-image-card__image-loader,
+.ui-image-card__media.lazy-bg-error .ui-image-card__image-loader,
+.ui-image-card.lazy-bg-error > .ui-image-card__image-loader {
+  opacity: 0;
+}
+
 .ui-image-card__placeholder,
 .ui-image-card__overlay-placeholder {
   position: absolute;

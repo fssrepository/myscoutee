@@ -169,6 +169,31 @@ button.asset-occupancy-badge:active::after,
   justify-content: center;
 }
 
+.ui-info-card__image-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ui-info-card__image-loader app-progress-indicator {
+  position: relative;
+  z-index: 1;
+}
+
+.ui-info-card__media.lazy-bg-loading .ui-info-card__image-loader {
+  opacity: 1;
+}
+
+.ui-info-card__media.lazy-bg-loaded .ui-info-card__image-loader,
+.ui-info-card__media.lazy-bg-error .ui-info-card__image-loader {
+  opacity: 0;
+}
+
 .ui-info-card__placeholder-icon {
   font-size: 48px;
   width: 48px;

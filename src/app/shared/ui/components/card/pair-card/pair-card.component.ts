@@ -18,6 +18,7 @@ import {
 import { MatIconModule } from '@angular/material/icon';
 
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
+import { ProgressIndicatorComponent } from '../../progress-indicator';
 import type {
   CardImageSlide,
   CardMenuRequestEvent,
@@ -30,7 +31,7 @@ import type {
 @Component({
   selector: 'app-pair-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent],
   templateUrl: './pair-card.component.html',
   styleUrl: './pair-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

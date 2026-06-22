@@ -9,6 +9,7 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../menu';
+import { ProgressIndicatorComponent } from '../../progress-indicator';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
@@ -23,7 +24,7 @@ import {
 @Component({
   selector: 'app-image-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, AppMenuTriggerComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, AppMenuTriggerComponent, ProgressIndicatorComponent],
   templateUrl: './image-card.component.html',
   styleUrl: './image-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
