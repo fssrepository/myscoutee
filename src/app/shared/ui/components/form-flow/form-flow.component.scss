@@ -694,7 +694,9 @@
 }
 
 .form-flow__body.form-flow__body--mobile {
-  display: flex;
+  --form-flow-mobile-slide-edge-reserve: 1px;
+
+  display: block;
   align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
@@ -711,23 +713,31 @@
 }
 
 .form-flow__body--mobile .form-flow__track {
-  display: contents;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: calc(100% + var(--form-flow-mobile-slide-edge-reserve));
+  width: auto;
+  min-width: 100%;
+  align-items: stretch;
+  height: 100%;
+  min-height: 100%;
   transform: none !important;
   transition: none;
 }
 
 .form-flow__body--mobile .form-flow__slide {
-  flex: 0 0 100%;
   width: 100%;
-  min-width: 100%;
-  max-width: 100%;
+  min-width: 0;
   height: 100%;
   min-height: 0;
-  box-sizing: border-box;
   overflow: hidden;
   contain: layout paint style;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+}
+
+.form-flow__body--mobile .form-flow__slide-inner {
+  width: calc(100% - var(--form-flow-mobile-slide-edge-reserve));
 }
 
 .form-flow__loading,
