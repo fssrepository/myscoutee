@@ -31,6 +31,9 @@
   grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
   min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: #ffffff;
 }
 
 .form-flow__header {
@@ -222,7 +225,7 @@
   gap: 12px;
   height: auto;
   min-height: 0;
-  padding: 12px;
+  padding: 14px 0 20px;
   transition: none;
   will-change: auto;
 }
@@ -232,9 +235,19 @@
   min-height: 0;
   overflow: visible;
   contain: none;
-  border: 1px solid #c7d8ef;
-  border-radius: 10px;
-  background: #eaf4ff;
+  border: 1px solid rgba(21, 38, 62, 0.14);
+  border-radius: 12px;
+  background: rgba(253, 254, 255, 0.92);
+}
+
+.form-flow--grouped .form-flow__slide[data-step-id="basics"] {
+  border-color: rgba(58, 108, 168, 0.28);
+  background: linear-gradient(180deg, #f2f7ff 0%, #e8f0fb 100%);
+}
+
+.form-flow--grouped .form-flow__slide[data-step-id="lifestyle"] {
+  border-color: rgba(49, 124, 82, 0.28);
+  background: linear-gradient(180deg, #eef8f3 0%, #e4f2ea 100%);
 }
 
 .form-flow--grouped .form-flow__slide-inner {
@@ -248,10 +261,10 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: -12px -12px 12px;
-  padding: 11px 12px;
-  border-bottom: 1px solid #d8e4f3;
-  background: rgba(255, 255, 255, 0.42);
+  margin: 0 0 10px;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
   color: #17395f;
 
   mat-icon {
@@ -460,14 +473,59 @@
 }
 
 .form-flow__control--with-accessory {
-  padding-right: 46px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  column-gap: 12px;
+  align-items: end;
+}
+
+.form-flow__control--with-accessory:has(.app-menu-host--open) {
+  z-index: 20;
 }
 
 .form-flow__control-accessory {
-  position: absolute;
-  top: 24px;
-  right: 0;
+  position: relative;
   z-index: 2;
+  align-self: end;
+  justify-self: end;
+}
+
+.form-flow__control-accessory:has(.app-menu-host--open) {
+  z-index: 60;
+}
+
+.form-flow__control--with-accessory > .form-flow__label {
+  grid-column: 1 / -1;
+}
+
+.form-flow__control--with-accessory > :not(.form-flow__label):not(.form-flow__control-accessory) {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.form-flow__control--with-accessory > .form-flow__control-accessory {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.form-flow--grouped .form-flow__controls {
+  gap: 12px 14px;
+}
+
+.form-flow--grouped .form-flow__control--wide {
+  grid-column: 1 / -1;
+}
+
+.form-flow--grouped .form-flow__control:not(.form-flow__control--half):last-child:nth-child(odd) {
+  grid-column: auto;
+}
+
+.form-flow--grouped .form-flow__control--with-accessory:not(.form-flow__control--half) {
+  grid-column: auto;
+}
+
+.form-flow--grouped .form-flow__control--with-accessory.form-flow__control--wide {
+  grid-column: 1 / -1;
 }
 
 .form-flow__date-control {
@@ -1148,13 +1206,11 @@
   }
 
   .form-flow--grouped .form-flow__track {
-    padding: 8px 0;
+    padding: 12px 0 18px;
   }
 
   .form-flow--grouped .form-flow__slide {
-    border-left: 0;
-    border-right: 0;
-    border-radius: 0;
+    border-radius: 10px;
   }
 
   .form-flow__controls,

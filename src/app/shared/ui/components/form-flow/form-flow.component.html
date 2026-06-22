@@ -120,6 +120,7 @@
               class="form-flow__slide"
               [class.is-active]="isPageActive(stepIndex)"
               [class.is-missing]="isStepMissingRequired(step)"
+              [attr.data-step-id]="step.id"
               [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
               [attr.inert]="isPageActive(stepIndex) ? null : ''"
               [attr.aria-labelledby]="'form-flow-step-' + step.id"

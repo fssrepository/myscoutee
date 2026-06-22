@@ -300,7 +300,11 @@ export class ProfileEditorComponent {
         layout: 'grouped',
         imageEditor: 'external',
         privacy: {
-          values: this.profileEditorPrivacyValues()
+          values: this.profileEditorPrivacyValues(),
+          experience: {
+            workspace: this.experienceVisibility.workspace,
+            school: this.experienceVisibility.school
+          }
         },
         showHeader: false,
         showSave: false
@@ -317,6 +321,11 @@ export class ProfileEditorComponent {
     }
     if (context?.menu === 'privacy') {
       this.setProfileDetailPrivacy(context.key, context.value);
+      return;
+    }
+    if (context?.menu === 'experiencePrivacy') {
+      this.experienceVisibility[context.type] = context.value;
+      this.clearProfileEditorFlowModelCache();
     }
   }
 
@@ -1676,6 +1685,8 @@ export class ProfileEditorComponent {
       form.experienceEntries
         .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
         .join('|'),
+      `workspace:${this.experienceVisibility.workspace}`,
+      `school:${this.experienceVisibility.school}`,
       Object.entries(this.profileEditorPrivacyValues())
         .map(([key, value]) => `${key}:${value}`)
         .join('|')

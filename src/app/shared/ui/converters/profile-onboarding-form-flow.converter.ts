@@ -18,6 +18,7 @@ import type { UiConverter } from './converter.types';
 
 export interface ProfileOnboardingFormFlowPrivacyOptions {
   values?: Record<string, DetailPrivacy | undefined>;
+  experience?: Partial<Record<'workspace' | 'school', DetailPrivacy | undefined>>;
 }
 
 export interface ProfileOnboardingFormFlowConverterOptions {
@@ -35,7 +36,8 @@ export interface ProfileOnboardingFormFlowConverterOptions {
 export type ProfileOnboardingFormFlowMenuContext =
   | { menu: 'field'; field: string; value: string }
   | { menu: 'experienceSelector'; value: Extract<ExperienceEntry['type'], 'Workspace' | 'School'> }
-  | { menu: 'privacy'; key: string; value: DetailPrivacy };
+  | { menu: 'privacy'; key: string; value: DetailPrivacy }
+  | { menu: 'experiencePrivacy'; type: 'workspace' | 'school'; value: DetailPrivacy };
 
 export class ProfileOnboardingDraftConverter {
   static readonly currentProfileFormVersion = 2;
@@ -316,8 +318,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Név',
               bind: 'fullName',
               required: true,
-              placeholder: 'Név',
-              accessory: this.privacyAccessory('profile.name', options.privacy)
+              placeholder: 'Név'
             },
             {
               id: 'birthday',
@@ -333,8 +334,7 @@ export class ProfileOnboardingFormFlowConverter {
                   emptyLabel: 'Nincs beállítva',
                   value: value => this.horoscopeBadge(value)
                 }
-              },
-              accessory: this.privacyAccessory('profile.birthday', options.privacy)
+              }
             },
             {
               id: 'city',
@@ -342,8 +342,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Város',
               bind: 'city',
               required: true,
-              placeholder: 'Város',
-              accessory: this.privacyAccessory('profile.city', options.privacy)
+              placeholder: 'Város'
             },
             {
               id: 'height',
@@ -353,8 +352,7 @@ export class ProfileOnboardingFormFlowConverter {
               required: true,
               min: 40,
               max: 250,
-              step: 1,
-              accessory: this.privacyAccessory('profile.height', options.privacy)
+              step: 1
             },
             {
               id: 'physique',
@@ -362,8 +360,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Testalkat',
               bind: 'physique',
               required: true,
-              config: this.physiqueMenuConfig(form?.physique),
-              accessory: this.privacyAccessory('profile.physique', options.privacy)
+              config: this.physiqueMenuConfig(form?.physique)
             },
             {
               id: 'gender',
@@ -387,8 +384,7 @@ export class ProfileOnboardingFormFlowConverter {
                 'blue',
                 'Nyelvek választása',
                 2
-              ),
-              accessory: this.privacyAccessory('profile.languages', options.privacy)
+              )
             },
             {
               id: 'visibility',
@@ -404,6 +400,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Munkahely',
               bind: 'experienceEntries',
               config: this.experienceSelectorMenuConfig('Workspace', form?.experienceEntries ?? []),
+              accessory: this.experiencePrivacyAccessory('workspace', options.privacy),
               summary: {
                 value: value => this.experienceSummaryValue(value, 'Workspace')
               }
@@ -415,6 +412,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Iskola',
               bind: 'experienceEntries',
               config: this.experienceSelectorMenuConfig('School', form?.experienceEntries ?? []),
+              accessory: this.experiencePrivacyAccessory('school', options.privacy),
               summary: {
                 value: value => this.experienceSummaryValue(value, 'School')
               }
@@ -530,8 +528,8 @@ export class ProfileOnboardingFormFlowConverter {
     const current = privacy.values[key] ?? this.defaultPrivacy(key);
     return {
       menu: {
-        kind: 'inline',
-        layout: 'row',
+        kind: 'select',
+        layout: 'list',
         panelMode: 'anchored',
         title: 'Láthatóság',
         closeOnSelect: true,
@@ -552,6 +550,43 @@ export class ProfileOnboardingFormFlowConverter {
           palette: this.privacyPalette(option),
           surface: 'tinted',
           context: { menu: 'privacy', key, value: option } satisfies ProfileOnboardingFormFlowMenuContext
+        }))
+      }
+    };
+  }
+
+  private static experiencePrivacyAccessory(
+    type: 'workspace' | 'school',
+    privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
+  ): FormFlowControlAccessoryConfig | null {
+    if (!privacy?.experience) {
+      return null;
+    }
+    const current = privacy.experience[type] ?? 'Public';
+    return {
+      menu: {
+        kind: 'select',
+        layout: 'list',
+        panelMode: 'anchored',
+        title: 'Láthatóság',
+        closeOnSelect: true,
+        trigger: {
+          icon: this.privacyIcon(current),
+          closeIcon: 'close',
+          hideLabel: true,
+          layout: 'icon',
+          palette: this.privacyPalette(current),
+          ariaLabel: 'Láthatóság módosítása'
+        },
+        items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
+          id: `experience-${type}-privacy-${this.idToken(option)}`,
+          label: option,
+          icon: this.privacyIcon(option),
+          kind: 'radio',
+          active: option === current,
+          palette: this.privacyPalette(option),
+          surface: 'tinted',
+          context: { menu: 'experiencePrivacy', type, value: option } satisfies ProfileOnboardingFormFlowMenuContext
         }))
       }
     };
