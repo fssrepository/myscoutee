@@ -6,6 +6,7 @@ import type {
 } from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../../app-utils';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import type {
   HelpCenterAuditEntryDto,
@@ -689,16 +690,7 @@ export class LocalHelpCenterService {
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevisionDto['headerColor'] {
-    switch (`${value ?? ''}`.trim()) {
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-        return value as HelpCenterRevisionDto['headerColor'];
-      default:
-        return 'amber';
-    }
+    return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
   }
 
   private documentLabel(kind: HelpCenterDocumentKind): string {

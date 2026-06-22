@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, HostListener, effect, inject, signal } fr
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext } from '../../../shared/ui';
 import { HelpCenterService, I18nService } from '../../../shared/core';
@@ -245,14 +246,7 @@ export class AdminHelpEditorPopupComponent {
   protected readonly defaultHelpDescription = APP_STATIC_DATA.defaultHelpCenterDescription;
   protected readonly defaultPrivacyDescription = APP_STATIC_DATA.defaultPrivacyCenterDescription;
   protected readonly defaultTermsDescription = APP_STATIC_DATA.defaultTermsCenterDescription;
-  protected readonly headerColorOptions: Array<{ id: HelpCenterHeaderColor; label: string }> = [
-    { id: 'amber', label: 'Amber' },
-    { id: 'blue', label: 'Blue' },
-    { id: 'green', label: 'Green' },
-    { id: 'rose', label: 'Rose' },
-    { id: 'violet', label: 'Violet' },
-    { id: 'slate', label: 'Slate' }
-  ];
+  protected readonly headerColorOptions = APP_STATIC_DATA.helpCenterHeaderColorOptions;
   protected readonly iconPickerGroups: HelpIconOption['group'][] = ['Common', 'Planning', 'People', 'Logistics', 'Safety'];
   protected readonly helpIconOptions: HelpIconOption[] = [
     { icon: 'help_outline', label: 'Help', group: 'Common', keywords: ['support', 'question', 'guide'] },
@@ -1574,16 +1568,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterHeaderColor {
-    switch (`${value ?? ''}`.trim()) {
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-        return value as HelpCenterHeaderColor;
-      default:
-        return 'amber';
-    }
+    return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
   }
 
   private normalizeContentLang(lang: string | null | undefined): string {

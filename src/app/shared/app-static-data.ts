@@ -9,7 +9,12 @@ import type {
   SubEventsDisplayMode,
   TournamentLeaderboardType
 } from './core/contracts';
-import type { ExplainableSurface, HelpCenterRevisionDto, HelpCenterSectionDto } from './core/contracts';
+import type {
+  ExplainableSurface,
+  HelpCenterHeaderColor,
+  HelpCenterRevisionDto,
+  HelpCenterSectionDto
+} from './core/contracts';
 import type {
   EventFeedbackOption,
   EventFeedbackTraitOption,
@@ -170,6 +175,31 @@ const CONTENT_LANGUAGES = [
   { lang: 'en', label: 'English' },
   { lang: 'hu', label: 'Magyar' }
 ];
+const HELP_CENTER_HEADER_COLORS: readonly HelpCenterHeaderColor[] = [
+  'amber',
+  'blue',
+  'green',
+  'rose',
+  'violet',
+  'slate'
+];
+const HELP_CENTER_HEADER_COLOR_OPTIONS: Array<{ id: HelpCenterHeaderColor; label: string }> = [
+  { id: 'amber', label: 'Amber' },
+  { id: 'blue', label: 'Blue' },
+  { id: 'green', label: 'Green' },
+  { id: 'rose', label: 'Rose' },
+  { id: 'violet', label: 'Violet' },
+  { id: 'slate', label: 'Slate' }
+];
+const DOCUMENT_VIEWER_HEADER_PALETTES = [
+  'amber',
+  'blue',
+  'green',
+  'rose',
+  'violet',
+  'slate',
+  'teal'
+] as const;
 const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
   { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
@@ -2514,6 +2544,9 @@ export const APP_STATIC_DATA = {
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   contentLanguages: CONTENT_LANGUAGES,
+  helpCenterHeaderColors: HELP_CENTER_HEADER_COLORS,
+  helpCenterHeaderColorOptions: HELP_CENTER_HEADER_COLOR_OPTIONS,
+  documentViewerHeaderPalettes: DOCUMENT_VIEWER_HEADER_PALETTES,
   explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,

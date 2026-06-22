@@ -44,19 +44,12 @@ export {
   type ActivityRateMenuSubject
 } from './activity-rate-menu.converter';
 export {
-  HelpCenterDocumentViewerHeaderPaletteConverter,
   HelpCenterDocumentViewerSectionConverter,
-  HelpCenterHelpDocumentViewerHeaderPaletteConverter,
   HelpCenterPrivacyDocumentViewerSectionConverter,
   HelpCenterRevisionDocumentViewerConfigConverter,
-  HelpCenterSelectedDocumentViewerSectionIdsConverter,
-  helpCenterDocumentViewerHeaderPaletteConverter,
   helpCenterDocumentViewerSectionConverter,
-  helpCenterHelpDocumentViewerHeaderPaletteConverter,
   helpCenterPrivacyDocumentViewerSectionConverter,
   helpCenterRevisionDocumentViewerConfigConverter,
-  helpCenterSelectedDocumentViewerSectionIdsConverter,
-  type HelpCenterDocumentViewerHeaderPaletteConverterOptions,
   type HelpCenterPrivacyDocumentViewerSectionConverterInput,
   type HelpCenterRevisionDocumentViewerConfigOptions,
   type HelpCenterRevisionDocumentViewerSectionMode

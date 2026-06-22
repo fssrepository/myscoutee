@@ -200,11 +200,8 @@ export class ActivityRateImageCardConverter {
   }
 
   private static formatMonthDayLabel(isoValue: string | null | undefined): string {
-    const timestamp = isoValue ? Date.parse(isoValue) : Number.NaN;
-    if (!Number.isFinite(timestamp)) {
-      return 'Activity date';
-    }
-    return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(timestamp));
+    const date = AppUtils.parseDate(isoValue);
+    return date ? AppUtils.shortMonthDayLabel(date) : 'Activity date';
   }
 }
 

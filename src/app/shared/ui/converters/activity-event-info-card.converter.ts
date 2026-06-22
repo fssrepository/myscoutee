@@ -41,7 +41,7 @@ export class ActivityEventInfoCardConverter {
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
-        this.dateRangeLabel(dto),
+        AppUtils.dateTimeRangeLabel(dto.startAtIso, dto.endAtIso, dto.timeframe || 'Date unavailable'),
         ...this.locationMetaRows(dto)
       ],
       description: invited
@@ -73,31 +73,6 @@ export class ActivityEventInfoCardConverter {
     options: ActivityEventInfoCardConverterOptions = {}
   ): InfoCardData[] {
     return dtos.map(dto => this.convert(dto, options));
-  }
-
-  private static dateRangeLabel(dto: ActivityEventDTO): string {
-    const start = this.validDate(dto.startAtIso);
-    const end = this.validDate(dto.endAtIso);
-    if (!start) {
-      return dto.timeframe || 'Date unavailable';
-    }
-    const safeEnd = end && end.getTime() > start.getTime()
-      ? end
-      : new Date(start.getTime() + (2 * 60 * 60 * 1000));
-    const sameDay = start.toDateString() === safeEnd.toDateString();
-    const startDateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const startTimeLabel = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const endTimeLabel = safeEnd.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    if (sameDay) {
-      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
-    }
-    const endDateLabel = safeEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${startDateLabel}, ${startTimeLabel} - ${endDateLabel}, ${endTimeLabel}`;
-  }
-
-  private static validDate(value: string | null | undefined): Date | null {
-    const date = new Date(`${value ?? ''}`);
-    return Number.isFinite(date.getTime()) ? date : null;
   }
 
   private static locationMetaRows(dto: ActivityEventDTO): string[] {

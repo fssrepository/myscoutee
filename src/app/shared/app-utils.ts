@@ -51,6 +51,30 @@ export class AppUtils {
       .find(image => image.length > 0) ?? '';
   }
 
+  static uniqueTrimmedStrings(values: Iterable<string | null | undefined> | null | undefined): string[] {
+    return Array.from(new Set(
+      Array.from(values ?? [])
+        .map(value => `${value ?? ''}`.trim())
+        .filter(Boolean)
+    ));
+  }
+
+  static enumValue<T extends string>(
+    value: string | null | undefined,
+    values: readonly T[],
+    fallback: T
+  ): T {
+    return this.enumValueOrNull(value, values) ?? fallback;
+  }
+
+  static enumValueOrNull<T extends string>(
+    value: string | null | undefined,
+    values: readonly T[]
+  ): T | null {
+    const normalized = `${value ?? ''}`.trim();
+    return (values as readonly string[]).includes(normalized) ? normalized as T : null;
+  }
+
   static pad2(value: number): string {
     return `${value}`.padStart(2, '0');
   }
@@ -61,6 +85,57 @@ export class AppUtils {
     }
     const parsed = new Date(`${value}T00:00:00`);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  static parseDate(value: string | number | Date | null | undefined): Date | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  static dateTimeMs(value: string | number | Date | null | undefined): number | null {
+    return this.parseDate(value)?.getTime() ?? null;
+  }
+
+  static shortMonthDayLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  static weekdayMonthDayLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  static weekdayMonthDayYearLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  static clockTimeLabel(value: Date): string {
+    return value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  static dateTimeRangeLabel(
+    startIso: string | null | undefined,
+    endIso: string | null | undefined,
+    fallback = 'Date unavailable',
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): string {
+    const start = this.parseDate(startIso);
+    const end = this.parseDate(endIso);
+    if (!start) {
+      return fallback;
+    }
+    const safeEnd = end && end.getTime() > start.getTime()
+      ? end
+      : new Date(start.getTime() + defaultDurationMs);
+    const startDateLabel = this.shortMonthDayLabel(start);
+    const startTimeLabel = this.clockTimeLabel(start);
+    const endTimeLabel = this.clockTimeLabel(safeEnd);
+    if (start.toDateString() === safeEnd.toDateString()) {
+      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+    }
+    return `${startDateLabel}, ${startTimeLabel} - ${this.shortMonthDayLabel(safeEnd)}, ${endTimeLabel}`;
   }
 
   static toIsoDate(value: Date): string {

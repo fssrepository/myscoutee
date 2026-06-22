@@ -1,3 +1,5 @@
+import { AppUtils } from '../../app-utils';
+import { APP_STATIC_DATA } from '../../app-static-data';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../core/contracts';
 import type {
   DocumentViewerAction,
@@ -36,51 +38,6 @@ export interface HelpCenterRevisionDocumentViewerConfigOptions {
   statusTone?: DocumentViewerStatusTone;
 }
 
-export interface HelpCenterDocumentViewerHeaderPaletteConverterOptions {
-  fallback?: DocumentViewerHeaderPalette;
-}
-
-export class HelpCenterDocumentViewerHeaderPaletteConverter {
-  static convert(
-    value: string | null | undefined,
-    options: HelpCenterDocumentViewerHeaderPaletteConverterOptions = {}
-  ): DocumentViewerHeaderPalette {
-    const normalized = `${value ?? ''}`.trim();
-    switch (normalized) {
-      case 'amber':
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-      case 'teal':
-        return normalized;
-      default:
-        return options.fallback ?? 'amber';
-    }
-  }
-}
-
-export const helpCenterDocumentViewerHeaderPaletteConverter =
-  HelpCenterDocumentViewerHeaderPaletteConverter satisfies UiConverter<
-    string | null | undefined,
-    DocumentViewerHeaderPalette,
-    HelpCenterDocumentViewerHeaderPaletteConverterOptions | undefined
-  >;
-
-export class HelpCenterHelpDocumentViewerHeaderPaletteConverter {
-  static convert(value: string | null | undefined): DocumentViewerHeaderPalette {
-    const normalized = HelpCenterDocumentViewerHeaderPaletteConverter.convert(value, { fallback: 'teal' });
-    return normalized === 'amber' ? 'teal' : normalized;
-  }
-}
-
-export const helpCenterHelpDocumentViewerHeaderPaletteConverter =
-  HelpCenterHelpDocumentViewerHeaderPaletteConverter satisfies UiConverter<
-    string | null | undefined,
-    DocumentViewerHeaderPalette
-  >;
-
 export class HelpCenterDocumentViewerSectionConverter {
   static convert(section: HelpCenterSectionDto): DocumentViewerSection {
     return {
@@ -112,7 +69,7 @@ export interface HelpCenterPrivacyDocumentViewerSectionConverterInput {
 
 export class HelpCenterPrivacyDocumentViewerSectionConverter {
   static convert(input: HelpCenterPrivacyDocumentViewerSectionConverterInput): DocumentViewerSection[] {
-    const selectedIds = HelpCenterSelectedDocumentViewerSectionIdsConverter.convert(input.selectedSectionIds);
+    const selectedIds = AppUtils.uniqueTrimmedStrings(input.selectedSectionIds);
     return HelpCenterDocumentViewerSectionConverter.convertList(input.sections).map((section, index) => {
       const source = input.sections[index];
       const optional = source?.optional === true;
@@ -130,22 +87,6 @@ export const helpCenterPrivacyDocumentViewerSectionConverter =
   HelpCenterPrivacyDocumentViewerSectionConverter satisfies UiConverter<
     HelpCenterPrivacyDocumentViewerSectionConverterInput,
     DocumentViewerSection[]
-  >;
-
-export class HelpCenterSelectedDocumentViewerSectionIdsConverter {
-  static convert(value: readonly string[] | ReadonlySet<string> | null | undefined): string[] {
-    return Array.from(new Set(
-      Array.from(value ?? [])
-        .map((sectionId: string) => `${sectionId ?? ''}`.trim())
-        .filter(Boolean)
-    ));
-  }
-}
-
-export const helpCenterSelectedDocumentViewerSectionIdsConverter =
-  HelpCenterSelectedDocumentViewerSectionIdsConverter satisfies UiConverter<
-    readonly string[] | ReadonlySet<string> | null | undefined,
-    string[]
   >;
 
 export interface HelpCenterRevisionDocumentViewerSectionsConverterInput {
@@ -185,9 +126,10 @@ export class HelpCenterRevisionDocumentViewerConfigConverter {
       title: revision?.summary?.trim() || options.titleFallback,
       description: revision?.description?.trim() || options.descriptionFallback || '',
       versionLabel: options.versionLabel,
-      headerPalette: HelpCenterDocumentViewerHeaderPaletteConverter.convert(
+      headerPalette: AppUtils.enumValue(
         options.headerPalette ?? revision?.headerColor,
-        { fallback: options.headerPaletteFallback }
+        APP_STATIC_DATA.documentViewerHeaderPalettes,
+        options.headerPaletteFallback ?? 'amber'
       ),
       showBrand: options.showBrand,
       loading: options.loading,
@@ -198,7 +140,7 @@ export class HelpCenterRevisionDocumentViewerConfigConverter {
         sectionMode: options.sectionMode,
         selectedSectionIds: options.selectedSectionIds
       }),
-      selectedSectionIds: HelpCenterSelectedDocumentViewerSectionIdsConverter.convert(options.selectedSectionIds),
+      selectedSectionIds: AppUtils.uniqueTrimmedStrings(options.selectedSectionIds),
       actions: options.actions,
       statusMessage: options.statusMessage,
       statusTone: options.statusTone

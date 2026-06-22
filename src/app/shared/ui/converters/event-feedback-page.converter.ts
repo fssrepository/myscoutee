@@ -151,15 +151,11 @@ export class EventFeedbackListPresentationConverter {
   ): string {
     const item = result?.itemById(itemId) ?? null;
     const timestampMs = item ? result?.groupTimestampMs(item, filter) ?? null : null;
-    if (!timestampMs || Number.isNaN(timestampMs)) {
+    const timestampDate = AppUtils.parseDate(timestampMs);
+    if (!timestampDate) {
       return 'No date';
     }
-    return new Date(timestampMs).toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return AppUtils.weekdayMonthDayYearLabel(timestampDate);
   }
 }
 
@@ -429,19 +425,18 @@ export class EventFeedbackOrganizerMessageGroupConverter {
     const groups = new Map<string, EventFeedbackOrganizerMessageGroupData>();
     for (const entry of input.result?.organizerEntries(input.eventId) ?? []) {
       const timestampIso = this.entryTimestampIso(entry);
-      const timestampDate = timestampIso ? new Date(timestampIso) : null;
-      const hasValidTimestamp = Boolean(timestampDate) && !Number.isNaN(timestampDate!.getTime());
+      const timestampDate = AppUtils.parseDate(timestampIso);
       const answer = this.entryEventAnswer(entry);
       const viewerName = entry.viewerName?.trim() || entry.viewerUserId.trim() || 'Member';
       const viewerInitials = entry.viewerInitials?.trim() || AppUtils.initialsFromText(viewerName);
       const viewerGender = entry.viewerGender === 'woman' ? 'woman' : 'man';
       const viewerImageUrl = entry.viewerImageUrl?.trim() || '';
-      const dayKey = hasValidTimestamp ? AppUtils.toIsoDate(timestampDate as Date) : 'undated';
-      const dayLabel = hasValidTimestamp
-        ? (timestampDate as Date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+      const dayKey = timestampDate ? AppUtils.toIsoDate(timestampDate) : 'undated';
+      const dayLabel = timestampDate
+        ? AppUtils.weekdayMonthDayLabel(timestampDate)
         : 'No date';
-      const timeLabel = hasValidTimestamp
-        ? (timestampDate as Date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      const timeLabel = timestampDate
+        ? AppUtils.clockTimeLabel(timestampDate)
         : '';
       const group = groups.get(dayKey) ?? { dayKey, label: dayLabel, items: [] };
       group.items.push({
@@ -471,8 +466,8 @@ export class EventFeedbackOrganizerMessageGroupConverter {
       .map(group => ({
         ...group,
         items: [...group.items].sort((left, right) => {
-          const leftMs = left.timestampIso ? new Date(left.timestampIso).getTime() : 0;
-          const rightMs = right.timestampIso ? new Date(right.timestampIso).getTime() : 0;
+          const leftMs = AppUtils.dateTimeMs(left.timestampIso) ?? 0;
+          const rightMs = AppUtils.dateTimeMs(right.timestampIso) ?? 0;
           return rightMs - leftMs || left.viewerName.localeCompare(right.viewerName);
         })
       }))

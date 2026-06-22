@@ -3,6 +3,8 @@ import { Component, HostListener, effect, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../shared/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppContext } from '../../../shared/ui';
 import { HelpCenterService, PrivacyPolicyService } from '../../../shared/core';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
@@ -13,10 +15,7 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import {
-  HelpCenterHelpDocumentViewerHeaderPaletteConverter,
-  HelpCenterRevisionDocumentViewerConfigConverter
-} from '../../../shared/ui/converters';
+import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
@@ -142,6 +141,11 @@ export class NavigatorSettingsPopupsComponent {
 
   protected helpDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeRevision();
+    const headerPalette = AppUtils.enumValue(
+      revision?.headerColor,
+      APP_STATIC_DATA.documentViewerHeaderPalettes,
+      'teal'
+    );
     return HelpCenterRevisionDocumentViewerConfigConverter.convert({
       revision,
       open: this.activePopup() === 'help',
@@ -151,7 +155,7 @@ export class NavigatorSettingsPopupsComponent {
       closeAriaLabel: 'Close help popup',
       titleFallback: 'Help',
       versionLabel: this.helpCenter.activeVersionLabel(),
-      headerPalette: HelpCenterHelpDocumentViewerHeaderPaletteConverter.convert(revision?.headerColor),
+      headerPalette: headerPalette === 'amber' ? 'teal' : headerPalette,
       loading: !revision,
       loadingLabel: 'Loading help content',
       emptyState: {
