@@ -8,13 +8,8 @@ import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
 import {
-  resolveHostTierColorClass,
-  resolveHostTierIcon,
-  resolveHostTierToneClass,
-  resolveMemberImpressionTitle,
-  resolveTraitColorClass,
-  resolveTraitIcon,
-  resolveTraitToneClass
+  resolveNavigatorPresentation,
+  type NavigatorPresentation
 } from '../../navigator-presenters';
 import { NavigatorService } from '../../navigator.service';
 
@@ -29,6 +24,8 @@ interface NavigatorImpressionsViewModel {
   user: UserDto;
   hasAvailableData: boolean;
   pulseFlags: NavigatorImpressionsPulseFlags;
+  hostTierPresentation: NavigatorPresentation;
+  traitPresentation: NavigatorPresentation;
   memberImpressionTitle: string;
   hostAverageRating: string;
   hostTotalEvents: number;
@@ -110,11 +107,15 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     const memberTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'member') : [];
     const hostTraitIndex = this.normalizeTraitIndex(this.hostTraitIndexRef(), hostTraitCards.length);
     const memberTraitIndex = this.normalizeTraitIndex(this.memberTraitIndexRef(), memberTraitCards.length);
+    const hostTierPresentation = resolveNavigatorPresentation('hostTier', user.hostTier);
+    const traitPresentation = resolveNavigatorPresentation('trait', user.traitLabel ?? '');
     return {
       user,
       hasAvailableData,
       pulseFlags: this.pulseFlagsRef(),
-      memberImpressionTitle: resolveMemberImpressionTitle(user.traitLabel ?? ''),
+      hostTierPresentation,
+      traitPresentation,
+      memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
       hostAverageRating: this.resolveHostAverageRating(user),
       hostTotalEvents: this.resolveHostTotalEvents(user),
       hostPeopleMet: this.resolveHostPeopleMet(user),
@@ -249,30 +250,6 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
       )
     );
     return hasPositiveMetric || hasBadges || hasTraits;
-  }
-
-  protected getHostTierColorClass(tier: string): string {
-    return resolveHostTierColorClass(tier);
-  }
-
-  protected getHostTierIcon(tier: string): string {
-    return resolveHostTierIcon(tier);
-  }
-
-  protected getHostTierToneClass(tier: string): string {
-    return resolveHostTierToneClass(tier);
-  }
-
-  protected getTraitColorClass(trait: string): string {
-    return resolveTraitColorClass(trait);
-  }
-
-  protected getTraitIcon(trait: string): string {
-    return resolveTraitIcon(trait);
-  }
-
-  protected getTraitToneClass(trait: string): string {
-    return resolveTraitToneClass(trait);
   }
 
   protected selectHostTrait(index: number): void {

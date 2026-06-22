@@ -23,10 +23,10 @@
         <div class="social-proof-grid">
           <div
             class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-host"
-            [ngClass]="getHostTierToneClass(vm.user.hostTier)"
+            [ngClass]="vm.hostTierPresentation.toneClass"
             >
             <div class="social-proof-identity-pill social-proof-identity-pill-host">
-              <mat-icon [class]="getHostTierColorClass(vm.user.hostTier)">{{ getHostTierIcon(vm.user.hostTier) }}</mat-icon>
+              <mat-icon [class]="vm.hostTierPresentation.colorClass">{{ vm.hostTierPresentation.icon }}</mat-icon>
               <span class="social-proof-identity-label">
                 <span class="social-proof-identity-main">{{ vm.user.hostTier.replace(' Host', '') }}</span>
                 <span class="social-proof-identity-sub">Host</span>
@@ -133,10 +133,10 @@
           </div>
           <div
             class="editor-list-card social-proof-card social-proof-card-modern social-proof-card-member"
-            [ngClass]="getTraitToneClass(vm.user.traitLabel)"
+            [ngClass]="vm.traitPresentation.toneClass"
             >
             <div class="social-proof-identity-pill social-proof-identity-pill-member">
-              <mat-icon [class]="getTraitColorClass(vm.user.traitLabel)">{{ getTraitIcon(vm.user.traitLabel) }}</mat-icon>
+              <mat-icon [class]="vm.traitPresentation.colorClass">{{ vm.traitPresentation.icon }}</mat-icon>
               <span class="social-proof-identity-label">
                 <span class="social-proof-identity-main">{{ vm.memberImpressionTitle.replace(' Attendee', '') }}</span>
                 <span class="social-proof-identity-sub">Attendee</span>

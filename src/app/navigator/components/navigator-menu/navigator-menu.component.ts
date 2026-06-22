@@ -8,7 +8,7 @@ import { AppContext } from '../../../shared/ui';
 import { ExplanationGuideService, HelpCenterService, PrivacyPolicyService, TermsPolicyService, USER_PROFILE_SAVE_CONTEXT_KEY, type UserDto } from '../../../shared/core';
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import {
-  resolveHostTierIcon, resolveMemberImpressionTitle, resolveTraitIcon
+  resolveNavigatorPresentation
 } from '../../navigator-presenters';
 import {
   AppMenuComponent,
@@ -142,6 +142,7 @@ export class NavigatorMenuComponent {
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
     const impressionChangeFlags = this.appCtx.getUserImpressionChangeFlags(activeUser.id);
+    const traitPresentation = resolveNavigatorPresentation('trait', activeUser.traitLabel ?? '');
     const totalBadgeCount = this.isAdminProfile(activeUser)
       ? (
         mergedActivities.game +
@@ -172,7 +173,7 @@ export class NavigatorMenuComponent {
       activities: mergedActivities,
       featuredImagePreview: this.resolveUserImageUrl(activeUser),
       impressionChangeFlags,
-      memberImpressionTitle: resolveMemberImpressionTitle(activeUser.traitLabel ?? ''),
+      memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
       totalBadgeCount
     };
   });
@@ -313,6 +314,8 @@ export class NavigatorMenuComponent {
     if (!user) {
       return { nodes: [] };
     }
+    const hostTierPresentation = resolveNavigatorPresentation('hostTier', user.hostTier);
+    const traitPresentation = resolveNavigatorPresentation('trait', user.traitLabel);
     const primaryDisabled = this.isPrimaryMenuDisabled(user);
     return {
       nodes: [
@@ -332,15 +335,15 @@ export class NavigatorMenuComponent {
                   id: 'host',
                   label: user.hostTier.replace(' Host', ''),
                   description: 'Host',
-                  icon: this.getHostTierIcon(user.hostTier),
-                  palette: this.hostTierPalette(user.hostTier)
+                  icon: hostTierPresentation.icon,
+                  palette: hostTierPresentation.menuPalette
                 },
                 {
                   id: 'member',
                   label: user.memberImpressionTitle.replace(' Attendee', ''),
                   description: 'Attendee',
-                  icon: this.getTraitIcon(user.traitLabel),
-                  palette: this.traitPalette(user.traitLabel)
+                  icon: traitPresentation.icon,
+                  palette: traitPresentation.menuPalette
                 }
               ]
             },
@@ -771,65 +774,11 @@ export class NavigatorMenuComponent {
     };
   }
 
-  private hostTierPalette(tier: string): AppMenuPalette {
-    const normalizedTier = tier.toLowerCase();
-    if (normalizedTier.includes('platinum')) {
-      return 'sky';
-    }
-    if (normalizedTier.includes('gold')) {
-      return 'gold';
-    }
-    if (normalizedTier.includes('silver')) {
-      return 'slate';
-    }
-    if (normalizedTier.includes('bronze')) {
-      return 'brown';
-    }
-    return 'blue';
-  }
-
-  private traitPalette(trait: string): AppMenuPalette {
-    const normalizedTrait = trait.toLowerCase();
-    if (normalizedTrait.includes('creative')) {
-      return 'violet';
-    }
-    if (normalizedTrait.includes('empath')) {
-      return 'pink';
-    }
-    if (normalizedTrait.includes('reliable')) {
-      return 'green';
-    }
-    if (normalizedTrait.includes('adventurer')) {
-      return 'sky';
-    }
-    if (normalizedTrait.includes('thinker')) {
-      return 'blue';
-    }
-    if (normalizedTrait.includes('social')) {
-      return 'teal';
-    }
-    if (normalizedTrait.includes('playful')) {
-      return 'orange';
-    }
-    if (normalizedTrait.includes('ambitious')) {
-      return 'purple';
-    }
-    return 'violet';
-  }
-
   private openSettingsPopup(popup: NavigatorSettingsPopup): void {
     if (popup === 'help' && !this.hasActiveHelpRevision()) {
       return;
     }
     this.navigatorService.openSettingsPopup(popup);
-  }
-
-  protected getHostTierIcon(tier: string): string {
-    return resolveHostTierIcon(tier);
-  }
-
-  protected getTraitIcon(trait: string): string {
-    return resolveTraitIcon(trait);
   }
 
   protected openProfileEditor(event?: Event): void {

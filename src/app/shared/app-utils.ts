@@ -86,6 +86,19 @@ export class AppUtils {
       .replace(/[\u0300-\u036f]/g, '');
   }
 
+  static findByAlias<T extends { aliases: readonly string[] }>(
+    entries: readonly T[],
+    value: string
+  ): T | null {
+    const normalized = this.normalizeText(value);
+    if (!normalized) {
+      return null;
+    }
+    return entries.find(entry =>
+      entry.aliases.some(alias => normalized.includes(this.normalizeText(alias)))
+    ) ?? null;
+  }
+
   static initialsFromText(value: string): string {
     const words = value
       .trim()
