@@ -36,7 +36,7 @@ import {
 } from '../../../shared/ui';
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
-import { EventFeedbackPageResult, EventsService } from '../../../shared/core/base';
+import { EventsService } from '../../../shared/core/base';
 import {
   ConfirmationDialogService,
   type ConfirmationDialogConfig
@@ -92,7 +92,7 @@ export class EventFeedbackPopupComponent {
   protected readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   protected readonly eventFeedbackNoteSubmitted = signal(false);
   protected readonly eventFeedbackNoteSubmitMessage = signal('');
-  private readonly eventFeedbackPageResult = signal<EventFeedbackPageResult | null>(null);
+  private readonly eventFeedbackPageResult = signal<ActivityContracts.EventFeedbackPageResultDto | null>(null);
   protected readonly eventFeedbackDetailDto = signal<ActivityContracts.EventFeedbackDetailDto | null>(null);
   protected readonly eventFeedbackDetailValue = signal<ActivityContracts.EventFeedbackDetailDto>(
     new ActivityContracts.EventFeedbackDetailDto()
@@ -342,7 +342,7 @@ export class EventFeedbackPopupComponent {
     this.selectedEventFeedbackEventId.set(item.eventId);
     this.eventFeedbackNoteForm.set({
       eventId: item.eventId,
-      text: this.eventFeedbackPageResult()?.dto.state.organizerNotesByEventId[item.eventId]?.trim() ?? ''
+      text: this.eventFeedbackPageResult()?.state.organizerNotesByEventId[item.eventId]?.trim() ?? ''
     });
     this.eventFeedbackNoteSubmitted.set(false);
     this.eventFeedbackNoteSubmitMessage.set('');
@@ -526,11 +526,11 @@ export class EventFeedbackPopupComponent {
     if (this.activeUserId() !== normalizedUserId) {
       return { items: [], total: 0 };
     }
-    const pageResult = EventFeedbackPageResult.fromDto(result);
+    const pageResult = ActivityContracts.EventFeedbackPageResultDto.normalize(result);
     this.eventFeedbackPageResult.set(pageResult);
     this.eventFeedbackFilterCountDelta.set({});
     return {
-      items: EventFeedbackInfoCardConverter.convertList(pageResult.items, { state: pageResult.dto.state }),
+      items: EventFeedbackInfoCardConverter.convertList(pageResult.items, { state: pageResult.state }),
       total: result.total
     };
   }
@@ -648,7 +648,7 @@ export class EventFeedbackPopupComponent {
       return;
     }
     nextItems[currentIndex] = EventFeedbackInfoCardConverter.convert(nextItem, {
-      state: this.eventFeedbackPageResult()?.dto.state ?? null
+      state: this.eventFeedbackPageResult()?.state ?? null
     });
     this.eventFeedbackSmartList.replaceVisibleItems(nextItems, {
       total: this.eventFeedbackSmartList.totalItemCount()

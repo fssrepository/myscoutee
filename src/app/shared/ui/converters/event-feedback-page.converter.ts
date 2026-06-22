@@ -1,9 +1,10 @@
 import { AppUtils } from '../../app-utils';
 import { APP_STATIC_DATA } from '../../app-static-data';
-import type { EventFeedbackFilterCountDelta, EventFeedbackPageResult } from '../../core/base';
 import type { EventFeedbackListFilter } from '../../core/common/constants';
 import type {
+  EventFeedbackFilterCountDelta,
   EventFeedbackDto,
+  EventFeedbackPageResultDto,
   EventFeedbackReceivedEntryDto,
   SubmittedEventFeedbackAnswer
 } from '../../core/contracts/activity.interface';
@@ -22,7 +23,7 @@ export interface EventFeedbackFilterMenuContext {
 }
 
 export interface EventFeedbackFilterMenuInput {
-  result: EventFeedbackPageResult | null | undefined;
+  result: EventFeedbackPageResultDto | null | undefined;
   activeFilter: EventFeedbackListFilter;
   delta?: EventFeedbackFilterCountDelta;
 }
@@ -46,7 +47,7 @@ export class EventFeedbackFilterMenuConverter {
   }
 
   private static trigger(
-    result: EventFeedbackPageResult | null,
+    result: EventFeedbackPageResultDto | null,
     filter: EventFeedbackListFilter,
     delta: EventFeedbackFilterCountDelta
   ): AppMenuTrigger {
@@ -62,7 +63,7 @@ export class EventFeedbackFilterMenuConverter {
   }
 
   private static items(
-    result: EventFeedbackPageResult | null,
+    result: EventFeedbackPageResultDto | null,
     activeFilter: EventFeedbackListFilter,
     delta: EventFeedbackFilterCountDelta
   ): readonly AppMenuItem<string, EventFeedbackFilterMenuContext>[] {
@@ -112,7 +113,7 @@ export const eventFeedbackFilterMenuConverter =
   >;
 
 export interface EventFeedbackListPresentationInput {
-  result: EventFeedbackPageResult | null | undefined;
+  result: EventFeedbackPageResultDto | null | undefined;
   filter: EventFeedbackListFilter;
   itemId?: string | null;
 }
@@ -145,7 +146,7 @@ export class EventFeedbackListPresentationConverter {
   }
 
   private static groupLabel(
-    result: EventFeedbackPageResult | null,
+    result: EventFeedbackPageResultDto | null,
     itemId: string,
     filter: EventFeedbackListFilter
   ): string {
@@ -178,7 +179,7 @@ export interface EventFeedbackOrganizerItemData {
 }
 
 export interface EventFeedbackOrganizerItemConverterOptions {
-  result: EventFeedbackPageResult;
+  result: EventFeedbackPageResultDto;
 }
 
 export class EventFeedbackOrganizerItemConverter {
@@ -244,7 +245,7 @@ export interface EventFeedbackOrganizerCarouselSectionData {
 }
 
 export interface EventFeedbackOrganizerEventInput {
-  result: EventFeedbackPageResult | null | undefined;
+  result: EventFeedbackPageResultDto | null | undefined;
   eventId: string;
 }
 
@@ -451,10 +452,10 @@ export class EventFeedbackOrganizerMessageGroupConverter {
         dayLabel,
         timeLabel,
         organizerNote: entry.organizerNote.trim(),
-        overallLabel: answer ? this.optionLabel(answer.primaryValue, APP_STATIC_DATA.eventFeedbackEventOverallOptions) : null,
-        improveLabel: answer ? this.optionLabel(answer.secondaryValue, APP_STATIC_DATA.eventFeedbackHostImproveOptions) : null,
+        overallLabel: answer ? this.optionLabel(answer.primaryValue ?? '', APP_STATIC_DATA.eventFeedbackEventOverallOptions) : null,
+        improveLabel: answer ? this.optionLabel(answer.secondaryValue ?? '', APP_STATIC_DATA.eventFeedbackHostImproveOptions) : null,
         traitLabels: answer
-          ? answer.personalityTraitIds
+          ? (answer.personalityTraitIds ?? [])
             .map(traitId => APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions.find(option => option.id === traitId)?.label ?? '')
             .filter(label => label.length > 0)
           : [],
@@ -501,12 +502,6 @@ export class EventFeedbackOrganizerMessageGroupConverter {
     const submittedAtIso = entry.submittedAtIso?.trim() ?? '';
     if (submittedAtIso) {
       return submittedAtIso;
-    }
-    for (const answer of entry.answers ?? []) {
-      const answerIso = answer.submittedAtIso?.trim() ?? '';
-      if (answerIso) {
-        return answerIso;
-      }
     }
     return '';
   }

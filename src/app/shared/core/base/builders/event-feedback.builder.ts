@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../app-utils';
 import type { ActivityMemberRole, EventFeedbackListFilter } from '../../common/constants';
-import { EventFeedbackDetailDto } from '../../contracts/activity.interface';
+import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../contracts/activity.interface';
 import type {
   ActivityEventRecord,
   EventFeedbackCardDto,
@@ -8,7 +8,6 @@ import type {
   EventFeedbackPageCountsDto,
   EventFeedbackDto,
   EventFeedbackPageQueryDto,
-  EventFeedbackPageResultDto,
   EventFeedbackPageStateSnapshotDto,
   EventFeedbackReceivedEntryDto,
   EventFeedbackReceivedEventDto,
@@ -58,7 +57,7 @@ export class EventFeedbackBuilder {
     const filtered = this.filterItems(query.filter, allItems, organizerItems);
     const pageItems = filtered.slice(query.page * query.pageSize, (query.page * query.pageSize) + query.pageSize);
 
-    return {
+    return new EventFeedbackPageResultDto({
       items: pageItems,
       total: filtered.length,
       allItems,
@@ -66,46 +65,15 @@ export class EventFeedbackBuilder {
       receivedEvents,
       state,
       counts: this.counts(allItems, organizerItems)
-    };
+    });
   }
 
   static emptyPageResult(_filter: EventFeedbackListFilter = 'pending'): EventFeedbackPageResultDto {
-    return {
-      items: [],
-      total: 0,
-      allItems: [],
-      organizerItems: [],
-      receivedEvents: [],
-      state: this.emptyStateSnapshot(),
-      counts: {
-        ownEvents: 0,
-        pending: 0,
-        feedbacked: 0,
-        removed: 0
-      }
-    };
+    return new EventFeedbackPageResultDto();
   }
 
   static clonePageResult(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
-    if (!result) {
-      return this.emptyPageResult();
-    }
-    const allItems = this.clonePageItems(result.allItems);
-    const organizerItems = this.clonePageItems(result.organizerItems);
-    return {
-      items: this.clonePageItems(result.items),
-      total: Math.max(0, Math.trunc(Number(result.total) || 0)),
-      allItems,
-      organizerItems,
-      receivedEvents: this.cloneReceivedEvents(result.receivedEvents),
-      state: this.cloneStateSnapshot(result.state),
-      counts: {
-        ownEvents: Math.max(0, Math.trunc(Number(result.counts?.ownEvents ?? organizerItems.length) || 0)),
-        pending: Math.max(0, Math.trunc(Number(result.counts?.pending) || 0)),
-        feedbacked: Math.max(0, Math.trunc(Number(result.counts?.feedbacked) || 0)),
-        removed: Math.max(0, Math.trunc(Number(result.counts?.removed) || 0))
-      }
-    };
+    return EventFeedbackPageResultDto.normalize(result);
   }
 
   static buildDetail(options: {

@@ -633,24 +633,6 @@ export interface EventFeedbackStateDto {
   answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
-export interface EventFeedbackReceivedEntryDto {
-  viewerUserId: string;
-  viewerName: string;
-  viewerInitials: string;
-  viewerGender: UserGender;
-  viewerImageUrl: string;
-  eventId: string;
-  submittedAtIso: string;
-  updatedAtIso: string;
-  organizerNote: string;
-  answers: SubmittedEventFeedbackAnswer[];
-}
-
-export interface EventFeedbackReceivedEventDto {
-  eventId: string;
-  entries: EventFeedbackReceivedEntryDto[];
-}
-
 export interface EventFeedbackPageQueryDto {
   userId: string;
   filter: EventFeedbackListFilter;
@@ -719,14 +701,367 @@ export interface EventFeedbackCardDto {
   selectedTraitIds?: string[];
 }
 
-export interface EventFeedbackPageResultDto {
-  items: EventFeedbackDto[];
-  total: number;
-  allItems: EventFeedbackDto[];
-  organizerItems: EventFeedbackDto[];
-  receivedEvents: EventFeedbackReceivedEventDto[];
-  state: EventFeedbackPageStateSnapshotDto;
-  counts: EventFeedbackPageCountsDto;
+export interface EventFeedbackReceivedEntryDto {
+  viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: UserGender;
+  viewerImageUrl: string;
+  eventId: string;
+  submittedAtIso: string;
+  updatedAtIso: string;
+  organizerNote: string;
+  answers: SubmittedEventFeedbackAnswer[];
+}
+
+export interface EventFeedbackReceivedEventDto {
+  eventId: string;
+  entries: EventFeedbackReceivedEntryDto[];
+}
+
+export type EventFeedbackFilterCountDelta = Partial<Record<EventFeedbackListFilter, number>>;
+
+export class EventFeedbackPageResultDto {
+  readonly items: EventFeedbackDto[];
+  readonly total: number;
+  readonly allItems: EventFeedbackDto[];
+  readonly organizerItems: EventFeedbackDto[];
+  readonly receivedEvents: EventFeedbackReceivedEventDto[];
+  readonly state: EventFeedbackPageStateSnapshotDto;
+  readonly counts: EventFeedbackPageCountsDto;
+
+  static normalize(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
+    return new EventFeedbackPageResultDto(result);
+  }
+
+  constructor(result: Partial<EventFeedbackPageResultDto> | null | undefined = null) {
+    const allItems = EventFeedbackPageResultDto.clonePageItems(result?.allItems);
+    const organizerItems = EventFeedbackPageResultDto.clonePageItems(result?.organizerItems);
+    this.items = EventFeedbackPageResultDto.clonePageItems(result?.items);
+    this.total = Math.max(0, Math.trunc(Number(result?.total) || 0));
+    this.allItems = allItems;
+    this.organizerItems = organizerItems;
+    this.receivedEvents = EventFeedbackPageResultDto.cloneReceivedEvents(result?.receivedEvents);
+    this.state = EventFeedbackPageResultDto.cloneStateSnapshot(result?.state);
+    this.counts = {
+      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents ?? organizerItems.length) || 0)),
+      pending: Math.max(0, Math.trunc(Number(result?.counts?.pending) || 0)),
+      feedbacked: Math.max(0, Math.trunc(Number(result?.counts?.feedbacked) || 0)),
+      removed: Math.max(0, Math.trunc(Number(result?.counts?.removed) || 0))
+    };
+  }
+
+  itemById(eventId: string): EventFeedbackDto | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    return [
+      ...this.items,
+      ...this.allItems,
+      ...this.organizerItems
+    ].find(item => item.eventId === normalizedEventId) ?? null;
+  }
+
+  eventTitleById(eventId: string): string {
+    return this.itemById(eventId)?.title?.trim() || 'this event';
+  }
+
+  filterCount(filter: EventFeedbackListFilter): number {
+    switch (filter) {
+      case 'own-events':
+        return Math.max(0, Math.trunc(Number(this.counts.ownEvents) || 0));
+      case 'feedbacked':
+        return Math.max(0, Math.trunc(Number(this.counts.feedbacked) || 0));
+      case 'removed':
+        return Math.max(0, Math.trunc(Number(this.counts.removed) || 0));
+      case 'pending':
+      default:
+        return Math.max(0, Math.trunc(Number(this.counts.pending) || 0));
+    }
+  }
+
+  filterCountWithDelta(
+    filter: EventFeedbackListFilter,
+    delta: EventFeedbackFilterCountDelta = {}
+  ): number {
+    return Math.max(0, this.filterCount(filter) + (delta[filter] ?? 0));
+  }
+
+  itemMatchesFilter(item: EventFeedbackDto, filter: EventFeedbackListFilter): boolean {
+    switch (filter) {
+      case 'own-events':
+        return item.isOwnEvent === true;
+      case 'feedbacked':
+        return item.isFeedbacked === true;
+      case 'removed':
+        return item.isRemoved === true;
+      case 'pending':
+      default:
+        return !item.isRemoved && item.pendingCards > 0;
+    }
+  }
+
+  applySubmitToItem(
+    item: EventFeedbackDto,
+    dto: EventFeedbackDetailDto
+  ): EventFeedbackDto {
+    const submittedAtMs = this.submitTimestampMs(dto);
+    const pendingCards = Math.max(0, item.pendingCards - dto.cards.length);
+    return {
+      ...item,
+      pendingCards,
+      isRemoved: false,
+      isFeedbacked: pendingCards === 0,
+      feedbackedAtMs: pendingCards === 0 ? submittedAtMs : item.feedbackedAtMs,
+      removedAtMs: null
+    };
+  }
+
+  removeItem(item: EventFeedbackDto, removedAtMs = Date.now()): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: true,
+      isFeedbacked: false,
+      removedAtMs
+    };
+  }
+
+  restoreItem(item: EventFeedbackDto): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: false,
+      isFeedbacked: item.pendingCards === 0,
+      removedAtMs: null
+    };
+  }
+
+  filterCountDelta(
+    before: EventFeedbackDto,
+    after: EventFeedbackDto
+  ): EventFeedbackFilterCountDelta {
+    return {
+      pending: this.filterMembershipDelta(before, after, 'pending'),
+      feedbacked: this.filterMembershipDelta(before, after, 'feedbacked'),
+      removed: this.filterMembershipDelta(before, after, 'removed'),
+      'own-events': this.filterMembershipDelta(before, after, 'own-events')
+    };
+  }
+
+  patchItem(item: EventFeedbackDto): EventFeedbackPageResultDto {
+    const patchList = (items: readonly EventFeedbackDto[]) =>
+      items.map(current => current.eventId === item.eventId ? { ...item } : { ...current });
+    return new EventFeedbackPageResultDto({
+      ...this,
+      items: patchList(this.items),
+      allItems: patchList(this.allItems),
+      organizerItems: patchList(this.organizerItems)
+    });
+  }
+
+  patchOrganizerNote(eventId: string, text: string): EventFeedbackPageResultDto {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return this;
+    }
+    const organizerNotesByEventId = { ...this.state.organizerNotesByEventId };
+    const trimmedText = text.trim();
+    if (trimmedText) {
+      organizerNotesByEventId[normalizedEventId] = trimmedText;
+    } else {
+      delete organizerNotesByEventId[normalizedEventId];
+    }
+    return new EventFeedbackPageResultDto({
+      ...this,
+      state: {
+        ...this.state,
+        organizerNotesByEventId
+      }
+    });
+  }
+
+  receivedEntries(eventId: string): readonly EventFeedbackReceivedEntryDto[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    return this.receivedEvents.find(item => item.eventId === normalizedEventId)?.entries ?? [];
+  }
+
+  organizerEntries(eventId: string): EventFeedbackReceivedEntryDto[] {
+    return [...this.receivedEntries(eventId)]
+      .sort((left, right) => this.entryTimestampMs(right) - this.entryTimestampMs(left));
+  }
+
+  entriesLatestAtMs(entries: readonly EventFeedbackReceivedEntryDto[]): number | null {
+    let latestAtMs: number | null = null;
+    for (const entry of entries) {
+      const candidateMs = this.entryTimestampMs(entry);
+      if (candidateMs <= 0) {
+        continue;
+      }
+      latestAtMs = latestAtMs === null ? candidateMs : Math.max(latestAtMs, candidateMs);
+    }
+    return latestAtMs;
+  }
+
+  groupTimestampMs(item: EventFeedbackDto, filter: EventFeedbackListFilter): number | null {
+    switch (filter) {
+      case 'feedbacked':
+        return this.numberOrNull(item.feedbackedAtMs ?? item.startAtMs);
+      case 'removed':
+        return this.numberOrNull(item.removedAtMs ?? item.feedbackedAtMs ?? item.startAtMs);
+      case 'own-events':
+      case 'pending':
+      default:
+        return this.numberOrNull(item.startAtMs);
+    }
+  }
+
+  private static clonePageItems(items: readonly EventFeedbackDto[] | undefined): EventFeedbackDto[] {
+    return (items ?? []).map(item => ({
+      eventId: item.eventId?.trim() ?? '',
+      title: item.title?.trim() ?? '',
+      subtitle: item.subtitle?.trim() ?? '',
+      timeframe: item.timeframe?.trim() ?? '',
+      imageUrl: item.imageUrl?.trim() ?? '',
+      startAtMs: Math.max(0, Math.trunc(Number(item.startAtMs) || 0)),
+      pendingCards: Math.max(0, Math.trunc(Number(item.pendingCards) || 0)),
+      totalCards: Math.max(0, Math.trunc(Number(item.totalCards) || 0)),
+      isRemoved: item.isRemoved === true,
+      isFeedbacked: item.isFeedbacked === true,
+      feedbackedAtMs: EventFeedbackPageResultDto.numberOrNullStatic(item.feedbackedAtMs),
+      removedAtMs: EventFeedbackPageResultDto.numberOrNullStatic(item.removedAtMs),
+      isOwnEvent: item.isOwnEvent === true
+    })).filter(item => item.eventId.length > 0);
+  }
+
+  private static cloneReceivedEvents(
+    events: readonly EventFeedbackReceivedEventDto[] | undefined
+  ): EventFeedbackReceivedEventDto[] {
+    return (events ?? [])
+      .map(item => {
+        const eventId = item.eventId?.trim() ?? '';
+        return {
+          eventId,
+          entries: (item.entries ?? []).map(entry => ({
+            viewerUserId: entry.viewerUserId?.trim() ?? '',
+            viewerName: entry.viewerName?.trim() ?? '',
+            viewerInitials: entry.viewerInitials?.trim() ?? '',
+            viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as UserGender,
+            viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
+            eventId: entry.eventId?.trim() || eventId,
+            submittedAtIso: entry.submittedAtIso?.trim() ?? '',
+            updatedAtIso: entry.updatedAtIso?.trim() ?? '',
+            organizerNote: entry.organizerNote?.trim() ?? '',
+            answers: (entry.answers ?? []).map(answer => EventFeedbackPageResultDto.cloneSubmittedAnswer(answer))
+          })).filter(entry => entry.viewerUserId.length > 0)
+        };
+      })
+      .filter(item => item.eventId.length > 0);
+  }
+
+  private static cloneStateSnapshot(
+    state: Partial<EventFeedbackPageStateSnapshotDto> | null | undefined
+  ): EventFeedbackPageStateSnapshotDto {
+    const next: EventFeedbackPageStateSnapshotDto = {
+      submittedCardsById: {},
+      submittedAnswersByCardId: {},
+      submittedEventsById: {},
+      removedEventsById: {},
+      removedEventDatesById: {},
+      organizerNotesByEventId: {}
+    };
+    for (const [key, value] of Object.entries(state?.submittedCardsById ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.submittedCardsById[normalizedKey] = true;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.submittedAnswersByCardId ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.submittedAnswersByCardId[normalizedKey] = EventFeedbackPageResultDto.cloneSubmittedAnswer(value);
+      }
+    }
+    for (const [key, value] of Object.entries(state?.submittedEventsById ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.submittedEventsById[normalizedKey] = normalizedValue;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.removedEventsById ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.removedEventsById[normalizedKey] = true;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.removedEventDatesById ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.removedEventDatesById[normalizedKey] = normalizedValue;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.organizerNotesByEventId ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.organizerNotesByEventId[normalizedKey] = normalizedValue;
+      }
+    }
+    return next;
+  }
+
+  private static cloneSubmittedAnswer(answer: SubmittedEventFeedbackAnswer): SubmittedEventFeedbackAnswer {
+    return {
+      ...answer,
+      cardId: answer.cardId?.trim() ?? '',
+      eventId: answer.eventId?.trim() ?? '',
+      kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+      targetUserId: answer.targetUserId?.trim() || null,
+      targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
+      primaryValue: answer.primaryValue?.trim() ?? '',
+      secondaryValue: answer.secondaryValue?.trim() ?? '',
+      personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
+      tags: [...(answer.tags ?? [])],
+      submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+    };
+  }
+
+  private static numberOrNullStatic(value: number | null | undefined): number | null {
+    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
+  }
+
+  private submitTimestampMs(dto: EventFeedbackDetailDto): number {
+    const submittedAtIso = dto.submittedAtIso.trim();
+    const submittedAtMs = submittedAtIso ? new Date(submittedAtIso).getTime() : Date.now();
+    return Number.isNaN(submittedAtMs) ? Date.now() : submittedAtMs;
+  }
+
+  private filterMembershipDelta(
+    before: EventFeedbackDto,
+    after: EventFeedbackDto,
+    filter: EventFeedbackListFilter
+  ): number {
+    const wasVisible = this.itemMatchesFilter(before, filter);
+    const isVisible = this.itemMatchesFilter(after, filter);
+    return wasVisible === isVisible ? 0 : wasVisible ? -1 : 1;
+  }
+
+  private entryTimestampMs(entry: EventFeedbackReceivedEntryDto): number {
+    const iso = entry.updatedAtIso?.trim()
+      || entry.submittedAtIso?.trim()
+      || (entry.answers ?? []).map(answer => answer.submittedAtIso?.trim() ?? '').find(Boolean)
+      || '';
+    const value = iso ? new Date(iso).getTime() : 0;
+    return Number.isNaN(value) ? 0 : value;
+  }
+
+  private numberOrNull(value: number | null | undefined): number | null {
+    return EventFeedbackPageResultDto.numberOrNullStatic(value);
+  }
 }
 
 export interface EventFeedbackDetailPendingOptions {
