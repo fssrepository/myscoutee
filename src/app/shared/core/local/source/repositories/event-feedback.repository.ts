@@ -46,7 +46,14 @@ export class LocalEventFeedbackRepository {
       ? new Set([...ownedEventIdsInput].map(eventId => eventId.trim()).filter(Boolean))
       : new Set(
           this.eventsRepository.queryItemsByUser(normalizedUserId)
-            .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
+            .filter(record =>
+              record.type !== 'invitations'
+              && record.status !== 'T'
+              && (
+                record.creatorUserId === normalizedUserId
+                || (record.adminIds ?? []).includes(normalizedUserId)
+              )
+            )
             .map(record => record.id.trim())
             .filter(Boolean)
         );

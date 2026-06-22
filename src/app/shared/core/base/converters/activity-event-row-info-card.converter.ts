@@ -1,20 +1,20 @@
 import { AppUtils } from '../../../app-utils';
-import type { ActivityEventCardRecord } from '../../contracts/activity.interface';
+import type { ActivityEventDTO } from '../../contracts/activity.interface';
 import type * as AppTypes from '../models';
 import type { InfoCardData } from '../../../ui';
 
 import type * as AppConstants from '../../common/constants';
-export interface ActivityEventInfoCardOptions {
+export interface ActivityEventRowInfoCardConverterOptions {
   activeUserId?: string | null;
   groupLabel?: string | null;
   state?: InfoCardData['state'];
   rowType?: AppTypes.ActivityListRow['type'];
 }
 
-export class ActivityEventInfoCardBuilder {
-  static build(
-    record: ActivityEventCardRecord,
-    options: ActivityEventInfoCardOptions = {}
+export class ActivityEventRowInfoCardConverter {
+  static convert(
+    record: ActivityEventDTO,
+    options: ActivityEventRowInfoCardConverterOptions = {}
   ): InfoCardData {
     void options.rowType;
     const activeUserId = options.activeUserId ?? '';
@@ -64,7 +64,7 @@ export class ActivityEventInfoCardBuilder {
     };
   }
 
-  private static locationMetaRows(record: ActivityEventCardRecord): string[] {
+  private static locationMetaRows(record: ActivityEventDTO): string[] {
     const location = `${record.location ?? record.creatorCity ?? ''}`.trim();
     const distanceLabel = this.distanceLabel(record);
     const line = location && distanceLabel
@@ -73,7 +73,7 @@ export class ActivityEventInfoCardBuilder {
     return line ? [line] : [];
   }
 
-  private static distanceLabel(record: ActivityEventCardRecord): string {
+  private static distanceLabel(record: ActivityEventDTO): string {
     const distanceKm = Number(record.distanceKm);
     if (!Number.isFinite(distanceKm)) {
       return '';
@@ -95,7 +95,7 @@ export class ActivityEventInfoCardBuilder {
     return [{ label: pendingStatusLabelKey }];
   }
 
-  private static mediaStart(record: ActivityEventCardRecord): InfoCardData['mediaStart'] {
+  private static mediaStart(record: ActivityEventDTO): InfoCardData['mediaStart'] {
     return {
       variant: 'avatar',
       label: AppUtils.initialsFromText(record.creatorInitials ?? record.creatorName ?? record.inviter ?? record.title),
@@ -103,11 +103,11 @@ export class ActivityEventInfoCardBuilder {
     };
   }
 
-  private static isDraft(record: ActivityEventCardRecord): boolean {
+  private static isDraft(record: ActivityEventDTO): boolean {
     return this.statusCode(record.status) === 'DR';
   }
 
-  private static isPending(record: ActivityEventCardRecord, activeUserId: string): boolean {
+  private static isPending(record: ActivityEventDTO, activeUserId: string): boolean {
     if (this.isPendingReview(record)) {
       return true;
     }
@@ -124,23 +124,23 @@ export class ActivityEventInfoCardBuilder {
     return 'waiting.for.approval';
   }
 
-  private static isFull(record: ActivityEventCardRecord): boolean {
+  private static isFull(record: ActivityEventDTO): boolean {
     return this.statusCode(record.status) === 'A'
       && record.capacityTotal > 0
       && record.acceptedMembers >= record.capacityTotal;
   }
 
-  private static capacityLabel(record: ActivityEventCardRecord): string {
+  private static capacityLabel(record: ActivityEventDTO): string {
     return `${Math.max(0, record.acceptedMembers)} / ${Math.max(record.acceptedMembers, record.capacityTotal)}`;
   }
 
-  private static pendingMemberCount(record: ActivityEventCardRecord): number {
+  private static pendingMemberCount(record: ActivityEventDTO): number {
     return Math.max(0, Math.trunc(Number(record.pendingMembers) || 0));
   }
 
   private static surfaceTone(
     status: string,
-    record: ActivityEventCardRecord,
+    record: ActivityEventDTO,
     activeUserId: string
   ): InfoCardData['surfaceTone'] {
     switch (status) {
@@ -168,7 +168,7 @@ export class ActivityEventInfoCardBuilder {
 
   private static mediaEndTone(
     status: string,
-    record: ActivityEventCardRecord,
+    record: ActivityEventDTO,
     activeUserId: string
   ): NonNullable<InfoCardData['mediaEnd']>['tone'] {
     switch (status) {
@@ -190,7 +190,7 @@ export class ActivityEventInfoCardBuilder {
   }
 
   private static leadingIcon(
-    record: ActivityEventCardRecord,
+    record: ActivityEventDTO,
     status: string,
     pending: boolean,
     activeUserId: string
@@ -227,28 +227,28 @@ export class ActivityEventInfoCardBuilder {
     }
   }
 
-  private static hasMenuOptions(record: ActivityEventCardRecord): boolean {
+  private static hasMenuOptions(record: ActivityEventDTO): boolean {
     if (this.isTrashed(record)) {
       return this.shouldRestore(record);
     }
     return !!record.id;
   }
 
-  private static shouldRestore(record: ActivityEventCardRecord): boolean {
+  private static shouldRestore(record: ActivityEventDTO): boolean {
     return this.statusCode(record.status) === 'T';
   }
 
-  private static isPendingReview(record: ActivityEventCardRecord): boolean {
+  private static isPendingReview(record: ActivityEventDTO): boolean {
     const status = this.statusCode(record.status);
     return status === 'UR' || status === 'B';
   }
 
-  private static isTrashed(record: ActivityEventCardRecord): boolean {
+  private static isTrashed(record: ActivityEventDTO): boolean {
     const status = this.statusCode(record.status);
-    return record.isTrashed === true || status === 'T';
+    return status === 'T';
   }
 
-  private static isInvited(record: ActivityEventCardRecord, activeUserId: string): boolean {
+  private static isInvited(record: ActivityEventDTO, activeUserId: string): boolean {
     return this.includesUserId(record.invitedMemberUserIds, activeUserId);
   }
 

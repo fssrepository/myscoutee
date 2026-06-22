@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import { ActivityEventDtoMapper } from '../../../shared/core/base/mappers/activity-event.mapper';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
@@ -2160,7 +2161,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: toActivityEventRow(eventRecord, { activeUserId: this.activeUserId() }),
+      row: toActivityEventRow(ActivityEventDtoMapper.toDTO(eventRecord), { activeUserId: this.activeUserId() }),
       readOnly: true
     });
   }
@@ -3763,7 +3764,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const eventId = `${chat.eventId ?? ''}`.trim();
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const eventRow = eventRecord
-      ? toActivityEventRow(eventRecord, { activeUserId: this.activeUserId() })
+      ? toActivityEventRow(ActivityEventDtoMapper.toDTO(eventRecord), { activeUserId: this.activeUserId() })
       : this.chatEventFallbackRow(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
     const resourceState = rawSubEvent && eventId

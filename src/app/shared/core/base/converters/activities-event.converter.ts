@@ -1,62 +1,74 @@
 import type * as AppTypes from '../../../core/base/models';
-import type { ActivityEventCardRecord } from '../../contracts/activity.interface';
+import type { ActivityEventDTO } from '../../contracts/activity.interface';
 import {
-  ActivityEventInfoCardBuilder,
-  type ActivityEventInfoCardOptions
-} from '../builders/activity-event-info-card.builder';
+  ActivityEventRowInfoCardConverter,
+  type ActivityEventRowInfoCardConverterOptions
+} from './activity-event-row-info-card.converter';
 
 export function toActivityEventRow(
-  record: ActivityEventCardRecord,
-  options: ActivityEventInfoCardOptions = {}
+  dto: ActivityEventDTO,
+  options: ActivityEventRowInfoCardConverterOptions = {}
 ): AppTypes.ActivityListRow {
-  const rowType = resolveActivityEventRowType(record);
-  const displayItem = ActivityEventInfoCardBuilder.build(record, {
+  const rowType = resolveActivityEventRowType(dto);
+  const displayItem = ActivityEventRowInfoCardConverter.convert(dto, {
     ...options,
     rowType
   });
   return {
     ...displayItem,
-    id: record.id,
+    id: dto.id,
     type: rowType,
-    status: record.status,
-    title: record.title,
+    status: dto.status,
+    title: dto.title,
     subtitle: rowType === 'invitations'
-      ? record.creatorName
-      : record.eventType === 'slot'
-        ? `Slot occurrence${record.subtitle ? ' · ' + record.subtitle : ''}`
-        : record.subtitle,
-    detail: record.timeframe,
-    dateIso: record.startAtIso,
-    distanceMetersExact: Math.max(0, Math.round((Number(record.distanceKm) || 0) * 1000)),
-    unread: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-    metricScore: Math.max(0, Number(record.boost) || 0),
-    isAdmin: record.isAdmin,
-    ownerId: record.creatorUserId,
-    ownerUserId: record.creatorUserId,
-    avatarInitials: record.creatorInitials,
-    startAt: record.startAtIso,
-    endAt: record.endAtIso,
-    boost: record.boost,
-    imageUrl: record.imageUrl,
-    visibility: record.visibility,
-    creatorInitials: record.creatorInitials,
-    acceptedMembers: record.acceptedMembers,
-    pendingMembers: record.pendingMembers,
-    capacityTotal: record.capacityTotal,
-    capacityMin: record.capacityMin,
-    capacityMax: record.capacityMax,
-    isTrashed: record.isTrashed
+      ? dto.creatorName
+      : dto.eventType === 'slot'
+        ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
+        : dto.subtitle,
+    detail: dto.timeframe,
+    dateIso: dto.startAtIso,
+    distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
+    unread: Math.max(0, Math.trunc(Number(dto.activity) || 0)),
+    metricScore: Math.max(0, Number(dto.boost) || 0),
+    isAdmin: isActivityEventAdmin(dto),
+    ownerId: dto.creatorUserId,
+    ownerUserId: dto.creatorUserId,
+    avatarInitials: dto.creatorInitials,
+    startAt: dto.startAtIso,
+    endAt: dto.endAtIso,
+    boost: dto.boost,
+    imageUrl: dto.imageUrl,
+    visibility: dto.visibility,
+    creatorInitials: dto.creatorInitials,
+    acceptedMembers: dto.acceptedMembers,
+    pendingMembers: dto.pendingMembers,
+    capacityTotal: dto.capacityTotal,
+    capacityMin: dto.capacityMin,
+    capacityMax: dto.capacityMax,
+    isTrashed: isActivityEventTrashed(dto)
   };
 }
 
-function resolveActivityEventRowType(record: ActivityEventCardRecord): AppTypes.ActivityInfoCardRow['type'] {
-  if (record.isInvitation || record.type === 'invitations') {
+function resolveActivityEventRowType(dto: ActivityEventDTO): AppTypes.ActivityInfoCardRow['type'] {
+  if (dto.type === 'invitations') {
     return 'invitations';
   }
-  if (record.type === 'hosting' || record.isHosting) {
+  if (dto.type === 'hosting') {
     return 'hosting';
   }
   return 'events';
+}
+
+function isActivityEventAdmin(dto: ActivityEventDTO): boolean {
+  const userId = `${dto.userId ?? ''}`.trim();
+  return !!userId && (
+    dto.creatorUserId === userId
+    || (dto.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+  );
+}
+
+function isActivityEventTrashed(dto: ActivityEventDTO): boolean {
+  return normalizeEventStatusCode(dto.status) === 'T';
 }
 
 function normalizeEventStatusCode(status: string | null | undefined): string {

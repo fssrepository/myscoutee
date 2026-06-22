@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AppPopupContext } from '../../../shared/ui';
 import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, toActivityEventRow, type ShareTokenResolvedItem } from '../../../shared/core';
+import { ActivityEventDtoMapper } from '../../../shared/core/base/mappers/activity-event.mapper';
 import type { AssetCardDTO } from '../../../shared/core/base/dto';
 import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
@@ -238,7 +239,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       if (eventRecord) {
         this.popupCtx.requestActivitiesNavigation({
           type: 'eventEditor',
-          row: toActivityEventRow(eventRecord, { activeUserId: userId }),
+          row: toActivityEventRow(ActivityEventDtoMapper.toDTO(eventRecord), { activeUserId: userId }),
           readOnly: true
         });
       } else {

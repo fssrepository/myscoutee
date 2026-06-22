@@ -184,7 +184,7 @@ export class EventFeedbackBuilder {
   }): EventFeedbackCardSourceDto[] {
     const cards: EventFeedbackCardSourceDto[] = [];
     for (const record of options.records) {
-      if (record.type !== 'events' || record.isTrashed || record.isInvitation || record.isAdmin) {
+      if (!this.isFeedbackAttendeeRecord(record)) {
         continue;
       }
       const startMs = this.eventStartAtMs(record);
@@ -250,7 +250,7 @@ export class EventFeedbackBuilder {
   }): EventFeedbackPageItemDto[] {
     const items: EventFeedbackPageItemDto[] = [];
     for (const record of options.records) {
-      if (record.type !== 'events' || record.isTrashed || record.isInvitation || record.isAdmin) {
+      if (!this.isFeedbackAttendeeRecord(record)) {
         continue;
       }
       const startMs = this.eventStartAtMs(record);
@@ -290,7 +290,7 @@ export class EventFeedbackBuilder {
     receivedByEventId: Map<string, readonly EventFeedbackReceivedEntryDto[]>
   ): EventFeedbackPageItemDto[] {
     return records
-      .filter(record => !record.isTrashed && !record.isInvitation && record.isAdmin)
+      .filter(record => !this.isRecordTrashed(record) && !this.isRecordInvitation(record) && this.isRecordAdmin(record))
       .map(record => {
         const entries = receivedByEventId.get(record.id) ?? [];
         return {
@@ -562,10 +562,33 @@ export class EventFeedbackBuilder {
   }
 
   private static eventRecordPreferenceScore(record: ActivityEventRecord): number {
-    return (record.isAdmin ? 8 : 0)
+    return (this.isRecordAdmin(record) ? 8 : 0)
       + (record.type === 'hosting' ? 4 : 0)
-      + (!record.isInvitation ? 2 : 0)
-      + (!record.isTrashed ? 1 : 0);
+      + (!this.isRecordInvitation(record) ? 2 : 0)
+      + (!this.isRecordTrashed(record) ? 1 : 0);
+  }
+
+  private static isFeedbackAttendeeRecord(record: ActivityEventRecord): boolean {
+    return record.type === 'events'
+      && !this.isRecordTrashed(record)
+      && !this.isRecordInvitation(record)
+      && !this.isRecordAdmin(record);
+  }
+
+  private static isRecordAdmin(record: ActivityEventRecord): boolean {
+    const userId = `${record.userId ?? ''}`.trim();
+    return !!userId && (
+      record.creatorUserId === userId
+      || (record.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+    );
+  }
+
+  private static isRecordInvitation(record: ActivityEventRecord): boolean {
+    return record.type === 'invitations';
+  }
+
+  private static isRecordTrashed(record: ActivityEventRecord): boolean {
+    return record.status === 'T';
   }
 
   private static uniqueUsers(users: readonly UserDto[], activeUser: UserDto): UserDto[] {

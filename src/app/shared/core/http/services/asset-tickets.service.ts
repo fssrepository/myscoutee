@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type * as AppTypes from '../../../core/base/models';
 import { toActivityEventRow } from '../../base/converters/activities-event.converter';
+import { ActivityEventDtoMapper } from '../../base/mappers/activity-event.mapper';
 import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 
@@ -82,10 +83,10 @@ export class HttpAssetTicketsService {
 
   private buildTicketRows(records: readonly ActivityEventRecord[]): AppTypes.ActivityListRow[] {
     return this.cloneRows(records
-      .filter(record => !record.isInvitation)
-      .filter(record => !record.isTrashed)
+      .filter(record => record.type !== 'invitations')
+      .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => toActivityEventRow(record)));
+      .map(record => toActivityEventRow(ActivityEventDtoMapper.toDTO(record))));
   }
 
   private pageRows(

@@ -1,6 +1,7 @@
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import type * as AppTypes from '../../../base/models';
 import { toActivityEventRow } from '../../../base/converters/activities-event.converter';
+import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { AssetRecord } from '../entity/asset.entity';
 
@@ -179,10 +180,10 @@ export class LocalAssetsMapper {
 export class LocalAssetTicketsMapper {
   static toTicketRows(records: readonly ActivityEventRecord[]): AppTypes.ActivityListRow[] {
     return this.cloneRows(records
-      .filter(record => !record.isInvitation)
-      .filter(record => !record.isTrashed)
+      .filter(record => record.type !== 'invitations')
+      .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => toActivityEventRow(record)));
+      .map(record => toActivityEventRow(ActivityEventDtoMapper.toDTO(record))));
   }
 
   static pageRows(

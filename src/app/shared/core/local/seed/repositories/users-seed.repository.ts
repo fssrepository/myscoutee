@@ -318,14 +318,14 @@ export class SeedUsersRepository {
   private queryInvitationItemsByUser(userId: string): ReadonlyArray<{ unread: number }> {
     return this.queryUserEventRecords(userId)
       .filter(record => this.eventInvitedMemberUserIds(record).includes(userId.trim()))
-      .filter(record => !record.isTrashed)
+      .filter(record => record.status !== 'T')
       .map(record => ({ unread: Math.max(0, Math.trunc(Number(record.unread) || 0)) }));
   }
 
   private queryHostingItemsByUser(userId: string): ReadonlyArray<{ activity: number }> {
     return this.queryUserEventRecords(userId)
       .filter(record => this.isEventAdminRecord(record, userId))
-      .filter(record => !record.isTrashed)
+      .filter(record => record.status !== 'T')
       .map(record => ({ activity: Math.max(0, Math.trunc(Number(record.activity) || 0)) }));
   }
 
@@ -333,7 +333,7 @@ export class SeedUsersRepository {
     return this.queryUserEventRecords(userId)
       .filter(record => !this.isEventAdminRecord(record, userId))
       .filter(record => !this.eventInvitedMemberUserIds(record).includes(userId.trim()))
-      .filter(record => !record.isTrashed)
+      .filter(record => record.status !== 'T')
       .filter(record => this.isPublishedEventStatus(record.status))
       .length;
   }
@@ -345,7 +345,7 @@ export class SeedUsersRepository {
   private countTicketItemsByUser(userId: string): number {
     return this.queryUserEventRecords(userId)
       .filter(record => !this.eventInvitedMemberUserIds(record).includes(userId.trim()))
-      .filter(record => !record.isTrashed)
+      .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
       .length;
   }
@@ -361,7 +361,7 @@ export class SeedUsersRepository {
       if (
         this.isEventAdminRecord(item, normalizedUserId)
         || this.eventInvitedMemberUserIds(item).includes(normalizedUserId)
-        || item.isTrashed
+        || item.status === 'T'
       ) {
         return false;
       }

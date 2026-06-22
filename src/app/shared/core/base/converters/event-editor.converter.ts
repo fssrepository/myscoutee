@@ -364,7 +364,7 @@ export class EventEditorConverter {
       shortDescription: record.subtitle,
       timeframe: record.timeframe,
       activity: record.activity,
-      isAdmin: target === 'hosting' ? true : record.isAdmin,
+      isAdmin: target === 'hosting' ? true : this.isEventAdminRecord(record),
       imageUrl: record.imageUrl,
       visibility: record.visibility,
       frequency: record.frequency ?? 'One-time',
@@ -485,5 +485,13 @@ export class EventEditorConverter {
       startAt: AppUtils.toIsoDateTimeLocal(resolvedStart),
       endAt: AppUtils.toIsoDateTimeLocal(resolvedEnd)
     };
+  }
+
+  private static isEventAdminRecord(record: ActivityEventRecord): boolean {
+    const userId = `${record.userId ?? ''}`.trim();
+    return !!userId && (
+      record.creatorUserId === userId
+      || (record.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+    );
   }
 }

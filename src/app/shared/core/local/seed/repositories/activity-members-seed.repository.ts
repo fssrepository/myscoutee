@@ -7,6 +7,7 @@ import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
 import { ActivityMembersBuilder } from '../../../base/builders/activity-members.builder';
 import { toActivityEventRow } from '../../../base/converters/activities-event.converter';
+import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import type * as AppTypes from '../../../base/models';
@@ -235,12 +236,13 @@ export class SeedActivityMembersRepository {
       record.creatorCity,
       record.creatorGender
     );
-    const row = toActivityEventRow({
+    const row = toActivityEventRow(ActivityEventDtoMapper.toDTO({
       ...record,
-      isInvitation: false,
       type: 'events',
-      isAdmin: this.isEventAdminRecord(record, record.userId)
-    });
+      adminIds: this.isEventAdminRecord(record, record.userId)
+        ? this.normalizeMemberUserIds([record.userId, record.creatorUserId, ...(record.adminIds ?? [])])
+        : [...(record.adminIds ?? [])]
+    }));
     const rowKey = `${row.type}:${row.id}`;
     const explicit = explicitUserIdsByEventId.get(record.id) ?? null;
     const userIds = this.seedMemberUserIdsForEventRecord(record, users, explicit);

@@ -89,33 +89,10 @@ export const helpCenterPrivacyDocumentViewerSectionConverter =
     DocumentViewerSection[]
   >;
 
-export interface HelpCenterRevisionDocumentViewerSectionsConverterInput {
-  revision: HelpCenterRevisionDto | null;
-  sectionMode?: HelpCenterRevisionDocumentViewerSectionMode;
-  selectedSectionIds?: readonly string[] | ReadonlySet<string> | null;
-}
-
-export class HelpCenterRevisionDocumentViewerSectionsConverter {
-  static convert(input: HelpCenterRevisionDocumentViewerSectionsConverterInput): DocumentViewerSection[] {
-    const sections = input.revision?.sections ?? [];
-    return input.sectionMode === 'privacy'
-      ? HelpCenterPrivacyDocumentViewerSectionConverter.convert({
-        sections,
-        selectedSectionIds: input.selectedSectionIds
-      })
-      : HelpCenterDocumentViewerSectionConverter.convertList(sections);
-  }
-}
-
-export const helpCenterRevisionDocumentViewerSectionsConverter =
-  HelpCenterRevisionDocumentViewerSectionsConverter satisfies UiConverter<
-    HelpCenterRevisionDocumentViewerSectionsConverterInput,
-    DocumentViewerSection[]
-  >;
-
 export class HelpCenterRevisionDocumentViewerConfigConverter {
   static convert(options: HelpCenterRevisionDocumentViewerConfigOptions): DocumentViewerConfig {
     const revision = options.revision;
+    const sections = revision?.sections ?? [];
     return {
       shell: options.shell,
       open: options.open,
@@ -135,11 +112,12 @@ export class HelpCenterRevisionDocumentViewerConfigConverter {
       loading: options.loading,
       loadingLabel: options.loadingLabel,
       emptyState: options.emptyState,
-      sections: HelpCenterRevisionDocumentViewerSectionsConverter.convert({
-        revision,
-        sectionMode: options.sectionMode,
-        selectedSectionIds: options.selectedSectionIds
-      }),
+      sections: options.sectionMode === 'privacy'
+        ? HelpCenterPrivacyDocumentViewerSectionConverter.convert({
+          sections,
+          selectedSectionIds: options.selectedSectionIds
+        })
+        : HelpCenterDocumentViewerSectionConverter.convertList(sections),
       selectedSectionIds: AppUtils.uniqueTrimmedStrings(options.selectedSectionIds),
       actions: options.actions,
       statusMessage: options.statusMessage,

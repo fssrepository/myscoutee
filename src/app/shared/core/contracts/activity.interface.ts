@@ -220,10 +220,6 @@ export interface ActivityEventRecord {
   inviter: string | null;
   unread: number;
   activity: number;
-  isAdmin?: boolean;
-  isInvitation?: boolean;
-  isHosting?: boolean;
-  isTrashed?: boolean;
   trashedAtIso: string | null;
   creatorUserId: string;
   creatorName: string;
@@ -283,10 +279,6 @@ export interface ActivityEventListItem {
   inviter?: string | null;
   unread: number;
   activity: number;
-  isAdmin?: boolean;
-  isInvitation?: boolean;
-  isHosting?: boolean;
-  isTrashed?: boolean;
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
@@ -315,8 +307,6 @@ export interface ActivityEventListItem {
   affinity: number;
 }
 
-export type ActivityEventCardRecord = ActivityEventRecord | ActivityEventListItem;
-
 export type ActivityEventDTOStatus = ActivityEventStatus;
 
 export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>> & Pick<ActivityEventDTO, 'id'>;
@@ -324,6 +314,7 @@ export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>
 export class ActivityEventDTO {
   id!: string;
   userId!: string;
+  type!: ActivityEventRepositoryItemType;
   status?: ActivityEventDTOStatus;
   statusBeforeSuppression?: ActivityEventDTOStatus | null;
   adminIds!: string[];

@@ -99,7 +99,7 @@ export class SeedEventFeedbackRepository {
     for (const user of users) {
       for (const record of itemsByUserId.get(user.id) ?? []) {
         const eventId = record.id?.trim() ?? '';
-        if (!eventId || !this.isEventAdminRecord(record, user.id) || record.isTrashed) {
+        if (!eventId || !this.isEventAdminRecord(record, user.id) || record.status === 'T') {
           continue;
         }
         const current = hostedEventById.get(eventId);

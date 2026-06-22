@@ -1161,7 +1161,7 @@ export class EventMembersPopupComponent {
     const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
     const ownerRecordCanManage = !!this.ownerRecord && (
       this.ownerRecord.creatorUserId === activeUserId
-      || this.ownerRecord.isAdmin === true
+      || (this.ownerRecord.adminIds ?? []).includes(activeUserId)
     );
     this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers || !!activeMember;

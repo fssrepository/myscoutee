@@ -218,7 +218,7 @@ export class SeedChatsBuilder {
       return [];
     }
     const records = eventRecords
-      .filter(record => (record.type === 'events' || record.type === 'hosting') && !record.isTrashed);
+      .filter(record => (record.type === 'events' || record.type === 'hosting') && record.status !== 'T');
     if (records.length === 0) {
       return [];
     }

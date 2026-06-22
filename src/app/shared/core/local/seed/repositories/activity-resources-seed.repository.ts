@@ -250,7 +250,7 @@ export class SeedActivityResourcesRepository {
           !record
           || !record.id
           || (record.subEvents?.length ?? 0) === 0
-          || record.isTrashed
+          || record.status === 'T'
           || !this.isEventAdminRecord(record, userId)
         ) {
           continue;

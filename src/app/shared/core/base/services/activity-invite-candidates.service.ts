@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   IActivityInviteCandidatesService,
-  ActivityInviteOwnerContext
+  ActivityInviteOwnerContext,
+  ActivityEventRecord
 } from '../../contracts/activity.interface';
 import { LocalActivityInviteCandidatesService } from '../../local/source/services/activity-invite-candidates.service';
 import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
@@ -155,8 +156,16 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
       dateIso: record.startAtIso,
       distanceKm: record.distanceKm,
       sourceType: record.type === 'hosting' ? 'hosting' : 'events',
-      isAdmin: record.isAdmin === true
+      isAdmin: this.isEventAdminRecord(record)
     };
+  }
+
+  private isEventAdminRecord(record: ActivityEventRecord): boolean {
+    const userId = `${record.userId ?? ''}`.trim();
+    return !!userId && (
+      record.creatorUserId === userId
+      || (record.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+    );
   }
 
   private ownerTypeLabel(ownerType: AppConstants.ActivityMemberOwnerType): string {

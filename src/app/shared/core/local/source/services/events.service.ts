@@ -149,7 +149,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
     const ownedEventIds = records
-      .filter(record => record.isAdmin === true && !record.isInvitation && !record.isTrashed)
+      .filter(record =>
+        record.type !== 'invitations'
+        && record.status !== 'T'
+        && (
+          record.creatorUserId === normalizedUserId
+          || (record.adminIds ?? []).includes(normalizedUserId)
+        )
+      )
       .map(record => record.id.trim())
       .filter(Boolean);
     const users = this.usersRepository.queryAllUsers();

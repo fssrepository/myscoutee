@@ -1,5 +1,4 @@
 export { ActivityEventBuilder } from './activity-event.builder';
-export { ActivityEventInfoCardBuilder } from './activity-event-info-card.builder';
 export { ActivityEventRecordBuilder } from './activity-event-record.builder';
 export { ActivityMembersBuilder } from './activity-members.builder';
 export {
