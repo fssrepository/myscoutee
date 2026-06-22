@@ -451,12 +451,13 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       return labels.join(', ');
     }
     if (Array.isArray(value)) {
-      return value.map(item => `${item ?? ''}`.trim()).filter(Boolean).join(', ');
+      const arrayLabel = value.map(item => `${item ?? ''}`.trim()).filter(Boolean).join(', ');
+      return arrayLabel || control.summary?.emptyLabel?.trim() || this.summaryEmptyLabel();
     }
     if (typeof value === 'boolean') {
       return value ? 'Yes' : 'No';
     }
-    if (value === null || value === undefined || value === '') {
+    if (value === null || value === undefined || (typeof value === 'string' && value.trim().length === 0)) {
       return control.summary?.emptyLabel?.trim() || this.summaryEmptyLabel();
     }
     return `${value}`;

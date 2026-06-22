@@ -1249,8 +1249,14 @@
 
 .profile-onboarding-shell--mobile .profile-onboarding-header {
   display: grid;
-  min-height: 96px;
-  padding: max(0.9rem, env(safe-area-inset-top)) 3.7rem 0.65rem 1rem;
+  min-height: 0;
+  padding: max(0.65rem, env(safe-area-inset-top)) 3.45rem 0.42rem 1rem;
+}
+
+.profile-onboarding-shell--mobile .profile-onboarding-message {
+  margin-top: 0.12rem;
+  font-size: 0.8rem;
+  line-height: 1.18;
 }
 
 .profile-onboarding-shell--mobile .profile-onboarding-progress {
@@ -1340,8 +1346,14 @@
 
   .profile-onboarding-header {
     display: grid;
-    min-height: 96px;
-    padding: max(0.9rem, env(safe-area-inset-top)) 3.7rem 0.65rem 1rem;
+    min-height: 0;
+    padding: max(0.65rem, env(safe-area-inset-top)) 3.45rem 0.42rem 1rem;
+  }
+
+  .profile-onboarding-message {
+    margin-top: 0.12rem;
+    font-size: 0.8rem;
+    line-height: 1.18;
   }
 
   .profile-onboarding-progress {
