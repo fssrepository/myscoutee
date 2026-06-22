@@ -2,15 +2,15 @@
   <section class="confirmation-dialog">
     <div class="confirmation-dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
     <div class="confirmation-dialog-panel" (click)="$event.stopPropagation()">
-      <h3>{{ state.title }}</h3>
+      <h3>{{ state.title | i18n }}</h3>
       @if (state.message) {
-        <p>{{ state.message }}</p>
+        <p>{{ state.message | i18n }}</p>
       }
       @if (state.warningMessage) {
-        <p class="confirmation-dialog-warning">{{ state.warningMessage }}</p>
+        <p class="confirmation-dialog-warning">{{ state.warningMessage | i18n }}</p>
       }
       @if (state.errorMessage) {
-        <p class="confirmation-dialog-error">{{ state.errorMessage }}</p>
+        <p class="confirmation-dialog-error">{{ state.errorMessage | i18n }}</p>
       }
       <div class="confirmation-dialog-actions" [class.confirmation-dialog-actions-single]="!state.cancelLabel">
         @if (state.cancelLabel) {
@@ -20,7 +20,7 @@
             [disabled]="state.busy"
             (click)="cancel($event)"
             >
-            {{ state.cancelLabel }}
+            {{ state.cancelLabel | i18n }}
           </button>
         }
         <app-menu

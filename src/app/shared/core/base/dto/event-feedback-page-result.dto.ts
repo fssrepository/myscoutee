@@ -98,6 +98,24 @@ export class EventFeedbackPageResult {
     };
   }
 
+  removeItem(item: EventFeedbackDto, removedAtMs = Date.now()): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: true,
+      isFeedbacked: false,
+      removedAtMs
+    };
+  }
+
+  restoreItem(item: EventFeedbackDto): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: false,
+      isFeedbacked: item.pendingCards === 0,
+      removedAtMs: null
+    };
+  }
+
   filterCountDelta(
     before: EventFeedbackDto,
     after: EventFeedbackDto

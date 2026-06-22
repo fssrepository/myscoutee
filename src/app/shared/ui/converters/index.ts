@@ -64,10 +64,6 @@ export {
 } from './event-feedback-detail.converter';
 export {
   EventFeedbackFormFlowConverter,
-  EventFeedbackFormInitialValueConverter,
-  EventFeedbackFormValueConverter,
-  eventFeedbackFormInitialValueConverter,
-  eventFeedbackFormValueConverter,
   type EventFeedbackFormFlowConverterOptions
 } from './event-feedback-form-flow.converter';
 export {

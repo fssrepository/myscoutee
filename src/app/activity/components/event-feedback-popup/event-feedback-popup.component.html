@@ -103,8 +103,7 @@
                       class="event-feedback-form-flow"
                       [model]="eventFeedbackFlowModel()"
                       [ngModel]="eventFeedbackDetailValue()"
-                      (ngModelChange)="setEventFeedbackDetailValue($event)"
-                      (save)="onEventFeedbackFlowSave()"
+                      (save)="onEventFeedbackFlowSave($event)"
                     ></app-form-flow>
                     @if (eventFeedbackSubmitMessage()) {
                       <div class="support-submit-success">{{ eventFeedbackSubmitMessage() }}</div>

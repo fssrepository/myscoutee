@@ -770,6 +770,45 @@ export class EventFeedbackDetailDto {
     });
   }
 
+  withEmptyAnswers(): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
+      ...this,
+      cards: this.cards.map(card => ({
+        ...card,
+        answerPrimary: '',
+        answerSecondary: '',
+        selectedTraitIds: []
+      }))
+    });
+  }
+
+  withFormValue(value: unknown): EventFeedbackDetailDto {
+    const record = EventFeedbackDetailDto.isRecord(value) ? value : {};
+    const inputCards = Array.isArray(record['cards']) ? record['cards'] : [];
+    const cardInputById = new Map<string, Record<string, unknown>>();
+    for (const item of inputCards) {
+      if (!EventFeedbackDetailDto.isRecord(item)) {
+        continue;
+      }
+      const cardId = `${item['id'] ?? ''}`.trim();
+      if (cardId) {
+        cardInputById.set(cardId, item);
+      }
+    }
+    return new EventFeedbackDetailDto({
+      ...this,
+      cards: this.cards.map(card => {
+        const inputCard = cardInputById.get(card.id) ?? {};
+        return {
+          ...card,
+          answerPrimary: EventFeedbackDetailDto.stringValue(inputCard['answerPrimary']),
+          answerSecondary: EventFeedbackDetailDto.stringValue(inputCard['answerSecondary']),
+          selectedTraitIds: EventFeedbackDetailDto.normalizeSelectedTraitIds(inputCard['selectedTraitIds'])
+        };
+      })
+    });
+  }
+
   private static cloneCards(cards: readonly EventFeedbackCardDto[] | undefined): EventFeedbackCardDto[] {
     return (cards ?? []).map(card => ({
       id: card.id?.trim() ?? '',
@@ -808,6 +847,34 @@ export class EventFeedbackDetailDto {
   private static numberOrUndefined(value: number | null | undefined): number | undefined {
     const normalized = Number(value);
     return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
+  }
+
+  private static stringValue(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private static normalizeSelectedTraitIds(value: unknown): string[] {
+    const requestedValues = Array.isArray(value)
+      ? value
+      : value === null || value === undefined || value === ''
+        ? []
+        : [value];
+    const selectedTraitIds: string[] = [];
+    for (const requestedValue of requestedValues) {
+      const traitId = `${requestedValue ?? ''}`.trim();
+      if (!traitId || selectedTraitIds.includes(traitId)) {
+        continue;
+      }
+      selectedTraitIds.push(traitId);
+      if (selectedTraitIds.length >= 3) {
+        break;
+      }
+    }
+    return selectedTraitIds;
+  }
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 }
 

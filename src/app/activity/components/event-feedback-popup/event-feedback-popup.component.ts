@@ -10,8 +10,6 @@ import {
   AppContext,
   AppPopupContext,
   EventFeedbackFormFlowConverter,
-  EventFeedbackFormInitialValueConverter,
-  EventFeedbackFormValueConverter,
   EventFeedbackFilterMenuConverter,
   EventFeedbackInfoCardConverter,
   EventFeedbackListPresentationConverter,
@@ -20,6 +18,7 @@ import {
   EventFeedbackOrganizerItemConverter,
   EventFeedbackOrganizerMessageGroupConverter,
   FormFlowComponent,
+  type FormFlowSaveEvent,
   type AppMenuItemSelectEvent,
   type EventFeedbackFilterMenuContext,
   type EventFeedbackOrganizerCarouselSectionData,
@@ -38,7 +37,10 @@ import {
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
 import { EventFeedbackPageResult, EventsService } from '../../../shared/core/base';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import {
+  ConfirmationDialogService,
+  type ConfirmationDialogConfig
+} from '../../../shared/ui/services/confirmation-dialog.service';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
@@ -52,6 +54,10 @@ type EventFeedbackMenuContext = EventFeedbackFilterMenuContext | {
   card: InfoCardData;
   action: CardMenuAction;
 };
+
+type EventFeedbackConfirmationDialogAction = 'remove' | 'restore';
+
+interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialogConfig, 'onConfirm' | 'onCancel'> {}
 
 @Component({
   selector: 'app-event-feedback-popup',
@@ -379,22 +385,14 @@ export class EventFeedbackPopupComponent {
   }
 
   private applyEventFeedbackItemRemoved(item: ActivityContracts.EventFeedbackDto): void {
-    this.patchEventFeedbackItem(item, {
-      ...item,
-      isRemoved: true,
-      isFeedbacked: false,
-      removedAtMs: Date.now()
-    });
+    const pageResult = this.eventFeedbackPageResult();
+    this.patchEventFeedbackItem(item, pageResult?.removeItem(item) ?? item);
     this.eventFeedbackListSubmitMessage.set(`${item.title} moved to Removed without feedback.`);
   }
 
   private applyEventFeedbackItemRestored(item: ActivityContracts.EventFeedbackDto): void {
-    this.patchEventFeedbackItem(item, {
-      ...item,
-      isRemoved: false,
-      isFeedbacked: item.pendingCards === 0,
-      removedAtMs: null
-    });
+    const pageResult = this.eventFeedbackPageResult();
+    this.patchEventFeedbackItem(item, pageResult?.restoreItem(item) ?? item);
     this.eventFeedbackListSubmitMessage.set(`${item.title} moved back to Pending.`);
   }
 
@@ -437,36 +435,59 @@ export class EventFeedbackPopupComponent {
   }
 
   private openRemoveEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
-    this.confirmationDialogService.open({
-      title: 'Remove feedback?',
-      message: `${item.title} will be moved to Removed without feedback.`,
-      warningMessage: 'You can restore it later from the Removed filter.',
-      confirmLabel: 'Remove',
-      busyConfirmLabel: 'Removing...',
-      confirmTone: 'danger',
-      failureMessage: 'Unable to remove this feedback item.',
-      onConfirm: async () => {
+    this.openEventFeedbackConfirmationDialog(
+      this.eventFeedbackConfirmationDialogContent('remove'),
+      async () => {
         await this.eventsService.removeEventFeedbackEvent(this.activeUserId(), item.eventId);
         this.applyEventFeedbackItemRemoved(item);
         this.removeVisibleEventFeedbackItem(item.eventId);
       }
-    });
+    );
   }
 
   private openRestoreEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
-    this.confirmationDialogService.open({
-      title: 'Restore feedback?',
-      message: `${item.title} will move back to Pending.`,
-      confirmLabel: 'Restore',
-      busyConfirmLabel: 'Restoring...',
-      confirmTone: 'accent',
-      failureMessage: 'Unable to restore this feedback item.',
-      onConfirm: async () => {
+    this.openEventFeedbackConfirmationDialog(
+      this.eventFeedbackConfirmationDialogContent('restore'),
+      async () => {
         await this.eventsService.restoreEventFeedbackEvent(this.activeUserId(), item.eventId);
         this.applyEventFeedbackItemRestored(item);
         this.removeVisibleEventFeedbackItem(item.eventId);
       }
+    );
+  }
+
+  private openEventFeedbackConfirmationDialog(
+    content: EventFeedbackConfirmationDialogContent,
+    onConfirm: () => Promise<void>
+  ): void {
+    this.confirmationDialogService.open({
+      ...content,
+      onConfirm
     });
+  }
+
+  private eventFeedbackConfirmationDialogContent(
+    action: EventFeedbackConfirmationDialogAction
+  ): EventFeedbackConfirmationDialogContent {
+    if (action === 'remove') {
+      return {
+        title: 'event.feedback.confirm.remove.title',
+        message: 'event.feedback.confirm.remove.message',
+        warningMessage: 'event.feedback.confirm.remove.warning',
+        confirmLabel: 'remove',
+        busyConfirmLabel: 'removing',
+        confirmTone: 'danger',
+        failureMessage: 'event.feedback.confirm.remove.failure'
+      };
+    }
+    return {
+      title: 'event.feedback.confirm.restore.title',
+      message: 'event.feedback.confirm.restore.message',
+      confirmLabel: 'restore.feedback',
+      busyConfirmLabel: 'restoring',
+      confirmTone: 'accent',
+      failureMessage: 'event.feedback.confirm.restore.failure'
+    };
   }
 
   private removeVisibleEventFeedbackItem(eventId: string): void {
@@ -554,27 +575,23 @@ export class EventFeedbackPopupComponent {
     { eventTitle: this.eventFeedbackCurrentEventTitle() }
   ));
 
-  protected async onEventFeedbackFlowSave(): Promise<void> {
+  protected async onEventFeedbackFlowSave(event: FormFlowSaveEvent): Promise<void> {
     if (this.eventFeedbackSubmitted()) {
       return;
     }
     const submittedAtIso = new Date().toISOString();
-    const feedback = this.eventFeedbackDetailValue().submitted({ submittedAtIso });
+    const feedback = ActivityContracts.EventFeedbackDetailDto.normalize(
+      this.eventFeedbackDetailDto()
+    ).withFormValue(event.value).submitted({ submittedAtIso });
     if (!feedback.eventId || feedback.cards.length === 0) {
       return;
     }
+    this.eventFeedbackDetailValue.set(feedback);
     await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
     this.appCtx.emitActivityEventFeedbackSubmit(feedback);
     this.eventFeedbackSubmitted.set(true);
     this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
     this.clearLoadedEventFeedbackDetail(feedback.eventId);
-  }
-
-  protected setEventFeedbackDetailValue(value: unknown): void {
-    this.eventFeedbackDetailValue.set(EventFeedbackFormValueConverter.convert({
-      value,
-      detail: this.eventFeedbackDetailDto()
-    }));
   }
 
   private applyLoadedEventFeedbackDetail(
@@ -594,7 +611,7 @@ export class EventFeedbackPopupComponent {
       return;
     }
     this.eventFeedbackDetailDto.set(pendingDetail);
-    this.eventFeedbackDetailValue.set(EventFeedbackFormInitialValueConverter.convert(pendingDetail));
+    this.eventFeedbackDetailValue.set(pendingDetail.withEmptyAnswers());
   }
 
   private clearLoadedEventFeedbackDetail(eventId = ''): void {
