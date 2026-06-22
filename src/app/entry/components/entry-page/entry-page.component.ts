@@ -110,7 +110,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
-  protected onboardingTitle = 'Profile setup';
+  protected onboardingTitle = 'profile.setup';
   protected onboardingMessage = '';
   private pendingRedirectAfterOnboarding = '';
   private pendingDemoSessionUserId = '';
@@ -423,7 +423,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.confirmationDialogService.openInfo(
           this.loginUnavailableMessage(gateState),
           {
-            title: 'Please register',
+            title: 'please.register',
             confirmLabel: 'OK'
           }
         );
@@ -505,8 +505,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       user,
       this.redirectUrl(),
       {
-        title: 'Profile setup',
-        message: 'Complete your profile to create a demo profile.'
+        title: 'profile.setup',
+        message: 'profile.setup.demo.message'
       }
     );
     request.complete();
@@ -612,8 +612,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         this.buildFirebaseRegistrationUser(session.profile),
         redirectUrl,
         {
-          title: 'Please register',
-          message: 'Complete your profile to finish registration.'
+          title: 'please.register',
+          message: 'profile.setup.registration.message'
         }
       );
       return;
@@ -643,8 +643,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       redirectUrl,
       user.profileStatus === 'onboarding'
         ? {
-            title: 'Please register',
-            message: 'Complete your profile to finish registration.'
+            title: 'please.register',
+            message: 'profile.setup.registration.message'
           }
         : undefined
     );
@@ -659,7 +659,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.ngZone.run(() => {
       this.onboardingOpen = false;
       this.onboardingUser = null;
-      this.onboardingTitle = 'Profile setup';
+      this.onboardingTitle = 'profile.setup';
       this.onboardingMessage = '';
       this.pendingRedirectAfterOnboarding = '';
       this.pendingDemoSessionUserId = '';
@@ -670,7 +670,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private openOnboardingGate(
     user: UserDto,
     redirectUrl: string,
-    copy: { title: string; message?: string } = { title: 'Profile setup' }
+    copy: { title: string; message?: string } = { title: 'profile.setup' }
   ): void {
     this.ngZone.run(() => {
       this.pendingRedirectAfterOnboarding = redirectUrl;
@@ -893,7 +893,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             this.confirmationDialogService.openInfo(
               this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
               {
-                title: this.uiText('Please register'),
+                title: this.uiText('please.register'),
                 confirmLabel: this.uiText('OK')
               }
             );
@@ -1276,7 +1276,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private openBundledLoginUnavailableInfo(): void {
     this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
-      title: 'Please register',
+      title: 'please.register',
       confirmLabel: 'OK'
     });
   }

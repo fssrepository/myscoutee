@@ -265,7 +265,7 @@ export class ProfileOnboardingFormFlowConverter {
   ): FormFlowModel {
     const form = draft?.form ?? null;
     return {
-      title: options.title?.trim() || 'Profile setup',
+      title: options.title?.trim() || 'profile.setup',
       subtitle: options.subtitle?.trim() || '',
       layout: 'carousel',
       loadingLabel: 'Loading profile setup',
@@ -276,7 +276,12 @@ export class ProfileOnboardingFormFlowConverter {
         disabled: options.saveDisabled === true
       },
       summary: {
-        enabled: false
+        enabled: true,
+        title: 'Áttekintés',
+        subtitle: 'Ellenőrizd a profilt mentés előtt.',
+        icon: 'fact_check',
+        emptyLabel: 'Nincs beállítva',
+        includeEmpty: true
       },
       steps: [
         {
@@ -340,16 +345,8 @@ export class ProfileOnboardingFormFlowConverter {
               kind: 'menu',
               label: 'Nem',
               bind: 'genderDetail',
-              config: this.selectMenuConfig(
-                'Nem',
-                this.detailOptions('profile.gender'),
-                'person',
-                'violet',
-                undefined,
-                undefined,
-                'Nem kiválasztása',
-                form?.genderDetail
-              )
+              required: true,
+              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet', form?.genderDetail)
             },
             {
               id: 'languages',
@@ -379,7 +376,10 @@ export class ProfileOnboardingFormFlowConverter {
               layout: 'half',
               label: 'Munkahely',
               bind: 'experienceEntries',
-              config: this.experienceSelectorMenuConfig('Workspace', form?.experienceEntries ?? [])
+              config: this.experienceSelectorMenuConfig('Workspace', form?.experienceEntries ?? []),
+              summary: {
+                value: value => this.experienceSummaryValue(value, 'Workspace')
+              }
             },
             {
               id: 'school',
@@ -387,7 +387,10 @@ export class ProfileOnboardingFormFlowConverter {
               layout: 'half',
               label: 'Iskola',
               bind: 'experienceEntries',
-              config: this.experienceSelectorMenuConfig('School', form?.experienceEntries ?? [])
+              config: this.experienceSelectorMenuConfig('School', form?.experienceEntries ?? []),
+              summary: {
+                value: value => this.experienceSummaryValue(value, 'School')
+              }
             }
           ]
         },
@@ -410,14 +413,17 @@ export class ProfileOnboardingFormFlowConverter {
                 ariaLabel: 'Profilfotók',
                 uploadOwnerId: options.userId?.trim() || '',
                 uploadEntityId: options.userId?.trim() || 'profile-onboarding'
+              },
+              summary: {
+                value: value => `${this.imageCount(value)}/8 (kötelező: 3)`
               }
             }
           ]
         },
         {
           id: 'lifestyle',
-          title: 'Lifestyle',
-          subtitle: 'Optional details.',
+          title: 'Életmód',
+          subtitle: 'Opcionális részletek.',
           icon: 'interests',
           controls: [
             this.detailMenuControl('drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', form?.drinking),
@@ -461,58 +467,8 @@ export class ProfileOnboardingFormFlowConverter {
               )
             }
           ]
-        },
-        {
-          id: 'review',
-          title: 'Review',
-          subtitle: 'Check your profile before saving.',
-          icon: 'fact_check',
-          controls: [
-            this.reviewControl('review-photos', 'Photos', value => `${this.imageCount(value)}/8`),
-            this.reviewControl('review-basics', 'Basics', value => {
-              const formValue = value as Partial<ProfileOnboardingForm> | null | undefined;
-              return [
-                formValue?.fullName,
-                formValue?.birthday,
-                formValue?.city,
-                formValue?.heightCm ? `${formValue.heightCm} cm` : '',
-                formValue?.physique
-              ].map(item => `${item ?? ''}`.trim()).filter(Boolean).join(' - ') || 'Not set';
-            }),
-            this.reviewControl('review-about', 'About me', value => {
-              const formValue = value as Partial<ProfileOnboardingForm> | null | undefined;
-              return `${formValue?.about ?? ''}`.trim() || 'Not set';
-            }),
-            this.reviewControl('review-experience', 'Experience', value => {
-              const entries = this.experienceEntries(value);
-              if (entries.length === 0) {
-                return 'Not set';
-              }
-              return entries.map(entry => this.experienceEntryLabel(entry, entry.type === 'School' ? 'School' : 'Workspace')).join(', ');
-            }),
-            this.reviewControl('review-lifestyle', 'Lifestyle', value => {
-              const formValue = value as Partial<ProfileOnboardingForm> | null | undefined;
-              return [
-                ...(formValue?.interests ?? []),
-                ...(formValue?.values ?? [])
-              ].map(item => `${item ?? ''}`.trim()).filter(Boolean).slice(0, 6).join(', ') || 'Not set';
-            })
-          ]
         }
       ]
-    };
-  }
-
-  private static reviewControl(
-    id: string,
-    label: string,
-    value: (formValue: unknown) => unknown
-  ) {
-    return {
-      id,
-      kind: 'review' as const,
-      label,
-      summary: { value }
     };
   }
 
@@ -793,6 +749,13 @@ export class ProfileOnboardingFormFlowConverter {
     return (entries ?? [])
       .filter(entry => entry.type === type)
       .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
+  }
+
+  private static experienceSummaryValue(value: unknown, type: 'Workspace' | 'School'): string {
+    return this.experienceEntriesByType(this.experienceEntries(value), type)
+      .map(entry => this.experienceEntryLabel(entry, type))
+      .filter(Boolean)
+      .join(', ');
   }
 
   private static experienceEntryLabel(entry: ExperienceEntry, fallback: 'Workspace' | 'School'): string {

@@ -207,7 +207,7 @@
                       <app-editable-image-carousel
                         [slotCount]="image.slotCount ?? 8"
                         [compact]="image.compact === true"
-                        [previewMode]="image.previewMode === true"
+                        [previewMode]="image.previewMode === true && !isMobileViewport"
                         [ariaLabel]="image.ariaLabel || control.label || 'Images'"
                         [uploadOwnerId]="image.uploadOwnerId || ''"
                         [uploadEntityId]="image.uploadEntityId || 'image'"
@@ -318,7 +318,12 @@
                       <dl>
                         @for (control of controls; track control.id) {
                           <div [class.is-empty]="isSummaryValueEmpty(control)">
-                            <dt>{{ summaryLabel(control) }}</dt>
+                            <dt>
+                              <span>{{ summaryLabel(control) }}</span>
+                              @if (control.required) {
+                                <small>kötelező</small>
+                              }
+                            </dt>
                             <dd>{{ summaryValue(control) }}</dd>
                           </div>
                         }
