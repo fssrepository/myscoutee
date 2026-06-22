@@ -16,11 +16,15 @@ import {
   inject
 } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { MatNativeDateModule } from '@angular/material/core';
+import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 
 import {
   AppMenuComponent,
   type AppMenuItem,
+  type AppMenuItemSelectEvent,
   type AppMenuKind,
   type AppMenuLayout,
   type AppMenuModel,
@@ -33,6 +37,7 @@ import { ImageCardComponent, InfoCardComponent } from '../card';
 import type {
   FormFlowControlModel,
   FormFlowImageCarouselControlConfig,
+  FormFlowMenuItemSelectEvent,
   FormFlowMenuControlConfig,
   FormFlowModel,
   FormFlowPath,
@@ -47,7 +52,10 @@ import type {
   imports: [
     CommonModule,
     FormsModule,
+    MatDatepickerModule,
     MatIconModule,
+    MatInputModule,
+    MatNativeDateModule,
     AppMenuComponent,
     EditableImageCarouselComponent,
     ProgressIndicatorComponent,
@@ -79,12 +87,15 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   @Input() disabled = false;
 
   @Output() readonly save = new EventEmitter<FormFlowSaveEvent>();
+  @Output() readonly menuItemSelect = new EventEmitter<FormFlowMenuItemSelectEvent>();
 
   protected pageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= FormFlowComponent.MOBILE_BREAKPOINT_PX;
   private pendingPageIndex: number | null = null;
   private controlDisabled = false;
   private formValue: unknown = {};
+  private readonly emptyStringArray: readonly string[] = [];
+  private readonly stringArrayValueCache = new WeakMap<readonly unknown[], readonly string[]>();
   private onControlChange: (value: unknown) => void = () => undefined;
   private onControlTouched: () => void = () => undefined;
   private viewportScrollLockTargetIndex: number | null = null;
@@ -183,6 +194,18 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.activeStep()?.subtitle?.trim() || this.model?.subtitle?.trim() || '';
   }
 
+  protected activeStepIcon(): string {
+    if (this.isSummaryPage()) {
+      return this.model?.summary?.icon?.trim() || 'fact_check';
+    }
+    return this.activeStep()?.icon?.trim() || 'dynamic_form';
+  }
+
+  protected activeStepHasCardHeader(): boolean {
+    const header = this.activeStep()?.header ?? null;
+    return !!(header?.imageCard || header?.infoCard);
+  }
+
   protected pageCounterLabel(): string {
     const total = this.totalPageCount();
     return total > 0 ? `${this.visiblePageIndex() + 1} / ${total}` : '0 / 0';
@@ -270,12 +293,46 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return Number.isFinite(numberValue) ? numberValue : null;
   }
 
+  protected controlDateValue(control: FormFlowControlModel): Date | null {
+    const value = this.controlTextValue(control).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return null;
+    }
+    const [year, month, day] = value.split('-').map(part => Number(part));
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+      return null;
+    }
+    const parsed = new Date(year, month - 1, day);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  protected controlDateLabel(control: FormFlowControlModel): string {
+    const value = this.controlDateValue(control);
+    if (!value) {
+      return control.placeholder || 'Select date';
+    }
+    return value.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
   protected controlStringArrayValue(control: FormFlowControlModel): readonly string[] {
     const value = this.controlValue(control);
     if (!Array.isArray(value)) {
-      return [];
+      return this.emptyStringArray;
     }
-    return value.map(item => `${item ?? ''}`).filter(item => item.trim().length > 0);
+    if (value.every(item => typeof item === 'string')) {
+      return value as readonly string[];
+    }
+    const cached = this.stringArrayValueCache.get(value);
+    if (cached) {
+      return cached;
+    }
+    const normalized = value.map(item => `${item ?? ''}`).filter(item => item.trim().length > 0);
+    this.stringArrayValueCache.set(value, normalized);
+    return normalized;
   }
 
   protected updateControlValue(control: FormFlowControlModel, value: unknown): void {
@@ -286,6 +343,17 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     this.onControlChange(this.formValue);
     this.onControlTouched();
     this.cdr.markForCheck();
+  }
+
+  protected updateDateControlValue(control: FormFlowControlModel, value: Date | string | null): void {
+    if (value instanceof Date && Number.isFinite(value.getTime())) {
+      const year = value.getFullYear();
+      const month = `${value.getMonth() + 1}`.padStart(2, '0');
+      const day = `${value.getDate()}`.padStart(2, '0');
+      this.updateControlValue(control, `${year}-${month}-${day}`);
+      return;
+    }
+    this.updateControlValue(control, '');
   }
 
   protected isControlDisabled(control: FormFlowControlModel): boolean {
@@ -334,6 +402,17 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected menuItems(control: FormFlowControlModel): readonly AppMenuItem<string, unknown>[] {
     return this.menuConfig(control).items ?? [];
+  }
+
+  protected emitMenuItemSelect(
+    control: FormFlowControlModel,
+    selectEvent: AppMenuItemSelectEvent<string, unknown>
+  ): void {
+    this.menuItemSelect.emit({
+      control,
+      value: this.controlValue(control),
+      selectEvent
+    });
   }
 
   protected imageConfig(control: FormFlowControlModel): FormFlowImageCarouselControlConfig {
@@ -485,10 +564,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private isControlMissingRequired(control: FormFlowControlModel): boolean {
     return control.required === true
       && this.normalizePath(control.bind).length > 0
-      && !this.hasRequiredValue(this.controlValue(control));
+      && !this.hasRequiredValue(this.controlValue(control), control);
   }
 
-  private hasRequiredValue(value: unknown): boolean {
+  private hasRequiredValue(value: unknown, control?: FormFlowControlModel): boolean {
     if (value === null || value === undefined) {
       return false;
     }
@@ -502,7 +581,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       return true;
     }
     if (Array.isArray(value)) {
-      return value.some(item => this.hasRequiredValue(item));
+      const requiredCount = Math.max(1, Math.trunc(Number(control?.min) || 1));
+      return value.filter(item => this.hasRequiredValue(item)).length >= requiredCount;
     }
     if (this.isRecord(value)) {
       return Object.keys(value).length > 0;

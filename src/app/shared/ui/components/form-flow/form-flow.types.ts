@@ -1,5 +1,6 @@
 import type {
   AppMenuItem,
+  AppMenuItemSelectEvent,
   AppMenuKind,
   AppMenuLayout,
   AppMenuModel,
@@ -64,6 +65,7 @@ export interface FormFlowControlModel {
   id: string;
   bind?: FormFlowPath;
   kind: FormFlowControlKind;
+  layout?: 'default' | 'half' | 'wide';
   label?: string;
   description?: string;
   placeholder?: string;
@@ -119,4 +121,10 @@ export interface FormFlowSaveEvent {
   stepId: string;
   stepIndex: number;
   sourceEvent?: Event;
+}
+
+export interface FormFlowMenuItemSelectEvent {
+  control: FormFlowControlModel;
+  value: unknown;
+  selectEvent: AppMenuItemSelectEvent<string, unknown>;
 }

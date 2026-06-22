@@ -67,6 +67,13 @@ export {
   type EventFeedbackFormFlowConverterOptions
 } from './event-feedback-form-flow.converter';
 export {
+  ProfileOnboardingDraftConverter,
+  ProfileOnboardingFormFlowConverter,
+  profileOnboardingFormFlowConverter,
+  type ProfileOnboardingFormFlowConverterOptions,
+  type ProfileOnboardingFormFlowMenuContext
+} from './profile-onboarding-form-flow.converter';
+export {
   EventFeedbackInfoCardConverter,
   EventFeedbackOrganizerInfoCardConverter,
   eventFeedbackInfoCardConverter,

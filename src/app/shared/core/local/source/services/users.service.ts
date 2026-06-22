@@ -38,6 +38,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private static readonly DEMO_COUNTRY_CODE_STORAGE_KEY = APP_STORAGE_KEYS.demoCountryCode;
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
+  private static readonly USER_PROFILE_EXT_ROUTE = '/auth/me/profile-ext';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
@@ -299,6 +300,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     );
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalUsersService.USER_PROFILE_EXT_ROUTE);
     return savedUser;
   }
 

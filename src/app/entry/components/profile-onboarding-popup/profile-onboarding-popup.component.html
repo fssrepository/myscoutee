@@ -5,22 +5,15 @@
       [class.profile-onboarding-shell--mobile]="mobile"
       aria-modal="true"
       role="dialog"
-      >
+    >
       <div class="profile-onboarding-backdrop"></div>
       <div class="profile-onboarding-panel">
         <header class="profile-onboarding-header">
           <div>
             <span class="profile-onboarding-kicker">{{ title | i18n }}</span>
-            <h2>{{ currentStep().title | i18n }}</h2>
             @if (message) {
               <p class="profile-onboarding-message">{{ message | i18n }}</p>
             }
-          </div>
-          <div class="profile-onboarding-progress" [attr.aria-label]="'Profile setup progress' | i18n">
-            <span>{{ currentStepIndex() + 1 }}/{{ steps.length }}</span>
-            <div class="profile-onboarding-progress-track">
-              <span [style.width.%]="progressPercent()"></span>
-            </div>
           </div>
           <button
             type="button"
@@ -28,412 +21,32 @@
             [disabled]="saving"
             (click)="requestDismiss()"
             [attr.aria-label]="'Close profile setup' | i18n"
-            >
+          >
             <mat-icon>close</mat-icon>
           </button>
         </header>
-        <nav class="profile-onboarding-steps" [attr.aria-label]="'Profile setup steps' | i18n">
-          @for (step of steps; track step.id; let index = $index) {
-            <button
-              type="button"
-              [class.active]="step.id === currentStep().id"
-              [class.done]="stepDone(step.id)"
-              [class.skipped]="stepSkipped(step.id)"
-              [class.required-missing]="stepRequiredMissing(step.id)"
-              [disabled]="saving"
-              (click)="setStep(step.id)"
-              >
-              <mat-icon>{{ stepIcon(step) }}</mat-icon>
-              <span>{{ step.title | i18n }}</span>
-            </button>
-          }
-        </nav>
 
         <main class="profile-onboarding-body">
-          @if (currentStep().id === 'basics') {
-            <section class="profile-onboarding-page">
-              <div class="profile-onboarding-grid">
-                <label class="profile-onboarding-about">
-                  <div class="profile-onboarding-about-head">
-                    <span>About me</span>
-                    <small>{{ f.about.length }}/160</small>
-                  </div>
-                  <textarea rows="3" maxlength="160" [(ngModel)]="f.about" (ngModelChange)="persistDraft()"></textarea>
-                </label>
-                <label>
-                  <span class="profile-onboarding-required-label">Name</span>
-                  <input type="text" [(ngModel)]="f.fullName" (ngModelChange)="persistDraft()" autocomplete="name" />
-                </label>
-                <label class="profile-onboarding-date-field">
-                  <span class="profile-onboarding-required-label">Birthday</span>
-                  <div class="profile-onboarding-date-input-wrap">
-                    <input
-                      [matDatepicker]="birthdayPicker"
-                      [ngModel]="birthdayDate"
-                      (ngModelChange)="onBirthdayDateChange($event)"
-                      autocomplete="bday"
-                      />
-                    <button type="button" (click)="birthdayPicker.open()" aria-label="Open birthday picker">
-                      <mat-icon>calendar_month</mat-icon>
-                    </button>
-                    <mat-datepicker #birthdayPicker></mat-datepicker>
-                  </div>
-                </label>
-                <label>
-                  <span class="profile-onboarding-required-label">City</span>
-                  <input type="text" [(ngModel)]="f.city" (ngModelChange)="persistDraft()" autocomplete="address-level2" />
-                </label>
-                <label>
-                  <span class="profile-onboarding-required-label">Height (cm)</span>
-                  <input type="number" min="40" max="250" step="1" [(ngModel)]="f.heightCm" (ngModelChange)="persistDraft()" />
-                </label>
-                <label>
-                  <span class="profile-onboarding-required-label">Physique</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.physique"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('physique', physiqueOptions, f.physique, 'fitness_center', 'green')"
-                    [items]="fieldMenuItems('physique', physiqueOptions, f.physique, 'fitness_center', 'green')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Gender</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.genderDetail"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('genderDetail', detailOptions('Gender'), f.genderDetail, 'person', 'violet')"
-                    [items]="fieldMenuItems('genderDetail', detailOptions('Gender'), f.genderDetail, 'person', 'violet')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span class="profile-onboarding-required-label">Languages</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    title="Languages"
-                    [filterable]="true"
-                    [(ngModel)]="f.languages"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="languageMenuTrigger()"
-                    [model]="languageMenuModel()"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Visibility</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.profileStatus"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="profileStatusMenuTrigger(f.profileStatus)"
-                    [items]="profileStatusMenuItems(f.profileStatus)"
-                  ></app-menu>
-                </label>
-              </div>
-              <section class="profile-onboarding-experience-selectors">
-                <h3>{{ 'Experience' | i18n }}</h3>
-                <div class="profile-onboarding-experience-selector-grid">
-                  <label class="profile-onboarding-experience-selector-row">
-                    <span>{{ experienceSelectorLabelKey('Workspace') | i18n }}</span>
-                    <app-menu
-                      class="profile-onboarding-menu profile-onboarding-experience-selector-menu"
-                      kind="select"
-                      [title]="experienceSelectorLabelKey('Workspace') | i18n"
-                      [ngModel]="experienceSelectorMenuValue('Workspace')"
-                      [trigger]="experienceSelectorMenuTrigger('Workspace')"
-                      [model]="experienceSelectorMenuModel('Workspace')"
-                      (itemSelect)="onProfileOnboardingMenuSelect($event)"
-                    ></app-menu>
-                  </label>
-                  <label class="profile-onboarding-experience-selector-row">
-                    <span>{{ experienceSelectorLabelKey('School') | i18n }}</span>
-                    <app-menu
-                      class="profile-onboarding-menu profile-onboarding-experience-selector-menu"
-                      kind="select"
-                      [title]="experienceSelectorLabelKey('School') | i18n"
-                      [ngModel]="experienceSelectorMenuValue('School')"
-                      [trigger]="experienceSelectorMenuTrigger('School')"
-                      [model]="experienceSelectorMenuModel('School')"
-                      (itemSelect)="onProfileOnboardingMenuSelect($event)"
-                    ></app-menu>
-                  </label>
-                </div>
-              </section>
-            </section>
+          @if (onboardingFlowModel(); as flowModel) {
+            <app-form-flow
+              class="profile-onboarding-flow"
+              [model]="flowModel"
+              [(ngModel)]="draft.form"
+              [saving]="saving"
+              [disabled]="saving"
+              (save)="onOnboardingFlowSave()"
+              (menuItemSelect)="onOnboardingFlowMenuItemSelect($event)"
+            ></app-form-flow>
           }
 
-          @if (currentStep().id === 'photos') {
-            <section class="profile-onboarding-page profile-onboarding-photos-page">
-              @if (imageUploadError) {
-                <div class="profile-onboarding-photo-toolbar">
-                  <span class="profile-onboarding-photo-error">{{ imageUploadError }}</span>
-                </div>
-              }
-              <app-editable-image-carousel
-                [previewMode]="true"
-                [(ngModel)]="f.images"
-                (ngModelChange)="persistDraft()"
-                [disabled]="saving"
-                [uploadOwnerId]="user.id"
-              ></app-editable-image-carousel>
-            </section>
-          }
-
-          @if (currentStep().id === 'lifestyle') {
-            <section class="profile-onboarding-page">
-              <div class="profile-onboarding-grid">
-                <label>
-                  <span>Drinking</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.drinking"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('drinking', detailOptions('Drinking'), f.drinking, 'local_bar', 'orange')"
-                    [items]="fieldMenuItems('drinking', detailOptions('Drinking'), f.drinking, 'local_bar', 'orange')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Smoking</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.smoking"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('smoking', detailOptions('Smoking'), f.smoking, 'smoking_rooms', 'slate')"
-                    [items]="fieldMenuItems('smoking', detailOptions('Smoking'), f.smoking, 'smoking_rooms', 'slate')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Workout</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.workout"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('workout', detailOptions('Workout'), f.workout, 'fitness_center', 'green')"
-                    [items]="fieldMenuItems('workout', detailOptions('Workout'), f.workout, 'fitness_center', 'green')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Pets</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.pets"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('pets', detailOptions('Pets'), f.pets, 'pets', 'mint')"
-                    [items]="fieldMenuItems('pets', detailOptions('Pets'), f.pets, 'pets', 'mint')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Family plans</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.familyPlans"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('familyPlans', detailOptions('Family plans'), f.familyPlans, 'family_restroom', 'pink')"
-                    [items]="fieldMenuItems('familyPlans', detailOptions('Family plans'), f.familyPlans, 'family_restroom', 'pink')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Children</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.children"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('children', detailOptions('Children'), f.children, 'child_care', 'amber')"
-                    [items]="fieldMenuItems('children', detailOptions('Children'), f.children, 'child_care', 'amber')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Love style</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.loveStyle"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('loveStyle', detailOptions('Love style'), f.loveStyle, 'favorite', 'red')"
-                    [items]="fieldMenuItems('loveStyle', detailOptions('Love style'), f.loveStyle, 'favorite', 'red')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Communication</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.communicationStyle"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('communicationStyle', detailOptions('Communication style'), f.communicationStyle, 'forum', 'sky')"
-                    [items]="fieldMenuItems('communicationStyle', detailOptions('Communication style'), f.communicationStyle, 'forum', 'sky')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Orientation</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.sexualOrientation"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('sexualOrientation', detailOptions('Sexual orientation'), f.sexualOrientation, 'diversity_1', 'violet')"
-                    [items]="fieldMenuItems('sexualOrientation', detailOptions('Sexual orientation'), f.sexualOrientation, 'diversity_1', 'violet')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>Religion</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    [(ngModel)]="f.religion"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="fieldMenuTrigger('religion', detailOptions('Religion'), f.religion, 'self_improvement', 'gold')"
-                    [items]="fieldMenuItems('religion', detailOptions('Religion'), f.religion, 'self_improvement', 'gold')"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>{{ 'Values' | i18n }}</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    title="Values"
-                    [filterable]="true"
-                    [(ngModel)]="f.values"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="valuesMenuTrigger()"
-                    [model]="valuesMenuModel()"
-                  ></app-menu>
-                </label>
-                <label>
-                  <span>{{ 'Interests' | i18n }}</span>
-                  <app-menu
-                    class="profile-onboarding-menu"
-                    kind="select"
-                    title="Interests"
-                    [filterable]="true"
-                    [(ngModel)]="f.interests"
-                    (ngModelChange)="persistDraft()"
-                    [trigger]="interestsMenuTrigger()"
-                    [model]="interestsMenuModel()"
-                  ></app-menu>
-                </label>
-              </div>
-            </section>
-          }
-
-          @if (currentStep().id === 'review') {
-            <section class="profile-onboarding-page profile-onboarding-review">
-              <div class="profile-onboarding-review-photos">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'Photos' | i18n }}</span>
-                  <strong>{{ imageCount() }}/8</strong>
-                </div>
-                @if (imageCount() > 0) {
-                  <div class="profile-onboarding-review-photo-carousel" [attr.aria-label]="'Profile photo review' | i18n">
-                    @for (slot of f.images; track i; let i = $index) {
-                      @if (slot) {
-                        <article class="profile-onboarding-review-photo-slide">
-                        <img [src]="slot" alt="Profile photo slot {{ i + 1 }}" />
-                        </article>
-                      }
-                    }
-                  </div>
-                } @else {
-                  <p>{{ 'No photos' | i18n }}</p>
-                }
-              </div>
-              <div class="profile-onboarding-review-section">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'Basics' | i18n }}</span>
-                  <strong>{{ progressPercent() }}%</strong>
-                </div>
-                <dl>
-                  <div><dt>Name</dt><dd>{{ reviewValue(f.fullName) }}</dd></div>
-                  <div><dt>Birthday</dt><dd>{{ reviewValue(f.birthday) }}</dd></div>
-                  <div><dt>City</dt><dd>{{ reviewValue(f.city) }}</dd></div>
-                  <div><dt>Height</dt><dd>{{ reviewValue(f.heightCm) }} cm</dd></div>
-                  <div><dt>Physique</dt><dd>{{ reviewValue(f.physique) }}</dd></div>
-                  <div><dt>Gender</dt><dd>{{ reviewValue(f.genderDetail) }}</dd></div>
-                  <div><dt>Languages</dt><dd>{{ reviewList(f.languages) }}</dd></div>
-                  <div><dt>Visibility</dt><dd><mat-icon>{{ statusIcon(f.profileStatus) }}</mat-icon>{{ f.profileStatus }}</dd></div>
-                </dl>
-              </div>
-              <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'About me' | i18n }}</span>
-                </div>
-                <p>{{ reviewValue(f.about) }}</p>
-              </div>
-              <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'Lifestyle' | i18n }}</span>
-                </div>
-                <dl>
-                  <div><dt>Drinking</dt><dd>{{ reviewValue(f.drinking) }}</dd></div>
-                  <div><dt>Smoking</dt><dd>{{ reviewValue(f.smoking) }}</dd></div>
-                  <div><dt>Workout</dt><dd>{{ reviewValue(f.workout) }}</dd></div>
-                  <div><dt>Pets</dt><dd>{{ reviewValue(f.pets) }}</dd></div>
-                  <div><dt>Family plans</dt><dd>{{ reviewValue(f.familyPlans) }}</dd></div>
-                  <div><dt>Children</dt><dd>{{ reviewValue(f.children) }}</dd></div>
-                  <div><dt>Love style</dt><dd>{{ reviewValue(f.loveStyle) }}</dd></div>
-                  <div><dt>Communication</dt><dd>{{ reviewValue(f.communicationStyle) }}</dd></div>
-                  <div><dt>Orientation</dt><dd>{{ reviewValue(f.sexualOrientation) }}</dd></div>
-                  <div><dt>Religion</dt><dd>{{ reviewValue(f.religion) }}</dd></div>
-                </dl>
-              </div>
-              <div class="profile-onboarding-review-section">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'Values' | i18n }}</span>
-                </div>
-                <p>{{ reviewList(f.values) }}</p>
-              </div>
-              <div class="profile-onboarding-review-section">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'Interests' | i18n }}</span>
-                </div>
-                <p>{{ reviewList(f.interests) }}</p>
-              </div>
-              <div class="profile-onboarding-review-section profile-onboarding-review-section-wide">
-                <div class="profile-onboarding-review-section-title">
-                  <span>{{ 'Experience' | i18n }}</span>
-                  <strong>{{ f.experienceEntries.length }}</strong>
-                </div>
-                @if (f.experienceEntries.length > 0) {
-                  <div class="profile-onboarding-review-experience-list">
-                    @for (entry of f.experienceEntries; track entry.id) {
-                      <article>
-                        <strong>{{ entry.title }}</strong>
-                        <span>{{ entry.org }} &middot; {{ entry.dateFrom }} - {{ entry.dateTo }}</span>
-                      </article>
-                    }
-                  </div>
-                } @else {
-                  <p>{{ 'Not set' | i18n }}</p>
-                }
-              </div>
-              @if (saveError) {
-                <div class="profile-onboarding-error">
-                  <mat-icon>error</mat-icon>
-                  <span>{{ saveError }}</span>
-                </div>
-              }
-            </section>
+          @if (saveError) {
+            <div class="profile-onboarding-error">
+              <mat-icon>error</mat-icon>
+              <span>{{ saveError | i18n }}</span>
+            </div>
           }
         </main>
 
-        <footer class="profile-onboarding-actions">
-          <app-menu
-            class="profile-onboarding-action-menu"
-            kind="inline"
-            [items]="onboardingActionMenuItems()"
-            (itemSelect)="onProfileOnboardingMenuSelect($event)"
-          ></app-menu>
-        </footer>
         @if (experienceManagerOpen) {
           <section class="profile-onboarding-experience-manager-overlay popup-surface-overlay">
             <div class="profile-onboarding-experience-manager-backdrop popup-surface-overlay-backdrop" (click)="closeExperienceManager()"></div>
@@ -449,7 +62,7 @@
                     class="profile-onboarding-experience-manager-close popup-surface-close-btn"
                     (click)="closeExperienceManager()"
                     aria-label="Close experience manager"
-                    >
+                  >
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -459,7 +72,6 @@
                   [entries]="f.experienceEntries"
                   [initialFilter]="experienceManagerFilter"
                   [userId]="user.id"
-                  [experienceRouteConfig]="experienceMemoryRouteConfig"
                   [showInlineActions]="true"
                   (entriesChange)="onExperienceManagerEntriesChange($event)"
                 ></app-profile-experience-manager>

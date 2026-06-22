@@ -87,7 +87,23 @@
       <span>{{ model?.loadingLabel || 'Loading form' }}</span>
     </article>
   } @else if (model && totalPageCount() > 0) {
-    <div class="form-flow__stage" [class.form-flow__stage--carousel]="isCarouselLayout()">
+    <div
+      class="form-flow__stage"
+      [class.form-flow__stage--carousel]="isCarouselLayout()"
+      [class.form-flow__stage--compact-head]="isCarouselLayout() && !activeStepHasCardHeader()"
+    >
+      @if (isCarouselLayout() && !activeStepHasCardHeader()) {
+        <div class="form-flow__carousel-head">
+          <span class="form-flow__step-badge" [class.is-missing]="currentPageMissingRequired()">
+            <mat-icon>{{ activeStepIcon() }}</mat-icon>
+            <span>{{ activeTitle() }}</span>
+            @if (currentPageMissingRequired()) {
+              <mat-icon>priority_high</mat-icon>
+            }
+          </span>
+          <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+        </div>
+      }
       <main
         #flowViewport
         class="form-flow__body"
@@ -149,7 +165,8 @@
                 @for (control of step.controls; track control.id) {
                   <div
                     class="form-flow__control"
-                    [class.form-flow__control--wide]="control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'"
+                    [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
+                    [class.form-flow__control--half]="control.layout === 'half'"
                     [class.is-required-missing]="isRequiredControlMissing(control)"
                   >
                     @if (control.kind === 'section') {
@@ -177,6 +194,7 @@
                         [panelMode]="menuPanelMode(control)"
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
+                        (itemSelect)="emitMenuItemSelect(control, $event)"
                         [closeOnSelect]="menuCloseOnSelect(control)"
                       ></app-menu>
                     } @else if (control.kind === 'image-carousel') {
@@ -218,6 +236,31 @@
                         }
                         <p>{{ summaryValue(control) }}</p>
                       </article>
+                    } @else if (control.kind === 'date') {
+                      <label class="form-flow__label">
+                        <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                      </label>
+                      <div class="form-flow__date-wrap">
+                        <input
+                          matInput
+                          class="form-flow__date-input"
+                          [matDatepicker]="formFlowDatePicker"
+                          [disabled]="isControlDisabled(control)"
+                          [placeholder]="control.placeholder || 'dd/mm/yyyy'"
+                          [value]="controlDateValue(control)"
+                          (dateChange)="updateDateControlValue(control, $event.value)"
+                        />
+                        <button
+                          type="button"
+                          class="form-flow__date-button"
+                          [disabled]="isControlDisabled(control)"
+                          (click)="formFlowDatePicker.open()"
+                          [attr.aria-label]="control.label || 'Select date'"
+                        >
+                          <mat-icon>calendar_month</mat-icon>
+                        </button>
+                        <mat-datepicker #formFlowDatePicker xPosition="end" yPosition="below"></mat-datepicker>
+                      </div>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
@@ -293,9 +336,11 @@
       </main>
 
       @if (isCarouselLayout()) {
-        <div class="form-flow__carousel-progress-slot">
-          <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
-        </div>
+        @if (activeStepHasCardHeader()) {
+          <div class="form-flow__carousel-progress-slot">
+            <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+          </div>
+        }
         <ng-container [ngTemplateOutlet]="stepNavControls"></ng-container>
       }
     </div>
