@@ -113,12 +113,28 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       this.clearOnboardingFlowModelCache();
       return null;
     }
+    const form = this.draft.form;
     const cacheKey = [
       this.draft.userId,
       this.title,
       this.message,
       this.user?.id ?? '',
-      this.draft.form.experienceEntries
+      form.physique,
+      form.genderDetail,
+      form.profileStatus,
+      form.drinking,
+      form.smoking,
+      form.workout,
+      form.pets,
+      form.familyPlans,
+      form.children,
+      form.loveStyle,
+      form.communicationStyle,
+      form.sexualOrientation,
+      form.religion,
+      form.values.join('|'),
+      form.interests.join('|'),
+      form.experienceEntries
         .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
         .join('|')
     ].join('\u0001');

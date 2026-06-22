@@ -1236,7 +1236,7 @@ export class ProfileEditorComponent {
       }
       return 'privacy_tip';
     }
-    if (normalizedLabel === 'gender') {
+    if (normalizedLabel.includes('gender')) {
       if (normalizedOption.includes('woman')) {
         return 'female';
       }

@@ -9,10 +9,10 @@ import type { ProfileStatus } from '../../core/common/constants';
 import type { ExperienceEntry } from '../../core/contracts/profile.interface';
 import type {
   AppMenuItem,
-  AppMenuModel,
   AppMenuPalette,
   AppMenuTrigger
 } from '../components/menu';
+import { buildTabbedMenuModel } from '../components/menu';
 import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
 import type { UiConverter } from './converter.types';
 
@@ -108,7 +108,7 @@ export class ProfileOnboardingDraftConverter {
       profileStatus: this.normalizeProfileStatus(user.profileStatus),
       genderDetail: emptyProfile
         ? ''
-        : user.gender === 'woman' ? 'Woman' : user.gender === 'man' ? 'Man' : '',
+        : this.profileDetailValue(user, 'profile.gender'),
       drinking: this.profileDetailValue(user, 'profile.details.drinking'),
       smoking: this.profileDetailValue(user, 'profile.details.smoking'),
       workout: this.profileDetailValue(user, 'profile.details.workout'),
@@ -333,7 +333,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Testalkat',
               bind: 'physique',
               required: true,
-              config: this.physiqueMenuConfig()
+              config: this.physiqueMenuConfig(form?.physique)
             },
             {
               id: 'gender',
@@ -347,7 +347,8 @@ export class ProfileOnboardingFormFlowConverter {
                 'violet',
                 undefined,
                 undefined,
-                'Nem kiválasztása'
+                'Nem kiválasztása',
+                form?.genderDetail
               )
             },
             {
@@ -370,7 +371,7 @@ export class ProfileOnboardingFormFlowConverter {
               kind: 'menu',
               label: 'Láthatóság',
               bind: 'profileStatus',
-              config: this.profileStatusMenuConfig()
+              config: this.profileStatusMenuConfig(form?.profileStatus)
             },
             {
               id: 'workspace',
@@ -419,42 +420,44 @@ export class ProfileOnboardingFormFlowConverter {
           subtitle: 'Optional details.',
           icon: 'interests',
           controls: [
-            this.detailMenuControl('drinking', 'Drinking', 'profile.details.drinking', 'local_bar', 'orange'),
-            this.detailMenuControl('smoking', 'Smoking', 'profile.details.smoking', 'smoking_rooms', 'slate'),
-            this.detailMenuControl('workout', 'Workout', 'profile.details.workout', 'fitness_center', 'green'),
-            this.detailMenuControl('pets', 'Pets', 'profile.details.pets', 'pets', 'mint'),
-            this.detailMenuControl('familyPlans', 'Family plans', 'profile.details.familyPlans', 'family_restroom', 'pink'),
-            this.detailMenuControl('children', 'Children', 'profile.details.children', 'child_care', 'amber'),
-            this.detailMenuControl('loveStyle', 'Love style', 'profile.details.loveStyle', 'favorite', 'red'),
-            this.detailMenuControl('communicationStyle', 'Communication', 'profile.details.communicationStyle', 'forum', 'sky'),
-            this.detailMenuControl('sexualOrientation', 'Orientation', 'profile.details.sexualOrientation', 'diversity_1', 'violet'),
-            this.detailMenuControl('religion', 'Religion', 'profile.details.religion', 'self_improvement', 'gold'),
+            this.detailMenuControl('drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', form?.drinking),
+            this.detailMenuControl('smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', form?.smoking),
+            this.detailMenuControl('workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', form?.workout),
+            this.detailMenuControl('pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', form?.pets),
+            this.detailMenuControl('familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', form?.familyPlans),
+            this.detailMenuControl('children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', form?.children),
+            this.detailMenuControl('loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', form?.loveStyle),
+            this.detailMenuControl('communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', form?.communicationStyle),
+            this.detailMenuControl('sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', form?.sexualOrientation),
+            this.detailMenuControl('religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', form?.religion),
             {
               id: 'values',
               kind: 'menu',
-              label: 'Values',
+              label: 'Értékek',
               bind: 'values',
               config: this.groupedCheckboxMenuConfig(
-                'Values',
+                'Értékek',
                 APP_STATIC_DATA.beliefsValuesOptionGroups,
                 'auto_awesome',
                 'purple',
                 5,
-                'select.values'
+                'select.values',
+                form?.values ?? []
               )
             },
             {
               id: 'interests',
               kind: 'menu',
-              label: 'Interests',
+              label: 'Érdeklődés',
               bind: 'interests',
               config: this.groupedCheckboxMenuConfig(
-                'Interests',
+                'Érdeklődés',
                 APP_STATIC_DATA.interestOptionGroups,
                 'sell',
                 'teal',
                 5,
-                'select.interests'
+                'select.interests',
+                form?.interests ?? []
               )
             }
           ]
@@ -518,14 +521,15 @@ export class ProfileOnboardingFormFlowConverter {
     label: string,
     key: string,
     icon: string,
-    palette: AppMenuPalette
+    palette: AppMenuPalette,
+    selectedValue?: string | null
   ) {
     return {
       id: field,
       kind: 'menu' as const,
       label,
       bind: field,
-      config: this.detailSelectMenuConfig(label, key, icon, palette)
+      config: this.detailSelectMenuConfig(label, key, icon, palette, selectedValue)
     };
   }
 
@@ -533,7 +537,8 @@ export class ProfileOnboardingFormFlowConverter {
     title: string,
     key: string,
     icon: string,
-    fallbackPalette: AppMenuPalette
+    fallbackPalette: AppMenuPalette,
+    selectedValue?: string | null
   ): FormFlowMenuControlConfig {
     const options = this.detailOptions(key);
     return this.selectMenuConfig(
@@ -542,11 +547,13 @@ export class ProfileOnboardingFormFlowConverter {
       icon,
       fallbackPalette,
       option => this.detailOptionIcon(key, option),
-      option => this.paletteFromTone(this.detailToneFromOptions(option, options))
+      option => this.paletteFromTone(this.detailToneFromOptions(option, options)),
+      `${title} kiválasztása`,
+      selectedValue
     );
   }
 
-  private static physiqueMenuConfig(): FormFlowMenuControlConfig {
+  private static physiqueMenuConfig(selectedValue?: string | null): FormFlowMenuControlConfig {
     return this.selectMenuConfig(
       'Testalkat',
       APP_STATIC_DATA.physiqueOptions,
@@ -554,40 +561,33 @@ export class ProfileOnboardingFormFlowConverter {
       'green',
       option => this.physiqueIcon(option),
       option => this.paletteFromTone(this.physiqueToneClass(option)),
-      'Testalkat kiválasztása'
+      'Testalkat kiválasztása',
+      selectedValue
     );
   }
 
-  private static profileStatusMenuConfig(): FormFlowMenuControlConfig {
+  private static profileStatusMenuConfig(selectedStatus?: ProfileStatus | null): FormFlowMenuControlConfig {
+    const status = this.normalizeProfileStatus(selectedStatus);
+    const selectedOption = APP_STATIC_DATA.profileStatusOptions.find(option => option.value === status) ?? APP_STATIC_DATA.profileStatusOptions[0];
     return {
       kind: 'select',
-      layout: 'tabs',
       title: 'Láthatóság',
-      trigger: this.trigger('Láthatóság', 'public', 'green'),
-      model: {
-        layout: 'tabs',
-        summary: {
-          emptyLabel: 'Láthatóság kiválasztása',
-          maxLabels: 1,
-          counter: 'none'
-        },
-        groups: [{
-          id: 'profile-status-options',
-          label: 'Láthatóság',
-          icon: 'public',
-          palette: 'green',
-          items: APP_STATIC_DATA.profileStatusOptions.map(option => ({
-            id: `profile-status-${option.value}`,
-            label: option.value,
-            icon: option.icon,
-            kind: 'radio',
-            value: option.value,
-            palette: this.profileStatusPalette(option.value),
-            surface: 'tinted',
-            context: { menu: 'field', field: 'profileStatus', value: option.value }
-          }))
-        }]
-      }
+      trigger: this.trigger(
+        'Láthatóság',
+        selectedOption?.icon ?? 'public',
+        this.profileStatusPalette(status),
+        status
+      ),
+      items: APP_STATIC_DATA.profileStatusOptions.map(option => ({
+        id: `profile-status-${option.value}`,
+        label: option.value,
+        icon: option.icon,
+        kind: 'radio',
+        value: option.value,
+        palette: this.profileStatusPalette(option.value),
+        surface: 'tinted',
+        context: { menu: 'field', field: 'profileStatus', value: option.value }
+      }))
     };
   }
 
@@ -598,28 +598,17 @@ export class ProfileOnboardingFormFlowConverter {
     palette: AppMenuPalette,
     iconForOption: (option: string) => string = () => icon,
     paletteForOption: (option: string) => AppMenuPalette = () => palette,
-    emptyLabel = `${title} kiválasztása`
+    emptyLabel = `${title} kiválasztása`,
+    selectedValue?: string | null
   ): FormFlowMenuControlConfig {
+    const selected = this.selectedOption(options, selectedValue);
+    const triggerIcon = selected ? iconForOption(selected) : icon;
+    const triggerPalette = selected ? paletteForOption(selected) : palette;
     return {
       kind: 'select',
-      layout: 'tabs',
       title,
-      trigger: this.trigger(title, icon, palette),
-      model: {
-        layout: 'tabs',
-        summary: {
-          emptyLabel,
-          maxLabels: 1,
-          counter: 'none'
-        },
-        groups: [{
-          id: `${this.idToken(title)}-options`,
-          label: title,
-          icon,
-          palette,
-          items: options.map(option => this.radioItem(title, option, iconForOption(option), paletteForOption(option)))
-        }]
-      }
+      trigger: this.trigger(title, triggerIcon, triggerPalette, selected || emptyLabel),
+      items: options.map(option => this.radioItem(title, option, iconForOption(option), paletteForOption(option)))
     };
   }
 
@@ -662,34 +651,29 @@ export class ProfileOnboardingFormFlowConverter {
     icon: string,
     palette: AppMenuPalette,
     maxSelected: number,
-    emptyLabel: string
+    emptyLabel: string,
+    selectedValues: readonly string[] = []
   ): FormFlowMenuControlConfig {
+    const triggerPalette = this.groupPaletteForSelection(groups, selectedValues) ?? palette;
     return {
       kind: 'select',
       layout: 'tabs',
       title,
       filterable: true,
       closeOnSelect: false,
-      trigger: this.trigger(title, icon, palette),
-      model: {
-        layout: 'tabs',
+      trigger: this.trigger(title, icon, triggerPalette),
+      model: buildTabbedMenuModel<string, ProfileOnboardingFormFlowMenuContext>({
+        idPrefix: this.idToken(title),
+        groups,
+        selected: selectedValues,
         maxSelected,
         summary: {
           emptyLabel,
           maxLabels: 2,
           counter: 'overflow'
         },
-        groups: groups.map(group => {
-          const groupPalette = this.paletteFromTone(group.toneClass ?? '') || palette;
-          return {
-            id: `${this.idToken(title)}-${this.idToken(group.title)}`,
-            label: group.shortTitle || group.title,
-            icon: group.icon || icon,
-            palette: groupPalette,
-            items: group.options.map(option => this.checkboxItem(title, option, group.icon || icon, groupPalette))
-          };
-        })
-      }
+        context: option => ({ menu: 'field', field: title, value: option })
+      })
     };
   }
 
@@ -750,8 +734,9 @@ export class ProfileOnboardingFormFlowConverter {
     };
   }
 
-  private static trigger(title: string, icon: string, palette: AppMenuPalette): AppMenuTrigger {
+  private static trigger(title: string, icon: string, palette: AppMenuPalette, label?: string | null): AppMenuTrigger {
     return {
+      label: label?.trim() || undefined,
       icon,
       palette,
       layout: 'field',
@@ -832,6 +817,32 @@ export class ProfileOnboardingFormFlowConverter {
     return APP_STATIC_DATA.profileDetailValueOptions[key] ?? [];
   }
 
+  private static selectedOption(options: readonly string[], selectedValue: unknown): string {
+    const normalizedSelectedValue = AppUtils.normalizeText(`${selectedValue ?? ''}`);
+    return options.find(option => AppUtils.normalizeText(option) === normalizedSelectedValue) ?? '';
+  }
+
+  private static normalizeProfileStatus(value: unknown): ProfileStatus {
+    if (value === 'friends only' || value === 'host only' || value === 'inactive' || value === 'blocked' || value === 'deleted') {
+      return value;
+    }
+    return 'public';
+  }
+
+  private static groupPaletteForSelection(
+    groups: readonly { toneClass?: string; options: readonly string[] }[],
+    selectedValues: readonly string[]
+  ): AppMenuPalette | null {
+    const selected = new Set(selectedValues.map(value => AppUtils.normalizeText(value)).filter(Boolean));
+    if (selected.size === 0) {
+      return null;
+    }
+    const group = groups.find(candidate =>
+      candidate.options.some(option => selected.has(AppUtils.normalizeText(option)))
+    );
+    return group ? this.paletteFromTone(group.toneClass ?? '') : null;
+  }
+
   private static profileStatusPalette(status: ProfileStatus): AppMenuPalette {
     switch (status) {
       case 'public':
@@ -904,38 +915,150 @@ export class ProfileOnboardingFormFlowConverter {
   private static detailOptionIcon(labelKey: string, option: string): string {
     const normalizedLabel = AppUtils.normalizeText(labelKey);
     const normalizedOption = AppUtils.normalizeText(option);
+
     if (normalizedLabel.includes('drinking')) {
-      return normalizedOption.includes('never') ? 'no_drinks' : normalizedOption.includes('socially') ? 'groups' : 'nightlife';
+      if (normalizedOption.includes('never')) {
+        return 'no_drinks';
+      }
+      if (normalizedOption.includes('socially')) {
+        return 'groups';
+      }
+      if (normalizedOption.includes('occasionally')) {
+        return 'event';
+      }
+      return 'nightlife';
     }
     if (normalizedLabel.includes('smoking')) {
-      return normalizedOption.includes('never') ? 'smoke_free' : normalizedOption.includes('trying') ? 'healing' : 'smoking_rooms';
+      if (normalizedOption.includes('never')) {
+        return 'smoke_free';
+      }
+      if (normalizedOption.includes('trying')) {
+        return 'healing';
+      }
+      if (normalizedOption.includes('socially')) {
+        return 'group';
+      }
+      return 'smoking_rooms';
     }
     if (normalizedLabel.includes('workout')) {
-      return normalizedOption.includes('daily') ? 'whatshot' : normalizedOption.includes('4x') ? 'fitness_center' : 'directions_run';
+      if (normalizedOption.includes('daily')) {
+        return 'whatshot';
+      }
+      if (normalizedOption.includes('4x')) {
+        return 'fitness_center';
+      }
+      if (normalizedOption.includes('2-3x')) {
+        return 'directions_run';
+      }
+      return 'self_improvement';
     }
     if (normalizedLabel.includes('pets')) {
-      return normalizedOption.includes('all') ? 'cruelty_free' : normalizedOption.includes('no') ? 'block' : 'pets';
+      if (normalizedOption.includes('dog')) {
+        return 'pets';
+      }
+      if (normalizedOption.includes('cat')) {
+        return 'pets';
+      }
+      if (normalizedOption.includes('all')) {
+        return 'cruelty_free';
+      }
+      return 'block';
     }
     if (normalizedLabel.includes('family')) {
-      return normalizedOption.includes('want') ? 'child_care' : normalizedOption.includes('open') ? 'family_restroom' : 'help_outline';
+      if (normalizedOption.includes('want')) {
+        return 'child_care';
+      }
+      if (normalizedOption.includes('open')) {
+        return 'family_restroom';
+      }
+      if (normalizedOption.includes('not sure')) {
+        return 'help_outline';
+      }
+      return 'do_not_disturb_alt';
     }
     if (normalizedLabel.includes('children')) {
-      return normalizedOption === 'yes' ? 'child_friendly' : normalizedOption === 'no' ? 'do_not_disturb_alt' : 'privacy_tip';
+      if (normalizedOption === 'yes') {
+        return 'child_friendly';
+      }
+      if (normalizedOption === 'no') {
+        return 'do_not_disturb_alt';
+      }
+      return 'privacy_tip';
     }
     if (normalizedLabel.includes('love')) {
-      return normalizedOption.includes('long-term') ? 'favorite' : normalizedOption.includes('slow-burn') ? 'hourglass_bottom' : 'explore';
+      if (normalizedOption.includes('long-term')) {
+        return 'favorite';
+      }
+      if (normalizedOption.includes('slow-burn')) {
+        return 'hourglass_bottom';
+      }
+      if (normalizedOption.includes('open')) {
+        return 'hub';
+      }
+      return 'explore';
     }
     if (normalizedLabel.includes('communication')) {
-      return normalizedOption.includes('direct') ? 'campaign' : normalizedOption.includes('playful') ? 'mood' : 'forum';
+      if (normalizedOption.includes('direct')) {
+        return 'campaign';
+      }
+      if (normalizedOption.includes('calm')) {
+        return 'record_voice_over';
+      }
+      if (normalizedOption.includes('playful')) {
+        return 'mood';
+      }
+      return 'forum';
     }
     if (normalizedLabel.includes('orientation')) {
-      return normalizedOption.includes('pansexual') ? 'all_inclusive' : normalizedOption.includes('bisexual') ? 'diversity_3' : 'person';
+      if (normalizedOption.includes('straight')) {
+        return 'person';
+      }
+      if (normalizedOption.includes('bisexual')) {
+        return 'diversity_3';
+      }
+      if (normalizedOption.includes('gay') || normalizedOption.includes('lesbian')) {
+        return 'favorite';
+      }
+      if (normalizedOption.includes('pansexual')) {
+        return 'all_inclusive';
+      }
+      if (normalizedOption.includes('asexual')) {
+        return 'do_not_disturb_on';
+      }
+      return 'privacy_tip';
     }
     if (normalizedLabel.includes('gender')) {
-      return normalizedOption.includes('woman') ? 'female' : normalizedOption.includes('man') ? 'male' : 'transgender';
+      if (normalizedOption.includes('woman')) {
+        return 'female';
+      }
+      if (normalizedOption.includes('man')) {
+        return 'male';
+      }
+      if (normalizedOption.includes('non-binary')) {
+        return 'transgender';
+      }
+      return 'privacy_tip';
     }
     if (normalizedLabel.includes('religion')) {
-      return normalizedOption.includes('atheist') ? 'public_off' : normalizedOption.includes('spiritual') ? 'self_improvement' : 'privacy_tip';
+      if (normalizedOption.includes('spiritual')) {
+        return 'self_improvement';
+      }
+      if (normalizedOption.includes('christian')) {
+        return 'church';
+      }
+      if (normalizedOption.includes('muslim')) {
+        return 'mosque';
+      }
+      if (normalizedOption.includes('jewish')) {
+        return 'synagogue';
+      }
+      if (normalizedOption.includes('buddhist') || normalizedOption.includes('hindu')) {
+        return 'temple_buddhist';
+      }
+      if (normalizedOption.includes('atheist')) {
+        return 'public_off';
+      }
+      return 'privacy_tip';
     }
     return 'radio_button_checked';
   }
