@@ -3,6 +3,15 @@
   min-width: 0;
 }
 
+:host(.form-flow__step-image-card) .ui-image-card {
+  height: 100%;
+  min-height: 100%;
+}
+
+:host(.form-flow__step-image-card) .ui-image-card--layout-overlay {
+  min-height: 100%;
+}
+
 .ui-image-card {
   position: relative;
   overflow: hidden;

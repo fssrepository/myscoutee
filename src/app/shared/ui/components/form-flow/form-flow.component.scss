@@ -1000,20 +1000,6 @@
   height: 100%;
 }
 
-:host ::ng-deep .form-flow--carousel .form-flow__step-image-card .ui-image-card,
-:host ::ng-deep .form-flow--carousel .form-flow__step-info-card .ui-info-card {
-  height: 100%;
-  min-height: 100%;
-}
-
-:host ::ng-deep .form-flow--carousel .form-flow__step-image-card .ui-image-card--layout-overlay {
-  min-height: 100%;
-}
-
-:host ::ng-deep .form-flow--carousel .form-flow__step-info-card .ui-info-card {
-  touch-action: pan-x pan-y;
-}
-
 .form-flow--carousel .form-flow__controls {
   align-self: stretch;
   min-height: 0;
