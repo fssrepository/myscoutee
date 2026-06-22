@@ -30,17 +30,14 @@
               ></app-menu>
             </div>
           }
-          @if (panel === 'profile' && !isAdminProfile()) {
-            <div class="event-visibility-picker profile-status-header-picker">
+          @if (panel === 'profile') {
+            <div class="profile-header-actions">
               <app-menu
-                kind="select"
-                [trigger]="profileStatusMenuTrigger()"
-                [items]="profileStatusMenuItems()"
+                kind="inline"
+                [items]="profileHeaderActionMenuItems()"
                 (itemSelect)="onProfileEditorMenuSelect($event)"
               ></app-menu>
             </div>
-          }
-          @if (panel === 'profile') {
             <button mat-icon-button class="popup-close" (click)="handleCloseAction()" aria-label="Close">
               <mat-icon>close</mat-icon>
             </button>

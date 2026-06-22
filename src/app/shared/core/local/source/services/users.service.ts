@@ -285,6 +285,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const savedUser = this.usersRepository.upsertUser(user);
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
     return savedUser;
   }
 

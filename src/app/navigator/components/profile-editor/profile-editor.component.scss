@@ -320,28 +320,11 @@
   margin-right: 0.1rem;
 }
 
-.profile-status-header-picker {
+.profile-header-actions {
   margin-left: auto;
-}
-
-.profile-status-header-picker .event-visibility-trigger.status-public {
-  background: linear-gradient(180deg, #e6f6ef 0%, #d9f0e6 100%);
-  border-color: rgba(47, 143, 102, 0.34);
-}
-
-.profile-status-header-picker .event-visibility-trigger.status-friends {
-  background: linear-gradient(180deg, #e8f1fd 0%, #dfeaf9 100%);
-  border-color: rgba(27, 87, 161, 0.34);
-}
-
-.profile-status-header-picker .event-visibility-trigger.status-host {
-  background: linear-gradient(180deg, #f6efe2 0%, #eee4d2 100%);
-  border-color: rgba(135, 88, 15, 0.36);
-}
-
-.profile-status-header-picker .event-visibility-trigger.status-inactive {
-  background: linear-gradient(180deg, #f2f3f5 0%, #e8ebef 100%);
-  border-color: rgba(91, 101, 115, 0.32);
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .profile-editor-wrap {

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
@@ -17,7 +17,13 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
-import { ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import {
+  ProfileOnboardingService,
+  USER_PROFILE_SAVE_CONTEXT_KEY,
+  UserExperiencesService,
+  UsersService,
+  type UserDto
+} from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
 import {
   EditableImageCarouselComponent,
@@ -56,6 +62,7 @@ type ProfileEditorMenuContext =
   | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
   | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
   | { kind: 'experienceQuickAction'; action: 'create' | 'upload' }
+  | { kind: 'profileSave' }
   | { kind: 'languageOption'; value: string }
   | { kind: 'valuesOption'; groupIndex: number; rowIndex: number; value: string }
   | { kind: 'interestOption'; groupIndex: number; rowIndex: number; value: string };
@@ -123,6 +130,7 @@ export class ProfileEditorComponent {
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
+  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly profileDetailsFormByUser: Record<string, ProfileContracts.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
@@ -141,6 +149,12 @@ export class ProfileEditorComponent {
   protected readonly experienceFilterOptions = APP_STATIC_DATA.experienceFilterOptions;
   protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
   protected readonly languageSuggestions = APP_STATIC_DATA.languageSuggestions;
+  protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
+  protected readonly hasProfileSaveError = computed(() => {
+    const status = this.profileSaveLoadState().status;
+    return status === 'error' || status === 'timeout';
+  });
+  protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
 
   protected panel: ProfileEditorPanel = 'profile';
   protected profileUser: UserDto | null = null;
@@ -299,9 +313,16 @@ export class ProfileEditorComponent {
       this.experienceManagerOverlayOpen = false;
       return;
     }
-    await this.commitProfileForm(false);
     this.navigatorService.closeProfileEditor();
     this.resetTransientUiState();
+  }
+
+  protected async saveProfileFromHeader(event: Event): Promise<void> {
+    event.stopPropagation();
+    if (this.panel !== 'profile' || this.isProfileSaving()) {
+      return;
+    }
+    await this.commitProfileForm(false);
   }
 
   protected onBackdropClose(): void {
@@ -427,14 +448,36 @@ export class ProfileEditorComponent {
     ];
   }
 
-  protected profileStatusMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.profileForm.profileStatus,
-      icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
-      palette: this.profileStatusPalette(this.profileForm.profileStatus),
-      layout: 'pill',
-      ariaLabel: 'Open profile status selector'
-    };
+  protected profileHeaderActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    const items: AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] = [];
+    if (!this.isAdminProfile()) {
+      items.push({
+        id: 'profile-status-trigger',
+        label: this.profileForm.profileStatus,
+        icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
+        kind: 'select-trigger',
+        layout: 'pill',
+        palette: this.profileStatusPalette(this.profileForm.profileStatus),
+        ariaLabel: 'Open profile status selector',
+        items: this.profileStatusMenuItems()
+      });
+    }
+    items.push({
+      id: 'profile-save',
+      icon: 'done',
+      kind: 'action',
+      palette: 'green',
+      disabled: () => this.isProfileSaving(),
+      progress: {
+        state: () => this.showProfileSaveRing()
+          ? this.hasProfileSaveError() ? 'error' : 'loading'
+          : null,
+        shape: 'circle'
+      },
+      ariaLabel: 'Save profile',
+      context: { kind: 'profileSave' }
+    });
+    return items;
   }
 
   protected profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -723,6 +766,9 @@ export class ProfileEditorComponent {
           return;
         }
         this.openExperienceUploadAction(event.sourceEvent);
+        return;
+      case 'profileSave':
+        void this.saveProfileFromHeader(event.sourceEvent);
         return;
       case 'languageOption':
         this.toggleLanguageOption(context.value, event.action === 'remove');
