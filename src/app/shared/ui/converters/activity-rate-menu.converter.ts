@@ -3,6 +3,9 @@ import type {
   AppMenuItemSelectEvent,
   RatingStarBarConfig
 } from '../components';
+import type { UiConverter } from './converter.types';
+
+const ACTIVITY_RATE_MENU_RATING_ITEM_ID = 'rating';
 
 export interface ActivityRateMenuSubject {
   menu: 'activity-rate-card';
@@ -22,15 +25,13 @@ export interface ActivityRateMenuSelection {
 }
 
 export class ActivityRateMenuConverter {
-  static readonly ratingItemId = 'rating';
-
   static convert(subject: ActivityRateMenuSubject | null | undefined): readonly AppMenuItem<string, ActivityRateMenuContext>[] {
     if (!subject) {
       return [];
     }
     const { value: _configuredValue, ...ratingBarConfig } = subject.ratingBarConfig;
     return [{
-      id: this.ratingItemId,
+      id: ACTIVITY_RATE_MENU_RATING_ITEM_ID,
       kind: 'rating-bar',
       closeOnSelect: true,
       value: subject.value,
@@ -41,15 +42,12 @@ export class ActivityRateMenuConverter {
       }
     }];
   }
+}
 
-  static isActivityRateMenuEvent(event: AppMenuItemSelectEvent<string, unknown>): boolean {
+export class ActivityRateMenuSelectionConverter {
+  static convert(event: AppMenuItemSelectEvent<string, unknown>): ActivityRateMenuSelection | null {
     const context = this.contextFromEvent(event);
-    return context?.menu === 'activity-rate-card';
-  }
-
-  static selectionFromEvent(event: AppMenuItemSelectEvent<string, unknown>): ActivityRateMenuSelection | null {
-    const context = this.contextFromEvent(event);
-    if (!context || event.id !== this.ratingItemId) {
+    if (!context || event.id !== ACTIVITY_RATE_MENU_RATING_ITEM_ID) {
       return null;
     }
     const value = Number(event.value);
@@ -69,3 +67,15 @@ export class ActivityRateMenuConverter {
       : null;
   }
 }
+
+export const activityRateMenuConverter =
+  ActivityRateMenuConverter satisfies UiConverter<
+    ActivityRateMenuSubject | null | undefined,
+    readonly AppMenuItem<string, ActivityRateMenuContext>[]
+  >;
+
+export const activityRateMenuSelectionConverter =
+  ActivityRateMenuSelectionConverter satisfies UiConverter<
+    AppMenuItemSelectEvent<string, unknown>,
+    ActivityRateMenuSelection | null
+  >;

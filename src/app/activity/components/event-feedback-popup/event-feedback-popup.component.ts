@@ -11,13 +11,18 @@ import {
   AppPopupContext,
   EventFeedbackFormFlowConverter,
   type EventFeedbackFormValue,
+  EventFeedbackFilterMenuConverter,
   EventFeedbackInfoCardConverter,
-  EventFeedbackPageConverter,
+  EventFeedbackListPresentationConverter,
+  EventFeedbackOrganizerCarouselSectionConverter,
+  EventFeedbackOrganizerInfoCardConverter,
+  EventFeedbackOrganizerItemConverter,
+  EventFeedbackOrganizerMessageGroupConverter,
   FormFlowComponent,
   type AppMenuItemSelectEvent,
   type EventFeedbackFilterMenuContext,
-  type EventFeedbackOrganizerCarouselSection,
-  type EventFeedbackOrganizerItem,
+  type EventFeedbackOrganizerCarouselSectionData,
+  type EventFeedbackOrganizerItemData,
   InfoCardComponent,
   SmartListComponent,
   type InfoCardData,
@@ -89,30 +94,40 @@ export class EventFeedbackPopupComponent {
   protected readonly hasEventFeedbackCards = computed(() => (this.eventFeedbackDeckDto()?.cards.length ?? 0) > 0);
   private readonly eventFeedbackFilterCountDelta = signal<Partial<Record<EventFeedbackListFilter, number>>>({});
 
-  protected readonly selectedOrganizerEventFeedbackItem = computed<EventFeedbackOrganizerItem | null>(() =>
-    EventFeedbackPageConverter.organizerItemById(
-      this.eventFeedbackPageResult(),
-      this.selectedOrganizerEventFeedbackEventId() ?? ''
-    )
-  );
+  protected readonly eventFeedbackFilterMenu = computed(() => EventFeedbackFilterMenuConverter.convert({
+    result: this.eventFeedbackPageResult(),
+    activeFilter: this.eventFeedbackListFilter(),
+    delta: this.eventFeedbackFilterCountDelta()
+  }));
+  protected readonly organizerEventFeedbackItems = computed<EventFeedbackOrganizerItemData[]>(() => {
+    const result = this.eventFeedbackPageResult();
+    return result ? EventFeedbackOrganizerItemConverter.convertList(result.organizerItems, { result }) : [];
+  });
+  protected readonly selectedOrganizerEventFeedbackItem = computed<EventFeedbackOrganizerItemData | null>(() => {
+    const eventId = this.selectedOrganizerEventFeedbackEventId()?.trim() ?? '';
+    if (!eventId) {
+      return null;
+    }
+    return this.organizerEventFeedbackItems().find(item => item.eventId === eventId) ?? null;
+  });
   protected readonly selectedOrganizerEventFeedbackInfoCard = computed<InfoCardData | null>(() => {
     const item = this.selectedOrganizerEventFeedbackItem();
-    return item ? EventFeedbackInfoCardConverter.organizerEventFeedbackCard(item, { showAction: false }) : null;
+    return item ? EventFeedbackOrganizerInfoCardConverter.convert(item, { showAction: false }) : null;
   });
   protected readonly organizerEventFeedbackMessageGroups = computed(() =>
-    EventFeedbackPageConverter.organizerMessageGroups(
-      this.eventFeedbackPageResult(),
-      this.selectedOrganizerEventFeedbackEventId() ?? ''
-    )
+    EventFeedbackOrganizerMessageGroupConverter.convert({
+      result: this.eventFeedbackPageResult(),
+      eventId: this.selectedOrganizerEventFeedbackEventId() ?? ''
+    })
   );
   protected readonly organizerEventFeedbackCarouselIndex = signal(0);
-  protected readonly organizerEventFeedbackCarouselSections = computed<EventFeedbackOrganizerCarouselSection[]>(() =>
-    EventFeedbackPageConverter.organizerCarouselSections(
-      this.eventFeedbackPageResult(),
-      this.selectedOrganizerEventFeedbackEventId() ?? ''
-    )
+  protected readonly organizerEventFeedbackCarouselSections = computed<EventFeedbackOrganizerCarouselSectionData[]>(() =>
+    EventFeedbackOrganizerCarouselSectionConverter.convert({
+      result: this.eventFeedbackPageResult(),
+      eventId: this.selectedOrganizerEventFeedbackEventId() ?? ''
+    })
   );
-  protected readonly organizerEventFeedbackActiveCarouselSection = computed<EventFeedbackOrganizerCarouselSection | null>(() => {
+  protected readonly organizerEventFeedbackActiveCarouselSection = computed<EventFeedbackOrganizerCarouselSectionData | null>(() => {
     const sections = this.organizerEventFeedbackCarouselSections();
     if (sections.length === 0) {
       return null;
@@ -157,14 +172,17 @@ export class EventFeedbackPopupComponent {
       state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
-    emptyDescription: (query) => EventFeedbackPageConverter.emptyDescription(query.filters?.filter ?? 'pending'),
+    emptyDescription: (query) => EventFeedbackListPresentationConverter.convert({
+      result: this.eventFeedbackPageResult(),
+      filter: query.filters?.filter ?? 'pending'
+    }).emptyDescription,
     showStickyHeader: true,
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
-    groupBy: (item, query) => EventFeedbackPageConverter.groupLabel(
-      this.eventFeedbackPageResult(),
-      item.id,
-      query.filters?.filter ?? this.eventFeedbackListFilter()
-    ),
+    groupBy: (item, query) => EventFeedbackListPresentationConverter.convert({
+      result: this.eventFeedbackPageResult(),
+      itemId: item.id,
+      filter: query.filters?.filter ?? this.eventFeedbackListFilter()
+    }).groupLabel,
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'mandatory',
@@ -177,22 +195,6 @@ export class EventFeedbackPopupComponent {
     },
     trackBy: (_index, item) => item.id
   };
-
-  protected eventFeedbackFilterMenuTrigger() {
-    return EventFeedbackPageConverter.filterMenuTrigger(
-      this.eventFeedbackPageResult(),
-      this.eventFeedbackListFilter(),
-      this.eventFeedbackFilterCountDelta()
-    );
-  }
-
-  protected eventFeedbackFilterMenuItems() {
-    return EventFeedbackPageConverter.filterMenuItems(
-      this.eventFeedbackPageResult(),
-      this.eventFeedbackListFilter(),
-      this.eventFeedbackFilterCountDelta()
-    );
-  }
 
   protected onEventFeedbackMenuSelect(event: AppMenuItemSelectEvent<string, EventFeedbackMenuContext>): void {
     if (event.context?.menu !== 'filter') {

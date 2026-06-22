@@ -6,49 +6,12 @@ import type {
   EventFeedbackDeckResultDto
 } from '../../core/contracts/activity.interface';
 import type { ImageCardData, InfoCardData } from '../components/card';
+import type { UiConverter } from './converter.types';
 
 export class EventFeedbackDeckConverter {
   static convert(result: EventFeedbackDeckResultDto): AppTypes.EventFeedbackCard[] {
     return (result.cards ?? []).map(card => this.convertCard(card));
   }
-
-  static infoCard(card: AppTypes.EventFeedbackCard): InfoCardData {
-    const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
-    return {
-      id: card.id,
-      title: card.heading,
-      imageUrl: card.imageUrl,
-      metaRows: [card.subheading],
-      metaRowsLimit: 1,
-      detailRows,
-      leadingIcon: {
-        icon: card.icon
-      },
-      clickable: false
-    };
-  }
-
-  static imageCard(card: AppTypes.EventFeedbackCard): ImageCardData {
-    const isEventCard = card.kind === 'event';
-    return {
-      id: card.id,
-      title: isEventCard ? card.heading : card.identityTitle || card.heading,
-      subtitle: isEventCard ? card.subheading : card.identitySubtitle || card.subheading,
-      detail: isEventCard ? card.identityTitle : null,
-      imageUrl: card.imageUrl,
-      layout: 'overlay',
-      toneClass: card.toneClass,
-      placeholderIcon: card.icon,
-      placeholderLabel: isEventCard ? 'Event' : 'Member',
-      statusChip: {
-        icon: card.icon,
-        tone: isEventCard ? 'info' : 'success',
-        palette: isEventCard ? 'blue' : 'green',
-        ariaLabel: isEventCard ? 'Event feedback' : 'Member feedback'
-      }
-    };
-  }
-
   private static convertCard(source: EventFeedbackCardSourceDto): AppTypes.EventFeedbackCard {
     const eventId = source.eventId.trim();
     const eventTitle = source.eventTitle.trim() || 'Event';
@@ -161,3 +124,62 @@ export class EventFeedbackDeckConverter {
     return 'person';
   }
 }
+
+export class EventFeedbackDeckInfoCardConverter {
+  static convert(card: AppTypes.EventFeedbackCard): InfoCardData {
+    const detailRows = [card.identityTitle].filter((row): row is string => !!row?.trim());
+    return {
+      id: card.id,
+      title: card.heading,
+      imageUrl: card.imageUrl,
+      metaRows: [card.subheading],
+      metaRowsLimit: 1,
+      detailRows,
+      leadingIcon: {
+        icon: card.icon
+      },
+      clickable: false
+    };
+  }
+}
+
+export class EventFeedbackDeckImageCardConverter {
+  static convert(card: AppTypes.EventFeedbackCard): ImageCardData {
+    const isEventCard = card.kind === 'event';
+    return {
+      id: card.id,
+      title: isEventCard ? card.heading : card.identityTitle || card.heading,
+      subtitle: isEventCard ? card.subheading : card.identitySubtitle || card.subheading,
+      detail: isEventCard ? card.identityTitle : null,
+      imageUrl: card.imageUrl,
+      layout: 'overlay',
+      toneClass: card.toneClass,
+      placeholderIcon: card.icon,
+      placeholderLabel: isEventCard ? 'Event' : 'Member',
+      statusChip: {
+        icon: card.icon,
+        tone: isEventCard ? 'info' : 'success',
+        palette: isEventCard ? 'blue' : 'green',
+        ariaLabel: isEventCard ? 'Event feedback' : 'Member feedback'
+      }
+    };
+  }
+}
+
+export const eventFeedbackDeckConverter =
+  EventFeedbackDeckConverter satisfies UiConverter<
+    EventFeedbackDeckResultDto,
+    AppTypes.EventFeedbackCard[]
+  >;
+
+export const eventFeedbackDeckInfoCardConverter =
+  EventFeedbackDeckInfoCardConverter satisfies UiConverter<
+    AppTypes.EventFeedbackCard,
+    InfoCardData
+  >;
+
+export const eventFeedbackDeckImageCardConverter =
+  EventFeedbackDeckImageCardConverter satisfies UiConverter<
+    AppTypes.EventFeedbackCard,
+    ImageCardData
+  >;

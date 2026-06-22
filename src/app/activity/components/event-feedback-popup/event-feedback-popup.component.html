@@ -8,11 +8,12 @@
           <div class="popup-title">
             <h2>Event Feedback</h2>
           </div>
+          @let filterMenu = eventFeedbackFilterMenu();
           <app-menu
             class="event-explore-order-picker event-feedback-filter-picker"
             kind="select"
-            [trigger]="eventFeedbackFilterMenuTrigger()"
-            [items]="eventFeedbackFilterMenuItems()"
+            [trigger]="filterMenu.trigger"
+            [items]="filterMenu.items"
             (itemSelect)="onEventFeedbackMenuSelect($event)"
           ></app-menu>
           <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">

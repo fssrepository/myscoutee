@@ -2,6 +2,7 @@ import { PricingBuilder } from '../../core/base/builders';
 import type { ActivityEventDTO } from '../../core/contracts/activity.interface';
 import type { SubEventFormItem } from '../../core/contracts/event.interface';
 import type { EventForm, EventFormSubEventItem } from '../models';
+import type { UiConverter } from './converter.types';
 
 export class ActivityEventEditorFormConverter {
   static convert(dto: ActivityEventDTO): EventForm {
@@ -55,3 +56,6 @@ export class ActivityEventEditorFormConverter {
     }));
   }
 }
+
+export const activityEventEditorFormConverter =
+  ActivityEventEditorFormConverter satisfies UiConverter<ActivityEventDTO, EventForm>;

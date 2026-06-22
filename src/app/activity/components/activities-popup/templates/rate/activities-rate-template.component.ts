@@ -20,7 +20,10 @@ import {
   type SmartListItemMenuRequest,
   type SingleCardData
 } from '../../../../../shared/ui';
-import { ActivityRateMenuConverter } from '../../../../../shared/ui/converters';
+import {
+  ActivityRateMenuConverter,
+  ActivityRateMenuSelectionConverter
+} from '../../../../../shared/ui/converters';
 import { ActivitiesRateEditorPresenter } from './activities-rate-editor.presenter';
 import {
   isActivitiesRateBlinking,
@@ -410,13 +413,11 @@ export class ActivitiesRatesController {
   }
 
   handleMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): boolean {
-    if (!ActivityRateMenuConverter.isActivityRateMenuEvent(event)) {
+    const selection = ActivityRateMenuSelectionConverter.convert(event);
+    if (!selection) {
       return false;
     }
-    const selection = ActivityRateMenuConverter.selectionFromEvent(event);
-    if (selection) {
-      this.setOwnRatingForRowId(selection.rowId, selection.value);
-    }
+    this.setOwnRatingForRowId(selection.rowId, selection.value);
     return true;
   }
 

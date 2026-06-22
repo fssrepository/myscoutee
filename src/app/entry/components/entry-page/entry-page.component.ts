@@ -37,7 +37,7 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import { HelpCenterRevisionDocumentViewerConverter } from '../../../shared/ui/converters';
+import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
@@ -280,7 +280,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   protected entryPrivacyDocumentConfig(): DocumentViewerConfig {
     const revision = this.privacyPolicy.activeRevision();
-    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+    return HelpCenterRevisionDocumentViewerConfigConverter.convert({
       revision,
       open: this.showEntryConsentPopup,
       shell: 'popup',
@@ -308,7 +308,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   protected entryTermsDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeTermsRevision();
-    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+    return HelpCenterRevisionDocumentViewerConfigConverter.convert({
       revision,
       open: this.showEntryTermsPopup,
       shell: 'popup',

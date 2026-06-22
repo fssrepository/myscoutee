@@ -2,6 +2,7 @@ import { EventEditorBuilder, PricingBuilder } from '../../core/base/builders';
 import { EventEditorConverter } from '../../core/base/converters';
 import type * as ContractTypes from '../../core/contracts';
 import type { EventForm } from '../models';
+import type { UiConverter } from './converter.types';
 
 export interface ActivityEventSaveConverterInput {
   form: EventForm;
@@ -81,3 +82,9 @@ export class ActivityEventSaveConverter {
     };
   }
 }
+
+export const activityEventSaveConverter =
+  ActivityEventSaveConverter satisfies UiConverter<
+    ActivityEventSaveConverterInput,
+    ContractTypes.ActivityEventSaveDTO
+  >;

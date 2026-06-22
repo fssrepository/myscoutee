@@ -6,6 +6,7 @@ import {
   CARD_MENU_ACTIONS,
   type CardMenuAction
 } from '../components/card';
+import type { UiConverter } from './converter.types';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   menu: 'activity-event-card';
@@ -31,7 +32,7 @@ export interface ActivityEventInfoCardMenuConverterOptions {
 }
 
 export class ActivityEventInfoCardMenuConverter {
-  static readonly availableActions: readonly string[] = [
+  private static readonly availableActions: readonly string[] = [
     'restore',
     'takeOver',
     'publish',
@@ -242,3 +243,10 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 }
+
+export const activityEventInfoCardMenuConverter =
+  ActivityEventInfoCardMenuConverter satisfies UiConverter<
+    ActivityEventInfoCardMenuSubject | null | undefined,
+    readonly AppMenuItem<string, ActivityEventInfoCardMenuContext>[],
+    ActivityEventInfoCardMenuConverterOptions | undefined
+  >;

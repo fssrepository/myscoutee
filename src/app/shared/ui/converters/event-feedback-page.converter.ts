@@ -3,10 +3,12 @@ import { APP_STATIC_DATA } from '../../app-static-data';
 import type { EventFeedbackFilterCountDelta, EventFeedbackPageResult } from '../../core/base';
 import type { EventFeedbackListFilter } from '../../core/common/constants';
 import type {
+  EventFeedbackPageItemDto,
   EventFeedbackReceivedEntryDto,
   SubmittedEventFeedbackAnswer
 } from '../../core/contracts/activity.interface';
 import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/menu';
+import type { UiConverter, UiListConverter } from './converter.types';
 
 export interface EventFeedbackFilterOption {
   key: EventFeedbackListFilter;
@@ -19,91 +21,34 @@ export interface EventFeedbackFilterMenuContext {
   filter: EventFeedbackListFilter;
 }
 
-export interface EventFeedbackOrganizerItem {
-  eventId: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  imageUrl: string;
-  startAtMs: number | null;
-  responseCount: number;
-  noteCount: number;
-  latestActivityAtMs: number | null;
+export interface EventFeedbackFilterMenuInput {
+  result: EventFeedbackPageResult | null | undefined;
+  activeFilter: EventFeedbackListFilter;
+  delta?: EventFeedbackFilterCountDelta;
 }
 
-export interface EventFeedbackOrganizerStatItem {
-  key: string;
-  label: string;
-  icon: string;
-  count: number;
+export interface EventFeedbackFilterMenuModel {
+  trigger: AppMenuTrigger;
+  items: readonly AppMenuItem<string, EventFeedbackFilterMenuContext>[];
 }
 
-export interface EventFeedbackOrganizerCarouselSection {
-  key: string;
-  label: string;
-  icon: string;
-  subtitle: string;
-  toneClass: string;
-  topLabel: string;
-  topCount: number;
-  optionCount: number;
-  responseCount: number;
-  progressPercent: number;
-  items: EventFeedbackOrganizerStatItem[];
-}
+export class EventFeedbackFilterMenuConverter {
+  private static readonly filterOptions: readonly EventFeedbackFilterOption[] = APP_STATIC_DATA.eventFeedbackListFilters;
 
-export interface EventFeedbackOrganizerMessageItem {
-  id: string;
-  viewerUserId: string;
-  viewerName: string;
-  viewerInitials: string;
-  viewerGender: string;
-  viewerImageUrl: string;
-  timestampIso: string;
-  dayKey: string;
-  dayLabel: string;
-  timeLabel: string;
-  organizerNote: string;
-  overallLabel: string | null;
-  improveLabel: string | null;
-  traitLabels: string[];
-  responseCount: number;
-}
-
-export interface EventFeedbackOrganizerMessageGroup {
-  dayKey: string;
-  label: string;
-  items: EventFeedbackOrganizerMessageItem[];
-}
-
-export class EventFeedbackPageConverter {
-  static readonly filterOptions: readonly EventFeedbackFilterOption[] = APP_STATIC_DATA.eventFeedbackListFilters;
-
-  static filterLabel(filter: EventFeedbackListFilter): string {
-    return this.filterOptions.find(item => item.key === filter)?.label ?? 'Pending';
+  static convert(input: EventFeedbackFilterMenuInput): EventFeedbackFilterMenuModel {
+    const result = input.result ?? null;
+    const activeFilter = input.activeFilter;
+    const delta = input.delta ?? {};
+    return {
+      trigger: this.trigger(result, activeFilter, delta),
+      items: this.items(result, activeFilter, delta)
+    };
   }
 
-  static filterIcon(filter: EventFeedbackListFilter): string {
-    return this.filterOptions.find(item => item.key === filter)?.icon ?? 'schedule';
-  }
-
-  static filterPalette(filter: EventFeedbackListFilter): AppMenuPalette {
-    switch (filter) {
-      case 'feedbacked':
-        return 'green';
-      case 'removed':
-        return 'slate';
-      case 'own-events':
-        return 'violet';
-      default:
-        return 'amber';
-    }
-  }
-
-  static filterMenuTrigger(
-    result: EventFeedbackPageResult | null | undefined,
+  private static trigger(
+    result: EventFeedbackPageResult | null,
     filter: EventFeedbackListFilter,
-    delta: EventFeedbackFilterCountDelta = {}
+    delta: EventFeedbackFilterCountDelta
   ): AppMenuTrigger {
     const count = result?.filterCountWithDelta(filter, delta) ?? 0;
     return {
@@ -116,10 +61,10 @@ export class EventFeedbackPageConverter {
     };
   }
 
-  static filterMenuItems(
-    result: EventFeedbackPageResult | null | undefined,
+  private static items(
+    result: EventFeedbackPageResult | null,
     activeFilter: EventFeedbackListFilter,
-    delta: EventFeedbackFilterCountDelta = {}
+    delta: EventFeedbackFilterCountDelta
   ): readonly AppMenuItem<string, EventFeedbackFilterMenuContext>[] {
     return this.filterOptions.map(option => {
       const count = result?.filterCountWithDelta(option.key, delta) ?? 0;
@@ -138,7 +83,54 @@ export class EventFeedbackPageConverter {
     });
   }
 
-  static emptyDescription(filter: EventFeedbackListFilter): string {
+  private static filterLabel(filter: EventFeedbackListFilter): string {
+    return this.filterOptions.find(item => item.key === filter)?.label ?? 'Pending';
+  }
+
+  private static filterIcon(filter: EventFeedbackListFilter): string {
+    return this.filterOptions.find(item => item.key === filter)?.icon ?? 'schedule';
+  }
+
+  private static filterPalette(filter: EventFeedbackListFilter): AppMenuPalette {
+    switch (filter) {
+      case 'feedbacked':
+        return 'green';
+      case 'removed':
+        return 'slate';
+      case 'own-events':
+        return 'violet';
+      default:
+        return 'amber';
+    }
+  }
+}
+
+export const eventFeedbackFilterMenuConverter =
+  EventFeedbackFilterMenuConverter satisfies UiConverter<
+    EventFeedbackFilterMenuInput,
+    EventFeedbackFilterMenuModel
+  >;
+
+export interface EventFeedbackListPresentationInput {
+  result: EventFeedbackPageResult | null | undefined;
+  filter: EventFeedbackListFilter;
+  itemId?: string | null;
+}
+
+export interface EventFeedbackListPresentationModel {
+  emptyDescription: string;
+  groupLabel: string;
+}
+
+export class EventFeedbackListPresentationConverter {
+  static convert(input: EventFeedbackListPresentationInput): EventFeedbackListPresentationModel {
+    return {
+      emptyDescription: this.emptyDescription(input.filter),
+      groupLabel: this.groupLabel(input.result ?? null, input.itemId ?? '', input.filter)
+    };
+  }
+
+  private static emptyDescription(filter: EventFeedbackListFilter): string {
     switch (filter) {
       case 'own-events':
         return 'No own events yet. Hosted events with received feedback will show here.';
@@ -152,8 +144,8 @@ export class EventFeedbackPageConverter {
     }
   }
 
-  static groupLabel(
-    result: EventFeedbackPageResult | null | undefined,
+  private static groupLabel(
+    result: EventFeedbackPageResult | null,
     itemId: string,
     filter: EventFeedbackListFilter
   ): string {
@@ -169,77 +161,105 @@ export class EventFeedbackPageConverter {
       year: 'numeric'
     });
   }
+}
 
-  static organizerItemById(
-    result: EventFeedbackPageResult | null | undefined,
-    eventId: string
-  ): EventFeedbackOrganizerItem | null {
-    const normalizedEventId = eventId.trim();
-    if (!normalizedEventId) {
-      return null;
-    }
-    return this.organizerItems(result).find(item => item.eventId === normalizedEventId) ?? null;
+export const eventFeedbackListPresentationConverter =
+  EventFeedbackListPresentationConverter satisfies UiConverter<
+    EventFeedbackListPresentationInput,
+    EventFeedbackListPresentationModel
+  >;
+
+export interface EventFeedbackOrganizerItemData {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  imageUrl: string;
+  startAtMs: number | null;
+  responseCount: number;
+  noteCount: number;
+  latestActivityAtMs: number | null;
+}
+
+export interface EventFeedbackOrganizerItemConverterOptions {
+  result: EventFeedbackPageResult;
+}
+
+export class EventFeedbackOrganizerItemConverter {
+  static convert(
+    item: EventFeedbackPageItemDto,
+    options: EventFeedbackOrganizerItemConverterOptions
+  ): EventFeedbackOrganizerItemData {
+    const eventId = item.eventId?.trim() ?? '';
+    const entries = options.result.receivedEntries(eventId);
+    return {
+      eventId,
+      title: item.title,
+      subtitle: item.subtitle,
+      timeframe: item.timeframe,
+      imageUrl: item.imageUrl,
+      startAtMs: this.numberOrNull(item.startAtMs),
+      responseCount: entries.length || item.totalCards,
+      noteCount: entries.filter(entry => entry.organizerNote.trim().length > 0).length,
+      latestActivityAtMs: options.result.entriesLatestAtMs(entries) ?? item.feedbackedAtMs
+    };
   }
 
-  static organizerItems(result: EventFeedbackPageResult | null | undefined): EventFeedbackOrganizerItem[] {
-    return (result?.organizerItems ?? [])
-      .map(item => {
-        const eventId = item.eventId?.trim() ?? '';
-        const entries = result?.receivedEntries(eventId) ?? [];
-        return {
-          eventId,
-          title: item.title,
-          subtitle: item.subtitle,
-          timeframe: item.timeframe,
-          imageUrl: item.imageUrl,
-          startAtMs: this.numberOrNull(item.startAtMs),
-          responseCount: entries.length || item.totalCards,
-          noteCount: entries.filter(entry => entry.organizerNote.trim().length > 0).length,
-          latestActivityAtMs: result?.entriesLatestAtMs(entries) ?? item.feedbackedAtMs
-        };
-      })
+  static convertList(
+    items: readonly EventFeedbackPageItemDto[],
+    options: EventFeedbackOrganizerItemConverterOptions
+  ): EventFeedbackOrganizerItemData[] {
+    return items
+      .map(item => this.convert(item, options))
       .filter(item => item.eventId.length > 0 && item.responseCount > 0);
   }
 
-  static organizerCarouselSections(
-    result: EventFeedbackPageResult | null | undefined,
-    eventId: string
-  ): EventFeedbackOrganizerCarouselSection[] {
-    const entries = result?.organizerEntries(eventId) ?? [];
+  private static numberOrNull(value: number | null | undefined): number | null {
+    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
+  }
+}
+
+export const eventFeedbackOrganizerItemConverter =
+  EventFeedbackOrganizerItemConverter satisfies UiListConverter<
+    EventFeedbackPageItemDto,
+    EventFeedbackOrganizerItemData,
+    EventFeedbackOrganizerItemConverterOptions
+  >;
+
+export interface EventFeedbackOrganizerStatItemData {
+  key: string;
+  label: string;
+  icon: string;
+  count: number;
+}
+
+export interface EventFeedbackOrganizerCarouselSectionData {
+  key: string;
+  label: string;
+  icon: string;
+  subtitle: string;
+  toneClass: string;
+  topLabel: string;
+  topCount: number;
+  optionCount: number;
+  responseCount: number;
+  progressPercent: number;
+  items: EventFeedbackOrganizerStatItemData[];
+}
+
+export interface EventFeedbackOrganizerEventInput {
+  result: EventFeedbackPageResult | null | undefined;
+  eventId: string;
+}
+
+export class EventFeedbackOrganizerCarouselSectionConverter {
+  static convert(input: EventFeedbackOrganizerEventInput): EventFeedbackOrganizerCarouselSectionData[] {
+    const entries = input.result?.organizerEntries(input.eventId) ?? [];
     const totalEntries = entries.length;
-    const buildSection = (
-      key: string,
-      label: string,
-      icon: string,
-      subtitle: string,
-      toneClass: string,
-      items: readonly EventFeedbackOrganizerStatItem[]
-    ): EventFeedbackOrganizerCarouselSection | null => {
-      if (items.length === 0) {
-        return null;
-      }
-      const topItem = items[0];
-      const topCount = Math.max(0, topItem?.count ?? 0);
-      const progressPercent = totalEntries > 0
-        ? Math.max(8, Math.min(100, Math.round((topCount / totalEntries) * 100)))
-        : 0;
-      return {
-        key,
-        label,
-        icon,
-        subtitle,
-        toneClass,
-        topLabel: topItem?.label ?? label,
-        topCount,
-        optionCount: items.length,
-        responseCount: totalEntries,
-        progressPercent,
-        items: items.map(item => ({ ...item }))
-      };
-    };
 
     return [
-      buildSection(
+      this.buildSection(
+        totalEntries,
         'overall',
         'Overall',
         'sentiment_satisfied',
@@ -247,7 +267,8 @@ export class EventFeedbackPageConverter {
         'event-feedback-organizer-carousel-card-tone-overall',
         this.organizerOverallStats(entries)
       ),
-      buildSection(
+      this.buildSection(
+        totalEntries,
         'improve',
         'Improve Next',
         'campaign',
@@ -255,7 +276,8 @@ export class EventFeedbackPageConverter {
         'event-feedback-organizer-carousel-card-tone-improve',
         this.organizerImproveStats(entries)
       ),
-      buildSection(
+      this.buildSection(
+        totalEntries,
         'traits',
         'Host Traits',
         'groups',
@@ -263,15 +285,149 @@ export class EventFeedbackPageConverter {
         'event-feedback-organizer-carousel-card-tone-traits',
         this.organizerTraitStats(entries)
       )
-    ].filter((section): section is EventFeedbackOrganizerCarouselSection => section !== null);
+    ].filter((section): section is EventFeedbackOrganizerCarouselSectionData => section !== null);
   }
 
-  static organizerMessageGroups(
-    result: EventFeedbackPageResult | null | undefined,
-    eventId: string
-  ): EventFeedbackOrganizerMessageGroup[] {
-    const groups = new Map<string, EventFeedbackOrganizerMessageGroup>();
-    for (const entry of result?.organizerEntries(eventId) ?? []) {
+  private static buildSection(
+    totalEntries: number,
+    key: string,
+    label: string,
+    icon: string,
+    subtitle: string,
+    toneClass: string,
+    items: readonly EventFeedbackOrganizerStatItemData[]
+  ): EventFeedbackOrganizerCarouselSectionData | null {
+    if (items.length === 0) {
+      return null;
+    }
+    const topItem = items[0];
+    const topCount = Math.max(0, topItem?.count ?? 0);
+    const progressPercent = totalEntries > 0
+      ? Math.max(8, Math.min(100, Math.round((topCount / totalEntries) * 100)))
+      : 0;
+    return {
+      key,
+      label,
+      icon,
+      subtitle,
+      toneClass,
+      topLabel: topItem?.label ?? label,
+      topCount,
+      optionCount: items.length,
+      responseCount: totalEntries,
+      progressPercent,
+      items: items.map(item => ({ ...item }))
+    };
+  }
+
+  private static organizerOverallStats(
+    entries: readonly EventFeedbackReceivedEntryDto[]
+  ): EventFeedbackOrganizerStatItemData[] {
+    return this.optionStats(
+      APP_STATIC_DATA.eventFeedbackEventOverallOptions,
+      entries.map(entry => this.entryEventAnswer(entry)?.primaryValue ?? '')
+    );
+  }
+
+  private static organizerImproveStats(
+    entries: readonly EventFeedbackReceivedEntryDto[]
+  ): EventFeedbackOrganizerStatItemData[] {
+    return this.optionStats(
+      APP_STATIC_DATA.eventFeedbackHostImproveOptions,
+      entries.map(entry => this.entryEventAnswer(entry)?.secondaryValue ?? '')
+    );
+  }
+
+  private static organizerTraitStats(
+    entries: readonly EventFeedbackReceivedEntryDto[]
+  ): EventFeedbackOrganizerStatItemData[] {
+    const countsByTraitId = new Map<string, number>();
+    for (const entry of entries) {
+      const answer = this.entryEventAnswer(entry);
+      if (!answer) {
+        continue;
+      }
+      for (const traitId of answer.personalityTraitIds ?? []) {
+        const normalizedTraitId = traitId.trim();
+        if (!normalizedTraitId) {
+          continue;
+        }
+        countsByTraitId.set(normalizedTraitId, (countsByTraitId.get(normalizedTraitId) ?? 0) + 1);
+      }
+    }
+    return APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions
+      .map(option => ({
+        key: option.id,
+        label: option.label,
+        icon: option.icon,
+        count: countsByTraitId.get(option.id) ?? 0
+      }))
+      .filter(item => item.count > 0)
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+  }
+
+  private static optionStats(
+    options: readonly { value: string; label: string; icon: string }[],
+    values: readonly string[]
+  ): EventFeedbackOrganizerStatItemData[] {
+    const countsByValue = new Map<string, number>();
+    for (const value of values) {
+      const normalizedValue = value.trim();
+      if (!normalizedValue) {
+        continue;
+      }
+      countsByValue.set(normalizedValue, (countsByValue.get(normalizedValue) ?? 0) + 1);
+    }
+    return options
+      .map(option => ({
+        key: option.value,
+        label: option.label,
+        icon: option.icon,
+        count: countsByValue.get(option.value) ?? 0
+      }))
+      .filter(item => item.count > 0)
+      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
+  }
+
+  private static entryEventAnswer(entry: EventFeedbackReceivedEntryDto): SubmittedEventFeedbackAnswer | null {
+    return (entry.answers ?? []).find(answer => answer.kind === 'event') ?? null;
+  }
+}
+
+export const eventFeedbackOrganizerCarouselSectionConverter =
+  EventFeedbackOrganizerCarouselSectionConverter satisfies UiConverter<
+    EventFeedbackOrganizerEventInput,
+    EventFeedbackOrganizerCarouselSectionData[]
+  >;
+
+export interface EventFeedbackOrganizerMessageItemData {
+  id: string;
+  viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: string;
+  viewerImageUrl: string;
+  timestampIso: string;
+  dayKey: string;
+  dayLabel: string;
+  timeLabel: string;
+  organizerNote: string;
+  overallLabel: string | null;
+  improveLabel: string | null;
+  traitLabels: string[];
+  responseCount: number;
+}
+
+export interface EventFeedbackOrganizerMessageGroupData {
+  dayKey: string;
+  label: string;
+  items: EventFeedbackOrganizerMessageItemData[];
+}
+
+export class EventFeedbackOrganizerMessageGroupConverter {
+  static convert(input: EventFeedbackOrganizerEventInput): EventFeedbackOrganizerMessageGroupData[] {
+    const groups = new Map<string, EventFeedbackOrganizerMessageGroupData>();
+    for (const entry of input.result?.organizerEntries(input.eventId) ?? []) {
       const timestampIso = this.entryTimestampIso(entry);
       const timestampDate = timestampIso ? new Date(timestampIso) : null;
       const hasValidTimestamp = Boolean(timestampDate) && !Number.isNaN(timestampDate!.getTime());
@@ -331,75 +487,6 @@ export class EventFeedbackPageConverter {
       });
   }
 
-  private static organizerOverallStats(
-    entries: readonly EventFeedbackReceivedEntryDto[]
-  ): EventFeedbackOrganizerStatItem[] {
-    return this.optionStats(
-      APP_STATIC_DATA.eventFeedbackEventOverallOptions,
-      entries.map(entry => this.entryEventAnswer(entry)?.primaryValue ?? '')
-    );
-  }
-
-  private static organizerImproveStats(
-    entries: readonly EventFeedbackReceivedEntryDto[]
-  ): EventFeedbackOrganizerStatItem[] {
-    return this.optionStats(
-      APP_STATIC_DATA.eventFeedbackHostImproveOptions,
-      entries.map(entry => this.entryEventAnswer(entry)?.secondaryValue ?? '')
-    );
-  }
-
-  private static organizerTraitStats(
-    entries: readonly EventFeedbackReceivedEntryDto[]
-  ): EventFeedbackOrganizerStatItem[] {
-    const countsByTraitId = new Map<string, number>();
-    for (const entry of entries) {
-      const answer = this.entryEventAnswer(entry);
-      if (!answer) {
-        continue;
-      }
-      for (const traitId of answer.personalityTraitIds ?? []) {
-        const normalizedTraitId = traitId.trim();
-        if (!normalizedTraitId) {
-          continue;
-        }
-        countsByTraitId.set(normalizedTraitId, (countsByTraitId.get(normalizedTraitId) ?? 0) + 1);
-      }
-    }
-    return APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions
-      .map(option => ({
-        key: option.id,
-        label: option.label,
-        icon: option.icon,
-        count: countsByTraitId.get(option.id) ?? 0
-      }))
-      .filter(item => item.count > 0)
-      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
-  }
-
-  private static optionStats(
-    options: readonly { value: string; label: string; icon: string }[],
-    values: readonly string[]
-  ): EventFeedbackOrganizerStatItem[] {
-    const countsByValue = new Map<string, number>();
-    for (const value of values) {
-      const normalizedValue = value.trim();
-      if (!normalizedValue) {
-        continue;
-      }
-      countsByValue.set(normalizedValue, (countsByValue.get(normalizedValue) ?? 0) + 1);
-    }
-    return options
-      .map(option => ({
-        key: option.value,
-        label: option.label,
-        icon: option.icon,
-        count: countsByValue.get(option.value) ?? 0
-      }))
-      .filter(item => item.count > 0)
-      .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
-  }
-
   private static optionLabel(
     value: string,
     options: readonly { value: string; label: string }[]
@@ -432,8 +519,10 @@ export class EventFeedbackPageConverter {
   private static entryEventAnswer(entry: EventFeedbackReceivedEntryDto): SubmittedEventFeedbackAnswer | null {
     return (entry.answers ?? []).find(answer => answer.kind === 'event') ?? null;
   }
-
-  private static numberOrNull(value: number | null | undefined): number | null {
-    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
-  }
 }
+
+export const eventFeedbackOrganizerMessageGroupConverter =
+  EventFeedbackOrganizerMessageGroupConverter satisfies UiConverter<
+    EventFeedbackOrganizerEventInput,
+    EventFeedbackOrganizerMessageGroupData[]
+  >;

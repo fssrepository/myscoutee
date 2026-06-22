@@ -11,7 +11,11 @@ import type {
   AppMenuPalette
 } from '../components/menu';
 import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
-import { EventFeedbackDeckConverter } from './event-feedback-deck.converter';
+import {
+  EventFeedbackDeckConverter,
+  EventFeedbackDeckImageCardConverter,
+  EventFeedbackDeckInfoCardConverter
+} from './event-feedback-deck.converter';
 
 export interface EventFeedbackFormFlowConverterOptions {
   eventTitle?: string | null;
@@ -206,8 +210,8 @@ export class EventFeedbackFormFlowConverter {
         header: {
           title: card.kind === 'event' ? card.heading : card.identityTitle || card.heading,
           subtitle: card.kind === 'event' ? card.subheading : card.identitySubtitle || card.subheading,
-          imageCard: card.kind === 'event' ? null : EventFeedbackDeckConverter.imageCard(card),
-          infoCard: card.kind === 'event' ? EventFeedbackDeckConverter.infoCard(card) : null,
+          imageCard: card.kind === 'event' ? null : EventFeedbackDeckImageCardConverter.convert(card),
+          infoCard: card.kind === 'event' ? EventFeedbackDeckInfoCardConverter.convert(card) : null,
           imageUrl: card.imageUrl,
           icon: card.icon
         },

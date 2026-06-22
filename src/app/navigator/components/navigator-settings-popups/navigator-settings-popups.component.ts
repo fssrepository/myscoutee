@@ -13,7 +13,10 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import { HelpCenterRevisionDocumentViewerConverter } from '../../../shared/ui/converters';
+import {
+  HelpCenterHelpDocumentViewerHeaderPaletteConverter,
+  HelpCenterRevisionDocumentViewerConfigConverter
+} from '../../../shared/ui/converters';
 import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
@@ -90,7 +93,7 @@ export class NavigatorSettingsPopupsComponent {
 
   protected privacyDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activePrivacyRevision();
-    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+    return HelpCenterRevisionDocumentViewerConfigConverter.convert({
       revision,
       open: this.activePopup() === 'privacy',
       shell: 'popup',
@@ -117,7 +120,7 @@ export class NavigatorSettingsPopupsComponent {
 
   protected termsDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeTermsRevision();
-    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+    return HelpCenterRevisionDocumentViewerConfigConverter.convert({
       revision,
       open: this.activePopup() === 'terms',
       shell: 'popup',
@@ -139,7 +142,7 @@ export class NavigatorSettingsPopupsComponent {
 
   protected helpDocumentConfig(): DocumentViewerConfig {
     const revision = this.helpCenter.activeRevision();
-    return HelpCenterRevisionDocumentViewerConverter.convertRevision({
+    return HelpCenterRevisionDocumentViewerConfigConverter.convert({
       revision,
       open: this.activePopup() === 'help',
       shell: 'popup',
@@ -148,7 +151,7 @@ export class NavigatorSettingsPopupsComponent {
       closeAriaLabel: 'Close help popup',
       titleFallback: 'Help',
       versionLabel: this.helpCenter.activeVersionLabel(),
-      headerPalette: HelpCenterRevisionDocumentViewerConverter.helpHeaderPalette(revision?.headerColor),
+      headerPalette: HelpCenterHelpDocumentViewerHeaderPaletteConverter.convert(revision?.headerColor),
       loading: !revision,
       loadingLabel: 'Loading help content',
       emptyState: {
