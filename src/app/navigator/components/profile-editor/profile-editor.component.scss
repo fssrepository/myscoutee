@@ -356,6 +356,18 @@
   -webkit-overflow-scrolling: touch;
 }
 
+.profile-editor-flow-area {
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.profile-editor-flow {
+  display: block;
+  min-height: 0;
+  height: 100%;
+}
+
 .avatar-stack,
 .avatar-stack-editor {
   position: relative;

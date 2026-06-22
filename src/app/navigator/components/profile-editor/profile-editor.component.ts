@@ -2,12 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type {
   ExperienceImportProgressState,
@@ -22,12 +17,13 @@ import {
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UserExperiencesService,
   UsersService,
+  type ProfileOnboardingDraft,
+  type ProfileOnboardingForm,
   type UserDto
 } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
 import {
   EditableImageCarouselComponent,
-  I18nPipe,
   ProfileExperienceManagerComponent,
   type ProfileExperienceEntriesChange
 } from '../../../shared/ui';
@@ -35,7 +31,6 @@ import {
   AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
-  AppMenuTriggerComponent,
   buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -43,6 +38,16 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
+import {
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowModel
+} from '../../../shared/ui/components/form-flow';
+import {
+  ProfileOnboardingDraftConverter,
+  ProfileOnboardingFormFlowConverter,
+  type ProfileOnboardingFormFlowMenuContext
+} from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
@@ -98,22 +103,15 @@ interface ExperienceImportDialogState {
     CommonModule,
     FormsModule,
     MatButtonModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
     AppMenuComponent,
     AppMenuOutletComponent,
-    AppMenuTriggerComponent,
+    FormFlowComponent,
     EditableImageCarouselComponent,
-    ProfileExperienceManagerComponent,
-    I18nPipe
+    ProfileExperienceManagerComponent
   ],
   providers: [
-    AppMenuDispatcher,
-    { provide: DateAdapter, useClass: AppCalendarDateAdapter },
-    { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateOnly }
+    AppMenuDispatcher
   ],
   templateUrl: './profile-editor.component.html',
   styleUrl: './profile-editor.component.scss'
@@ -138,6 +136,8 @@ export class ProfileEditorComponent {
   private experienceEntriesLoadToken = 0;
   private experienceEntriesSaveToken = 0;
   private experienceImportToken = 0;
+  private profileEditorFlowModelCacheKey = '';
+  private profileEditorFlowModelCache: FormFlowModel | null = null;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
   protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
@@ -159,6 +159,7 @@ export class ProfileEditorComponent {
   protected panel: ProfileEditorPanel = 'profile';
   protected profileUser: UserDto | null = null;
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
+  protected profileEditorForm: ProfileOnboardingForm = this.createEmptyProfileEditorForm();
   protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected privacyFabJustSelectedKey: string | null = null;
@@ -284,6 +285,41 @@ export class ProfileEditorComponent {
       && (this.experienceImportDialog.draft?.importedIds.length ?? 0) > 0;
   }
 
+  protected profileEditorFlowModel(): FormFlowModel {
+    const cacheKey = this.profileEditorFlowModelKey();
+    if (this.profileEditorFlowModelCache && this.profileEditorFlowModelCacheKey === cacheKey) {
+      return this.profileEditorFlowModelCache;
+    }
+    this.profileEditorFlowModelCacheKey = cacheKey;
+    this.profileEditorFlowModelCache = ProfileOnboardingFormFlowConverter.convert(
+      this.profileEditorDraft(this.profileEditorForm),
+      {
+        title: 'Profile',
+        subtitle: '',
+        userId: this.profileUser?.id ?? '',
+        layout: 'grouped',
+        imageEditor: 'external',
+        privacy: {
+          values: this.profileEditorPrivacyValues()
+        },
+        showHeader: false,
+        showSave: false
+      }
+    );
+    return this.profileEditorFlowModelCache;
+  }
+
+  protected onProfileEditorFlowAction(event: FormFlowActionEvent): void {
+    const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
+    if (context?.menu === 'experienceSelector') {
+      this.openExperienceSelector(context.value);
+      return;
+    }
+    if (context?.menu === 'privacy') {
+      this.setProfileDetailPrivacy(context.key, context.value);
+    }
+  }
+
   protected popupTitle(): string {
     if (this.panel === 'image') {
       return 'Images';
@@ -322,7 +358,10 @@ export class ProfileEditorComponent {
     if (this.panel !== 'profile' || this.isProfileSaving()) {
       return;
     }
+    this.applyProfileEditorFormToEditorState();
     await this.commitProfileForm(false);
+    this.navigatorService.closeProfileEditor();
+    this.resetTransientUiState();
   }
 
   protected onBackdropClose(): void {
@@ -405,6 +444,13 @@ export class ProfileEditorComponent {
         slots[index] = imageUrl;
       });
     this.imageSlots = slots;
+    this.profileEditorForm = {
+      ...this.profileEditorForm,
+      images: slots
+        .map(image => image?.trim() ?? '')
+        .filter(Boolean)
+    };
+    this.clearProfileEditorFlowModelCache();
     this.persistActiveUserImageSlots();
   }
 
@@ -1495,6 +1541,8 @@ export class ProfileEditorComponent {
     this.profileImageSlotsByUser[user.id] = [...slots];
     this.imageSlots = [...slots];
     this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
+    this.profileEditorForm = this.buildProfileEditorFormFromState();
+    this.clearProfileEditorFlowModelCache();
     this.panel = 'profile';
     void this.loadExperienceEntriesForUser(user.id);
   }
@@ -1512,6 +1560,184 @@ export class ProfileEditorComponent {
       profileStatus: 'public',
       about: ''
     };
+  }
+
+  private createEmptyProfileEditorForm(): ProfileOnboardingForm {
+    return {
+      fullName: '',
+      birthday: '',
+      city: '',
+      heightCm: null,
+      physique: '',
+      languages: [],
+      images: [],
+      about: '',
+      profileStatus: 'public',
+      genderDetail: '',
+      drinking: '',
+      smoking: '',
+      workout: '',
+      pets: '',
+      familyPlans: '',
+      children: '',
+      loveStyle: '',
+      communicationStyle: '',
+      sexualOrientation: '',
+      religion: '',
+      values: [],
+      interests: [],
+      experienceEntries: []
+    };
+  }
+
+  private buildProfileEditorFormFromState(): ProfileOnboardingForm {
+    return this.normalizeProfileEditorForm({
+      fullName: this.profileForm.fullName,
+      birthday: this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : '',
+      city: this.profileForm.city,
+      heightCm: this.profileForm.heightCm,
+      physique: this.profileForm.physique,
+      languages: [...this.profileForm.languages],
+      images: this.imageSlots
+        .map(image => image?.trim() ?? '')
+        .filter(Boolean),
+      about: this.profileForm.about,
+      profileStatus: this.profileForm.profileStatus,
+      genderDetail: this.profileDetailValueByKey('profile.gender'),
+      drinking: this.profileDetailValueByKey('profile.details.drinking'),
+      smoking: this.profileDetailValueByKey('profile.details.smoking'),
+      workout: this.profileDetailValueByKey('profile.details.workout'),
+      pets: this.profileDetailValueByKey('profile.details.pets'),
+      familyPlans: this.profileDetailValueByKey('profile.details.familyPlans'),
+      children: this.profileDetailValueByKey('profile.details.children'),
+      loveStyle: this.profileDetailValueByKey('profile.details.loveStyle'),
+      communicationStyle: this.profileDetailValueByKey('profile.details.communicationStyle'),
+      sexualOrientation: this.profileDetailValueByKey('profile.details.sexualOrientation'),
+      religion: this.profileDetailValueByKey('profile.details.religion'),
+      values: this.parseCommaValues(this.profileDetailValueByKey('profile.details.values')),
+      interests: this.parseCommaValues(this.profileDetailValueByKey('profile.details.interest')),
+      experienceEntries: this.cloneExperienceEntries(this.experienceEntries)
+    });
+  }
+
+  private normalizeProfileEditorForm(value: unknown): ProfileOnboardingForm {
+    const fallback = this.createEmptyProfileEditorForm();
+    const form = (value && typeof value === 'object' ? value : fallback) as Partial<ProfileOnboardingForm>;
+    return ProfileOnboardingDraftConverter.convert(this.profileEditorDraft({
+      ...fallback,
+      ...form,
+      languages: Array.isArray(form.languages) ? form.languages : [],
+      images: Array.isArray(form.images) ? form.images : [],
+      values: Array.isArray(form.values) ? form.values : [],
+      interests: Array.isArray(form.interests) ? form.interests : [],
+      experienceEntries: Array.isArray(form.experienceEntries) ? form.experienceEntries : []
+    })).form;
+  }
+
+  private profileEditorDraft(form: ProfileOnboardingForm): ProfileOnboardingDraft {
+    return {
+      version: 1,
+      userId: this.profileUser?.id?.trim() ?? '',
+      currentStepId: 'basics',
+      updatedAtIso: new Date().toISOString(),
+      completedStepIds: [],
+      skippedStepIds: [],
+      form
+    };
+  }
+
+  private profileEditorFlowModelKey(): string {
+    const form = this.profileEditorForm;
+    return [
+      this.profileUser?.id ?? '',
+      this.isProfileSaving() ? 'saving' : 'idle',
+      form.fullName,
+      form.birthday,
+      form.city,
+      form.heightCm ?? '',
+      form.physique,
+      form.languages.join('|'),
+      form.images.join('|'),
+      form.about,
+      form.profileStatus,
+      form.genderDetail,
+      form.drinking,
+      form.smoking,
+      form.workout,
+      form.pets,
+      form.familyPlans,
+      form.children,
+      form.loveStyle,
+      form.communicationStyle,
+      form.sexualOrientation,
+      form.religion,
+      form.values.join('|'),
+      form.interests.join('|'),
+      form.experienceEntries
+        .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
+        .join('|'),
+      Object.entries(this.profileEditorPrivacyValues())
+        .map(([key, value]) => `${key}:${value}`)
+        .join('|')
+    ].join('\u0001');
+  }
+
+  private profileEditorPrivacyValues(): Record<string, AppConstants.DetailPrivacy> {
+    const values: Record<string, AppConstants.DetailPrivacy> = {};
+    for (const group of this.profileDetailsForm) {
+      for (const row of group.rows) {
+        values[row.labelKey] = row.privacy;
+      }
+    }
+    return values;
+  }
+
+  private clearProfileEditorFlowModelCache(): void {
+    this.profileEditorFlowModelCacheKey = '';
+    this.profileEditorFlowModelCache = null;
+  }
+
+  private applyProfileEditorFormToEditorState(): void {
+    const form = this.normalizeProfileEditorForm(this.profileEditorForm);
+    const birthday = AppUtils.fromIsoDate(form.birthday);
+    this.profileEditorForm = form;
+    this.profileForm = {
+      ...this.profileForm,
+      fullName: form.fullName.trim(),
+      birthday,
+      city: form.city.trim(),
+      heightCm: form.heightCm,
+      physique: form.physique.trim(),
+      languages: [...form.languages],
+      horoscope: birthday ? AppUtils.horoscopeByDate(birthday) : this.profileForm.horoscope,
+      profileStatus: form.profileStatus,
+      about: form.about.trim().slice(0, 160)
+    };
+    const nextSlots = this.createEmptyImageSlots();
+    form.images
+      .map(image => image.trim())
+      .filter(Boolean)
+      .slice(0, nextSlots.length)
+      .forEach((image, index) => {
+        nextSlots[index] = image;
+      });
+    this.imageSlots = nextSlots;
+    if (this.profileUser) {
+      this.profileImageSlotsByUser[this.profileUser.id] = [...nextSlots];
+    }
+    this.setProfileDetailValue('profile.gender', form.genderDetail);
+    this.setProfileDetailValue('profile.details.drinking', form.drinking);
+    this.setProfileDetailValue('profile.details.smoking', form.smoking);
+    this.setProfileDetailValue('profile.details.workout', form.workout);
+    this.setProfileDetailValue('profile.details.pets', form.pets);
+    this.setProfileDetailValue('profile.details.familyPlans', form.familyPlans);
+    this.setProfileDetailValue('profile.details.children', form.children);
+    this.setProfileDetailValue('profile.details.loveStyle', form.loveStyle);
+    this.setProfileDetailValue('profile.details.communicationStyle', form.communicationStyle);
+    this.setProfileDetailValue('profile.details.sexualOrientation', form.sexualOrientation);
+    this.setProfileDetailValue('profile.details.religion', form.religion);
+    this.setProfileDetailValue('profile.details.values', form.values.join(', '));
+    this.setProfileDetailValue('profile.details.interest', form.interests.join(', '));
   }
 
   private createEmptyImageSlots(): Array<string | null> {
@@ -1661,6 +1887,35 @@ export class ProfileEditorComponent {
       }
     }
     return null;
+  }
+
+  private profileDetailValueByKey(labelKey: string): string {
+    const row = this.profileUser
+      ? this.profileDetailRowByKey(this.profileUser.id, labelKey)
+      : null;
+    return `${row?.value ?? ''}`.trim();
+  }
+
+  private setProfileDetailValue(labelKey: string, value: string): void {
+    if (!this.profileUser) {
+      return;
+    }
+    const row = this.profileDetailRowByKey(this.profileUser.id, labelKey);
+    if (!row) {
+      return;
+    }
+    row.value = `${value ?? ''}`.trim();
+  }
+
+  private setProfileDetailPrivacy(labelKey: string, value: AppConstants.DetailPrivacy): void {
+    if (!this.profileUser) {
+      return;
+    }
+    const row = this.profileDetailRowByKey(this.profileUser.id, labelKey);
+    if (!row) {
+      return;
+    }
+    row.privacy = value;
   }
 
   private seededOptionForUser(user: UserDto, options: string[], context: string): string {
@@ -2023,6 +2278,11 @@ export class ProfileEditorComponent {
     if (this.profileUser) {
       this.experienceEntriesByUser[this.profileUser.id] = this.cloneExperienceEntries(nextEntries);
     }
+    this.profileEditorForm = {
+      ...this.profileEditorForm,
+      experienceEntries: this.cloneExperienceEntries(nextEntries)
+    };
+    this.clearProfileEditorFlowModelCache();
     if (highlightedIds) {
       const validIds = new Set(nextEntries.map(entry => entry.id));
       this.highlightedImportedExperienceIds = new Set(highlightedIds.filter(id => validIds.has(id)));
@@ -2242,6 +2502,7 @@ export class ProfileEditorComponent {
       await this.commitAdminProfileForm(showAlert);
       return;
     }
+    this.applyProfileEditorFormToEditorState();
     const user = this.cloneUser(this.profileUser);
     user.name = this.profileForm.fullName.trim() || user.name;
     user.headline = this.profileForm.headline.trim() || user.headline;
@@ -2258,6 +2519,7 @@ export class ProfileEditorComponent {
     user.initials = AppUtils.initialsFromText(user.name);
     user.images = this.collectPersistedProfileImages(user.images ?? []);
     this.syncProfileBasicsIntoDetailRows(user);
+    this.setProfileDetailValue('profile.gender', this.profileEditorForm.genderDetail);
     user.profileDetails = this.cloneProfileDetailsForm(this.profileDetailsForm);
     user.completion = this.calculateProfileCompletionPercent();
     user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;

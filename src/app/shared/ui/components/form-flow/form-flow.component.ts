@@ -35,9 +35,10 @@ import { EditableImageCarouselComponent } from '../editable-image-carousel';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 import { ImageCardComponent, InfoCardComponent } from '../card';
 import type {
+  FormFlowActionEvent,
   FormFlowControlModel,
+  FormFlowDateControlConfig,
   FormFlowImageCarouselControlConfig,
-  FormFlowMenuItemSelectEvent,
   FormFlowMenuControlConfig,
   FormFlowModel,
   FormFlowPath,
@@ -87,7 +88,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   @Input() disabled = false;
 
   @Output() readonly save = new EventEmitter<FormFlowSaveEvent>();
-  @Output() readonly menuItemSelect = new EventEmitter<FormFlowMenuItemSelectEvent>();
+  @Output() readonly action = new EventEmitter<FormFlowActionEvent>();
 
   protected pageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= FormFlowComponent.MOBILE_BREAKPOINT_PX;
@@ -154,6 +155,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected hasSummaryPage(): boolean {
+    if (this.isGroupedLayout()) {
+      return false;
+    }
     const model = this.model;
     if (!model || model.steps.length === 0) {
       return false;
@@ -165,7 +169,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.model?.layout === 'carousel';
   }
 
+  protected isGroupedLayout(): boolean {
+    return this.model?.layout === 'grouped';
+  }
+
   protected totalPageCount(): number {
+    if (this.isGroupedLayout()) {
+      return this.pages().length > 0 ? 1 : 0;
+    }
     return this.pages().length + (this.hasSummaryPage() ? 1 : 0);
   }
 
@@ -174,6 +185,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected activeStep(): FormFlowStepModel | null {
+    if (this.isGroupedLayout()) {
+      return null;
+    }
     if (this.isSummaryPage()) {
       return null;
     }
@@ -181,6 +195,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected activeTitle(): string {
+    if (this.isGroupedLayout()) {
+      return this.model?.title ?? '';
+    }
     if (this.isSummaryPage()) {
       return this.model?.summary?.title?.trim() || 'Overview';
     }
@@ -188,6 +205,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected activeSubtitle(): string {
+    if (this.isGroupedLayout()) {
+      return this.model?.subtitle?.trim() || '';
+    }
     if (this.isSummaryPage()) {
       return this.model?.summary?.subtitle?.trim() || '';
     }
@@ -220,6 +240,12 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected showSaveAction(): boolean {
+    if (!this.model?.save) {
+      return false;
+    }
+    if (this.isGroupedLayout()) {
+      return this.totalPageCount() > 0;
+    }
     return this.totalPageCount() > 0 && this.visiblePageIndex() === this.totalPageCount() - 1;
   }
 
@@ -245,6 +271,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected goToPage(index: number, sourceEvent?: Event): void {
     sourceEvent?.stopPropagation();
+    if (this.isGroupedLayout()) {
+      return;
+    }
     const nextIndex = this.clampPageIndex(index);
     if (this.isForwardNavigationBlocked(nextIndex) || nextIndex === this.visiblePageIndex()) {
       return;
@@ -404,19 +433,77 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.menuConfig(control).items ?? [];
   }
 
-  protected emitMenuItemSelect(
+  protected accessoryMenuConfig(control: FormFlowControlModel): FormFlowMenuControlConfig | null {
+    return this.isMenuControlConfig(control.accessory?.menu) ? control.accessory.menu : null;
+  }
+
+  protected accessoryMenuKind(control: FormFlowControlModel): AppMenuKind {
+    return this.accessoryMenuConfig(control)?.kind ?? 'inline';
+  }
+
+  protected accessoryMenuLayout(control: FormFlowControlModel): AppMenuLayout {
+    return this.accessoryMenuConfig(control)?.layout ?? 'row';
+  }
+
+  protected accessoryMenuPanelMode(control: FormFlowControlModel): AppMenuPanelMode {
+    return this.accessoryMenuConfig(control)?.panelMode ?? 'auto';
+  }
+
+  protected accessoryMenuTitle(control: FormFlowControlModel): string | null {
+    return this.accessoryMenuConfig(control)?.title ?? null;
+  }
+
+  protected accessoryMenuTrigger(control: FormFlowControlModel): AppMenuTrigger | null {
+    return this.accessoryMenuConfig(control)?.trigger ?? null;
+  }
+
+  protected accessoryMenuModel(control: FormFlowControlModel): AppMenuModel<string, unknown> | null {
+    return this.accessoryMenuConfig(control)?.model ?? null;
+  }
+
+  protected accessoryMenuItems(control: FormFlowControlModel): readonly AppMenuItem<string, unknown>[] {
+    return this.accessoryMenuConfig(control)?.items ?? [];
+  }
+
+  protected accessoryMenuCloseOnSelect(control: FormFlowControlModel): boolean {
+    return this.accessoryMenuConfig(control)?.closeOnSelect !== false;
+  }
+
+  protected emitControlAction(
     control: FormFlowControlModel,
     selectEvent: AppMenuItemSelectEvent<string, unknown>
   ): void {
-    this.menuItemSelect.emit({
+    this.action.emit({
       control,
       value: this.controlValue(control),
-      selectEvent
+      context: selectEvent.context,
+      sourceEvent: selectEvent
     });
   }
 
   protected imageConfig(control: FormFlowControlModel): FormFlowImageCarouselControlConfig {
     return this.isImageCarouselControlConfig(control.config) ? control.config : {};
+  }
+
+  protected dateConfig(control: FormFlowControlModel): FormFlowDateControlConfig {
+    return this.isDateControlConfig(control.config) ? control.config : {};
+  }
+
+  protected hasDateMeta(control: FormFlowControlModel): boolean {
+    return this.dateConfig(control).meta !== undefined && this.dateConfig(control).meta !== null;
+  }
+
+  protected dateMetaLabel(control: FormFlowControlModel): string {
+    return this.dateConfig(control).meta?.label?.trim() || '';
+  }
+
+  protected dateMetaValue(control: FormFlowControlModel): string {
+    const meta = this.dateConfig(control).meta;
+    const value = meta?.value?.(this.formValue, control);
+    if (value === null || value === undefined || `${value}`.trim().length === 0) {
+      return meta?.emptyLabel?.trim() || '';
+    }
+    return `${value}`;
   }
 
   protected summaryTitle(): string {
@@ -473,6 +560,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected isPageActive(index: number): boolean {
+    if (this.isGroupedLayout()) {
+      return true;
+    }
     return this.visiblePageIndex() === index;
   }
 
@@ -481,11 +571,17 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected currentPageMissingRequired(): boolean {
+    if (this.isGroupedLayout()) {
+      return this.totalMissingRequiredCount() > 0;
+    }
     const step = this.activeStep();
     return step ? this.isStepMissingRequired(step) : this.totalMissingRequiredCount() > 0;
   }
 
   protected currentMissingRequiredCount(): number {
+    if (this.isGroupedLayout()) {
+      return this.totalMissingRequiredCount();
+    }
     const step = this.activeStep();
     return step ? this.stepMissingRequiredCount(step) : this.totalMissingRequiredCount();
   }
@@ -499,15 +595,24 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected nextStepBlocked(): boolean {
+    if (this.isGroupedLayout()) {
+      return false;
+    }
     const currentIndex = this.visiblePageIndex();
     return currentIndex < this.totalPageCount() - 1 && this.isForwardNavigationBlocked(currentIndex + 1);
   }
 
   protected pageTrackTransform(): string | null {
+    if (this.isGroupedLayout()) {
+      return null;
+    }
     return this.isCarouselLayout() || this.isMobileViewport ? null : `translate3d(-${this.pageIndex * 100}%, 0, 0)`;
   }
 
   protected onFlowViewportScroll(): void {
+    if (this.isGroupedLayout()) {
+      return;
+    }
     if (!this.isCarouselLayout() && !this.isMobileViewport) {
       return;
     }
@@ -555,6 +660,9 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected isForwardNavigationBlocked(targetIndex: number): boolean {
+    if (this.isGroupedLayout()) {
+      return false;
+    }
     return targetIndex > this.visiblePageIndex() && this.currentPageMissingRequired();
   }
 
@@ -734,7 +842,16 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isRecord(config) && ('slotCount' in config || 'previewMode' in config || 'uploadOwnerId' in config);
   }
 
+  private isDateControlConfig(config: FormFlowControlModel['config']): config is FormFlowDateControlConfig {
+    return this.isRecord(config) && 'meta' in config;
+  }
+
   private queueViewportSync(behavior: ScrollBehavior, targetIndex = this.visiblePageIndex()): void {
+    if (this.isGroupedLayout()) {
+      this.clearViewportScrollLock();
+      this.resetViewportScroll();
+      return;
+    }
     if (!this.isCarouselLayout() && !this.isMobileViewport) {
       this.clearViewportScrollLock();
       this.resetViewportScroll();

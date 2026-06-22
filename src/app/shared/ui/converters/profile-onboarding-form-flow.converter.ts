@@ -5,7 +5,7 @@ import type {
   ProfileOnboardingForm
 } from '../../core';
 import type { UserDto } from '../../core/contracts/user.interface';
-import type { ProfileStatus } from '../../core/common/constants';
+import type { DetailPrivacy, ProfileStatus } from '../../core/common/constants';
 import type { ExperienceEntry } from '../../core/contracts/profile.interface';
 import type {
   AppMenuItem,
@@ -13,19 +13,29 @@ import type {
   AppMenuTrigger
 } from '../components/menu';
 import { buildTabbedMenuModel } from '../components/menu';
-import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
+import type { FormFlowControlAccessoryConfig, FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
 import type { UiConverter } from './converter.types';
+
+export interface ProfileOnboardingFormFlowPrivacyOptions {
+  values?: Record<string, DetailPrivacy | undefined>;
+}
 
 export interface ProfileOnboardingFormFlowConverterOptions {
   title?: string | null;
   subtitle?: string | null;
   userId?: string | null;
+  layout?: FormFlowModel['layout'];
+  imageEditor?: 'flow' | 'external';
+  privacy?: ProfileOnboardingFormFlowPrivacyOptions | null;
+  showHeader?: boolean;
+  showSave?: boolean;
   saveDisabled?: boolean;
 }
 
 export type ProfileOnboardingFormFlowMenuContext =
   | { menu: 'field'; field: string; value: string }
-  | { menu: 'experienceSelector'; value: Extract<ExperienceEntry['type'], 'Workspace' | 'School'> };
+  | { menu: 'experienceSelector'; value: Extract<ExperienceEntry['type'], 'Workspace' | 'School'> }
+  | { menu: 'privacy'; key: string; value: DetailPrivacy };
 
 export class ProfileOnboardingDraftConverter {
   static readonly currentProfileFormVersion = 2;
@@ -264,12 +274,14 @@ export class ProfileOnboardingFormFlowConverter {
     options: ProfileOnboardingFormFlowConverterOptions = {}
   ): FormFlowModel {
     const form = draft?.form ?? null;
+    const imageEditor = options.imageEditor ?? 'flow';
     return {
       title: options.title?.trim() || 'profile.setup',
       subtitle: options.subtitle?.trim() || '',
-      layout: 'carousel',
+      layout: options.layout ?? 'carousel',
+      header: options.showHeader === false ? false : true,
       loadingLabel: 'Loading profile setup',
-      save: {
+      save: options.showSave === false ? null : {
         label: 'Profil mentése',
         ariaLabel: 'Profil mentése',
         icon: 'done',
@@ -304,15 +316,25 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Név',
               bind: 'fullName',
               required: true,
-              placeholder: 'Név'
+              placeholder: 'Név',
+              accessory: this.privacyAccessory('profile.name', options.privacy)
             },
             {
               id: 'birthday',
               kind: 'date',
+              layout: 'half',
               label: 'Születésnap',
               bind: 'birthday',
               required: true,
-              placeholder: 'dd/mm/yyyy'
+              placeholder: 'dd/mm/yyyy',
+              config: {
+                meta: {
+                  label: 'Horoszkóp',
+                  emptyLabel: 'Nincs beállítva',
+                  value: value => this.horoscopeBadge(value)
+                }
+              },
+              accessory: this.privacyAccessory('profile.birthday', options.privacy)
             },
             {
               id: 'city',
@@ -320,7 +342,8 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Város',
               bind: 'city',
               required: true,
-              placeholder: 'Város'
+              placeholder: 'Város',
+              accessory: this.privacyAccessory('profile.city', options.privacy)
             },
             {
               id: 'height',
@@ -330,7 +353,8 @@ export class ProfileOnboardingFormFlowConverter {
               required: true,
               min: 40,
               max: 250,
-              step: 1
+              step: 1,
+              accessory: this.privacyAccessory('profile.height', options.privacy)
             },
             {
               id: 'physique',
@@ -338,7 +362,8 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Testalkat',
               bind: 'physique',
               required: true,
-              config: this.physiqueMenuConfig(form?.physique)
+              config: this.physiqueMenuConfig(form?.physique),
+              accessory: this.privacyAccessory('profile.physique', options.privacy)
             },
             {
               id: 'gender',
@@ -346,7 +371,8 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Nem',
               bind: 'genderDetail',
               required: true,
-              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet', form?.genderDetail)
+              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet', form?.genderDetail),
+              accessory: this.privacyAccessory('profile.gender', options.privacy)
             },
             {
               id: 'languages',
@@ -361,7 +387,8 @@ export class ProfileOnboardingFormFlowConverter {
                 'blue',
                 'Nyelvek választása',
                 2
-              )
+              ),
+              accessory: this.privacyAccessory('profile.languages', options.privacy)
             },
             {
               id: 'visibility',
@@ -394,7 +421,7 @@ export class ProfileOnboardingFormFlowConverter {
             }
           ]
         },
-        {
+        ...(imageEditor === 'external' ? [] : [{
           id: 'photos',
           title: 'Fotók',
           subtitle: 'Adj hozzá legalább 3 fotót.',
@@ -402,7 +429,7 @@ export class ProfileOnboardingFormFlowConverter {
           controls: [
             {
               id: 'images',
-              kind: 'image-carousel',
+              kind: 'image-carousel' as const,
               label: 'Profilfotók',
               bind: 'images',
               required: true,
@@ -415,27 +442,27 @@ export class ProfileOnboardingFormFlowConverter {
                 uploadEntityId: options.userId?.trim() || 'profile-onboarding'
               },
               summary: {
-                value: value => `${this.imageCount(value)}/8 (kötelező: 3)`
+                value: (value: unknown) => `${this.imageCount(value)}/8 (kötelező: 3)`
               }
             }
           ]
-        },
+        }]),
         {
           id: 'lifestyle',
           title: 'Életmód',
           subtitle: 'Opcionális részletek.',
           icon: 'interests',
           controls: [
-            this.detailMenuControl('drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', form?.drinking),
-            this.detailMenuControl('smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', form?.smoking),
-            this.detailMenuControl('workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', form?.workout),
-            this.detailMenuControl('pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', form?.pets),
-            this.detailMenuControl('familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', form?.familyPlans),
-            this.detailMenuControl('children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', form?.children),
-            this.detailMenuControl('loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', form?.loveStyle),
-            this.detailMenuControl('communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', form?.communicationStyle),
-            this.detailMenuControl('sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', form?.sexualOrientation),
-            this.detailMenuControl('religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', form?.religion),
+            this.detailMenuControl('drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', form?.drinking, options.privacy),
+            this.detailMenuControl('smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', form?.smoking, options.privacy),
+            this.detailMenuControl('workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', form?.workout, options.privacy),
+            this.detailMenuControl('pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', form?.pets, options.privacy),
+            this.detailMenuControl('familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', form?.familyPlans, options.privacy),
+            this.detailMenuControl('children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', form?.children, options.privacy),
+            this.detailMenuControl('loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', form?.loveStyle, options.privacy),
+            this.detailMenuControl('communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', form?.communicationStyle, options.privacy),
+            this.detailMenuControl('sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', form?.sexualOrientation, options.privacy),
+            this.detailMenuControl('religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', form?.religion, options.privacy),
             {
               id: 'values',
               kind: 'menu',
@@ -449,7 +476,8 @@ export class ProfileOnboardingFormFlowConverter {
                 5,
                 'select.values',
                 form?.values ?? []
-              )
+              ),
+              accessory: this.privacyAccessory('profile.details.values', options.privacy)
             },
             {
               id: 'interests',
@@ -464,7 +492,8 @@ export class ProfileOnboardingFormFlowConverter {
                 5,
                 'select.interests',
                 form?.interests ?? []
-              )
+              ),
+              accessory: this.privacyAccessory('profile.details.interest', options.privacy)
             }
           ]
         }
@@ -478,15 +507,158 @@ export class ProfileOnboardingFormFlowConverter {
     key: string,
     icon: string,
     palette: AppMenuPalette,
-    selectedValue?: string | null
+    selectedValue?: string | null,
+    privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
   ) {
     return {
       id: field,
       kind: 'menu' as const,
       label,
       bind: field,
-      config: this.detailSelectMenuConfig(label, key, icon, palette, selectedValue)
+      config: this.detailSelectMenuConfig(label, key, icon, palette, selectedValue),
+      accessory: this.privacyAccessory(key, privacy)
     };
+  }
+
+  private static privacyAccessory(
+    key: string,
+    privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
+  ): FormFlowControlAccessoryConfig | null {
+    if (!privacy?.values) {
+      return null;
+    }
+    const current = privacy.values[key] ?? this.defaultPrivacy(key);
+    return {
+      menu: {
+        kind: 'inline',
+        layout: 'row',
+        panelMode: 'anchored',
+        title: 'Láthatóság',
+        closeOnSelect: true,
+        trigger: {
+          icon: this.privacyIcon(current),
+          closeIcon: 'close',
+          hideLabel: true,
+          layout: 'icon',
+          palette: this.privacyPalette(current),
+          ariaLabel: 'Láthatóság módosítása'
+        },
+        items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
+          id: `${this.idToken(key)}-privacy-${this.idToken(option)}`,
+          label: option,
+          icon: this.privacyIcon(option),
+          kind: 'radio',
+          active: option === current,
+          palette: this.privacyPalette(option),
+          surface: 'tinted',
+          context: { menu: 'privacy', key, value: option } satisfies ProfileOnboardingFormFlowMenuContext
+        }))
+      }
+    };
+  }
+
+  private static defaultPrivacy(key: string): DetailPrivacy {
+    for (const group of APP_STATIC_DATA.profileDetailGroupTemplates) {
+      const row = group.rows.find(candidate => candidate.labelKey === key);
+      if (row) {
+        return row.privacy;
+      }
+    }
+    return 'Public';
+  }
+
+  private static privacyIcon(value: DetailPrivacy): string {
+    switch (value) {
+      case 'Public':
+        return 'public';
+      case 'Friends':
+        return 'groups';
+      case 'Hosts':
+        return 'stadium';
+      default:
+        return 'visibility_off';
+    }
+  }
+
+  private static privacyPalette(value: DetailPrivacy): AppMenuPalette {
+    switch (value) {
+      case 'Public':
+        return 'green';
+      case 'Friends':
+        return 'blue';
+      case 'Hosts':
+        return 'brown';
+      default:
+        return 'muted';
+    }
+  }
+
+  private static horoscopeBadge(value: unknown): string {
+    const birthday = `${(value as Partial<ProfileOnboardingForm> | null | undefined)?.birthday ?? ''}`.trim();
+    const parsed = AppUtils.fromIsoDate(birthday);
+    if (!parsed) {
+      return 'Nincs beállítva';
+    }
+    const horoscope = AppUtils.horoscopeByDate(parsed);
+    return `${this.horoscopeSymbol(horoscope)} ${this.horoscopeLabel(horoscope)}`;
+  }
+
+  private static horoscopeSymbol(value: string): string {
+    switch (value) {
+      case 'Aries':
+        return '♈';
+      case 'Taurus':
+        return '♉';
+      case 'Gemini':
+        return '♊';
+      case 'Cancer':
+        return '♋';
+      case 'Leo':
+        return '♌';
+      case 'Virgo':
+        return '♍';
+      case 'Libra':
+        return '♎';
+      case 'Scorpio':
+        return '♏';
+      case 'Sagittarius':
+        return '♐';
+      case 'Capricorn':
+        return '♑';
+      case 'Aquarius':
+        return '♒';
+      default:
+        return '♓';
+    }
+  }
+
+  private static horoscopeLabel(value: string): string {
+    switch (value) {
+      case 'Aries':
+        return 'Kos';
+      case 'Taurus':
+        return 'Bika';
+      case 'Gemini':
+        return 'Ikrek';
+      case 'Cancer':
+        return 'Rák';
+      case 'Leo':
+        return 'Oroszlán';
+      case 'Virgo':
+        return 'Szűz';
+      case 'Libra':
+        return 'Mérleg';
+      case 'Scorpio':
+        return 'Skorpió';
+      case 'Sagittarius':
+        return 'Nyilas';
+      case 'Capricorn':
+        return 'Bak';
+      case 'Aquarius':
+        return 'Vízöntő';
+      default:
+        return 'Halak';
+    }
   }
 
   private static detailSelectMenuConfig(

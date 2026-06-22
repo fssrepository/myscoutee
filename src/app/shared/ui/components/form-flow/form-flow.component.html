@@ -2,6 +2,7 @@
   class="form-flow"
   [class.is-loading]="loading"
   [class.form-flow--carousel]="isCarouselLayout()"
+  [class.form-flow--grouped]="isGroupedLayout()"
   [attr.aria-busy]="loading"
 >
   <ng-template #progressControls>
@@ -67,7 +68,7 @@
     </div>
   </ng-template>
 
-  @if (!isCarouselLayout()) {
+  @if (!isCarouselLayout() && model?.header !== false) {
     <header class="form-flow__header">
       <div class="form-flow__title-block">
         <span class="form-flow__kicker">{{ model?.title }}</span>
@@ -77,7 +78,9 @@
         }
       </div>
 
-      <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+      @if (!isGroupedLayout()) {
+        <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
+      }
     </header>
   }
 
@@ -90,6 +93,7 @@
     <div
       class="form-flow__stage"
       [class.form-flow__stage--carousel]="isCarouselLayout()"
+      [class.form-flow__stage--grouped]="isGroupedLayout()"
       [class.form-flow__stage--compact-head]="isCarouselLayout() && !activeStepHasCardHeader()"
     >
       @if (isCarouselLayout() && !activeStepHasCardHeader()) {
@@ -107,7 +111,7 @@
       <main
         #flowViewport
         class="form-flow__body"
-        [class.form-flow__body--mobile]="isMobileViewport"
+        [class.form-flow__body--mobile]="isMobileViewport && !isGroupedLayout()"
         (scroll)="onFlowViewportScroll()"
       >
         <div class="form-flow__track" [style.transform]="pageTrackTransform()">
@@ -121,6 +125,14 @@
               [attr.aria-labelledby]="'form-flow-step-' + step.id"
             >
               <div class="form-flow__slide-inner">
+              @if (isGroupedLayout()) {
+                <div class="form-flow__group-header">
+                  @if (step.icon) {
+                    <mat-icon>{{ step.icon }}</mat-icon>
+                  }
+                  <h3 id="form-flow-step-{{ step.id }}">{{ step.title }}</h3>
+                </div>
+              }
               @if (step.header) {
                 <div
                   class="form-flow__step-header"
@@ -167,6 +179,7 @@
                     class="form-flow__control"
                     [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
                     [class.form-flow__control--half]="control.layout === 'half'"
+                    [class.form-flow__control--with-accessory]="accessoryMenuConfig(control)"
                     [class.is-required-missing]="isRequiredControlMissing(control)"
                   >
                     @if (control.kind === 'section') {
@@ -194,7 +207,7 @@
                         [panelMode]="menuPanelMode(control)"
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
-                        (itemSelect)="emitMenuItemSelect(control, $event)"
+                        (itemSelect)="emitControlAction(control, $event)"
                         [closeOnSelect]="menuCloseOnSelect(control)"
                       ></app-menu>
                     } @else if (control.kind === 'image-carousel') {
@@ -237,29 +250,41 @@
                         <p>{{ summaryValue(control) }}</p>
                       </article>
                     } @else if (control.kind === 'date') {
-                      <label class="form-flow__label">
-                        <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
-                      </label>
-                      <div class="form-flow__date-wrap">
-                        <input
-                          matInput
-                          class="form-flow__date-input"
-                          [matDatepicker]="formFlowDatePicker"
-                          [disabled]="isControlDisabled(control)"
-                          [placeholder]="control.placeholder || 'dd/mm/yyyy'"
-                          [value]="controlDateValue(control)"
-                          (dateChange)="updateDateControlValue(control, $event.value)"
-                        />
-                        <button
-                          type="button"
-                          class="form-flow__date-button"
-                          [disabled]="isControlDisabled(control)"
-                          (click)="formFlowDatePicker.open()"
-                          [attr.aria-label]="control.label || 'Select date'"
-                        >
-                          <mat-icon>calendar_month</mat-icon>
-                        </button>
-                        <mat-datepicker #formFlowDatePicker xPosition="end" yPosition="below"></mat-datepicker>
+                      <div class="form-flow__date-control" [class.form-flow__date-control--with-meta]="hasDateMeta(control)">
+                        <div class="form-flow__date-field">
+                          <label class="form-flow__label">
+                            <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                          </label>
+                          <div class="form-flow__date-wrap">
+                            <input
+                              matInput
+                              class="form-flow__date-input"
+                              [matDatepicker]="formFlowDatePicker"
+                              [disabled]="isControlDisabled(control)"
+                              [placeholder]="control.placeholder || 'dd/mm/yyyy'"
+                              [value]="controlDateValue(control)"
+                              (dateChange)="updateDateControlValue(control, $event.value)"
+                            />
+                            <button
+                              type="button"
+                              class="form-flow__date-button"
+                              [disabled]="isControlDisabled(control)"
+                              (click)="formFlowDatePicker.open()"
+                              [attr.aria-label]="control.label || 'Select date'"
+                            >
+                              <mat-icon>calendar_month</mat-icon>
+                            </button>
+                            <mat-datepicker #formFlowDatePicker xPosition="end" yPosition="below"></mat-datepicker>
+                          </div>
+                        </div>
+                        @if (hasDateMeta(control)) {
+                          <div class="form-flow__date-meta">
+                            @if (dateMetaLabel(control)) {
+                              <span class="form-flow__date-meta-label">{{ dateMetaLabel(control) }}</span>
+                            }
+                            <span class="form-flow__date-meta-badge">{{ dateMetaValue(control) }}</span>
+                          </div>
+                        }
                       </div>
                     } @else {
                       <label class="form-flow__label">
@@ -276,6 +301,20 @@
                         [ngModel]="control.kind === 'number' ? controlNumberValue(control) : controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       />
+                    }
+                    @if (accessoryMenuConfig(control)) {
+                      <app-menu
+                        class="form-flow__control-accessory"
+                        [kind]="accessoryMenuKind(control)"
+                        [layout]="accessoryMenuLayout(control)"
+                        [title]="accessoryMenuTitle(control)"
+                        [trigger]="accessoryMenuTrigger(control)"
+                        [model]="accessoryMenuModel(control)"
+                        [items]="accessoryMenuItems(control)"
+                        [panelMode]="accessoryMenuPanelMode(control)"
+                        (itemSelect)="emitControlAction(control, $event)"
+                        [closeOnSelect]="accessoryMenuCloseOnSelect(control)"
+                      ></app-menu>
                     }
                   </div>
                 }
@@ -350,6 +389,7 @@
       }
     </div>
 
+    @if (!isGroupedLayout()) {
     <footer class="form-flow__footer" [class.form-flow__footer--carousel]="isCarouselLayout()">
       @if (!isCarouselLayout()) {
         <button
@@ -402,6 +442,7 @@
         </button>
       }
     </footer>
+    }
   } @else {
     <article class="form-flow__empty">
       <mat-icon>dynamic_form</mat-icon>

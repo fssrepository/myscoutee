@@ -45,6 +45,10 @@ export interface FormFlowMenuControlConfig {
   items?: readonly AppMenuItem<string, unknown>[];
 }
 
+export interface FormFlowControlAccessoryConfig {
+  menu?: FormFlowMenuControlConfig | null;
+}
+
 export interface FormFlowImageCarouselControlConfig {
   slotCount?: number;
   compact?: boolean;
@@ -52,6 +56,16 @@ export interface FormFlowImageCarouselControlConfig {
   ariaLabel?: string;
   uploadOwnerId?: string;
   uploadEntityId?: string;
+}
+
+export interface FormFlowDateMetaConfig {
+  label?: string;
+  emptyLabel?: string;
+  value?: (formValue: unknown, control: FormFlowControlModel) => unknown;
+}
+
+export interface FormFlowDateControlConfig {
+  meta?: FormFlowDateMetaConfig | null;
 }
 
 export interface FormFlowControlSummaryConfig {
@@ -76,7 +90,8 @@ export interface FormFlowControlModel {
   step?: number | string;
   rows?: number;
   maxLength?: number;
-  config?: FormFlowMenuControlConfig | FormFlowImageCarouselControlConfig | null;
+  config?: FormFlowMenuControlConfig | FormFlowImageCarouselControlConfig | FormFlowDateControlConfig | null;
+  accessory?: FormFlowControlAccessoryConfig | null;
   summary?: FormFlowControlSummaryConfig | null;
 }
 
@@ -109,7 +124,8 @@ export interface FormFlowSaveModel {
 export interface FormFlowModel {
   title: string;
   subtitle?: string;
-  layout?: 'default' | 'carousel';
+  layout?: 'default' | 'carousel' | 'grouped';
+  header?: boolean;
   steps: readonly FormFlowStepModel[];
   summary?: FormFlowSummaryModel | null;
   save?: FormFlowSaveModel | null;
@@ -123,8 +139,9 @@ export interface FormFlowSaveEvent {
   sourceEvent?: Event;
 }
 
-export interface FormFlowMenuItemSelectEvent {
+export interface FormFlowActionEvent {
   control: FormFlowControlModel;
   value: unknown;
-  selectEvent: AppMenuItemSelectEvent<string, unknown>;
+  context?: unknown;
+  sourceEvent: AppMenuItemSelectEvent<string, unknown>;
 }

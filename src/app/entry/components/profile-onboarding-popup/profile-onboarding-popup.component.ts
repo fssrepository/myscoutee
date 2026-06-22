@@ -12,7 +12,7 @@ import {
 } from '../../../shared/ui';
 import {
   FormFlowComponent,
-  type FormFlowMenuItemSelectEvent,
+  type FormFlowActionEvent,
   type FormFlowModel
 } from '../../../shared/ui/components/form-flow';
 import {
@@ -158,8 +158,8 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     void this.saveAndComplete();
   }
 
-  protected onOnboardingFlowMenuItemSelect(event: FormFlowMenuItemSelectEvent): void {
-    const context = event.selectEvent.context as ProfileOnboardingFormFlowMenuContext | undefined;
+  protected onOnboardingFlowAction(event: FormFlowActionEvent): void {
+    const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
     if (context?.menu === 'experienceSelector') {
       this.openExperienceManager(context.value);
     }
