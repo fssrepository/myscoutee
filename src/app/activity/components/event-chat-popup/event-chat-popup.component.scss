@@ -1942,6 +1942,73 @@
   display: none;
 }
 
+.chat-ascii-emoji-panel {
+  position: absolute;
+  left: 2.4rem;
+  right: 2.5rem;
+  bottom: calc(100% + 0.36rem);
+  z-index: 48;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.32rem;
+  border: 1px solid rgba(33, 54, 82, 0.12);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 14px 34px rgba(17, 24, 39, 0.16);
+  overflow-x: auto;
+}
+
+.chat-ascii-emoji-panel button {
+  flex: 0 0 auto;
+  min-width: 62px;
+  height: 42px;
+  padding: 0.2rem 0.42rem;
+  border: 0;
+  border-radius: 8px;
+  background: #f3f7fc;
+  color: #20334e;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 0.28rem;
+  align-items: center;
+  cursor: pointer;
+}
+
+.chat-ascii-emoji-panel button:hover,
+.chat-ascii-emoji-panel button:focus-visible {
+  background: #e8f2ff;
+  outline: none;
+}
+
+.chat-ascii-emoji-panel__emoji {
+  grid-row: 1 / 3;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.chat-ascii-emoji-panel__token,
+.chat-ascii-emoji-panel small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.chat-ascii-emoji-panel__token {
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.chat-ascii-emoji-panel small {
+  color: rgba(47, 66, 94, 0.64);
+  font-size: 0.64rem;
+  font-weight: 750;
+}
+
 .chat-compose-box textarea {
   flex: 1 1 auto;
   width: auto;

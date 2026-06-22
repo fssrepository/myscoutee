@@ -19,7 +19,7 @@ import { from, of } from 'rxjs';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { ActivityEventDtoMapper } from '../../../shared/core/base/mappers/activity-event.mapper';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import { AppUtils } from '../../../shared/app-utils';
+import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService, toActivityEventRow } from '../../../shared/core';
@@ -800,6 +800,26 @@ export class EventChatPopupComponent implements OnDestroy {
     textarea.style.height = 'auto';
     const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight) || 20;
     textarea.style.height = `${Math.min(textarea.scrollHeight, Math.round(lineHeight * 6))}px`;
+  }
+
+  protected composerEmojiSuggestions(): readonly AsciiEmojiConversion[] {
+    if (this.chatInitialLoadPending || this.voiceComposerOpen || this.pollComposerOpen) {
+      return [];
+    }
+    return AppUtils.asciiEmojiSuggestionsForToken(
+      AppUtils.trailingAsciiEmojiToken(this.draftMessage),
+      6
+    );
+  }
+
+  protected applyComposerEmojiSuggestion(suggestion: AsciiEmojiConversion, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.onDraftMessageChange(
+      AppUtils.replaceTrailingAsciiEmojiToken(this.draftMessage, suggestion.emoji)
+    );
+    this.focusComposerSoon();
+    this.resizeComposerTextareaSoon();
   }
 
   protected openImageAttachmentPicker(event?: Event): void {
@@ -1785,7 +1805,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected async sendMessage(): Promise<void> {
-    const text = this.draftMessage.trim();
+    const text = AppUtils.convertAsciiEmojis(this.draftMessage.trim());
     const session = this.session();
     if (!session || !text) {
       return;
@@ -1849,7 +1869,7 @@ export class EventChatPopupComponent implements OnDestroy {
       clientId,
       sender: senderPresentation.sender,
       senderAvatar: senderPresentation.senderAvatar,
-      text: this.draftMessage.trim(),
+      text: AppUtils.convertAsciiEmojis(this.draftMessage.trim()),
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: sentAt.toISOString(),
       mine: true,
@@ -1858,7 +1878,7 @@ export class EventChatPopupComponent implements OnDestroy {
       replyTo: this.replyTarget ? { ...this.replyTarget } : null,
       attachments: [{ ...imageAttachment }]
     };
-    const caption = this.draftMessage.trim();
+    const caption = AppUtils.convertAsciiEmojis(this.draftMessage.trim());
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
     this.draftMessage = '';
     this.replyTarget = null;
@@ -1898,7 +1918,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || this.chatInitialLoadPending) {
       return;
     }
-    const caption = captionOverride ?? this.draftMessage.trim();
+    const caption = AppUtils.convertAsciiEmojis(captionOverride ?? this.draftMessage.trim());
     const optimisticMessage = {
       ...this.buildOptimisticChatMessage(caption),
       attachments: [{ ...attachment }]
@@ -2331,15 +2351,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private commitEditMessage(text: string): void {
+    const convertedText = AppUtils.convertAsciiEmojis(text.trim());
     const editingMessageId = this.editingMessageId;
-    if (!editingMessageId) {
+    if (!editingMessageId || !convertedText) {
       return;
     }
     const session = this.session();
     this.allMessages = this.allMessages.map(message => message.id === editingMessageId
       ? {
           ...message,
-          text,
+          text: convertedText,
           editedAtIso: new Date().toISOString(),
           deliveryState: 'pending'
         }
@@ -2351,7 +2372,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     this.schedulePendingMessageTimeout(editingMessageId);
     if (session) {
-      void this.activitiesContext.updateEventChatMessage(session.item, editingMessageId, { text })
+      void this.activitiesContext.updateEventChatMessage(session.item, editingMessageId, { text: convertedText })
         .then(updated => {
           if (updated) {
             this.clearPendingMessageTimeout(editingMessageId);

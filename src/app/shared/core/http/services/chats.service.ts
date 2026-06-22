@@ -369,7 +369,7 @@ export class HttpChatsService implements IChatsService {
     clientId?: string,
     replyTo?: ContractTypes.ChatPopupMessage['replyTo']
   ): Promise<ContractTypes.ChatPopupMessage | null> {
-    const trimmedText = text.trim();
+    const trimmedText = AppUtils.convertAsciiEmojis(text.trim());
     if (!trimmedText && attachments.length === 0) {
       return null;
     }
@@ -474,7 +474,7 @@ export class HttpChatsService implements IChatsService {
     };
     if (typeof mutation.text === 'string') {
       action = 'edit';
-      payload.text = mutation.text;
+      payload.text = AppUtils.convertAsciiEmojis(mutation.text.trim());
     } else if (mutation.deleted === true) {
       action = 'delete';
     } else if (typeof mutation.pinned === 'boolean') {

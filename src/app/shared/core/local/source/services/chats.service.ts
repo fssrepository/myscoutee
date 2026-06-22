@@ -72,7 +72,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     replyTo?: ContractTypes.ChatPopupMessage['replyTo']
   ): Promise<ContractTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const trimmedText = text.trim();
+    const trimmedText = AppUtils.convertAsciiEmojis(text.trim());
     if (!trimmedText && attachments.length === 0) {
       return null;
     }
@@ -102,7 +102,13 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     mutation: ContractTypes.ChatMessageMutation
   ): Promise<ContractTypes.ChatPopupMessage | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.updateChatMessage(chat, messageId, mutation);
+    const normalizedMutation = typeof mutation.text === 'string'
+      ? {
+          ...mutation,
+          text: AppUtils.convertAsciiEmojis(mutation.text.trim())
+        }
+      : mutation;
+    return this.chatsRepository.updateChatMessage(chat, messageId, normalizedMutation);
   }
 
   async watchChatMessages(

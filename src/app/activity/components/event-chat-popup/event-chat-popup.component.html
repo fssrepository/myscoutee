@@ -234,6 +234,25 @@
                   </div>
                 </div>
               } @else {
+                @if (composerEmojiSuggestions(); as emojiSuggestions) {
+                  @if (emojiSuggestions.length > 0) {
+                    <div class="chat-ascii-emoji-panel" role="listbox" aria-label="Emoji suggestions">
+                      @for (suggestion of emojiSuggestions; track suggestion.token) {
+                        <button
+                          type="button"
+                          role="option"
+                          (mousedown)="$event.preventDefault()"
+                          (click)="applyComposerEmojiSuggestion(suggestion, $event)"
+                          [attr.aria-label]="suggestion.token + ' ' + suggestion.label"
+                          >
+                          <span class="chat-ascii-emoji-panel__emoji">{{ suggestion.emoji }}</span>
+                          <span class="chat-ascii-emoji-panel__token">{{ suggestion.token }}</span>
+                          <small>{{ suggestion.label }}</small>
+                        </button>
+                      }
+                    </div>
+                  }
+                }
                 <textarea
                   #messageTextarea
                   rows="1"

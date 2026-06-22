@@ -3,6 +3,73 @@ import type { ActivityListRow } from './core/base/models';
 import type { AssetMemberRequestDTO } from './core/base/dto';
 import type { UserDto } from './core/contracts/user.interface';
 
+export interface AsciiEmojiConversion {
+  token: string;
+  emoji: string;
+  label: string;
+}
+
+const ASCII_EMOJI_CONVERSIONS: readonly AsciiEmojiConversion[] = [
+  { token: ':)', emoji: '🙂', label: 'Smile' },
+  { token: ':-)', emoji: '🙂', label: 'Smile' },
+  { token: '=)', emoji: '🙂', label: 'Smile' },
+  { token: ':D', emoji: '😄', label: 'Grin' },
+  { token: ':-D', emoji: '😄', label: 'Grin' },
+  { token: '=D', emoji: '😄', label: 'Grin' },
+  { token: 'xD', emoji: '😆', label: 'Laugh' },
+  { token: 'XD', emoji: '😆', label: 'Laugh' },
+  { token: ';)', emoji: '😉', label: 'Wink' },
+  { token: ';-)', emoji: '😉', label: 'Wink' },
+  { token: ':(', emoji: '🙁', label: 'Sad' },
+  { token: ':-(', emoji: '🙁', label: 'Sad' },
+  { token: ":'(", emoji: '😢', label: 'Cry' },
+  { token: ":'-(", emoji: '😢', label: 'Cry' },
+  { token: ':P', emoji: '😛', label: 'Tongue' },
+  { token: ':-P', emoji: '😛', label: 'Tongue' },
+  { token: ':p', emoji: '😛', label: 'Tongue' },
+  { token: ':-p', emoji: '😛', label: 'Tongue' },
+  { token: ';P', emoji: '😜', label: 'Wink tongue' },
+  { token: ';-P', emoji: '😜', label: 'Wink tongue' },
+  { token: ':o', emoji: '😮', label: 'Surprise' },
+  { token: ':O', emoji: '😮', label: 'Surprise' },
+  { token: ':-o', emoji: '😮', label: 'Surprise' },
+  { token: ':-O', emoji: '😮', label: 'Surprise' },
+  { token: ':/', emoji: '🫤', label: 'Unsure' },
+  { token: ':-/', emoji: '🫤', label: 'Unsure' },
+  { token: ':\\', emoji: '🫤', label: 'Unsure' },
+  { token: ':-\\', emoji: '🫤', label: 'Unsure' },
+  { token: ':|', emoji: '😐', label: 'Neutral' },
+  { token: ':-|', emoji: '😐', label: 'Neutral' },
+  { token: ':*', emoji: '😘', label: 'Kiss' },
+  { token: ':-*', emoji: '😘', label: 'Kiss' },
+  { token: '<3', emoji: '❤️', label: 'Heart' },
+  { token: '</3', emoji: '💔', label: 'Broken heart' },
+  { token: 'B)', emoji: '😎', label: 'Cool' },
+  { token: 'B-)', emoji: '😎', label: 'Cool' },
+  { token: '8)', emoji: '😎', label: 'Cool' },
+  { token: '8-)', emoji: '😎', label: 'Cool' },
+  { token: 'O:)', emoji: '😇', label: 'Angel' },
+  { token: 'O:-)', emoji: '😇', label: 'Angel' },
+  { token: '0:)', emoji: '😇', label: 'Angel' },
+  { token: '0:-)', emoji: '😇', label: 'Angel' },
+  { token: '>:)', emoji: '😈', label: 'Devil' },
+  { token: '>:-)', emoji: '😈', label: 'Devil' },
+  { token: '-_-', emoji: '😑', label: 'Unamused' }
+];
+
+const ASCII_EMOJI_BY_TOKEN = new Map(
+  ASCII_EMOJI_CONVERSIONS.map(conversion => [conversion.token, conversion])
+);
+
+const ASCII_EMOJI_TOKEN_REGEX = new RegExp(
+  `(^|[\\s([{])(${ASCII_EMOJI_CONVERSIONS
+    .map(conversion => conversion.token)
+    .sort((first, second) => second.length - first.length)
+    .map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')})(?=$|[\\s.,!?;:\\])}])`,
+  'g'
+);
+
 export class AppUtils {
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {
     const output: Record<string, T[]> = {};
@@ -49,6 +116,58 @@ export class AppUtils {
     return (images ?? [])
       .map(image => `${image ?? ''}`.trim())
       .find(image => image.length > 0) ?? '';
+  }
+
+  static asciiEmojiConversions(): readonly AsciiEmojiConversion[] {
+    return ASCII_EMOJI_CONVERSIONS;
+  }
+
+  static convertAsciiEmojis(value: string | null | undefined): string {
+    const text = `${value ?? ''}`;
+    if (!text) {
+      return '';
+    }
+    return text.replace(ASCII_EMOJI_TOKEN_REGEX, (_match, prefix: string, token: string) => {
+      const conversion = ASCII_EMOJI_BY_TOKEN.get(token);
+      return conversion ? `${prefix}${conversion.emoji}` : `${prefix}${token}`;
+    });
+  }
+
+  static trailingAsciiEmojiToken(value: string | null | undefined): string {
+    const match = `${value ?? ''}`.match(/(?:^|[\s([{])(\S{1,8})$/);
+    const token = `${match?.[1] ?? ''}`.trim();
+    return token && this.asciiEmojiSuggestionsForToken(token, 1).length > 0 ? token : '';
+  }
+
+  static asciiEmojiSuggestionsForToken(
+    token: string | null | undefined,
+    limit = 8
+  ): readonly AsciiEmojiConversion[] {
+    const normalized = `${token ?? ''}`.trim();
+    if (!normalized) {
+      return [];
+    }
+    const lower = normalized.toLowerCase();
+    return ASCII_EMOJI_CONVERSIONS
+      .filter(conversion => conversion.token.toLowerCase().startsWith(lower))
+      .sort((first, second) => {
+        const firstExact = first.token.toLowerCase() === lower ? 0 : 1;
+        const secondExact = second.token.toLowerCase() === lower ? 0 : 1;
+        return firstExact - secondExact || first.token.length - second.token.length;
+      })
+      .slice(0, Math.max(1, Math.trunc(limit)));
+  }
+
+  static replaceTrailingAsciiEmojiToken(
+    value: string | null | undefined,
+    replacement: string
+  ): string {
+    const text = `${value ?? ''}`;
+    const token = this.trailingAsciiEmojiToken(text);
+    if (!token) {
+      return text;
+    }
+    return `${text.slice(0, text.length - token.length)}${replacement}`;
   }
 
   static mediaImageVariantUrl(
