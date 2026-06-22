@@ -90,6 +90,7 @@
 }
 
 .form-flow__save {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -112,14 +113,36 @@
     box-shadow: none;
   }
 
+  &.is-saving,
+  &.is-saving:disabled {
+    opacity: 1;
+    cursor: wait;
+    box-shadow: none;
+  }
+
   &.is-missing {
     background: linear-gradient(135deg, #d84a4a, #b42328);
   }
 
+  .form-flow__save-ring {
+    position: absolute;
+    inset: -1px;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
   mat-icon {
+    position: relative;
+    z-index: 2;
     width: 17px;
     height: 17px;
     font-size: 17px;
+  }
+
+  span:not(.form-flow__save-ring) {
+    position: relative;
+    z-index: 2;
   }
 }
 

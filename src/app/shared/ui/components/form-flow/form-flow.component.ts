@@ -75,6 +75,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   @Input() model: FormFlowModel | null = null;
   @Input() loading = false;
+  @Input() saving = false;
   @Input() disabled = false;
 
   @Output() readonly save = new EventEmitter<FormFlowSaveEvent>();
@@ -213,6 +214,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected canSave(): boolean {
     return !this.isDisabled()
+      && !this.saving
       && this.model?.save?.disabled !== true
       && this.showSaveAction()
       && this.totalMissingRequiredCount() === 0;

@@ -872,6 +872,25 @@ app-smart-list.event-feedback-list-surface {
   height: 100%;
 }
 
+.event-feedback-loading-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.6rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: center;
+  color: #536a84;
+}
+
+.event-feedback-loading-card span {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
 .event-feedback-empty-card {
   text-align: left;
 }

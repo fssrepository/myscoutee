@@ -18,6 +18,7 @@ import {
   EventFeedbackOrganizerItemConverter,
   EventFeedbackOrganizerMessageGroupConverter,
   FormFlowComponent,
+  ProgressIndicatorComponent,
   type FormFlowSaveEvent,
   type AppMenuItemSelectEvent,
   type EventFeedbackFilterMenuContext,
@@ -69,6 +70,7 @@ interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialog
     MatButtonModule,
     AppMenuComponent,
     FormFlowComponent,
+    ProgressIndicatorComponent,
     SmartListComponent,
     InfoCardComponent
   ],
@@ -98,6 +100,7 @@ export class EventFeedbackPopupComponent {
     new ActivityContracts.EventFeedbackDetailDto()
   );
   protected readonly eventFeedbackDetailLoading = signal(false);
+  protected readonly eventFeedbackSubmitting = signal(false);
   protected readonly eventFeedbackSubmitMessage = signal('');
   protected readonly eventFeedbackSubmitted = signal(false);
   protected readonly hasEventFeedbackCards = computed(() => (this.eventFeedbackDetailDto()?.cards.length ?? 0) > 0);
@@ -549,6 +552,7 @@ export class EventFeedbackPopupComponent {
     this.openEventFeedbackDetail(item);
     this.clearLoadedEventFeedbackDetail(eventId);
     this.eventFeedbackDetailLoading.set(true);
+    this.eventFeedbackSubmitting.set(false);
     this.eventFeedbackSubmitted.set(false);
     this.eventFeedbackSubmitMessage.set('');
     if (!userId || !eventId) {
@@ -576,7 +580,7 @@ export class EventFeedbackPopupComponent {
   ));
 
   protected async onEventFeedbackFlowSave(event: FormFlowSaveEvent): Promise<void> {
-    if (this.eventFeedbackSubmitted()) {
+    if (this.eventFeedbackSubmitted() || this.eventFeedbackSubmitting()) {
       return;
     }
     const submittedAtIso = new Date().toISOString();
@@ -587,11 +591,16 @@ export class EventFeedbackPopupComponent {
       return;
     }
     this.eventFeedbackDetailValue.set(feedback);
-    await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
-    this.appCtx.emitActivityEventFeedbackSubmit(feedback);
-    this.eventFeedbackSubmitted.set(true);
-    this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
-    this.clearLoadedEventFeedbackDetail(feedback.eventId);
+    this.eventFeedbackSubmitting.set(true);
+    try {
+      await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
+      this.appCtx.emitActivityEventFeedbackSubmit(feedback);
+      this.eventFeedbackSubmitted.set(true);
+      this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
+      this.clearLoadedEventFeedbackDetail(feedback.eventId);
+    } finally {
+      this.eventFeedbackSubmitting.set(false);
+    }
   }
 
   private applyLoadedEventFeedbackDetail(
@@ -617,6 +626,7 @@ export class EventFeedbackPopupComponent {
   private clearLoadedEventFeedbackDetail(eventId = ''): void {
     this.eventFeedbackDetailDto.set(null);
     this.eventFeedbackDetailValue.set(new ActivityContracts.EventFeedbackDetailDto({ eventId }));
+    this.eventFeedbackSubmitting.set(false);
   }
 
   private applyActivityEventFeedbackSubmitSync(dto: ActivityContracts.EventFeedbackDetailDto): void {

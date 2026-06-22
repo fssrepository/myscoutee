@@ -11,11 +11,17 @@
           type="button"
           class="form-flow__save"
           [class.is-missing]="totalMissingRequiredCount() > 0"
+          [class.is-saving]="saving"
           [disabled]="!canSave()"
           (click)="emitSave($event)"
           [attr.aria-label]="saveAriaLabel()"
           [attr.title]="totalMissingRequiredCount() > 0 ? totalMissingRequiredCount() + ' required field missing' : saveAriaLabel()"
         >
+          @if (saving) {
+            <span class="form-flow__save-ring" aria-hidden="true">
+              <app-progress-indicator kind="action-ring" shape="button" state="loading"></app-progress-indicator>
+            </span>
+          }
           <mat-icon>{{ saveIcon() }}</mat-icon>
           <span>{{ saveLabel() }}</span>
         </button>

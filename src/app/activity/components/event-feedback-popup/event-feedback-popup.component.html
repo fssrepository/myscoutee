@@ -97,12 +97,19 @@
           @if (stackedPopupMode() === 'eventFeedback') {
             <div class="support-popup event-feedback-popup">
               @if (!eventFeedbackSubmitted()) {
-                @if (hasEventFeedbackCards()) {
+                @if (eventFeedbackDetailLoading()) {
+                  <article class="editor-list-card support-card event-feedback-loading-card">
+                    <app-progress-indicator kind="load-ring" state="loading"></app-progress-indicator>
+                    <span>Loading feedback</span>
+                  </article>
+                } @else if (hasEventFeedbackCards()) {
                   <article class="editor-list-card support-card event-feedback-shell event-feedback-flow-shell">
                     <app-form-flow
                       class="event-feedback-form-flow"
                       [model]="eventFeedbackFlowModel()"
                       [ngModel]="eventFeedbackDetailValue()"
+                      [saving]="eventFeedbackSubmitting()"
+                      [disabled]="eventFeedbackSubmitting()"
                       (save)="onEventFeedbackFlowSave($event)"
                     ></app-form-flow>
                     @if (eventFeedbackSubmitMessage()) {
