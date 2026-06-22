@@ -860,8 +860,10 @@ app-smart-list.event-feedback-list-surface {
 }
 
 .event-feedback-flow-shell {
+  border: 0;
+  background: transparent;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .event-feedback-form-flow {
