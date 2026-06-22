@@ -2,23 +2,22 @@ import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.map
 import { ActivityEventDTO } from '../../../contracts/activity.interface';
 import type {
   ActivityEventActivitiesListQueryResult,
-  ActivityEventListItem,
   ActivityEventRecord,
   ActivityEventPageResultDTO
 } from '../../../contracts/activity.interface';
 
 export class LocalActivityEventsMapper {
-  static toDTO(record: ActivityEventRecord | ActivityEventListItem): ActivityEventDTO {
+  static toDTO(record: ActivityEventRecord): ActivityEventDTO {
     return ActivityEventDtoMapper.toDTO(record);
   }
 
-  static toDTOList(records: readonly (ActivityEventRecord | ActivityEventListItem)[]): ActivityEventDTO[] {
+  static toDTOList(records: readonly ActivityEventRecord[]): ActivityEventDTO[] {
     return ActivityEventDtoMapper.toDTOList(records);
   }
 
   static toDTOPage(page: ActivityEventActivitiesListQueryResult): ActivityEventPageResultDTO {
     return {
-      items: this.toDTOList(page.records),
+      items: page.records.map(item => ActivityEventDTO.from(item)),
       total: page.total,
       nextCursor: page.nextCursor
     };

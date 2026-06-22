@@ -27,7 +27,6 @@ import type {
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventListItem,
   ActivityEventRecord,
   ActivityEventScopeFilter
 } from '../../contracts/activity.interface';
@@ -94,7 +93,7 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.requestWithAbort(
-        this.http.post<ActivityEventListItem[] | ActivityEventActivitiesListQueryResult | null>(
+        this.http.post<ActivityEventDTO[] | ActivityEventActivitiesListQueryResult | null>(
           `${this.apiBaseUrl}/activities/events/filter`,
           {
             userId: normalizedUserId,
@@ -113,14 +112,14 @@ export class HttpEventsService implements IEventsService {
         signal
       );
       if (Array.isArray(response)) {
-        const records = this.cloneListItems(response);
+        const records = this.cloneDTOs(response);
         return {
           records,
           total: records.length,
           nextCursor: null
         };
       }
-      const records = this.cloneListItems(response?.records);
+      const records = this.cloneDTOs(response?.records);
       return {
         records,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
@@ -773,48 +772,6 @@ export class HttpEventsService implements IEventsService {
         groups: (subEvent.groups ?? []).map((group: HttpActivityEventSubEventGroupDTO) => ({ ...group })),
         pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : subEvent.pricing
       }))
-    }));
-  }
-
-  private cloneListItems(records: ActivityEventListItem[] | null | undefined): ActivityEventListItem[] {
-    if (!Array.isArray(records)) {
-      return [];
-    }
-    return records.map(record => ({
-      id: `${record.id ?? ''}`.trim(),
-      userId: `${record.userId ?? ''}`.trim(),
-      type: record.type ?? 'events',
-      status: record.status,
-      adminIds: [...(record.adminIds ?? [])],
-      avatar: `${record.avatar ?? ''}`.trim(),
-      title: `${record.title ?? ''}`.trim(),
-      subtitle: `${record.subtitle ?? ''}`.trim(),
-      timeframe: `${record.timeframe ?? ''}`.trim(),
-      inviter: record.inviter ?? null,
-      unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
-      activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-      creatorUserId: `${record.creatorUserId ?? ''}`.trim(),
-      creatorName: `${record.creatorName ?? ''}`.trim(),
-      creatorInitials: `${record.creatorInitials ?? ''}`.trim(),
-      creatorCity: `${record.creatorCity ?? ''}`.trim(),
-      visibility: record.visibility ?? 'Public',
-      startAtIso: `${record.startAtIso ?? ''}`.trim(),
-      endAtIso: `${record.endAtIso ?? ''}`.trim(),
-      distanceKm: Math.max(0, Number(record.distanceKm) || 0),
-      imageUrl: `${record.imageUrl ?? ''}`.trim(),
-      location: `${record.location ?? ''}`.trim(),
-      capacityMin: record.capacityMin ?? null,
-      capacityMax: record.capacityMax ?? null,
-      capacityTotal: Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)),
-      ticketing: record.ticketing === true,
-      eventType: record.eventType ?? 'main',
-      acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
-      pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
-      pendingReason: record.pendingReason ?? null,
-      topics: [...(record.topics ?? [])],
-      rating: Math.max(0, Number(record.rating) || 0),
-      boost: Math.max(0, Number(record.boost) || 0),
-      affinity: Math.max(0, Number(record.affinity) || 0)
     }));
   }
 

@@ -7,12 +7,12 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
+import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventListItem,
   ActivityEventRecord,
   ActivityEventScopeFilter,
   ActivityEventRepositoryItemType
@@ -313,7 +313,7 @@ export class LocalEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords.map(record => this.toEventListItem(record)),
+        records: normalizedRecords.map(record => ActivityEventDtoMapper.toDTO(record)),
         total,
         nextCursor: null
       };
@@ -330,51 +330,9 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records: records.map(record => this.toEventListItem(record)),
+      records: records.map(record => ActivityEventDtoMapper.toDTO(record)),
       total,
       nextCursor
-    };
-  }
-
-  private toEventListItem(record: ActivityEventRecord): ActivityEventListItem {
-    return {
-      id: record.id,
-      userId: record.userId,
-      type: record.type,
-      status: record.status,
-      avatar: record.avatar,
-      title: record.title,
-      subtitle: record.subtitle,
-      timeframe: record.timeframe,
-      inviter: record.inviter,
-      unread: record.unread,
-      activity: record.activity,
-      creatorUserId: record.creatorUserId,
-      creatorName: record.creatorName,
-      creatorInitials: record.creatorInitials,
-      creatorCity: record.creatorCity,
-      visibility: record.visibility,
-      startAtIso: record.startAtIso,
-      endAtIso: record.endAtIso,
-      distanceKm: record.distanceKm,
-      imageUrl: record.imageUrl,
-      location: record.location,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      capacityTotal: record.capacityTotal,
-      ticketing: record.ticketing,
-      eventType: record.eventType,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
-      pendingReason: record.pendingReason,
-      topics: [...record.topics],
-      rating: record.rating,
-      boost: record.boost,
-      affinity: record.affinity
     };
   }
 

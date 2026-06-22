@@ -266,47 +266,6 @@ export interface ActivityEventRecord {
   affinity: number;
 }
 
-export interface ActivityEventListItem {
-  id: string;
-  userId: string;
-  type: ActivityEventRepositoryItemType;
-  status?: ActivityEventStatus;
-  adminIds?: string[];
-  avatar: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  inviter?: string | null;
-  unread: number;
-  activity: number;
-  creatorUserId: string;
-  creatorName: string;
-  creatorInitials: string;
-  creatorCity: string;
-  visibility: EventVisibility;
-  startAtIso: string;
-  endAtIso: string;
-  distanceKm: number;
-  imageUrl: string;
-  location: string;
-  capacityMin: number | null;
-  capacityMax: number | null;
-  capacityTotal: number;
-  ticketing: boolean;
-  eventType?: EventRecordKind;
-  acceptedMembers: number;
-  pendingMembers: number;
-  acceptedMemberUserIds?: string[];
-  pendingMemberUserIds?: string[];
-  invitedMemberUserIds?: string[];
-  pendingRequestMemberUserIds?: string[];
-  pendingReason?: ActivityPendingReason;
-  topics: string[];
-  rating: number;
-  boost: number;
-  affinity: number;
-}
-
 export type ActivityEventDTOStatus = ActivityEventStatus;
 
 export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>> & Pick<ActivityEventDTO, 'id'>;
@@ -467,7 +426,7 @@ export interface ActivityEventActivitiesQuery {
 }
 
 export interface ActivityEventActivitiesListQueryResult {
-  records: ActivityEventListItem[];
+  records: ActivityEventDTO[];
   total: number;
   nextCursor: string | null;
 }

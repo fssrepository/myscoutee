@@ -1,13 +1,12 @@
 import { PricingBuilder } from '../builders';
 import {
   ActivityEventDTO,
-  type ActivityEventListItem,
   type ActivityEventRecord
 } from '../../contracts/activity.interface';
 import type { SubEventFormItem } from '../../contracts/event.interface';
 
 export class ActivityEventDtoMapper {
-  static toDTO(record: ActivityEventRecord | ActivityEventListItem): ActivityEventDTO {
+  static toDTO(record: ActivityEventRecord): ActivityEventDTO {
     return new ActivityEventDTO({
       id: record.id,
       userId: record.userId,
@@ -71,7 +70,7 @@ export class ActivityEventDtoMapper {
     });
   }
 
-  static toDTOList(records: readonly (ActivityEventRecord | ActivityEventListItem)[]): ActivityEventDTO[] {
+  static toDTOList(records: readonly ActivityEventRecord[]): ActivityEventDTO[] {
     return records.map(record => this.toDTO(record));
   }
 
