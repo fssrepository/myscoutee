@@ -317,7 +317,7 @@ export class ProfileEditorComponent {
     this.resetTransientUiState();
   }
 
-  protected async saveProfileFromHeader(event: Event): Promise<void> {
+  private async saveProfileFromHeader(event: Event): Promise<void> {
     event.stopPropagation();
     if (this.panel !== 'profile' || this.isProfileSaving()) {
       return;
@@ -480,7 +480,7 @@ export class ProfileEditorComponent {
     return items;
   }
 
-  protected profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+  private profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
     return this.profileStatusOptions.map(option => ({
       id: this.menuItemId('profile-status', option.value),
       label: option.value,
