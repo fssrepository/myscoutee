@@ -2,6 +2,7 @@ import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components/card';
+import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
   activeUserId: string;
@@ -206,3 +207,10 @@ export class ActivityRateImageCardConverter {
     return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(timestamp));
   }
 }
+
+export const activityRateImageCardConverter =
+  ActivityRateImageCardConverter satisfies UiListConverter<
+    ActivityRateDTO,
+    ImageCardData,
+    ActivityRateImageCardConverterOptions
+  >;

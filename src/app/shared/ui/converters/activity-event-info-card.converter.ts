@@ -8,6 +8,7 @@ import type {
 import type {
   InfoCardData
 } from '../components/card';
+import type { UiListConverter } from './converter.types';
 
 export interface ActivityEventInfoCardConverterOptions {
   activeUserId?: string | null;
@@ -326,3 +327,10 @@ export class ActivityEventInfoCardConverter {
     }
   }
 }
+
+export const activityEventInfoCardConverter =
+  ActivityEventInfoCardConverter satisfies UiListConverter<
+    ActivityEventDTO,
+    InfoCardData,
+    ActivityEventInfoCardConverterOptions | undefined
+  >;

@@ -17,6 +17,11 @@ export interface EventFeedbackFormFlowConverterOptions {
   eventTitle?: string | null;
 }
 
+export interface EventFeedbackPendingDeckOptions {
+  activeUserId?: string | null;
+  fallbackTitle?: string | null;
+}
+
 export interface EventFeedbackFormCardValue {
   id: string;
   answerPrimary: string;
@@ -40,6 +45,23 @@ type EventFeedbackOptionMenuContext = {
 };
 
 export class EventFeedbackFormFlowConverter {
+  static pendingDeck(
+    deck: EventFeedbackDeckResultDto | null | undefined,
+    options: EventFeedbackPendingDeckOptions = {}
+  ): EventFeedbackDeckResultDto {
+    const normalizedDeck = this.normalizeDeck(deck);
+    const eventId = normalizedDeck.eventId;
+    const activeUserId = options.activeUserId?.trim() ?? '';
+    return {
+      ...normalizedDeck,
+      title: normalizedDeck.title || options.fallbackTitle?.trim() || '',
+      cards: normalizedDeck.cards.filter(card =>
+        card.eventId === eventId
+        && !(card.kind === 'attendee' && card.attendeeUserId === activeUserId)
+      )
+    };
+  }
+
   static emptyValue(eventId = ''): EventFeedbackFormValue {
     return {
       eventId: eventId.trim(),

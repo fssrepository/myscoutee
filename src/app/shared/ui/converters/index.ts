@@ -1,10 +1,17 @@
 export {
+  type ConverterOptionsArg,
+  type UiConverter,
+  type UiListConverter
+} from './converter.types';
+export {
   ActivityChatSingleRowConverter,
+  activityChatSingleRowConverter,
   type ActivityChatSingleRowConverterOptions
 } from './activity-chat-single-row.converter';
 export { ActivityEventEditorFormConverter } from './activity-event-editor-form.converter';
 export {
   ActivityEventInfoCardConverter,
+  activityEventInfoCardConverter,
   type ActivityEventInfoCardConverterOptions
 } from './activity-event-info-card.converter';
 export {
@@ -18,6 +25,7 @@ export {
 } from './activity-event-save.converter';
 export {
   ActivityRateImageCardConverter,
+  activityRateImageCardConverter,
   type ActivityRateImageCardConverterOptions
 } from './activity-rate-image-card.converter';
 export {
@@ -41,7 +49,17 @@ export {
 } from './event-feedback-form-flow.converter';
 export {
   EventFeedbackInfoCardConverter,
+  eventFeedbackInfoCardConverter,
   type EventFeedbackInfoCardConverterOptions,
-  type EventFeedbackOrganizerInfoCardInput,
-  type EventFeedbackPageViewModel
+  type EventFeedbackOrganizerInfoCardInput
 } from './event-feedback-info-card.converter';
+export {
+  EventFeedbackPageConverter,
+  type EventFeedbackFilterMenuContext,
+  type EventFeedbackFilterOption,
+  type EventFeedbackOrganizerCarouselSection,
+  type EventFeedbackOrganizerItem,
+  type EventFeedbackOrganizerMessageGroup,
+  type EventFeedbackOrganizerMessageItem,
+  type EventFeedbackOrganizerStatItem
+} from './event-feedback-page.converter';

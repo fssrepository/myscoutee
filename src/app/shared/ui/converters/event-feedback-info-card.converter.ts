@@ -1,25 +1,12 @@
-import type * as AppTypes from '../../core/base/models';
 import type {
-  EventFeedbackPageCountsDto,
   EventFeedbackPageItemDto,
-  EventFeedbackPageResultDto,
   EventFeedbackPageStateSnapshotDto,
-  EventFeedbackReceivedEventDto
 } from '../../core/contracts/activity.interface';
 import type { InfoCardData, CardMenuActionId } from '../components/card';
-
-export interface EventFeedbackPageViewModel {
-  items: InfoCardData[];
-  total: number;
-  allItems: AppTypes.EventFeedbackEventCard[];
-  organizerItems: AppTypes.EventFeedbackEventCard[];
-  receivedEvents: EventFeedbackReceivedEventDto[];
-  state: EventFeedbackPageStateSnapshotDto;
-  counts: EventFeedbackPageCountsDto;
-}
+import type { UiListConverter } from './converter.types';
 
 export interface EventFeedbackInfoCardConverterOptions {
-  hasOrganizerNote?: (eventId: string) => boolean;
+  state?: EventFeedbackPageStateSnapshotDto | null;
 }
 
 export interface EventFeedbackOrganizerInfoCardInput {
@@ -33,25 +20,8 @@ export interface EventFeedbackOrganizerInfoCardInput {
 }
 
 export class EventFeedbackInfoCardConverter {
-  static convertPage(
-    result: EventFeedbackPageResultDto,
-    options: EventFeedbackInfoCardConverterOptions = {}
-  ): EventFeedbackPageViewModel {
-    const allItems = this.convertItems(result.allItems);
-    const organizerItems = this.convertItems(result.organizerItems);
-    return {
-      items: this.convertItems(result.items).map(item => this.convert(item, options)),
-      total: Math.max(0, Math.trunc(Number(result.total) || 0)),
-      allItems,
-      organizerItems,
-      receivedEvents: [...(result.receivedEvents ?? [])],
-      state: result.state,
-      counts: result.counts
-    };
-  }
-
   static convert(
-    item: AppTypes.EventFeedbackEventCard,
+    item: EventFeedbackPageItemDto,
     options: EventFeedbackInfoCardConverterOptions = {}
   ): InfoCardData {
     if (item.isOwnEvent) {
@@ -88,27 +58,16 @@ export class EventFeedbackInfoCardConverter {
           ? 'Start event feedback'
           : 'Event feedback unavailable'
       },
-      menuActions: this.eventFeedbackMenuActions(item, options.hasOrganizerNote?.(item.eventId) === true),
+      menuActions: this.eventFeedbackMenuActions(item, this.hasOrganizerNote(item.eventId, options.state)),
       clickable: false
     };
   }
 
-  static convertItems(items: readonly EventFeedbackPageItemDto[] | undefined): AppTypes.EventFeedbackEventCard[] {
-    return (items ?? []).map(item => ({
-      eventId: item.eventId?.trim() ?? '',
-      title: item.title?.trim() ?? '',
-      subtitle: item.subtitle?.trim() ?? '',
-      timeframe: item.timeframe?.trim() ?? '',
-      imageUrl: item.imageUrl?.trim() ?? '',
-      startAtMs: Math.max(0, Math.trunc(Number(item.startAtMs) || 0)),
-      pendingCards: Math.max(0, Math.trunc(Number(item.pendingCards) || 0)),
-      totalCards: Math.max(0, Math.trunc(Number(item.totalCards) || 0)),
-      isRemoved: item.isRemoved === true,
-      isFeedbacked: item.isFeedbacked === true,
-      feedbackedAtMs: this.numberOrNull(item.feedbackedAtMs),
-      removedAtMs: this.numberOrNull(item.removedAtMs),
-      isOwnEvent: item.isOwnEvent === true
-    })).filter(item => item.eventId.length > 0);
+  static convertList(
+    items: readonly EventFeedbackPageItemDto[],
+    options: EventFeedbackInfoCardConverterOptions = {}
+  ): InfoCardData[] {
+    return items.map(item => this.convert(item, options));
   }
 
   static organizerEventFeedbackCard(
@@ -140,11 +99,11 @@ export class EventFeedbackInfoCardConverter {
     };
   }
 
-  private static isEventFeedbackStartAvailable(item: AppTypes.EventFeedbackEventCard): boolean {
+  private static isEventFeedbackStartAvailable(item: EventFeedbackPageItemDto): boolean {
     return !item.isRemoved && item.pendingCards > 0;
   }
 
-  private static eventFeedbackItemStatusLine(item: AppTypes.EventFeedbackEventCard): string {
+  private static eventFeedbackItemStatusLine(item: EventFeedbackPageItemDto): string {
     if (item.isRemoved) {
       return 'Removed without feedback.';
     }
@@ -154,7 +113,7 @@ export class EventFeedbackInfoCardConverter {
     return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
   }
 
-  private static eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
+  private static eventFeedbackLeadingIcon(item: EventFeedbackPageItemDto): string {
     if (item.isOwnEvent) {
       return 'stadium';
     }
@@ -167,7 +126,7 @@ export class EventFeedbackInfoCardConverter {
     return 'rate_review';
   }
 
-  private static eventFeedbackStartBadgeLabel(item: AppTypes.EventFeedbackEventCard): string {
+  private static eventFeedbackStartBadgeLabel(item: EventFeedbackPageItemDto): string {
     if (item.isOwnEvent) {
       return 'View Feedbacks';
     }
@@ -181,7 +140,7 @@ export class EventFeedbackInfoCardConverter {
   }
 
   private static eventFeedbackMenuActions(
-    item: AppTypes.EventFeedbackEventCard,
+    item: EventFeedbackPageItemDto,
     hasOrganizerNote: boolean
   ): readonly CardMenuActionId[] {
     if (item.isOwnEvent) {
@@ -201,8 +160,22 @@ export class EventFeedbackInfoCardConverter {
     return actions;
   }
 
-  private static numberOrNull(value: number | null | undefined): number | null {
-    const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric > 0 ? Math.trunc(numeric) : null;
+  private static hasOrganizerNote(
+    eventId: string,
+    state: EventFeedbackPageStateSnapshotDto | null | undefined
+  ): boolean {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return false;
+    }
+    return Boolean(state?.organizerNotesByEventId?.[normalizedEventId]?.trim());
   }
+
 }
+
+export const eventFeedbackInfoCardConverter =
+  EventFeedbackInfoCardConverter satisfies UiListConverter<
+    EventFeedbackPageItemDto,
+    InfoCardData,
+    EventFeedbackInfoCardConverterOptions | undefined
+  >;
