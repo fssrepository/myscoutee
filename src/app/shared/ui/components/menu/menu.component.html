@@ -306,7 +306,11 @@
               role="tabpanel"
               [attr.aria-labelledby]="showTabsBar() ? tabsId(group) : null"
               >
-              <div class="app-menu__tabs-items">
+              <div
+                class="app-menu__tabs-items"
+                [class.app-menu__tabs-items--fixed-columns]="tabsColumnCount() !== null"
+                [style.--app-menu-tabs-columns]="tabsColumnCount()"
+              >
                 @for (item of tabsGroupItems(group); track trackByItemId($index, item)) {
                   @if (isDivider(item)) {
                     <div class="app-menu__divider app-menu__tabs-divider" role="separator"></div>

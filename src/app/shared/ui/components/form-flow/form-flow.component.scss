@@ -269,6 +269,9 @@
 .form-flow__controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  align-content: start;
+  align-items: start;
   gap: 12px;
 }
 
@@ -306,6 +309,10 @@
 }
 
 .form-flow__control--wide {
+  grid-column: 1 / -1;
+}
+
+.form-flow__control:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
 
@@ -675,11 +682,6 @@
   scrollbar-width: thin;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
-}
-
-.form-flow--carousel .form-flow__menu {
-  --app-menu-tabs-item-flex-basis: 7rem;
-  --app-menu-tabs-item-min-width: 7rem;
 }
 
 .form-flow--carousel .form-flow__summary-head {
