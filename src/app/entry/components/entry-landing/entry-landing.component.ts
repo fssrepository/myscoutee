@@ -26,7 +26,9 @@ interface AppVersionPayload {
 
 interface HowStepSlide {
   readonly index: string;
+  readonly titleKey: string;
   readonly title: string;
+  readonly messageKey: string;
   readonly message: string;
   readonly visualClass: string;
 }
@@ -71,25 +73,33 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected readonly howSlides: readonly HowStepSlide[] = [
     {
       index: '01',
+      titleKey: 'set.priorities.and.feedback',
       title: 'Set priorities and feedback',
+      messageKey: '1.10.score.not.just.yes.no.show.real.interest.level.from.low.to.high.with.clearer.signals',
       message: '1-10 score, not just yes/no. Show real interest level from low to high with clearer signals.',
       visualClass: 'entry-step-card-visual-1'
     },
     {
       index: '02',
+      titleKey: 'start.in.a.matched.group.chat',
       title: 'Start in a matched group chat',
+      messageKey: 'group.first.chat.join.top.matches.where.interest.matches.both.ways',
       message: 'Group-first chat. Join top matches where interest matches both ways.',
       visualClass: 'entry-step-card-visual-2'
     },
     {
       index: '03',
+      titleKey: 'meet.through.events',
       title: 'Meet through events',
+      messageKey: 'live.updates.change.priorities.anytime.then.meet.through.events.and.go.offline',
       message: 'Live updates. Change priorities anytime, then meet through events and go offline.',
       visualClass: 'entry-step-card-visual-3'
     },
     {
       index: '04',
+      titleKey: 'host.your.own.events',
       title: 'Host your own events',
+      messageKey: 'create.events.for.everyone.friends.or.invite.only',
       message: 'Create events for everyone, friends, or invite-only.',
       visualClass: 'entry-step-card-visual-4'
     }

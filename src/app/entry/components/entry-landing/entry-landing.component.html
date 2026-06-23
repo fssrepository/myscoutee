@@ -115,8 +115,8 @@
                     <div class="entry-step-headline">
                       <span class="entry-step-index">{{ slide.index }}</span>
                       <div class="entry-step-heading-copy">
-                        <h3>{{ slide.title }}</h3>
-                        <p>{{ slide.message }}</p>
+                        <h3>{{ slide.titleKey | i18n: slide.title }}</h3>
+                        <p>{{ slide.messageKey | i18n: slide.message }}</p>
                       </div>
                     </div>
                     <div class="entry-step-visual" aria-hidden="true"></div>

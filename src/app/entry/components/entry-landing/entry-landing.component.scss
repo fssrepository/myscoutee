@@ -611,6 +611,8 @@
   overflow: hidden;
   border-radius: 30px;
   border: 2px solid rgba(73, 124, 223, 0.45);
+  display: flex;
+  flex-direction: column;
   background: #ffffff;
   box-shadow: 0 10px 22px rgba(24, 39, 77, 0.08);
 }
@@ -626,6 +628,7 @@
 }
 
 .entry-step-headline {
+  box-sizing: border-box;
   padding: 0.78rem 0.9rem 0.16rem;
   display: flex;
   align-items: flex-start;
@@ -687,6 +690,8 @@
 
 .entry-step-visual {
   position: relative;
+  margin-top: auto;
+  flex: 0 0 auto;
   height: 208px;
   border-top: 1px solid rgba(63, 86, 131, 0.08);
   overflow: hidden;
