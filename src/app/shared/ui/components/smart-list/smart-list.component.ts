@@ -296,6 +296,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @HostListener('window:resize')
   protected onViewportResize(): void {
     this.refreshSurfaceSoon();
+    this.syncHorizontalViewportAfterResize();
   }
 
   private hasMore = true;
@@ -313,6 +314,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private loadSequence = 0;
   private loadingCounter = 0;
   private loadingStartedAtMs = 0;
+  private autoplayTimer: ReturnType<typeof setInterval> | null = null;
+  private autoplayPaused = false;
   private loadingInterval: ReturnType<typeof setInterval> | null = null;
   private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressVisibleLoadingProgress = false;
@@ -378,6 +381,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onSurfaceTouchStart(): void {
     this.isTouchingSurface = true;
+    if (this.isHorizontalList()) {
+      this.pausePaginationAutoplay();
+    }
     this.cdr.markForCheck();
 
     this.clearListSnapSettleTimers();
@@ -499,6 +505,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       || changes['filters']
       || changes['groupBy']
     ) {
+      this.resetPaginationAutoplay();
       this.resetAndReload();
     }
 
@@ -530,6 +537,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
     this.clearHostedFullscreenTransitionTimer();
+    this.clearPaginationAutoplay();
     this.paginationHelper.destroy();
   }
 
@@ -613,6 +621,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onHorizontalPaginationDotClick(index: number, event: Event): void {
     event.stopPropagation();
+    this.pausePaginationAutoplay();
     void this.setCursorIndex(index);
   }
 
@@ -687,6 +696,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPaginationPrev(event: Event): void {
     event.stopPropagation();
+    this.pausePaginationAutoplay();
     if (this.shouldUseHostedFullscreenPagination()) {
       this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(-1);
@@ -697,6 +707,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPaginationNext(event: Event): void {
     event.stopPropagation();
+    this.pausePaginationAutoplay();
     if (this.shouldUseHostedFullscreenPagination()) {
       this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(1);
@@ -878,6 +889,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.currentViewMode === 'list' && this.resolvedOrientation() === 'horizontal';
   }
 
+  protected shouldUseCompactHorizontal(): boolean {
+    return this.isHorizontalList() && this.resolveConfigValue(this.config.compactHorizontal, false);
+  }
+
   protected shouldSuspendHorizontalSnap(): boolean {
     return this.horizontalListScrollInProgress
       && this.isCompactHorizontalViewport()
@@ -956,9 +971,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (maxScrollLeft <= 1) {
       return;
     }
-    const rawDelta = Math.abs(event.deltaX) > Math.abs(event.deltaY)
-      ? event.deltaX
-      : event.deltaY;
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) {
+      return;
+    }
+    const rawDelta = event.deltaX;
     const delta = this.normalizedWheelDelta(rawDelta, event.deltaMode, target);
     if (!Number.isFinite(delta) || Math.abs(delta) < 0.5) {
       return;
@@ -967,6 +983,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (Math.abs(nextScrollLeft - target.scrollLeft) < 0.5) {
       return;
     }
+    this.pausePaginationAutoplay();
     this.beginHorizontalListScroll(target);
     event.preventDefault();
     target.scrollLeft = nextScrollLeft;
@@ -3269,6 +3286,60 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private emitState(): void {
     this.stateChange.emit(this.buildStateChange());
+    this.syncPaginationAutoplay();
+  }
+
+  private resolvedPaginationAutoplayMs(): number | null {
+    const value = this.resolveConfigValue(this.config.pagination?.autoplayMs, null);
+    const normalized = Math.trunc(Number(value));
+    return Number.isFinite(normalized) && normalized >= 1000 ? normalized : null;
+  }
+
+  private syncPaginationAutoplay(): void {
+    const autoplayMs = this.resolvedPaginationAutoplayMs();
+    const canAutoplay = autoplayMs !== null
+      && !this.autoplayPaused
+      && this.currentViewMode === 'list'
+      && this.isHorizontalList()
+      && this.items.length > 1;
+    if (!canAutoplay) {
+      this.clearPaginationAutoplay();
+      return;
+    }
+    if (this.autoplayTimer !== null) {
+      return;
+    }
+    this.ngZone.runOutsideAngular(() => {
+      this.autoplayTimer = setInterval(() => {
+        const cursor = this.buildCursorState();
+        if (cursor.total <= 1) {
+          this.clearPaginationAutoplay();
+          return;
+        }
+        const nextIndex = cursor.index >= cursor.total - 1 ? 0 : cursor.index + 1;
+        this.ngZone.run(() => {
+          void this.setCursorIndex(nextIndex);
+        });
+      }, autoplayMs);
+    });
+  }
+
+  private pausePaginationAutoplay(): void {
+    this.autoplayPaused = true;
+    this.clearPaginationAutoplay();
+  }
+
+  private resetPaginationAutoplay(): void {
+    this.autoplayPaused = false;
+    this.clearPaginationAutoplay();
+  }
+
+  private clearPaginationAutoplay(): void {
+    if (this.autoplayTimer === null) {
+      return;
+    }
+    clearInterval(this.autoplayTimer);
+    this.autoplayTimer = null;
   }
 
   private buildStateChange(): SmartListStateChange<T, TFilters> {
@@ -3383,6 +3454,16 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return;
     }
     setTimeout(run, 0);
+  }
+
+  private syncHorizontalViewportAfterResize(): void {
+    if (!this.afterViewInit || !this.isHorizontalList()) {
+      return;
+    }
+    if (!this.shouldUseCompactHorizontal() && !this.shouldUseHorizontalMobileStepper()) {
+      return;
+    }
+    this.scrollHorizontalListItemIntoView(this.buildCursorState().index, 'auto');
   }
 
   private scheduleHorizontalCursorScrollLockRelease(scrollElement: HTMLDivElement): void {

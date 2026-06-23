@@ -1,6 +1,7 @@
 <div
   class="smart-list__surface"
   [class.smart-list__surface--horizontal]="isHorizontalList()"
+  [class.smart-list__surface--compact-horizontal]="shouldUseCompactHorizontal()"
   [class.smart-list__surface--fullscreen]="resolvedPresentation() === 'fullscreen'"
   [class.smart-list__surface--fullscreen-with-rating-bar]="resolvedPresentation() === 'fullscreen' && shouldRenderPaginationRatingBar()"
 >
@@ -194,6 +195,7 @@
           [class.smart-list--card-grid]="resolvedListLayout() === 'card-grid'"
           [class.smart-list--thread]="resolvedListLayout() === 'thread'"
           [class.smart-list--horizontal]="isHorizontalList()"
+          [class.smart-list--compact-horizontal]="shouldUseCompactHorizontal()"
           [class.smart-list--mobile-stepper]="resolvedMobileStepper()"
           [class.smart-list--flow-reverse]="isReversedListFlow()"
           [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"

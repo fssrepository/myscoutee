@@ -4,4 +4,5 @@ export * from './single-row';
 export * from './pair-card';
 export * from './image-card';
 export * from './info-card';
+export * from './warp-image-card';
 export * from './rate-card.helpers';

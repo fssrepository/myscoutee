@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { BehaviorSubject, Observable, filter, map, of, take } from 'rxjs';
@@ -8,7 +8,7 @@ import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import {
-  InfoCardComponent, type InfoCardData
+  InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
 } from '../../../shared/ui/components/card';
 import {
   SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
@@ -24,20 +24,14 @@ interface AppVersionPayload {
   readonly gitSha?: unknown;
 }
 
-interface HowStepSlide {
-  readonly index: string;
-  readonly titleKey: string;
-  readonly title: string;
-  readonly messageKey: string;
-  readonly message: string;
-  readonly visualClass: string;
-}
+type HowStepSlide = WarpImageCardData;
 
 @Component({
   selector: 'app-entry-landing',
   standalone: true,
   imports: [
     InfoCardComponent,
+    WarpImageCardComponent,
     SmartListComponent,
     LazyBgImageDirective,
     MatRippleModule,
@@ -48,9 +42,6 @@ interface HowStepSlide {
   styleUrl: './entry-landing.component.scss'
 })
 export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
-  @ViewChild('howCarouselViewport')
-  private howCarouselViewportRef?: ElementRef<HTMLDivElement>;
-
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -72,40 +63,92 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected readonly howSlides: readonly HowStepSlide[] = [
     {
+      id: 'priority-feedback',
       index: '01',
       titleKey: 'set.priorities.and.feedback',
       title: 'Set priorities and feedback',
       messageKey: '1.10.score.not.just.yes.no.show.real.interest.level.from.low.to.high.with.clearer.signals',
       message: '1-10 score, not just yes/no. Show real interest level from low to high with clearer signals.',
-      visualClass: 'entry-step-card-visual-1'
+      tone: 'blue',
+      sliceX: '0%',
+      sliceY: '23%'
     },
     {
+      id: 'matched-group-chat',
       index: '02',
       titleKey: 'start.in.a.matched.group.chat',
       title: 'Start in a matched group chat',
       messageKey: 'group.first.chat.join.top.matches.where.interest.matches.both.ways',
       message: 'Group-first chat. Join top matches where interest matches both ways.',
-      visualClass: 'entry-step-card-visual-2'
+      tone: 'purple',
+      sliceX: '100%',
+      sliceY: '23%'
     },
     {
+      id: 'meet-through-events',
       index: '03',
       titleKey: 'meet.through.events',
       title: 'Meet through events',
       messageKey: 'live.updates.change.priorities.anytime.then.meet.through.events.and.go.offline',
       message: 'Live updates. Change priorities anytime, then meet through events and go offline.',
-      visualClass: 'entry-step-card-visual-3'
+      tone: 'pink',
+      sliceX: '0%',
+      sliceY: '99%'
     },
     {
+      id: 'host-events',
       index: '04',
       titleKey: 'host.your.own.events',
       title: 'Host your own events',
       messageKey: 'create.events.for.everyone.friends.or.invite.only',
       message: 'Create events for everyone, friends, or invite-only.',
-      visualClass: 'entry-step-card-visual-4'
+      tone: 'orange',
+      sliceX: '100%',
+      sliceY: '99%'
     }
   ];
 
-  protected activeHowSlideIndex = 0;
+  protected readonly entryHowSmartListConfig: SmartListConfig<HowStepSlide> = {
+    pageSize: 4,
+    initialPageSize: 4,
+    initialPageCount: 1,
+    showStickyHeader: false,
+    showFirstGroupMarker: false,
+    showGroupMarker: () => false,
+    groupBy: null,
+    trackBy: (_index, slide) => slide.id,
+    listLayout: 'card-grid',
+    orientation: 'horizontal',
+    compactHorizontal: true,
+    desktopColumns: 1,
+    snapMode: 'none',
+    mobileStepper: true,
+    headerProgress: {
+      enabled: false
+    },
+    pagination: {
+      mode: 'arrows',
+      autoplayMs: 5000
+    },
+    containerClass: {
+      'entry-how-card-list': true
+    }
+  };
+
+  protected readonly entryHowSmartListLoadPage: SmartListLoadPage<HowStepSlide> = (
+    query: ListQuery
+  ): Observable<PageResult<HowStepSlide>> => {
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryHowSmartListConfig.pageSize) || this.howSlides.length));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const start = page * pageSize;
+    const items = this.howSlides.slice(start, start + pageSize);
+    return of({
+      items,
+      total: this.howSlides.length,
+      nextCursor: start + items.length < this.howSlides.length ? `${start + items.length}` : null
+    });
+  };
+
   protected previewGuideOpen = false;
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
@@ -197,18 +240,11 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     });
   };
 
-  private readonly howCarouselIntervalMs = 5000;
-  private howCarouselTimer: ReturnType<typeof setInterval> | null = null;
-  private howCarouselSwipeStartX: number | null = null;
-  private howCarouselSwipePointerId: number | null = null;
-  private howCarouselScrollLockTargetIndex: number | null = null;
-  private howCarouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
   private landingPopupScrollLocked = false;
   private previousBodyOverflow = '';
 
   ngOnInit(): void {
     this.updateFeaturedIdeaSmartListFilters();
-    this.startHowCarouselAutoplay();
     void this.loadAppVersionLabel();
   }
 
@@ -220,8 +256,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopHowCarouselAutoplay();
-    this.clearHowCarouselScrollLock();
     this.restoreLandingPopupScrollLock();
   }
 
@@ -240,11 +274,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.closeIdeasPopup();
-  }
-
-  @HostListener('window:resize')
-  protected onViewportResize(): void {
-    this.scheduleHowCarouselViewportSync('auto');
   }
 
   protected get isFirebaseAuthMode(): boolean {
@@ -303,34 +332,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return !this.networkUnavailable && (this.articlesLoading || this.featuredIdeaCards().length > 0);
   }
 
-  protected get isFirstHowSlide(): boolean {
-    return this.activeHowSlideIndex === 0;
-  }
-
-  protected get isLastHowSlide(): boolean {
-    return this.activeHowSlideIndex === this.howSlides.length - 1;
-  }
-
-  protected showPreviousHowSlide(): void {
-    if (this.isFirstHowSlide) {
-      return;
-    }
-    this.setHowSlideIndex(this.activeHowSlideIndex - 1, false);
-    this.stopHowCarouselAutoplay();
-  }
-
-  protected showNextHowSlide(): void {
-    if (this.isLastHowSlide) {
-      return;
-    }
-    this.setHowSlideIndex(this.activeHowSlideIndex + 1, false);
-    this.stopHowCarouselAutoplay();
-  }
-
-  protected showHowSlide(index: number): void {
-    this.setHowSlideIndex(index, true);
-  }
-
   private async loadAppVersionLabel(): Promise<void> {
     if (typeof fetch !== 'function' || typeof document === 'undefined') {
       return;
@@ -359,86 +360,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     return typeof value === 'string'
       ? value.trim().replace(/[^a-zA-Z0-9._+-]/g, '').slice(0, 48)
       : '';
-  }
-
-  protected beginHowCarouselSwipe(event: PointerEvent): void {
-    if (this.isHowCarouselNativeSnap()) {
-      this.stopHowCarouselAutoplay();
-      return;
-    }
-
-    if (event.pointerType === 'mouse' && event.button !== 0) {
-      return;
-    }
-
-    this.howCarouselSwipeStartX = event.clientX;
-    this.howCarouselSwipePointerId = event.pointerId;
-    this.stopHowCarouselAutoplay();
-
-    const target = event.currentTarget as HTMLElement | null;
-    target?.setPointerCapture?.(event.pointerId);
-  }
-
-  protected endHowCarouselSwipe(event: PointerEvent): void {
-    if (this.isHowCarouselNativeSnap()) {
-      return;
-    }
-
-    if (this.howCarouselSwipePointerId !== event.pointerId) {
-      return;
-    }
-
-    const swipeStartX = this.howCarouselSwipeStartX ?? event.clientX;
-    const deltaX = event.clientX - swipeStartX;
-    this.resetHowCarouselSwipe();
-
-    if (Math.abs(deltaX) >= 48) {
-      if (deltaX < 0) {
-        this.showNextHowSlide();
-      } else {
-        this.showPreviousHowSlide();
-      }
-      return;
-    }
-
-    this.restartHowCarouselAutoplay();
-  }
-
-  protected cancelHowCarouselSwipe(event: PointerEvent): void {
-    if (this.isHowCarouselNativeSnap()) {
-      return;
-    }
-
-    if (this.howCarouselSwipePointerId !== event.pointerId) {
-      return;
-    }
-
-    this.resetHowCarouselSwipe();
-    this.restartHowCarouselAutoplay();
-  }
-
-  protected onHowCarouselScroll(): void {
-    if (!this.isHowCarouselNativeSnap()) {
-      return;
-    }
-    const viewport = this.howCarouselViewportRef?.nativeElement;
-    if (!viewport) {
-      return;
-    }
-    if (this.howCarouselScrollLockTargetIndex !== null) {
-      this.scheduleHowCarouselScrollLockRelease();
-      return;
-    }
-    const nextSlideIndex = this.currentCarouselPageIndex(
-      viewport,
-      '.entry-step-card',
-      this.howSlides.length - 1
-    );
-    if (nextSlideIndex === this.activeHowSlideIndex) {
-      return;
-    }
-    this.activeHowSlideIndex = nextSlideIndex;
-    this.cdr.markForCheck();
   }
 
   protected requestDemo(): void {
@@ -558,12 +479,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.syncLandingPopupScrollLock();
   }
 
-  protected howCarouselTrackTransform(): string | null {
-    return this.isHowCarouselNativeSnap()
-      ? null
-      : `translateX(-${this.activeHowSlideIndex * 100}%)`;
-  }
-
   protected entryFeaturedIdeaInfoCard(card: InfoCardData): InfoCardData {
     return {
       ...card,
@@ -642,22 +557,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       && typeof (value as { contentHtml?: unknown }).contentHtml === 'string';
   }
 
-  private setHowSlideIndex(index: number, restartAutoplay: boolean): void {
-    this.activeHowSlideIndex = this.clampHowSlideIndex(index);
-    this.cdr.markForCheck();
-    this.scheduleHowCarouselViewportSync('smooth');
-    if (restartAutoplay) {
-      this.restartHowCarouselAutoplay();
-    }
-  }
-
   private ideaSortValue(detail: IdeaArticleDetailDto | null): number {
     const parsed = Date.parse(detail?.sortAtIso ?? '');
     return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  private clampHowSlideIndex(index: number): number {
-    return Math.min(Math.max(index, 0), this.howSlides.length - 1);
   }
 
   private ideaDayGroupLabel(detail: IdeaArticleDetailDto | null): string {
@@ -671,172 +573,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       month: 'short',
       day: 'numeric'
     }).format(new Date(parsed));
-  }
-
-  private startHowCarouselAutoplay(): void {
-    if (typeof window === 'undefined' || this.howCarouselTimer !== null) {
-      return;
-    }
-
-    this.howCarouselTimer = setInterval(() => {
-      const nextSlideIndex = this.isLastHowSlide ? 0 : this.activeHowSlideIndex + 1;
-      this.setHowSlideIndex(nextSlideIndex, false);
-    }, this.howCarouselIntervalMs);
-  }
-
-  private stopHowCarouselAutoplay(): void {
-    if (this.howCarouselTimer === null) {
-      return;
-    }
-
-    clearInterval(this.howCarouselTimer);
-    this.howCarouselTimer = null;
-  }
-
-  private restartHowCarouselAutoplay(): void {
-    this.stopHowCarouselAutoplay();
-    this.startHowCarouselAutoplay();
-  }
-
-  private resetHowCarouselSwipe(): void {
-    this.howCarouselSwipeStartX = null;
-    this.howCarouselSwipePointerId = null;
-  }
-
-  private isHowCarouselNativeSnap(): boolean {
-    return this.readViewportWidth() <= 900;
-  }
-
-  private readViewportWidth(): number {
-    return typeof window === 'undefined' ? 1180 : window.innerWidth;
-  }
-
-  private scheduleHowCarouselViewportSync(behavior: ScrollBehavior): void {
-    if (!this.isHowCarouselNativeSnap()) {
-      this.clearHowCarouselScrollLock();
-      this.resetCarouselViewportScroll(this.howCarouselViewportRef?.nativeElement);
-      return;
-    }
-    const targetIndex = this.activeHowSlideIndex;
-    this.queueCarouselViewportSync(
-      () => this.howCarouselViewportRef?.nativeElement,
-      '.entry-step-card',
-      targetIndex,
-      behavior,
-      () => {
-        if (behavior === 'smooth') {
-          this.howCarouselScrollLockTargetIndex = targetIndex;
-          this.scheduleHowCarouselScrollLockRelease();
-        } else {
-          this.clearHowCarouselScrollLock();
-        }
-      }
-    );
-  }
-
-  private queueCarouselViewportSync(
-    resolveViewport: () => HTMLDivElement | undefined,
-    itemSelector: string,
-    targetIndex: number,
-    behavior: ScrollBehavior,
-    prepare: () => void
-  ): void {
-    prepare();
-    const sync = () => {
-      const viewport = resolveViewport();
-      if (!viewport) {
-        return;
-      }
-      const targetLeft = this.carouselPageOffsetLeft(viewport, itemSelector, targetIndex);
-      if (targetLeft < 0) {
-        return;
-      }
-      const previousScrollBehavior = viewport.style.scrollBehavior;
-      viewport.style.scrollBehavior = behavior;
-      viewport.scrollLeft = targetLeft;
-      const restore = () => {
-        viewport.style.scrollBehavior = previousScrollBehavior;
-      };
-      if (typeof globalThis.requestAnimationFrame === 'function') {
-        globalThis.requestAnimationFrame(() => restore());
-      } else {
-        setTimeout(restore, 0);
-      }
-    };
-
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(sync));
-      return;
-    }
-    setTimeout(sync, 0);
-  }
-
-  private scheduleHowCarouselScrollLockRelease(): void {
-    if (this.howCarouselScrollLockTimer) {
-      clearTimeout(this.howCarouselScrollLockTimer);
-    }
-    this.howCarouselScrollLockTimer = setTimeout(() => {
-      this.howCarouselScrollLockTimer = null;
-      const viewport = this.howCarouselViewportRef?.nativeElement;
-      const finalIndex = viewport
-        ? this.currentCarouselPageIndex(viewport, '.entry-step-card', this.howSlides.length - 1)
-        : this.howCarouselScrollLockTargetIndex;
-      this.howCarouselScrollLockTargetIndex = null;
-      if (finalIndex === null || finalIndex === this.activeHowSlideIndex) {
-        return;
-      }
-      this.activeHowSlideIndex = finalIndex;
-      this.cdr.markForCheck();
-    }, 96);
-  }
-
-  private clearHowCarouselScrollLock(): void {
-    if (this.howCarouselScrollLockTimer) {
-      clearTimeout(this.howCarouselScrollLockTimer);
-      this.howCarouselScrollLockTimer = null;
-    }
-    this.howCarouselScrollLockTargetIndex = null;
-  }
-
-  private currentCarouselPageIndex(
-    viewport: HTMLDivElement,
-    itemSelector: string,
-    maxIndex: number
-  ): number {
-    const items = Array.from(viewport.querySelectorAll<HTMLElement>(itemSelector));
-    if (items.length === 0) {
-      return 0;
-    }
-    const currentLeft = viewport.scrollLeft;
-    let closestIndex = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    items.forEach((item, index) => {
-      const distance = Math.abs(item.offsetLeft - currentLeft);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = index;
-      }
-    });
-    return Math.max(0, Math.min(Math.max(0, maxIndex), closestIndex));
-  }
-
-  private carouselPageOffsetLeft(
-    viewport: HTMLDivElement,
-    itemSelector: string,
-    targetIndex: number
-  ): number {
-    const items = Array.from(viewport.querySelectorAll<HTMLElement>(itemSelector));
-    if (items.length === 0) {
-      return -1;
-    }
-    const boundedIndex = Math.max(0, Math.min(items.length - 1, targetIndex));
-    return Math.max(0, items[boundedIndex]?.offsetLeft ?? 0);
-  }
-
-  private resetCarouselViewportScroll(viewport: HTMLDivElement | undefined): void {
-    if (viewport && viewport.scrollLeft !== 0) {
-      viewport.scrollLeft = 0;
-    }
   }
 
   private syncLandingPopupScrollLock(): void {

@@ -232,6 +232,7 @@ export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = Sm
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   mobilePageSizeCap?: number | null;
+  compactHorizontal?: SmartListConfigValue<boolean, TFilters>;
   mobileStepper?: SmartListConfigValue<boolean, TFilters>;
   initialPageCount?: number;
   initialPageSize?: number;
@@ -281,6 +282,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);
+    autoplayMs?: SmartListConfigValue<number | null, TFilters>;
     ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => RatingStarBarConfig | null;
     ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;
     onRatingSelect?: (item: T | null, score: number, query: ListQuery<TFilters>) => void | Promise<void>;

@@ -78,76 +78,21 @@
 
         <aside class="entry-hero-how" id="how" aria-label="How it works">
           <div
-            class="entry-steps-carousel"
+            class="entry-how-region"
             role="region"
             aria-label="How it works carousel"
             aria-roledescription="carousel"
             >
-            @if (!isFirstHowSlide) {
-              <button
-                type="button"
-                class="entry-carousel-arrow entry-carousel-arrow-prev motion-static"
-                aria-label="Previous step"
-                matRipple
-                [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
-                (click)="showPreviousHowSlide()"
-                >
-                <mat-icon>chevron_left</mat-icon>
-              </button>
-            }
-            <div
-              #howCarouselViewport
-              class="entry-steps-carousel-window"
-              (pointerdown)="beginHowCarouselSwipe($event)"
-              (pointerup)="endHowCarouselSwipe($event)"
-              (pointercancel)="cancelHowCarouselSwipe($event)"
-              (scroll)="onHowCarouselScroll()"
-              >
-              <div
-                class="entry-steps-track"
-                [style.transform]="howCarouselTrackTransform()"
-                >
-                @for (slide of howSlides; track slide.index; let slideIndex = $index) {
-                  <article
-                    class="entry-step-card entry-step-card-visual {{ slide.visualClass }}"
-                    [attr.aria-hidden]="activeHowSlideIndex === slideIndex ? null : 'true'"
-                    >
-                    <div class="entry-step-headline">
-                      <span class="entry-step-index">{{ slide.index }}</span>
-                      <div class="entry-step-heading-copy">
-                        <h3>{{ slide.titleKey | i18n: slide.title }}</h3>
-                        <p>{{ slide.messageKey | i18n: slide.message }}</p>
-                      </div>
-                    </div>
-                    <div class="entry-step-visual" aria-hidden="true"></div>
-                  </article>
-                }
-              </div>
-            </div>
-            @if (!isLastHowSlide) {
-              <button
-                type="button"
-                class="entry-carousel-arrow entry-carousel-arrow-next motion-static"
-                aria-label="Next step"
-                matRipple
-                [matRippleColor]="'rgba(61, 102, 190, 0.14)'"
-                (click)="showNextHowSlide()"
-                >
-                <mat-icon>chevron_right</mat-icon>
-              </button>
-            }
-            <div class="entry-carousel-dots" aria-label="How it works slides">
-              @for (slide of howSlides; track slide.index; let slideIndex = $index) {
-                <button
-                  type="button"
-                  class="entry-carousel-dot"
-                  [class.is-active]="activeHowSlideIndex === slideIndex"
-                  [attr.aria-current]="activeHowSlideIndex === slideIndex ? 'true' : null"
-                  [attr.aria-label]="'Show step ' + slide.index"
-                  (click)="showHowSlide(slideIndex)"
-                  ></button>
-              }
-            </div>
+            <app-smart-list
+              class="entry-how-smart-list"
+              [config]="entryHowSmartListConfig"
+              [loadPage]="entryHowSmartListLoadPage"
+              [itemTemplate]="entryHowCardTemplate"
+            ></app-smart-list>
+
+            <ng-template #entryHowCardTemplate let-slide>
+              <app-warp-image-card [card]="slide"></app-warp-image-card>
+            </ng-template>
           </div>
         </aside>
       </div>
