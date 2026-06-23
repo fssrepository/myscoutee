@@ -43,7 +43,7 @@ export class LocalRatesRepository {
       if (record.ownerUserId?.trim() !== normalizedRaterId) {
         continue;
       }
-      const item = LocalUserRatesMapper.toActivityRateDTO(record);
+      const item = LocalUserRatesMapper.toDto(record);
       if (!item || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -83,7 +83,7 @@ export class LocalRatesRepository {
       if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
         continue;
       }
-      const item = LocalUserRatesMapper.toActivityRateDTO(record);
+      const item = LocalUserRatesMapper.toDto(record);
       if (!item || item.mode !== 'pair' || (item.direction !== 'met' && item.scoreGiven <= 0)) {
         continue;
       }
@@ -760,7 +760,7 @@ export class LocalRatesRepository {
     if (!ownerUserId) {
       return null;
     }
-    const item = LocalUserRatesMapper.toActivityRateDTO(record);
+    const item = LocalUserRatesMapper.toDto(record);
     if (!item) {
       return null;
     }

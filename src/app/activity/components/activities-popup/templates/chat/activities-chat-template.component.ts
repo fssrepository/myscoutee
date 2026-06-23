@@ -4,7 +4,6 @@ import { AppUtils } from '../../../../../shared/app-utils';
 import { I18nService } from '../../../../../shared/core';
 import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
-import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   type CardMenuActionEvent,
@@ -34,7 +33,7 @@ type SupportCaseMenuActionId =
 export class ActivitiesChatTemplateComponent implements OnChanges {
   private readonly i18n = inject(I18nService);
 
-  @Input() row: AppTypes.ActivityListRow | null = null;
+  @Input() row: SingleRowData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() activeUserInitials = '';
   @Input() adminServiceMode = false;
@@ -54,7 +53,7 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
 
   private buildTemplateData(): ActivitiesChatTemplateData | null {
     const row = this.row;
-    if (!row || row.type !== 'chats') {
+    if (!row) {
       return null;
     }
     return buildActivitiesChatTemplateData(row, {

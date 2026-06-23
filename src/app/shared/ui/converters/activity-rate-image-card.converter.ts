@@ -2,6 +2,7 @@ import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components/card';
+import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
   activeUserId: string;
@@ -199,10 +200,14 @@ export class ActivityRateImageCardConverter {
   }
 
   private static formatMonthDayLabel(isoValue: string | null | undefined): string {
-    const timestamp = isoValue ? Date.parse(isoValue) : Number.NaN;
-    if (!Number.isFinite(timestamp)) {
-      return 'Activity date';
-    }
-    return new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(new Date(timestamp));
+    const date = AppUtils.parseDate(isoValue);
+    return date ? AppUtils.shortMonthDayLabel(date) : 'Activity date';
   }
 }
+
+export const activityRateImageCardConverter =
+  ActivityRateImageCardConverter satisfies UiListConverter<
+    ActivityRateDTO,
+    ImageCardData,
+    ActivityRateImageCardConverterOptions
+  >;

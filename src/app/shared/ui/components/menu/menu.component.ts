@@ -1023,6 +1023,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.groupItems(group);
   }
 
+  protected tabsColumnCount(): string | null {
+    const columns = this.autoTabsColumnCount();
+    return columns === null ? null : `${columns}`;
+  }
+
   protected tabsGroupSelectedCount(group: AppMenuGroup<TId, TContext>): number {
     return this.groupItems(this.sourceTabsGroup(group)).filter(item => this.isItemActive(item)).length;
   }
@@ -1665,6 +1670,73 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return null;
     }
     return Math.max(0, Math.trunc(Number(rawMaxSelected)) || 0);
+  }
+
+  private autoTabsColumnCount(): number | null {
+    const group = this.activeTabsGroup();
+    if (!group) {
+      return null;
+    }
+    const items = this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item));
+    if (items.length <= 1) {
+      return null;
+    }
+    const candidates = this.tabsColumnCandidates(items.length);
+    if (candidates.length === 0) {
+      return null;
+    }
+    const width = this.tabsItemsWidth();
+    if (width <= 0) {
+      return null;
+    }
+    if (items.length <= 4 && width >= 420) {
+      return items.length;
+    }
+    const totalLabelChars = items.reduce((total, item) => total + this.itemLabel(item).length, 0);
+    const averageLabelChars = totalLabelChars / items.length;
+    const hasIcons = items.some(item => this.itemIcon(item).length > 0);
+    const hasToggles = items.some(item => this.showTabsItemToggle(item));
+    const estimatedItemWidth = 38
+      + (averageLabelChars * 4.1)
+      + (hasIcons ? 20 : 0)
+      + (hasToggles ? 34 : 0);
+    const gap = 6;
+    for (const columns of candidates) {
+      const availableItemWidth = (width - (gap * Math.max(0, columns - 1))) / columns;
+      if (availableItemWidth >= estimatedItemWidth) {
+        return columns;
+      }
+    }
+    return null;
+  }
+
+  private tabsColumnCandidates(itemCount: number): number[] {
+    if (itemCount === 2) {
+      return [2];
+    }
+    if (itemCount === 3) {
+      return [3];
+    }
+    if (itemCount === 4) {
+      return [4, 2];
+    }
+    if (itemCount === 6) {
+      return [3, 2];
+    }
+    if (itemCount % 4 === 0) {
+      return [4, 2];
+    }
+    if (itemCount % 3 === 0) {
+      return [3];
+    }
+    return [];
+  }
+
+  private tabsItemsWidth(): number {
+    const host = this.hostRef.nativeElement;
+    const panel = host.querySelector('.app-menu__tabs-panel') as HTMLElement | null;
+    const width = panel?.getBoundingClientRect().width ?? host.getBoundingClientRect().width;
+    return Number.isFinite(width) ? width : 0;
   }
 
   private currentMenuModel(): AppMenuModel<TId, TContext> | null {

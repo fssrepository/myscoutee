@@ -1,168 +1,69 @@
+import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { AppUtils } from '../shared/app-utils';
+import type { AppMenuPalette } from '../shared/ui';
 
-export function resolveHostTierIcon(hostTier: string): string {
-  const normalized = AppUtils.normalizeText(hostTier);
-  if (normalized.includes('platinum')) {
-    return 'diamond';
-  }
-  if (normalized.includes('gold')) {
-    return 'emoji_events';
-  }
-  if (normalized.includes('silver')) {
-    return 'workspace_premium';
-  }
-  if (normalized.includes('bronze')) {
-    return 'military_tech';
-  }
-  return 'workspace_premium';
+export interface NavigatorPresentation {
+  aliases: readonly string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: AppMenuPalette;
+  memberTitle?: string;
 }
 
-export function resolveHostTierColorClass(hostTier: string): string {
-  const normalized = AppUtils.normalizeText(hostTier);
-  if (normalized.includes('platinum')) {
-    return 'icon-tier-platinum';
-  }
-  if (normalized.includes('gold')) {
-    return 'icon-tier-gold';
-  }
-  if (normalized.includes('silver')) {
-    return 'icon-tier-silver';
-  }
-  if (normalized.includes('bronze')) {
-    return 'icon-tier-bronze';
-  }
-  return 'icon-tier-default';
+export type NavigatorPresentationKind = 'hostTier' | 'trait';
+type NavigatorPresentationCatalogKind = NavigatorPresentationKind | 'title';
+
+interface NavigatorPresentationCatalog {
+  entries: readonly NavigatorPresentation[];
+  fallback: NavigatorPresentation;
 }
 
-export function resolveHostTierToneClass(hostTier: string): string {
-  const normalized = AppUtils.normalizeText(hostTier);
-  if (normalized.includes('platinum')) {
-    return 'impression-shortcut-tone-platinum';
-  }
-  if (normalized.includes('gold')) {
-    return 'impression-shortcut-tone-gold';
-  }
-  if (normalized.includes('silver')) {
-    return 'impression-shortcut-tone-silver';
-  }
-  if (normalized.includes('bronze')) {
-    return 'impression-shortcut-tone-bronze';
-  }
-  return 'impression-shortcut-tone-platinum';
+export function resolveNavigatorPresentation(
+  kind: NavigatorPresentationKind,
+  value: string
+): NavigatorPresentation {
+  const catalog = navigatorPresentationCatalog(kind);
+  const presenter = AppUtils.findByAlias(catalog.entries, value);
+  const fallback = catalog.fallback;
+  return {
+    aliases: presenter?.aliases ?? fallback.aliases,
+    icon: presenter?.icon ?? fallback.icon,
+    colorClass: presenter?.colorClass ?? fallback.colorClass,
+    toneClass: presenter?.toneClass ?? fallback.toneClass,
+    menuPalette: presenter?.menuPalette ?? fallback.menuPalette,
+    ...(kind === 'trait' ? { memberTitle: resolveMemberImpressionTitle(value) } : {})
+  };
 }
 
-export function resolveTraitIcon(traitLabel: string): string {
-  const normalized = AppUtils.normalizeText(traitLabel);
-  if (normalized.includes('kreat') || normalized.includes('creative')) {
-    return 'palette';
+function navigatorPresentationCatalog(kind: NavigatorPresentationCatalogKind): NavigatorPresentationCatalog {
+  if (kind === 'title') {
+    return {
+      entries: APP_STATIC_DATA.navigatorMemberImpressionTitlePresenters,
+      fallback: APP_STATIC_DATA.navigatorTraitPresenterDefault
+    };
   }
-  if (normalized.includes('empat')) {
-    return 'favorite';
+  if (kind === 'trait') {
+    return {
+      entries: APP_STATIC_DATA.navigatorTraitPresenters,
+      fallback: APP_STATIC_DATA.navigatorTraitPresenterDefault
+    };
   }
-  if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-    return 'verified';
-  }
-  if (normalized.includes('advent')) {
-    return 'hiking';
-  }
-  if (normalized.includes('think')) {
-    return 'psychology';
-  }
-  if (normalized.includes('social')) {
-    return 'groups';
-  }
-  if (normalized.includes('playful')) {
-    return 'sports_esports';
-  }
-  if (normalized.includes('ambitious') || normalized.includes('goal')) {
-    return 'trending_up';
-  }
-  return 'auto_awesome';
+  return {
+    entries: APP_STATIC_DATA.navigatorHostTierPresenters,
+    fallback: APP_STATIC_DATA.navigatorHostTierPresenterDefault
+  };
 }
 
-export function resolveTraitColorClass(traitLabel: string): string {
-  const normalized = AppUtils.normalizeText(traitLabel);
-  if (normalized.includes('kreat') || normalized.includes('creative')) {
-    return 'icon-trait-creative';
+function resolveMemberImpressionTitle(traitLabel: string): string {
+  const catalog = navigatorPresentationCatalog('title');
+  const presenter = AppUtils.findByAlias(catalog.entries, traitLabel);
+  if (presenter?.memberTitle) {
+    return presenter.memberTitle;
   }
-  if (normalized.includes('empat')) {
-    return 'icon-trait-empath';
-  }
-  if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-    return 'icon-trait-reliable';
-  }
-  if (normalized.includes('advent')) {
-    return 'icon-trait-adventurer';
-  }
-  if (normalized.includes('think')) {
-    return 'icon-trait-thinker';
-  }
-  if (normalized.includes('social')) {
-    return 'icon-trait-social';
-  }
-  if (normalized.includes('playful')) {
-    return 'icon-trait-playful';
-  }
-  if (normalized.includes('ambitious') || normalized.includes('goal')) {
-    return 'icon-trait-ambitious';
-  }
-  return 'icon-trait-default';
-}
-
-export function resolveTraitToneClass(traitLabel: string): string {
-  const normalized = AppUtils.normalizeText(traitLabel);
-  if (normalized.includes('kreat') || normalized.includes('creative')) {
-    return 'impression-shortcut-tone-creative';
-  }
-  if (normalized.includes('empat')) {
-    return 'impression-shortcut-tone-empath';
-  }
-  if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-    return 'impression-shortcut-tone-reliable';
-  }
-  if (normalized.includes('advent')) {
-    return 'impression-shortcut-tone-adventurer';
-  }
-  if (normalized.includes('think')) {
-    return 'impression-shortcut-tone-thinker';
-  }
-  if (normalized.includes('social')) {
-    return 'impression-shortcut-tone-social';
-  }
-  if (normalized.includes('playful')) {
-    return 'impression-shortcut-tone-playful';
-  }
-  if (normalized.includes('ambitious') || normalized.includes('goal')) {
-    return 'impression-shortcut-tone-ambitious';
-  }
-  return 'impression-shortcut-tone-thinker';
-}
-
-export function resolveMemberImpressionTitle(traitLabel: string): string {
-  const normalized = AppUtils.normalizeText(traitLabel);
-  if (normalized.includes('empat') || normalized.includes('empath')) {
-    return 'Empathetic Attendee';
-  }
-  if (normalized.includes('advent')) {
-    return 'Adventurous Attendee';
-  }
-  if (normalized.includes('kreat') || normalized.includes('creative')) {
-    return 'Creative Attendee';
-  }
-  if (normalized.includes('think')) {
-    return 'Thoughtful Attendee';
-  }
-  if (normalized.includes('social')) {
-    return 'Social Attendee';
-  }
-  if (normalized.includes('playful')) {
-    return 'Playful Attendee';
-  }
-  if (normalized.includes('ambitious') || normalized.includes('goal')) {
-    return 'Ambitious Attendee';
-  }
-  if (normalized.includes('megbizh') || normalized.includes('reliable')) {
-    return 'Reliable Attendee';
-  }
-  return traitLabel ? `${traitLabel} Attendee` : 'Attendee';
+  const defaultTitle = catalog.fallback.memberTitle ?? 'Attendee';
+  const label = `${traitLabel ?? ''}`.trim();
+  return label
+    ? `${label} ${defaultTitle}`
+    : defaultTitle;
 }

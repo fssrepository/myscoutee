@@ -186,9 +186,9 @@ export class EventMembersPopupComponent {
         });
         return;
       }
-      this.openMembersPopup(request.row.id, {
-        subtitle: request.row.title,
-        canManage: request.row.isAdmin === true,
+      this.openMembersPopup(request.ownerId, {
+        subtitle: request.title,
+        canManage: request.canManage === true,
         ownerType: 'event'
       });
     });
@@ -1161,7 +1161,7 @@ export class EventMembersPopupComponent {
     const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
     const ownerRecordCanManage = !!this.ownerRecord && (
       this.ownerRecord.creatorUserId === activeUserId
-      || this.ownerRecord.isAdmin === true
+      || (this.ownerRecord.adminIds ?? []).includes(activeUserId)
     );
     this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers || !!activeMember;

@@ -1,6 +1,7 @@
 import type { ChatChannelType, ChatDTO } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import type { SingleRowData } from '../components/card';
+import type { UiListConverter } from './converter.types';
 
 export interface ActivityChatSingleRowConverterOptions {
   users: readonly UserDto[];
@@ -168,3 +169,10 @@ export class ActivityChatSingleRowConverter {
     return unique;
   }
 }
+
+export const activityChatSingleRowConverter =
+  ActivityChatSingleRowConverter satisfies UiListConverter<
+    ChatDTO,
+    SingleRowData,
+    ActivityChatSingleRowConverterOptions
+  >;

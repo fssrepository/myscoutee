@@ -1,5 +1,8 @@
 import { Injectable, computed, signal } from '@angular/core';
-import type { UserGameFilterPreferencesDto } from '../../core/contracts/activity.interface';
+import {
+  EventFeedbackDetailDto,
+  type UserGameFilterPreferencesDto
+} from '../../core/contracts/activity.interface';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
 
@@ -89,6 +92,11 @@ export interface ActivityResourceSyncState {
   assetOwnerUserId: string;
 }
 
+export interface ActivityEventFeedbackSubmitSyncState {
+  updatedMs: number;
+  dto: EventFeedbackDetailDto;
+}
+
 export interface AppContextAdminUserDto {
   id: string;
   name: string;
@@ -146,6 +154,7 @@ export class AppContext {
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
   private readonly _privacyState = signal<HelpCenterStateDto | null>(null);
   private readonly _activeUserId = signal<string>('');
   private readonly _connectivityState = signal<ConnectivityState>(detectInitialConnectivityState());
@@ -159,6 +168,7 @@ export class AppContext {
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
   readonly privacyState = this._privacyState.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
   readonly connectivityState = this._connectivityState.asReadonly();
@@ -605,6 +615,20 @@ export class AppContext {
       ownerId,
       subEventId,
       assetOwnerUserId
+    });
+  }
+
+  emitActivityEventFeedbackSubmit(dto: EventFeedbackDetailDto): void {
+    const eventId = dto.eventId.trim();
+    if (!eventId) {
+      return;
+    }
+    this._activityEventFeedbackSubmitSync.set({
+      updatedMs: Date.now(),
+      dto: EventFeedbackDetailDto.normalize({
+        ...dto,
+        eventId
+      })
     });
   }
 

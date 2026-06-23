@@ -1,4 +1,5 @@
 export * from './admin.interface';
+export * from './asset.interface';
 export * from './activity.interface';
 export * from './chat.interface';
 export * from './contact.interface';

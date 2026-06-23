@@ -1,11 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
 import { LocalAssetTicketsService } from '../../local/source/services/asset-tickets.service';
 import { HttpAssetTicketsService } from '../../http/services/asset-tickets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
-import type * as AppDTOs from '../dto';
+import type * as AssetContracts from '../../contracts/asset.interface';
 @Injectable({
   providedIn: 'root'
 })
@@ -22,7 +21,7 @@ export class AssetTicketsService extends BaseRouteModeService {
     return this.assetTicketsService.peekTicketCountByUser(userId);
   }
 
-  async queryTicketPage(query: AppDTOs.AssetTicketPageQueryDTO): Promise<AppDTOs.AssetTicketPageResultDTO> {
+  async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
     return this.assetTicketsService.queryTicketPage(query);
   }
 }

@@ -17,7 +17,7 @@ const bundleDocs = bundles.map(bundle => ({
   _id: `i18n-bundle-${bundle.lang}`,
   lang: bundle.lang,
   version: bundle.version,
-  updatedAt: Date.UTC(2026, 5, 19)
+  updatedAt: Date.UTC(2026, 5, 22)
 }));
 const messageDocs = bundles.flatMap(bundle =>
   Object.entries(bundle.messages).map(([key, value]) => ({

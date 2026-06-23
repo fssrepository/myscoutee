@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../app-utils';
 import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
 import {
   AppMenuComponent,
@@ -93,6 +94,10 @@ export class SingleRowComponent {
 
   protected hasLeadingVisual(): boolean {
     return Boolean(this.row?.avatarUrl || this.row?.icon || this.row?.avatarInitials);
+  }
+
+  protected avatarImageUrl(): string {
+    return AppUtils.mediaImageVariantUrl(this.row?.avatarUrl, 'small');
   }
 
   protected inlineBadges(): readonly SingleRowBadge[] {

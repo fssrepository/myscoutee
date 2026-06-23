@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../app-utils';
 import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
 import {
   AppMenuTriggerComponent,
@@ -9,6 +10,7 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../menu';
+import { ProgressIndicatorComponent } from '../../progress-indicator';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
@@ -23,7 +25,7 @@ import {
 @Component({
   selector: 'app-image-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, AppMenuTriggerComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, AppMenuTriggerComponent, ProgressIndicatorComponent],
   templateUrl: './image-card.component.html',
   styleUrl: './image-card.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -73,7 +75,10 @@ export class ImageCardComponent {
   }
 
   protected resolvedImageUrl(): string {
-    return `${this.card?.imageUrl ?? this.card?.singleImageUrls?.[0] ?? this.imageUrl ?? ''}`.trim();
+    return AppUtils.mediaImageVariantUrl(
+      `${this.card?.imageUrl ?? this.card?.singleImageUrls?.[0] ?? this.imageUrl ?? ''}`.trim(),
+      'medium'
+    );
   }
 
   protected resolvedTitle(): string {

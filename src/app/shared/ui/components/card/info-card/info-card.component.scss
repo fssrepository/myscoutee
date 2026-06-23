@@ -3,6 +3,12 @@
   min-width: 0;
 }
 
+:host(.form-flow__step-info-card) .ui-info-card {
+  height: 100%;
+  min-height: 100%;
+  touch-action: pan-x pan-y;
+}
+
 .ui-info-card {
   position: relative;
   display: grid;
@@ -161,6 +167,31 @@ button.asset-occupancy-badge:active::after,
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.ui-info-card__image-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.ui-info-card__image-loader app-progress-indicator {
+  position: relative;
+  z-index: 1;
+}
+
+.ui-info-card__media.lazy-bg-loading .ui-info-card__image-loader {
+  opacity: 1;
+}
+
+.ui-info-card__media.lazy-bg-loaded .ui-info-card__image-loader,
+.ui-info-card__media.lazy-bg-error .ui-info-card__image-loader {
+  opacity: 0;
 }
 
 .ui-info-card__placeholder-icon {

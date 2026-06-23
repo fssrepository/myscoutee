@@ -1,7 +1,78 @@
 import type { ActivitiesView } from './core/contracts';
-import type { ActivityListRow } from './core/base/models';
 import type { AssetMemberRequestDTO } from './core/base/dto';
 import type { UserDto } from './core/contracts/user.interface';
+
+interface ActivityGroupableModel {
+  dateIso?: string | null;
+  distanceMetersExact?: number | null;
+}
+
+export interface AsciiEmojiConversion {
+  token: string;
+  emoji: string;
+  label: string;
+}
+
+const ASCII_EMOJI_CONVERSIONS: readonly AsciiEmojiConversion[] = [
+  { token: ':)', emoji: '🙂', label: 'Smile' },
+  { token: ':-)', emoji: '🙂', label: 'Smile' },
+  { token: '=)', emoji: '🙂', label: 'Smile' },
+  { token: ':D', emoji: '😄', label: 'Grin' },
+  { token: ':-D', emoji: '😄', label: 'Grin' },
+  { token: '=D', emoji: '😄', label: 'Grin' },
+  { token: 'xD', emoji: '😆', label: 'Laugh' },
+  { token: 'XD', emoji: '😆', label: 'Laugh' },
+  { token: ';)', emoji: '😉', label: 'Wink' },
+  { token: ';-)', emoji: '😉', label: 'Wink' },
+  { token: ':(', emoji: '🙁', label: 'Sad' },
+  { token: ':-(', emoji: '🙁', label: 'Sad' },
+  { token: ":'(", emoji: '😢', label: 'Cry' },
+  { token: ":'-(", emoji: '😢', label: 'Cry' },
+  { token: ':P', emoji: '😛', label: 'Tongue' },
+  { token: ':-P', emoji: '😛', label: 'Tongue' },
+  { token: ':p', emoji: '😛', label: 'Tongue' },
+  { token: ':-p', emoji: '😛', label: 'Tongue' },
+  { token: ';P', emoji: '😜', label: 'Wink tongue' },
+  { token: ';-P', emoji: '😜', label: 'Wink tongue' },
+  { token: ':o', emoji: '😮', label: 'Surprise' },
+  { token: ':O', emoji: '😮', label: 'Surprise' },
+  { token: ':-o', emoji: '😮', label: 'Surprise' },
+  { token: ':-O', emoji: '😮', label: 'Surprise' },
+  { token: ':/', emoji: '🫤', label: 'Unsure' },
+  { token: ':-/', emoji: '🫤', label: 'Unsure' },
+  { token: ':\\', emoji: '🫤', label: 'Unsure' },
+  { token: ':-\\', emoji: '🫤', label: 'Unsure' },
+  { token: ':|', emoji: '😐', label: 'Neutral' },
+  { token: ':-|', emoji: '😐', label: 'Neutral' },
+  { token: ':*', emoji: '😘', label: 'Kiss' },
+  { token: ':-*', emoji: '😘', label: 'Kiss' },
+  { token: '<3', emoji: '❤️', label: 'Heart' },
+  { token: '</3', emoji: '💔', label: 'Broken heart' },
+  { token: 'B)', emoji: '😎', label: 'Cool' },
+  { token: 'B-)', emoji: '😎', label: 'Cool' },
+  { token: '8)', emoji: '😎', label: 'Cool' },
+  { token: '8-)', emoji: '😎', label: 'Cool' },
+  { token: 'O:)', emoji: '😇', label: 'Angel' },
+  { token: 'O:-)', emoji: '😇', label: 'Angel' },
+  { token: '0:)', emoji: '😇', label: 'Angel' },
+  { token: '0:-)', emoji: '😇', label: 'Angel' },
+  { token: '>:)', emoji: '😈', label: 'Devil' },
+  { token: '>:-)', emoji: '😈', label: 'Devil' },
+  { token: '-_-', emoji: '😑', label: 'Unamused' }
+];
+
+const ASCII_EMOJI_BY_TOKEN = new Map(
+  ASCII_EMOJI_CONVERSIONS.map(conversion => [conversion.token, conversion])
+);
+
+const ASCII_EMOJI_TOKEN_REGEX = new RegExp(
+  `(^|[\\s([{])(${ASCII_EMOJI_CONVERSIONS
+    .map(conversion => conversion.token)
+    .sort((first, second) => second.length - first.length)
+    .map(token => token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')})(?=$|[\\s.,!?;:\\])}])`,
+  'g'
+);
 
 export class AppUtils {
   static cloneMapItems<T extends object>(input: Record<string, T[]>): Record<string, T[]> {
@@ -17,6 +88,19 @@ export class AppUtils {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  static findByAlias<T extends { aliases: readonly string[] }>(
+    entries: readonly T[],
+    value: string
+  ): T | null {
+    const normalized = this.normalizeText(value);
+    if (!normalized) {
+      return null;
+    }
+    return entries.find(entry =>
+      entry.aliases.some(alias => normalized.includes(this.normalizeText(alias)))
+    ) ?? null;
   }
 
   static initialsFromText(value: string): string {
@@ -51,6 +135,133 @@ export class AppUtils {
       .find(image => image.length > 0) ?? '';
   }
 
+  static asciiEmojiConversions(): readonly AsciiEmojiConversion[] {
+    return ASCII_EMOJI_CONVERSIONS;
+  }
+
+  static convertAsciiEmojis(value: string | null | undefined): string {
+    const text = `${value ?? ''}`;
+    if (!text) {
+      return '';
+    }
+    return text.replace(ASCII_EMOJI_TOKEN_REGEX, (_match, prefix: string, token: string) => {
+      const conversion = ASCII_EMOJI_BY_TOKEN.get(token);
+      return conversion ? `${prefix}${conversion.emoji}` : `${prefix}${token}`;
+    });
+  }
+
+  static trailingAsciiEmojiToken(value: string | null | undefined): string {
+    const match = `${value ?? ''}`.match(/(?:^|[\s([{])(\S{1,8})$/);
+    const token = `${match?.[1] ?? ''}`.trim();
+    return token && this.asciiEmojiSuggestionsForToken(token, 1).length > 0 ? token : '';
+  }
+
+  static asciiEmojiSuggestionsForToken(
+    token: string | null | undefined,
+    limit = 8
+  ): readonly AsciiEmojiConversion[] {
+    const normalized = `${token ?? ''}`.trim();
+    if (!normalized) {
+      return [];
+    }
+    const lower = normalized.toLowerCase();
+    return ASCII_EMOJI_CONVERSIONS
+      .filter(conversion => conversion.token.toLowerCase().startsWith(lower))
+      .sort((first, second) => {
+        const firstExact = first.token.toLowerCase() === lower ? 0 : 1;
+        const secondExact = second.token.toLowerCase() === lower ? 0 : 1;
+        return firstExact - secondExact || first.token.length - second.token.length;
+      })
+      .slice(0, Math.max(1, Math.trunc(limit)));
+  }
+
+  static replaceTrailingAsciiEmojiToken(
+    value: string | null | undefined,
+    replacement: string
+  ): string {
+    const text = `${value ?? ''}`;
+    const token = this.trailingAsciiEmojiToken(text);
+    if (!token) {
+      return text;
+    }
+    return `${text.slice(0, text.length - token.length)}${replacement}`;
+  }
+
+  static mediaImageVariantUrl(
+    imageUrl: string | null | undefined,
+    variant: 'small' | 'medium' | 'large'
+  ): string {
+    const normalized = `${imageUrl ?? ''}`.trim();
+    if (!normalized) {
+      return '';
+    }
+    const publicKey = this.mediaPublicObjectKey(normalized);
+    if (!publicKey) {
+      return normalized;
+    }
+    const variantKey = this.mediaVariantObjectKey(publicKey, variant);
+    if (!variantKey) {
+      return normalized;
+    }
+    return normalized.replace(/([?&]key=)([^&#]*)/, (_match, prefix: string) =>
+      `${prefix}${encodeURIComponent(variantKey)}`
+    );
+  }
+
+  static uniqueTrimmedStrings(values: Iterable<string | null | undefined> | null | undefined): string[] {
+    return Array.from(new Set(
+      Array.from(values ?? [])
+        .map(value => `${value ?? ''}`.trim())
+        .filter(Boolean)
+    ));
+  }
+
+  private static mediaPublicObjectKey(imageUrl: string): string | null {
+    const match = imageUrl.match(/[?&]key=([^&#]+)/);
+    if (!match?.[1]) {
+      return null;
+    }
+    try {
+      return decodeURIComponent(match[1]);
+    } catch {
+      return null;
+    }
+  }
+
+  private static mediaVariantObjectKey(
+    objectKey: string,
+    variant: 'small' | 'medium' | 'large'
+  ): string | null {
+    if (!objectKey.startsWith('images/')) {
+      return null;
+    }
+    const slashIndex = objectKey.lastIndexOf('/');
+    if (slashIndex <= 0 || slashIndex >= objectKey.length - 1) {
+      return null;
+    }
+    const objectName = objectKey.slice(slashIndex + 1);
+    if (!/^(?:small|medium|large)\.webp$/.test(objectName)) {
+      return null;
+    }
+    return `${objectKey.slice(0, slashIndex)}/${variant}.webp`;
+  }
+
+  static enumValue<T extends string>(
+    value: string | null | undefined,
+    values: readonly T[],
+    fallback: T
+  ): T {
+    return this.enumValueOrNull(value, values) ?? fallback;
+  }
+
+  static enumValueOrNull<T extends string>(
+    value: string | null | undefined,
+    values: readonly T[]
+  ): T | null {
+    const normalized = `${value ?? ''}`.trim();
+    return (values as readonly string[]).includes(normalized) ? normalized as T : null;
+  }
+
   static pad2(value: number): string {
     return `${value}`.padStart(2, '0');
   }
@@ -61,6 +272,57 @@ export class AppUtils {
     }
     const parsed = new Date(`${value}T00:00:00`);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  static parseDate(value: string | number | Date | null | undefined): Date | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  static dateTimeMs(value: string | number | Date | null | undefined): number | null {
+    return this.parseDate(value)?.getTime() ?? null;
+  }
+
+  static shortMonthDayLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
+  static weekdayMonthDayLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  }
+
+  static weekdayMonthDayYearLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  static clockTimeLabel(value: Date): string {
+    return value.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  static dateTimeRangeLabel(
+    startIso: string | null | undefined,
+    endIso: string | null | undefined,
+    fallback = 'Date unavailable',
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): string {
+    const start = this.parseDate(startIso);
+    const end = this.parseDate(endIso);
+    if (!start) {
+      return fallback;
+    }
+    const safeEnd = end && end.getTime() > start.getTime()
+      ? end
+      : new Date(start.getTime() + defaultDurationMs);
+    const startDateLabel = this.shortMonthDayLabel(start);
+    const startTimeLabel = this.clockTimeLabel(start);
+    const endTimeLabel = this.clockTimeLabel(safeEnd);
+    if (start.toDateString() === safeEnd.toDateString()) {
+      return `${startDateLabel}, ${startTimeLabel} - ${endTimeLabel}`;
+    }
+    return `${startDateLabel}, ${startTimeLabel} - ${this.shortMonthDayLabel(safeEnd)}, ${endTimeLabel}`;
   }
 
   static toIsoDate(value: Date): string {
@@ -186,7 +448,7 @@ export class AppUtils {
   }
 
   static activityGroupLabel(
-    row: ActivityListRow,
+    row: ActivityGroupableModel,
     activitiesView: ActivitiesView,
     labels: { dateUnavailable: string; weekPrefix: string }
   ): string {
@@ -197,7 +459,7 @@ export class AppUtils {
       const bucket = Math.max(5, Math.ceil(distanceMeters / 5000) * 5);
       return `${bucket} km`;
     }
-    const parsed = new Date(row.dateIso);
+    const parsed = new Date(row.dateIso ?? '');
     if (Number.isNaN(parsed.getTime())) {
       return labels.dateUnavailable;
     }

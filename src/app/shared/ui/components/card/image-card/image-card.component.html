@@ -4,6 +4,11 @@
   >
   @if (resolvedLayout() === 'stacked') {
     <div class="ui-image-card__media" [appLazyBgImage]="resolvedImageUrl() || null">
+      @if (resolvedImageUrl()) {
+        <span class="ui-image-card__image-loader" aria-hidden="true">
+          <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+        </span>
+      }
       @if (!resolvedImageUrl()) {
         <span class="ui-image-card__placeholder">{{ resolvedPlaceholderLabel() }}</span>
       }
@@ -21,6 +26,12 @@
       }
     </div>
   } @else {
+    @if (resolvedImageUrl()) {
+      <span class="ui-image-card__image-loader ui-image-card__image-loader--overlay" aria-hidden="true">
+        <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+      </span>
+    }
+
     <span
       class="ui-image-card__overlay-placeholder"
       [class.ui-image-card__overlay-placeholder--has-image]="!!resolvedImageUrl()"

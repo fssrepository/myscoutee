@@ -1,8 +1,12 @@
+import type {
+  ContextualDtoToRecordMapper,
+  NullableRecordToDtoMapper
+} from '../../../base/mappers/mapper.types';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserRateRecord } from '../entity/rate.entity';
 
 export class LocalUserRatesMapper {
-  static toUserRateRecord(ownerUserId: string, item: ActivityRateDTO): UserRateRecord {
+  static toRecord(ownerUserId: string, item: ActivityRateDTO): UserRateRecord {
     const normalizedOwnerUserId = ownerUserId.trim();
     const normalizedCounterpartyUserId = item.userId.trim();
     const normalizedSecondaryUserId = item.secondaryUserId?.trim() ?? '';
@@ -51,7 +55,7 @@ export class LocalUserRatesMapper {
     };
   }
 
-  static toActivityRateDTO(record: UserRateRecord): ActivityRateDTO | null {
+  static toDto(record: UserRateRecord): ActivityRateDTO | null {
     const direction = record.displayDirection;
     const ownerUserId = record.ownerUserId?.trim() ?? '';
     if (!direction || !ownerUserId) {
@@ -164,3 +168,7 @@ export class LocalUserRatesMapper {
     return 0;
   }
 }
+
+export const localUserRatesMapper =
+  LocalUserRatesMapper satisfies ContextualDtoToRecordMapper<string, ActivityRateDTO, UserRateRecord>
+    & NullableRecordToDtoMapper<UserRateRecord, ActivityRateDTO>;

@@ -8,10 +8,6 @@ export interface RouteModeConfig {
   mode?: RouteMode | null;
 }
 
-export interface RouteServiceConfig<TMemory = never> extends RouteModeConfig {
-  memoryService?: TMemory | null;
-}
-
 export abstract class BaseRouteModeService {
   protected readonly sessionService = inject(SessionService);
 
@@ -19,20 +15,13 @@ export abstract class BaseRouteModeService {
     return this.resolveRouteMode(route) === 'local';
   }
 
-  protected resolveRouteService<TLocal, THttp, TMemory = never>(
+  protected resolveRouteService<TLocal, THttp>(
     route: string,
     localService: TLocal,
     httpService: THttp,
-    config: RouteServiceConfig<TMemory> | null = null
-  ): TLocal | THttp | TMemory {
+    config: RouteModeConfig | null = null
+  ): TLocal | THttp {
     const mode = this.resolveRouteMode(route, config?.mode ?? null);
-    if (mode === 'memory') {
-      const memoryService = config?.memoryService ?? null;
-      if (!memoryService) {
-        throw new Error(`Route ${route} requested memory mode without a memory service.`);
-      }
-      return memoryService;
-    }
     return mode === 'local' ? localService : httpService;
   }
 

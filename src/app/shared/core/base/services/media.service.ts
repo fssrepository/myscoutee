@@ -11,6 +11,7 @@ const MEDIA_AUDIO_UPLOAD_ROUTE = '/media/audio';
 export interface MediaImageUploadResult {
   uploaded: boolean;
   imageUrl: string | null;
+  imageSet?: MediaImageSet | null;
 }
 
 export interface MediaAudioUploadResult {
@@ -22,6 +23,13 @@ export interface MediaAudioUploadOptions {
   dataUrl?: string | null;
   durationSeconds?: number | null;
   sizeBytes?: number | null;
+}
+
+export interface MediaImageSet {
+  originalUrl: string | null;
+  smallUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
 }
 
 @Injectable({

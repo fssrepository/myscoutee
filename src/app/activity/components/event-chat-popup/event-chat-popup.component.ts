@@ -18,10 +18,10 @@ import { from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import { AppUtils } from '../../../shared/app-utils';
+import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService, toActivityEventRow } from '../../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { ASSET_TYPES, type AssetType, type SubEventResourceFilter } from '../../../shared/core/common/constants';
@@ -91,7 +91,10 @@ interface SelectedChatGroupState {
 
 interface SelectedChatNavigationState {
   channelType: ContractTypes.ChatChannelType;
-  eventRow: AppTypes.ActivityListRow | null;
+  eventId: string | null;
+  eventTarget: ContractTypes.EventEditorTarget;
+  eventTitle: string | null;
+  eventPendingMembers: number;
   subEvent: ContractTypes.SubEventFormItem | null;
   group: SelectedChatGroupState | null;
   assetAssignmentIds: AppTypes.SubEventAssetAssignmentIds;
@@ -388,7 +391,10 @@ export class EventChatPopupComponent implements OnDestroy {
       return [];
     }
     const maxVisible = Math.max(1, Math.trunc(Number(control.visual.maxVisible) || 4));
-    return control.visual.thumbs.slice(0, maxVisible).map(thumb => ({ ...thumb }));
+    return control.visual.thumbs.slice(0, maxVisible).map(thumb => ({
+      ...thumb,
+      imageUrl: AppUtils.mediaImageVariantUrl(thumb.imageUrl, 'small') || null
+    }));
   }
 
   protected chatHeaderControlBadgeValue(control: AppTypes.PopupHeaderControl): number {
@@ -642,13 +648,14 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openSelectedChatEvent(event?: Event): void {
     event?.stopPropagation();
     this.chatThreadSmartList?.closeMenu();
-    const row = this.selectedChatNavigationState?.eventRow ?? this.chatEventRow();
-    if (!row) {
+    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
+    if (!eventId) {
       return;
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row,
+      eventId,
+      target: this.selectedChatNavigationState?.eventTarget ?? 'events',
       readOnly: true
     });
   }
@@ -696,7 +703,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatThreadSmartList?.closeMenu();
     this.popupCtx.requestActivitiesNavigation({
       type: 'chatResource',
-      ownerId: state.eventRow?.id ?? session.item.eventId,
+      ownerId: state.eventId ?? session.item.eventId,
       item: session.item,
       resourceType: type,
       subEvent: state.subEvent,
@@ -796,6 +803,26 @@ export class EventChatPopupComponent implements OnDestroy {
     textarea.style.height = 'auto';
     const lineHeight = Number.parseFloat(getComputedStyle(textarea).lineHeight) || 20;
     textarea.style.height = `${Math.min(textarea.scrollHeight, Math.round(lineHeight * 6))}px`;
+  }
+
+  protected composerEmojiSuggestions(): readonly AsciiEmojiConversion[] {
+    if (this.chatInitialLoadPending || this.voiceComposerOpen || this.pollComposerOpen) {
+      return [];
+    }
+    return AppUtils.asciiEmojiSuggestionsForToken(
+      AppUtils.trailingAsciiEmojiToken(this.draftMessage),
+      6
+    );
+  }
+
+  protected applyComposerEmojiSuggestion(suggestion: AsciiEmojiConversion, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.onDraftMessageChange(
+      AppUtils.replaceTrailingAsciiEmojiToken(this.draftMessage, suggestion.emoji)
+    );
+    this.focusComposerSoon();
+    this.resizeComposerTextareaSoon();
   }
 
   protected openImageAttachmentPicker(event?: Event): void {
@@ -1236,7 +1263,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (attachment.type === 'event') {
       const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
-      const contextEventId = `${this.selectedChatNavigationState?.eventRow?.id ?? this.session()?.item.eventId ?? ''}`.trim();
+      const contextEventId = `${this.selectedChatNavigationState?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
       if (!attachmentEventId || attachmentEventId === contextEventId) {
         this.openSelectedChatEvent();
         return;
@@ -1781,7 +1808,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected async sendMessage(): Promise<void> {
-    const text = this.draftMessage.trim();
+    const text = AppUtils.convertAsciiEmojis(this.draftMessage.trim());
     const session = this.session();
     if (!session || !text) {
       return;
@@ -1845,7 +1872,7 @@ export class EventChatPopupComponent implements OnDestroy {
       clientId,
       sender: senderPresentation.sender,
       senderAvatar: senderPresentation.senderAvatar,
-      text: this.draftMessage.trim(),
+      text: AppUtils.convertAsciiEmojis(this.draftMessage.trim()),
       time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: sentAt.toISOString(),
       mine: true,
@@ -1854,7 +1881,7 @@ export class EventChatPopupComponent implements OnDestroy {
       replyTo: this.replyTarget ? { ...this.replyTarget } : null,
       attachments: [{ ...imageAttachment }]
     };
-    const caption = this.draftMessage.trim();
+    const caption = AppUtils.convertAsciiEmojis(this.draftMessage.trim());
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
     this.draftMessage = '';
     this.replyTarget = null;
@@ -1894,7 +1921,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || this.chatInitialLoadPending) {
       return;
     }
-    const caption = captionOverride ?? this.draftMessage.trim();
+    const caption = AppUtils.convertAsciiEmojis(captionOverride ?? this.draftMessage.trim());
     const optimisticMessage = {
       ...this.buildOptimisticChatMessage(caption),
       attachments: [{ ...attachment }]
@@ -1934,9 +1961,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildCurrentEventAttachment(): ContractTypes.ChatMessageAttachment | null {
     const session = this.session();
-    const row = this.selectedChatNavigationState?.eventRow ?? this.chatEventRow();
-    const eventId = `${row?.id ?? session?.item.eventId ?? ''}`.trim();
-    const title = `${row?.title ?? session?.item.title ?? ''}`.trim();
+    const eventId = `${this.selectedChatNavigationState?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const title = `${this.selectedChatNavigationState?.eventTitle ?? session?.item.title ?? ''}`.trim();
     if (!eventId || !title) {
       return null;
     }
@@ -1945,10 +1971,10 @@ export class EventChatPopupComponent implements OnDestroy {
       type: 'event',
       entityId: eventId,
       title,
-      subtitle: `${row?.detail ?? ''}`.trim() || null,
-      description: `${row?.subtitle ?? ''}`.trim() || null,
+      subtitle: `${session?.item.lastMessage ?? ''}`.trim() || null,
+      description: null,
       url: null,
-      previewUrl: `${row?.imageUrl ?? ''}`.trim() || null
+      previewUrl: null
     };
   }
 
@@ -2160,7 +2186,8 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: toActivityEventRow(eventRecord, { activeUserId: this.activeUserId() }),
+      eventId: eventRecord.id,
+      target: this.eventEditorTargetForRecord(eventRecord),
       readOnly: true
     });
   }
@@ -2188,10 +2215,12 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!upload.uploaded || !upload.imageUrl) {
       throw new Error('Unable to upload chat image.');
     }
+    const mediaUrl = upload.imageSet?.largeUrl ?? upload.imageUrl;
+    const previewUrl = upload.imageSet?.mediumUrl ?? upload.imageUrl;
     return {
       ...attachment,
-      url: upload.imageUrl,
-      previewUrl: upload.imageUrl
+      url: mediaUrl,
+      previewUrl
     };
   }
 
@@ -2325,15 +2354,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private commitEditMessage(text: string): void {
+    const convertedText = AppUtils.convertAsciiEmojis(text.trim());
     const editingMessageId = this.editingMessageId;
-    if (!editingMessageId) {
+    if (!editingMessageId || !convertedText) {
       return;
     }
     const session = this.session();
     this.allMessages = this.allMessages.map(message => message.id === editingMessageId
       ? {
           ...message,
-          text,
+          text: convertedText,
           editedAtIso: new Date().toISOString(),
           deliveryState: 'pending'
         }
@@ -2345,7 +2375,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     this.schedulePendingMessageTimeout(editingMessageId);
     if (session) {
-      void this.activitiesContext.updateEventChatMessage(session.item, editingMessageId, { text })
+      void this.activitiesContext.updateEventChatMessage(session.item, editingMessageId, { text: convertedText })
         .then(updated => {
           if (updated) {
             this.clearPendingMessageTimeout(editingMessageId);
@@ -3334,7 +3364,7 @@ export class EventChatPopupComponent implements OnDestroy {
         id: activeUser?.id?.trim() || activeUserId || 'self',
         initials: initials || 'ME',
         gender: activeUser?.gender ?? 'man',
-        imageUrl: activeUser?.images?.map(image => image.trim()).find(Boolean) ?? null
+        imageUrl: AppUtils.mediaImageVariantUrl(activeUser?.images?.map(image => image.trim()).find(Boolean), 'small') || null
       }
     };
   }
@@ -3601,7 +3631,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
 
     const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventRow?.id ?? chat.eventId ?? ''}`.trim();
+    const ownerId = `${state?.eventId ?? chat.eventId ?? ''}`.trim();
     const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
     const resourceKey = ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
     if (!resourceKey || this.resolvedChatResourceStateKey === resourceKey) {
@@ -3706,7 +3736,7 @@ export class EventChatPopupComponent implements OnDestroy {
       badge: badgeValue > 0 ? { value: badgeValue, tone: 'danger' } : null,
       lookup: {
         type: 'chatPrimary',
-        id: `${state?.eventRow?.id ?? chat.eventId ?? chat.id}`.trim()
+        id: `${state?.eventId ?? chat.eventId ?? chat.id}`.trim()
       }
     };
   }
@@ -3762,9 +3792,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private buildSelectedChatNavigationState(chat: ChatRecord): SelectedChatNavigationState | null {
     const eventId = `${chat.eventId ?? ''}`.trim();
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
-    const eventRow = eventRecord
-      ? toActivityEventRow(eventRecord, { activeUserId: this.activeUserId() })
-      : this.chatEventFallbackRow(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
     const resourceState = rawSubEvent && eventId
       ? this.resolveSelectedChatResourceState(eventId, rawSubEvent.id)
@@ -3778,12 +3805,23 @@ export class EventChatPopupComponent implements OnDestroy {
       : null;
     return {
       channelType: this.chatChannelType(chat),
-      eventRow,
+      eventId: (eventRecord?.id ?? eventId) || null,
+      eventTarget: eventRecord ? this.eventEditorTargetForRecord(eventRecord) : 'events',
+      eventTitle: eventRecord?.title ?? chat.title ?? null,
+      eventPendingMembers: Math.max(0, Math.trunc(Number(eventRecord?.pendingMembers) || 0)),
       subEvent,
       group: this.resolveSelectedChatGroup(chat, subEvent),
       assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
       assetCardsByType
     };
+  }
+
+  private eventEditorTargetForRecord(record: Pick<ActivityEventRecord, 'type' | 'creatorUserId'>): ContractTypes.EventEditorTarget {
+    const activeUserId = this.activeUserId().trim();
+    if (record.type === 'hosting' || (!!activeUserId && record.creatorUserId === activeUserId)) {
+      return 'hosting';
+    }
+    return 'events';
   }
 
   private chatChannelType(chat: ChatRecord): ContractTypes.ChatChannelType {
@@ -3948,7 +3986,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (state?.subEvent && (state.channelType === 'optionalSubEvent' || state.channelType === 'groupSubEvent')) {
       return this.subEventPendingTotal(state.subEvent);
     }
-    const eventPending = Math.max(0, Math.trunc(Number(state?.eventRow?.pendingMembers) || 0));
+    const eventPending = Math.max(0, Math.trunc(Number(state?.eventPendingMembers) || 0));
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const subEventPending = eventRecord?.subEvents?.reduce((sum, subEvent) => {
       const cloned = this.cloneSubEvent(subEvent);
@@ -3988,7 +4026,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const bounds = ActivityResourceBuilder.resourceCapacityBounds(
       subEvent,
       type,
-      this.resolveSelectedChatResourceState(`${state.eventRow?.id ?? ''}`, subEvent.id),
+      this.resolveSelectedChatResourceState(`${state.eventId ?? ''}`, subEvent.id),
       this.flattenAssetCards(state.assetCardsByType),
       accepted,
       pending
@@ -4004,7 +4042,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return ActivityResourceBuilder.resourceAcceptedCount(
       subEvent,
       type,
-      this.resolveSelectedChatResourceState(`${state.eventRow?.id ?? ''}`, subEvent.id),
+      this.resolveSelectedChatResourceState(`${state.eventId ?? ''}`, subEvent.id),
       this.flattenAssetCards(state.assetCardsByType)
     );
   }
@@ -4020,7 +4058,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return ActivityResourceBuilder.resourcePendingCount(
       subEvent,
       type,
-      this.resolveSelectedChatResourceState(`${state.eventRow?.id ?? ''}`, subEvent.id),
+      this.resolveSelectedChatResourceState(`${state.eventId ?? ''}`, subEvent.id),
       this.flattenAssetCards(state.assetCardsByType)
     );
   }
@@ -4073,33 +4111,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return (['Car', 'Accommodation', 'Supplies'] as const)
       .find(type => (state.assetCardsByType[type]?.length ?? 0) > 0)
       ?? null;
-  }
-
-  private chatEventRow(): AppTypes.ActivityListRow | null {
-    const session = this.session();
-    return session ? this.chatEventFallbackRow(session.item) : null;
-  }
-
-  private chatEventFallbackRow(chat: ChatRecord): AppTypes.ActivityListRow | null {
-    if (!chat.eventId) {
-      return null;
-    }
-    const eventId = chat.eventId;
-    const title = chat.title;
-    const subtitle = chat.lastMessage || 'Chat-linked event';
-    const activity = Math.max(0, Math.trunc(Number(chat.unread) || 0));
-    return {
-      id: eventId,
-      type: 'events',
-      title,
-      subtitle,
-      detail: 'From chat',
-      dateIso: new Date().toISOString(),
-      distanceMetersExact: 0,
-      unread: activity,
-      metricScore: activity,
-      avatarInitials: AppUtils.initialsFromText(title)
-    };
   }
 
   private shouldOpenMessageToolsDown(event?: Event): boolean {

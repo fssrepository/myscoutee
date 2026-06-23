@@ -1,5 +1,4 @@
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 
 type ActivityEventSourceLike = {
@@ -62,60 +61,4 @@ export class ActivityEventBuilder {
     };
   }
 
-  static resolveEditorSource(
-    row: AppTypes.ActivityListRow,
-    options: {
-      eventItems: readonly ActivityEventSourceLike[];
-      hostingItems: readonly ActivityEventSourceLike[];
-      invitationItems?: readonly ActivityEventSourceLike[];
-    }
-  ): ActivityEventSourceLike | null {
-    if (row.type === 'invitations') {
-      const invitation = options.invitationItems?.find(item => item.id === row.id) ?? null;
-      if (!invitation) {
-        return null;
-      }
-      return this.resolveRelatedEventFromInvitation(invitation, options) ?? this.buildInvitationPreviewEventSource(invitation);
-    }
-    if (row.type !== 'events' && row.type !== 'hosting') {
-      return null;
-    }
-    let source = options.eventItems.find(item => item.id === row.id)
-      ?? options.hostingItems.find(item => item.id === row.id)
-      ?? null;
-    if (!source && row.title.trim()) {
-      const titleKey = AppUtils.normalizeText(row.title);
-      source = options.eventItems.find(item => AppUtils.normalizeText(item.title ?? '') === titleKey)
-        ?? options.hostingItems.find(item => AppUtils.normalizeText(item.title ?? '') === titleKey)
-        ?? null;
-    }
-    return source;
-  }
-
-  private static resolveRelatedEventFromInvitation(
-    invitation: ActivityEventSourceLike,
-    options: {
-      eventItems: readonly ActivityEventSourceLike[];
-      hostingItems: readonly ActivityEventSourceLike[];
-    }
-  ): ActivityEventSourceLike | null {
-    const invitationId = invitation.id.trim();
-    if (invitationId) {
-      const relatedById = options.eventItems.find(item => item.id === invitationId)
-        ?? options.hostingItems.find(item => item.id === invitationId);
-      if (relatedById) {
-        return relatedById;
-      }
-    }
-    const invitationTitle = AppUtils.normalizeText(`${invitation.description ?? invitation.title ?? ''}`);
-    const relatedEvent = options.eventItems.find(item => AppUtils.normalizeText(item.title ?? '') === invitationTitle);
-    if (relatedEvent) {
-      return relatedEvent;
-    }
-    const relatedHosting = options.hostingItems.find(item => AppUtils.normalizeText(item.title ?? '') === invitationTitle);
-    if (relatedHosting) {
-      return relatedHosting;
-    }
-    return null;
-  }
 }

@@ -1,5 +1,5 @@
-import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
+import type { SingleRowData } from '../../../../../shared/ui';
 
 export interface ActivitiesChatTemplateData {
   id: string;
@@ -26,7 +26,7 @@ interface BuildActivitiesChatTemplateDataOptions {
 }
 
 export function buildActivitiesChatTemplateData(
-  row: AppTypes.ActivitySingleRow,
+  row: SingleRowData,
   options: BuildActivitiesChatTemplateDataOptions
 ): ActivitiesChatTemplateData {
   const avatar = `${row.avatarInitials ?? ''}`.trim();

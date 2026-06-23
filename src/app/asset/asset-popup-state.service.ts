@@ -7,7 +7,7 @@ import type { SmartListStateChange } from '../shared/ui';
 import { AssetFacadeService } from './asset-facade.service';
 import type { AssetPopupHost } from './asset-popup.host';
 
-import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AssetContracts from '../shared/core/contracts/asset.interface';
 @Injectable({ providedIn: 'root' })
 export class AssetPopupStateService {
   private readonly ngZone = inject(NgZone);
@@ -22,13 +22,13 @@ export class AssetPopupStateService {
   private readonly basketVisibleRef = signal(false);
 
   private readonly ticketOverlayModeRef = signal<'ticketCode' | 'ticketScanner' | null>(null);
-  private readonly ticketRowsRef = signal<AppTypes.ActivityListRow[]>([]);
+  private readonly ticketRowsRef = signal<AssetContracts.AssetTicketDTO[]>([]);
   private readonly ticketTotalCountRef = signal(0);
   private readonly ticketDateOrderRef = signal<'upcoming' | 'past'>('upcoming');
-  private readonly selectedTicketRowRef = signal<AppTypes.ActivityListRow | null>(null);
+  private readonly selectedTicketRowRef = signal<AssetContracts.AssetTicketDTO | null>(null);
   private readonly selectedTicketCodeValueRef = signal('');
   private readonly ticketScannerStateRef = signal<'idle' | 'reading' | 'success'>('idle');
-  private readonly ticketScannerResultRef = signal<AppDTOs.TicketScanPayloadDTO | null>(null);
+  private readonly ticketScannerResultRef = signal<AssetContracts.TicketScanPayloadDTO | null>(null);
 
   readonly host = this.hostRef.asReadonly();
   readonly visible = computed(() =>
@@ -128,17 +128,17 @@ export class AssetPopupStateService {
     this.ticketTotalCountRef.set(this.assetTicketsService.peekTicketCountByUser(this.activeUserId()));
   }
 
-  selectedTicketRow(): AppTypes.ActivityListRow | null {
+  selectedTicketRow(): AssetContracts.AssetTicketDTO | null {
     return this.selectedTicketRowRef();
   }
 
-  updateTicketListState(change: SmartListStateChange<AppTypes.ActivityListRow>): void {
+  updateTicketListState(change: SmartListStateChange<AssetContracts.AssetTicketDTO>): void {
     this.ticketRowsRef.set([...change.items]);
     this.ticketTotalCountRef.set(Math.max(0, change.total));
     this.warmTicketQrImages(change.items);
   }
 
-  openTicketCodePopup(row: AppTypes.ActivityListRow, event?: Event): void {
+  openTicketCodePopup(row: AssetContracts.AssetTicketDTO, event?: Event): void {
     event?.stopPropagation();
     this.selectedTicketRowRef.set(row);
     this.selectedTicketCodeValueRef.set(this.encodeTicketPayload(this.createTicketScanPayload(row)));
@@ -229,7 +229,7 @@ export class AssetPopupStateService {
     return this.ticketScannerStateRef();
   }
 
-  ticketScannerResult(): AppDTOs.TicketScanPayloadDTO | null {
+  ticketScannerResult(): AssetContracts.TicketScanPayloadDTO | null {
     return this.ticketScannerResultRef();
   }
 
@@ -284,7 +284,7 @@ export class AssetPopupStateService {
     return this.appCtx.activeUserId().trim();
   }
 
-  private selectedTicketPayload(): AppDTOs.TicketScanPayloadDTO | null {
+  private selectedTicketPayload(): AssetContracts.TicketScanPayloadDTO | null {
     const decoded = this.decodeTicketPayload(this.selectedTicketCodeValueRef());
     if (decoded) {
       return decoded;
@@ -299,19 +299,19 @@ export class AssetPopupStateService {
     };
   }
 
-  private createTicketScanPayload(row: AppTypes.ActivityListRow): AppDTOs.TicketScanPayloadDTO {
+  private createTicketScanPayload(row: AssetContracts.AssetTicketDTO): AssetContracts.TicketScanPayloadDTO {
     return this.assetFacade.createTicketScanPayload(row);
   }
 
-  private ticketPayloadAvatarUrl(payload: AppDTOs.TicketScanPayloadDTO | null): string {
+  private ticketPayloadAvatarUrl(payload: AssetContracts.TicketScanPayloadDTO | null): string {
     return this.assetFacade.ticketPayloadAvatarUrl(payload);
   }
 
-  private ticketPayloadInitials(payload: AppDTOs.TicketScanPayloadDTO): string {
+  private ticketPayloadInitials(payload: AssetContracts.TicketScanPayloadDTO): string {
     return this.assetFacade.ticketPayloadInitials(payload);
   }
 
-  private encodeTicketPayload(payload: AppDTOs.TicketScanPayloadDTO): string {
+  private encodeTicketPayload(payload: AssetContracts.TicketScanPayloadDTO): string {
     try {
       const json = JSON.stringify(payload);
       if (typeof TextEncoder === 'undefined' || typeof btoa === 'undefined') {
@@ -328,7 +328,7 @@ export class AssetPopupStateService {
     }
   }
 
-  private decodeTicketPayload(encoded: string): AppDTOs.TicketScanPayloadDTO | null {
+  private decodeTicketPayload(encoded: string): AssetContracts.TicketScanPayloadDTO | null {
     try {
       if (typeof TextDecoder === 'undefined' || typeof atob === 'undefined') {
         return null;
@@ -336,7 +336,7 @@ export class AssetPopupStateService {
       const binary = atob(encoded);
       const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
       const json = new TextDecoder().decode(bytes);
-      const parsed = JSON.parse(json) as Partial<AppDTOs.TicketScanPayloadDTO>;
+      const parsed = JSON.parse(json) as Partial<AssetContracts.TicketScanPayloadDTO>;
       if (
         typeof parsed.code !== 'string'
         || typeof parsed.holderUserId !== 'string'
@@ -368,7 +368,7 @@ export class AssetPopupStateService {
     }
   }
 
-  private warmTicketQrImages(rows: readonly AppTypes.ActivityListRow[]): void {
+  private warmTicketQrImages(rows: readonly AssetContracts.AssetTicketDTO[]): void {
     if (typeof fetch === 'undefined' || typeof navigator === 'undefined' || navigator.onLine === false) {
       return;
     }
@@ -387,7 +387,7 @@ export class AssetPopupStateService {
     }
   }
 
-  private ticketQrImageUrlForRow(row: AppTypes.ActivityListRow): string {
+  private ticketQrImageUrlForRow(row: AssetContracts.AssetTicketDTO): string {
     const payload = this.encodeTicketPayload(this.createTicketScanPayload(row));
     if (!payload) {
       return '';
@@ -494,7 +494,7 @@ export class AssetPopupStateService {
     this.ticketScannerDetectionFrame = requestAnimationFrame(tick);
   }
 
-  private ticketScannerPayloadFromResults(results: AppTypes.BrowserBarcodeDetectorResult[]): AppDTOs.TicketScanPayloadDTO | null {
+  private ticketScannerPayloadFromResults(results: AppTypes.BrowserBarcodeDetectorResult[]): AssetContracts.TicketScanPayloadDTO | null {
     for (const result of results) {
       const raw = `${result.rawValue ?? ''}`.trim();
       if (!raw) {
@@ -508,7 +508,7 @@ export class AssetPopupStateService {
     return null;
   }
 
-  private applyTicketScannerSuccess(payload: AppDTOs.TicketScanPayloadDTO): void {
+  private applyTicketScannerSuccess(payload: AssetContracts.TicketScanPayloadDTO): void {
     this.cancelTicketScannerTimer();
     this.ngZone.run(() => {
       this.ticketScannerResultRef.set(payload);

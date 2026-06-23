@@ -1,28 +1,15 @@
-import type * as AppTypes from '../../core/base/models';
 import type {
-  EventFeedbackPageCountsDto,
-  EventFeedbackPageItemDto,
-  EventFeedbackPageResultDto,
+  EventFeedbackDto,
   EventFeedbackPageStateSnapshotDto,
-  EventFeedbackReceivedEventDto
 } from '../../core/contracts/activity.interface';
 import type { InfoCardData, CardMenuActionId } from '../components/card';
-
-export interface EventFeedbackPageViewModel {
-  items: InfoCardData[];
-  total: number;
-  allItems: AppTypes.EventFeedbackEventCard[];
-  organizerItems: AppTypes.EventFeedbackEventCard[];
-  receivedEvents: EventFeedbackReceivedEventDto[];
-  state: EventFeedbackPageStateSnapshotDto;
-  counts: EventFeedbackPageCountsDto;
-}
+import type { UiListConverter } from './converter.types';
 
 export interface EventFeedbackInfoCardConverterOptions {
-  hasOrganizerNote?: (eventId: string) => boolean;
+  state?: EventFeedbackPageStateSnapshotDto | null;
 }
 
-export interface EventFeedbackOrganizerInfoCardInput {
+export interface EventFeedbackOrganizerInfoCardData {
   eventId: string;
   title: string;
   subtitle: string;
@@ -32,30 +19,55 @@ export interface EventFeedbackOrganizerInfoCardInput {
   noteCount: number;
 }
 
-export class EventFeedbackInfoCardConverter {
-  static convertPage(
-    result: EventFeedbackPageResultDto,
-    options: EventFeedbackInfoCardConverterOptions = {}
-  ): EventFeedbackPageViewModel {
-    const allItems = this.convertItems(result.allItems);
-    const organizerItems = this.convertItems(result.organizerItems);
+export interface EventFeedbackOrganizerInfoCardConverterOptions {
+  showAction?: boolean;
+}
+
+export class EventFeedbackOrganizerInfoCardConverter {
+  static convert(
+    item: EventFeedbackOrganizerInfoCardData,
+    options: EventFeedbackOrganizerInfoCardConverterOptions = {}
+  ): InfoCardData {
+    const showAction = options.showAction ?? true;
     return {
-      items: this.convertItems(result.items).map(item => this.convert(item, options)),
-      total: Math.max(0, Math.trunc(Number(result.total) || 0)),
-      allItems,
-      organizerItems,
-      receivedEvents: [...(result.receivedEvents ?? [])],
-      state: result.state,
-      counts: result.counts
+      id: item.eventId,
+      status: 'own-event',
+      title: item.title,
+      imageUrl: item.imageUrl,
+      metaRows: [item.subtitle],
+      detailRows: [item.timeframe],
+      leadingIcon: {
+        icon: 'stadium'
+      },
+      mediaEnd: showAction
+        ? {
+          variant: 'badge',
+          tone: 'default',
+          label: 'View Feedbacks',
+          pendingCount: item.responseCount,
+          interactive: true,
+          ariaLabel: `Open feedback details for ${item.title}`
+        }
+        : null,
+      clickable: false
     };
   }
 
+  static convertList(
+    items: readonly EventFeedbackOrganizerInfoCardData[],
+    options: EventFeedbackOrganizerInfoCardConverterOptions = {}
+  ): InfoCardData[] {
+    return items.map(item => this.convert(item, options));
+  }
+}
+
+export class EventFeedbackInfoCardConverter {
   static convert(
-    item: AppTypes.EventFeedbackEventCard,
+    item: EventFeedbackDto,
     options: EventFeedbackInfoCardConverterOptions = {}
   ): InfoCardData {
     if (item.isOwnEvent) {
-      return this.organizerEventFeedbackCard({
+      return EventFeedbackOrganizerInfoCardConverter.convert({
         eventId: item.eventId,
         title: item.title,
         subtitle: item.subtitle,
@@ -88,63 +100,23 @@ export class EventFeedbackInfoCardConverter {
           ? 'Start event feedback'
           : 'Event feedback unavailable'
       },
-      menuActions: this.eventFeedbackMenuActions(item, options.hasOrganizerNote?.(item.eventId) === true),
+      menuActions: this.eventFeedbackMenuActions(item, this.hasOrganizerNote(item.eventId, options.state)),
       clickable: false
     };
   }
 
-  static convertItems(items: readonly EventFeedbackPageItemDto[] | undefined): AppTypes.EventFeedbackEventCard[] {
-    return (items ?? []).map(item => ({
-      eventId: item.eventId?.trim() ?? '',
-      title: item.title?.trim() ?? '',
-      subtitle: item.subtitle?.trim() ?? '',
-      timeframe: item.timeframe?.trim() ?? '',
-      imageUrl: item.imageUrl?.trim() ?? '',
-      startAtMs: Math.max(0, Math.trunc(Number(item.startAtMs) || 0)),
-      pendingCards: Math.max(0, Math.trunc(Number(item.pendingCards) || 0)),
-      totalCards: Math.max(0, Math.trunc(Number(item.totalCards) || 0)),
-      isRemoved: item.isRemoved === true,
-      isFeedbacked: item.isFeedbacked === true,
-      feedbackedAtMs: this.numberOrNull(item.feedbackedAtMs),
-      removedAtMs: this.numberOrNull(item.removedAtMs),
-      isOwnEvent: item.isOwnEvent === true
-    })).filter(item => item.eventId.length > 0);
+  static convertList(
+    items: readonly EventFeedbackDto[],
+    options: EventFeedbackInfoCardConverterOptions = {}
+  ): InfoCardData[] {
+    return items.map(item => this.convert(item, options));
   }
 
-  static organizerEventFeedbackCard(
-    item: EventFeedbackOrganizerInfoCardInput,
-    options: { showAction?: boolean } = {}
-  ): InfoCardData {
-    const showAction = options.showAction ?? true;
-    return {
-      id: item.eventId,
-      status: 'own-event',
-      title: item.title,
-      imageUrl: item.imageUrl,
-      metaRows: [item.subtitle],
-      detailRows: [item.timeframe],
-      leadingIcon: {
-        icon: 'stadium'
-      },
-      mediaEnd: showAction
-        ? {
-          variant: 'badge',
-          tone: 'default',
-          label: 'View Feedbacks',
-          pendingCount: item.responseCount,
-          interactive: true,
-          ariaLabel: `Open feedback details for ${item.title}`
-        }
-        : null,
-      clickable: false
-    };
-  }
-
-  private static isEventFeedbackStartAvailable(item: AppTypes.EventFeedbackEventCard): boolean {
+  private static isEventFeedbackStartAvailable(item: EventFeedbackDto): boolean {
     return !item.isRemoved && item.pendingCards > 0;
   }
 
-  private static eventFeedbackItemStatusLine(item: AppTypes.EventFeedbackEventCard): string {
+  private static eventFeedbackItemStatusLine(item: EventFeedbackDto): string {
     if (item.isRemoved) {
       return 'Removed without feedback.';
     }
@@ -154,7 +126,7 @@ export class EventFeedbackInfoCardConverter {
     return `${item.pendingCards}/${item.totalCards} feedback item${item.totalCards === 1 ? '' : 's'} pending.`;
   }
 
-  private static eventFeedbackLeadingIcon(item: AppTypes.EventFeedbackEventCard): string {
+  private static eventFeedbackLeadingIcon(item: EventFeedbackDto): string {
     if (item.isOwnEvent) {
       return 'stadium';
     }
@@ -167,7 +139,7 @@ export class EventFeedbackInfoCardConverter {
     return 'rate_review';
   }
 
-  private static eventFeedbackStartBadgeLabel(item: AppTypes.EventFeedbackEventCard): string {
+  private static eventFeedbackStartBadgeLabel(item: EventFeedbackDto): string {
     if (item.isOwnEvent) {
       return 'View Feedbacks';
     }
@@ -181,7 +153,7 @@ export class EventFeedbackInfoCardConverter {
   }
 
   private static eventFeedbackMenuActions(
-    item: AppTypes.EventFeedbackEventCard,
+    item: EventFeedbackDto,
     hasOrganizerNote: boolean
   ): readonly CardMenuActionId[] {
     if (item.isOwnEvent) {
@@ -201,8 +173,29 @@ export class EventFeedbackInfoCardConverter {
     return actions;
   }
 
-  private static numberOrNull(value: number | null | undefined): number | null {
-    const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric > 0 ? Math.trunc(numeric) : null;
+  private static hasOrganizerNote(
+    eventId: string,
+    state: EventFeedbackPageStateSnapshotDto | null | undefined
+  ): boolean {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return false;
+    }
+    return Boolean(state?.organizerNotesByEventId?.[normalizedEventId]?.trim());
   }
+
 }
+
+export const eventFeedbackInfoCardConverter =
+  EventFeedbackInfoCardConverter satisfies UiListConverter<
+    EventFeedbackDto,
+    InfoCardData,
+    EventFeedbackInfoCardConverterOptions | undefined
+  >;
+
+export const eventFeedbackOrganizerInfoCardConverter =
+  EventFeedbackOrganizerInfoCardConverter satisfies UiListConverter<
+    EventFeedbackOrganizerInfoCardData,
+    InfoCardData,
+    EventFeedbackOrganizerInfoCardConverterOptions | undefined
+  >;

@@ -69,12 +69,12 @@ export class SeedHelpCenterRepository {
           },
           revisionsById: {
             ...this.normalizedRevisionsById(current),
-            [revision.id]: LocalHelpCenterMapper.toRevisionRecord(revision)
+            [revision.id]: LocalHelpCenterMapper.toRecord(revision)
           },
           revisionIds: [...current.revisionIds.filter(id => id !== revision.id), revision.id],
           auditById: {
             ...current.auditById,
-            [audit.id]: LocalHelpCenterMapper.toAuditRecord(audit)
+            [audit.id]: LocalHelpCenterMapper.toRecord(audit)
           },
           auditIds: [...current.auditIds, audit.id]
         }
@@ -129,7 +129,7 @@ export class SeedHelpCenterRepository {
     return table.revisionIds
       .map(id => table.revisionsById[id])
       .filter((revision): revision is HelpCenterRevisionRecord => Boolean(revision))
-      .map(revision => LocalHelpCenterMapper.toRevisionDTO(revision))
+      .map(revision => LocalHelpCenterMapper.toDto(revision))
       .filter(revision => this.revisionKind(revision) === kind && this.revisionLang(revision) === language)
       .filter(revision => kind !== 'explanation' || !context || this.revisionContextKey(revision) === context);
   }
@@ -139,9 +139,9 @@ export class SeedHelpCenterRepository {
       table.revisionIds
         .filter(id => Boolean(table.revisionsById[id]))
         .map(id => {
-          const revision = LocalHelpCenterMapper.toRevisionDTO(table.revisionsById[id]!);
+          const revision = LocalHelpCenterMapper.toDto(table.revisionsById[id]!);
           const lang = this.revisionLang(revision);
-          return [id, LocalHelpCenterMapper.toRevisionRecord({
+          return [id, LocalHelpCenterMapper.toRecord({
             ...revision,
             documentKind: this.revisionKind(revision),
             contextKey: this.revisionContextKey(revision),

@@ -1326,6 +1326,11 @@
   min-width: 0;
 }
 
+.app-menu__tabs-items--fixed-columns {
+  display: grid;
+  grid-template-columns: repeat(var(--app-menu-tabs-columns), minmax(0, 1fr));
+}
+
 .app-menu__tabs-item {
   appearance: none;
   -webkit-appearance: none;
@@ -1352,6 +1357,19 @@
     transform 0.14s ease,
     box-shadow 0.14s ease,
     filter 0.14s ease;
+}
+
+.app-menu__tabs-items--fixed-columns .app-menu__tabs-item {
+  width: 100%;
+  min-width: 0;
+}
+
+:host(.app-menu-host--layout-mobile) .app-menu__tabs-items--fixed-columns {
+  display: flex;
+}
+
+:host(.app-menu-host--layout-mobile) .app-menu__tabs-items--fixed-columns .app-menu__tabs-item {
+  min-width: min(var(--app-menu-tabs-item-min-width), 100%);
 }
 
 .app-menu__tabs-item:not(:disabled):not(.app-menu__tabs-item--disabled):hover,

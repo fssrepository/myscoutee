@@ -4,7 +4,6 @@ import { AppPopupContext } from '../../../shared/ui';
 import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import { EventFeedbackPopupStateService } from '../../../activity/services/event-feedback-popup-state.service';
 import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
 import { AppContext } from '../../../shared/ui';
 import { ExplanationGuideService } from '../../../shared/core';
@@ -36,7 +35,6 @@ export class NavigatorComponent {
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly eventFeedbackPopupService = inject(EventFeedbackPopupStateService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   protected readonly subEventResources = inject(SubEventResourcePopupController);
   private lastHandledActivitiesRequestMs = 0;
@@ -185,7 +183,6 @@ export class NavigatorComponent {
         return;
       }
       this.lastHandledEventFeedbackRequestMs = request.updatedMs;
-      this.popupCtx.clearNavigatorEventFeedbackRequest();
       void this.openEventFeedbackPopupFromNavigatorRequest();
     });
 
@@ -313,10 +310,6 @@ export class NavigatorComponent {
 
   private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {
     await this.ensureEventFeedbackPopupLoaded();
-    await new Promise<void>(resolve => {
-      setTimeout(resolve, 0);
-    });
-    this.eventFeedbackPopupService.openPopup();
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])

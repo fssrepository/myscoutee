@@ -8,8 +8,13 @@
   <div
     class="ui-info-card__media"
     [class.ui-info-card__media--placeholder]="!card?.imageUrl"
-    [appLazyBgImage]="card?.imageUrl || null"
+    [appLazyBgImage]="cardImageUrl()"
     >
+      @if (card?.imageUrl) {
+        <span class="ui-info-card__image-loader" aria-hidden="true">
+          <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
+        </span>
+      }
       @if (!card?.imageUrl) {
         <mat-icon class="ui-info-card__placeholder-icon">image_not_supported</mat-icon>
       }

@@ -1,9 +1,7 @@
 import { AppUtils } from '../../../app-utils';
-import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import type { CardRenderState, InfoCardData, CardMenuActionId } from '../../../ui';
 import type { ActivityEventRecord } from '../../contracts/activity.interface';
-import { toActivityEventRow } from '../converters/activities-event.converter';
 
 import type * as AppConstants from '../../common/constants';
 type TopicToneGroup = {
@@ -99,14 +97,6 @@ export class EventExploreBuilder {
       return 'Date unavailable';
     }
     return AppUtils.smartListDayLabel(parsed);
-  }
-
-  static buildActivityRow(record: ActivityEventRecord): AppTypes.ActivityListRow {
-    const row = toActivityEventRow(record);
-    return {
-      ...row,
-      isAdmin: false
-    };
   }
 
   private static menuActionsForRecord(record: ActivityEventRecord): readonly CardMenuActionId[] {

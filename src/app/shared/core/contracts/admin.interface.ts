@@ -1,5 +1,5 @@
-import type { AssetType } from '../common/constants';
-import type { UserDto } from './user.interface';
+import type * as AppConstants from '../common/constants';
+import type * as UserContracts from './user.interface';
 
 export interface AdminUserDto {
   id: string;
@@ -54,7 +54,7 @@ export interface AdminReportedUserDto {
   gender: 'woman' | 'man' | string;
   city: string;
   imageUrl?: string | null;
-  profileStatus: UserDto['profileStatus'] | string;
+  profileStatus: UserContracts.UserDto['profileStatus'] | string;
   reportCount: number;
   lastReportedAtIso?: string | null;
   blockedAtIso?: string | null;
@@ -84,7 +84,7 @@ export type AdminModerationStore = AdminModerationStoreDto;
 
 export interface AdminDashboardDto {
   activeAdmin: AdminUserDto;
-  activeAdminProfile?: UserDto | null;
+  activeAdminProfile?: UserContracts.UserDto | null;
   reportedUsers: AdminReportedUserDto[];
   blockedUsers: AdminReportedUserDto[];
   feedback: AdminFeedbackDto[];
@@ -331,7 +331,7 @@ export interface AdminHelpTargetDto {
   attachmentId: string;
   attachmentType: 'link' | 'event' | 'asset';
   attachmentEntityId: string;
-  assetType?: AssetType | null;
+  assetType?: AppConstants.AssetType | null;
   title: string;
   subtitle: string;
   description: string;

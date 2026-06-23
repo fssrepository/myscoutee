@@ -12,6 +12,7 @@ import {
   AppContext,
   AppMenuDispatcher,
   AppMenuOutletComponent,
+  ActivityChatSingleRowConverter,
   ImageCardComponent,
   SingleRowComponent,
   SmartListComponent,
@@ -28,8 +29,6 @@ import {
 } from '../../../shared/ui';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
-import type { ActivityListRow } from '../../../shared/core/base/models';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
@@ -40,7 +39,7 @@ interface AdminReportListItem {
   id: string;
   user: AdminReportedUserDto;
   report: AdminReportDto;
-  row: ActivityListRow;
+  row: SingleRowData;
 }
 
 interface AdminReportListFilters {
@@ -50,7 +49,7 @@ interface AdminReportListFilters {
 interface AdminBlockedUserListItem {
   id: string;
   user: AdminReportedUserDto;
-  row: ActivityListRow;
+  row: SingleRowData;
 }
 
 interface AdminBlockedUserListFilters {
@@ -817,7 +816,7 @@ export class AdminReportsPopupComponent {
     );
   }
 
-  private buildBlockedUserActivityRow(user: AdminReportedUserDto): ActivityListRow {
+  private buildBlockedUserActivityRow(user: AdminReportedUserDto): SingleRowData {
     const source: ChatRecord = {
       id: user.userId,
       avatar: user.initials,
@@ -830,7 +829,7 @@ export class AdminReportsPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
-    return toActivityChatRow(source, {
+    return ActivityChatSingleRowConverter.convert(source, {
       activeUserId: 'admin',
       users: [this.chatUser(user.userId, user.name, user.initials, user.gender)]
     });
@@ -845,7 +844,7 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private buildReportActivityRow(user: AdminReportedUserDto, report: AdminReportDto): ActivityListRow {
+  private buildReportActivityRow(user: AdminReportedUserDto, report: AdminReportDto): SingleRowData {
     const source: ChatRecord = {
       id: report.id,
       avatar: this.reporterInitial(report),
@@ -858,7 +857,7 @@ export class AdminReportsPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
-    return toActivityChatRow(source, {
+    return ActivityChatSingleRowConverter.convert(source, {
       activeUserId: 'admin',
       users: [
         this.chatUser(report.reporterUserId, report.reporterName, this.reporterInitial(report), 'woman'),

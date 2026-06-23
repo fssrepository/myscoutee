@@ -3,11 +3,10 @@ import type { ChatThreadRecord } from '../entity/chat.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
-import { activityChatContextFilterKey } from '../../../base/converters';
+import { activityChatContextFilterKey } from '../../../base/mappers';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { LocalChatThreadMapper } from '../mappers';
 import type { ChatRecord } from '../../../contracts/chat.interface';

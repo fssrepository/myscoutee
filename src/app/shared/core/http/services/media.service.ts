@@ -11,11 +11,19 @@ const HTTP_MEDIA_AUDIO_UPLOAD_ROUTE = '/media/audio';
 export interface HttpMediaUploadResult {
   uploaded: boolean;
   imageUrl: string | null;
+  imageSet?: HttpMediaImageSet | null;
 }
 
 export interface HttpMediaAudioUploadResult {
   uploaded: boolean;
   audioUrl: string | null;
+}
+
+export interface HttpMediaImageSet {
+  originalUrl: string | null;
+  smallUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
 }
 
 @Injectable({
@@ -48,6 +56,11 @@ export class HttpMediaService {
         uploaded?: boolean | null;
         imageUrl?: string | null;
         url?: string | null;
+        imageSet?: Partial<HttpMediaImageSet> | null;
+        originalUrl?: string | null;
+        smallUrl?: string | null;
+        mediumUrl?: string | null;
+        largeUrl?: string | null;
       };
       const response = await this.routeDelay.withRequestTimeout(
         HTTP_MEDIA_IMAGE_UPLOAD_ROUTE,
@@ -66,7 +79,8 @@ export class HttpMediaService {
       );
       return {
         uploaded: response?.uploaded !== false && imageUrl !== null,
-        imageUrl
+        imageUrl,
+        imageSet: this.normalizeReturnedImageSet(response, imageUrl)
       };
     } catch {
       return {
@@ -95,6 +109,11 @@ export class HttpMediaService {
         uploaded?: boolean | null;
         imageUrl?: string | null;
         url?: string | null;
+        imageSet?: Partial<HttpMediaImageSet> | null;
+        originalUrl?: string | null;
+        smallUrl?: string | null;
+        mediumUrl?: string | null;
+        largeUrl?: string | null;
       };
       const response = await this.routeDelay.withRequestTimeout(
         HTTP_MEDIA_IMAGE_IMPORT_ROUTE,
@@ -117,7 +136,8 @@ export class HttpMediaService {
       );
       return {
         uploaded: response?.uploaded === true && storedImageUrl !== null,
-        imageUrl: storedImageUrl
+        imageUrl: storedImageUrl,
+        imageSet: this.normalizeReturnedImageSet(response, storedImageUrl)
       };
     } catch {
       return {
@@ -194,5 +214,31 @@ export class HttpMediaService {
       return `${baseUrl}/${url}`;
     }
     return `${baseUrl}/media/public?key=${encodeURIComponent(url)}`;
+  }
+
+  private normalizeReturnedImageSet(
+    response: {
+      imageSet?: Partial<HttpMediaImageSet> | null;
+      originalUrl?: string | null;
+      smallUrl?: string | null;
+      mediumUrl?: string | null;
+      largeUrl?: string | null;
+    } | null | undefined,
+    fallbackImageUrl: string | null
+  ): HttpMediaImageSet | null {
+    const source: Partial<HttpMediaImageSet> = response?.imageSet ?? {};
+    const originalUrl = this.normalizeReturnedMediaUrl(source.originalUrl ?? response?.originalUrl ?? fallbackImageUrl);
+    const smallUrl = this.normalizeReturnedMediaUrl(source.smallUrl ?? response?.smallUrl ?? fallbackImageUrl);
+    const mediumUrl = this.normalizeReturnedMediaUrl(source.mediumUrl ?? response?.mediumUrl ?? fallbackImageUrl);
+    const largeUrl = this.normalizeReturnedMediaUrl(source.largeUrl ?? response?.largeUrl ?? fallbackImageUrl);
+    if (!originalUrl && !smallUrl && !mediumUrl && !largeUrl) {
+      return null;
+    }
+    return {
+      originalUrl,
+      smallUrl,
+      mediumUrl,
+      largeUrl
+    };
   }
 }

@@ -9,7 +9,12 @@ import type {
   SubEventsDisplayMode,
   TournamentLeaderboardType
 } from './core/contracts';
-import type { ExplainableSurface, HelpCenterRevisionDto, HelpCenterSectionDto } from './core/contracts';
+import type {
+  ExplainableSurface,
+  HelpCenterHeaderColor,
+  HelpCenterRevisionDto,
+  HelpCenterSectionDto
+} from './core/contracts';
 import type {
   EventFeedbackOption,
   EventFeedbackTraitOption,
@@ -44,6 +49,55 @@ interface PersonalityTraitCatalogEntry {
   toneClass: string;
 }
 
+type NavigatorMenuPalette =
+  | 'blue'
+  | 'brown'
+  | 'gold'
+  | 'green'
+  | 'orange'
+  | 'pink'
+  | 'purple'
+  | 'sky'
+  | 'slate'
+  | 'teal'
+  | 'violet';
+
+interface NavigatorHostTierPresenterEntry {
+  id: string;
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+}
+
+interface NavigatorHostTierPresenterDefault {
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+}
+
+interface NavigatorTraitPresenterEntry {
+  id: string;
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+  memberTitle: string;
+}
+
+interface NavigatorTraitPresenterDefault {
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+  memberTitle: string;
+}
+
 const VIBE_CATEGORIES = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
 const HOSTED_EVENT_TYPES = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];
 const VIBE_ICONS: Record<string, string> = {
@@ -66,6 +120,139 @@ const MEMBER_TRAIT_ICONS: Record<string, string> = {
   Adventurer: '🔥',
   'Deep Thinker': '🧠',
   Empath: '💛'
+};
+const NAVIGATOR_HOST_TIER_PRESENTERS: NavigatorHostTierPresenterEntry[] = [
+  {
+    id: 'platinum',
+    aliases: ['platinum'],
+    icon: 'diamond',
+    colorClass: 'icon-tier-platinum',
+    toneClass: 'impression-shortcut-tone-platinum',
+    menuPalette: 'sky'
+  },
+  {
+    id: 'gold',
+    aliases: ['gold'],
+    icon: 'emoji_events',
+    colorClass: 'icon-tier-gold',
+    toneClass: 'impression-shortcut-tone-gold',
+    menuPalette: 'gold'
+  },
+  {
+    id: 'silver',
+    aliases: ['silver'],
+    icon: 'workspace_premium',
+    colorClass: 'icon-tier-silver',
+    toneClass: 'impression-shortcut-tone-silver',
+    menuPalette: 'slate'
+  },
+  {
+    id: 'bronze',
+    aliases: ['bronze'],
+    icon: 'military_tech',
+    colorClass: 'icon-tier-bronze',
+    toneClass: 'impression-shortcut-tone-bronze',
+    menuPalette: 'brown'
+  }
+];
+const NAVIGATOR_HOST_TIER_PRESENTER_DEFAULT: NavigatorHostTierPresenterDefault = {
+  aliases: [],
+  icon: 'workspace_premium',
+  colorClass: 'icon-tier-default',
+  toneClass: 'impression-shortcut-tone-platinum',
+  menuPalette: 'blue'
+};
+const NAVIGATOR_TRAIT_PRESENTERS: NavigatorTraitPresenterEntry[] = [
+  {
+    id: 'creative',
+    aliases: ['kreat', 'creative'],
+    icon: 'palette',
+    colorClass: 'icon-trait-creative',
+    toneClass: 'impression-shortcut-tone-creative',
+    menuPalette: 'violet',
+    memberTitle: 'Creative Attendee'
+  },
+  {
+    id: 'empath',
+    aliases: ['empat', 'empath'],
+    icon: 'favorite',
+    colorClass: 'icon-trait-empath',
+    toneClass: 'impression-shortcut-tone-empath',
+    menuPalette: 'pink',
+    memberTitle: 'Empathetic Attendee'
+  },
+  {
+    id: 'reliable',
+    aliases: ['megbizh', 'reliable'],
+    icon: 'verified',
+    colorClass: 'icon-trait-reliable',
+    toneClass: 'impression-shortcut-tone-reliable',
+    menuPalette: 'green',
+    memberTitle: 'Reliable Attendee'
+  },
+  {
+    id: 'adventurer',
+    aliases: ['advent'],
+    icon: 'hiking',
+    colorClass: 'icon-trait-adventurer',
+    toneClass: 'impression-shortcut-tone-adventurer',
+    menuPalette: 'sky',
+    memberTitle: 'Adventurous Attendee'
+  },
+  {
+    id: 'thinker',
+    aliases: ['think'],
+    icon: 'psychology',
+    colorClass: 'icon-trait-thinker',
+    toneClass: 'impression-shortcut-tone-thinker',
+    menuPalette: 'blue',
+    memberTitle: 'Thoughtful Attendee'
+  },
+  {
+    id: 'social',
+    aliases: ['social'],
+    icon: 'groups',
+    colorClass: 'icon-trait-social',
+    toneClass: 'impression-shortcut-tone-social',
+    menuPalette: 'teal',
+    memberTitle: 'Social Attendee'
+  },
+  {
+    id: 'playful',
+    aliases: ['playful'],
+    icon: 'sports_esports',
+    colorClass: 'icon-trait-playful',
+    toneClass: 'impression-shortcut-tone-playful',
+    menuPalette: 'orange',
+    memberTitle: 'Playful Attendee'
+  },
+  {
+    id: 'ambitious',
+    aliases: ['ambitious', 'goal'],
+    icon: 'trending_up',
+    colorClass: 'icon-trait-ambitious',
+    toneClass: 'impression-shortcut-tone-ambitious',
+    menuPalette: 'purple',
+    memberTitle: 'Ambitious Attendee'
+  }
+];
+const NAVIGATOR_MEMBER_IMPRESSION_TITLE_PRESENTERS: NavigatorTraitPresenterEntry[] = [
+  NAVIGATOR_TRAIT_PRESENTERS[1],
+  NAVIGATOR_TRAIT_PRESENTERS[3],
+  NAVIGATOR_TRAIT_PRESENTERS[0],
+  NAVIGATOR_TRAIT_PRESENTERS[4],
+  NAVIGATOR_TRAIT_PRESENTERS[5],
+  NAVIGATOR_TRAIT_PRESENTERS[6],
+  NAVIGATOR_TRAIT_PRESENTERS[7],
+  NAVIGATOR_TRAIT_PRESENTERS[2]
+].filter((entry): entry is NavigatorTraitPresenterEntry => Boolean(entry));
+const NAVIGATOR_TRAIT_PRESENTER_DEFAULT: NavigatorTraitPresenterDefault = {
+  aliases: [],
+  icon: 'auto_awesome',
+  colorClass: 'icon-trait-default',
+  toneClass: 'impression-shortcut-tone-thinker',
+  menuPalette: 'violet',
+  memberTitle: 'Attendee'
 };
 const PERSONALITY_TRAIT_CATALOG: PersonalityTraitCatalogEntry[] = [
   {
@@ -170,6 +357,31 @@ const CONTENT_LANGUAGES = [
   { lang: 'en', label: 'English' },
   { lang: 'hu', label: 'Magyar' }
 ];
+const HELP_CENTER_HEADER_COLORS: readonly HelpCenterHeaderColor[] = [
+  'amber',
+  'blue',
+  'green',
+  'rose',
+  'violet',
+  'slate'
+];
+const HELP_CENTER_HEADER_COLOR_OPTIONS: Array<{ id: HelpCenterHeaderColor; label: string }> = [
+  { id: 'amber', label: 'Amber' },
+  { id: 'blue', label: 'Blue' },
+  { id: 'green', label: 'Green' },
+  { id: 'rose', label: 'Rose' },
+  { id: 'violet', label: 'Violet' },
+  { id: 'slate', label: 'Slate' }
+];
+const DOCUMENT_VIEWER_HEADER_PALETTES = [
+  'amber',
+  'blue',
+  'green',
+  'rose',
+  'violet',
+  'slate',
+  'teal'
+] as const;
 const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
   { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
@@ -2499,6 +2711,11 @@ export const APP_STATIC_DATA = {
   vibeIcons: VIBE_ICONS,
   categoryIcons: CATEGORY_ICONS,
   memberTraitIcons: MEMBER_TRAIT_ICONS,
+  navigatorHostTierPresenters: NAVIGATOR_HOST_TIER_PRESENTERS,
+  navigatorHostTierPresenterDefault: NAVIGATOR_HOST_TIER_PRESENTER_DEFAULT,
+  navigatorTraitPresenters: NAVIGATOR_TRAIT_PRESENTERS,
+  navigatorMemberImpressionTitlePresenters: NAVIGATOR_MEMBER_IMPRESSION_TITLE_PRESENTERS,
+  navigatorTraitPresenterDefault: NAVIGATOR_TRAIT_PRESENTER_DEFAULT,
   personalityTraitCatalog: PERSONALITY_TRAIT_CATALOG,
   physiqueOptions: PHYSIQUE_OPTIONS,
   languageSuggestions: LANGUAGE_SUGGESTIONS,
@@ -2514,6 +2731,9 @@ export const APP_STATIC_DATA = {
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   contentLanguages: CONTENT_LANGUAGES,
+  helpCenterHeaderColors: HELP_CENTER_HEADER_COLORS,
+  helpCenterHeaderColorOptions: HELP_CENTER_HEADER_COLOR_OPTIONS,
+  documentViewerHeaderPalettes: DOCUMENT_VIEWER_HEADER_PALETTES,
   explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,

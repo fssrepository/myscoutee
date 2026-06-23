@@ -4,6 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 import { ActivatedRoute } from '@angular/router';
 
+import { AppUtils } from '../../../app-utils';
+import { APP_STATIC_DATA } from '../../../app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
 import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
@@ -296,18 +298,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   }
 
   private normalizeHeaderPalette(value: DocumentViewerHeaderPalette | null | undefined): DocumentViewerHeaderPalette {
-    switch (value) {
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-      case 'teal':
-      case 'amber':
-        return value;
-      default:
-        return 'amber';
-    }
+    return AppUtils.enumValue(value, APP_STATIC_DATA.documentViewerHeaderPalettes, 'amber');
   }
 
   protected activeConfig(): DocumentViewerConfig | null {

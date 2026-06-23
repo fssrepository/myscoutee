@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
+import { AppUtils } from '../../../app-utils';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import type {
   ContentLanguage,
@@ -398,15 +399,6 @@ export class HttpHelpCenterService {
   }
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterRevisionDto['headerColor'] {
-    switch (`${value ?? ''}`.trim()) {
-      case 'blue':
-      case 'green':
-      case 'rose':
-      case 'violet':
-      case 'slate':
-        return value as HelpCenterRevisionDto['headerColor'];
-      default:
-        return 'amber';
-    }
+    return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
   }
 }
