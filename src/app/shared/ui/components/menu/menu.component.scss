@@ -1092,6 +1092,9 @@
 
 .app-menu__panel--dropdown-list .app-menu__items {
   gap: 0.16rem;
+  width: max-content;
+  min-width: 100%;
+  max-width: min(28rem, calc(100vw - 1.2rem));
 }
 
 .app-menu__rating-item {
@@ -1640,6 +1643,7 @@ a.app-menu__item {
 .app-menu__panel--dropdown-list .app-menu__branch-action {
   display: inline-flex;
   align-items: center;
+  max-width: min(28rem, calc(100vw - 1.9rem));
   min-height: 36px;
   border: 0;
   border-radius: 10px;
@@ -1650,11 +1654,17 @@ a.app-menu__item {
   font-weight: 700;
   gap: 0.45rem;
   padding: 0.46rem 0.54rem;
+  white-space: nowrap;
   transition:
     transform 0.16s cubic-bezier(0.22, 0.61, 0.36, 1),
     filter 0.16s cubic-bezier(0.22, 0.61, 0.36, 1),
     background-color 0.16s cubic-bezier(0.22, 0.61, 0.36, 1),
     color 0.16s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.app-menu__panel--dropdown-list .app-menu__item {
+  width: max-content;
+  min-width: 100%;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item-remove {
@@ -1732,7 +1742,7 @@ a.app-menu__item {
 .app-menu__panel--dropdown-list .app-menu__item--layout-pill {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  width: 100%;
+  width: max-content;
   min-width: min(220px, calc(100vw - 1.2rem));
   min-height: 40px;
   align-items: center;
@@ -2016,6 +2026,11 @@ a.app-menu__item {
 }
 
 .app-menu__panel--dropdown-list .app-menu__item-label {
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: keep-all;
   font-weight: 700;
 }
 
@@ -2480,12 +2495,21 @@ a.app-menu__item {
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-select) .app-menu__panel--dropdown-list .app-menu__items,
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-fab) .app-menu__panel--dropdown-list .app-menu__items,
 :host(.app-menu-host--layout-mobile.app-menu-host--layout-row) .app-menu__panel--dropdown-list .app-menu__items {
+  width: 100%;
   min-height: 0;
   max-height: var(--app-menu-mobile-dropdown-max-height);
+  max-width: none;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 0.08rem;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--kind-select) .app-menu__panel--dropdown-list .app-menu__item,
+:host(.app-menu-host--layout-mobile.app-menu-host--kind-fab) .app-menu__panel--dropdown-list .app-menu__item,
+:host(.app-menu-host--layout-mobile.app-menu-host--layout-row) .app-menu__panel--dropdown-list .app-menu__item {
+  width: 100%;
+  min-width: 0;
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--kind-select) .app-menu__panel--dropdown-list.app-menu__panel--has-branch-header .app-menu__items,
