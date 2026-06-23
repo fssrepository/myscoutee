@@ -349,6 +349,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private forceAnimatedLoadingCompletion = false;
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
+  private hostedFullscreenEmptyCursor = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   private suspendSnapReactivation = false;
@@ -745,6 +746,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.currentViewMode !== 'list') {
       return;
     }
+    this.hostedFullscreenEmptyCursor = false;
     this.clearLoadingAnimation();
     this.loading = false;
     this.initialLoading = false;
@@ -1355,6 +1357,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loading = false;
     this.loadSequence += 1;
     this.suppressVisibleLoadingProgress = false;
+    this.hostedFullscreenEmptyCursor = false;
     this.items = [];
     this.groups = [];
     this.calendarMonthPages = [];
@@ -3390,7 +3393,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
     this.interruptHostedFullscreenTransition();
     await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
-    if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
+    if (!this.shouldUseHostedFullscreenPagination()) {
+      return;
+    }
+    const canMoveToNextItem = this.canMoveCursor(1);
+    const canMoveToEmptyState = !canMoveToNextItem && this.canMoveHostedFullscreenCursorToEmptyState();
+    if (!canMoveToNextItem && !canMoveToEmptyState) {
       return;
     }
     if (this.ratingAdvanceInFlight) {
@@ -3402,23 +3410,30 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
         return;
       }
-      await this.advanceHostedFullscreenPagination(1);
+      await this.advanceHostedFullscreenPagination(1, { allowEmptyTarget: canMoveToEmptyState });
     } finally {
       this.ratingAdvanceInFlight = false;
     }
   }
 
-  private async advanceHostedFullscreenPagination(delta: number): Promise<boolean> {
+  private async advanceHostedFullscreenPagination(
+    delta: number,
+    options: { allowEmptyTarget?: boolean } = {}
+  ): Promise<boolean> {
     if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
       return false;
     }
     const normalizedDelta = Math.trunc(delta);
-    if (!this.canMoveCursor(normalizedDelta)) {
+    const allowEmptyTarget = options.allowEmptyTarget === true
+      && normalizedDelta > 0
+      && this.canMoveHostedFullscreenCursorToEmptyState();
+    if (!this.canMoveCursor(normalizedDelta) && !allowEmptyTarget) {
       return false;
     }
     const currentIndex = this.buildCursorState().index;
     const targetIndex = currentIndex + normalizedDelta;
-    if (!await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
+    const targetIsEmptyState = allowEmptyTarget && targetIndex === this.hostedFullscreenCursorTotal();
+    if (!targetIsEmptyState && !await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
       return false;
     }
     if (normalizedDelta > 0) {
@@ -3430,6 +3445,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return this.moveCursor(normalizedDelta);
     }
     this.cursorIndex = targetIndex;
+    this.hostedFullscreenEmptyCursor = targetIsEmptyState;
     this.syncCursorBounds();
     this.emitState();
     this.cdr.markForCheck();
@@ -3482,14 +3498,15 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         item: null
       };
     }
-    const maxIndex = Math.max(0, total - 1);
-    const index = Math.max(0, Math.min(indexOverride, maxIndex));
+    const lastItemIndex = Math.max(0, total - 1);
+    const maxCursorIndex = this.canUseHostedFullscreenEmptyCursor() ? total : lastItemIndex;
+    const index = Math.max(0, Math.min(indexOverride, maxCursorIndex));
     return {
       index,
       total,
-      progress: maxIndex > 0 ? this.clamp(index / maxIndex) : 0,
+      progress: index >= total ? 1 : lastItemIndex > 0 ? this.clamp(index / lastItemIndex) : 0,
       canPrev: index > 0,
-      canNext: index < maxIndex,
+      canNext: index < lastItemIndex,
       item: index < this.items.length ? (this.items[index] ?? null) : null
     };
   }
@@ -3500,7 +3517,30 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.cursorIndex = 0;
       return;
     }
-    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, total - 1));
+    const maxCursorIndex = this.canUseHostedFullscreenEmptyCursor() ? total : total - 1;
+    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, maxCursorIndex));
+  }
+
+  private hostedFullscreenCursorTotal(): number {
+    return Math.max(0, Math.max(this.total, this.items.length));
+  }
+
+  private canUseHostedFullscreenEmptyCursor(): boolean {
+    return this.hostedFullscreenEmptyCursor
+      && this.cursorIndex >= this.hostedFullscreenCursorTotal()
+      && this.hostedFullscreenCursorTotal() > 0
+      && !this.hasMore
+      && !this.loading;
+  }
+
+  private canMoveHostedFullscreenCursorToEmptyState(): boolean {
+    const cursor = this.buildCursorState();
+    return this.shouldUseHostedFullscreenPagination()
+      && cursor.item !== null
+      && cursor.total > 0
+      && cursor.index === cursor.total - 1
+      && !this.hasMore
+      && !this.loading;
   }
 
   private isVisibleCalendarPageLoading(): boolean {

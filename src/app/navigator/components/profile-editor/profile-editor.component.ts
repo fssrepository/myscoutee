@@ -781,6 +781,10 @@ export class ProfileEditorComponent {
     switch (context.kind) {
       case 'profileStatus':
         this.profileForm.profileStatus = context.value;
+        this.profileEditorForm = {
+          ...this.profileEditorForm,
+          profileStatus: context.value
+        };
         return;
       case 'physique':
         this.profileForm.physique = context.value;

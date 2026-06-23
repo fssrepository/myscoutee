@@ -371,22 +371,11 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get homeHeaderControlsReady(): boolean {
-    if (
-      this.isAccountReactivationPending
-      || !this.isAvatarProfileSettled
-      || this.isBlockedUser
-      || this.isGameVisibilityPaused
-      || !this.homeSmartListQueryReady
-    ) {
-      return false;
-    }
-    if (!this.hasCandidatesForCurrentMode) {
-      return true;
-    }
-    if (this.isPairMode) {
-      return !this.isPairModeCandidateImageLoading('woman') && !this.isPairModeCandidateImageLoading('man');
-    }
-    return !this.isCandidateImageLoading;
+    return !this.isAccountReactivationPending
+      && this.isAvatarProfileSettled
+      && !this.isBlockedUser
+      && !this.isGameVisibilityPaused
+      && this.homeSmartListQueryReady;
   }
 
   protected get canOpenHistory(): boolean {
