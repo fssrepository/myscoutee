@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventDTO, ActivityEventRecord } from '../../contracts/activity.interface';
+import type { ActivityEventDetailDTO, ActivityEventRecord } from '../../contracts/activity.interface';
+import { PricingBuilder } from '../../base/builders';
 import { HttpActivityMembersService } from './activity-members.service';
 import { HttpEventsService } from './events.service';
 import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
@@ -28,35 +29,14 @@ export class HttpEventEditorDataService {
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
   }
 
-  async loadFullItemById(userId: string, itemId: string): Promise<ActivityEventDTO | null> {
+  async loadFullItemById(userId: string, itemId: string): Promise<ActivityEventDetailDTO | null> {
     const normalizedItemId = itemId.trim();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || !normalizedItemId) {
       return null;
     }
-    const pages = await Promise.all([
-      this.eventsService.queryActivitiesEventDTOPage({
-        userId: normalizedUserId,
-        filter: 'all',
-        hostingPublicationFilter: 'all',
-        secondaryFilter: 'recent',
-        sort: 'date',
-        view: 'day',
-        limit: 200,
-        cursor: null
-      }),
-      this.eventsService.queryActivitiesEventDTOPage({
-        userId: normalizedUserId,
-        filter: 'drafts',
-        hostingPublicationFilter: 'drafts',
-        secondaryFilter: 'recent',
-        sort: 'date',
-        view: 'day',
-        limit: 200,
-        cursor: null
-      })
-    ]);
-    return pages.flatMap(page => page.items).find(item => item.id === normalizedItemId) ?? null;
+    const record = await this.queryKnownItemById(normalizedUserId, normalizedItemId);
+    return record ? this.toDetailDTO(record) : null;
   }
 
   async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
@@ -77,6 +57,40 @@ export class HttpEventEditorDataService {
     return {
       ownerType: 'event',
       ownerId
+    };
+  }
+
+  private toDetailDTO(record: ActivityEventRecord): ActivityEventDetailDTO {
+    return {
+      ...record,
+      adminIds: [...(record.adminIds ?? [])],
+      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
+      topics: [...(record.topics ?? [])],
+      blindMode: record.blindMode ?? 'Open Event',
+      sourceLink: record.sourceLink ?? '',
+      locationCoordinates: record.locationCoordinates ? { ...record.locationCoordinates } : null,
+      autoInviter: record.autoInviter ?? false,
+      frequency: record.frequency ?? 'One-time',
+      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : null,
+      policies: (record.policies ?? []).map(item => ({ ...item })),
+      slotsEnabled: record.slotsEnabled === true,
+      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      parentEventId: record.parentEventId ?? null,
+      slotTemplateId: record.slotTemplateId ?? null,
+      generated: record.generated === true,
+      eventType: record.eventType ?? 'main',
+      nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
+      upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      subEvents: (record.subEvents ?? []).map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group })),
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
+      subEventsDisplayMode: record.subEventsDisplayMode ?? 'Casual',
+      paymentSessionId: null
     };
   }
 }

@@ -2,11 +2,11 @@ import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type { ActivityEventStatus } from '../../../contracts/activity.interface';
 import type {
   EventBlindMode,
-  EventPolicyItem,
+  EventPolicyDTO,
   EventRecordKind,
-  EventSlotOccurrence,
-  EventSlotTemplate,
-  SubEventFormItem,
+  EventSlotOccurrenceDTO,
+  EventSlotTemplateDTO,
+  SubEventDTO,
   SubEventsDisplayMode
 } from '../../../contracts/event.interface';
 import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
@@ -38,7 +38,7 @@ export interface ActivityInvitationSeedItem {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: LocationCoordinates;
-  policies?: EventPolicyItem[];
+  policies?: EventPolicyDTO[];
 }
 
 export interface ActivityEventSeedItem {
@@ -74,17 +74,17 @@ export interface ActivityEventSeedItem {
   frequency?: string;
   pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventSlotTemplateDTO[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
   eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
+  nextSlot?: EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventSlotOccurrenceDTO[];
   topics?: string[];
-  subEvents?: SubEventFormItem[];
+  subEvents?: SubEventDTO[];
   subEventsDisplayMode?: SubEventsDisplayMode;
-  policies?: EventPolicyItem[];
+  policies?: EventPolicyDTO[];
   rating?: number;
   boost?: number;
   affinity?: number;

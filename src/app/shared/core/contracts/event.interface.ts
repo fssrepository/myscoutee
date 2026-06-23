@@ -1,7 +1,6 @@
-import type * as AppConstants from '../common/constants';
 import type * as PricingContracts from './pricing.interface';
 
-export interface EventPolicyItem {
+export interface EventPolicyDTO {
   id: string;
   title: string;
   description: string;
@@ -16,7 +15,7 @@ export type EventEditorTarget = 'events' | 'hosting';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
 export type EventRecordKind = 'main' | 'slot';
 
-export interface EventSlotTemplate {
+export interface EventSlotTemplateDTO {
   id: string;
   startAt: string;
   endAt: string;
@@ -24,7 +23,7 @@ export interface EventSlotTemplate {
   closed?: boolean;
 }
 
-export interface EventSlotOccurrence {
+export interface EventSlotOccurrenceDTO {
   id: string;
   parentEventId: string;
   slotTemplateId: string;
@@ -37,29 +36,7 @@ export interface EventSlotOccurrence {
   pendingMembers: number;
 }
 
-export interface EventEditorForm {
-  title: string;
-  description: string;
-  imageUrl: string;
-  capacityMin: number | null;
-  capacityMax: number | null;
-  startAt: string;
-  endAt: string;
-  location: string;
-  frequency: string;
-  visibility: AppConstants.EventVisibility;
-  blindMode: EventBlindMode;
-  autoInviter: boolean;
-  ticketing: boolean;
-  pricing?: PricingContracts.PricingConfig | null;
-  policies?: EventPolicyItem[];
-  topics: string[];
-  slotsEnabled: boolean;
-  slotTemplates: EventSlotTemplate[];
-  subEvents: SubEventFormItem[];
-}
-
-export interface SubEventFormItem {
+export interface SubEventDTO {
   id: string;
   name: string;
   description: string;
@@ -67,7 +44,7 @@ export interface SubEventFormItem {
   endAt: string;
   location?: string;
   createdByUserId?: string;
-  groups?: SubEventGroupItem[];
+  groups?: SubEventGroupDTO[];
   tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
@@ -100,7 +77,7 @@ export interface SubEventFormItem {
   stageFinalizedByUserId?: string | null;
 }
 
-export interface SubEventGroupItem {
+export interface SubEventGroupDTO {
   id: string;
   name: string;
   capacityMin?: number;

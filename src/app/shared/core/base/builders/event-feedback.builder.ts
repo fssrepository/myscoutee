@@ -73,7 +73,7 @@ export class EventFeedbackBuilder {
   }
 
   static clonePageResult(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
-    return EventFeedbackPageResultDto.normalize(result);
+    return new EventFeedbackPageResultDto(result);
   }
 
   static buildDetail(options: {
@@ -118,7 +118,7 @@ export class EventFeedbackBuilder {
   }
 
   static cloneDetail(result: Partial<EventFeedbackDetailDto> | null | undefined): EventFeedbackDetailDto {
-    return EventFeedbackDetailDto.normalize(result);
+    return new EventFeedbackDetailDto(result);
   }
 
   static cloneSubmittedEventFeedbackAnswer(answer: SubmittedEventFeedbackAnswer): SubmittedEventFeedbackAnswer {

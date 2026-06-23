@@ -268,7 +268,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   @Input() subEvents: readonly EventSubeventsItem[] = [];
   @Input() displayMode: SubEventsDisplayMode = 'Casual';
   @Input() slotsEnabled = false;
-  @Input() slotTemplates: readonly ContractTypes.EventSlotTemplate[] = [];
+  @Input() slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = [];
   @Input() parentStartAt = '';
   @Input() parentEndAt = '';
 
@@ -2964,7 +2964,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private preparedAssetMetricsForItem(
     item: EventSubeventsItem,
     type: Exclude<EventEditorSubEventResourceType, 'Members'>,
-    fallbackSubEvent: ContractTypes.SubEventFormItem | null = this.toSubEventResourceItem(item)
+    fallbackSubEvent: ContractTypes.SubEventDTO | null = this.toSubEventResourceItem(item)
   ): EventSubeventsAssetMetrics {
     const prepared = (item as EventSubeventsPreparedItem).resourceMetrics?.[type];
     if (prepared) {
@@ -3004,7 +3004,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private buildAssetMetricsForType(
     item: EventSubeventsItem,
-    subEvent: ContractTypes.SubEventFormItem | null,
+    subEvent: ContractTypes.SubEventDTO | null,
     type: Exclude<EventEditorSubEventResourceType, 'Members'>
   ): EventSubeventsAssetMetrics {
     if (!subEvent) {
@@ -3061,7 +3061,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
   }
 
-  private toSubEventResourceItem(item: EventSubeventsItem): ContractTypes.SubEventFormItem | null {
+  private toSubEventResourceItem(item: EventSubeventsItem): ContractTypes.SubEventDTO | null {
     const subEventId = `${item.id ?? ''}`.trim();
     if (!subEventId) {
       return null;

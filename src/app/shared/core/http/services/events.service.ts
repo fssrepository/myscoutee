@@ -7,7 +7,7 @@ import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builder
 import type { ActivityEventSaveDTO } from '../../contracts';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
-import { ActivityEventDTO } from '../../contracts/activity.interface';
+import type { ActivityEventDTO } from '../../contracts/activity.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -44,12 +44,6 @@ interface HttpEventsFilterRequest {
   rangeStart?: string;
   rangeEnd?: string;
 }
-
-type HttpActivityEventPolicyDTO = NonNullable<ActivityEventDTO['policies']>[number];
-type HttpActivityEventSlotTemplateDTO = NonNullable<ActivityEventDTO['slotTemplates']>[number];
-type HttpActivityEventSlotOccurrenceDTO = NonNullable<ActivityEventDTO['upcomingSlots']>[number];
-type HttpActivityEventSubEventDTO = NonNullable<ActivityEventDTO['subEvents']>[number];
-type HttpActivityEventSubEventGroupDTO = NonNullable<HttpActivityEventSubEventDTO['groups']>[number];
 
 @Injectable({
   providedIn: 'root'
@@ -760,20 +754,13 @@ export class HttpEventsService implements IEventsService {
     if (!Array.isArray(items)) {
       return [];
     }
-    return items.map(item => new ActivityEventDTO({
+    return items.map(item => ({
       ...item,
-      locationCoordinates: item.locationCoordinates ? { ...item.locationCoordinates } : item.locationCoordinates,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
-      policies: (item.policies ?? []).map((policy: HttpActivityEventPolicyDTO) => ({ ...policy })),
-      slotTemplates: (item.slotTemplates ?? []).map((template: HttpActivityEventSlotTemplateDTO) => ({ ...template })),
-      nextSlot: item.nextSlot ? { ...item.nextSlot } : item.nextSlot,
-      upcomingSlots: (item.upcomingSlots ?? []).map((slot: HttpActivityEventSlotOccurrenceDTO) => ({ ...slot })),
-      topics: [...(item.topics ?? [])],
-      subEvents: (item.subEvents ?? []).map((subEvent: HttpActivityEventSubEventDTO) => ({
-        ...subEvent,
-        groups: (subEvent.groups ?? []).map((group: HttpActivityEventSubEventGroupDTO) => ({ ...group })),
-        pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : subEvent.pricing
-      }))
+      adminIds: [...(item.adminIds ?? [])],
+      acceptedMemberUserIds: [...(item.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])]
     }));
   }
 

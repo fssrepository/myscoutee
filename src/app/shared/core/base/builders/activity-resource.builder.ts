@@ -239,7 +239,7 @@ export class ActivityResourceBuilder {
   }
 
   static resourceAcceptedCount(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assets: readonly AppDTOs.AssetCardDTO[]
@@ -269,7 +269,7 @@ export class ActivityResourceBuilder {
   }
 
   static resourcePendingCount(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assets: readonly AppDTOs.AssetCardDTO[]
@@ -296,7 +296,7 @@ export class ActivityResourceBuilder {
   }
 
   static resourceCapacityBounds(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     assets: readonly AppDTOs.AssetCardDTO[],

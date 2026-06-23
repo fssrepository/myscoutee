@@ -16,14 +16,11 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
-import { EventEditorFormNormalizer } from '../../../shared/core/base/normalizers';
-import { ActivityEventEditorFormConverter, ActivityEventSaveConverter } from '../../../shared/ui/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
-import type * as UiModels from '../../../shared/ui/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   ActivitiesService, ActivityMembersService, EventEditorDataService, ExplanationGuideService, MediaService, RouteIntervalSchedulerService } from '../../../shared/core';
-import type { ActivityEventDTO } from '../../../shared/core/contracts/activity.interface';
+import type { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
   buildTabbedMenuModel,
@@ -142,7 +139,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (mode === 'create' && this.draftEventId && this.eventForm.id === this.draftEventId && this.eventForm.startAt) {
+      if (mode === 'create' && this.draftEventId && this.eventDTO.id === this.draftEventId && this.eventDTO.startAtIso) {
         return;
       }
 
@@ -216,28 +213,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.clearEventEditorExplanationContext();
   }
 
-  eventForm: UiModels.EventForm = {
-    id: '',
-    title: '',
-    description: '',
-    imageUrl: '',
-    visibility: 'Public',
-    frequency: 'One-time',
-    location: '',
-    capacityMin: 0 as number | null,
-    capacityMax: 0 as number | null,
-    blindMode: 'Open Event',
-    autoInviter: false,
-    ticketing: false,
-    pricing: PricingBuilder.createDefaultPricingConfig('event'),
-    policies: [],
-    slotsEnabled: false,
-    slotTemplates: [] as ContractTypes.EventSlotTemplate[],
-    topics: [] as string[],
-    subEvents: [] as UiModels.EventFormSubEventItem[],
-    startAt: '',
-    endAt: ''
-  };
+  eventDTO: ActivityEventDetailDTO = this.createEmptyEventDTO();
 
   eventStartDateValue: Date | null = null;
   eventStartTimeValue: Date | null = null;
@@ -253,8 +229,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   showPolicyEditorPopup = false;
   showSubEventsPopup = false;
   isSavePending = false;
-  workingPolicies: ContractTypes.EventPolicyItem[] = [];
-  workingPolicyDraft: ContractTypes.EventPolicyItem = this.createEmptyPolicyDraft();
+  workingPolicies: ContractTypes.EventPolicyDTO[] = [];
+  workingPolicyDraft: ContractTypes.EventPolicyDTO = this.createEmptyPolicyDraft();
   editingPolicyDraftIndex: number | null = null;
 
   readonly visibilityOptions: AppConstants.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
@@ -306,7 +282,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventCapacityMaxMinimum(): number {
-    const capacityMin = this.eventForm.capacityMin ?? 0;
+    const capacityMin = this.eventDTO.capacityMin ?? 0;
     const publishedFloor = this.isPublishedManageMode() ? this.publishedCapacityMaxFloor : 0;
     return Math.max(0, capacityMin, publishedFloor);
   }
@@ -317,7 +293,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditorMembers',
       ownerId: eventId,
-      title: this.eventForm.title.trim() || 'New Event',
+      title: this.eventDTO.title.trim() || 'New Event',
       canManage: canManageMembers
     });
   }
@@ -332,23 +308,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   handleSubEventsChange(subEvents: readonly EventSubeventsItem[]): void {
-    const mapped: UiModels.EventFormSubEventItem[] = subEvents.map(item => ({
-      ...item,
-      groups: (item.groups ?? []).map(group => ({ ...group }))
-    }));
-    this.eventForm.subEvents = EventEditorBuilder.cloneEventEditorSubEvents(mapped);
+    const mapped = subEvents.map((item, index) => this.toSubEventDTO(item, index));
+    this.eventDTO.subEvents = EventEditorBuilder.buildPersistedEventEditorSubEvents(mapped);
     this.syncMainEventBoundsFromSubEvents();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
   }
 
   updateSubEventsDisplayMode(mode: ContractTypes.SubEventsDisplayMode): void {
     this.subEventsDisplayMode = mode;
     this.syncMainEventBoundsFromSubEvents();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
   }
 
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
-    const normalizedSlots = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(this.eventForm.slotTemplates);
+    const normalizedSlots = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(this.eventDTO.slotTemplates);
     const nextKey = normalizedSlots
       .map(item => [item.id, item.startAt, item.endAt, item.overrideDate ?? '', item.closed === true ? '1' : '0'].join(':'))
       .join('|');
@@ -359,14 +332,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.pricingSlotCatalogCache;
   }
 
-  protected slotSummaryBaseItems(): ContractTypes.EventSlotTemplate[] {
+  protected slotSummaryBaseItems(): ContractTypes.EventSlotTemplateDTO[] {
     return this.baseSlotTemplates();
   }
 
   protected slotSummaryOverrideItems(): Array<{ dateKey: string; label: string; detail: string }> {
-    const grouped = new Map<string, ContractTypes.EventSlotTemplate[]>();
-    for (const slot of this.eventForm.slotTemplates) {
-      const dateKey = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(slot.overrideDate);
+    const grouped = new Map<string, ContractTypes.EventSlotTemplateDTO[]>();
+    for (const slot of this.eventDTO.slotTemplates) {
+      const dateKey = this.normalizeEventEditorSlotOverrideDate(slot.overrideDate);
       if (!dateKey) {
         continue;
       }
@@ -395,9 +368,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       });
   }
 
-  protected slotSummaryWindowLabel(slot: ContractTypes.EventSlotTemplate): string {
-    const start = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
-    const end = EventEditorFormNormalizer.parseEventEditorDateValue(slot.endAt);
+  protected slotSummaryWindowLabel(slot: ContractTypes.EventSlotTemplateDTO): string {
+    const start = this.parseEventEditorDateValue(slot.startAt);
+    const end = this.parseEventEditorDateValue(slot.endAt);
     if (!start && !end) {
       return 'Time pending';
     }
@@ -424,7 +397,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected openPoliciesPopup(event?: Event): void {
     event?.preventDefault();
-    this.workingPolicies = EventEditorBuilder.cloneEventEditorPolicies(this.eventForm.policies);
+    this.workingPolicies = EventEditorBuilder.cloneEventEditorPolicies(this.eventDTO.policies);
     this.showPoliciesPopup = true;
     this.showPolicyEditorPopup = false;
   }
@@ -483,11 +456,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
   }
 
-  protected policyCardMetaLabel(policy: ContractTypes.EventPolicyItem): string {
+  protected policyCardMetaLabel(policy: ContractTypes.EventPolicyDTO): string {
     return policy.required !== false ? 'Required approval' : 'Optional policy';
   }
 
-  protected policyCardPreview(policy: ContractTypes.EventPolicyItem): string {
+  protected policyCardPreview(policy: ContractTypes.EventPolicyDTO): string {
     const description = policy.description.trim();
     if (description.length > 0) {
       return description;
@@ -504,7 +477,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.workingPolicyDraft.title.trim().length > 0 || this.workingPolicyDraft.description.trim().length > 0;
   }
 
-  private createEmptyPolicyDraft(): ContractTypes.EventPolicyItem {
+  private createEmptyPolicyDraft(): ContractTypes.EventPolicyDTO {
     return {
       id: `policy-${Date.now()}`,
       title: '',
@@ -513,19 +486,215 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
+  private createEmptyEventDTO(): ActivityEventDetailDTO {
+    return {
+      id: '',
+      userId: '',
+      type: 'events',
+      status: 'DR',
+      statusBeforeSuppression: null,
+      adminIds: [],
+      avatar: '',
+      title: '',
+      subtitle: '',
+      timeframe: '',
+      inviter: null,
+      unread: 0,
+      activity: 0,
+      trashedAtIso: null,
+      creatorUserId: '',
+      creatorName: '',
+      creatorInitials: '',
+      creatorCity: '',
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      startAtIso: '',
+      endAtIso: '',
+      distanceKm: 0,
+      imageUrl: '',
+      sourceLink: '',
+      location: '',
+      locationCoordinates: null,
+      capacityMin: 0,
+      capacityMax: 0,
+      capacityTotal: 0,
+      autoInviter: false,
+      frequency: 'One-time',
+      ticketing: false,
+      pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      policies: [],
+      slotsEnabled: false,
+      slotTemplates: [],
+      parentEventId: null,
+      slotTemplateId: null,
+      generated: false,
+      eventType: 'main',
+      nextSlot: null,
+      upcomingSlots: [],
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: [],
+      invitedMemberUserIds: [],
+      pendingRequestMemberUserIds: [],
+      topics: [],
+      subEvents: [],
+      subEventsDisplayMode: 'Casual',
+      rating: 0,
+      boost: 0,
+      affinity: 0,
+      paymentSessionId: null
+    };
+  }
+
+  private toSubEventDTO(item: EventSubeventsItem, index: number): ContractTypes.SubEventDTO {
+    const fallbackName = `Sub Event ${index + 1}`;
+    return {
+      id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
+      name: `${item.name ?? item.title ?? fallbackName}`.trim() || fallbackName,
+      description: `${item.description ?? ''}`.trim(),
+      startAt: `${item.startAt ?? ''}`.trim(),
+      endAt: `${item.endAt ?? ''}`.trim(),
+      location: this.normalizeEventEditorLocation(item.location),
+      optional: item.optional === true,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing ?? undefined,
+      capacityMin: this.nonNegativeInteger(item.capacityMin),
+      capacityMax: this.nonNegativeInteger(item.capacityMax),
+      membersAccepted: this.nonNegativeInteger(item.membersAccepted),
+      membersPending: this.nonNegativeInteger(item.membersPending),
+      carsPending: this.nonNegativeInteger(item.carsPending),
+      accommodationPending: this.nonNegativeInteger(item.accommodationPending),
+      suppliesPending: this.nonNegativeInteger(item.suppliesPending),
+      carsAccepted: this.optionalNonNegativeInteger(item.carsAccepted),
+      accommodationAccepted: this.optionalNonNegativeInteger(item.accommodationAccepted),
+      suppliesAccepted: this.optionalNonNegativeInteger(item.suppliesAccepted),
+      carsCapacityMin: this.optionalNonNegativeInteger(item.carsCapacityMin),
+      carsCapacityMax: this.optionalNonNegativeInteger(item.carsCapacityMax),
+      accommodationCapacityMin: this.optionalNonNegativeInteger(item.accommodationCapacityMin),
+      accommodationCapacityMax: this.optionalNonNegativeInteger(item.accommodationCapacityMax),
+      suppliesCapacityMin: this.optionalNonNegativeInteger(item.suppliesCapacityMin),
+      suppliesCapacityMax: this.optionalNonNegativeInteger(item.suppliesCapacityMax),
+      tournamentGroupCount: this.optionalNonNegativeInteger(item.tournamentGroupCount),
+      tournamentGroupCapacityMin: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
+      tournamentGroupCapacityMax: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
+      tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      tournamentAdvancePerGroup: this.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+      groups: (item.groups ?? []).map((group, groupIndex) => ({
+        id: `${group.id ?? ''}`.trim() || `group-${index + 1}-${groupIndex + 1}`,
+        name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
+        source: group.source === 'manual' ? 'manual' : 'generated',
+        capacityMin: this.optionalNonNegativeInteger(group.capacityMin),
+        capacityMax: this.optionalNonNegativeInteger(group.capacityMax)
+      })),
+      slotStartOffsetMinutes: this.optionalNonNegativeInteger(item.slotStartOffsetMinutes),
+      slotDurationMinutes: this.optionalNonNegativeInteger(item.slotDurationMinutes),
+      stageStatus: item.stageStatus,
+      stageStatusReason: item.stageStatusReason,
+      stageStatusUpdatedAt: item.stageStatusUpdatedAt,
+      stageFinalizedAt: item.stageFinalizedAt,
+      stageFinalizedByUserId: item.stageFinalizedByUserId
+    };
+  }
+
+  private normalizeEventEditorLocation(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private normalizeEventEditorVisibility(value: unknown): AppConstants.EventVisibility {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'private' || normalized.includes('friend')) {
+      return 'Friends only';
+    }
+    if (normalized.includes('invitation')) {
+      return 'Invitation only';
+    }
+    return 'Public';
+  }
+
+  private normalizeEventEditorFrequency(value: unknown): string {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'daily') {
+      return 'Daily';
+    }
+    if (normalized === 'weekly') {
+      return 'Weekly';
+    }
+    if (normalized.includes('bi-week') || normalized.includes('bi week')) {
+      return 'Bi-weekly';
+    }
+    if (normalized === 'monthly') {
+      return 'Monthly';
+    }
+    if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') {
+      return 'Yearly';
+    }
+    return 'One-time';
+  }
+
+  private normalizeEventEditorBlindMode(value: unknown): ContractTypes.EventBlindMode {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
+  }
+
+  private normalizeEventEditorTopics(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
+      .filter(item => item.length > 0)
+      .slice(0, 5);
+  }
+
+  private normalizeEventEditorTopicToken(value: unknown): string {
+    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  private parseEventEditorDateValue(value: unknown): Date | null {
+    return AppUtils.parseDate(value);
+  }
+
+  private parseEventEditorOverrideDate(value: unknown): Date | null {
+    return AppUtils.parseDateOnly(value);
+  }
+
+  private normalizeEventEditorSlotOverrideDate(value: unknown): string | null {
+    const parsed = this.parseEventEditorOverrideDate(value);
+    return parsed ? AppUtils.toIsoDate(parsed) : null;
+  }
+
+  private toNonNegativeIntegerOrNull(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(parsed));
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    return this.toNonNegativeIntegerOrNull(value) ?? 0;
+  }
+
+  private optionalNonNegativeInteger(value: unknown): number | undefined {
+    return this.toNonNegativeIntegerOrNull(value) ?? undefined;
+  }
+
   protected policiesCountLabel(): string {
-    const count = this.eventForm.policies.length;
+    const count = this.eventDTO.policies.length;
     return count === 1 ? '1 policy' : `${count} policies`;
   }
 
   protected requiredPoliciesCount(): number {
-    return this.eventForm.policies.filter(item => item.required !== false).length;
+    return this.eventDTO.policies.filter(item => item.required !== false).length;
   }
 
   requestOpenLocationMap(): void {
     const routeStops = this.eventLocationRouteStops();
     if (routeStops.length <= 1) {
-      this.openGoogleMapsSearch(routeStops[0] ?? this.eventForm.location);
+      this.openGoogleMapsSearch(routeStops[0] ?? this.eventDTO.location);
       return;
     }
     this.openGoogleMapsDirections(routeStops);
@@ -551,11 +720,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return Math.floor(pendingCount);
   }
 
-  eventEditorFieldInvalid(field: 'title' | 'description' | 'capacityMin' | 'capacityMax'): boolean {
+  eventEditorFieldInvalid(field: 'title' | 'subtitle' | 'capacityMin' | 'capacityMax'): boolean {
     if (field === 'capacityMin' || field === 'capacityMax') {
-      return this.eventForm[field] === null;
+      return this.eventDTO[field] === null;
     }
-    return !this.eventForm[field].trim();
+    return !`${this.eventDTO[field] ?? ''}`.trim();
   }
 
   canSubmitEventEditorForm(): boolean {
@@ -563,12 +732,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return false;
     }
     return Boolean(
-      this.eventForm.title.trim()
-      && this.eventForm.description.trim()
-      && this.eventForm.capacityMin !== null
-      && this.eventForm.capacityMax !== null
-      && this.eventForm.startAt
-      && this.eventForm.endAt
+      this.eventDTO.title.trim()
+      && this.eventDTO.subtitle.trim()
+      && this.eventDTO.capacityMin !== null
+      && this.eventDTO.capacityMax !== null
+      && this.eventDTO.startAtIso
+      && this.eventDTO.endAtIso
     );
   }
 
@@ -577,11 +746,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected isGeneratedSlotInstance(): boolean {
-    return Boolean(this.eventForm.generated) || this.eventForm.eventType === 'slot';
+    return Boolean(this.eventDTO.generated) || this.eventDTO.eventType === 'slot';
   }
 
   saveEventEditorForm(): void {
-    this.syncEventFormFromDateTimeControls();
+    this.syncEventDTOFromDateTimeControls();
     if (!this.canSubmitEventEditorForm() || this.isSavePending) {
       return;
     }
@@ -612,15 +781,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.visibility = EventEditorFormNormalizer.normalizeEventEditorVisibility(option);
+    this.eventDTO.visibility = this.normalizeEventEditorVisibility(option);
   }
 
   protected eventVisibilityMenuTrigger(): AppMenuTrigger {
     return {
-      label: this.eventForm.visibility,
-      icon: this.getVisibilityIcon(this.eventForm.visibility),
+      label: this.eventDTO.visibility,
+      icon: this.getVisibilityIcon(this.eventDTO.visibility),
       ariaLabel: 'Open visibility selector',
-      palette: this.eventVisibilityPalette(this.eventForm.visibility),
+      palette: this.eventVisibilityPalette(this.eventDTO.visibility),
       disabled: this.eventStructureReadOnly(),
       layout: 'pill'
     };
@@ -632,8 +801,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       label: option,
       icon: this.getVisibilityIcon(option),
       kind: 'radio',
-      active: EventEditorFormNormalizer.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
-      checked: EventEditorFormNormalizer.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
+      active: this.normalizeEventEditorVisibility(this.eventDTO.visibility) === option,
+      checked: this.normalizeEventEditorVisibility(this.eventDTO.visibility) === option,
       palette: this.eventVisibilityPalette(option),
       surface: 'tinted',
       context: { menu: 'visibility', visibility: option }
@@ -644,14 +813,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return [
       {
         id: 'event-blind-mode',
-        label: this.eventForm.blindMode,
-        detail: this.eventBlindModeDescription(this.eventForm.blindMode),
-        icon: this.eventBlindModeIcon(this.eventForm.blindMode),
+        label: this.eventDTO.blindMode,
+        detail: this.eventBlindModeDescription(this.eventDTO.blindMode),
+        icon: this.eventBlindModeIcon(this.eventDTO.blindMode),
         kind: 'toggle',
         layout: 'big',
-        active: EventEditorFormNormalizer.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
-        checked: EventEditorFormNormalizer.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
-        palette: EventEditorFormNormalizer.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event' ? 'red' : 'green',
+        active: this.normalizeEventEditorBlindMode(this.eventDTO.blindMode) === 'Blind Event',
+        checked: this.normalizeEventEditorBlindMode(this.eventDTO.blindMode) === 'Blind Event',
+        palette: this.normalizeEventEditorBlindMode(this.eventDTO.blindMode) === 'Blind Event' ? 'red' : 'green',
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-blind-mode' }
@@ -662,8 +831,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         icon: 'sell',
         kind: 'select-trigger',
         layout: 'big',
-        active: this.eventForm.topics.length > 0,
-        checked: this.eventForm.topics.length > 0,
+        active: this.eventDTO.topics.length > 0,
+        checked: this.eventDTO.topics.length > 0,
         palette: 'violet',
         disabled: this.eventEditorService.readOnly(),
         closeOnSelect: false,
@@ -673,28 +842,28 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       },
       {
         id: 'event-auto-inviter',
-        label: this.eventAutoInviterLabel(this.eventForm.autoInviter),
-        detail: this.eventAutoInviterDescription(this.eventForm.autoInviter),
-        icon: this.eventAutoInviterIcon(this.eventForm.autoInviter),
+        label: this.eventAutoInviterLabel(this.eventDTO.autoInviter),
+        detail: this.eventAutoInviterDescription(this.eventDTO.autoInviter),
+        icon: this.eventAutoInviterIcon(this.eventDTO.autoInviter),
         kind: 'toggle',
         layout: 'big',
-        active: this.eventForm.autoInviter,
-        checked: this.eventForm.autoInviter,
-        palette: this.eventForm.autoInviter ? 'green' : 'slate',
+        active: this.eventDTO.autoInviter,
+        checked: this.eventDTO.autoInviter,
+        palette: this.eventDTO.autoInviter ? 'green' : 'slate',
         disabled: this.eventEditorService.readOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-auto-inviter' }
       },
       {
         id: 'event-ticketing',
-        label: this.eventTicketingLabel(this.eventForm.ticketing),
-        detail: this.eventTicketingDescription(this.eventForm.ticketing),
-        icon: this.eventTicketingIcon(this.eventForm.ticketing),
+        label: this.eventTicketingLabel(this.eventDTO.ticketing),
+        detail: this.eventTicketingDescription(this.eventDTO.ticketing),
+        icon: this.eventTicketingIcon(this.eventDTO.ticketing),
         kind: 'toggle',
         layout: 'big',
-        active: this.eventForm.ticketing,
-        checked: this.eventForm.ticketing,
-        palette: this.eventForm.ticketing ? 'green' : 'blue',
+        active: this.eventDTO.ticketing,
+        checked: this.eventDTO.ticketing,
+        palette: this.eventDTO.ticketing ? 'green' : 'blue',
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-ticketing' }
@@ -706,10 +875,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return buildTabbedMenuModel<string, EventEditorMenuContext>({
       idPrefix: 'event-topic',
       groups: this.interestOptionGroups,
-      selected: this.eventForm.topics,
+      selected: this.eventDTO.topics,
       maxSelected: 5,
       context: topic => ({ menu: 'topics', topic }),
-      normalize: topic => EventEditorFormNormalizer.normalizeEventEditorTopicToken(topic),
+      normalize: topic => this.normalizeEventEditorTopicToken(topic),
       itemLabel: topic => this.eventTopicLabel(topic),
       removeAriaLabel: topic => `Remove ${this.eventTopicLabel(topic)}`,
       summary: {
@@ -721,7 +890,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   getVisibilityIcon(visibility: string): string {
-    switch (EventEditorFormNormalizer.normalizeEventEditorVisibility(visibility)) {
+    switch (this.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'groups';
       case 'Invitation only':
@@ -732,7 +901,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventVisibilityClass(visibility: string): string {
-    switch (EventEditorFormNormalizer.normalizeEventEditorVisibility(visibility)) {
+    switch (this.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'event-visibility-friends';
       case 'Invitation only':
@@ -743,7 +912,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private eventVisibilityPalette(visibility: string): AppMenuPalette {
-    switch (EventEditorFormNormalizer.normalizeEventEditorVisibility(visibility)) {
+    switch (this.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'blue';
       case 'Invitation only':
@@ -754,11 +923,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventBlindModeIcon(mode: string): string {
-    return EventEditorFormNormalizer.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
+    return this.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
   }
 
   eventBlindModeDescription(mode: string): string {
-    return EventEditorFormNormalizer.normalizeEventEditorBlindMode(mode) === 'Blind Event'
+    return this.normalizeEventEditorBlindMode(mode) === 'Blind Event'
       ? 'Attendees won\'t see each other before the event.'
       : 'Attendees can preview each other before the event.';
   }
@@ -792,7 +961,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventFrequencyIcon(frequency: string): string {
-    switch (EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency)) {
+    switch (this.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
         return 'today';
       case 'Weekly':
@@ -810,19 +979,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventFrequencyMenuTrigger(): AppMenuTrigger {
     return {
-      label: this.eventForm.frequency,
-      icon: this.eventFrequencyIcon(this.eventForm.frequency),
+      label: this.eventDTO.frequency,
+      icon: this.eventFrequencyIcon(this.eventDTO.frequency),
       ariaLabel: 'Open event frequency',
-      palette: this.eventFrequencyPalette(this.eventForm.frequency),
+      palette: this.eventFrequencyPalette(this.eventDTO.frequency),
       disabled: this.eventStructureReadOnly(),
       layout: 'field'
     };
   }
 
   protected eventFrequencyMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
-    const current = EventEditorFormNormalizer.normalizeEventEditorFrequency(this.eventForm.frequency);
+    const current = this.normalizeEventEditorFrequency(this.eventDTO.frequency);
     return this.eventFrequencyOptions.map(option => {
-      const normalized = EventEditorFormNormalizer.normalizeEventEditorFrequency(option);
+      const normalized = this.normalizeEventEditorFrequency(option);
       return {
         id: `frequency-${normalized}`,
         label: normalized,
@@ -910,29 +1079,29 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return;
     }
-    const normalizedTopics = EventEditorFormNormalizer.normalizeEventEditorTopics(this.eventForm.topics);
-    const normalizedTopic = EventEditorFormNormalizer.normalizeEventEditorTopicToken(topic);
+    const normalizedTopics = this.normalizeEventEditorTopics(this.eventDTO.topics);
+    const normalizedTopic = this.normalizeEventEditorTopicToken(topic);
     if (!normalizedTopic) {
       return;
     }
     const existingIndex = normalizedTopics.findIndex(item =>
-      EventEditorFormNormalizer.normalizeEventEditorTopicToken(item) === normalizedTopic
+      this.normalizeEventEditorTopicToken(item) === normalizedTopic
     );
     if (action === 'remove') {
       if (existingIndex < 0) {
         return;
       }
-      this.eventForm.topics = normalizedTopics.filter((_, index) => index !== existingIndex);
+      this.eventDTO.topics = normalizedTopics.filter((_, index) => index !== existingIndex);
       return;
     }
     if (existingIndex >= 0) {
-      this.eventForm.topics = normalizedTopics.filter((_, index) => index !== existingIndex);
+      this.eventDTO.topics = normalizedTopics.filter((_, index) => index !== existingIndex);
       return;
     }
     if (normalizedTopics.length >= 5) {
       return;
     }
-    this.eventForm.topics = EventEditorFormNormalizer.normalizeEventEditorTopics([...normalizedTopics, topic]);
+    this.eventDTO.topics = this.normalizeEventEditorTopics([...normalizedTopics, topic]);
   }
 
   private eventEditorCanContinueCheckoutDraft(draft: EventCheckoutDraft): boolean {
@@ -1001,7 +1170,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private eventFrequencyPalette(frequency: string): AppMenuPalette {
-    switch (EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency)) {
+    switch (this.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
         return 'sky';
       case 'Weekly':
@@ -1021,10 +1190,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.frequency = EventEditorFormNormalizer.normalizeEventEditorFrequency(value);
-    this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
-    if (!this.eventForm.slotsEnabled) {
-      this.eventForm.slotTemplates = [];
+    this.eventDTO.frequency = this.normalizeEventEditorFrequency(value);
+    this.eventDTO.slotsEnabled = this.eventFrequencyUsesSlots();
+    if (!this.eventDTO.slotsEnabled) {
+      this.eventDTO.slotTemplates = [];
       this.showSlotsPopup = false;
       this.slotEditorMode = 'base';
     } else if (this.baseSlotTemplates().length === 0) {
@@ -1036,7 +1205,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventEndDateMin(): Date | null {
-    const start = this.eventStartDateValue ?? AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    const start = this.eventStartDateValue ?? AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
     if (!start) {
       return null;
     }
@@ -1044,11 +1213,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventFrequencyUsesSlots(): boolean {
-    return EventEditorFormNormalizer.normalizeEventEditorFrequency(this.eventForm.frequency) !== 'One-time';
+    return this.normalizeEventEditorFrequency(this.eventDTO.frequency) !== 'One-time';
   }
 
   subEventsCountLabel(): string {
-    const count = this.eventForm.subEvents.length;
+    const count = this.eventDTO.subEvents.length;
     return count === 1 ? '1 item' : `${count} items`;
   }
 
@@ -1060,12 +1229,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.subEventPanelChipTitle(current.item, current.index);
   }
 
-  subEventLocationLabel(subEvent: UiModels.EventFormSubEventItem | null | undefined): string {
-    const location = EventEditorFormNormalizer.normalizeEventEditorLocation(subEvent?.location).trim();
+  subEventLocationLabel(subEvent: ContractTypes.SubEventDTO | null | undefined): string {
+    const location = this.normalizeEventEditorLocation(subEvent?.location).trim();
     return location || 'Location pending';
   }
 
-  subEventPanelChipTitle(subEvent: UiModels.EventFormSubEventItem, index: number): string {
+  subEventPanelChipTitle(subEvent: ContractTypes.SubEventDTO, index: number): string {
     const baseName = (this.subEventName(subEvent) || 'Untitled').trim() || 'Untitled';
     if (this.subEventsDisplayMode !== 'Tournament') {
       return baseName;
@@ -1073,7 +1242,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `Stage ${index + 1} - ${baseName}`;
   }
 
-  subEventPanelChipTrackId(index: number, subEvent: UiModels.EventFormSubEventItem): string {
+  subEventPanelChipTrackId(index: number, subEvent: ContractTypes.SubEventDTO): string {
     const id = `${subEvent.id ?? ''}`.trim();
     if (id) {
       return id;
@@ -1086,9 +1255,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     ].join(':');
   }
 
-  subEventCardRange(subEvent: UiModels.EventFormSubEventItem): string {
-    const start = EventEditorFormNormalizer.parseEventEditorDateValue(subEvent.startAt);
-    const end = EventEditorFormNormalizer.parseEventEditorDateValue(subEvent.endAt);
+  subEventCardRange(subEvent: ContractTypes.SubEventDTO): string {
+    const start = this.parseEventEditorDateValue(subEvent.startAt);
+    const end = this.parseEventEditorDateValue(subEvent.endAt);
     if (!start || !end) {
       return 'Date pending';
     }
@@ -1097,8 +1266,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `${startLabel} - ${endLabel}`;
   }
 
-  subEventPanelChipIsCurrent(subEvent: UiModels.EventFormSubEventItem): boolean {
-    const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents);
+  subEventPanelChipIsCurrent(subEvent: ContractTypes.SubEventDTO): boolean {
+    const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventDTO.subEvents);
     if (source.length === 0) {
       return false;
     }
@@ -1120,7 +1289,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   subEventPanelChipStyle(index: number): Record<string, string> {
     if (this.subEventsDisplayMode === 'Tournament') {
-      const totalStages = Math.max(1, this.eventForm.subEvents.length);
+      const totalStages = Math.max(1, this.eventDTO.subEvents.length);
       const stageNumber = AppUtils.clampNumber(index + 1, 1, totalStages);
       const hue = this.subEventStageAccentHue(stageNumber, totalStages);
       return {
@@ -1130,7 +1299,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       };
     }
 
-    const subEvent = this.eventForm.subEvents[index] ?? null;
+    const subEvent = this.eventDTO.subEvents[index] ?? null;
     if (!subEvent) {
       return {};
     }
@@ -1173,11 +1342,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!file) {
       return;
     }
-    if (this.pendingEventImageFile && this.eventForm.imageUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(this.eventForm.imageUrl);
+    if (this.pendingEventImageFile && this.eventDTO.imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(this.eventDTO.imageUrl);
     }
     this.pendingEventImageFile = file;
-    this.eventForm.imageUrl = URL.createObjectURL(file);
+    this.eventDTO.imageUrl = URL.createObjectURL(file);
     target.value = '';
   }
 
@@ -1185,32 +1354,32 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventCapacityMinReadOnly()) {
       return;
     }
-    const parsed = EventEditorFormNormalizer.toEventEditorCapacityInputValue(value);
-    this.eventForm.capacityMin = parsed;
+    const parsed = this.toNonNegativeIntegerOrNull(value);
+    this.eventDTO.capacityMin = parsed;
     if (
-      this.eventForm.capacityMin !== null
-      && this.eventForm.capacityMax !== null
-      && this.eventForm.capacityMax < this.eventForm.capacityMin
+      this.eventDTO.capacityMin !== null
+      && this.eventDTO.capacityMax !== null
+      && this.eventDTO.capacityMax < this.eventDTO.capacityMin
     ) {
-      this.eventForm.capacityMax = this.eventForm.capacityMin;
+      this.eventDTO.capacityMax = this.eventDTO.capacityMin;
     }
   }
 
   onEventCapacityMaxChange(value: number | string): void {
-    const parsed = EventEditorFormNormalizer.toEventEditorCapacityInputValue(value);
-    this.eventForm.capacityMax = parsed === null ? null : Math.max(parsed, this.eventCapacityMaxMinimum());
+    const parsed = this.toNonNegativeIntegerOrNull(value);
+    this.eventDTO.capacityMax = parsed === null ? null : Math.max(parsed, this.eventCapacityMaxMinimum());
   }
 
   onEventCapacityMaxBlur(): void {
-    if (this.eventForm.capacityMax !== null) {
-      this.eventForm.capacityMax = Math.max(this.eventForm.capacityMax, this.eventCapacityMaxMinimum());
+    if (this.eventDTO.capacityMax !== null) {
+      this.eventDTO.capacityMax = Math.max(this.eventDTO.capacityMax, this.eventCapacityMaxMinimum());
     }
     if (
-      this.eventForm.capacityMin !== null
-      && this.eventForm.capacityMax !== null
-      && this.eventForm.capacityMax < this.eventForm.capacityMin
+      this.eventDTO.capacityMin !== null
+      && this.eventDTO.capacityMax !== null
+      && this.eventDTO.capacityMax < this.eventDTO.capacityMin
     ) {
-      this.eventForm.capacityMax = this.eventForm.capacityMin;
+      this.eventDTO.capacityMax = this.eventDTO.capacityMin;
     }
   }
 
@@ -1219,7 +1388,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.blindMode = this.eventForm.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
+    this.eventDTO.blindMode = this.eventDTO.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
   }
 
   toggleEventAutoInviter(event: Event): void {
@@ -1227,7 +1396,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return;
     }
-    this.eventForm.autoInviter = !this.eventForm.autoInviter;
+    this.eventDTO.autoInviter = !this.eventDTO.autoInviter;
   }
 
   toggleEventTicketing(event: Event): void {
@@ -1235,7 +1404,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.ticketing = !this.eventForm.ticketing;
+    this.eventDTO.ticketing = !this.eventDTO.ticketing;
   }
 
   toggleEventSlots(event: Event): void {
@@ -1243,7 +1412,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
+    this.eventDTO.slotsEnabled = this.eventFrequencyUsesSlots();
   }
 
   protected toggleSlotsPanelExpanded(event?: Event): void {
@@ -1285,7 +1454,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return mode === 'date' ? 'event-slot-mode-btn-active-date' : 'event-slot-mode-btn-active-base';
   }
 
-  protected activeSlotTemplates(): ContractTypes.EventSlotTemplate[] {
+  protected activeSlotTemplates(): ContractTypes.EventSlotTemplateDTO[] {
     if (this.slotEditorMode === 'base') {
       return EventEditorBuilder.cloneEventEditorSlotTemplates(this.baseSlotTemplates());
     }
@@ -1316,12 +1485,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected slotOverrideDateMin(): Date | null {
-    const start = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    const start = AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
     return start ? new Date(start.getFullYear(), start.getMonth(), start.getDate()) : null;
   }
 
   protected slotOverrideDateMax(): Date | null {
-    const end = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+    const end = AppUtils.isoLocalDateTimeToDate(this.eventDTO.endAtIso);
     return end ? new Date(end.getFullYear(), end.getMonth(), end.getDate()) : null;
   }
 
@@ -1330,7 +1499,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeSlotOverrideDateSelection();
   }
 
-  protected slotTrackId(index: number, slot: ContractTypes.EventSlotTemplate): string {
+  protected slotTrackId(index: number, slot: ContractTypes.EventSlotTemplateDTO): string {
     return `${slot.overrideDate ?? 'base'}:${slot.id || `slot-${index + 1}`}:${slot.startAt}:${slot.endAt}`;
   }
 
@@ -1343,9 +1512,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const nextIndex = currentTemplates.length + 1;
     const startAt = currentTemplates[currentTemplates.length - 1]?.endAt
       || this.defaultSlotStartForActiveScope()
-      || this.eventForm.startAt
+      || this.eventDTO.startAtIso
       || AppUtils.toIsoDateTimeLocal(new Date());
-    const startDate = EventEditorFormNormalizer.parseEventEditorDateValue(startAt) ?? new Date();
+    const startDate = this.parseEventEditorDateValue(startAt) ?? new Date();
     const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
     this.setActiveSlotTemplates([
       ...currentTemplates,
@@ -1379,23 +1548,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `Slot ${index + 1}`;
   }
 
-  protected slotTemplateStartDateValue(slot: ContractTypes.EventSlotTemplate): Date | null {
+  protected slotTemplateStartDateValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     return this.slotControlDateValue(slot.startAt);
   }
 
-  protected slotTemplateStartTimeValue(slot: ContractTypes.EventSlotTemplate): Date | null {
+  protected slotTemplateStartTimeValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     return this.slotControlDateValue(slot.startAt);
   }
 
-  protected slotTemplateEndDateValue(slot: ContractTypes.EventSlotTemplate): Date | null {
+  protected slotTemplateEndDateValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     return this.slotControlDateValue(slot.endAt);
   }
 
-  protected slotTemplateEndTimeValue(slot: ContractTypes.EventSlotTemplate): Date | null {
+  protected slotTemplateEndTimeValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     return this.slotControlDateValue(slot.endAt);
   }
 
-  protected slotTemplateDateMin(slot: ContractTypes.EventSlotTemplate): Date | null {
+  protected slotTemplateDateMin(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     const window = this.slotWindowForEditing(slot.overrideDate);
     if (!window) {
       return null;
@@ -1403,7 +1572,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return new Date(window.start.getFullYear(), window.start.getMonth(), window.start.getDate());
   }
 
-  protected slotTemplateDateMax(slot: ContractTypes.EventSlotTemplate): Date | null {
+  protected slotTemplateDateMax(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     const window = this.slotWindowForEditing(slot.overrideDate);
     if (!window) {
       return null;
@@ -1411,23 +1580,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return new Date(window.end.getFullYear(), window.end.getMonth(), window.end.getDate());
   }
 
-  protected slotTemplateEndDateMin(slot: ContractTypes.EventSlotTemplate): Date | null {
-    const start = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
+  protected slotTemplateEndDateMin(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
+    const start = this.parseEventEditorDateValue(slot.startAt);
     if (!start) {
       return this.slotTemplateDateMin(slot);
     }
     return new Date(start.getFullYear(), start.getMonth(), start.getDate());
   }
 
-  protected slotTemplateEndDateMax(index: number, slot: ContractTypes.EventSlotTemplate): Date | null {
-    const start = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
+  protected slotTemplateEndDateMax(index: number, slot: ContractTypes.EventSlotTemplateDTO): Date | null {
+    const start = this.parseEventEditorDateValue(slot.startAt);
     const window = this.slotWindowForEditing(slot.overrideDate);
     if (!start || !window) {
       return this.slotTemplateDateMax(slot);
     }
-    const boundaryEnd = this.eventFrequencyBoundaryEnd(start, this.eventForm.frequency) ?? window.end;
+    const boundaryEnd = this.eventFrequencyBoundaryEnd(start, this.eventDTO.frequency) ?? window.end;
     const nextSlot = this.activeSlotTemplates()[index + 1] ?? null;
-    const nextStart = nextSlot ? EventEditorFormNormalizer.parseEventEditorDateValue(nextSlot.startAt) : null;
+    const nextStart = nextSlot ? this.parseEventEditorDateValue(nextSlot.startAt) : null;
     const maxDate = new Date(Math.min(
       window.end.getTime(),
       boundaryEnd.getTime(),
@@ -1490,7 +1659,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventLocationChange(value: string): void {
-    this.eventForm.location = EventEditorFormNormalizer.normalizeEventEditorLocation(value);
+    this.eventDTO.location = this.normalizeEventEditorLocation(value);
     this.syncFirstSubEventLocationFromMainEvent();
   }
 
@@ -1499,9 +1668,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventStartDateValue = value;
-    this.syncEventFormFromDateTimeControls();
+    this.syncEventDTOFromDateTimeControls();
     this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
   }
 
   onEventStartTimeChange(value: Date | null): void {
@@ -1509,9 +1678,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventStartTimeValue = value;
-    this.syncEventFormFromDateTimeControls();
+    this.syncEventDTOFromDateTimeControls();
     this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
   }
 
   onEventEndDateChange(value: Date | null): void {
@@ -1519,9 +1688,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventEndDateValue = value;
-    this.syncEventFormFromDateTimeControls();
+    this.syncEventDTOFromDateTimeControls();
     this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
   }
 
   onEventEndTimeChange(value: Date | null): void {
@@ -1529,9 +1698,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventEndTimeValue = value;
-    this.syncEventFormFromDateTimeControls();
+    this.syncEventDTOFromDateTimeControls();
     this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -1603,7 +1772,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
   }
 
-  private openEventDTO(eventDTO: ActivityEventDTO, readOnly: boolean, _target: ContractTypes.EventEditorTarget): void {
+  private openEventDTO(eventDTO: ActivityEventDetailDTO, readOnly: boolean, _target: ContractTypes.EventEditorTarget): void {
     if (readOnly) {
       this.eventEditorService.openView(eventDTO);
       return;
@@ -1616,48 +1785,37 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    this.syncEventFormFromDateTimeControls();
+    this.syncEventDTOFromDateTimeControls();
     this.normalizeEventDateRange();
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
     if (this.showPoliciesPopup || this.showPolicyEditorPopup) {
       this.syncEventPoliciesFromWorkingPolicies();
     }
-    const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventForm);
-    this.eventForm.capacityMin = normalizedCapacity.min;
-    this.eventForm.capacityMax = normalizedCapacity.max;
+    const normalizedCapacity = EventEditorBuilder.normalizedEventEditorCapacityRange(this.eventDTO.capacityMin, this.eventDTO.capacityMax);
+    this.eventDTO.capacityMin = normalizedCapacity.min;
+    this.eventDTO.capacityMax = normalizedCapacity.max;
     if (!options.allowIncomplete && !this.canSubmitEventEditorForm()) {
       return false;
     }
 
     const activeUserId = this.activeUserId();
-    const eventId = this.eventForm.id.trim()
+    const eventId = this.eventDTO.id.trim()
       || this.editingEventId
       || this.draftEventId
       || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
-    this.eventForm.id = eventId;
+    this.eventDTO.id = eventId;
     const uploadedImageUrl = await this.resolvePersistedEventImageUrl(activeUserId, eventId);
     if (!this.localModeEnabled && this.pendingEventImageFile && !uploadedImageUrl) {
       return false;
     }
     if (uploadedImageUrl) {
-      this.eventForm.imageUrl = uploadedImageUrl;
+      this.eventDTO.imageUrl = uploadedImageUrl;
     }
     const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
     this.currentMemberSummary = memberSummary;
-    const formForSync: UiModels.EventForm = {
-      ...this.eventForm,
-      subEventsDisplayMode: this.subEventsDisplayMode,
-      title: options.allowIncomplete
-        ? (this.eventForm.title.trim() || 'Untitled draft event')
-        : this.eventForm.title,
-      description: options.allowIncomplete
-        ? (this.eventForm.description.trim() || 'Draft event in progress')
-        : this.eventForm.description
-    };
-
-    const saveDTO = ActivityEventSaveConverter.convert({
-      form: formForSync,
+    const saveDTO = this.buildActivityEventSaveDTO({
+      allowIncomplete: options.allowIncomplete === true,
       memberSummary,
       activeUserId: activeUserId || null,
       activeUserProfile: activeUserId ? this.appCtx.getUserProfile(activeUserId) : null
@@ -1668,6 +1826,84 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
     this.activitiesContext.emitActivityEventSaveResult(displaySync);
     return true;
+  }
+
+  private buildActivityEventSaveDTO(input: {
+    allowIncomplete: boolean;
+    memberSummary: {
+      acceptedMembers: number;
+      pendingMembers: number;
+      capacityTotal: number;
+    };
+    activeUserId: string | null;
+    activeUserProfile: {
+      name?: string;
+      initials?: string;
+      gender?: AppConstants.UserGender;
+      city?: string;
+    } | null;
+  }): ContractTypes.ActivityEventSaveDTO {
+    const dto = this.eventDTO;
+    const title = input.allowIncomplete
+      ? (dto.title.trim() || 'Untitled draft event')
+      : dto.title;
+    const subtitle = input.allowIncomplete
+      ? (dto.subtitle.trim() || 'Draft event in progress')
+      : dto.subtitle;
+    const frequency = this.normalizeEventEditorFrequency(dto.frequency);
+    const persistedSlotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(dto.slotTemplates ?? []);
+    const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(persistedSlotTemplates);
+    const hasSlots = frequency !== 'One-time';
+
+    return {
+      id: dto.id,
+      title: title.trim(),
+      shortDescription: subtitle.trim(),
+      timeframe: EventEditorBuilder.buildEventEditorTimeframeLabel(dto.startAtIso, dto.endAtIso, frequency),
+      activity: dto.activity ?? 0,
+      startAt: dto.startAtIso,
+      endAt: dto.endAtIso,
+      distanceKm: dto.distanceKm ?? 0,
+      imageUrl: dto.imageUrl,
+      acceptedMembers: input.memberSummary.acceptedMembers,
+      pendingMembers: input.memberSummary.pendingMembers,
+      capacityTotal: Math.max(input.memberSummary.acceptedMembers, input.memberSummary.capacityTotal),
+      capacityMin: dto.capacityMin,
+      capacityMax: dto.capacityMax,
+      autoInviter: dto.autoInviter === true,
+      frequency,
+      ticketing: dto.ticketing === true,
+      pricing: PricingBuilder.compactPricingConfig(
+        PricingBuilder.syncSlotOverrides(dto.pricing, slotCatalog),
+        {
+          context: 'event',
+          slotCatalog,
+          allowSlotFeatures: true
+        }
+      ),
+      policies: EventEditorBuilder.buildPersistedEventEditorPolicies(dto.policies ?? []),
+      slotsEnabled: hasSlots,
+      slotTemplates: hasSlots ? persistedSlotTemplates : [],
+      visibility: this.normalizeEventEditorVisibility(dto.visibility),
+      blindMode: this.normalizeEventEditorBlindMode(dto.blindMode),
+      status: dto.status ?? 'DR',
+      creatorUserId: dto.creatorUserId || input.activeUserId || undefined,
+      creatorName: dto.creatorName || input.activeUserProfile?.name,
+      creatorInitials: dto.creatorInitials || input.activeUserProfile?.initials,
+      creatorGender: dto.creatorGender ?? input.activeUserProfile?.gender,
+      creatorCity: dto.creatorCity || input.activeUserProfile?.city,
+      location: this.normalizeEventEditorLocation(dto.location).trim(),
+      locationCoordinates: dto.locationCoordinates ?? undefined,
+      sourceLink: dto.sourceLink ?? '',
+      parentEventId: dto.parentEventId ?? null,
+      slotTemplateId: dto.slotTemplateId ?? null,
+      generated: dto.generated === true,
+      eventType: dto.eventType ?? 'main',
+      topics: this.normalizeEventEditorTopics(dto.topics ?? []),
+      subEvents: EventEditorBuilder.buildPersistedEventEditorSubEvents(dto.subEvents ?? []),
+      subEventsDisplayMode: this.subEventsDisplayMode ?? dto.subEventsDisplayMode ?? 'Casual',
+      paymentSessionId: dto.paymentSessionId ?? null
+    };
   }
 
   private async runImmediateSave(): Promise<void> {
@@ -1721,7 +1957,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.mode() === 'create') {
       return true;
     }
-    return this.editorTarget === 'hosting' && this.eventForm.status === 'DR';
+    return this.editorTarget === 'hosting' && this.eventDTO.status === 'DR';
   }
 
   private async runDraftAutosaveIfNeeded(): Promise<void> {
@@ -1752,12 +1988,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       draftEventId: this.draftEventId,
       subEventsDisplayMode: this.subEventsDisplayMode,
       form: {
-        ...this.eventForm,
-        topics: [...this.eventForm.topics],
-        pricing: PricingBuilder.clonePricingConfig(this.eventForm.pricing),
-        policies: EventEditorBuilder.cloneEventEditorPolicies(this.eventForm.policies),
-        slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(this.eventForm.slotTemplates),
-        subEvents: EventEditorBuilder.cloneEventEditorSubEvents(this.eventForm.subEvents)
+        ...this.eventDTO,
+        topics: [...this.eventDTO.topics],
+        pricing: PricingBuilder.clonePricingConfig(this.eventDTO.pricing),
+        policies: EventEditorBuilder.cloneEventEditorPolicies(this.eventDTO.policies),
+        slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(this.eventDTO.slotTemplates),
+        subEvents: EventEditorBuilder.cloneEventEditorSubEvents(this.eventDTO.subEvents)
       }
     });
   }
@@ -1795,14 +2031,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
   }
 
-  private eventDTOBelongsToActiveAdmin(eventDTO: ActivityEventDTO): boolean {
+  private eventDTOBelongsToActiveAdmin(eventDTO: ActivityEventDetailDTO): boolean {
     const activeUserId = this.activeUserId();
     return !!activeUserId && (eventDTO.adminIds ?? []).includes(activeUserId);
   }
 
-  private baseSlotTemplates(): ContractTypes.EventSlotTemplate[] {
-    return this.eventForm.slotTemplates
-      .filter(item => !EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate))
+  private baseSlotTemplates(): ContractTypes.EventSlotTemplateDTO[] {
+    return this.eventDTO.slotTemplates
+      .filter(item => !this.normalizeEventEditorSlotOverrideDate(item.overrideDate))
       .filter(item => item.closed !== true)
       .map(item => ({
         ...item,
@@ -1811,12 +2047,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }));
   }
 
-  private overrideSlotTemplatesForDate(dateKey: string): ContractTypes.EventSlotTemplate[] {
+  private overrideSlotTemplatesForDate(dateKey: string): ContractTypes.EventSlotTemplateDTO[] {
     if (!dateKey) {
       return [];
     }
-    return this.eventForm.slotTemplates
-      .filter(item => EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate) === dateKey)
+    return this.eventDTO.slotTemplates
+      .filter(item => this.normalizeEventEditorSlotOverrideDate(item.overrideDate) === dateKey)
       .map(item => ({
         ...item,
         overrideDate: dateKey,
@@ -1825,17 +2061,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private selectedSlotOverrideDateKey(): string {
-    return EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(this.slotOverrideDateValue) ?? '';
+    return this.normalizeEventEditorSlotOverrideDate(this.slotOverrideDateValue) ?? '';
   }
 
   private defaultSlotOverrideDate(): Date | null {
-    const firstOverrideDate = this.eventForm.slotTemplates
-      .map(item => EventEditorFormNormalizer.parseEventEditorOverrideDate(item.overrideDate))
+    const firstOverrideDate = this.eventDTO.slotTemplates
+      .map(item => this.parseEventEditorOverrideDate(item.overrideDate))
       .find((value): value is Date => Boolean(value));
     if (firstOverrideDate) {
       return new Date(firstOverrideDate.getFullYear(), firstOverrideDate.getMonth(), firstOverrideDate.getDate());
     }
-    const eventStart = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    const eventStart = AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
     return eventStart
       ? new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate())
       : null;
@@ -1868,9 +2104,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `slot-${index}`;
   }
 
-  private projectBaseSlotTemplatesToDate(dateKey: string): ContractTypes.EventSlotTemplate[] {
+  private projectBaseSlotTemplatesToDate(dateKey: string): ContractTypes.EventSlotTemplateDTO[] {
     const window = this.slotWindowForOverrideDate(dateKey);
-    const baseStart = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
+    const baseStart = AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
     if (!window || !baseStart) {
       return [];
     }
@@ -1886,13 +2122,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }));
   }
 
-  private resolveActiveSlotTemplatesForEditing(): ContractTypes.EventSlotTemplate[] {
+  private resolveActiveSlotTemplatesForEditing(): ContractTypes.EventSlotTemplateDTO[] {
     return EventEditorBuilder.cloneEventEditorSlotTemplates(this.activeSlotTemplates());
   }
 
   private updateSlotTemplate(
     index: number,
-    updater: (item: ContractTypes.EventSlotTemplate) => ContractTypes.EventSlotTemplate
+    updater: (item: ContractTypes.EventSlotTemplateDTO) => ContractTypes.EventSlotTemplateDTO
   ): void {
     this.ensureSpecificDateOverrideSeeded();
     const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
@@ -1910,28 +2146,28 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null }));
-    const otherOverrides = this.eventForm.slotTemplates
+    const otherOverrides = this.eventDTO.slotTemplates
       .filter(item => {
-        const overrideDate = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+        const overrideDate = this.normalizeEventEditorSlotOverrideDate(item.overrideDate);
         return overrideDate && overrideDate !== dateKey;
       })
       .map(item => ({ ...item }));
-    this.eventForm.slotTemplates = [
+    this.eventDTO.slotTemplates = [
       ...base,
       ...otherOverrides,
       ...this.projectBaseSlotTemplatesToDate(dateKey)
     ];
   }
 
-  private setActiveSlotTemplates(nextTemplates: ContractTypes.EventSlotTemplate[]): void {
+  private setActiveSlotTemplates(nextTemplates: ContractTypes.EventSlotTemplateDTO[]): void {
     const normalizedTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(
       this.normalizeEditableSlotTemplates(nextTemplates)
     );
     if (this.slotEditorMode === 'base') {
-      const overrides = this.eventForm.slotTemplates
-        .filter(item => EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate))
+      const overrides = this.eventDTO.slotTemplates
+        .filter(item => this.normalizeEventEditorSlotOverrideDate(item.overrideDate))
         .map(item => ({ ...item }));
-      this.eventForm.slotTemplates = [
+      this.eventDTO.slotTemplates = [
         ...normalizedTemplates.map(item => ({ ...item, overrideDate: null, closed: false })),
         ...overrides
       ];
@@ -1940,23 +2176,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     const dateKey = this.selectedSlotOverrideDateKey();
     const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null, closed: false }));
-    const otherOverrides = this.eventForm.slotTemplates
+    const otherOverrides = this.eventDTO.slotTemplates
       .filter(item => {
-        const overrideDate = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+        const overrideDate = this.normalizeEventEditorSlotOverrideDate(item.overrideDate);
         return overrideDate && overrideDate !== dateKey;
       })
       .map(item => ({ ...item }));
     const currentOverride = normalizedTemplates.length > 0
       ? normalizedTemplates.map(item => ({ ...item, overrideDate: dateKey || null, closed: false }))
       : (dateKey ? [this.buildClosedDateOverridePlaceholder(dateKey)] : []);
-    this.eventForm.slotTemplates = [
+    this.eventDTO.slotTemplates = [
       ...base,
       ...otherOverrides,
       ...currentOverride
     ];
   }
 
-  private buildClosedDateOverridePlaceholder(dateKey: string): ContractTypes.EventSlotTemplate {
+  private buildClosedDateOverridePlaceholder(dateKey: string): ContractTypes.EventSlotTemplateDTO {
     return {
       id: `override-${dateKey}-closed`,
       startAt: '',
@@ -1972,17 +2208,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private defaultSlotStartForActiveScope(): string {
-    return this.slotWindowForEditing()?.startAt ?? this.eventForm.startAt;
+    return this.slotWindowForEditing()?.startAt ?? this.eventDTO.startAtIso;
   }
 
-  private normalizeSlotTemplateBounds(slot: ContractTypes.EventSlotTemplate): ContractTypes.EventSlotTemplate {
+  private normalizeSlotTemplateBounds(slot: ContractTypes.EventSlotTemplateDTO): ContractTypes.EventSlotTemplateDTO {
     const window = this.slotWindowForEditing(slot.overrideDate);
-    const fallbackStart = window?.start ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
-    const fallbackEnd = window?.end ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
+    const fallbackStart = window?.start ?? this.parseEventEditorDateValue(this.eventDTO.startAtIso) ?? new Date();
+    const fallbackEnd = window?.end ?? this.parseEventEditorDateValue(this.eventDTO.endAtIso) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
     const windowStartMs = fallbackStart.getTime();
     const windowEndMs = Math.max(windowStartMs + (60 * 1000), fallbackEnd.getTime());
 
-    let startDate = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt) ?? new Date(fallbackStart);
+    let startDate = this.parseEventEditorDateValue(slot.startAt) ?? new Date(fallbackStart);
     let startMs = startDate.getTime();
     const maxStartMs = Math.max(windowStartMs, windowEndMs - (60 * 1000));
     startMs = Math.min(maxStartMs, Math.max(windowStartMs, startMs));
@@ -1990,10 +2226,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     const slotBoundaryEndMs = Math.min(
       windowEndMs,
-      this.eventFrequencyBoundaryEnd(startDate, this.eventForm.frequency)?.getTime() ?? windowEndMs
+      this.eventFrequencyBoundaryEnd(startDate, this.eventDTO.frequency)?.getTime() ?? windowEndMs
     );
 
-    let endDate = EventEditorFormNormalizer.parseEventEditorDateValue(slot.endAt);
+    let endDate = this.parseEventEditorDateValue(slot.endAt);
     let endMs = endDate?.getTime() ?? (startMs + (60 * 60 * 1000));
     if (endMs <= startMs) {
       endMs = startMs + (60 * 60 * 1000);
@@ -2016,8 +2252,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private normalizeEditableSlotTemplates(
-    nextTemplates: readonly ContractTypes.EventSlotTemplate[]
-  ): ContractTypes.EventSlotTemplate[] {
+    nextTemplates: readonly ContractTypes.EventSlotTemplateDTO[]
+  ): ContractTypes.EventSlotTemplateDTO[] {
     let normalized = EventEditorBuilder.cloneEventEditorSlotTemplates(nextTemplates)
       .map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }));
     for (let index = 0; index < normalized.length; index += 1) {
@@ -2027,36 +2263,36 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private normalizeSlotTemplateWithNeighbors(
-    items: readonly ContractTypes.EventSlotTemplate[],
+    items: readonly ContractTypes.EventSlotTemplateDTO[],
     index: number
-  ): ContractTypes.EventSlotTemplate[] {
+  ): ContractTypes.EventSlotTemplateDTO[] {
     const current = items[index];
     if (!current || current.closed === true) {
       return [...items];
     }
 
     const nextItems = items.map(item => ({ ...item }));
-    const scopeKey = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(current.overrideDate) ?? '';
+    const scopeKey = this.normalizeEventEditorSlotOverrideDate(current.overrideDate) ?? '';
     const previous = [...nextItems]
       .slice(0, index)
       .reverse()
-      .find(item => (EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
+      .find(item => (this.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
     const upcoming = nextItems
       .slice(index + 1)
-      .find(item => (EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
+      .find(item => (this.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
     const window = this.slotWindowForEditing(current.overrideDate);
-    const fallbackStart = window?.start ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
-    const fallbackEnd = window?.end ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
-    const previousEnd = previous ? EventEditorFormNormalizer.parseEventEditorDateValue(previous.endAt) : null;
-    const upcomingStart = upcoming ? EventEditorFormNormalizer.parseEventEditorDateValue(upcoming.startAt) : null;
-    const currentStart = EventEditorFormNormalizer.parseEventEditorDateValue(current.startAt) ?? new Date(fallbackStart);
-    const currentEnd = EventEditorFormNormalizer.parseEventEditorDateValue(current.endAt) ?? new Date(currentStart.getTime() + (60 * 60 * 1000));
+    const fallbackStart = window?.start ?? this.parseEventEditorDateValue(this.eventDTO.startAtIso) ?? new Date();
+    const fallbackEnd = window?.end ?? this.parseEventEditorDateValue(this.eventDTO.endAtIso) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
+    const previousEnd = previous ? this.parseEventEditorDateValue(previous.endAt) : null;
+    const upcomingStart = upcoming ? this.parseEventEditorDateValue(upcoming.startAt) : null;
+    const currentStart = this.parseEventEditorDateValue(current.startAt) ?? new Date(fallbackStart);
+    const currentEnd = this.parseEventEditorDateValue(current.endAt) ?? new Date(currentStart.getTime() + (60 * 60 * 1000));
     const durationMs = Math.max(60 * 1000, currentEnd.getTime() - currentStart.getTime());
 
     const minStartMs = Math.max(fallbackStart.getTime(), previousEnd?.getTime() ?? fallbackStart.getTime());
     const slotBoundaryEndMs = Math.min(
       fallbackEnd.getTime(),
-      this.eventFrequencyBoundaryEnd(currentStart, this.eventForm.frequency)?.getTime() ?? fallbackEnd.getTime()
+      this.eventFrequencyBoundaryEnd(currentStart, this.eventDTO.frequency)?.getTime() ?? fallbackEnd.getTime()
     );
     const maxEndMs = Math.min(slotBoundaryEndMs, upcomingStart?.getTime() ?? slotBoundaryEndMs);
     const maxStartMs = Math.max(minStartMs, maxEndMs - (60 * 1000));
@@ -2080,12 +2316,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private shiftSlotByStartChange(
-    slot: ContractTypes.EventSlotTemplate,
+    slot: ContractTypes.EventSlotTemplateDTO,
     nextStartAt: string
-  ): Pick<ContractTypes.EventSlotTemplate, 'startAt' | 'endAt'> {
-    const currentStart = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
-    const currentEnd = EventEditorFormNormalizer.parseEventEditorDateValue(slot.endAt);
-    const nextStart = EventEditorFormNormalizer.parseEventEditorDateValue(nextStartAt);
+  ): Pick<ContractTypes.EventSlotTemplateDTO, 'startAt' | 'endAt'> {
+    const currentStart = this.parseEventEditorDateValue(slot.startAt);
+    const currentEnd = this.parseEventEditorDateValue(slot.endAt);
+    const nextStart = this.parseEventEditorDateValue(nextStartAt);
     if (!currentStart || !currentEnd || !nextStart) {
       return {
         startAt: nextStartAt,
@@ -2114,8 +2350,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     startAt: string;
     endAt: string;
   } | null {
-    const baseStart = EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.startAt);
-    const baseEnd = EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.endAt);
+    const baseStart = this.parseEventEditorDateValue(this.eventDTO.startAtIso);
+    const baseEnd = this.parseEventEditorDateValue(this.eventDTO.endAtIso);
     if (!baseStart || !baseEnd) {
       return null;
     }
@@ -2129,12 +2365,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       };
     }
 
-    const overrideDateValue = EventEditorFormNormalizer.parseEventEditorOverrideDate(overrideDate);
+    const overrideDateValue = this.parseEventEditorOverrideDate(overrideDate);
     const shiftedStartAt = overrideDateValue
-      ? AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, overrideDateValue)
-      : this.eventForm.startAt;
-    const shiftedStart = EventEditorFormNormalizer.parseEventEditorDateValue(shiftedStartAt) ?? new Date(baseStart);
-    const boundaryEnd = this.eventFrequencyBoundaryEnd(shiftedStart, this.eventForm.frequency) ?? new Date(baseEnd);
+      ? AppUtils.applyDatePartToIsoLocal(this.eventDTO.startAtIso, overrideDateValue)
+      : this.eventDTO.startAtIso;
+    const shiftedStart = this.parseEventEditorDateValue(shiftedStartAt) ?? new Date(baseStart);
+    const boundaryEnd = this.eventFrequencyBoundaryEnd(shiftedStart, this.eventDTO.frequency) ?? new Date(baseEnd);
     const shiftedEnd = boundaryEnd.getTime() > baseEnd.getTime() ? new Date(baseEnd) : boundaryEnd;
     if (shiftedEnd.getTime() <= shiftedStart.getTime()) {
       const fallbackEnd = new Date(Math.min(baseEnd.getTime(), shiftedStart.getTime() + (60 * 60 * 1000)));
@@ -2154,7 +2390,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private shiftSlotDateTimeByMs(value: string, shiftMs: number): string {
-    const parsed = EventEditorFormNormalizer.parseEventEditorDateValue(value);
+    const parsed = this.parseEventEditorDateValue(value);
     if (!parsed) {
       return value;
     }
@@ -2169,13 +2405,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.slotDateControlValueCache.has(normalizedValue)) {
       return this.slotDateControlValueCache.get(normalizedValue) ?? null;
     }
-    const parsed = EventEditorFormNormalizer.parseEventEditorDateValue(normalizedValue);
+    const parsed = this.parseEventEditorDateValue(normalizedValue);
     this.slotDateControlValueCache.set(normalizedValue, parsed);
     return parsed;
   }
 
   private slotOverrideDateLabel(dateKey: string): string {
-    const parsed = EventEditorFormNormalizer.parseEventEditorOverrideDate(dateKey);
+    const parsed = this.parseEventEditorOverrideDate(dateKey);
     if (!parsed) {
       return dateKey;
     }
@@ -2199,7 +2435,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private currentEventIdentity(): string {
-    return this.eventForm.id.trim() || this.editingEventId || this.draftEventId || '';
+    return this.eventDTO.id.trim() || this.editingEventId || this.draftEventId || '';
   }
 
   private async refreshCurrentMemberSummary(ownerId: string | null | undefined): Promise<void> {
@@ -2239,38 +2475,32 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
-  private populateFormFromSourceEvent(sourceEvent: ActivityEventDTO | Record<string, unknown>): void {
-    const isEventDTO = this.isActivityEventDTO(sourceEvent);
-    const form = isEventDTO
-      ? ActivityEventEditorFormConverter.convert(sourceEvent)
-      : EventEditorFormNormalizer.toEventEditorForm(sourceEvent);
-    if (isEventDTO) {
-      this.currentMemberSummary = {
-        ownerType: 'event',
-        ownerId: sourceEvent.id,
-        acceptedMembers: sourceEvent.acceptedMembers,
-        pendingMembers: sourceEvent.pendingMembers,
-        capacityTotal: sourceEvent.capacityTotal,
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: []
-      };
+  private populateFormFromSourceEvent(sourceEvent: ActivityEventDetailDTO | Record<string, unknown>): void {
+    if (!this.isActivityEventDTO(sourceEvent)) {
+      return;
     }
-    this.editingEventId = form.id.trim() || this.editingEventId;
-    this.pendingEventImageFile = null;
-    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && form.status === 'A';
-    this.publishedCapacityMaxFloor = Math.max(0, Number(form.capacityMax ?? 0) || 0);
-    this.eventForm = {
-      ...form,
-      slotsEnabled: EventEditorFormNormalizer.normalizeEventEditorFrequency(form.frequency) !== 'One-time',
-      pricing: PricingBuilder.clonePricingConfig(form.pricing),
-      policies: EventEditorBuilder.cloneEventEditorPolicies(form.policies),
-      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(form.slotTemplates),
-      subEvents: EventEditorBuilder.cloneEventEditorSubEvents(form.subEvents)
+    const dto = this.cloneActivityEventDetailDTO(sourceEvent);
+    this.currentMemberSummary = {
+      ownerType: 'event',
+      ownerId: dto.id,
+      acceptedMembers: dto.acceptedMembers,
+      pendingMembers: dto.pendingMembers,
+      capacityTotal: dto.capacityTotal,
+      acceptedMemberUserIds: [...(dto.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(dto.pendingMemberUserIds ?? [])]
     };
-    this.subEventsDisplayMode = form.subEventsDisplayMode ?? 'Casual';
-    this.eventForm.subEventsDisplayMode = this.subEventsDisplayMode;
+    this.editingEventId = dto.id.trim() || this.editingEventId;
+    this.pendingEventImageFile = null;
+    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && dto.status === 'A';
+    this.publishedCapacityMaxFloor = Math.max(0, Number(dto.capacityMax ?? 0) || 0);
+    this.eventDTO = {
+      ...dto,
+      slotsEnabled: this.normalizeEventEditorFrequency(dto.frequency) !== 'One-time'
+    };
+    this.subEventsDisplayMode = dto.subEventsDisplayMode ?? 'Casual';
+    this.eventDTO.subEventsDisplayMode = this.subEventsDisplayMode;
     this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
     this.slotEditorMode = 'base';
     this.slotsPanelExpanded = this.eventFrequencyUsesSlots();
     this.showSlotsPopup = false;
@@ -2279,10 +2509,33 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.seedDraftAutosaveSignature();
   }
 
-  private isActivityEventDTO(sourceEvent: ActivityEventDTO | Record<string, unknown>): sourceEvent is ActivityEventDTO {
+  private isActivityEventDTO(sourceEvent: ActivityEventDetailDTO | Record<string, unknown>): sourceEvent is ActivityEventDetailDTO {
     return typeof sourceEvent['startAtIso'] === 'string'
       && typeof sourceEvent['endAtIso'] === 'string'
       && typeof sourceEvent['timeframe'] === 'string';
+  }
+
+  private cloneActivityEventDetailDTO(dto: ActivityEventDetailDTO): ActivityEventDetailDTO {
+    return {
+      ...this.createEmptyEventDTO(),
+      ...dto,
+      adminIds: [...(dto.adminIds ?? [])],
+      blindMode: dto.blindMode ?? 'Open Event',
+      autoInviter: dto.autoInviter === true,
+      frequency: dto.frequency ?? 'One-time',
+      pricing: PricingBuilder.clonePricingConfig(dto.pricing),
+      policies: EventEditorBuilder.cloneEventEditorPolicies(dto.policies ?? []),
+      slotsEnabled: dto.slotsEnabled === true,
+      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(dto.slotTemplates ?? []),
+      topics: [...dto.topics],
+      subEvents: EventEditorBuilder.cloneEventEditorSubEvents(dto.subEvents ?? []),
+      subEventsDisplayMode: dto.subEventsDisplayMode ?? 'Casual',
+      acceptedMemberUserIds: [...(dto.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(dto.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(dto.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(dto.pendingRequestMemberUserIds ?? [])],
+      upcomingSlots: (dto.upcomingSlots ?? []).map(slot => ({ ...slot }))
+    };
   }
 
   private resetForm(target: ContractTypes.EventEditorTarget = this.editorTarget): void {
@@ -2292,34 +2545,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.pendingEventImageFile = null;
     this.currentSourcePublished = false;
     this.publishedCapacityMaxFloor = 0;
-    this.eventForm = {
+    this.eventDTO = {
+      ...this.createEmptyEventDTO(),
       id: this.draftEventId ?? '',
-      title: '',
-      description: '',
-      imageUrl: '',
+      type: target,
       visibility: target === 'hosting' ? 'Invitation only' : 'Public',
-      frequency: 'One-time',
-      location: '',
-      capacityMin: 0,
-      capacityMax: 0,
-      blindMode: 'Open Event',
-      autoInviter: false,
-      ticketing: false,
-      pricing: PricingBuilder.createDefaultPricingConfig('event'),
-      policies: [],
-      slotsEnabled: false,
-      slotTemplates: [],
-      topics: [],
-      subEvents: [],
-      subEventsDisplayMode: 'Casual',
-      startAt: AppUtils.toIsoDateTimeLocal(start),
-      endAt: AppUtils.toIsoDateTimeLocal(end)
+      startAtIso: AppUtils.toIsoDateTimeLocal(start),
+      endAtIso: AppUtils.toIsoDateTimeLocal(end)
     };
 
     this.subEventsDisplayMode = 'Casual';
-    this.eventForm.subEventsDisplayMode = this.subEventsDisplayMode;
+    this.eventDTO.subEventsDisplayMode = this.subEventsDisplayMode;
     this.showSlotsPopup = false;
-    this.syncDateTimeControlsFromForm();
+    this.syncDateTimeControlsFromDTO();
     this.slotEditorMode = 'base';
     this.slotsPanelExpanded = false;
     this.slotOverrideDateValue = this.defaultSlotOverrideDate();
@@ -2327,39 +2565,39 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.seedDraftAutosaveSignature();
   }
 
-  private syncDateTimeControlsFromForm(): void {
-    this.eventStartDateValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
-    this.eventEndDateValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
-    this.eventStartTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
-    this.eventEndTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+  private syncDateTimeControlsFromDTO(): void {
+    this.eventStartDateValue = AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
+    this.eventEndDateValue = AppUtils.isoLocalDateTimeToDate(this.eventDTO.endAtIso);
+    this.eventStartTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
+    this.eventEndTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventDTO.endAtIso);
   }
 
-  private syncEventFormFromDateTimeControls(): void {
-    this.eventForm.startAt = AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, this.eventStartDateValue);
-    this.eventForm.startAt = AppUtils.applyTimePartFromDateToIsoLocal(this.eventForm.startAt, this.eventStartTimeValue);
-    this.eventForm.endAt = AppUtils.applyDatePartToIsoLocal(this.eventForm.endAt, this.eventEndDateValue);
-    this.eventForm.endAt = AppUtils.applyTimePartFromDateToIsoLocal(this.eventForm.endAt, this.eventEndTimeValue);
+  private syncEventDTOFromDateTimeControls(): void {
+    this.eventDTO.startAtIso = AppUtils.applyDatePartToIsoLocal(this.eventDTO.startAtIso, this.eventStartDateValue);
+    this.eventDTO.startAtIso = AppUtils.applyTimePartFromDateToIsoLocal(this.eventDTO.startAtIso, this.eventStartTimeValue);
+    this.eventDTO.endAtIso = AppUtils.applyDatePartToIsoLocal(this.eventDTO.endAtIso, this.eventEndDateValue);
+    this.eventDTO.endAtIso = AppUtils.applyTimePartFromDateToIsoLocal(this.eventDTO.endAtIso, this.eventEndTimeValue);
   }
 
   private normalizeEventDateRange(): void {
-    const start = AppUtils.isoLocalDateTimeToDate(this.eventForm.startAt);
-    let end = AppUtils.isoLocalDateTimeToDate(this.eventForm.endAt);
+    const start = AppUtils.isoLocalDateTimeToDate(this.eventDTO.startAtIso);
+    let end = AppUtils.isoLocalDateTimeToDate(this.eventDTO.endAtIso);
     if (!start || !end) {
       return;
     }
 
-    if (!this.eventFrequencyOptions.includes(this.eventForm.frequency)) {
-      this.eventForm.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
+    if (!this.eventFrequencyOptions.includes(this.eventDTO.frequency)) {
+      this.eventDTO.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
     }
 
     if (end.getTime() <= start.getTime()) {
       end = new Date(start.getTime() + (60 * 60 * 1000));
     }
 
-    this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(end);
-    this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
-    if (!this.eventForm.slotsEnabled) {
-      this.eventForm.slotTemplates = [];
+    this.eventDTO.endAtIso = AppUtils.toIsoDateTimeLocal(end);
+    this.eventDTO.slotsEnabled = this.eventFrequencyUsesSlots();
+    if (!this.eventDTO.slotsEnabled) {
+      this.eventDTO.slotTemplates = [];
       this.showSlotsPopup = false;
     }
     this.normalizeSlotOverrideDateSelection();
@@ -2370,7 +2608,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!start) {
       return null;
     }
-    const normalizedFrequency = EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency);
+    const normalizedFrequency = this.normalizeEventEditorFrequency(frequency);
     let boundaryDate: Date | null = null;
     switch (normalizedFrequency) {
       case 'Daily':
@@ -2400,19 +2638,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private normalizeEventSlotTemplates(): void {
     if (!this.eventFrequencyUsesSlots()) {
-      this.eventForm.slotsEnabled = false;
-      this.eventForm.slotTemplates = [];
+      this.eventDTO.slotsEnabled = false;
+      this.eventDTO.slotTemplates = [];
       return;
     }
-    this.eventForm.slotsEnabled = true;
+    this.eventDTO.slotsEnabled = true;
 
-    this.eventForm.slotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(
-      this.eventForm.slotTemplates.map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }))
+    this.eventDTO.slotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(
+      this.eventDTO.slotTemplates.map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }))
     );
   }
 
   private syncMainEventBoundsFromSubEvents(): void {
-    if (this.eventForm.subEvents.length === 0) {
+    if (this.eventDTO.subEvents.length === 0) {
       return;
     }
 
@@ -2422,9 +2660,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     let minCapacity: number | null = null;
     let maxCapacity: number | null = null;
 
-    for (const item of this.eventForm.subEvents) {
-      let startMs = EventEditorFormNormalizer.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
-      let endMs = EventEditorFormNormalizer.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
+    for (const item of this.eventDTO.subEvents) {
+      let startMs = this.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
+      let endMs = this.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
       if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
         if (endMs <= startMs) {
           endMs = startMs + (60 * 60 * 1000);
@@ -2448,30 +2686,30 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     if (minStartMs !== null && maxEndMs !== null) {
-      this.eventForm.startAt = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
-      this.eventForm.endAt = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
-      this.syncDateTimeControlsFromForm();
+      this.eventDTO.startAtIso = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
+      this.eventDTO.endAtIso = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
+      this.syncDateTimeControlsFromDTO();
     }
     if (minCapacity !== null) {
-      this.eventForm.capacityMin = minCapacity;
+      this.eventDTO.capacityMin = minCapacity;
     }
     if (maxCapacity !== null) {
-      this.eventForm.capacityMax = Math.max(maxCapacity, this.eventForm.capacityMin ?? maxCapacity);
+      this.eventDTO.capacityMax = Math.max(maxCapacity, this.eventDTO.capacityMin ?? maxCapacity);
     }
 
-    const first = EventEditorBuilder.firstEventEditorSubEventByOrder(this.eventForm.subEvents);
+    const first = EventEditorBuilder.firstEventEditorSubEventByOrder(this.eventDTO.subEvents);
     if (first) {
-      this.eventForm.location = EventEditorFormNormalizer.normalizeEventEditorLocation(first.location);
+      this.eventDTO.location = this.normalizeEventEditorLocation(first.location);
     }
   }
 
   private syncFirstSubEventLocationFromMainEvent(): void {
-    if (this.isPublishedManageMode() || this.eventForm.subEvents.length === 0) {
+    if (this.isPublishedManageMode() || this.eventDTO.subEvents.length === 0) {
       return;
     }
-    this.eventForm.subEvents = EventEditorBuilder.withFirstEventEditorSubEventLocation(
-      this.eventForm.subEvents,
-      this.eventForm.location
+    this.eventDTO.subEvents = EventEditorBuilder.withFirstEventEditorSubEventLocation(
+      this.eventDTO.subEvents,
+      this.eventDTO.location
     );
   }
 
@@ -2491,7 +2729,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.closePolicyEditor();
   }
 
-  private normalizedWorkingPolicyDraft(): ContractTypes.EventPolicyItem {
+  private normalizedWorkingPolicyDraft(): ContractTypes.EventPolicyDTO {
     return {
       id: this.workingPolicyDraft.id?.trim() || `policy-${Date.now()}`,
       title: this.workingPolicyDraft.title.trim(),
@@ -2501,7 +2739,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private syncEventPoliciesFromWorkingPolicies(): void {
-    this.eventForm.policies = this.workingPolicies
+    this.eventDTO.policies = this.workingPolicies
       .map(item => ({
         id: `${item.id ?? ''}`.trim(),
         title: `${item.title ?? ''}`.trim(),
@@ -2512,9 +2750,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private eventLocationRouteStops(): string[] {
-    const mainLocation = EventEditorFormNormalizer.normalizeEventEditorLocation(this.eventForm.location).trim();
-    const subEventStops = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents)
-      .map(item => EventEditorFormNormalizer.normalizeEventEditorLocation(item.location).trim())
+    const mainLocation = this.normalizeEventEditorLocation(this.eventDTO.location).trim();
+    const subEventStops = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventDTO.subEvents)
+      .map(item => this.normalizeEventEditorLocation(item.location).trim())
       .filter(stop => stop.length > 0);
     const ordered = [mainLocation, ...subEventStops].filter(stop => stop.length > 0);
     return Array.from(new Set(ordered));
@@ -2522,21 +2760,21 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private async resolvePersistedEventImageUrl(activeUserId: string, eventId: string): Promise<string | null> {
     if (!this.pendingEventImageFile) {
-      return this.eventForm.imageUrl.trim() || null;
+      return this.eventDTO.imageUrl.trim() || null;
     }
     const uploadResult = await this.mediaService.uploadImage(activeUserId, eventId, this.pendingEventImageFile);
     if (!uploadResult.uploaded || !uploadResult.imageUrl) {
       return null;
     }
-    if (this.eventForm.imageUrl.startsWith('blob:')) {
-      URL.revokeObjectURL(this.eventForm.imageUrl);
+    if (this.eventDTO.imageUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(this.eventDTO.imageUrl);
     }
     this.pendingEventImageFile = null;
     return uploadResult.imageUrl;
   }
 
-  private currentSubEventPanelState(): { item: UiModels.EventFormSubEventItem; index: number } | null {
-    const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents);
+  private currentSubEventPanelState(): { item: ContractTypes.SubEventDTO; index: number } | null {
+    const source = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventDTO.subEvents);
     if (source.length === 0) {
       return null;
     }
@@ -2553,7 +2791,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
-  private resolveCurrentSubEventIndex(items: UiModels.EventFormSubEventItem[]): number {
+  private resolveCurrentSubEventIndex(items: ContractTypes.SubEventDTO[]): number {
     if (items.length === 0) {
       return 0;
     }
@@ -2621,7 +2859,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
-  private subEventName(subEvent: UiModels.EventFormSubEventItem): string {
-    return `${subEvent.name ?? subEvent.title ?? 'Untitled'}`;
+  private subEventName(subEvent: ContractTypes.SubEventDTO): string {
+    return `${subEvent.name || 'Untitled'}`;
   }
 }

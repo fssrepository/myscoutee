@@ -15,7 +15,7 @@ import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../..
 const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50)
   .filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id));
 
-function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyItem[] {
+function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyDTO[] {
   return [
     {
       id: 'policy-checkin-window',
@@ -40,7 +40,7 @@ function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyItem[] {
 
 function buildCheckoutDemoPricing(
   basePrice: number,
-  slotTemplates: readonly ContractTypes.EventSlotTemplate[] = []
+  slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = []
 ): ContractTypes.PricingConfig {
   const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
   pricing.enabled = true;
@@ -74,7 +74,7 @@ function buildCheckoutDemoSubEvents(options: {
   firstSlotStartAt: string;
   firstSlotEndAt: string;
   includePaidOptional: boolean;
-}): ContractTypes.SubEventFormItem[] {
+}): ContractTypes.SubEventDTO[] {
   const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   paidAddOnPricing.enabled = options.includePaidOptional;
@@ -697,11 +697,11 @@ interface ActivityEventSeedOverrides {
   pendingMemberUserIds?: string[];
   topics?: string[];
   pricing?: ContractTypes.PricingConfig | null;
-  policies?: ContractTypes.EventPolicyItem[];
+  policies?: ContractTypes.EventPolicyDTO[];
   slotsEnabled?: boolean;
-  slotTemplates?: ContractTypes.EventSlotTemplate[];
+  slotTemplates?: ContractTypes.EventSlotTemplateDTO[];
   generated?: boolean;
-  subEvents?: ContractTypes.SubEventFormItem[];
+  subEvents?: ContractTypes.SubEventDTO[];
   subEventsDisplayMode?: ContractTypes.SubEventsDisplayMode;
   rating?: number;
   boost?: number;
@@ -1722,7 +1722,7 @@ export class SeedEventsBuilder {
     endAtIso: string,
     activeUserId: string,
     capacityRange: { min: number; max: number }
-  ): ContractTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventDTO[] {
     const source = {
       id: record.id,
       avatar: AppUtils.initialsFromText(record.title),
@@ -1821,7 +1821,7 @@ export class SeedEventsBuilder {
       .filter(userId => userId.length > 0)));
   }
 
-  private static cloneSubEvents(items: readonly ContractTypes.SubEventFormItem[] | undefined): ContractTypes.SubEventFormItem[] | undefined {
+  private static cloneSubEvents(items: readonly ContractTypes.SubEventDTO[] | undefined): ContractTypes.SubEventDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1830,12 +1830,12 @@ export class SeedEventsBuilder {
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
         : []
     }));
   }
 
-  private static clonePolicies(items: readonly ContractTypes.EventPolicyItem[] | undefined): ContractTypes.EventPolicyItem[] | undefined {
+  private static clonePolicies(items: readonly ContractTypes.EventPolicyDTO[] | undefined): ContractTypes.EventPolicyDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1859,7 +1859,7 @@ export class SeedEventsBuilder {
     startAtIso: string;
     endAtIso: string;
     frequency?: string | null;
-    slotTemplates?: readonly ContractTypes.EventSlotTemplate[] | null;
+    slotTemplates?: readonly ContractTypes.EventSlotTemplateDTO[] | null;
   }): string {
     const startAt = this.parseSeedDateTime(options.startAtIso);
     const endAt = this.parseSeedDateTime(options.endAtIso);
@@ -1909,8 +1909,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneRebasedSlotTemplates(
-    items: readonly ContractTypes.EventSlotTemplate[] | undefined
-  ): ContractTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplateDTO[] | undefined
+  ): ContractTypes.EventSlotTemplateDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1923,8 +1923,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneRebasedSubEvents(
-    items: readonly ContractTypes.SubEventFormItem[] | undefined
-  ): ContractTypes.SubEventFormItem[] | undefined {
+    items: readonly ContractTypes.SubEventDTO[] | undefined
+  ): ContractTypes.SubEventDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1935,7 +1935,7 @@ export class SeedEventsBuilder {
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? this.rebasePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
         : []
     }));
   }
@@ -1951,8 +1951,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneSlotTemplates(
-    items: readonly ContractTypes.EventSlotTemplate[] | undefined
-  ): ContractTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplateDTO[] | undefined
+  ): ContractTypes.EventSlotTemplateDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }

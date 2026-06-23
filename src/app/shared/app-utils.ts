@@ -274,12 +274,29 @@ export class AppUtils {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  static parseDate(value: string | number | Date | null | undefined): Date | null {
+  static parseDate(value: unknown): Date | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }
-    const parsed = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+    if (value instanceof Date) {
+      const parsedDate = new Date(value.getTime());
+      return Number.isFinite(parsedDate.getTime()) ? parsedDate : null;
+    }
+    if (typeof value === 'number') {
+      const parsedNumber = new Date(value);
+      return Number.isFinite(parsedNumber.getTime()) ? parsedNumber : null;
+    }
+    const raw = `${value}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const parsed = new Date(raw.replace(/\//g, '-'));
     return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  static parseDateOnly(value: unknown): Date | null {
+    const parsed = this.parseDate(value);
+    return parsed ? this.dateOnly(parsed) : null;
   }
 
   static dateTimeMs(value: string | number | Date | null | undefined): number | null {

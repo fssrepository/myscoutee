@@ -7,7 +7,7 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
+import { LocalActivityEventsMapper } from '../mappers/event.mapper';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
@@ -223,7 +223,7 @@ export class LocalEventsRepository {
     }
   }
 
-  private canApplyStageAction(action: string, stages: readonly ContractTypes.SubEventFormItem[], stageIndex: number): boolean {
+  private canApplyStageAction(action: string, stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
     const stage = stages[stageIndex];
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
@@ -244,7 +244,7 @@ export class LocalEventsRepository {
     }
   }
 
-  private canReopenScores(stages: readonly ContractTypes.SubEventFormItem[], stageIndex: number): boolean {
+  private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
     const nextStage = stages[stageIndex + 1];
     if (!nextStage) {
       return true;
@@ -257,7 +257,7 @@ export class LocalEventsRepository {
   }
 
   private resolveStageIndex(
-    stages: readonly ContractTypes.SubEventFormItem[],
+    stages: readonly ContractTypes.SubEventDTO[],
     subEventId: string | null | undefined,
     fallbackIndex: number | null | undefined
   ): number {
@@ -313,7 +313,7 @@ export class LocalEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords.map(record => ActivityEventDtoMapper.toDto(record)),
+        records: normalizedRecords.map(record => LocalActivityEventsMapper.toDto(record)),
         total,
         nextCursor: null
       };
@@ -330,7 +330,7 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records: records.map(record => ActivityEventDtoMapper.toDto(record)),
+      records: records.map(record => LocalActivityEventsMapper.toDto(record)),
       total,
       nextCursor
     };
@@ -1788,7 +1788,7 @@ export class LocalEventsRepository {
       .slice(0, 5)));
   }
 
-  private cloneSubEvents(items: readonly ContractTypes.SubEventFormItem[] | undefined): ContractTypes.SubEventFormItem[] | undefined {
+  private cloneSubEvents(items: readonly ContractTypes.SubEventDTO[] | undefined): ContractTypes.SubEventDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1796,12 +1796,12 @@ export class LocalEventsRepository {
       ...item,
       location: typeof item.location === 'string' ? item.location : '',
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
         : []
     }));
   }
 
-  private localGeneratedGroups(stage: ContractTypes.SubEventFormItem): ContractTypes.SubEventGroupItem[] {
+  private localGeneratedGroups(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {
     const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
     const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
     const max = Math.max(min, Math.trunc(Number(stage.tournamentGroupCapacityMax ?? stage.capacityMax) || min));
@@ -1818,10 +1818,10 @@ export class LocalEventsRepository {
   }
 
   private materializeSubEventsForSlotOccurrence(
-    items: readonly ContractTypes.SubEventFormItem[] | undefined,
+    items: readonly ContractTypes.SubEventDTO[] | undefined,
     occurrenceStart: Date,
     occurrenceEnd: Date
-  ): ContractTypes.SubEventFormItem[] | undefined {
+  ): ContractTypes.SubEventDTO[] | undefined {
     const subEvents = this.cloneSubEvents(items);
     if (!subEvents?.length) {
       return subEvents;
@@ -2120,7 +2120,7 @@ export class LocalEventsRepository {
   private resolveUpcomingSlotOccurrences(
     parentEventId: string,
     table: ActivityEventRecordCollection
-  ): ContractTypes.EventSlotOccurrence[] {
+  ): ContractTypes.EventSlotOccurrenceDTO[] {
     const nowMs = Date.now() - (60 * 60 * 1000);
     return table.ids
       .map(id => table.byId[id])

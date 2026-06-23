@@ -17,8 +17,8 @@ import { from } from 'rxjs';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type { ChatDTO, ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import {
-  ActivityEventDTO,
   type ActivityMemberOwnerRef,
+  type ActivityEventDTO,
   type ActivityMembersSummary
 } from '../../../shared/core/contracts/activity.interface';
 import type {
@@ -284,7 +284,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityPendingMembersById: Record<string, number> = {};
   protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, ContractTypes.EventCapacityRange> = {};
-  protected readonly eventSubEventsById: Record<string, ContractTypes.SubEventFormItem[]> = {};
+  protected readonly eventSubEventsById: Record<string, ContractTypes.SubEventDTO[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
   private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
@@ -1963,7 +1963,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private setActivityItems(items: readonly ActivitySmartListDTO[]): void {
     this.activityItems = items.map(item =>
-      item instanceof ActivityEventDTO ? ActivityEventDTO.from(item) : ({ ...item } as ActivitySmartListDTO)
+      this.isActivityEventDTOItem(item) ? this.cloneActivityEventDTO(item) : ({ ...item } as ActivitySmartListDTO)
     );
   }
 
@@ -1973,7 +1973,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private cacheActivityEventItems(items: readonly ActivityEventDTO[]): void {
     const normalizedItems = Array.isArray(items)
-      ? items.map(item => ActivityEventDTO.from(item))
+      ? items.map(item => this.cloneActivityEventDTO(item))
       : [];
     this.activityItems = normalizedItems;
     this.activeHostingIds = new Set(
@@ -2011,21 +2011,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activityCapacityById[item.id] = `${item.acceptedMembers} / ${item.capacityTotal}`;
     this.activityPendingMembersById[item.id] = item.pendingMembers;
     this.eventVisibilityById[item.id] = item.visibility;
-    this.eventCapacityById[item.id] = { min: item.capacityMin, max: item.capacityMax };
-    if (Array.isArray(item.subEvents) && item.subEvents.length > 0) {
-      this.eventSubEventsById[item.id] = item.subEvents.map((subEvent: ContractTypes.SubEventFormItem) => ({
-        ...subEvent,
-        groups: Array.isArray(subEvent.groups) ? subEvent.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group })) : []
-      }));
-    } else {
-      delete this.eventSubEventsById[item.id];
-    }
+    this.eventCapacityById[item.id] = { min: item.capacityMin ?? null, max: item.capacityMax ?? null };
   }
 
   private applyActivityEventDTO(update: ActivityEventDTO): ActivityEventDTO {
     const existingDTO = this.currentActivityEventItems().find(item => item.id === update.id)
       ?? this.eventsService.peekKnownItemDTOById(this.activeUser.id, update.id);
-    const nextDTO = existingDTO ? existingDTO.apply(update) : ActivityEventDTO.from(update);
+    const nextDTO = existingDTO
+      ? this.patchActivityEventDTO(existingDTO, update)
+      : this.cloneActivityEventDTO(update);
     this.activityItems = this.activityItems.map(item => {
       if (this.isActivityEventDTOItem(item) && item.id === nextDTO.id) {
         return nextDTO;
@@ -2039,6 +2033,34 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private isActivityEventDTOItem(item: ActivitySmartListDTO): item is ActivityEventDTO {
     return Array.isArray((item as ActivityEventDTO).adminIds)
       && typeof (item as ActivityEventDTO).startAtIso === 'string';
+  }
+
+  private cloneActivityEventDTO(item: ActivityEventDTO): ActivityEventDTO {
+    return {
+      ...item,
+      adminIds: [...(item.adminIds ?? [])],
+      acceptedMemberUserIds: [...(item.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])]
+    };
+  }
+
+  private patchActivityEventDTO(item: ActivityEventDTO, update: Partial<ActivityEventDTO>): ActivityEventDTO {
+    const acceptedMembers = Math.max(0, Math.trunc(Number(update.acceptedMembers ?? item.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(update.pendingMembers ?? item.pendingMembers) || 0));
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      Math.max(0, Math.trunc(Number(update.capacityTotal ?? item.capacityTotal) || 0))
+    );
+    return this.cloneActivityEventDTO({
+      ...item,
+      ...update,
+      endAtIso: update.endAtIso ?? (update.startAtIso ? update.startAtIso : item.endAtIso),
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    });
   }
 
   private upsertVisibleEventRowFromSave(sync: ActivityEventSaveMessage): void {
@@ -2640,8 +2662,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return row;
       }
       return {
-        ...this.buildActivityEventCard(dto.apply({
-          id: dto.id,
+        ...this.buildActivityEventCard(this.patchActivityEventDTO(dto, {
           acceptedMembers,
           pendingMembers,
           capacityTotal
@@ -2668,8 +2689,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!dto) {
       return;
     }
-    Object.assign(row, this.buildActivityEventCard(dto.apply({
-      id: dto.id,
+    Object.assign(row, this.buildActivityEventCard(this.patchActivityEventDTO(dto, {
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal
@@ -2900,9 +2920,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         max: dto.capacityMax ?? existingCapacity.max
       };
     }
-    if (Array.isArray(dto.subEvents)) {
-      this.eventSubEventsById[dto.id] = this.cloneSyncedSubEventForms(dto.subEvents);
-    }
     this.clearInvitationMemberCacheFromEventSave(dto);
 
     this.patchVisibleActivityRowsFromEventSave(dto);
@@ -2957,7 +2974,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  protected cloneSyncedSubEventForms(items: readonly ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] {
+  protected cloneSyncedSubEventForms(items: readonly ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] {
     return items.map(item => ({
       ...item,
       groups: Array.isArray(item.groups)
@@ -2967,8 +2984,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected cloneSyncedSlotTemplates(
-    items: readonly ContractTypes.EventSlotTemplate[] | null | undefined
-  ): ContractTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplateDTO[] | null | undefined
+  ): ContractTypes.EventSlotTemplateDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }

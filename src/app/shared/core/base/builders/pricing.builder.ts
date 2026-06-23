@@ -346,7 +346,7 @@ export class PricingBuilder {
   }
 
   static slotCatalogFromEventSlotTemplates(
-    slots: readonly Pick<ContractTypes.EventSlotTemplate, 'id' | 'startAt' | 'endAt'>[]
+    slots: readonly Pick<ContractTypes.EventSlotTemplateDTO, 'id' | 'startAt' | 'endAt'>[]
   ): ContractTypes.PricingSlotReference[] {
     return slots.map((slot, index) => ({
       id: `${slot.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,

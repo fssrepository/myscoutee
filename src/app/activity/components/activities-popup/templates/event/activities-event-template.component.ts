@@ -160,7 +160,7 @@ export class ActivitiesEventsController {
     this.host.applyActivityEventSave(sync);
   }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
-  private cloneSyncedSubEventForms(items: ContractTypes.SubEventFormItem[]): ContractTypes.SubEventFormItem[] { return this.host.cloneSyncedSubEventForms(items); }
+  private cloneSyncedSubEventForms(items: ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] { return this.host.cloneSyncedSubEventForms(items); }
   private openActivityChat(chat: ChatRecord): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
@@ -762,9 +762,9 @@ export class ActivitiesEventsController {
   }
 
   private shouldUseCheckoutFlow(record: {
-    upcomingSlots?: ContractTypes.EventSlotOccurrence[] | null;
-    policies?: ContractTypes.EventPolicyItem[] | null;
-    subEvents?: ContractTypes.SubEventFormItem[] | null;
+    upcomingSlots?: ContractTypes.EventSlotOccurrenceDTO[] | null;
+    policies?: ContractTypes.EventPolicyDTO[] | null;
+    subEvents?: ContractTypes.SubEventDTO[] | null;
     pricing?: ContractTypes.PricingConfig | null;
   }): boolean {
     if ((record?.upcomingSlots?.length ?? 0) > 0) {
@@ -773,7 +773,7 @@ export class ActivitiesEventsController {
     if ((record?.policies?.length ?? 0) > 0) {
       return true;
     }
-    if ((record?.subEvents ?? []).some((item: ContractTypes.SubEventFormItem) => item.optional)) {
+    if ((record?.subEvents ?? []).some((item: ContractTypes.SubEventDTO) => item.optional)) {
       return true;
     }
     return Boolean(record?.pricing?.enabled && (Number(record?.pricing?.basePrice) || 0) > 0);
@@ -867,7 +867,7 @@ export class ActivitiesEventsController {
       this.chatCountValue(record?.capacityTotal ?? relatedSource.capacityTotal ?? relatedSource.capacityMax)
     );
     const selectedSlot = selection?.slotSourceId
-      ? (record?.upcomingSlots ?? []).find((item: ContractTypes.EventSlotOccurrence) => item.id === selection.slotSourceId) ?? null
+      ? (record?.upcomingSlots ?? []).find((item: ContractTypes.EventSlotOccurrenceDTO) => item.id === selection.slotSourceId) ?? null
       : null;
 
     return {
@@ -891,12 +891,12 @@ export class ActivitiesEventsController {
         ticketing: record?.ticketing ?? relatedSource.ticketing,
         pricing: record?.pricing ?? relatedSource.pricing,
         policies: Array.isArray(record?.policies)
-          ? record.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item }))
-          : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item })) : undefined),
+          ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
+          : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),
         slotsEnabled: record?.slotsEnabled ?? relatedSource.slotsEnabled,
         slotTemplates: Array.isArray(record?.slotTemplates)
-          ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item }))
-          : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item })) : undefined),
+          ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item }))
+          : (Array.isArray(relatedSource.slotTemplates) ? relatedSource.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item })) : undefined),
         parentEventId: record?.parentEventId ?? relatedSource.parentEventId,
         slotTemplateId: record?.slotTemplateId ?? relatedSource.slotTemplateId,
         generated: record?.generated ?? relatedSource.generated,
@@ -905,8 +905,8 @@ export class ActivitiesEventsController {
           ? { ...selectedSlot }
           : (record?.nextSlot ? { ...record.nextSlot } : (relatedSource.nextSlot ? { ...relatedSource.nextSlot } : undefined)),
         upcomingSlots: Array.isArray(record?.upcomingSlots)
-          ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item }))
-          : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
+          ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item }))
+          : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
         visibility: record?.visibility ?? relatedSource.visibility,
         blindMode: record?.blindMode ?? relatedSource.blindMode,
         status: record?.status ?? relatedSource.status ?? 'A',
@@ -1099,12 +1099,12 @@ export class ActivitiesEventsController {
       ticketing: record?.ticketing ?? source.ticketing,
       pricing: record?.pricing ?? source.pricing,
       policies: Array.isArray(record?.policies)
-        ? record.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item }))
-        : (Array.isArray(source.policies) ? source.policies.map((item: ContractTypes.EventPolicyItem) => ({ ...item })) : undefined),
+        ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
+        : (Array.isArray(source.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),
       slotsEnabled: record?.slotsEnabled ?? source.slotsEnabled,
       slotTemplates: Array.isArray(record?.slotTemplates)
-        ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item }))
-        : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: ContractTypes.EventSlotTemplate) => ({ ...item })) : undefined),
+        ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item }))
+        : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item })) : undefined),
       parentEventId: record?.parentEventId ?? source.parentEventId,
       slotTemplateId: record?.slotTemplateId ?? source.slotTemplateId,
       generated: record?.generated ?? source.generated,
@@ -1113,8 +1113,8 @@ export class ActivitiesEventsController {
         ? { ...record.nextSlot }
         : (source.nextSlot ? { ...source.nextSlot } : undefined),
       upcomingSlots: Array.isArray(record?.upcomingSlots)
-        ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item }))
-        : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrence) => ({ ...item })) : undefined),
+        ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item }))
+        : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
       visibility: record?.visibility ?? source.visibility ?? row.visibility,
       blindMode: record?.blindMode ?? source.blindMode,
       status: record?.status ?? source.status ?? 'A',

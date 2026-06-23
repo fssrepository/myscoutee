@@ -149,7 +149,7 @@ export interface AssetExploreBorrowDialogViewState {
   currency: string;
   bookingStartAtIso: string;
   cancellationPolicy: ContractTypes.PricingCancellationPolicy | null;
-  policies: ContractTypes.EventPolicyItem[];
+  policies: ContractTypes.EventPolicyDTO[];
   acceptedPolicyIds: string[];
   payable: boolean;
   paymentStep: boolean;
@@ -172,7 +172,7 @@ export interface AssignedAssetJoinDialogViewState {
   currency: string;
   shareLabel: string;
   shareHint: string;
-  policies: ContractTypes.EventPolicyItem[];
+  policies: ContractTypes.EventPolicyDTO[];
   acceptedPolicyIds: string[];
   submitLabel: string;
   busyLabel: string;
@@ -653,7 +653,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return `${view.source?.imageUrl ?? view.card.imageUrl ?? ''}`.trim();
   }
 
-  protected assetViewPolicies(view: ResourceAssetViewState): readonly ContractTypes.EventPolicyItem[] {
+  protected assetViewPolicies(view: ResourceAssetViewState): readonly ContractTypes.EventPolicyDTO[] {
     return view.source?.policies ?? [];
   }
 
@@ -665,15 +665,15 @@ export class EventResourcePopupComponent implements DoCheck {
     return Math.max(0, this.assetViewPolicies(view).length - this.assetViewRequiredPoliciesCount(view));
   }
 
-  protected assetViewPolicyRequirementLabel(policy: ContractTypes.EventPolicyItem): string {
+  protected assetViewPolicyRequirementLabel(policy: ContractTypes.EventPolicyDTO): string {
     return policy.required === false ? 'Optional' : 'Required';
   }
 
-  protected assetViewPolicyMetaLabel(policy: ContractTypes.EventPolicyItem): string {
+  protected assetViewPolicyMetaLabel(policy: ContractTypes.EventPolicyDTO): string {
     return policy.required === false ? 'Optional policy' : 'Required approval';
   }
 
-  protected assetViewPolicyPreview(policy: ContractTypes.EventPolicyItem): string {
+  protected assetViewPolicyPreview(policy: ContractTypes.EventPolicyDTO): string {
     const description = policy.description.trim();
     if (description.length > 0) {
       return description;

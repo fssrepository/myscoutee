@@ -3,6 +3,7 @@ import {
   EventFeedbackDetailDto,
   type UserGameFilterPreferencesDto
 } from '../../core/contracts/activity.interface';
+import { EventFeedbackBuilder } from '../../core/base/builders';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
 
@@ -625,7 +626,7 @@ export class AppContext {
     }
     this._activityEventFeedbackSubmitSync.set({
       updatedMs: Date.now(),
-      dto: EventFeedbackDetailDto.normalize({
+      dto: EventFeedbackBuilder.cloneDetail({
         ...dto,
         eventId
       })

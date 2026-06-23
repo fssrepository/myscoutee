@@ -1115,7 +1115,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrence): void {
+  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrenceDTO): void {
     const record = this.slotPickerRecord;
     if (!record) {
       return;
@@ -1146,7 +1146,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrence): string {
+  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrenceDTO): string {
     return `${slot.acceptedMembers} / ${slot.capacityTotal}`;
   }
 
@@ -1234,11 +1234,8 @@ export class EventExplorePopupComponent {
           endAtIso: nextEndIso,
           distanceKm: dto.distanceKm,
           visibility: dto.visibility ?? existing.visibility,
-          blindMode: dto.blindMode ?? existing.blindMode,
           imageUrl: dto.imageUrl.trim() || existing.imageUrl,
-          sourceLink: dto.sourceLink?.trim() || existing.sourceLink,
           location: dto.location?.trim() || existing.location,
-          locationCoordinates: dto.locationCoordinates ?? existing.locationCoordinates,
           acceptedMembers,
           pendingMembers: Number.isFinite(Number(dto.pendingMembers))
             ? Math.max(0, Math.trunc(Number(dto.pendingMembers)))
@@ -1249,22 +1246,7 @@ export class EventExplorePopupComponent {
             acceptedMembers,
             dto.capacityMax ?? dto.capacityTotal ?? existing.capacityTotal
           ),
-          autoInviter: dto.autoInviter ?? existing.autoInviter,
-          frequency: dto.frequency ?? existing.frequency,
-          slotsEnabled: dto.slotsEnabled ?? existing.slotsEnabled,
-          slotTemplates: Array.isArray(dto.slotTemplates)
-            ? dto.slotTemplates.map(item => ({ ...item }))
-            : (existing.slotTemplates ?? []).map(item => ({ ...item })),
-          parentEventId: dto.parentEventId ?? existing.parentEventId,
-          slotTemplateId: dto.slotTemplateId ?? existing.slotTemplateId,
-          generated: dto.generated ?? existing.generated,
           eventType: dto.eventType ?? existing.eventType,
-          nextSlot: dto.nextSlot ? { ...dto.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
-          upcomingSlots: Array.isArray(dto.upcomingSlots)
-            ? dto.upcomingSlots.map(item => ({ ...item }))
-            : (existing.upcomingSlots ?? []).map(item => ({ ...item })),
-          topics: Array.isArray(dto.topics) ? [...dto.topics] : [...existing.topics],
-          ticketing: dto.ticketing ?? existing.ticketing,
           status: dto.status ?? existing.status
         };
         this.eventExploreSmartList.replaceVisibleItems(currentItems);
@@ -1909,7 +1891,7 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrence): boolean {
+  private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     if (capacityTotal <= 0) {
       return false;

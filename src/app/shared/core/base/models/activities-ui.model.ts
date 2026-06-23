@@ -1,6 +1,6 @@
 import type { ActivitiesPrimaryFilter, ActivityMemberEntry, RateFilterKey } from '../../contracts/activity.interface';
 import type { ChatRecord } from '../../contracts/chat.interface';
-import type { EventEditorTarget, SubEventFormItem } from '../../contracts/event.interface';
+import type { EventEditorTarget, SubEventDTO } from '../../contracts/event.interface';
 import type { ActivityMemberOwnerType, AssetType, SubEventResourceFilter } from '../../common/constants';
 import type { AssetCardDTO } from '../dto';
 import type { PopupHeaderLookup } from './popup-ui.model';
@@ -26,7 +26,7 @@ export type ActivitiesNavigationRequest =
       ownerId?: string;
       item: ChatRecord;
       resourceType: SubEventResourceFilter;
-      subEvent: SubEventFormItem;
+      subEvent: SubEventDTO;
       group?: { id: string; groupLabel: string } | null;
       assetAssignmentIds?: SubEventAssetAssignmentIds;
       assetCardsByType?: SubEventAssetCardsByType;

@@ -36,7 +36,7 @@ interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
   ownerId: string;
   parentTitle: string;
-  subEvent: ContractTypes.SubEventFormItem;
+  subEvent: ContractTypes.SubEventDTO;
   groupId?: string;
   groupName?: string;
   fallbackCardsByType: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>;
@@ -490,7 +490,7 @@ export class SubEventResourcePopupController {
     const now = new Date();
     const end = new Date(now);
     end.setHours(end.getHours() + 2);
-    const subEvent: ContractTypes.SubEventFormItem = {
+    const subEvent: ContractTypes.SubEventDTO = {
       id: `asset-explore-${this.activeUser().id || 'user'}`,
       name: 'Asset Explore',
       description: '',
@@ -552,7 +552,7 @@ export class SubEventResourcePopupController {
     ownerId: string,
     parentTitle: string,
     type: AppConstants.AssetType,
-    rawSubEvent: ContractTypes.SubEventFormItem,
+    rawSubEvent: ContractTypes.SubEventDTO,
     group: { id?: string | null; groupLabel?: string; pending?: number; capacityMin?: number; capacityMax?: number } | null | undefined,
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
   ): ResourcePopupContext {
@@ -1467,7 +1467,7 @@ export class SubEventResourcePopupController {
 
   private resolveAssignedAssetJoinPricing(
     card: AppDTOs.AssetCardDTO,
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     activeUserId = this.activeUser().id,
     managerUserId: string | null = null
   ): AssignedAssetJoinPricingPreview {
@@ -3918,7 +3918,7 @@ export class SubEventResourcePopupController {
   }
 
   private subEventAssetCapacityMetrics(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType
   ): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
     const cards = this.subEventAssignedAssetCards(subEvent.id, type);
@@ -4106,7 +4106,7 @@ export class SubEventResourcePopupController {
   }
 
   private assetRequestBookingForSubEvent(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     quantity: number,
     ownerId: string,
     parentTitle: string
@@ -4117,7 +4117,7 @@ export class SubEventResourcePopupController {
   }
 
   private assetRequestBookingForRange(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     ownerId: string,
     parentTitle: string,
     startAtIso: string,
@@ -4150,7 +4150,7 @@ export class SubEventResourcePopupController {
     };
   }
 
-  private syncSubEventManualAssetRequests(subEvent: ContractTypes.SubEventFormItem, persist = false): void {
+  private syncSubEventManualAssetRequests(subEvent: ContractTypes.SubEventDTO, persist = false): void {
     const context = this.popupContextRef();
     if (!context) {
       return;
@@ -4199,7 +4199,7 @@ export class SubEventResourcePopupController {
 
   private buildManualAssignmentRequest(
     card: AppDTOs.AssetCardDTO,
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     ownerId: string,
     parentTitle: string,
     activeUser: UserDto
@@ -4268,7 +4268,7 @@ export class SubEventResourcePopupController {
   }
 
   private defaultAssetExploreRange(
-    subEvent: ContractTypes.SubEventFormItem
+    subEvent: ContractTypes.SubEventDTO
   ): { startAtIso: string; endAtIso: string } {
     const startAtIso = `${subEvent.startAt ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(new Date());
     const endAtIso = `${subEvent.endAt ?? ''}`.trim();
@@ -4612,7 +4612,7 @@ export class SubEventResourcePopupController {
     this.syncPopupSubEventMetrics();
   }
 
-  private cloneSubEvent(subEvent: ContractTypes.SubEventFormItem): ContractTypes.SubEventFormItem {
+  private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
       ...subEvent,
       pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : undefined,
@@ -4777,10 +4777,10 @@ export class SubEventResourcePopupController {
   }
 
   private applyGroupScopedAssetSnapshot(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     group: { pending?: number; capacityMin?: number; capacityMax?: number }
-  ): ContractTypes.SubEventFormItem {
+  ): ContractTypes.SubEventDTO {
     const scopedPending = Number.isFinite(Number(group.pending)) ? Math.max(0, Math.trunc(Number(group.pending))) : undefined;
     const scopedMin = Number.isFinite(Number(group.capacityMin)) ? Math.max(0, Math.trunc(Number(group.capacityMin))) : undefined;
     const scopedMax = Number.isFinite(Number(group.capacityMax)) ? Math.max(0, Math.trunc(Number(group.capacityMax))) : undefined;
@@ -4869,11 +4869,11 @@ export class SubEventResourcePopupController {
     return `${subEventId}:${type}`;
   }
 
-  private subEventDisplayName(subEvent: ContractTypes.SubEventFormItem | null | undefined): string {
+  private subEventDisplayName(subEvent: ContractTypes.SubEventDTO | null | undefined): string {
     return `${subEvent?.name ?? ''}`.trim();
   }
 
-  private subEventStageLabel(subEvent: ContractTypes.SubEventFormItem | null | undefined): string {
+  private subEventStageLabel(subEvent: ContractTypes.SubEventDTO | null | undefined): string {
     const name = this.subEventDisplayName(subEvent);
     return name || 'Sub Event';
   }

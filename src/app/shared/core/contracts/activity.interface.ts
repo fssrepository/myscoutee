@@ -125,15 +125,15 @@ export interface ActivityEventSaveDTO {
   ticketing?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   slotsEnabled?: boolean;
-  slotTemplates?: EventContracts.EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
   eventType?: EventContracts.EventRecordKind;
-  nextSlot?: EventContracts.EventSlotOccurrence | null;
-  upcomingSlots?: EventContracts.EventSlotOccurrence[];
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
   visibility?: AppConstants.EventVisibility;
-  blindMode?: EventContracts.EventBlindMode;
+  blindMode: EventContracts.EventBlindMode;
   status?: ActivityEventStatus;
   creatorUserId?: string;
   creatorName?: string;
@@ -143,9 +143,9 @@ export interface ActivityEventSaveDTO {
   location?: string;
   locationCoordinates?: UserContracts.LocationCoordinates;
   sourceLink?: string;
-  policies?: EventContracts.EventPolicyItem[];
+  policies?: EventContracts.EventPolicyDTO[];
   topics?: string[];
-  subEvents?: EventContracts.SubEventFormItem[];
+  subEvents?: EventContracts.SubEventDTO[];
   subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   paymentSessionId?: string | null;
 }
@@ -220,15 +220,15 @@ export interface ActivityEventRecord {
   frequency?: string;
   ticketing: boolean;
   pricing?: PricingContracts.PricingConfig | null;
-  policies?: EventContracts.EventPolicyItem[];
+  policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
-  slotTemplates?: EventContracts.EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
   eventType?: EventContracts.EventRecordKind;
-  nextSlot?: EventContracts.EventSlotOccurrence | null;
-  upcomingSlots?: EventContracts.EventSlotOccurrence[];
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -237,132 +237,107 @@ export interface ActivityEventRecord {
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
-  subEvents?: EventContracts.SubEventFormItem[];
+  subEvents?: EventContracts.SubEventDTO[];
   subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   rating: number;
   boost: number;
   affinity: number;
 }
 
-export type ActivityEventDTOStatus = ActivityEventStatus;
-
-export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>> & Pick<ActivityEventDTO, 'id'>;
-
-export class ActivityEventDTO {
-  id!: string;
-  userId!: string;
-  type!: ActivityEventRepositoryItemType;
-  status?: ActivityEventDTOStatus;
-  statusBeforeSuppression?: ActivityEventDTOStatus | null;
-  adminIds!: string[];
-  avatar!: string;
-  title!: string;
-  subtitle!: string;
-  timeframe!: string;
-  inviter!: string | null;
-  unread!: number;
-  activity!: number;
-  trashedAtIso?: string | null;
-  creatorUserId!: string;
-  creatorName!: string;
-  creatorInitials!: string;
-  creatorGender?: AppConstants.UserGender;
-  creatorCity!: string;
-  visibility!: AppConstants.EventVisibility;
-  blindMode?: EventContracts.EventBlindMode;
-  startAtIso!: string;
-  endAtIso!: string;
-  distanceKm!: number;
-  imageUrl!: string;
-  sourceLink?: string;
-  location!: string;
-  locationCoordinates?: UserContracts.LocationCoordinates | null;
-  capacityMin!: number | null;
-  capacityMax!: number | null;
-  capacityTotal!: number;
-  autoInviter?: boolean;
-  frequency?: string;
-  ticketing!: boolean;
-  pricing?: PricingContracts.PricingConfig | null;
-  policies?: EventContracts.EventPolicyItem[];
-  slotsEnabled?: boolean;
-  slotTemplates?: EventContracts.EventSlotTemplate[];
-  parentEventId?: string | null;
-  slotTemplateId?: string | null;
-  generated?: boolean;
+export interface ActivityEventDTO {
+  id: string;
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  adminIds: string[];
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  activity: number;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorCity: string;
+  visibility: AppConstants.EventVisibility;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  location: string;
+  capacityTotal: number;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
-  nextSlot?: EventContracts.EventSlotOccurrence | null;
-  upcomingSlots?: EventContracts.EventSlotOccurrence[];
-  acceptedMembers!: number;
-  pendingMembers!: number;
+  acceptedMembers: number;
+  pendingMembers: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
-  topics!: string[];
-  subEvents?: EventContracts.SubEventFormItem[];
-  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
-  rating!: number;
-  boost!: number;
-  affinity!: number;
+  boost: number;
+}
 
-  constructor(data: Omit<ActivityEventDTO, 'apply'>) {
-    Object.assign(this, ActivityEventDTO.copyDefined(data));
-  }
-
-  apply(update: ActivityEventDTO): ActivityEventDTO;
-  apply(update: ActivityEventDTOApplyInput): ActivityEventDTO;
-  apply(update: ActivityEventDTOApplyInput): ActivityEventDTO {
-    const current = ActivityEventDTO.copyDefined(this);
-    const patch = ActivityEventDTO.copyDefined(update);
-    const acceptedMembers = ActivityEventDTO.countValue(patch.acceptedMembers, current.acceptedMembers);
-    const pendingMembers = ActivityEventDTO.countValue(patch.pendingMembers, current.pendingMembers);
-    const capacityTotal = Math.max(
-      acceptedMembers,
-      ActivityEventDTO.countValue(patch.capacityTotal, current.capacityTotal)
-    );
-
-    return new ActivityEventDTO({
-      ...current,
-      ...patch,
-      endAtIso: patch.endAtIso ?? (patch.startAtIso ? patch.startAtIso : current.endAtIso),
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal
-    });
-  }
-
-  static from(data: ActivityEventDTO): ActivityEventDTO;
-  static from(data: Omit<ActivityEventDTO, 'apply'>): ActivityEventDTO;
-  static from(data: ActivityEventDTO | Omit<ActivityEventDTO, 'apply'>): ActivityEventDTO {
-    return data instanceof ActivityEventDTO
-      ? data
-      : new ActivityEventDTO(data);
-  }
-
-  private static copyDefined<T extends object>(value: T): T {
-    const copy = ActivityEventDTO.copyValue(value);
-    for (const key of Object.keys(copy) as (keyof T)[]) {
-      if (copy[key] === undefined) {
-        delete copy[key];
-      }
-    }
-    return copy;
-  }
-
-  private static copyValue<T>(value: T): T {
-    return value == null
-      ? value
-      : JSON.parse(JSON.stringify(value)) as T;
-  }
-
-  private static countValue(value: unknown, fallback: number): number {
-    const numeric = Number(value);
-    return Number.isFinite(numeric)
-      ? Math.max(0, Math.trunc(numeric))
-      : Math.max(0, Math.trunc(Number(fallback) || 0));
-  }
+export interface ActivityEventDetailDTO {
+  id: string;
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  statusBeforeSuppression?: ActivityEventStatus | null;
+  adminIds: string[];
+  avatar: string;
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  unread: number;
+  activity: number;
+  trashedAtIso?: string | null;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorGender?: AppConstants.UserGender;
+  creatorCity: string;
+  visibility: AppConstants.EventVisibility;
+  blindMode: EventContracts.EventBlindMode;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  sourceLink: string;
+  location: string;
+  locationCoordinates: UserContracts.LocationCoordinates | null;
+  capacityMin: number | null;
+  capacityMax: number | null;
+  capacityTotal: number;
+  autoInviter: boolean;
+  frequency: string;
+  ticketing: boolean;
+  pricing: PricingContracts.PricingConfig | null;
+  policies: EventContracts.EventPolicyDTO[];
+  slotsEnabled: boolean;
+  slotTemplates: EventContracts.EventSlotTemplateDTO[];
+  parentEventId: string | null;
+  slotTemplateId: string | null;
+  generated: boolean;
+  eventType: EventContracts.EventRecordKind;
+  nextSlot: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots: EventContracts.EventSlotOccurrenceDTO[];
+  acceptedMembers: number;
+  pendingMembers: number;
+  acceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+  invitedMemberUserIds: string[];
+  pendingRequestMemberUserIds: string[];
+  pendingReason?: AppConstants.ActivityPendingReason;
+  topics: string[];
+  subEvents: EventContracts.SubEventDTO[];
+  subEventsDisplayMode: EventContracts.SubEventsDisplayMode;
+  rating: number;
+  boost: number;
+  affinity: number;
+  paymentSessionId: string | null;
 }
 
 export interface ActivityEventPageResultDTO {
@@ -704,10 +679,6 @@ export class EventFeedbackPageResultDto {
   readonly state: EventFeedbackPageStateSnapshotDto;
   readonly counts: EventFeedbackPageCountsDto;
 
-  static normalize(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
-    return new EventFeedbackPageResultDto(result);
-  }
-
   constructor(result: Partial<EventFeedbackPageResultDto> | null | undefined = null) {
     const allItems = EventFeedbackPageResultDto.clonePageItems(result?.allItems);
     const organizerItems = EventFeedbackPageResultDto.clonePageItems(result?.organizerItems);
@@ -1048,10 +1019,6 @@ export class EventFeedbackDetailDto {
   readonly title: string;
   readonly submittedAtIso: string;
   readonly cards: EventFeedbackCardDto[];
-
-  static normalize(result: Partial<EventFeedbackDetailDto> | null | undefined): EventFeedbackDetailDto {
-    return new EventFeedbackDetailDto(result);
-  }
 
   constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
     this.eventId = result?.eventId?.trim() ?? '';

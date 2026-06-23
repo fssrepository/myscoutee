@@ -72,7 +72,7 @@ export class EventCheckoutPopupComponent {
 
   private renderedDialogId = 0;
   private checkoutSessionId: string | null = null;
-  private availableSlotsCache: ContractTypes.EventSlotOccurrence[] = [];
+  private availableSlotsCache: ContractTypes.EventSlotOccurrenceDTO[] = [];
   private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
   private availableSlotDateKeySet = new Set<string>();
 
@@ -153,11 +153,11 @@ export class EventCheckoutPopupComponent {
     return dialog.record.timeframe || dialog.subtitle;
   }
 
-  protected availableSlots(): readonly ContractTypes.EventSlotOccurrence[] {
+  protected availableSlots(): readonly ContractTypes.EventSlotOccurrenceDTO[] {
     return this.availableSlotsCache;
   }
 
-  protected selectedSlot(): ContractTypes.EventSlotOccurrence | null {
+  protected selectedSlot(): ContractTypes.EventSlotOccurrenceDTO | null {
     if (!this.selectedSlotSourceId) {
       return null;
     }
@@ -168,7 +168,7 @@ export class EventCheckoutPopupComponent {
     return this.availableSlots().length > 0;
   }
 
-  protected optionalSubEvents(): ContractTypes.SubEventFormItem[] {
+  protected optionalSubEvents(): ContractTypes.SubEventDTO[] {
     return (this.dialog()?.record.subEvents ?? []).filter(item => item.optional);
   }
 
@@ -183,7 +183,7 @@ export class EventCheckoutPopupComponent {
     return this.availableSlotDateEntriesCache;
   }
 
-  protected filteredSlots(): ContractTypes.EventSlotOccurrence[] {
+  protected filteredSlots(): ContractTypes.EventSlotOccurrenceDTO[] {
     const selectedDateKey = this.selectedSlotDateKey();
     const all = [...this.availableSlots()];
     if (!selectedDateKey) {
@@ -192,7 +192,7 @@ export class EventCheckoutPopupComponent {
     return all.filter(slot => this.slotDateKeyFromIso(slot.startAtIso) === selectedDateKey);
   }
 
-  protected pagedSlots(): ContractTypes.EventSlotOccurrence[] {
+  protected pagedSlots(): ContractTypes.EventSlotOccurrenceDTO[] {
     const offset = this.slotPageIndex * EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS;
     return this.filteredSlots().slice(offset, offset + EventCheckoutPopupComponent.MAX_VISIBLE_SLOTS);
   }
@@ -288,7 +288,7 @@ export class EventCheckoutPopupComponent {
     this.invalidateCheckoutDraft();
   }
 
-  protected policies(): ContractTypes.EventPolicyItem[] {
+  protected policies(): ContractTypes.EventPolicyDTO[] {
     return this.dialog()?.record.policies ?? [];
   }
 
@@ -596,7 +596,7 @@ export class EventCheckoutPopupComponent {
     return 'Send the request now. Payment unlocks in the basket after the event admin approves it.';
   }
 
-  protected slotCapacityLabel(slot: ContractTypes.EventSlotOccurrence): string {
+  protected slotCapacityLabel(slot: ContractTypes.EventSlotOccurrenceDTO): string {
     return this.isSlotFull(slot)
       ? `${slot.acceptedMembers} / ${slot.capacityTotal} · full`
       : `${slot.acceptedMembers} / ${slot.capacityTotal}`;
@@ -689,15 +689,15 @@ export class EventCheckoutPopupComponent {
     return item.id;
   }
 
-  protected trackPolicy(_index: number, item: ContractTypes.EventPolicyItem): string {
+  protected trackPolicy(_index: number, item: ContractTypes.EventPolicyDTO): string {
     return item.id;
   }
 
-  protected trackOptionalSubEvent(_index: number, item: ContractTypes.SubEventFormItem): string {
+  protected trackOptionalSubEvent(_index: number, item: ContractTypes.SubEventDTO): string {
     return item.id;
   }
 
-  protected trackSlot(_index: number, item: ContractTypes.EventSlotOccurrence): string {
+  protected trackSlot(_index: number, item: ContractTypes.EventSlotOccurrenceDTO): string {
     return item.id;
   }
 
@@ -789,7 +789,7 @@ export class EventCheckoutPopupComponent {
     pricing: ContractTypes.PricingConfig | null | undefined,
     record: ActivityEventRecord,
     slotId: string | null,
-    slot: ContractTypes.EventSlotOccurrence | null
+    slot: ContractTypes.EventSlotOccurrenceDTO | null
   ): PricingSnapshot {
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
     const normalized = PricingBuilder.compactPricingConfig(pricing, {
@@ -1099,7 +1099,7 @@ export class EventCheckoutPopupComponent {
     this.clearCheckoutDraft();
   }
 
-  private rebuildSlotCaches(slots: readonly ContractTypes.EventSlotOccurrence[]): void {
+  private rebuildSlotCaches(slots: readonly ContractTypes.EventSlotOccurrenceDTO[]): void {
     this.availableSlotsCache = [...slots].sort((left, right) => {
       const leftMs = AppUtils.isoLocalDateTimeToDate(left.startAtIso)?.getTime() ?? 0;
       const rightMs = AppUtils.isoLocalDateTimeToDate(right.startAtIso)?.getTime() ?? 0;
@@ -1140,7 +1140,7 @@ export class EventCheckoutPopupComponent {
       && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
   }
 
-  private isSlotFull(slot: ContractTypes.EventSlotOccurrence): boolean {
+  private isSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {
     return Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0)) > 0
       && Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
   }
