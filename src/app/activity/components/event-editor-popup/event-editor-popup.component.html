@@ -6,9 +6,9 @@
     <div class="popup-header" (click)="$event.stopPropagation()">
       <div class="popup-title">
         <h2>{{ getPopupTitle() }}</h2>
-        @if (eventEditorService.readOnly() && eventDTO.title) {
+        @if (eventEditorService.readOnly() && eventDetailDTO.title) {
         <p class="popup-subtitle-activities">
-          {{ eventDTO.title }}
+          {{ eventDetailDTO.title }}
         </p>
         }
       </div>
@@ -66,7 +66,7 @@
       </div>
       } @else {
       <section class="editor-list-card">
-        <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDTO.visibility)">
+        <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDetailDTO.visibility)">
           <div class="experience-form-grid">
             <label class="experience-description-field">
               <span>Image</span>
@@ -74,7 +74,7 @@
               <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)"
                 [disabled]="eventEditorService.readOnly()">
                 <div class="asset-image-preview"
-                  [style.backgroundImage]="eventDTO.imageUrl ? 'url(' + eventDTO.imageUrl + ')' : null">
+                  [style.backgroundImage]="eventDetailDTO.imageUrl ? 'url(' + eventDetailDTO.imageUrl + ')' : null">
                   @if (!eventEditorService.readOnly()) {
                   <span class="asset-image-plus">+</span>
                   }
@@ -83,17 +83,17 @@
             </label>
             <label class="experience-title-field">
               <span>Name <span class="required-star">*</span></span>
-              <input type="text" [(ngModel)]="eventDTO.title" [readonly]="eventEditorService.readOnly()"
+              <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventEditorService.readOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
             </label>
             <label class="event-capacity-range-field">
               <span>Capacity <span class="required-star">*</span></span>
               <div class="subevent-capacity-range">
-                <input type="number" min="0" step="1" required [ngModel]="eventDTO.capacityMin"
+                <input type="number" min="0" step="1" required [ngModel]="eventDetailDTO.capacityMin"
                   (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventCapacityMinReadOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" placeholder="Min" />
                 <span class="subevent-capacity-separator">-</span>
-                <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDTO.capacityMax"
+                <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
                   (ngModelChange)="onEventCapacityMaxChange($event)" (blur)="onEventCapacityMaxBlur()"
                   [disabled]="eventEditorService.readOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" placeholder="Max" />
@@ -109,7 +109,7 @@
             </div>
             <label class="experience-description-field">
               <span>Description <span class="required-star">*</span></span>
-              <textarea rows="4" [(ngModel)]="eventDTO.subtitle" [readonly]="eventEditorService.readOnly()"
+              <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventEditorService.readOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
             <section class="event-scheduling-stack">
@@ -231,13 +231,13 @@
               </section>
               }
             </section>
-            <app-pricing-editor class="experience-description-field event-pricing-field" [(pricing)]="eventDTO.pricing"
+            <app-pricing-editor class="experience-description-field event-pricing-field" [(pricing)]="eventDetailDTO.pricing"
               [context]="'event'" [presentation]="'popup-summary'" [slotCatalog]="pricingSlotCatalog()"
               [readOnly]="eventStructureReadOnly()"
               [subtitle]="eventStructureReadOnly()
                 ? ''
-                : (eventDTO.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.')"></app-pricing-editor>
-            @if (!eventEditorService.readOnly() || eventDTO.policies.length > 0) {
+                : (eventDetailDTO.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.')"></app-pricing-editor>
+            @if (!eventEditorService.readOnly() || eventDetailDTO.policies.length > 0) {
             <section class="event-policies-panel">
               <div class="event-policies-panel-head">
                 <div class="event-policies-panel-title-wrap">
@@ -259,12 +259,12 @@
                 <div class="event-slots-summary">
                   <section class="event-slots-summary-block">
                     <span class="event-slots-summary-label">Summary</span>
-                    @if (eventDTO.policies.length > 0) {
+                    @if (eventDetailDTO.policies.length > 0) {
                     <div class="event-slots-summary-list">
                       <article class="event-slots-summary-item">
                         <span class="event-slots-summary-title">{{ policiesCountLabel() }}</span>
                         <span class="event-slots-summary-meta">
-                          {{ requiredPoliciesCount() }} required · {{ eventDTO.policies.length -
+                          {{ requiredPoliciesCount() }} required · {{ eventDetailDTO.policies.length -
                           requiredPoliciesCount() }} optional
                         </span>
                       </article>
@@ -284,7 +284,7 @@
             <label class="experience-description-field event-location-field">
               <span>Location</span>
               <div class="asset-route-row asset-route-row-inline">
-                <input type="text" [ngModel]="eventDTO.location" (ngModelChange)="onEventLocationChange($event)"
+                <input type="text" [ngModel]="eventDetailDTO.location" (ngModelChange)="onEventLocationChange($event)"
                   placeholder="Event route location" [readonly]="eventEditorService.readOnly()" />
                 <button type="button"
                   class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
@@ -301,13 +301,13 @@
                       <mat-icon>view_timeline</mat-icon>
                       <span class="event-subevents-panel-title-label">Sub Events</span>
                     </span>
-                    @if (eventDTO.subEvents.length > 0) {
+                    @if (eventDetailDTO.subEvents.length > 0) {
                     <span class="event-subevents-panel-current">
                       {{ subEventsCurrentHeaderLabel() }}
                     </span>
                     }
                   </span>
-                  @if (eventDTO.subEvents.length > 0) {
+                  @if (eventDetailDTO.subEvents.length > 0) {
                   <span class="event-subevents-panel-meta">
                     <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
                       <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
@@ -320,12 +320,12 @@
                   }
                   <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
                 </span>
-                @if (eventDTO.subEvents.length > 0) {
+                @if (eventDetailDTO.subEvents.length > 0) {
                 <span class="event-subevents-panel-divider" aria-hidden="true"></span>
                 }
-                @if (eventDTO.subEvents.length > 0) {
+                @if (eventDetailDTO.subEvents.length > 0) {
                 <span class="event-subevents-panel-body">
-                  @for (subEvent of eventDTO.subEvents; track subEventPanelChipTrackId(index, subEvent); let index = $index) {
+                  @for (subEvent of eventDetailDTO.subEvents; track subEventPanelChipTrackId(index, subEvent); let index = $index) {
                   <span class="event-subevent-panel-chip"
                     [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
                     [ngStyle]="subEventPanelChipStyle(index)">
@@ -340,8 +340,8 @@
                 } @else {
                 <span class="event-subevents-panel-placeholder">Open sub events</span>
                 }
-                @if (eventDTO.subEvents.length > 0) {
-                <span class="card-badge event-subevents-panel-counter">{{ eventDTO.subEvents.length | counterBadge
+                @if (eventDetailDTO.subEvents.length > 0) {
+                <span class="card-badge event-subevents-panel-counter">{{ eventDetailDTO.subEvents.length | counterBadge
                   }}</span>
                 }
               </button>
@@ -564,9 +564,9 @@
   }
   <app-event-subevents-popup [open]="showSubEventsPopup" [readOnly]="eventEditorService.readOnly()"
     [structureReadOnly]="isPublishedManageMode()"
-    [parentTitle]="eventDTO.title" [ownerId]="editingEventId" [subEvents]="eventDTO.subEvents"
+    [parentTitle]="eventDetailDTO.title" [ownerId]="editingEventId" [subEvents]="eventDetailDTO.subEvents"
     [displayMode]="subEventsDisplayMode" [slotsEnabled]="eventFrequencyUsesSlots()"
-    [slotTemplates]="eventDTO.slotTemplates" [parentStartAt]="eventDTO.startAtIso" [parentEndAt]="eventDTO.endAtIso"
+    [slotTemplates]="eventDetailDTO.slotTemplates" [parentStartAt]="eventDetailDTO.startAtIso" [parentEndAt]="eventDetailDTO.endAtIso"
     (close)="closeSubEventsPopup()" (subEventsChange)="handleSubEventsChange($event)"
     (displayModeChange)="updateSubEventsDisplayMode($event)"></app-event-subevents-popup>
 </div>

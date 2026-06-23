@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventSaveDTO } from '../../../contracts';
 import type { ActivityPendingReason } from '../../../common/constants';
 import type { SubEventLeaderboardState } from '../../../contracts/event.interface';
 import { EventFeedbackBuilder } from '../../../base/builders';
@@ -20,10 +19,11 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalActivityEventsMapper } from '../mappers';
+import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from '../mappers';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventDetailDTO,
   ActivityEventDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
@@ -92,6 +92,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ...query,
       userId: this.resolveDemoActivityUserId(query.userId)
     }));
+  }
+
+  async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const record = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
+    return record ? LocalActivityEventDetailsMapper.toDto(record) : null;
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -221,14 +232,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.eventFeedbackRepository.flushToIndexedDb();
   }
 
-  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.syncEventSnapshot(payload);
     await this.eventsRepository.flushToIndexedDb();
     return record;
   }
 
-  async saveActivityEvent(payload: ActivityEventSaveDTO): Promise<ActivityEventDTO | null> {
+  async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.syncEventSnapshot(payload);
     await this.eventsRepository.flushToIndexedDb();

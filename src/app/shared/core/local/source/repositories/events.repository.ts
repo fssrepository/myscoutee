@@ -7,22 +7,20 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import { LocalActivityEventsMapper } from '../mappers/event.mapper';
-import type {
-  ActivityEventActivitiesListQueryResult,
-  ActivityEventActivitiesQuery,
-  ActivityEventExploreQuery,
-  ActivityEventExploreQueryResult,
-  ActivityEventRecord,
-  ActivityEventScopeFilter,
-  ActivityEventRepositoryItemType
+import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from '../mappers/event.mapper';
+import {
+  ActivityEventDetailDTO,
+  type ActivityEventActivitiesListQueryResult,
+  type ActivityEventActivitiesQuery,
+  type ActivityEventExploreQuery,
+  type ActivityEventExploreQueryResult,
+  type ActivityEventRecord,
+  type ActivityEventScopeFilter,
+  type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
-import type { ActivityEventSaveDTO } from '../../../contracts';
-import { EventEditorBuilder } from '../../../base/builders';
-import { PricingBuilder } from '../../../base/builders/pricing.builder';
 
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
@@ -359,6 +357,25 @@ export class LocalEventsRepository {
     return [...byEventId.values()].map(record => ActivityEventRecordBuilder.cloneRecord(record));
   }
 
+  queryEventRecordById(userId: string, eventId: string): ActivityEventRecord | null {
+    this.materializeSlotRecords();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = this.computePreferredEventRecords(table)
+      .find(item => item.id === normalizedEventId);
+    if (!record) {
+      return null;
+    }
+    const viewerCoordinates = this.queryUserLocationCoordinates(userId);
+    return this.withResolvedDistance(
+      this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table),
+      viewerCoordinates
+    );
+  }
+
   peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
     const normalizedUserId = userId.trim();
     const normalizedItemId = itemId.trim();
@@ -411,7 +428,7 @@ export class LocalEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: ActivityEventSaveDTO): ActivityEventRecord | null {
+  syncEventSnapshot(payload: ActivityEventDetailDTO): ActivityEventRecord | null {
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
@@ -420,32 +437,51 @@ export class LocalEventsRepository {
 
     const creatorName = payload.creatorName?.trim() || 'Unknown Host';
     const creatorInitials = payload.creatorInitials?.trim() || AppUtils.initialsFromText(creatorName);
-    const startAtIso = payload.startAt?.trim() || new Date().toISOString();
-    const endAtIso = payload.endAt?.trim()
+    const startAtIso = payload.startAtIso?.trim() || new Date().toISOString();
+    const endAtIso = payload.endAtIso?.trim()
       || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
-    const acceptedMembers = this.normalizeCount(payload.acceptedMembers)
+    const normalizedPayload = payload.clone().apply({
+      id: normalizedId,
+      creatorUserId
+    });
+    const acceptedMembers = this.normalizeCount(normalizedPayload.acceptedMembers)
       ?? this.eventMemberUserIdsByStatus(normalizedId, 'accepted').length;
-    const pendingMembers = this.normalizeCount(payload.pendingMembers)
+    const pendingMembers = this.normalizeCount(normalizedPayload.pendingMembers)
       ?? this.eventMemberUserIdsByStatus(normalizedId, 'pending').length;
     const capacityTotal = Math.max(
       acceptedMembers,
-      this.normalizeCount(payload.capacityTotal)
-        ?? this.normalizeCount(payload.capacityMax)
+      this.normalizeCount(normalizedPayload.capacityTotal)
+        ?? this.normalizeCount(normalizedPayload.capacityMax)
         ?? acceptedMembers
     );
-    const baseRecord = this.buildSyncedRecord(
-      payload,
-      {
-        userId: creatorUserId,
-        creatorName,
-        creatorInitials,
-        startAtIso,
-        endAtIso,
-        acceptedMembers,
-        pendingMembers,
-        capacityTotal
-      }
+    const existing = this.findItem(creatorUserId, normalizedId);
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'accepted');
+    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'pending');
+    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
+      member.status === 'pending' && this.isInvitationMember(member)
     );
+    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
+      member.status === 'pending' && !this.isInvitationMember(member)
+    );
+    const baseRecord = LocalActivityEventDetailsMapper.toRecord(normalizedPayload, {
+      existing,
+      userId: creatorUserId,
+      creatorName,
+      creatorInitials,
+      startAtIso,
+      endAtIso,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      creator: usersTable.byId[creatorUserId] ?? null,
+      acceptedUsers: acceptedMemberUserIds.map(userId => usersTable.byId[userId] ?? null)
+    });
 
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
@@ -1429,124 +1465,6 @@ export class LocalEventsRepository {
     return next.activity >= current.activity;
   }
 
-  private buildSyncedRecord(
-    payload: ActivityEventSaveDTO,
-    context: {
-      userId: string;
-      creatorName: string;
-      creatorInitials: string;
-      startAtIso: string;
-      endAtIso: string;
-      acceptedMembers: number;
-      pendingMembers: number;
-      capacityTotal: number;
-    }
-  ): ActivityEventRecord {
-    const existing = this.findItem(context.userId, payload.id);
-    const visibility = payload.visibility ?? existing?.visibility ?? 'Public';
-    const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
-    const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
-    const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
-    const policies = EventEditorBuilder.cloneEventEditorPolicies(payload.policies ?? existing?.policies ?? []);
-    const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
-    const pricing = PricingBuilder.syncSlotOverrides(
-      PricingBuilder.normalizePricingConfig(payload.pricing ?? existing?.pricing, {
-        context: 'event',
-        slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
-      }),
-      PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
-    );
-    const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${payload.id}:${payload.title}`) % 35) / 10));
-    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${payload.id}:${payload.title}`) % 51));
-    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
-    const creator = usersTable.byId[context.userId] ?? null;
-    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, payload.id, 'accepted');
-    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, payload.id, 'pending');
-    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, payload.id, member =>
-      member.status === 'pending' && this.isInvitationMember(member)
-    );
-    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, payload.id, member =>
-      member.status === 'pending' && !this.isInvitationMember(member)
-    );
-    const acceptedUsers = acceptedMemberUserIds
-      .map(userId => usersTable.byId[userId] ?? null);
-    const affinity = ActivityEventRecordBuilder.resolveEventAffinity({
-      id: payload.id,
-      title: payload.title,
-      subtitle: payload.shortDescription,
-      topics,
-      visibility,
-      blindMode,
-      creator,
-      acceptedUsers,
-      rating,
-      acceptedMembers: context.acceptedMembers,
-      capacityTotal: context.capacityTotal
-    });
-    return {
-      id: payload.id,
-      userId: context.userId,
-      type: 'events',
-      status: this.normalizeEventStatus(payload.status ?? existing?.status) as ActivityEventRecord['status'],
-      avatar: context.creatorInitials,
-      title: payload.title,
-      subtitle: payload.shortDescription,
-      timeframe: payload.timeframe,
-      inviter: null,
-      unread: 0,
-      activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      trashedAtIso: existing?.trashedAtIso ?? null,
-      creatorUserId: context.userId,
-      creatorName: context.creatorName,
-      creatorInitials: context.creatorInitials,
-      creatorGender: payload.creatorGender ?? existing?.creatorGender ?? 'man',
-      creatorCity: payload.creatorCity ?? existing?.creatorCity ?? '',
-      visibility,
-      blindMode,
-      startAtIso: context.startAtIso,
-      endAtIso: context.endAtIso,
-      distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
-      imageUrl: payload.imageUrl?.trim() || existing?.imageUrl || `https://picsum.photos/seed/event-explore-${payload.id}/1200/700`,
-      sourceLink: payload.sourceLink?.trim() || existing?.sourceLink || '',
-      location: payload.location?.trim() || existing?.location || '',
-      locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates)
-        ?? this.normalizeLocationCoordinates(existing?.locationCoordinates),
-      capacityMin: this.normalizeCount(payload.capacityMin) ?? existing?.capacityMin ?? 0,
-      capacityMax: this.normalizeCount(payload.capacityMax) ?? existing?.capacityMax ?? context.capacityTotal,
-      capacityTotal: context.capacityTotal,
-      autoInviter: typeof payload.autoInviter === 'boolean'
-        ? payload.autoInviter
-        : (typeof existing?.autoInviter === 'boolean' ? existing.autoInviter : false),
-      frequency: payload.frequency?.trim() || existing?.frequency || 'One-time',
-      ticketing,
-      pricing,
-      policies,
-      slotsEnabled: payload.slotsEnabled ?? existing?.slotsEnabled ?? false,
-      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []),
-      parentEventId: payload.parentEventId ?? existing?.parentEventId ?? null,
-      slotTemplateId: payload.slotTemplateId ?? existing?.slotTemplateId ?? null,
-      generated: payload.generated ?? existing?.generated ?? false,
-      eventType: payload.eventType ?? existing?.eventType ?? 'main',
-      nextSlot: payload.nextSlot ? { ...payload.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
-      upcomingSlots: (payload.upcomingSlots ?? existing?.upcomingSlots ?? []).map(item => ({ ...item })),
-      acceptedMembers: context.acceptedMembers,
-      pendingMembers: context.pendingMembers,
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      invitedMemberUserIds,
-      pendingRequestMemberUserIds,
-      topics,
-      subEvents,
-      subEventsDisplayMode: payload.subEventsDisplayMode
-        ?? existing?.subEventsDisplayMode
-        ?? (subEvents ? ActivityEventRecordBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
-      rating,
-      boost,
-      affinity
-    };
-  }
-
   private upsertRecord(
     byId: Record<string, ActivityEventRecord>,
     ids: string[],
@@ -1578,8 +1496,8 @@ export class LocalEventsRepository {
       pendingMemberUserIds: this.normalizeUserIds(record.pendingMemberUserIds),
       invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
       pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
-      policies: EventEditorBuilder.cloneEventEditorPolicies(record.policies ?? []),
-      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(record.slotTemplates ?? []),
+      policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
+      slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       topics: this.normalizeTopics(record.topics ?? []),
       subEvents: this.cloneSubEvents(record.subEvents)
@@ -1792,13 +1710,7 @@ export class LocalEventsRepository {
     if (!Array.isArray(items)) {
       return undefined;
     }
-    return items.map(item => ({
-      ...item,
-      location: typeof item.location === 'string' ? item.location : '',
-      groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
-        : []
-    }));
+    return ActivityEventDetailDTO.normalizeSubEvents(items);
   }
 
   private localGeneratedGroups(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {

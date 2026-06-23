@@ -49,7 +49,6 @@ export { LocalActivityInviteCandidatesService } from './source/services/activity
 export { LocalActivityMembersService } from './source/services/activity-members.service';
 export { LocalActivityResourcesService } from './source/services/activity-resources.service';
 export { LocalChatsService } from './source/services/chats.service';
-export { LocalEventEditorDataService } from './source/services/event-editor-data.service';
 export { LocalEventsService } from './source/services/events.service';
 export { LocalGameService } from './source/services/game.service';
 export { LocalHelpCenterService } from './source/services/help-center.service';

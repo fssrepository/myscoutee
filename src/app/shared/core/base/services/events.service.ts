@@ -1,8 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivityEventSaveDTO } from '../../contracts';
+import { AppUtils } from '../../../app-utils';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
+import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -20,6 +21,7 @@ import { HttpEventsService } from '../../http';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventDetailDTO,
   ActivityEventDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
@@ -27,7 +29,11 @@ import type {
   ActivityEventRecord
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
+import type { ListQuery, PageResult } from '../../../ui';
+import { AppContext } from '../../../ui/context';
+import { toActivitiesPageRequest, toActivityEventActivitiesQuery } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { UsersService } from './users.service';
 
 @Injectable({
   providedIn: 'root'
@@ -35,6 +41,8 @@ import { BaseRouteModeService } from './base-route-mode.service';
 export class EventsService extends BaseRouteModeService implements IEventsService {
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
+  private readonly appCtx = inject(AppContext);
+  private readonly usersService = inject(UsersService);
 
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/activities/events');
@@ -84,8 +92,28 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.httpEventsService.queryActivitiesEventDTOPage(query, signal);
   }
 
+  async loadActivityEvents(
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { signal?: AbortSignal } = {}
+  ): Promise<PageResult<ActivityEventDTO>> {
+    const request = toActivitiesPageRequest(query);
+    const activeUserId = this.resolveActiveUserId();
+    const page = await this.queryActivitiesEventDTOPage(
+      toActivityEventActivitiesQuery(request, activeUserId),
+      options.signal
+    );
+    if (this.isCalendarActivitiesView(request.view)) {
+      return this.paginateActivityEventDTOs(page.items, request);
+    }
+    return {
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor
+    };
+  }
+
   async saveActivityEvent(
-    payload: ActivityEventSaveDTO
+    payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null> {
     return this.eventsService.saveActivityEvent(payload);
   }
@@ -146,6 +174,15 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       this.eventsService.queryExploreItems(userId)
     ]);
     return [...owned, ...explore].find(record => record.id === normalizedItemId) ?? null;
+  }
+
+  async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    return this.eventsService.loadEventDetailById(normalizedUserId, normalizedEventId);
   }
 
   trashItem(userId: string, sourceId: string): Promise<void> {
@@ -243,7 +280,111 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.restoreEventFeedbackEvent(userId, eventId);
   }
 
-  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     return this.eventsService.syncEventSnapshot(payload);
+  }
+
+  private resolveActiveUserId(): string {
+    const activeUserProfileId = this.appCtx.activeUserProfile()?.id?.trim();
+    if (activeUserProfileId) {
+      return activeUserProfileId;
+    }
+    const activeUserId = this.appCtx.getActiveUserId().trim();
+    if (activeUserId) {
+      return activeUserId;
+    }
+    const session = this.sessionService.currentSession();
+    if (session?.kind === 'demo' && session.userId.trim().length > 0) {
+      return session.userId.trim();
+    }
+    if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
+      return session.profile.id.trim();
+    }
+    return this.usersService.peekCachedUsers()[0]?.id ?? '';
+  }
+
+  private paginateActivityEventDTOs(
+    items: readonly ActivityEventDTO[],
+    request: ActivitiesPageRequest
+  ): PageResult<ActivityEventDTO> {
+    if (this.isCalendarActivitiesView(request.view)) {
+      const range = this.activitiesQueryRange(request);
+      const filteredItems = range
+        ? items.filter(item => this.doesActivityEventDTOOverlapRange(item, range.start, range.end))
+        : [...items];
+      return {
+        items: filteredItems,
+        total: filteredItems.length
+      };
+    }
+
+    const startIndex = request.page * request.pageSize;
+    return {
+      items: items.slice(startIndex, startIndex + request.pageSize),
+      total: items.length
+    };
+  }
+
+  private activitiesQueryRange(request: ActivitiesPageRequest): { start: Date; end: Date } | null {
+    const start = this.parseSmartListDate(request.rangeStart);
+    const end = this.parseSmartListDate(request.rangeEnd);
+    if (!start || !end) {
+      return null;
+    }
+    return {
+      start,
+      end: AppUtils.dateOnly(end)
+    };
+  }
+
+  private doesActivityEventDTOOverlapRange(item: ActivityEventDTO, start: Date, end: Date): boolean {
+    const range = this.resolveActivityEventDTORange(item);
+    if (!range) {
+      return false;
+    }
+    return this.dateRangeOverlaps(
+      AppUtils.dateOnly(range.start),
+      AppUtils.dateOnly(range.end),
+      start,
+      end
+    );
+  }
+
+  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
+  }
+
+  private resolveActivityEventDTORange(item: ActivityEventDTO): { start: Date; end: Date } | null {
+    const start = new Date(item.startAtIso);
+    const end = new Date(item.endAtIso || new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return null;
+    }
+    return end.getTime() > start.getTime()
+      ? { start, end }
+      : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
+  }
+
+  private isCalendarActivitiesView(view: ActivitiesPageRequest['view']): boolean {
+    return view === 'week' || view === 'month';
+  }
+
+  private parseSmartListDate(value: string | undefined): Date | null {
+    if (!value) {
+      return null;
+    }
+    const trimmed = value.trim();
+    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number.parseInt(match[1], 10);
+      const month = Number.parseInt(match[2], 10) - 1;
+      const day = Number.parseInt(match[3], 10);
+      return new Date(year, month, day);
+    }
+    const parsed = new Date(trimmed);
+    if (Number.isNaN(parsed.getTime())) {
+      return null;
+    }
+    return AppUtils.dateOnly(parsed);
   }
 }

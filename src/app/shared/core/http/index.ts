@@ -15,7 +15,6 @@ export { HttpActivityInviteCandidatesService } from './services/activity-invite-
 export { HttpActivityMembersService } from './services/activity-members.service';
 export { HttpActivityResourcesService } from './services/activity-resources.service';
 export { HttpChatsService } from './services/chats.service';
-export { HttpEventEditorDataService } from './services/event-editor-data.service';
 export { HttpEventsService } from './services/events.service';
 export { HttpGameService } from './services/game.service';
 export { HttpHelpCenterService } from './services/help-center.service';

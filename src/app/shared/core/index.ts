@@ -50,7 +50,6 @@ export {
 export { EventsService } from './base/services/events.service';
 export { RouteDelayService } from './base/services/route-delay.service';
 export { RouteIntervalSchedulerService } from './base/services/route-interval-scheduler.service';
-export { EventEditorDataService } from './base/services/event-editor-data.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { ActivityResourcesService } from './base/services/activity-resources.service';
 export { AssetsService } from './base/services/assets.service';

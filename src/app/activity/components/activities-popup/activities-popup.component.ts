@@ -30,7 +30,7 @@ import { AppContext, AppPopupContext, type ActivityCounterKey, type ActivityCoun
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
-import type { ActivitiesFeedFilters, ActivityEventSaveDTO } from '../../../shared/core/contracts';
+import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
@@ -2251,7 +2251,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private activityEventSaveStatusCode(item: Pick<ActivityEventSaveDTO | ActivityEventDTO, 'status'>): NonNullable<ActivityEventDTO['status']> {
+  private activityEventSaveStatusCode(item: Pick<ActivityEventDTO, 'status'>): NonNullable<ActivityEventDTO['status']> {
     const status = `${item.status ?? ''}`.trim();
     switch (status) {
       case 'DR':
@@ -3192,7 +3192,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       };
     }
     if (requestedPrimaryFilter === 'events' || requestedPrimaryFilter === 'hosting' || requestedPrimaryFilter === 'invitations') {
-      const page = await this.activitiesService.loadActivityEvents(query, {
+      const page = await this.eventsService.loadActivityEvents(query, {
         signal: context?.signal
       });
       this.cacheActivityEventItems(page.items);

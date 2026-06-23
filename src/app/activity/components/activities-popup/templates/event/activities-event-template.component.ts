@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
-import type { ActivityEventSaveDTO } from '../../../../../shared/core/contracts';
+import { ActivityEventDetailDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import { ActivityMembersBuilder } from '../../../../../shared/core';
 import {
@@ -115,7 +115,7 @@ type ActivityInfoCardActionId =
 type ActivitiesEventsHost = any;
 type ActivityEventRecordLike = any;
 type InvitationApprovalSaveResult = {
-  eventSaveDTO: ActivityEventSaveDTO;
+  eventDetailDTO: ActivityEventDetailDTO;
   nextMembers: ActivityContracts.ActivityMemberEntry[] | null;
   capacityTotal: number;
 };
@@ -128,7 +128,6 @@ export class ActivitiesEventsController {
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
-  private get activitiesService() { return this.host.activitiesService; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
   private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberEntry[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
@@ -727,8 +726,8 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return;
     }
-    const eventSaveDTO = await this.buildLeftActivityEventSaveDTO(row);
-    if (!eventSaveDTO) {
+    const eventDetailDTO = await this.buildLeftActivityEventDetailDTO(row);
+    if (!eventDetailDTO) {
       this.eventCheckoutDraftService.clear(activeUserId, row.id);
       this.removeVisibleActivityRow(row);
       this.refreshSectionBadges();
@@ -740,11 +739,11 @@ export class ActivitiesEventsController {
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
     const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberEntry) => member.userId !== activeUserId);
     const capacityTotal = Math.max(
-      Math.max(0, Math.trunc(Number(eventSaveDTO.acceptedMembers) || 0)),
-      Math.max(0, Math.trunc(Number(eventSaveDTO.capacityTotal) || 0))
+      Math.max(0, Math.trunc(Number(eventDetailDTO.acceptedMembers) || 0)),
+      Math.max(0, Math.trunc(Number(eventDetailDTO.capacityTotal) || 0))
     );
     const persistence = Promise.all([
-      this.activitiesContext.emitActivityEventSave(eventSaveDTO),
+      this.activitiesContext.emitActivityEventSave(eventDetailDTO),
       currentMembers.length > nextMembers.length
         ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
         : Promise.resolve()
@@ -783,14 +782,17 @@ export class ActivitiesEventsController {
     row: ActivityEventCardData,
     selection?: ActivityContracts.EventCheckoutSelection | null
   ): Promise<void> {
-    const { eventSaveDTO, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSaveResult(row, selection);
+    const { eventDetailDTO, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSaveResult(row, selection);
     const [displaySync] = await Promise.all([
-      this.activitiesService.saveActivityEvent(eventSaveDTO),
+      this.eventsService.saveActivityEvent(eventDetailDTO),
       nextMembers
-        ? this.activityMembersService.replaceMembersByOwnerId(eventSaveDTO.id, nextMembers, capacityTotal)
+        ? this.activityMembersService.replaceMembersByOwnerId(eventDetailDTO.id, nextMembers, capacityTotal)
         : Promise.resolve()
     ]);
-    this.removeInvitationItem(eventSaveDTO.id);
+    if (!displaySync) {
+      return;
+    }
+    this.removeInvitationItem(eventDetailDTO.id);
     this.applyActivityEventSave(displaySync);
     this.cdr.markForCheck();
   }
@@ -871,14 +873,15 @@ export class ActivitiesEventsController {
       : null;
 
     return {
-      eventSaveDTO: {
+      eventDetailDTO: new ActivityEventDetailDTO().apply({
         id: row.id,
+        type: 'events',
         title,
-        shortDescription,
+        subtitle: shortDescription,
         timeframe,
         activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? relatedSource.unread ?? row.unread),
-        startAt,
-        endAt,
+        startAtIso: startAt,
+        endAtIso: endAt,
         distanceKm,
         imageUrl: record?.imageUrl ?? relatedSource.imageUrl ?? row.imageUrl ?? '',
         acceptedMembers: nextAcceptedMembers,
@@ -924,7 +927,7 @@ export class ActivitiesEventsController {
           : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
         subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode,
         paymentSessionId: selection?.paymentSessionId ?? null
-      },
+      }),
       nextMembers: this.buildAcceptedInvitationMembers(currentMembers, activeUserId, requiresAdminApproval),
       capacityTotal
     };
@@ -1007,9 +1010,9 @@ export class ActivitiesEventsController {
     delete this.activityMembersByRowId[`invitations:${sourceId}`];
   }
 
-  private async buildLeftActivityEventSaveDTO(
+  private async buildLeftActivityEventDetailDTO(
     row: ActivityEventCardData
-  ): Promise<ActivityEventSaveDTO | null> {
+  ): Promise<ActivityEventDetailDTO | null> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;
@@ -1079,14 +1082,15 @@ export class ActivitiesEventsController {
       )
     );
 
-    return {
+    return new ActivityEventDetailDTO().apply({
       id: row.id,
+      type: 'events',
       title,
-      shortDescription,
+      subtitle: shortDescription,
       timeframe,
       activity: this.chatCountValue(record?.activity ?? source.activity ?? row.unread),
-      startAt,
-      endAt,
+      startAtIso: startAt,
+      endAtIso: endAt,
       distanceKm,
       imageUrl: record?.imageUrl ?? source.imageUrl ?? row.imageUrl ?? '',
       acceptedMembers: nextAcceptedMembers,
@@ -1132,7 +1136,7 @@ export class ActivitiesEventsController {
         : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined),
       subEventsDisplayMode: record?.subEventsDisplayMode ?? source.subEventsDisplayMode,
       paymentSessionId: null
-    };
+    });
   }
 
   public isActivityIdentityTrashed(type: ActivityEventCardData['type'], id: string): boolean {

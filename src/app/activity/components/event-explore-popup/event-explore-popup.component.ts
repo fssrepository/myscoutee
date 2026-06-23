@@ -17,6 +17,7 @@ import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as ContractTypes from '../../../shared/core/contracts';
+import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventExploreBuilder, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
@@ -985,10 +986,10 @@ export class EventExplorePopupComponent {
       const nextMembers = this.sortMembersByActionTimeDesc(
         existingMembers.filter(member => member.userId !== activeUserId)
       );
-      const payload = this.buildActivityEventSaveDTO(record, nextMembers);
+      const eventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers);
       const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
       this.checkoutDraftClearSaveSourceIds.add(sourceId);
-      const persistence = this.activitiesContext.emitActivityEventSave(payload);
+      const persistence = this.activitiesContext.emitActivityEventSave(eventDetailDTO);
       this.restoreVisibleEventExploreRecord(nextRecord);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
@@ -1549,10 +1550,10 @@ export class EventExplorePopupComponent {
       ...existingMembers,
       this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
-    const rollbackPayload = this.buildActivityEventSaveDTO(record, existingMembers);
-    const nextPayload = this.buildActivityEventSaveDTO(record, nextMembers, selection?.paymentSessionId ?? null);
+    const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
+    const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
     this.locallyTrackedMembershipSourceIds.add(record.id);
-    this.activitiesContext.emitActivityEventSave(nextPayload);
+    this.activitiesContext.emitActivityEventSave(nextEventDetailDTO);
 
     try {
       const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1573,7 +1574,7 @@ export class EventExplorePopupComponent {
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
       this.activitiesContext.emitActivityEventSave(
-        this.buildActivityEventSaveDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+        this.buildActivityEventDetailDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = joinedRecord;
@@ -1584,7 +1585,7 @@ export class EventExplorePopupComponent {
       await exitPromise;
       this.locallyTrackedMembershipSourceIds.delete(record.id);
       this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
-      this.activitiesContext.emitActivityEventSave(rollbackPayload);
+      this.activitiesContext.emitActivityEventSave(rollbackEventDetailDTO);
       throw error;
     }
   }
@@ -1899,24 +1900,25 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private buildActivityEventSaveDTO(
+  private buildActivityEventDetailDTO(
     record: ActivityEventRecord,
     members: readonly ActivityContracts.ActivityMemberEntry[],
     paymentSessionId: string | null = null
-  ): ContractTypes.ActivityEventSaveDTO {
+  ): ActivityEventDetailDTO {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
       members,
       record.capacityTotal
     );
-    return {
+    return new ActivityEventDetailDTO().apply({
       id: record.id,
+      type: 'events',
       title: record.title,
-      shortDescription: record.subtitle,
+      subtitle: record.subtitle,
       timeframe: record.timeframe,
       activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
+      startAtIso: record.startAtIso,
+      endAtIso: record.endAtIso,
       distanceKm: record.distanceKm,
       imageUrl: record.imageUrl,
       acceptedMembers: summary.acceptedMembers,
@@ -1936,7 +1938,7 @@ export class EventExplorePopupComponent {
       creatorGender: record.creatorGender,
       creatorCity: record.creatorCity,
       location: record.location,
-      locationCoordinates: record.locationCoordinates ?? undefined,
+      locationCoordinates: record.locationCoordinates ?? null,
       sourceLink: record.sourceLink,
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
@@ -1949,7 +1951,7 @@ export class EventExplorePopupComponent {
         : undefined,
       subEventsDisplayMode: record.subEventsDisplayMode,
       paymentSessionId
-    };
+    });
   }
 
   private withEventExploreMemberSummary(

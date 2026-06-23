@@ -4,10 +4,9 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
-import type { ActivityEventSaveDTO } from '../../contracts';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
-import type { ActivityEventDTO } from '../../contracts/activity.interface';
+import { ActivityEventDetailDTO, type ActivityEventDTO } from '../../contracts/activity.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -185,6 +184,26 @@ export class HttpEventsService implements IEventsService {
         total: 0,
         nextCursor: null
       };
+    }
+  }
+
+  async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<Partial<ActivityEventDetailDTO> | null>(`${this.apiBaseUrl}/activities/events/detail`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('eventId', normalizedEventId)
+        })
+        .toPromise();
+      return response ? new ActivityEventDetailDTO().apply(response) : null;
+    } catch {
+      return null;
     }
   }
 
@@ -563,7 +582,7 @@ export class HttpEventsService implements IEventsService {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
-  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     try {
       const response = await this.http
         .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
@@ -574,7 +593,7 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
-  async saveActivityEvent(payload: ActivityEventSaveDTO): Promise<ActivityEventDTO | null> {
+  async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     try {
       const response = await this.http
         .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
