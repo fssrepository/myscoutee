@@ -6,6 +6,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   Injector,
   NgZone,
@@ -131,6 +132,7 @@ type SmartListCalendarWindow = {
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly DEFAULT_LOADING_DELAY_MS = 0;
   private static readonly DEFAULT_LOADING_WINDOW_MS = ROUTE_CONFIG.defaultRequestTimeoutMs;
+  private static readonly DEFAULT_MOBILE_BREAKPOINT_PX = 760;
   private static readonly DEFAULT_MOBILE_PAGE_SIZE_CAP = 6;
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
@@ -290,6 +292,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   closeMenu(id?: string): void {
     this.itemMenuDispatcher.close(id);
   }
+
+  @HostListener('window:resize')
+  protected onViewportResize(): void {
+    this.refreshSurfaceSoon();
+  }
+
   private hasMore = true;
   private pageIndex = 0;
   private nextPageCursor: string | null = null;
@@ -377,6 +385,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (scrollElement) {
+      if (this.shouldUseHorizontalMobileStepper()) {
+        return;
+      }
+
       const currentTop = scrollElement.scrollTop;
       const currentLeft = scrollElement.scrollLeft;
 
@@ -400,12 +412,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.touchStartScrollSnapType = null;
       return;
     }
-    scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
-    this.touchStartScrollSnapType = null;
+    if (!this.shouldUseHorizontalMobileStepper()) {
+      scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
+      this.touchStartScrollSnapType = null;
+    }
 
     if (this.currentViewMode === 'list') {
-      if (this.isHorizontalList()) {
+      if (this.isHorizontalList() && !this.shouldUseHorizontalMobileStepper()) {
         this.clearHorizontalListScrollEndTimer();
+      }
+      if (this.shouldUseHorizontalMobileStepper()) {
+        this.touchStartScrollSnapType = null;
+        return;
       }
       this.scheduleListSnapSettle(scrollElement);
       return;
@@ -861,7 +879,17 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected shouldSuspendHorizontalSnap(): boolean {
-    return this.horizontalListScrollInProgress && this.isCompactHorizontalViewport();
+    return this.horizontalListScrollInProgress
+      && this.isCompactHorizontalViewport()
+      && !this.shouldUseHorizontalMobileStepper();
+  }
+
+  protected shouldSuppressSnapDuringTouch(): boolean {
+    return this.isTouchingSurface && !this.shouldUseHorizontalMobileStepper();
+  }
+
+  protected resolvedMobileStepper(): boolean {
+    return this.resolveConfigValue(this.config.mobileStepper, false);
   }
 
   protected isReversedListFlow(): boolean {
@@ -877,7 +905,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
-    const snapMode = this.resolveConfigValue(this.config.snapMode, 'none');
+    const baseSnapMode = this.resolveConfigValue(this.config.snapMode, 'none');
+    const snapMode = this.shouldUseHorizontalMobileStepper() ? 'mandatory' : baseSnapMode;
     this.trackSnapModeTransition(snapMode);
     return this.deferSnapReactivationUntilScroll ? 'none' : snapMode;
   }
@@ -2749,11 +2778,23 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private isCompactHorizontalViewport(): boolean {
-    const matcher = globalThis.matchMedia?.('(max-width: 760px)');
+    return this.isMobileViewport();
+  }
+
+  private shouldUseHorizontalMobileStepper(): boolean {
+    return this.currentViewMode === 'list'
+      && this.isHorizontalList()
+      && this.resolvedMobileStepper()
+      && this.isMobileViewport();
+  }
+
+  private isMobileViewport(): boolean {
+    const breakpointPx = SmartListComponent.DEFAULT_MOBILE_BREAKPOINT_PX;
+    const matcher = globalThis.matchMedia?.(`(max-width: ${breakpointPx}px)`);
     if (matcher) {
       return matcher.matches;
     }
-    return (globalThis.innerWidth ?? Number.POSITIVE_INFINITY) <= 760;
+    return (globalThis.innerWidth ?? Number.POSITIVE_INFINITY) <= breakpointPx;
   }
 
   private beginHorizontalListScroll(scrollElement: HTMLDivElement): void {
@@ -2794,6 +2835,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.horizontalListScrollInProgress) {
       this.horizontalListScrollInProgress = false;
       this.cdr.markForCheck();
+    }
+    if (this.shouldUseHorizontalMobileStepper()) {
+      return;
     }
     this.settleListSnapSmoothly(scrollElement);
   }
@@ -3873,7 +3917,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private mobilePageSizeCapForView(viewKey: string | null = this.currentViewKey): number | null {
-    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 760px)').matches) {
+    if (typeof window === 'undefined' || !this.isMobileViewport()) {
       return null;
     }
     if (this.resolveViewMode(viewKey) !== 'list') {

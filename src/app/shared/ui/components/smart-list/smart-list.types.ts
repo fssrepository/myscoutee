@@ -232,6 +232,7 @@ export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = Sm
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   mobilePageSizeCap?: number | null;
+  mobileStepper?: SmartListConfigValue<boolean, TFilters>;
   initialPageCount?: number;
   initialPageSize?: number;
   preloadOffsetPx?: number;

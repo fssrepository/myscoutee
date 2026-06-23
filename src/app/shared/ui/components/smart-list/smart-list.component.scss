@@ -1381,6 +1381,10 @@
     display: none;
   }
 
+  .smart-list--list.smart-list--horizontal.smart-list--mobile-stepper {
+    scroll-behavior: smooth;
+  }
+
   .smart-list--list.smart-list--horizontal.smart-list--snap-proximity {
     scroll-snap-type: x proximity;
   }

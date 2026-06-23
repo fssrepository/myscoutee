@@ -119,6 +119,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     orientation: 'horizontal',
     desktopColumns: 4,
     snapMode: 'none',
+    mobileStepper: true,
     headerProgress: {
       enabled: true
     },
