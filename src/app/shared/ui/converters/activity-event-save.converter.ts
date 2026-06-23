@@ -1,5 +1,5 @@
 import { EventEditorBuilder, PricingBuilder } from '../../core/base/builders';
-import { EventEditorConverter } from '../../core/base/converters';
+import { EventEditorFormNormalizer } from '../../core/base/normalizers';
 import type * as ContractTypes from '../../core/contracts';
 import type { EventForm } from '../models';
 import type { UiConverter } from './converter.types';
@@ -23,7 +23,7 @@ export interface ActivityEventSaveConverterInput {
 export class ActivityEventSaveConverter {
   static convert(input: ActivityEventSaveConverterInput): ContractTypes.ActivityEventSaveDTO {
     const persistedSlotTemplates = EventEditorBuilder.buildPersistedEventEditorSlotTemplates(input.form.slotTemplates);
-    const hasSlots = EventEditorConverter.normalizeEventEditorFrequency(input.form.frequency) !== 'One-time';
+    const hasSlots = EventEditorFormNormalizer.normalizeEventEditorFrequency(input.form.frequency) !== 'One-time';
 
     return {
       id: input.form.id,

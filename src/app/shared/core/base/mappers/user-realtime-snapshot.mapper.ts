@@ -50,7 +50,7 @@ type RealtimeSnapshotInput = {
   serverTsIso?: string;
 };
 
-export class UserRealtimeSnapshotConverter {
+export class UserRealtimeSnapshotMapper {
   static snapshotFromUser(
     user: UserDto,
     cursor: string | null = null,

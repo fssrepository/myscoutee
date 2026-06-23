@@ -1,5 +1,4 @@
 import { AppUtils } from '../../../app-utils';
-import type { ActivityListRow } from '../models';
 import type * as ContractTypes from '../../contracts';
 import type { ActivityEventRecord } from '../../contracts/activity.interface';
 import { PricingBuilder } from '../builders/pricing.builder';
@@ -64,7 +63,7 @@ interface EventEditorFormInput {
   endAt: string;
 }
 
-export class EventEditorConverter {
+export class EventEditorFormNormalizer {
   static normalizeEventEditorPolicies(value: unknown): ContractTypes.EventPolicyItem[] {
     if (!Array.isArray(value)) {
       return [];
@@ -392,58 +391,6 @@ export class EventEditorConverter {
       sourceLink: record.sourceLink,
       locationCoordinates: record.locationCoordinates
     };
-  }
-
-  static toEventEditorFallbackSource(
-    row: ActivityListRow,
-    readOnly: boolean,
-    target: ContractTypes.EventEditorTarget
-  ): Record<string, unknown> {
-    const title = row.title;
-    const description = row.subtitle;
-
-    return {
-      id: row.id,
-      avatar: row.avatarInitials ?? row.creatorInitials ?? '',
-      title,
-      description,
-      shortDescription: description,
-      timeframe: row.detail,
-      activity: Math.max(0, Math.trunc(Number(row.unread) || 0)),
-      isAdmin: row.isAdmin === true,
-      imageUrl: `${row.imageUrl ?? ''}`,
-      visibility: row.visibility ?? (target === 'hosting' ? 'Invitation only' : 'Public'),
-      frequency: 'One-time',
-      location: '',
-      capacityMin: this.toEventEditorCapacityInputValue(row.capacityMin),
-      capacityMax: this.toEventEditorCapacityInputValue(row.capacityMax),
-      blindMode: 'Open Event',
-      autoInviter: false,
-      ticketing: false,
-      pricing: this.normalizeEventEditorPricing(null, { context: 'event' }),
-      policies: this.normalizeEventEditorPolicies(undefined),
-      slotsEnabled: false,
-      slotTemplates: [],
-      topics: [],
-      subEvents: [],
-      subEventsDisplayMode: 'Casual',
-      startAt: row.startAt ?? row.dateIso,
-      endAt: row.endAt ?? row.dateIso,
-      status: row.status ?? 'A',
-      pendingMembersCount: this.toEventEditorCapacityInputValue(
-        row.pendingMembers
-      ) ?? 0,
-      distanceKm: this.distanceKmFromMeters(row.distanceMetersExact),
-      sourceLink: '',
-      readOnly
-    };
-  }
-
-  private static distanceKmFromMeters(distanceMeters: number | null | undefined): number {
-    const meters = Number.isFinite(distanceMeters)
-      ? Math.max(0, Math.trunc(Number(distanceMeters)))
-      : 0;
-    return Math.round((meters / 1000) * 10) / 10;
   }
 
   static toEventEditorForm(sourceEvent: Record<string, unknown>): EventEditorFormInput {

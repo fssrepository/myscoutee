@@ -14,12 +14,11 @@ import {
   type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  ActivityChatSingleRowConverter
 } from '../../../shared/ui';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
-import type { ActivityListRow } from '../../../shared/core/base/models';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
@@ -30,7 +29,7 @@ interface AdminFeedbackListFilters {
 interface AdminFeedbackListItem {
   id: string;
   feedback: AdminFeedbackDto;
-  row: ActivityListRow;
+  row: SingleRowData;
 }
 
 @Component({
@@ -220,7 +219,7 @@ export class AdminFeedbackPopupComponent {
     };
   }
 
-  private buildFeedbackActivityRow(feedback: AdminFeedbackDto): ActivityListRow {
+  private buildFeedbackActivityRow(feedback: AdminFeedbackDto): SingleRowData {
     const source: ChatRecord = {
       id: feedback.id,
       avatar: this.feedbackInitial(feedback),
@@ -233,7 +232,7 @@ export class AdminFeedbackPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
-    return toActivityChatRow(source, {
+    return ActivityChatSingleRowConverter.convert(source, {
       activeUserId: 'admin',
       users: [
         this.chatUser(feedback.userId, feedback.userName, this.feedbackInitial(feedback), 'woman')

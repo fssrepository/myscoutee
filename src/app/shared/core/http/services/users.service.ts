@@ -23,7 +23,7 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import { AppContext } from '../../../ui/context';
-import { UserRealtimeSnapshotConverter } from '../../base/converters';
+import { UserRealtimeSnapshotMapper } from '../../base/mappers';
 import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -177,7 +177,7 @@ export class HttpUsersService implements UserService {
       if (!response || !response.counters) {
         return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
       }
-      return UserRealtimeSnapshotConverter.snapshot(response, normalizedUserId, cursor);
+      return UserRealtimeSnapshotMapper.snapshot(response, normalizedUserId, cursor);
     } catch (error) {
       if (this.isTimeoutError(error, 'User realtime request timeout.')) {
         throw error;
@@ -402,7 +402,7 @@ export class HttpUsersService implements UserService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: UserRealtimeSnapshotConverter.impressions(user.impressions),
+      impressions: UserRealtimeSnapshotMapper.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
@@ -611,7 +611,7 @@ export class HttpUsersService implements UserService {
     if (!byIdResponse.user) {
       return null;
     }
-    return UserRealtimeSnapshotConverter.snapshotFromUser(byIdResponse.user, cursor, {
+    return UserRealtimeSnapshotMapper.snapshotFromUser(byIdResponse.user, cursor, {
       userId: normalizedUserId
     });
   }

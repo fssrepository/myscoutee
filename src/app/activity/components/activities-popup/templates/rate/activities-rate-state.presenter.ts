@@ -1,6 +1,6 @@
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
-import type * as AppTypes from '../../../../../shared/core/base/models';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
+import type { ImageCardData } from '../../../../../shared/ui';
 
 export function matchesActivitiesRateFilter(
   item: ActivityRateDTO,
@@ -83,12 +83,12 @@ export function collectPendingActivitiesRateDirectionOverrides(
 
 export function selectedActivitiesRateRow(
   selectedRateId: string | null,
-  filteredRows: readonly AppTypes.ActivityListRow[]
-): AppTypes.ActivityListRow | null {
+  filteredRows: readonly ImageCardData[]
+): ImageCardData | null {
   if (!selectedRateId) {
     return null;
   }
-  return filteredRows.find(row => row.type === 'rates' && row.id === selectedRateId) ?? null;
+  return filteredRows.find(row => row.id === selectedRateId) ?? null;
 }
 
 export function normalizeActivitiesRateScore(value: number): number {

@@ -1,15 +1,15 @@
 import { AppUtils } from '../../../app-utils';
+import type * as AssetContracts from '../../contracts/asset.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import type * as AppTypes from '../models';
 
-import type * as AppDTOs from '../dto';
-type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city'>;
+type TicketHolder = Pick<UserDto, 'id' | 'name' | 'age' | 'city'>;
+type TicketPayloadPerson = Pick<UserDto, 'initials' | 'images'>;
 
-export class AssetTicketConverter {
+export class AssetTicketMapper {
   static toTicketScanPayload(
-    row: AppTypes.ActivityListRow,
-    holder: TicketPerson | null = null
-  ): AppDTOs.TicketScanPayloadDTO {
+    row: AssetContracts.AssetTicketDTO,
+    holder: TicketHolder | null = null
+  ): AssetContracts.TicketScanPayloadDTO {
     const issuedAtIso = `${row.startAt ?? row.dateIso}`.trim() || row.dateIso;
     const userId = holder?.id?.trim() || '';
     const userName = holder?.name?.trim() || 'Ticket Holder';
@@ -33,7 +33,7 @@ export class AssetTicketConverter {
     };
   }
 
-  static buildTicketDateLabel(row: AppTypes.ActivityListRow): string {
+  static buildTicketDateLabel(row: AssetContracts.AssetTicketDTO): string {
     const parsed = new Date(row.dateIso);
     if (Number.isNaN(parsed.getTime())) {
       return row.detail;
@@ -44,5 +44,34 @@ export class AssetTicketConverter {
       hour: 'numeric',
       minute: '2-digit'
     });
+  }
+
+  static groupLabel(dateIso: string): string {
+    const parsed = new Date(dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return parsed.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  static payloadAvatarUrl(user: TicketPayloadPerson | null): string {
+    if (!user) {
+      return '';
+    }
+    return AppUtils.firstImageUrl(user.images);
+  }
+
+  static payloadInitials(
+    payload: AssetContracts.TicketScanPayloadDTO,
+    user: TicketPayloadPerson | null
+  ): string {
+    if (user?.initials?.trim()) {
+      return user.initials.trim();
+    }
+    return AppUtils.initialsFromText(payload.holderName);
   }
 }

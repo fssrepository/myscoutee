@@ -77,7 +77,7 @@ type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 type ActivityPopupEventType = 'events' | 'hosting' | 'invitations';
 type ActivitySmartListDTO = ActivityEventDTO | ChatDTO | ActivityRateDTO;
 
-interface ActivityPopupCardBase<TEagerDetail = unknown> {
+interface ActivityPopupCardBase {
   id: string;
   type: ContractTypes.ActivitiesPrimaryFilter;
   title: string;
@@ -88,7 +88,6 @@ interface ActivityPopupCardBase<TEagerDetail = unknown> {
   unread: number;
   metricScore: number;
   isAdmin?: boolean;
-  eagerDetail?: TEagerDetail | null;
   startAt?: string | null;
   endAt?: string | null;
   boost?: number | null;
@@ -110,25 +109,25 @@ interface ActivityPopupCardBase<TEagerDetail = unknown> {
   memberCount?: number | null;
 }
 
-type ActivityPopupEventCard<TEagerDetail = unknown> =
-  InfoCardData<TEagerDetail>
-  & ActivityPopupCardBase<TEagerDetail>
+type ActivityPopupEventCard =
+  InfoCardData
+  & ActivityPopupCardBase
   & { type: ActivityPopupEventType; subtitle: string; detail: string };
 
-type ActivityPopupRateCard<TEagerDetail = unknown> =
-  ImageCardData<TEagerDetail>
-  & ActivityPopupCardBase<TEagerDetail>
+type ActivityPopupRateCard =
+  ImageCardData
+  & ActivityPopupCardBase
   & { type: 'rates'; subtitle: string; detail: string };
 
-type ActivityPopupChatCard<TEagerDetail = unknown> =
-  SingleRowData<TEagerDetail>
-  & ActivityPopupCardBase<TEagerDetail>
+type ActivityPopupChatCard =
+  SingleRowData
+  & ActivityPopupCardBase
   & { type: 'chats'; subtitle: string; detail: string };
 
-type ActivityPopupCard<TEagerDetail = unknown> =
-  | ActivityPopupEventCard<TEagerDetail>
-  | ActivityPopupRateCard<TEagerDetail>
-  | ActivityPopupChatCard<TEagerDetail>;
+type ActivityPopupCard =
+  | ActivityPopupEventCard
+  | ActivityPopupRateCard
+  | ActivityPopupChatCard;
 
 interface ActivitiesEventScopeOption {
   key: ContractTypes.ActivitiesEventScope;
@@ -509,7 +508,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected pendingActivityMemberDelete: ActivityContracts.ActivityMemberEntry | null = null;
   protected selectedActivityMembers: ActivityContracts.ActivityMemberEntry[] = [];
   protected selectedActivityMembersTitle = '';
-  protected selectedActivityMembersRow: ActivityPopupCard | null = null;
+  protected selectedActivityMembersRow: ActivityPopupEventCard | null = null;
   protected selectedActivityMembersRowId: string | null = null;
   protected readonly trashedActivityRowsByKey: Record<string, ActivityPopupCard> = {};
 
@@ -565,11 +564,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivityRowClick(row: ActivityPopupCard, event?: Event): void {
+    if (!this.isEventStyleActivity(row)) {
+      if (row.type === 'chats') {
+        this.openActivityChatForRow(row);
+      } else {
+        this.activitiesRates.openEditor(row, event as Event);
+      }
+      return;
+    }
     this.activitiesEvents.onActivityRowClick(row, event);
   }
 
   protected openActivityMembers(row: ActivityPopupCard, event?: Event): void {
     event?.stopPropagation();
+    if (!this.isEventStyleActivity(row)) {
+      return;
+    }
     if (row.type !== 'invitations') {
       this.activitiesEvents.openActivityMembers(row, event);
       return;
@@ -594,6 +604,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected onActivityEventCardMenuAction(row: ActivityPopupCard, action: CardMenuActionEvent<InfoCardData>): void {
+    if (!this.isEventStyleActivity(row)) {
+      return;
+    }
     this.activitiesEvents.onActivityEventCardMenuAction(row, action);
   }
 
@@ -660,10 +673,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isActivityIdentityTrashed(type: ActivityPopupCard['type'], id: string): boolean {
+    if (type !== 'events' && type !== 'hosting' && type !== 'invitations') {
+      return false;
+    }
     return this.activitiesEvents.isActivityIdentityTrashed(type, id);
   }
 
   protected openActivityRowInEventModule(row: ActivityPopupCard, readOnly: boolean): void {
+    if (!this.isEventStyleActivity(row)) {
+      return;
+    }
     this.activitiesEvents.openActivityRowInEventModule(row, readOnly);
   }
 
@@ -2374,7 +2393,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return `No ${this.activitiesPrimaryFilter} items in this filter.`;
   }
 
-  protected trackByActivityGroup(_index: number, group: AppTypes.ActivityGroup): string {
+  protected trackByActivityGroup(_index: number, group: { label: string }): string {
     return group.label;
   }
 
@@ -2398,7 +2417,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  protected isEventStyleActivity(row: ActivityPopupCard): boolean {
+  protected isEventStyleActivity(row: ActivityPopupCard): row is ActivityPopupEventCard {
     return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
   }
 
@@ -2416,6 +2435,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // ── Event-style rows ───────────────────────────────────────────────────────
 
   protected withActivityEventInfoCard(row: ActivityPopupCard): ActivityPopupCard {
+    if (!this.isEventStyleActivity(row)) {
+      return row;
+    }
     const dto = this.activityEventDTOForRow(row);
     if (dto) {
       return {
@@ -2430,19 +2452,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
     Object.assign(row, this.withActivityEventInfoCard(row));
   }
 
-  private activityEventDTOForRow(row: ActivityPopupCard): ActivityEventDTO | null {
+  private activityEventDTOForRow(row: ActivityPopupEventCard): ActivityEventDTO | null {
     return this.currentActivityEventItems().find(item => item.id === row.id)
       ?? this.eventsService.peekKnownItemDTOById(this.activeUser.id, row.id);
   }
 
-  private activityMembersOwnerForRow(row: ActivityPopupCard): ActivityMemberOwnerRef {
+  private activityMembersOwnerForRow(row: ActivityPopupEventCard): ActivityMemberOwnerRef {
     return ActivityMembersBuilder.activityMembersOwnerForRow(row) ?? {
       ownerType: 'event',
       ownerId: row.id
     };
   }
 
-  private resolveActivityMembersPopupSummary(row: ActivityPopupCard): ActivityMembersSummary | null {
+  private resolveActivityMembersPopupSummary(row: ActivityPopupEventCard): ActivityMembersSummary | null {
     const persistedSummary = this.activityMembersService.peekSummaryByOwner(this.activityMembersOwnerForRow(row));
     if (persistedSummary) {
       return {
@@ -2475,7 +2497,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private activityCapacityTotal(row: ActivityPopupCard, fallbackBase = 0): number {
+  private activityCapacityTotal(row: ActivityPopupEventCard, fallbackBase = 0): number {
     const source = this.activityCapacityById[row.id];
     if (source) {
       const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
@@ -2529,7 +2551,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return { start: parsed, end: new Date(parsed.getTime() + (2 * 60 * 60 * 1000)) };
   }
 
-  private resolveInvitationActivityMembersRow(row: ActivityPopupCard): ActivityPopupCard {
+  private resolveInvitationActivityMembersRow(row: ActivityPopupEventCard): ActivityPopupEventCard {
     if (row.type !== 'invitations') {
       return row;
     }
@@ -2541,7 +2563,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private buildActivityMembersFromKnownUserIds(
-    row: ActivityPopupCard,
+    row: ActivityPopupEventCard,
     acceptedMemberUserIds: readonly string[],
     pendingMemberUserIds: readonly string[]
   ): ActivityContracts.ActivityMemberEntry[] {
@@ -2593,7 +2615,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.userById(normalizedUserId) ?? this.activeUser;
   }
 
-  private applyActivityMembersSummary(row: ActivityPopupCard, summary: ActivityMembersSummary): void {
+  private applyActivityMembersSummary(row: ActivityPopupEventCard, summary: ActivityMembersSummary): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
     this.applyActivityMembersSummaryToRow(row, summary);
@@ -2641,10 +2663,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
   }
 
-  private applyActivityMembersSummaryToRow(row: ActivityPopupCard, summary: ActivityMembersSummary): void {
-    if (!this.isEventStyleActivity(row)) {
-      return;
-    }
+  private applyActivityMembersSummaryToRow(row: ActivityPopupEventCard, summary: ActivityMembersSummary): void {
     const dto = this.activityEventDTOForRow(row);
     if (!dto) {
       return;
@@ -2659,7 +2678,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private async loadActivityMembersForRow(
     owner: ActivityMemberOwnerRef,
-    row: ActivityPopupCard,
+    row: ActivityPopupEventCard,
     rowSelectionId: string
   ): Promise<void> {
     const members = await this.activityMembersService.queryMembersByOwner(owner);

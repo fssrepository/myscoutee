@@ -16,7 +16,7 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
-import { EventEditorConverter } from '../../../shared/core/base/converters';
+import { EventEditorFormNormalizer } from '../../../shared/core/base/normalizers';
 import { ActivityEventEditorFormConverter, ActivityEventSaveConverter } from '../../../shared/ui/converters';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as UiModels from '../../../shared/ui/models';
@@ -119,7 +119,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.openCreateRequest(request.target);
         return;
       }
-      void this.openEditRequest(request.row, request.readOnly);
+      void this.openEditRequest(request.eventId, request.target, request.readOnly);
     });
 
     effect(() => {
@@ -314,26 +314,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   requestOpenMembers(): void {
     const eventId = this.currentEventIdentity() || 'draft-event';
     const canManageMembers = !this.eventEditorService.readOnly();
-    const row: AppTypes.ActivityListRow = {
-      id: eventId,
-      type: this.editorTarget === 'hosting' ? 'hosting' : 'events',
+    this.popupCtx.requestActivitiesNavigation({
+      type: 'eventEditorMembers',
+      ownerId: eventId,
       title: this.eventForm.title.trim() || 'New Event',
-      subtitle: this.eventForm.description.trim() || 'Draft event',
-      detail: this.eventForm.startAt || 'Draft',
-      dateIso: this.eventForm.startAt || new Date().toISOString(),
-      distanceMetersExact: 0,
-      unread: 0,
-      metricScore: 0,
-      isAdmin: canManageMembers,
-      startAt: this.eventForm.startAt || new Date().toISOString(),
-      endAt: this.eventForm.endAt || this.eventForm.startAt || new Date().toISOString(),
-      acceptedMembers: 0,
-      pendingMembers: 0,
-      capacityTotal: Math.max(0, Number(this.eventForm.capacityMax ?? this.eventForm.capacityMin ?? 0) || 0),
-      capacityMin: this.eventForm.capacityMin,
-      capacityMax: this.eventForm.capacityMax
-    };
-    this.popupCtx.requestActivitiesNavigation({ type: 'eventEditorMembers', row });
+      canManage: canManageMembers
+    });
   }
 
   requestOpenSubEvents(): void {
@@ -380,7 +366,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected slotSummaryOverrideItems(): Array<{ dateKey: string; label: string; detail: string }> {
     const grouped = new Map<string, ContractTypes.EventSlotTemplate[]>();
     for (const slot of this.eventForm.slotTemplates) {
-      const dateKey = EventEditorConverter.normalizeEventEditorSlotOverrideDate(slot.overrideDate);
+      const dateKey = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(slot.overrideDate);
       if (!dateKey) {
         continue;
       }
@@ -410,8 +396,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected slotSummaryWindowLabel(slot: ContractTypes.EventSlotTemplate): string {
-    const start = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
-    const end = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
+    const start = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
+    const end = EventEditorFormNormalizer.parseEventEditorDateValue(slot.endAt);
     if (!start && !end) {
       return 'Time pending';
     }
@@ -626,7 +612,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.visibility = EventEditorConverter.normalizeEventEditorVisibility(option);
+    this.eventForm.visibility = EventEditorFormNormalizer.normalizeEventEditorVisibility(option);
   }
 
   protected eventVisibilityMenuTrigger(): AppMenuTrigger {
@@ -646,8 +632,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       label: option,
       icon: this.getVisibilityIcon(option),
       kind: 'radio',
-      active: EventEditorConverter.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
-      checked: EventEditorConverter.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
+      active: EventEditorFormNormalizer.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
+      checked: EventEditorFormNormalizer.normalizeEventEditorVisibility(this.eventForm.visibility) === option,
       palette: this.eventVisibilityPalette(option),
       surface: 'tinted',
       context: { menu: 'visibility', visibility: option }
@@ -663,9 +649,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         icon: this.eventBlindModeIcon(this.eventForm.blindMode),
         kind: 'toggle',
         layout: 'big',
-        active: EventEditorConverter.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
-        checked: EventEditorConverter.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
-        palette: EventEditorConverter.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event' ? 'red' : 'green',
+        active: EventEditorFormNormalizer.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
+        checked: EventEditorFormNormalizer.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event',
+        palette: EventEditorFormNormalizer.normalizeEventEditorBlindMode(this.eventForm.blindMode) === 'Blind Event' ? 'red' : 'green',
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-blind-mode' }
@@ -723,7 +709,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       selected: this.eventForm.topics,
       maxSelected: 5,
       context: topic => ({ menu: 'topics', topic }),
-      normalize: topic => EventEditorConverter.normalizeEventEditorTopicToken(topic),
+      normalize: topic => EventEditorFormNormalizer.normalizeEventEditorTopicToken(topic),
       itemLabel: topic => this.eventTopicLabel(topic),
       removeAriaLabel: topic => `Remove ${this.eventTopicLabel(topic)}`,
       summary: {
@@ -735,7 +721,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   getVisibilityIcon(visibility: string): string {
-    switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
+    switch (EventEditorFormNormalizer.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'groups';
       case 'Invitation only':
@@ -746,7 +732,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventVisibilityClass(visibility: string): string {
-    switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
+    switch (EventEditorFormNormalizer.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'event-visibility-friends';
       case 'Invitation only':
@@ -757,7 +743,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private eventVisibilityPalette(visibility: string): AppMenuPalette {
-    switch (EventEditorConverter.normalizeEventEditorVisibility(visibility)) {
+    switch (EventEditorFormNormalizer.normalizeEventEditorVisibility(visibility)) {
       case 'Friends only':
         return 'blue';
       case 'Invitation only':
@@ -768,11 +754,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventBlindModeIcon(mode: string): string {
-    return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
+    return EventEditorFormNormalizer.normalizeEventEditorBlindMode(mode) === 'Blind Event' ? 'visibility_off' : 'visibility';
   }
 
   eventBlindModeDescription(mode: string): string {
-    return EventEditorConverter.normalizeEventEditorBlindMode(mode) === 'Blind Event'
+    return EventEditorFormNormalizer.normalizeEventEditorBlindMode(mode) === 'Blind Event'
       ? 'Attendees won\'t see each other before the event.'
       : 'Attendees can preview each other before the event.';
   }
@@ -806,7 +792,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventFrequencyIcon(frequency: string): string {
-    switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
+    switch (EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
         return 'today';
       case 'Weekly':
@@ -834,9 +820,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventFrequencyMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
-    const current = EventEditorConverter.normalizeEventEditorFrequency(this.eventForm.frequency);
+    const current = EventEditorFormNormalizer.normalizeEventEditorFrequency(this.eventForm.frequency);
     return this.eventFrequencyOptions.map(option => {
-      const normalized = EventEditorConverter.normalizeEventEditorFrequency(option);
+      const normalized = EventEditorFormNormalizer.normalizeEventEditorFrequency(option);
       return {
         id: `frequency-${normalized}`,
         label: normalized,
@@ -924,13 +910,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventEditorService.readOnly()) {
       return;
     }
-    const normalizedTopics = EventEditorConverter.normalizeEventEditorTopics(this.eventForm.topics);
-    const normalizedTopic = EventEditorConverter.normalizeEventEditorTopicToken(topic);
+    const normalizedTopics = EventEditorFormNormalizer.normalizeEventEditorTopics(this.eventForm.topics);
+    const normalizedTopic = EventEditorFormNormalizer.normalizeEventEditorTopicToken(topic);
     if (!normalizedTopic) {
       return;
     }
     const existingIndex = normalizedTopics.findIndex(item =>
-      EventEditorConverter.normalizeEventEditorTopicToken(item) === normalizedTopic
+      EventEditorFormNormalizer.normalizeEventEditorTopicToken(item) === normalizedTopic
     );
     if (action === 'remove') {
       if (existingIndex < 0) {
@@ -946,7 +932,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (normalizedTopics.length >= 5) {
       return;
     }
-    this.eventForm.topics = EventEditorConverter.normalizeEventEditorTopics([...normalizedTopics, topic]);
+    this.eventForm.topics = EventEditorFormNormalizer.normalizeEventEditorTopics([...normalizedTopics, topic]);
   }
 
   private eventEditorCanContinueCheckoutDraft(draft: EventCheckoutDraft): boolean {
@@ -1015,7 +1001,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private eventFrequencyPalette(frequency: string): AppMenuPalette {
-    switch (EventEditorConverter.normalizeEventEditorFrequency(frequency)) {
+    switch (EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency)) {
       case 'Daily':
         return 'sky';
       case 'Weekly':
@@ -1035,7 +1021,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventStructureReadOnly()) {
       return;
     }
-    this.eventForm.frequency = EventEditorConverter.normalizeEventEditorFrequency(value);
+    this.eventForm.frequency = EventEditorFormNormalizer.normalizeEventEditorFrequency(value);
     this.eventForm.slotsEnabled = this.eventFrequencyUsesSlots();
     if (!this.eventForm.slotsEnabled) {
       this.eventForm.slotTemplates = [];
@@ -1058,7 +1044,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventFrequencyUsesSlots(): boolean {
-    return EventEditorConverter.normalizeEventEditorFrequency(this.eventForm.frequency) !== 'One-time';
+    return EventEditorFormNormalizer.normalizeEventEditorFrequency(this.eventForm.frequency) !== 'One-time';
   }
 
   subEventsCountLabel(): string {
@@ -1075,7 +1061,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   subEventLocationLabel(subEvent: UiModels.EventFormSubEventItem | null | undefined): string {
-    const location = EventEditorConverter.normalizeEventEditorLocation(subEvent?.location).trim();
+    const location = EventEditorFormNormalizer.normalizeEventEditorLocation(subEvent?.location).trim();
     return location || 'Location pending';
   }
 
@@ -1101,8 +1087,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   subEventCardRange(subEvent: UiModels.EventFormSubEventItem): string {
-    const start = EventEditorConverter.parseEventEditorDateValue(subEvent.startAt);
-    const end = EventEditorConverter.parseEventEditorDateValue(subEvent.endAt);
+    const start = EventEditorFormNormalizer.parseEventEditorDateValue(subEvent.startAt);
+    const end = EventEditorFormNormalizer.parseEventEditorDateValue(subEvent.endAt);
     if (!start || !end) {
       return 'Date pending';
     }
@@ -1199,7 +1185,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.eventCapacityMinReadOnly()) {
       return;
     }
-    const parsed = EventEditorConverter.toEventEditorCapacityInputValue(value);
+    const parsed = EventEditorFormNormalizer.toEventEditorCapacityInputValue(value);
     this.eventForm.capacityMin = parsed;
     if (
       this.eventForm.capacityMin !== null
@@ -1211,7 +1197,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventCapacityMaxChange(value: number | string): void {
-    const parsed = EventEditorConverter.toEventEditorCapacityInputValue(value);
+    const parsed = EventEditorFormNormalizer.toEventEditorCapacityInputValue(value);
     this.eventForm.capacityMax = parsed === null ? null : Math.max(parsed, this.eventCapacityMaxMinimum());
   }
 
@@ -1359,7 +1345,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       || this.defaultSlotStartForActiveScope()
       || this.eventForm.startAt
       || AppUtils.toIsoDateTimeLocal(new Date());
-    const startDate = EventEditorConverter.parseEventEditorDateValue(startAt) ?? new Date();
+    const startDate = EventEditorFormNormalizer.parseEventEditorDateValue(startAt) ?? new Date();
     const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
     this.setActiveSlotTemplates([
       ...currentTemplates,
@@ -1426,7 +1412,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected slotTemplateEndDateMin(slot: ContractTypes.EventSlotTemplate): Date | null {
-    const start = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
+    const start = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
     if (!start) {
       return this.slotTemplateDateMin(slot);
     }
@@ -1434,14 +1420,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected slotTemplateEndDateMax(index: number, slot: ContractTypes.EventSlotTemplate): Date | null {
-    const start = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
+    const start = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
     const window = this.slotWindowForEditing(slot.overrideDate);
     if (!start || !window) {
       return this.slotTemplateDateMax(slot);
     }
     const boundaryEnd = this.eventFrequencyBoundaryEnd(start, this.eventForm.frequency) ?? window.end;
     const nextSlot = this.activeSlotTemplates()[index + 1] ?? null;
-    const nextStart = nextSlot ? EventEditorConverter.parseEventEditorDateValue(nextSlot.startAt) : null;
+    const nextStart = nextSlot ? EventEditorFormNormalizer.parseEventEditorDateValue(nextSlot.startAt) : null;
     const maxDate = new Date(Math.min(
       window.end.getTime(),
       boundaryEnd.getTime(),
@@ -1504,7 +1490,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventLocationChange(value: string): void {
-    this.eventForm.location = EventEditorConverter.normalizeEventEditorLocation(value);
+    this.eventForm.location = EventEditorFormNormalizer.normalizeEventEditorLocation(value);
     this.syncFirstSubEventLocationFromMainEvent();
   }
 
@@ -1585,28 +1571,24 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     void this.refreshCurrentMemberSummary(this.draftEventId);
   }
 
-  private async openEditRequest(row: AppTypes.ActivityListRow, readOnly: boolean): Promise<void> {
+  private async openEditRequest(eventId: string, target: ContractTypes.EventEditorTarget, readOnly: boolean): Promise<void> {
     this.resetEditorContext();
     const activeUserId = this.activeUserId();
-    const target = row.type === 'hosting' ? 'hosting' : 'events';
-    const fallbackSource = EventEditorConverter.toEventEditorFallbackSource(row, readOnly, target);
 
     this.editorTarget = target;
-    this.editingEventId = row.id;
-    this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(row.id);
+    this.editingEventId = eventId;
+    this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(eventId);
+    this.eventEditorService.open('edit', undefined, readOnly);
+    void this.refreshCurrentMemberSummary(eventId);
 
     if (!activeUserId) {
-      this.eventEditorService.open('edit', fallbackSource, readOnly);
-      void this.refreshCurrentMemberSummary(row.id);
       return;
     }
 
     this.isLoadingEventData.set(true);
-    this.eventEditorService.open('edit', fallbackSource, readOnly);
-    void this.refreshCurrentMemberSummary(row.id);
 
     try {
-      const eventDTO = await this.eventEditorDataService.loadFullItemById(activeUserId, row.id);
+      const eventDTO = await this.eventEditorDataService.loadFullItemById(activeUserId, eventId);
 
       this.isLoadingEventData.set(false);
       if (!eventDTO) {
@@ -1820,7 +1802,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private baseSlotTemplates(): ContractTypes.EventSlotTemplate[] {
     return this.eventForm.slotTemplates
-      .filter(item => !EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate))
+      .filter(item => !EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate))
       .filter(item => item.closed !== true)
       .map(item => ({
         ...item,
@@ -1834,7 +1816,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return [];
     }
     return this.eventForm.slotTemplates
-      .filter(item => EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate) === dateKey)
+      .filter(item => EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate) === dateKey)
       .map(item => ({
         ...item,
         overrideDate: dateKey,
@@ -1843,12 +1825,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private selectedSlotOverrideDateKey(): string {
-    return EventEditorConverter.normalizeEventEditorSlotOverrideDate(this.slotOverrideDateValue) ?? '';
+    return EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(this.slotOverrideDateValue) ?? '';
   }
 
   private defaultSlotOverrideDate(): Date | null {
     const firstOverrideDate = this.eventForm.slotTemplates
-      .map(item => EventEditorConverter.parseEventEditorOverrideDate(item.overrideDate))
+      .map(item => EventEditorFormNormalizer.parseEventEditorOverrideDate(item.overrideDate))
       .find((value): value is Date => Boolean(value));
     if (firstOverrideDate) {
       return new Date(firstOverrideDate.getFullYear(), firstOverrideDate.getMonth(), firstOverrideDate.getDate());
@@ -1930,7 +1912,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null }));
     const otherOverrides = this.eventForm.slotTemplates
       .filter(item => {
-        const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+        const overrideDate = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate);
         return overrideDate && overrideDate !== dateKey;
       })
       .map(item => ({ ...item }));
@@ -1947,7 +1929,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     );
     if (this.slotEditorMode === 'base') {
       const overrides = this.eventForm.slotTemplates
-        .filter(item => EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate))
+        .filter(item => EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate))
         .map(item => ({ ...item }));
       this.eventForm.slotTemplates = [
         ...normalizedTemplates.map(item => ({ ...item, overrideDate: null, closed: false })),
@@ -1960,7 +1942,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null, closed: false }));
     const otherOverrides = this.eventForm.slotTemplates
       .filter(item => {
-        const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+        const overrideDate = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate);
         return overrideDate && overrideDate !== dateKey;
       })
       .map(item => ({ ...item }));
@@ -1995,12 +1977,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private normalizeSlotTemplateBounds(slot: ContractTypes.EventSlotTemplate): ContractTypes.EventSlotTemplate {
     const window = this.slotWindowForEditing(slot.overrideDate);
-    const fallbackStart = window?.start ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
-    const fallbackEnd = window?.end ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
+    const fallbackStart = window?.start ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
+    const fallbackEnd = window?.end ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
     const windowStartMs = fallbackStart.getTime();
     const windowEndMs = Math.max(windowStartMs + (60 * 1000), fallbackEnd.getTime());
 
-    let startDate = EventEditorConverter.parseEventEditorDateValue(slot.startAt) ?? new Date(fallbackStart);
+    let startDate = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt) ?? new Date(fallbackStart);
     let startMs = startDate.getTime();
     const maxStartMs = Math.max(windowStartMs, windowEndMs - (60 * 1000));
     startMs = Math.min(maxStartMs, Math.max(windowStartMs, startMs));
@@ -2011,7 +1993,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventFrequencyBoundaryEnd(startDate, this.eventForm.frequency)?.getTime() ?? windowEndMs
     );
 
-    let endDate = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
+    let endDate = EventEditorFormNormalizer.parseEventEditorDateValue(slot.endAt);
     let endMs = endDate?.getTime() ?? (startMs + (60 * 60 * 1000));
     if (endMs <= startMs) {
       endMs = startMs + (60 * 60 * 1000);
@@ -2054,21 +2036,21 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     const nextItems = items.map(item => ({ ...item }));
-    const scopeKey = EventEditorConverter.normalizeEventEditorSlotOverrideDate(current.overrideDate) ?? '';
+    const scopeKey = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(current.overrideDate) ?? '';
     const previous = [...nextItems]
       .slice(0, index)
       .reverse()
-      .find(item => (EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
+      .find(item => (EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
     const upcoming = nextItems
       .slice(index + 1)
-      .find(item => (EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
+      .find(item => (EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
     const window = this.slotWindowForEditing(current.overrideDate);
-    const fallbackStart = window?.start ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
-    const fallbackEnd = window?.end ?? EventEditorConverter.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
-    const previousEnd = previous ? EventEditorConverter.parseEventEditorDateValue(previous.endAt) : null;
-    const upcomingStart = upcoming ? EventEditorConverter.parseEventEditorDateValue(upcoming.startAt) : null;
-    const currentStart = EventEditorConverter.parseEventEditorDateValue(current.startAt) ?? new Date(fallbackStart);
-    const currentEnd = EventEditorConverter.parseEventEditorDateValue(current.endAt) ?? new Date(currentStart.getTime() + (60 * 60 * 1000));
+    const fallbackStart = window?.start ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.startAt) ?? new Date();
+    const fallbackEnd = window?.end ?? EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.endAt) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
+    const previousEnd = previous ? EventEditorFormNormalizer.parseEventEditorDateValue(previous.endAt) : null;
+    const upcomingStart = upcoming ? EventEditorFormNormalizer.parseEventEditorDateValue(upcoming.startAt) : null;
+    const currentStart = EventEditorFormNormalizer.parseEventEditorDateValue(current.startAt) ?? new Date(fallbackStart);
+    const currentEnd = EventEditorFormNormalizer.parseEventEditorDateValue(current.endAt) ?? new Date(currentStart.getTime() + (60 * 60 * 1000));
     const durationMs = Math.max(60 * 1000, currentEnd.getTime() - currentStart.getTime());
 
     const minStartMs = Math.max(fallbackStart.getTime(), previousEnd?.getTime() ?? fallbackStart.getTime());
@@ -2101,9 +2083,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     slot: ContractTypes.EventSlotTemplate,
     nextStartAt: string
   ): Pick<ContractTypes.EventSlotTemplate, 'startAt' | 'endAt'> {
-    const currentStart = EventEditorConverter.parseEventEditorDateValue(slot.startAt);
-    const currentEnd = EventEditorConverter.parseEventEditorDateValue(slot.endAt);
-    const nextStart = EventEditorConverter.parseEventEditorDateValue(nextStartAt);
+    const currentStart = EventEditorFormNormalizer.parseEventEditorDateValue(slot.startAt);
+    const currentEnd = EventEditorFormNormalizer.parseEventEditorDateValue(slot.endAt);
+    const nextStart = EventEditorFormNormalizer.parseEventEditorDateValue(nextStartAt);
     if (!currentStart || !currentEnd || !nextStart) {
       return {
         startAt: nextStartAt,
@@ -2132,8 +2114,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     startAt: string;
     endAt: string;
   } | null {
-    const baseStart = EventEditorConverter.parseEventEditorDateValue(this.eventForm.startAt);
-    const baseEnd = EventEditorConverter.parseEventEditorDateValue(this.eventForm.endAt);
+    const baseStart = EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.startAt);
+    const baseEnd = EventEditorFormNormalizer.parseEventEditorDateValue(this.eventForm.endAt);
     if (!baseStart || !baseEnd) {
       return null;
     }
@@ -2147,11 +2129,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       };
     }
 
-    const overrideDateValue = EventEditorConverter.parseEventEditorOverrideDate(overrideDate);
+    const overrideDateValue = EventEditorFormNormalizer.parseEventEditorOverrideDate(overrideDate);
     const shiftedStartAt = overrideDateValue
       ? AppUtils.applyDatePartToIsoLocal(this.eventForm.startAt, overrideDateValue)
       : this.eventForm.startAt;
-    const shiftedStart = EventEditorConverter.parseEventEditorDateValue(shiftedStartAt) ?? new Date(baseStart);
+    const shiftedStart = EventEditorFormNormalizer.parseEventEditorDateValue(shiftedStartAt) ?? new Date(baseStart);
     const boundaryEnd = this.eventFrequencyBoundaryEnd(shiftedStart, this.eventForm.frequency) ?? new Date(baseEnd);
     const shiftedEnd = boundaryEnd.getTime() > baseEnd.getTime() ? new Date(baseEnd) : boundaryEnd;
     if (shiftedEnd.getTime() <= shiftedStart.getTime()) {
@@ -2172,7 +2154,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private shiftSlotDateTimeByMs(value: string, shiftMs: number): string {
-    const parsed = EventEditorConverter.parseEventEditorDateValue(value);
+    const parsed = EventEditorFormNormalizer.parseEventEditorDateValue(value);
     if (!parsed) {
       return value;
     }
@@ -2187,13 +2169,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (this.slotDateControlValueCache.has(normalizedValue)) {
       return this.slotDateControlValueCache.get(normalizedValue) ?? null;
     }
-    const parsed = EventEditorConverter.parseEventEditorDateValue(normalizedValue);
+    const parsed = EventEditorFormNormalizer.parseEventEditorDateValue(normalizedValue);
     this.slotDateControlValueCache.set(normalizedValue, parsed);
     return parsed;
   }
 
   private slotOverrideDateLabel(dateKey: string): string {
-    const parsed = EventEditorConverter.parseEventEditorOverrideDate(dateKey);
+    const parsed = EventEditorFormNormalizer.parseEventEditorOverrideDate(dateKey);
     if (!parsed) {
       return dateKey;
     }
@@ -2261,7 +2243,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const isEventDTO = this.isActivityEventDTO(sourceEvent);
     const form = isEventDTO
       ? ActivityEventEditorFormConverter.convert(sourceEvent)
-      : EventEditorConverter.toEventEditorForm(sourceEvent);
+      : EventEditorFormNormalizer.toEventEditorForm(sourceEvent);
     if (isEventDTO) {
       this.currentMemberSummary = {
         ownerType: 'event',
@@ -2279,7 +2261,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.publishedCapacityMaxFloor = Math.max(0, Number(form.capacityMax ?? 0) || 0);
     this.eventForm = {
       ...form,
-      slotsEnabled: EventEditorConverter.normalizeEventEditorFrequency(form.frequency) !== 'One-time',
+      slotsEnabled: EventEditorFormNormalizer.normalizeEventEditorFrequency(form.frequency) !== 'One-time',
       pricing: PricingBuilder.clonePricingConfig(form.pricing),
       policies: EventEditorBuilder.cloneEventEditorPolicies(form.policies),
       slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(form.slotTemplates),
@@ -2388,7 +2370,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!start) {
       return null;
     }
-    const normalizedFrequency = EventEditorConverter.normalizeEventEditorFrequency(frequency);
+    const normalizedFrequency = EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency);
     let boundaryDate: Date | null = null;
     switch (normalizedFrequency) {
       case 'Daily':
@@ -2441,8 +2423,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     let maxCapacity: number | null = null;
 
     for (const item of this.eventForm.subEvents) {
-      let startMs = EventEditorConverter.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
-      let endMs = EventEditorConverter.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
+      let startMs = EventEditorFormNormalizer.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
+      let endMs = EventEditorFormNormalizer.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
       if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
         if (endMs <= startMs) {
           endMs = startMs + (60 * 60 * 1000);
@@ -2479,7 +2461,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     const first = EventEditorBuilder.firstEventEditorSubEventByOrder(this.eventForm.subEvents);
     if (first) {
-      this.eventForm.location = EventEditorConverter.normalizeEventEditorLocation(first.location);
+      this.eventForm.location = EventEditorFormNormalizer.normalizeEventEditorLocation(first.location);
     }
   }
 
@@ -2530,9 +2512,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private eventLocationRouteStops(): string[] {
-    const mainLocation = EventEditorConverter.normalizeEventEditorLocation(this.eventForm.location).trim();
+    const mainLocation = EventEditorFormNormalizer.normalizeEventEditorLocation(this.eventForm.location).trim();
     const subEventStops = EventEditorBuilder.sortEventEditorSubEventRefsByStartAsc(this.eventForm.subEvents)
-      .map(item => EventEditorConverter.normalizeEventEditorLocation(item.location).trim())
+      .map(item => EventEditorFormNormalizer.normalizeEventEditorLocation(item.location).trim())
       .filter(stop => stop.length > 0);
     const ordered = [mainLocation, ...subEventStops].filter(stop => stop.length > 0);
     return Array.from(new Set(ordered));

@@ -3,7 +3,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type {
@@ -13,7 +12,7 @@ import type {
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesPageRequest } from '../../contracts';
-import { activityChatContextFilterKey } from '../../base/converters';
+import { activityChatContextFilterKey } from '../../base/mappers';
 import { AppContext } from '../../../ui/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';

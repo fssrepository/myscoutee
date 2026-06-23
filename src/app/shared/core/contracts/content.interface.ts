@@ -1,4 +1,4 @@
-import type { UserLocationEligibilityResponseDto } from './user.interface';
+import type * as UserContracts from './user.interface';
 
 export interface IdeaPostDto {
   id: string;
@@ -158,5 +158,5 @@ export interface LandingContentStateDto {
   privacy: HelpCenterStateDto;
   terms: HelpCenterStateDto;
   ideas: IdeaPostDto[];
-  loginAvailability: UserLocationEligibilityResponseDto | null;
+  loginAvailability: UserContracts.UserLocationEligibilityResponseDto | null;
 }

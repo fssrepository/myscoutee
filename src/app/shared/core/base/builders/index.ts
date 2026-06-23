@@ -1,13 +1,16 @@
 export { ActivityEventBuilder } from './activity-event.builder';
 export { ActivityEventRecordBuilder } from './activity-event-record.builder';
-export { ActivityMembersBuilder } from './activity-members.builder';
+export {
+  ActivityMembersBuilder,
+  type ActivityMemberSourceModel,
+  type ActivityMemberSourceType
+} from './activity-members.builder';
 export {
   ActivityResourceBuilder,
   type ActivitySubEventResourceInfoCardOptions
 } from './activity-resource.builder';
 export { AssetCardBuilder } from './asset-card.builder';
 export { AssetDefaultsBuilder } from './asset-defaults.builder';
-export { AssetInfoCardBuilder } from './asset-info-card.builder';
 export { EventExploreBuilder } from './event-explore.builder';
 export { EventFeedbackBuilder } from './event-feedback.builder';
 export { EventEditorBuilder } from './event-editor.builder';

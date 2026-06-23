@@ -1,4 +1,4 @@
-import type { UserDto } from './user.interface';
+import type * as UserContracts from './user.interface';
 
 export type ContactMethodType =
   | 'phone'
@@ -35,7 +35,7 @@ export interface StoredContact {
   userId: string;
   name: string;
   initials: string;
-  gender: UserDto['gender'];
+  gender: UserContracts.UserDto['gender'];
   city: string;
   avatarUrl: string;
   headline: string;
@@ -58,7 +58,7 @@ export interface ContactListItem {
   userId: string;
   name: string;
   initials: string;
-  gender: UserDto['gender'];
+  gender: UserContracts.UserDto['gender'];
   city: string;
   avatarUrl: string;
   headline: string;
@@ -75,7 +75,7 @@ export interface ContactFormValue {
   userId: string;
   name: string;
   initials: string;
-  gender: UserDto['gender'];
+  gender: UserContracts.UserDto['gender'];
   city: string;
   avatarUrl: string;
   headline: string;

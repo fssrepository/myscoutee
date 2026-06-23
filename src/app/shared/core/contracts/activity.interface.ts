@@ -1,34 +1,8 @@
-import type {
-  ActivitiesChatContextFilter,
-  ActivitiesChatPageResultDTO,
-  ChatRecord,
-  SupportCaseFilter
-} from './chat.interface';
-import type {
-  EventBlindMode,
-  EventEditorTarget,
-  EventPolicyItem,
-  EventRecordKind,
-  EventSlotOccurrence,
-  EventSlotTemplate,
-  SubEventFormItem,
-  SubEventsDisplayMode
-} from './event.interface';
-import type { PricingConfig } from './pricing.interface';
-import type { LocationCoordinates, UserDto } from './user.interface';
-import type {
-  ActivityInviteSort,
-  ActivityMemberOwnerType,
-  ActivityMemberRequestKind,
-  ActivityMemberRole,
-  ActivityMemberStatus,
-  ActivityPendingReason,
-  ActivityPendingSource,
-  AssetType,
-  EventFeedbackListFilter,
-  EventVisibility,
-  UserGender
-} from '../common/constants';
+import type * as AppConstants from '../common/constants';
+import type * as ChatContracts from './chat.interface';
+import type * as EventContracts from './event.interface';
+import type * as PricingContracts from './pricing.interface';
+import type * as UserContracts from './user.interface';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
@@ -69,7 +43,7 @@ export interface ActivityRatePageResultDTO {
   items: ActivityRateDTO[];
   total: number;
   nextCursor?: string | null;
-  users?: UserDto[];
+  users?: UserContracts.UserDto[];
 }
 
 export interface IEventsService {
@@ -96,8 +70,8 @@ export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
-    options?: { chatItems?: readonly ChatRecord[] }
-  ): Promise<ActivitiesChatPageResultDTO>;
+    options?: { chatItems?: readonly ChatContracts.ChatRecord[] }
+  ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
 }
 
 export interface IRatesService {
@@ -113,12 +87,12 @@ export interface ActivitiesFeedFilters {
   primaryFilter?: ActivitiesPrimaryFilter;
   eventScopeFilter?: ActivitiesEventScope;
   secondaryFilter?: ActivitiesSecondaryFilter;
-  chatContextFilter?: ActivitiesChatContextFilter;
+  chatContextFilter?: ChatContracts.ActivitiesChatContextFilter;
   hostingPublicationFilter?: HostingPublicationFilter;
   rateFilter?: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
   adminServiceOnly?: boolean;
-  supportCaseFilter?: SupportCaseFilter;
+  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export interface EventExploreFeedFilters {
@@ -149,30 +123,30 @@ export interface ActivityEventSaveDTO {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
-  pricing?: PricingConfig | null;
+  pricing?: PricingContracts.PricingConfig | null;
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplate[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
-  eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
-  visibility?: EventVisibility;
-  blindMode?: EventBlindMode;
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrence | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrence[];
+  visibility?: AppConstants.EventVisibility;
+  blindMode?: EventContracts.EventBlindMode;
   status?: ActivityEventStatus;
   creatorUserId?: string;
   creatorName?: string;
   creatorInitials?: string;
-  creatorGender?: UserGender;
+  creatorGender?: AppConstants.UserGender;
   creatorCity?: string;
   location?: string;
-  locationCoordinates?: LocationCoordinates;
+  locationCoordinates?: UserContracts.LocationCoordinates;
   sourceLink?: string;
-  policies?: EventPolicyItem[];
+  policies?: EventContracts.EventPolicyItem[];
   topics?: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  subEvents?: EventContracts.SubEventFormItem[];
+  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   paymentSessionId?: string | null;
 }
 
@@ -180,7 +154,7 @@ export interface ActivitiesPageRequest {
   primaryFilter: ActivitiesPrimaryFilter;
   eventScopeFilter?: ActivitiesEventScope;
   secondaryFilter: ActivitiesSecondaryFilter;
-  chatContextFilter: ActivitiesChatContextFilter;
+  chatContextFilter: ChatContracts.ActivitiesChatContextFilter;
   hostingPublicationFilter: HostingPublicationFilter;
   rateFilter: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
@@ -195,7 +169,7 @@ export interface ActivitiesPageRequest {
   rangeStart?: string;
   rangeEnd?: string;
   adminServiceOnly?: boolean;
-  supportCaseFilter?: SupportCaseFilter;
+  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export type ActivityEventScopeFilter = ActivitiesEventScope;
@@ -228,43 +202,43 @@ export interface ActivityEventRecord {
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
-  creatorGender: UserGender;
+  creatorGender: AppConstants.UserGender;
   creatorCity: string;
-  visibility: EventVisibility;
-  blindMode: EventBlindMode;
+  visibility: AppConstants.EventVisibility;
+  blindMode: EventContracts.EventBlindMode;
   startAtIso: string;
   endAtIso: string;
   distanceKm: number;
   imageUrl: string;
   sourceLink: string;
   location: string;
-  locationCoordinates: LocationCoordinates | null;
+  locationCoordinates: UserContracts.LocationCoordinates | null;
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
-  pricing?: PricingConfig | null;
-  policies?: EventPolicyItem[];
+  pricing?: PricingContracts.PricingConfig | null;
+  policies?: EventContracts.EventPolicyItem[];
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplate[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
-  eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrence | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrence[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  subEvents?: EventContracts.SubEventFormItem[];
+  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   rating: number;
   boost: number;
   affinity: number;
@@ -292,43 +266,43 @@ export class ActivityEventDTO {
   creatorUserId!: string;
   creatorName!: string;
   creatorInitials!: string;
-  creatorGender?: UserGender;
+  creatorGender?: AppConstants.UserGender;
   creatorCity!: string;
-  visibility!: EventVisibility;
-  blindMode?: EventBlindMode;
+  visibility!: AppConstants.EventVisibility;
+  blindMode?: EventContracts.EventBlindMode;
   startAtIso!: string;
   endAtIso!: string;
   distanceKm!: number;
   imageUrl!: string;
   sourceLink?: string;
   location!: string;
-  locationCoordinates?: LocationCoordinates | null;
+  locationCoordinates?: UserContracts.LocationCoordinates | null;
   capacityMin!: number | null;
   capacityMax!: number | null;
   capacityTotal!: number;
   autoInviter?: boolean;
   frequency?: string;
   ticketing!: boolean;
-  pricing?: PricingConfig | null;
-  policies?: EventPolicyItem[];
+  pricing?: PricingContracts.PricingConfig | null;
+  policies?: EventContracts.EventPolicyItem[];
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplate[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
-  eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrence | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrence[];
   acceptedMembers!: number;
   pendingMembers!: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
   topics!: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  subEvents?: EventContracts.SubEventFormItem[];
+  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   rating!: number;
   boost!: number;
   affinity!: number;
@@ -440,29 +414,29 @@ export interface ActivityMemberEntry {
   userId: string;
   name: string;
   initials: string;
-  gender: UserGender;
+  gender: AppConstants.UserGender;
   city: string;
   statusText: string;
-  role: ActivityMemberRole;
-  status: ActivityMemberStatus;
-  pendingSource: ActivityPendingSource;
-  requestKind: ActivityMemberRequestKind;
+  role: AppConstants.ActivityMemberRole;
+  status: AppConstants.ActivityMemberStatus;
+  pendingSource: AppConstants.ActivityPendingSource;
+  requestKind: AppConstants.ActivityMemberRequestKind;
   invitedByActiveUser: boolean;
   invitedByUserId?: string | null;
   metAtIso: string;
   actionAtIso: string;
   metWhere: string;
   avatarUrl: string;
-  profile?: UserDto | null;
+  profile?: UserContracts.UserDto | null;
 }
 
 export interface ActivityMemberOwnerRef {
-  ownerType: ActivityMemberOwnerType;
+  ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
 }
 
 export interface ActivityMembersSummary {
-  ownerType: ActivityMemberOwnerType;
+  ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
   acceptedMembers: number;
   pendingMembers: number;
@@ -473,7 +447,7 @@ export interface ActivityMembersSummary {
 
 export interface ActivityInviteOwnerContext {
   ownerId: string;
-  ownerType: ActivityMemberOwnerType;
+  ownerType: AppConstants.ActivityMemberOwnerType;
   title: string;
   subtitle: string;
   detail: string;
@@ -487,7 +461,7 @@ export interface ActivityInviteCandidatesQuery {
   activeUserId: string;
   owner: ActivityInviteOwnerContext;
   existingMemberUserIds: readonly string[];
-  sort: ActivityInviteSort;
+  sort: AppConstants.ActivityInviteSort;
 }
 
 export interface IActivityInviteCandidatesService {
@@ -524,7 +498,7 @@ export interface UserGameFilterPreferencesDto {
   values?: string[];
   physiques?: string[];
   languages?: string[];
-  genders?: UserGender[];
+  genders?: AppConstants.UserGender[];
   horoscopes?: string[];
   traitLabels?: string[];
   smoking?: string[];
@@ -562,7 +536,7 @@ export interface UserGameCardsQueryResponse {
 
 export interface EventCheckoutAssetSelection {
   subEventId: string;
-  resourceType: AssetType;
+  resourceType: AppConstants.AssetType;
 }
 
 export interface EventCheckoutLineItem {
@@ -585,7 +559,7 @@ export interface EventCheckoutSelection {
   currency: string;
   paymentSessionId?: string | null;
   bookingConfirmed?: boolean;
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
 }
 
 export interface EventCheckoutRequest {
@@ -598,7 +572,7 @@ export interface EventCheckoutRequest {
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
 }
 
 export interface EventCheckoutSession {
@@ -616,7 +590,7 @@ export interface SubmittedEventFeedbackAnswer {
   eventId: string;
   kind: 'event' | 'attendee';
   targetUserId: string | null;
-  targetRole: ActivityMemberRole;
+  targetRole: AppConstants.ActivityMemberRole;
   primaryValue: string;
   secondaryValue: string;
   personalityTraitIds: string[];
@@ -635,7 +609,7 @@ export interface EventFeedbackStateDto {
 
 export interface EventFeedbackPageQueryDto {
   userId: string;
-  filter: EventFeedbackListFilter;
+  filter: AppConstants.EventFeedbackListFilter;
   page: number;
   pageSize: number;
 }
@@ -683,7 +657,7 @@ export interface EventFeedbackCardDto {
   kind: 'event' | 'attendee';
   attendeeUserId?: string;
   targetUserId?: string;
-  targetRole?: ActivityMemberRole;
+  targetRole?: AppConstants.ActivityMemberRole;
   eventTitle: string;
   eventSubtitle: string;
   eventImageUrl: string;
@@ -693,7 +667,7 @@ export interface EventFeedbackCardDto {
   targetName: string;
   targetAge?: number;
   targetCity?: string;
-  targetGender?: UserGender;
+  targetGender?: AppConstants.UserGender;
   targetTraitLabel?: string;
   targetImageUrl?: string;
   answerPrimary?: string;
@@ -705,7 +679,7 @@ export interface EventFeedbackReceivedEntryDto {
   viewerUserId: string;
   viewerName: string;
   viewerInitials: string;
-  viewerGender: UserGender;
+  viewerGender: AppConstants.UserGender;
   viewerImageUrl: string;
   eventId: string;
   submittedAtIso: string;
@@ -719,7 +693,7 @@ export interface EventFeedbackReceivedEventDto {
   entries: EventFeedbackReceivedEntryDto[];
 }
 
-export type EventFeedbackFilterCountDelta = Partial<Record<EventFeedbackListFilter, number>>;
+export type EventFeedbackFilterCountDelta = Partial<Record<AppConstants.EventFeedbackListFilter, number>>;
 
 export class EventFeedbackPageResultDto {
   readonly items: EventFeedbackDto[];
@@ -767,7 +741,7 @@ export class EventFeedbackPageResultDto {
     return this.itemById(eventId)?.title?.trim() || 'this event';
   }
 
-  filterCount(filter: EventFeedbackListFilter): number {
+  filterCount(filter: AppConstants.EventFeedbackListFilter): number {
     switch (filter) {
       case 'own-events':
         return Math.max(0, Math.trunc(Number(this.counts.ownEvents) || 0));
@@ -782,13 +756,13 @@ export class EventFeedbackPageResultDto {
   }
 
   filterCountWithDelta(
-    filter: EventFeedbackListFilter,
+    filter: AppConstants.EventFeedbackListFilter,
     delta: EventFeedbackFilterCountDelta = {}
   ): number {
     return Math.max(0, this.filterCount(filter) + (delta[filter] ?? 0));
   }
 
-  itemMatchesFilter(item: EventFeedbackDto, filter: EventFeedbackListFilter): boolean {
+  itemMatchesFilter(item: EventFeedbackDto, filter: AppConstants.EventFeedbackListFilter): boolean {
     switch (filter) {
       case 'own-events':
         return item.isOwnEvent === true;
@@ -905,7 +879,7 @@ export class EventFeedbackPageResultDto {
     return latestAtMs;
   }
 
-  groupTimestampMs(item: EventFeedbackDto, filter: EventFeedbackListFilter): number | null {
+  groupTimestampMs(item: EventFeedbackDto, filter: AppConstants.EventFeedbackListFilter): number | null {
     switch (filter) {
       case 'feedbacked':
         return this.numberOrNull(item.feedbackedAtMs ?? item.startAtMs);
@@ -948,7 +922,7 @@ export class EventFeedbackPageResultDto {
             viewerUserId: entry.viewerUserId?.trim() ?? '',
             viewerName: entry.viewerName?.trim() ?? '',
             viewerInitials: entry.viewerInitials?.trim() ?? '',
-            viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as UserGender,
+            viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as AppConstants.UserGender,
             viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
             eventId: entry.eventId?.trim() || eventId,
             submittedAtIso: entry.submittedAtIso?.trim() ?? '',
@@ -1043,7 +1017,7 @@ export class EventFeedbackPageResultDto {
   private filterMembershipDelta(
     before: EventFeedbackDto,
     after: EventFeedbackDto,
-    filter: EventFeedbackListFilter
+    filter: AppConstants.EventFeedbackListFilter
   ): number {
     const wasVisible = this.itemMatchesFilter(before, filter);
     const isVisible = this.itemMatchesFilter(after, filter);
@@ -1172,7 +1146,7 @@ export class EventFeedbackDetailDto {
     })).filter(card => card.id.length > 0 && card.eventId.length > 0);
   }
 
-  private static normalizeRole(role: ActivityMemberRole | undefined): ActivityMemberRole | undefined {
+  private static normalizeRole(role: AppConstants.ActivityMemberRole | undefined): AppConstants.ActivityMemberRole | undefined {
     if (role === 'Admin' || role === 'Manager' || role === 'Member') {
       return role;
     }
@@ -1225,7 +1199,7 @@ export interface EventFeedbackToggleRequestDto {
 }
 
 export interface UserGameDataService {
-  queryGameCardsUsersSnapshot(): UserDto[];
+  queryGameCardsUsersSnapshot(): UserContracts.UserDto[];
   queryUserGameCardsByFilter(
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number

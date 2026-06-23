@@ -1,7 +1,11 @@
 import type { ActivitiesView } from './core/contracts';
-import type { ActivityListRow } from './core/base/models';
 import type { AssetMemberRequestDTO } from './core/base/dto';
 import type { UserDto } from './core/contracts/user.interface';
+
+interface ActivityGroupableModel {
+  dateIso?: string | null;
+  distanceMetersExact?: number | null;
+}
 
 export interface AsciiEmojiConversion {
   token: string;
@@ -444,7 +448,7 @@ export class AppUtils {
   }
 
   static activityGroupLabel(
-    row: ActivityListRow,
+    row: ActivityGroupableModel,
     activitiesView: ActivitiesView,
     labels: { dateUnavailable: string; weekPrefix: string }
   ): string {
@@ -455,7 +459,7 @@ export class AppUtils {
       const bucket = Math.max(5, Math.ceil(distanceMeters / 5000) * 5);
       return `${bucket} km`;
     }
-    const parsed = new Date(row.dateIso);
+    const parsed = new Date(row.dateIso ?? '');
     if (Number.isNaN(parsed.getTime())) {
       return labels.dateUnavailable;
     }

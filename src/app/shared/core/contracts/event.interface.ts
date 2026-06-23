@@ -1,5 +1,5 @@
-import type { EventVisibility } from '../common/constants';
-import type { PricingConfig } from './pricing.interface';
+import type * as AppConstants from '../common/constants';
+import type * as PricingContracts from './pricing.interface';
 
 export interface EventPolicyItem {
   id: string;
@@ -47,11 +47,11 @@ export interface EventEditorForm {
   endAt: string;
   location: string;
   frequency: string;
-  visibility: EventVisibility;
+  visibility: AppConstants.EventVisibility;
   blindMode: EventBlindMode;
   autoInviter: boolean;
   ticketing: boolean;
-  pricing?: PricingConfig | null;
+  pricing?: PricingContracts.PricingConfig | null;
   policies?: EventPolicyItem[];
   topics: string[];
   slotsEnabled: boolean;
@@ -84,7 +84,7 @@ export interface SubEventFormItem {
   carsAccepted?: number;
   accommodationAccepted?: number;
   suppliesAccepted?: number;
-  pricing?: PricingConfig | null;
+  pricing?: PricingContracts.PricingConfig | null;
   carsCapacityMin?: number;
   carsCapacityMax?: number;
   accommodationCapacityMin?: number;

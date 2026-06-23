@@ -1,11 +1,11 @@
 import { Injectable } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
+import type * as AssetContracts from '../../contracts/asset.interface';
 import type { UserByIdQueryResponse } from '../../contracts/user.interface';
 import { offlineCacheTicketsStorageKey, offlineCacheUserStorageKey } from '../../common/storage-scope';
 
 interface CachedTicketPagePayload {
-  items: readonly AppTypes.ActivityListRow[];
+  items: readonly AssetContracts.AssetTicketDTO[];
   total: number;
   updatedAtIso: string;
 }
@@ -43,7 +43,7 @@ export class OfflineCacheService {
   writeTicketPage(
     userId: string,
     order: 'upcoming' | 'past',
-    payload: { items: readonly AppTypes.ActivityListRow[]; total: number }
+    payload: { items: readonly AssetContracts.AssetTicketDTO[]; total: number }
   ): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

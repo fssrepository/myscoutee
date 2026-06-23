@@ -1,8 +1,7 @@
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
-import type * as AppTypes from '../../../base/models';
-import { toActivityEventRow } from '../../../base/converters/activities-event.converter';
 import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
-import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import type * as ActivityContracts from '../../../contracts/activity.interface';
+import type * as AssetContracts from '../../../contracts/asset.interface';
 import type { AssetRecord } from '../entity/asset.entity';
 
 import type * as AppDTOs from '../../../base/dto';
@@ -178,18 +177,18 @@ export class LocalAssetsMapper {
 }
 
 export class LocalAssetTicketsMapper {
-  static toTicketRows(records: readonly ActivityEventRecord[]): AppTypes.ActivityListRow[] {
-    return this.cloneRows(records
+  static toTicketDTOs(records: readonly ActivityContracts.ActivityEventRecord[]): AssetContracts.AssetTicketDTO[] {
+    return this.cloneDTOs(records
       .filter(record => record.type !== 'invitations')
       .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => toActivityEventRow(ActivityEventDtoMapper.toDto(record))));
+      .map(record => this.toTicketDTO(ActivityEventDtoMapper.toDto(record))));
   }
 
   static pageRows(
-    rows: readonly AppTypes.ActivityListRow[],
-    query: AppDTOs.AssetTicketPageQueryDTO
-  ): AppDTOs.AssetTicketPageResultDTO {
+    rows: readonly AssetContracts.AssetTicketDTO[],
+    query: AssetContracts.AssetTicketPageQueryDTO
+  ): AssetContracts.AssetTicketPageResultDTO {
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const orderedRows = [...rows].sort((left, right) => this.toSortableDate(left.dateIso) - this.toSortableDate(right.dateIso));
@@ -199,21 +198,49 @@ export class LocalAssetTicketsMapper {
     }
     const startIndex = page * pageSize;
     return {
-      items: this.cloneRows(visibleRows.slice(startIndex, startIndex + pageSize)),
+      items: this.cloneDTOs(visibleRows.slice(startIndex, startIndex + pageSize)),
       total: visibleRows.length
     };
   }
 
-  static cloneRows(rows: readonly AppTypes.ActivityListRow[]): AppTypes.ActivityListRow[] {
+  static cloneDTOs(rows: readonly AssetContracts.AssetTicketDTO[]): AssetContracts.AssetTicketDTO[] {
     return rows.map(row => ({ ...row }));
   }
 
-  private static matchesTicketOrder(row: AppTypes.ActivityListRow, order: AppConstants.AssetTicketOrder): boolean {
+  private static toTicketDTO(dto: ActivityContracts.ActivityEventDTO): AssetContracts.AssetTicketDTO {
+    return {
+      id: dto.id,
+      type: dto.type === 'hosting' ? 'hosting' : 'events',
+      status: dto.status,
+      title: dto.title,
+      subtitle: dto.subtitle,
+      detail: dto.timeframe,
+      dateIso: dto.startAtIso,
+      distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
+      isAdmin: this.isTicketAdmin(dto),
+      startAt: dto.startAtIso,
+      endAt: dto.endAtIso,
+      imageUrl: dto.imageUrl,
+      visibility: dto.visibility,
+      avatarInitials: dto.creatorInitials,
+      creatorInitials: dto.creatorInitials
+    };
+  }
+
+  private static isTicketAdmin(dto: ActivityContracts.ActivityEventDTO): boolean {
+    const userId = `${dto.userId ?? ''}`.trim();
+    return !!userId && (
+      dto.creatorUserId === userId
+      || (dto.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+    );
+  }
+
+  private static matchesTicketOrder(row: AssetContracts.AssetTicketDTO, order: AppConstants.AssetTicketOrder): boolean {
     const isPast = this.resolveTicketEndTimestamp(row) < Date.now();
     return order === 'past' ? isPast : !isPast;
   }
 
-  private static resolveTicketEndTimestamp(row: AppTypes.ActivityListRow): number {
+  private static resolveTicketEndTimestamp(row: AssetContracts.AssetTicketDTO): number {
     const endAtMs = this.toSortableDate(row.endAt ?? '');
     if (endAtMs > 0) {
       return endAtMs;

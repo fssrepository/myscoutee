@@ -1,7 +1,7 @@
-import type * as AppTypes from '../../../../../shared/core/base/models';
+import type { ImageCardData } from '../../../../../shared/ui';
 
 export function isActivitiesRateBlinking(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   blinkUntilByRowId: Record<string, number>
 ): boolean {
   const until = blinkUntilByRowId[row.id] ?? 0;

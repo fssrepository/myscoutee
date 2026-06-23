@@ -1,8 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
-import type { InfoCardData } from '../../../ui';
-import { AssetInfoCardBuilder } from '../builders';
 import { LocalAssetsService } from '../../local/source/services/assets.service';
 import { HttpAssetsService } from '../../http/services/assets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -75,18 +72,6 @@ export class AssetsService extends BaseRouteModeService {
 
   async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetCardDTO | null> {
     return this.assetsService.makeAssetManager(userId, assetId, targetUserId);
-  }
-
-  exploreAssetInfoCard(
-    card: AppDTOs.AssetCardDTO,
-    options: {
-      groupLabel?: string | null;
-      availabilityLabel: string;
-      canBorrow: boolean;
-      canReportOwner: boolean;
-    }
-  ): InfoCardData {
-    return AssetInfoCardBuilder.buildExploreAssetInfoCard(card, options);
   }
 
   async refreshAssetSourcePreview(

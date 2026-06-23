@@ -1,6 +1,6 @@
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
-import { EventEditorConverter } from '../converters/event-editor.converter';
+import { EventEditorFormNormalizer } from '../normalizers/event-editor-form.normalizer';
 import { PricingBuilder } from './pricing.builder';
 
 interface EventEditorSubEventGroupInput {
@@ -74,7 +74,7 @@ export class EventEditorBuilder {
       id: `${item.id ?? ''}`.trim(),
       startAt: `${item.startAt ?? ''}`.trim(),
       endAt: `${item.endAt ?? ''}`.trim(),
-      overrideDate: EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate),
+      overrideDate: EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate),
       closed: item.closed === true
     }));
   }
@@ -116,7 +116,7 @@ export class EventEditorBuilder {
     if (!first?.id) {
       return this.cloneEventEditorSubEvents(items);
     }
-    const normalizedLocation = EventEditorConverter.normalizeEventEditorLocation(location);
+    const normalizedLocation = EventEditorFormNormalizer.normalizeEventEditorLocation(location);
     return items.map(item => item.id === first.id
       ? { ...item, location: normalizedLocation, groups: (item.groups ?? []).map(group => ({ ...group })) }
       : { ...item, groups: (item.groups ?? []).map(group => ({ ...group })) }) as T[];
@@ -161,7 +161,7 @@ export class EventEditorBuilder {
         description: `${item.description ?? ''}`.trim(),
         startAt: `${item.startAt ?? ''}`.trim(),
         endAt: `${item.endAt ?? ''}`.trim(),
-        location: EventEditorConverter.normalizeEventEditorLocation(item.location),
+        location: EventEditorFormNormalizer.normalizeEventEditorLocation(item.location),
         optional: Boolean(item.optional),
         pricing: item.pricing
           ? PricingBuilder.compactPricingConfig(item.pricing, { context: 'subevent', allowSlotFeatures: false })
@@ -252,22 +252,22 @@ export class EventEditorBuilder {
           id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
           startAt: '',
           endAt: '',
-          overrideDate: EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate),
+          overrideDate: EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate),
           closed: true
         };
       }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
-      const parsedStart = EventEditorConverter.parseEventEditorDateValue(normalizedStart) ?? new Date();
+      const parsedStart = EventEditorFormNormalizer.parseEventEditorDateValue(normalizedStart) ?? new Date();
       const normalizedEnd = `${item.endAt ?? ''}`.trim();
-      const parsedEndRaw = EventEditorConverter.parseEventEditorDateValue(normalizedEnd) ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
+      const parsedEndRaw = EventEditorFormNormalizer.parseEventEditorDateValue(normalizedEnd) ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
       const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
         ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
         : parsedEndRaw;
-      const overrideDate = EventEditorConverter.normalizeEventEditorSlotOverrideDate(item.overrideDate);
-      const startAt = EventEditorConverter.parseEventEditorDateValue(normalizedStart)
+      const overrideDate = EventEditorFormNormalizer.normalizeEventEditorSlotOverrideDate(item.overrideDate);
+      const startAt = EventEditorFormNormalizer.parseEventEditorDateValue(normalizedStart)
         ? normalizedStart
         : AppUtils.toIsoDateTimeLocal(parsedStart);
-      const endAt = EventEditorConverter.parseEventEditorDateValue(normalizedEnd)
+      const endAt = EventEditorFormNormalizer.parseEventEditorDateValue(normalizedEnd)
         ? normalizedEnd
         : AppUtils.toIsoDateTimeLocal(parsedEnd);
       return {
@@ -294,8 +294,8 @@ export class EventEditorBuilder {
   }
 
   static buildEventEditorTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
-    const start = EventEditorConverter.parseEventEditorDateValue(startAt);
-    const end = EventEditorConverter.parseEventEditorDateValue(endAt);
+    const start = EventEditorFormNormalizer.parseEventEditorDateValue(startAt);
+    const end = EventEditorFormNormalizer.parseEventEditorDateValue(endAt);
     if (!start || !end) {
       return startAt || endAt || '';
     }
@@ -303,7 +303,7 @@ export class EventEditorBuilder {
     const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
     const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    const normalizedFrequency = EventEditorConverter.normalizeEventEditorFrequency(frequency);
+    const normalizedFrequency = EventEditorFormNormalizer.normalizeEventEditorFrequency(frequency);
 
     if (normalizedFrequency === 'One-time') {
       return `${dateLabel} · ${startTime} - ${endTime}`;

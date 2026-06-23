@@ -1,10 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../shared/core/base/models';
-import { AppContext } from '../shared/ui';
-import { AssetDefaultsBuilder, AssetCardBuilder, AssetInfoCardBuilder, AssetTicketConverter, UsersService, type UserDto } from '../shared/core';
+import { AppContext, AssetInfoCardConverter, AssetTicketInfoCardConverter } from '../shared/ui';
+import {
+  AssetCardBuilder,
+  AssetDefaultsBuilder,
+  AssetTicketMapper,
+  UsersService,
+  type UserDto
+} from '../shared/core';
 import type { InfoCardData } from '../shared/ui';
 
+import type * as AssetContracts from '../shared/core/contracts/asset.interface';
 import type * as AppDTOs from '../shared/core/base/dto';
 import type * as AppConstants from '../shared/core/common/constants';
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
@@ -25,17 +31,17 @@ export class AssetFacadeService {
   }
 
   ticketInfoCard(
-    row: AppTypes.ActivityListRow,
+    row: AssetContracts.AssetTicketDTO,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
-    return AssetInfoCardBuilder.buildTicketInfoCard(row, options);
+    return AssetTicketInfoCardConverter.convert(row, options);
   }
 
   ownedAssetInfoCard(
     card: AppDTOs.AssetCardDTO,
     options: { groupLabel?: string | null; selectMode?: boolean; selected?: boolean; selectDisabled?: boolean } = {}
   ): InfoCardData {
-    return AssetInfoCardBuilder.buildOwnedAssetInfoCard(card, options);
+    return AssetInfoCardConverter.convert(card, options);
   }
 
   ownedAssetEmptyLabel(type: AppConstants.AssetType): string {
@@ -51,12 +57,12 @@ export class AssetFacadeService {
   }
 
   ticketGroupLabel(dateIso: string): string {
-    return AssetInfoCardBuilder.buildTicketGroupLabel(dateIso);
+    return AssetTicketMapper.groupLabel(dateIso);
   }
 
-  createTicketScanPayload(row: AppTypes.ActivityListRow): AppDTOs.TicketScanPayloadDTO {
+  createTicketScanPayload(row: AssetContracts.AssetTicketDTO): AssetContracts.TicketScanPayloadDTO {
     const activeUser = this.resolveActiveTicketHolder();
-    return AssetTicketConverter.toTicketScanPayload(row, activeUser ?? {
+    return AssetTicketMapper.toTicketScanPayload(row, activeUser ?? {
       id: this.currentActiveUserId(),
       name: 'Ticket Holder',
       age: 0,
@@ -64,12 +70,12 @@ export class AssetFacadeService {
     });
   }
 
-  ticketPayloadAvatarUrl(payload: AppDTOs.TicketScanPayloadDTO | null): string {
-    return AssetInfoCardBuilder.resolveTicketPayloadAvatarUrl(this.ticketPayloadUser(payload));
+  ticketPayloadAvatarUrl(payload: AssetContracts.TicketScanPayloadDTO | null): string {
+    return AssetTicketMapper.payloadAvatarUrl(this.ticketPayloadUser(payload));
   }
 
-  ticketPayloadInitials(payload: AppDTOs.TicketScanPayloadDTO): string {
-    return AssetInfoCardBuilder.resolveTicketPayloadInitials(payload, this.ticketPayloadUser(payload));
+  ticketPayloadInitials(payload: AssetContracts.TicketScanPayloadDTO): string {
+    return AssetTicketMapper.payloadInitials(payload, this.ticketPayloadUser(payload));
   }
 
   private currentActiveUserId(): string {
@@ -98,7 +104,7 @@ export class AssetFacadeService {
     });
   }
 
-  private ticketPayloadUser(payload: AppDTOs.TicketScanPayloadDTO | null): TicketPerson | null {
+  private ticketPayloadUser(payload: AssetContracts.TicketScanPayloadDTO | null): TicketPerson | null {
     const normalizedUserId = payload?.holderUserId?.trim() ?? '';
     if (!normalizedUserId) {
       return null;

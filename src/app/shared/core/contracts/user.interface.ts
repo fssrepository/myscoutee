@@ -1,9 +1,6 @@
-import type { UserGameFilterPreferencesDto } from './activity.interface';
-import type {
-  ProfileStatus,
-  UserGender
-} from '../common/constants';
-import type { ExperienceEntry, ProfileDetailFormGroup } from './profile.interface';
+import type * as ActivityContracts from './activity.interface';
+import type * as AppConstants from '../common/constants';
+import type * as ProfileContracts from './profile.interface';
 
 export interface LocationCoordinates {
   latitude: number;
@@ -137,7 +134,7 @@ export interface UserSelectorListItemDto {
   name: string;
   city: string;
   initials: string;
-  gender: UserGender;
+  gender: AppConstants.UserGender;
   statusText?: string;
   completion?: number;
   profileFormVersion?: number;
@@ -158,7 +155,7 @@ export interface UserDto {
   languages: string[];
   horoscope: string;
   initials: string;
-  gender: UserGender;
+  gender: AppConstants.UserGender;
   statusText: string;
   hostTier: string;
   traitLabel: string;
@@ -170,10 +167,10 @@ export interface UserDto {
   locationCoordinates?: LocationCoordinates;
   partitionKey?: string;
   images?: string[];
-  profileDetails?: ProfileDetailFormGroup[];
+  profileDetails?: ProfileContracts.ProfileDetailFormGroup[];
   impressions?: UserImpressionsDto;
-  profileStatus: ProfileStatus;
-  previousProfileStatus?: ProfileStatus | null;
+  profileStatus: AppConstants.ProfileStatus;
+  previousProfileStatus?: AppConstants.ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
   activities: {
@@ -199,13 +196,13 @@ export interface UserDto {
 export interface UserByIdQueryResponse {
   user: UserDto | null;
   filterCount?: number;
-  filterPreferences?: UserGameFilterPreferencesDto | null;
+  filterPreferences?: ActivityContracts.UserGameFilterPreferencesDto | null;
   counterOverrides?: UserMenuCountersDto | null;
 }
 
 export interface ProfileExtDto {
   profile: UserDto;
-  experienceEntries: ExperienceEntry[];
+  experienceEntries: ProfileContracts.ExperienceEntry[];
 }
 
 export interface UserFeedbackSubmitRequestDto {
@@ -252,7 +249,7 @@ export interface UserService {
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
-  saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void>;
+  saveUserFilterPreferences(userId: string, preferences: ActivityContracts.UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;
   saveUserProfileExt(request: ProfileExtDto, requestTimeoutMs?: number): Promise<UserDto | null>;
   submitUserFeedback(request: UserFeedbackSubmitRequestDto, signal?: AbortSignal, requestTimeoutMs?: number): Promise<UserSubmitActionResponseDto>;

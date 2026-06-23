@@ -1,18 +1,18 @@
-import type { AssetType } from '../common/constants';
+import type * as AppConstants from '../common/constants';
 
 export type ShareTokenKind = 'event' | 'asset' | 'adminHelp';
 
 export interface ShareTokenCreateRequest {
   kind: ShareTokenKind;
   entityId: string;
-  assetType?: AssetType | null;
+  assetType?: AppConstants.AssetType | null;
   ownerUserId?: string | null;
 }
 
 export interface ShareTokenResolvedItem {
   kind: ShareTokenKind;
   entityId: string;
-  assetType?: AssetType | null;
+  assetType?: AppConstants.AssetType | null;
   ownerUserId?: string | null;
   title: string;
   subtitle?: string | null;

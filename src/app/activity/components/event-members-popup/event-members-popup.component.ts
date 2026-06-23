@@ -186,9 +186,9 @@ export class EventMembersPopupComponent {
         });
         return;
       }
-      this.openMembersPopup(request.row.id, {
-        subtitle: request.row.title,
-        canManage: request.row.isAdmin === true,
+      this.openMembersPopup(request.ownerId, {
+        subtitle: request.title,
+        canManage: request.canManage === true,
         ownerType: 'event'
       });
     });

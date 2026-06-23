@@ -1,62 +1,55 @@
-import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../../contracts/user.interface';
-import type * as AppTypes from '../models';
-import type { InfoCardData, CardMenuActionId } from '../../../ui';
-import { AssetCardBuilder } from './asset-card.builder';
-import { AssetDefaultsBuilder } from './asset-defaults.builder';
-import { AssetTicketConverter } from '../converters/asset-ticket.converter';
+import { AppUtils } from '../../app-utils';
+import { AssetCardBuilder, AssetDefaultsBuilder } from '../../core/base/builders';
+import type * as AppDTOs from '../../core/base/dto';
+import type * as AppConstants from '../../core/common/constants';
+import type { CardMenuActionId, InfoCardData } from '../components/card';
+import type { UiListConverter } from './converter.types';
 
-import type * as AppDTOs from '../dto';
-import type * as AppConstants from '../../common/constants';
-type TicketPerson = Pick<UserDto, 'initials' | 'images'>;
+export type AssetInfoCardModel = InfoCardData;
 
-export class AssetInfoCardBuilder {
-  static buildTicketInfoCard(
-    row: AppTypes.ActivityListRow,
-    options: { groupLabel?: string | null } = {}
-  ): InfoCardData {
-    return {
-      id: `${row.type}:${row.id}`,
-      dateIso: row.dateIso,
-      distanceMetersExact: row.distanceMetersExact,
-      groupLabel: options.groupLabel ?? null,
-      title: row.title,
-      imageUrl: this.ticketImageUrl(row),
-      metaRows: [this.ticketMetaLine(row)],
-      description: row.subtitle,
-      leadingIcon: {
-        icon: this.ticketLeadingIcon(row),
-        tone: this.ticketLeadingIconTone(row)
-      },
-      mediaStart: {
-        variant: 'avatar',
-        tone: this.ticketSourceAvatarTone(row),
-        label: this.ticketSourceAvatarLabel(row),
-        interactive: false,
-        ariaLabel: null
-      },
-      mediaEnd: {
-        variant: 'badge',
-        tone: 'default',
-        icon: 'qr_code_2',
-        interactive: true,
-        ariaLabel: 'Open ticket QR code'
-      },
-      clickable: false
-    };
+export interface AssetOwnedInfoCardConverterOptions {
+  variant?: 'owned';
+  groupLabel?: string | null;
+  selectMode?: boolean;
+  selected?: boolean;
+  selectDisabled?: boolean;
+  fallbackImageUrl?: string | null;
+  fallbackSubtitle?: string | null;
+}
+
+export interface AssetExploreInfoCardConverterOptions {
+  variant: 'explore';
+  groupLabel?: string | null;
+  availabilityLabel: string;
+  canBorrow: boolean;
+  canReportOwner: boolean;
+}
+
+export type AssetInfoCardConverterOptions =
+  | AssetOwnedInfoCardConverterOptions
+  | AssetExploreInfoCardConverterOptions;
+
+export class AssetInfoCardConverter {
+  static convert(
+    card: AppDTOs.AssetCardDTO,
+    options: AssetInfoCardConverterOptions = {}
+  ): AssetInfoCardModel {
+    return options.variant === 'explore'
+      ? this.convertExplore(card, options)
+      : this.convertOwned(card, options);
   }
 
-  static buildOwnedAssetInfoCard(
+  static convertList(
+    cards: readonly AppDTOs.AssetCardDTO[],
+    options: AssetInfoCardConverterOptions = {}
+  ): AssetInfoCardModel[] {
+    return cards.map(card => this.convert(card, options));
+  }
+
+  private static convertOwned(
     card: AppDTOs.AssetCardDTO,
-    options: {
-      groupLabel?: string | null;
-      selectMode?: boolean;
-      selected?: boolean;
-      selectDisabled?: boolean;
-      fallbackImageUrl?: string | null;
-      fallbackSubtitle?: string | null;
-    } = {}
-  ): InfoCardData {
+    options: AssetOwnedInfoCardConverterOptions
+  ): AssetInfoCardModel {
     const selectMode = options.selectMode === true;
     const selected = options.selected === true;
     return {
@@ -94,15 +87,10 @@ export class AssetInfoCardBuilder {
     };
   }
 
-  static buildExploreAssetInfoCard(
+  private static convertExplore(
     card: AppDTOs.AssetCardDTO,
-    options: {
-      groupLabel?: string | null;
-      availabilityLabel: string;
-      canBorrow: boolean;
-      canReportOwner: boolean;
-    }
-  ): InfoCardData {
+    options: AssetExploreInfoCardConverterOptions
+  ): AssetInfoCardModel {
     const visibility = this.assetExploreVisibility(card);
     const canBorrow = options.canBorrow === true;
     return {
@@ -148,96 +136,6 @@ export class AssetInfoCardBuilder {
       menuActions: this.assetExploreMenuActions(canBorrow, options.canReportOwner === true),
       clickable: false
     };
-  }
-
-  static buildTicketGroupLabel(dateIso: string): string {
-    const parsed = new Date(dateIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    return parsed.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  static resolveTicketPayloadAvatarUrl(user: TicketPerson | null): string {
-    if (!user) {
-      return '';
-    }
-    return AppUtils.firstImageUrl(user.images);
-  }
-
-  static resolveTicketPayloadInitials(
-    payload: AppDTOs.TicketScanPayloadDTO,
-    user: TicketPerson | null
-  ): string {
-    if (user?.initials?.trim()) {
-      return user.initials.trim();
-    }
-    return AppUtils.initialsFromText(payload.holderName);
-  }
-
-  private static ticketImageUrl(row: AppTypes.ActivityListRow): string {
-    return `${row.imageUrl ?? ''}`.trim() || 'https://picsum.photos/seed/event-default/1200/700';
-  }
-
-  private static ticketMetaLine(row: AppTypes.ActivityListRow): string {
-    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketConverter.buildTicketDateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
-  }
-
-  private static ticketDistanceLabel(distanceMeters: number | null | undefined): string {
-    const meters = Number.isFinite(distanceMeters) ? Math.max(0, Math.trunc(Number(distanceMeters))) : 0;
-    const rounded = Math.round((meters / 1000) * 10) / 10;
-    return Number.isInteger(rounded) ? `${rounded} km` : `${rounded.toFixed(1)} km`;
-  }
-
-  private static ticketLeadingIcon(row: AppTypes.ActivityListRow): string {
-    const visibility = this.ticketVisibility(row);
-    if (visibility === 'Friends only') {
-      return 'groups';
-    }
-    if (visibility === 'Invitation only') {
-      return 'mail_lock';
-    }
-    return 'public';
-  }
-
-  private static ticketLeadingIconTone(
-    row: AppTypes.ActivityListRow
-  ): NonNullable<InfoCardData['leadingIcon']>['tone'] {
-    const visibility = this.ticketVisibility(row);
-    if (visibility === 'Friends only') {
-      return 'friends';
-    }
-    if (visibility === 'Invitation only') {
-      return 'invitation';
-    }
-    return 'public';
-  }
-
-  private static ticketVisibility(row: AppTypes.ActivityListRow): AppConstants.EventVisibility {
-    const visibility = row.visibility;
-    if (visibility === 'Friends only' || visibility === 'Invitation only') {
-      return visibility;
-    }
-    return 'Public';
-  }
-
-  private static ticketSourceAvatarTone(
-    row: AppTypes.ActivityListRow
-  ): NonNullable<InfoCardData['mediaStart']>['tone'] {
-    const toneIndex = (AppUtils.hashText(`${row.type}:${row.id}:${row.title}`) % 8) + 1;
-    return `tone-${toneIndex}` as NonNullable<InfoCardData['mediaStart']>['tone'];
-  }
-
-  private static ticketSourceAvatarLabel(row: AppTypes.ActivityListRow): string {
-    const explicit = `${row.avatarInitials ?? row.creatorInitials ?? ''}`.trim();
-    if (explicit) {
-      return explicit.slice(0, 2).toUpperCase();
-    }
-    return AppUtils.initialsFromText(row.title);
   }
 
   private static ownedAssetMetaLine(card: AppDTOs.AssetCardDTO, fallbackSubtitle: string): string {
@@ -445,3 +343,10 @@ export class AssetInfoCardBuilder {
     }
   }
 }
+
+export const assetInfoCardConverter =
+  AssetInfoCardConverter satisfies UiListConverter<
+    AppDTOs.AssetCardDTO,
+    AssetInfoCardModel,
+    AssetInfoCardConverterOptions
+  >;

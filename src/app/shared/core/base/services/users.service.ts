@@ -22,7 +22,7 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { ExperienceEntry } from '../../contracts/profile.interface';
-import { UserRealtimeSnapshotConverter } from '../converters';
+import { UserRealtimeSnapshotMapper } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
@@ -428,7 +428,7 @@ export class UsersService extends BaseRouteModeService {
     fallbackUserId: string,
     fallbackCursor: string | null
   ): UserRealtimeLongPollResponseDto {
-    return UserRealtimeSnapshotConverter.snapshot(snapshot, fallbackUserId, fallbackCursor);
+    return UserRealtimeSnapshotMapper.snapshot(snapshot, fallbackUserId, fallbackCursor);
   }
 
   private normalizeCounterOverrides(
@@ -542,7 +542,7 @@ export class UsersService extends BaseRouteModeService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: UserRealtimeSnapshotConverter.impressions(user.impressions),
+      impressions: UserRealtimeSnapshotMapper.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),

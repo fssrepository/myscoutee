@@ -1,7 +1,8 @@
-import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
 import type { ListQuery } from '../../../ui';
+
+type ActivityChatContextFilterSource = Pick<ContractTypes.ChatRecord, 'channelType' | 'serviceContext'>;
 
 export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>): ActivitiesPageRequest {
   const filters = query.filters;
@@ -84,6 +85,24 @@ function normalizeRateFilter(value: unknown): ContractTypes.RateFilterKey {
 
 function normalizeActivitiesView(value: unknown): ContractTypes.ActivitiesView {
   return value === 'week' || value === 'month' || value === 'distance' ? value : 'day';
+}
+
+export function activityChatContextFilterKey(
+  item: ActivityChatContextFilterSource
+): ContractTypes.ActivitiesChatContextFilter {
+  if (item.channelType === 'serviceEvent' || item.serviceContext) {
+    return 'service';
+  }
+  if (item.channelType === 'groupSubEvent') {
+    return 'group';
+  }
+  if (item.channelType === 'optionalSubEvent') {
+    return 'subEvent';
+  }
+  if (item.channelType === 'mainEvent') {
+    return 'event';
+  }
+  return 'all';
 }
 
 function resolveActivitiesPageSort(

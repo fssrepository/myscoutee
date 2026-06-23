@@ -5,12 +5,12 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
-import { ActivityMembersBuilder } from '../../../base/builders/activity-members.builder';
-import { toActivityEventRow } from '../../../base/converters/activities-event.converter';
-import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
+import {
+  ActivityMembersBuilder,
+  type ActivityMemberSourceModel
+} from '../../../base/builders/activity-members.builder';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
-import type * as AppTypes from '../../../base/models';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
@@ -236,13 +236,15 @@ export class SeedActivityMembersRepository {
       record.creatorCity,
       record.creatorGender
     );
-    const row = toActivityEventRow(ActivityEventDtoMapper.toDto({
-      ...record,
+    const row: ActivityMemberSourceModel = {
+      id: record.id,
       type: 'events',
-      adminIds: this.isEventAdminRecord(record, record.userId)
-        ? this.normalizeMemberUserIds([record.userId, record.creatorUserId, ...(record.adminIds ?? [])])
-        : [...(record.adminIds ?? [])]
-    }));
+      isAdmin: true,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      capacityMax: record.capacityMax
+    };
     const rowKey = `${row.type}:${row.id}`;
     const explicit = explicitUserIdsByEventId.get(record.id) ?? null;
     const userIds = this.seedMemberUserIdsForEventRecord(record, users, explicit);
@@ -347,7 +349,7 @@ export class SeedActivityMembersRepository {
 
   private toEntryForUserId(
     owner: ActivityMemberOwnerRef,
-    row: AppTypes.ActivityListRow,
+    row: ActivityMemberSourceModel,
     rowKey: string,
     creator: UserDto,
     userId: string,
@@ -801,14 +803,6 @@ export class SeedActivityMembersRepository {
 
   private shouldPreferRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
     return next.acceptedMembers >= current.acceptedMembers;
-  }
-
-  private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return false;
-    }
-    return this.normalizeMemberUserIds([record.creatorUserId, ...(record.adminIds ?? [])]).includes(normalizedUserId);
   }
 
   private sameUserIds(left: readonly string[] | undefined, right: readonly string[] | undefined): boolean {

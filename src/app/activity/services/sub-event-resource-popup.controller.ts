@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
 
-import { AppContext, AppPopupContext } from '../../shared/ui';
+import { AppContext, AppPopupContext, AssetInfoCardConverter } from '../../shared/ui';
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
@@ -281,7 +281,8 @@ export class SubEventResourcePopupController {
     assetExploreAvailableQuantity: card => this.assetExploreAvailableQuantity(card),
     assetExploreAvailabilityLabel: card => this.assetExploreAvailabilityLabel(card),
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
-    assetExploreInfoCard: (card, options) => this.assetsService.exploreAssetInfoCard(card, {
+    assetExploreInfoCard: (card, options) => AssetInfoCardConverter.convert(card, {
+      variant: 'explore',
       groupLabel: options?.groupLabel ?? null,
       availabilityLabel: this.assetExploreAvailabilityLabel(card),
       canBorrow: this.assetExploreAvailableQuantity(card) > 0,

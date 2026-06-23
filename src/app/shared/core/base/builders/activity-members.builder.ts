@@ -1,7 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
-import type { ActivityListRow } from '../models';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
@@ -12,9 +11,21 @@ import type {
   ActivityPendingSource
 } from '../../common/constants';
 
+export type ActivityMemberSourceType = 'events' | 'hosting' | 'invitations';
+
+export interface ActivityMemberSourceModel {
+  id: string;
+  type: ActivityMemberSourceType;
+  isAdmin?: boolean;
+  acceptedMembers?: number | null;
+  pendingMembers?: number | null;
+  capacityTotal?: number | null;
+  capacityMax?: number | null;
+}
+
 export class ActivityMembersBuilder {
   static activityCapacityTotal(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     capacityByRowId: Record<string, string>,
     fallbackBase = 0
   ): number {
@@ -36,10 +47,7 @@ export class ActivityMembersBuilder {
     return Math.max(fallbackBase, 4);
   }
 
-  static activityMembersOwnerForRow(row: ActivityListRow): ActivityMemberOwnerRef | null {
-    if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
-      return null;
-    }
+  static activityMembersOwnerForRow(row: ActivityMemberSourceModel): ActivityMemberOwnerRef | null {
     return {
       ownerType: 'event',
       ownerId: row.id
@@ -47,15 +55,12 @@ export class ActivityMembersBuilder {
   }
 
   static activityMembersSummaryForRow(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     options: {
       capacityByRowId: Record<string, string>;
       pendingMembersByRowId: Record<string, number>;
     }
   ): ActivityMembersSummary | null {
-    if (row.type !== 'events' && row.type !== 'hosting' && row.type !== 'invitations') {
-      return null;
-    }
     const source = options.capacityByRowId[row.id];
     const pendingMembers = Math.max(0, Math.trunc(Number(options.pendingMembersByRowId[row.id]) || 0));
     const acceptedFromSource = Number(row.acceptedMembers);
@@ -133,7 +138,7 @@ export class ActivityMembersBuilder {
   }
 
   static buildSyncedActivityMembersForRow(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     acceptedMembers: number,
     pendingMembers: number,
     options: {
@@ -202,7 +207,7 @@ export class ActivityMembersBuilder {
 
   static toActivityMemberEntry(
     user: UserDto,
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     rowKey: string,
     activeUserId: string,
     defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean },
@@ -233,7 +238,7 @@ export class ActivityMembersBuilder {
   }
 
   static buildForcedAcceptedMembers(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     rowKey: string,
     count: number,
     users: readonly UserDto[],
@@ -274,7 +279,7 @@ export class ActivityMembersBuilder {
   }
 
   static generateActivityMembersForRow(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     rowKey: string,
     users: readonly UserDto[],
     activeUser: UserDto,
@@ -348,7 +353,7 @@ export class ActivityMembersBuilder {
   }
 
   private static resolveGeneratedMemberTargets(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     seed: number,
     availableOtherUsers: number
   ): { acceptedTarget: number; pendingTarget: number } {
@@ -395,7 +400,7 @@ export class ActivityMembersBuilder {
   }
 
   private static buildInvitationSyncedActivityMembersForRow(
-    row: ActivityListRow,
+    row: ActivityMemberSourceModel,
     acceptedMembers: number,
     pendingMembers: number,
     options: {
