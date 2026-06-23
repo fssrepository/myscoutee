@@ -63,52 +63,15 @@
             (stateChange)="onMembersSmartListStateChange($event)"
           ></app-smart-list>
           <ng-template #memberItemTemplate let-member>
-            <article
-              class="friends-picker-card subevent-member-image-card activity-member-image-card"
-              [ngClass]="[memberCardToneClass(member), isActionMenuOpen(member) ? 'menu-open' : '']"
-              [appLazyBgImage]="member.avatarUrl"
-              >
-              <span class="friends-picker-card-avatar-fallback" aria-hidden="true">
-                <mat-icon>highlight_off</mat-icon>
-              </span>
-              <span
-                class="member-card-status-chip"
-                [ngClass]="memberCardStatusClass(member)"
-                [attr.title]="memberCardStatusLabel(member)"
-                >
-                <mat-icon>{{ memberCardStatusIcon(member) }}</mat-icon>
-              </span>
-              @if (canViewMemberProfile(member)) {
-                <button
-                  type="button"
-                  class="friends-picker-card-add-btn subevent-member-profile-trigger"
-                  (click)="viewMemberProfile(member, $event)"
-                  aria-label="View profile"
-                  >
-                  <mat-icon>visibility</mat-icon>
-                </button>
-              }
-              @if (canShowActionMenu(member)) {
-                <div class="subevent-member-menu-anchor" [class.has-profile-view]="canViewMemberProfile(member)">
-                  <app-menu-trigger
-                    class="subevent-member-menu-trigger experience-action-menu-trigger"
-                    [menuId]="memberActionMenuId(member)"
-                    kind="select"
-                    [title]="member.name"
-                    [trigger]="memberActionMenuTrigger(member)"
-                    [items]="memberActionMenuItems(member)"
-                    panelAlign="auto"
-                  ></app-menu-trigger>
-                </div>
-              }
-              <div class="friends-picker-card-meta subevent-member-card-meta activity-member-card-meta">
-                <h4>{{ member.name }}, {{ age(member) }}</h4>
-                <p>{{ roleLabel(member) }} · {{ member.city }}</p>
-                @if (member.status === 'pending' || member.status === 'disqualified') {
-                  <p class="subevent-member-card-status">{{ pendingStatusLabel(member) }}</p>
-                }
-              </div>
-            </article>
+            <app-image-card
+              [card]="memberImageCard(member)"
+              [mediaActions]="memberImageCardMediaActions(member)"
+              [menuId]="memberActionMenuId(member)"
+              [menuTitle]="member.name"
+              [sharedMenuTrigger]="memberActionMenuTrigger(member)"
+              [sharedMenuItems]="memberImageCardSharedMenuItems(member)"
+              (mediaAction)="onMemberImageCardMediaAction(member, $event)"
+            ></app-image-card>
           </ng-template>
         </div>
       </div>

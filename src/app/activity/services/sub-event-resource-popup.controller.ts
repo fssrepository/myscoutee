@@ -1,7 +1,7 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
 
-import { AppContext, AppPopupContext } from '../../shared/ui';
+import { AppContext, AppPopupContext, AssetInfoCardConverter } from '../../shared/ui';
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
@@ -281,7 +281,8 @@ export class SubEventResourcePopupController {
     assetExploreAvailableQuantity: card => this.assetExploreAvailableQuantity(card),
     assetExploreAvailabilityLabel: card => this.assetExploreAvailabilityLabel(card),
     assetExploreCanBorrow: card => this.assetExploreAvailableQuantity(card) > 0,
-    assetExploreInfoCard: (card, options) => this.assetsService.exploreAssetInfoCard(card, {
+    assetExploreInfoCard: (card, options) => AssetInfoCardConverter.convert(card, {
+      variant: 'explore',
       groupLabel: options?.groupLabel ?? null,
       availabilityLabel: this.assetExploreAvailabilityLabel(card),
       canBorrow: this.assetExploreAvailableQuantity(card) > 0,
@@ -1361,8 +1362,7 @@ export class SubEventResourcePopupController {
   }
 
   private isSubEventScopedAssetRequest(request: AppDTOs.AssetMemberRequestDTO, subEventId: string): boolean {
-    return ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEventId)
-      || `${request.booking?.subEventId ?? ''}`.trim() === subEventId.trim();
+    return ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId);
   }
 
   private subEventScopedAssetRequests(
@@ -3925,12 +3925,11 @@ export class SubEventResourcePopupController {
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = cards.reduce((sum, card) => {
-      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
-        ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
-        : null;
-      return sum + this.assetPendingCount(card, subEvent.id, managerUserId);
-    }, 0);
+    const pending = type === 'Supplies'
+      ? 0
+      : cards.reduce((sum, card) => (
+        sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'pending')
+      ), 0);
     if (type === 'Supplies') {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
@@ -3939,19 +3938,10 @@ export class SubEventResourcePopupController {
         pending
       };
     }
-    const joinedIds = new Set<string>();
-    for (const card of cards) {
-      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
-        ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
-        : null;
-      for (const request of this.assetRequestsForView(card, subEvent.id, managerUserId)) {
-        if (request.status === 'accepted') {
-          joinedIds.add(AppUtils.resolveAssetRequestUserId(request, this.users) || request.userId || request.id);
-        }
-      }
-    }
     return {
-      joined: joinedIds.size,
+      joined: cards.reduce((sum, card) => (
+        sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'accepted')
+      ), 0),
       capacityMin,
       capacityMax,
       pending

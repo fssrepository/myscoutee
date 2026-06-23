@@ -7,12 +7,12 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
+import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventListItem,
   ActivityEventRecord,
   ActivityEventScopeFilter,
   ActivityEventRepositoryItemType
@@ -156,9 +156,6 @@ export class LocalEventsRepository {
   }
 
   private isTrashStatus(record: ActivityEventRecord): boolean {
-    if (record.isTrashed) {
-      return true;
-    }
     const status = this.normalizeEventStatus(record.status);
     return status === 'T';
   }
@@ -316,7 +313,7 @@ export class LocalEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords.map(record => this.toEventListItem(record)),
+        records: normalizedRecords.map(record => ActivityEventDtoMapper.toDto(record)),
         total,
         nextCursor: null
       };
@@ -333,55 +330,9 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records: records.map(record => this.toEventListItem(record)),
+      records: records.map(record => ActivityEventDtoMapper.toDto(record)),
       total,
       nextCursor
-    };
-  }
-
-  private toEventListItem(record: ActivityEventRecord): ActivityEventListItem {
-    return {
-      id: record.id,
-      userId: record.userId,
-      type: record.type,
-      status: record.status,
-      avatar: record.avatar,
-      title: record.title,
-      subtitle: record.subtitle,
-      timeframe: record.timeframe,
-      inviter: record.inviter,
-      unread: record.unread,
-      activity: record.activity,
-      isAdmin: record.isAdmin,
-      isInvitation: record.isInvitation,
-      isHosting: record.isHosting,
-      isTrashed: record.isTrashed,
-      creatorUserId: record.creatorUserId,
-      creatorName: record.creatorName,
-      creatorInitials: record.creatorInitials,
-      creatorCity: record.creatorCity,
-      visibility: record.visibility,
-      startAtIso: record.startAtIso,
-      endAtIso: record.endAtIso,
-      distanceKm: record.distanceKm,
-      imageUrl: record.imageUrl,
-      location: record.location,
-      capacityMin: record.capacityMin,
-      capacityMax: record.capacityMax,
-      capacityTotal: record.capacityTotal,
-      ticketing: record.ticketing,
-      eventType: record.eventType,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(record.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
-      pendingReason: record.pendingReason,
-      topics: [...record.topics],
-      rating: record.rating,
-      boost: record.boost,
-      affinity: record.affinity
     };
   }
 
@@ -516,7 +467,6 @@ export class LocalEventsRepository {
   trashItem(userId: string, sourceId: string): void {
     this.updateItemState(userId, sourceId, {
       status: 'T',
-      isTrashed: true,
       trashedAtIso: new Date().toISOString()
     });
   }
@@ -537,7 +487,6 @@ export class LocalEventsRepository {
     this.updateItemState(userId, sourceId, {
       status: 'A',
       statusBeforeSuppression: null,
-      isTrashed: false,
       trashedAtIso: null
     });
   }
@@ -561,7 +510,6 @@ export class LocalEventsRepository {
           ...current,
           status: restoredStatus,
           statusBeforeSuppression: null,
-          isTrashed: false,
           trashedAtIso: null
         };
         changed = true;
@@ -667,45 +615,17 @@ export class LocalEventsRepository {
         id: `${groupId}-member-${memberIndex + 1}`,
         name: `Member ${memberIndex + 1}`
       }));
-      const scoreRows = members
-        .map((member, memberIndex) => ({
-          memberId: member.id,
-          memberName: member.name,
-          total: Math.max(0, 48 - groupIndex * 4 - memberIndex * 5),
-          updates: 2 + ((groupIndex + memberIndex) % 3)
-        }))
-        .sort((left, right) => right.total - left.total || left.memberName.localeCompare(right.memberName));
-      const fifaRows = members
-        .map((member, memberIndex) => {
-          const points = Math.max(0, 12 - groupIndex - memberIndex * 2);
-          const goalsFor = Math.max(0, 9 - memberIndex);
-          const goalsAgainst = Math.max(0, 3 + memberIndex);
-          return {
-            memberId: member.id,
-            memberName: member.name,
-            points,
-            played: 3,
-            wins: Math.max(0, Math.min(3, Math.floor(points / 3))),
-            draws: points % 3 === 1 ? 1 : 0,
-            losses: Math.max(0, 3 - Math.floor(points / 3) - (points % 3 === 1 ? 1 : 0)),
-            goalsFor,
-            goalsAgainst,
-            goalDiff: goalsFor - goalsAgainst
-          };
-        })
-        .sort((left, right) => right.points - left.points || right.goalDiff - left.goalDiff || left.memberName.localeCompare(right.memberName));
-      const advancingSource = leaderboardType === 'Fifa' ? fifaRows : scoreRows;
       return {
         groupId,
         title: `${group.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
         memberCount,
         advancePerGroup,
-        advancingMemberIds: advancingSource.slice(0, advancePerGroup).map(row => row.memberId),
+        advancingMemberIds: [],
         members,
         scoreEntries: [],
         fifaMatches: [],
-        scoreRows: leaderboardType === 'Score' ? scoreRows : [],
-        fifaRows: leaderboardType === 'Fifa' ? fifaRows : []
+        scoreRows: [],
+        fifaRows: []
       };
     });
     return {
@@ -823,13 +743,13 @@ export class LocalEventsRepository {
 
   isItemTrashed(userId: string, sourceId: string): boolean {
     const record = this.findItem(userId, sourceId);
-    return record?.isTrashed === true;
+    return !!record && this.isTrashStatus(record);
   }
 
   countTicketItemsByUser(userId: string): number {
     return this.queryUserRecords(userId)
       .filter(record => !this.isInvitationRecordForUser(record, userId))
-      .filter(record => !record.isTrashed)
+      .filter(record => !this.isTrashStatus(record))
       .filter(record => record.ticketing === true)
       .length;
   }
@@ -853,7 +773,7 @@ export class LocalEventsRepository {
     const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
     const nowMs = Date.now();
     return eventItems.filter(item => {
-      if (item.isAdmin) {
+      if (this.isEventAdminRecord(item, normalizedUserId)) {
         return false;
       }
       const startMs = new Date(item.startAtIso ?? '').getTime();
@@ -990,7 +910,7 @@ export class LocalEventsRepository {
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
-      .filter(record => !record.isTrashed)
+      .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
       .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
@@ -1040,7 +960,7 @@ export class LocalEventsRepository {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
         .filter(record => record.creatorUserId !== userId)
-        .filter(record => !record.isTrashed)
+        .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
         .filter(record => this.hasTrackedUserParticipation(record, userId))
         .map(record => this.buildMembershipProjectionRecord(userId, this.withResolvedSlotContext(record, table)));
@@ -1057,9 +977,6 @@ export class LocalEventsRepository {
       ...ActivityEventRecordBuilder.cloneRecord(record),
       userId,
       type: 'events',
-      isAdmin: false,
-      isInvitation: false,
-      isHosting: false,
       pendingReason: pending ? (record.pendingReason ?? 'approval') : null
     };
   }
@@ -1480,7 +1397,7 @@ export class LocalEventsRepository {
   }
 
   private shouldIncludeExploreRecord(record: ActivityEventRecord, activeUserId: string): boolean {
-    if (record.isTrashed || this.isInvitationRecordForUser(record, activeUserId)) {
+    if (this.isTrashStatus(record) || this.isInvitationRecordForUser(record, activeUserId)) {
       return false;
     }
     if (!this.isPublishedStatus(record.status)) {
@@ -1579,10 +1496,6 @@ export class LocalEventsRepository {
       inviter: null,
       unread: 0,
       activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      isAdmin: existing?.isAdmin ?? true,
-      isInvitation: false,
-      isHosting: false,
-      isTrashed: existing?.isTrashed ?? false,
       trashedAtIso: existing?.trashedAtIso ?? null,
       creatorUserId: context.userId,
       creatorName: context.creatorName,
@@ -2062,10 +1975,6 @@ export class LocalEventsRepository {
           inviter: null,
           unread: 0,
           activity: 0,
-          isAdmin: true,
-          isInvitation: false,
-          isHosting: false,
-          isTrashed: false,
           trashedAtIso: null,
           creatorUserId: parent.creatorUserId,
           creatorName: parent.creatorName,
@@ -2150,10 +2059,6 @@ export class LocalEventsRepository {
         inviter: null,
         unread: 0,
         activity: 0,
-        isAdmin: true,
-        isInvitation: false,
-        isHosting: false,
-        isTrashed: false,
         trashedAtIso: null,
         creatorUserId: parent.creatorUserId,
         creatorName: parent.creatorName,
@@ -2221,7 +2126,7 @@ export class LocalEventsRepository {
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
-      .filter(record => !record.isTrashed)
+      .filter(record => !this.isTrashStatus(record))
       .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
       .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
       .map(record => ({

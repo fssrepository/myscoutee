@@ -3,11 +3,12 @@ import type {
   ChatDTO,
   ChatPopupMessage
 } from '../../../contracts/chat.interface';
+import type { RecordToDtoListMapper } from '../../../base/mappers/mapper.types';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 
 
 export class LocalChatThreadMapper {
-  static toDTO(record: ChatThreadRecord): ChatDTO {
+  static toDto(record: ChatThreadRecord): ChatDTO {
     return {
       id: record.id,
       avatar: record.avatar,
@@ -33,17 +34,17 @@ export class LocalChatThreadMapper {
     };
   }
 
-  static toDTOList(records: readonly ChatThreadRecord[]): ChatDTO[] {
-    return records.map(record => this.toDTO(record));
+  static toDtoList(records: readonly ChatThreadRecord[]): ChatDTO[] {
+    return records.map(record => this.toDto(record));
   }
 
-  static toDTOPage(page: {
+  static toDtoPage(page: {
     items: readonly ChatThreadRecord[];
     total: number;
     nextCursor?: string | null;
   }): ActivitiesChatPageResultDTO {
     return {
-      items: this.toDTOList(page.items),
+      items: this.toDtoList(page.items),
       total: Math.max(0, Math.trunc(Number(page.total) || 0)),
       nextCursor: page.nextCursor ?? null
     };
@@ -74,3 +75,6 @@ export class LocalChatThreadMapper {
     return `${ownerUserId}:${sourceId}`;
   }
 }
+
+export const localChatThreadMapper =
+  LocalChatThreadMapper satisfies RecordToDtoListMapper<ChatThreadRecord, ChatDTO>;

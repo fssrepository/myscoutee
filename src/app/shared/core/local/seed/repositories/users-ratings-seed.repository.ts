@@ -58,7 +58,7 @@ export class SeedUsersRatingsRepository {
           : SeedUsersRatingsRepository.DEFAULT_DEMO_ACTIVITY_RATE_EXTRA_SINGLE_GIVEN_COUNT,
         userCoverageRatio: SeedUsersRatingsRepository.DEMO_ACTIVITY_RATE_SEED_COVERAGE_RATIO
       })
-        .map(item => LocalUserRatesMapper.toUserRateRecord(ownerUserId, item));
+        .map(item => LocalUserRatesMapper.toRecord(ownerUserId, item));
       if (records.length + ownerRecords.length > remainingBootstrapSlots) {
         break;
       }

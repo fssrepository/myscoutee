@@ -1,63 +1,38 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 
-import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent,
   I18nPipe,
-  ProgressIndicatorComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette,
-  type AppMenuTrigger
+  ProfileExperienceManagerComponent,
+  type ProfileExperienceEntriesChange
 } from '../../../shared/ui';
 import {
-  MediaService, ProfileOnboardingService, RouteIntervalSchedulerService, UserExperiencesService, UsersService, type ProfileOnboardingAssessment, type ProfileOnboardingDraft, type ProfileOnboardingStepId, type UserDto } from '../../../shared/core';
-import type {
-  DetailPrivacy,
-  ProfileStatus
-} from '../../../shared/core/common/constants';
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowModel
+} from '../../../shared/ui/components/form-flow';
+import {
+  UsersService,
+  type ProfileOnboardingDraft,
+  type UserDto
+} from '../../../shared/core';
+import type { DetailPrivacy, ProfileStatus } from '../../../shared/core/common/constants';
 import type {
   ExperienceEntry,
-  MobileProfileSelectorSheet,
+  ExperienceFilter,
   ProfileDetailFormGroup
 } from '../../../shared/core/contracts/profile.interface';
+import {
+  ProfileOnboardingDraftConverter,
+  ProfileOnboardingFormFlowConverter,
+  type ProfileOnboardingFormFlowMenuContext
+} from '../../../shared/ui/converters';
 
-interface OnboardingStep {
-  id: ProfileOnboardingStepId;
-  title: string;
-  optional: boolean;
-}
-
-type ExperienceFormDraft = Omit<ExperienceEntry, 'id'> & { current: boolean };
-
-type OnboardingMenuField =
-  | 'physique'
-  | 'profileStatus'
-  | 'genderDetail'
-  | 'drinking'
-  | 'smoking'
-  | 'workout'
-  | 'pets'
-  | 'familyPlans'
-  | 'children'
-  | 'loveStyle'
-  | 'communicationStyle'
-  | 'sexualOrientation'
-  | 'religion';
-
-type OnboardingMenuContext =
-  | { menu: 'field'; field: OnboardingMenuField; value: string }
-  | { menu: 'experience-type'; value: string };
+type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Workspace' | 'School'>;
 
 @Component({
   selector: 'app-profile-onboarding-popup',
@@ -65,92 +40,42 @@ type OnboardingMenuContext =
   imports: [
     CommonModule,
     FormsModule,
-    MatButtonModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
-    AppMenuComponent,
-    ProgressIndicatorComponent,
+    FormFlowComponent,
+    ProfileExperienceManagerComponent,
     I18nPipe
-  ],
-  providers: [
-    { provide: DateAdapter, useClass: AppCalendarDateAdapter },
-    { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateOnly }
   ],
   templateUrl: './profile-onboarding-popup.component.html',
   styleUrl: './profile-onboarding-popup.component.scss'
 })
 export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
-  private static readonly MAX_IMAGE_SLOTS = 8;
   private static readonly MIN_REQUIRED_IMAGES = 3;
 
-  @ViewChild('onboardingImageInput') private onboardingImageInput?: ElementRef<HTMLInputElement>;
   @Input() open = false;
   @Input() user: UserDto | null = null;
   @Input() mobile = false;
-  @Input() title = 'Profile setup';
+  @Input() title = 'profile.setup';
   @Input() message = '';
 
   @Output() readonly completed = new EventEmitter<UserDto>();
   @Output() readonly dismissed = new EventEmitter<void>();
 
-  private readonly onboarding = inject(ProfileOnboardingService);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly usersService = inject(UsersService);
-  private readonly mediaService = inject(MediaService);
-  private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly document = inject(DOCUMENT);
-  private experienceLoadToken = 0;
-  private experienceEntriesLoadedForUserId = '';
   private documentScrollLocked = false;
   private previousBodyOverflow = '';
   private previousBodyOverscrollBehavior = '';
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
-  private stopDraftAutosave: (() => void) | null = null;
-  private lastDraftAutosaveSignature = '';
-  private isDraftAutosavePending = false;
-  private readonly languageSheetHeightCssVar = '--mobile-language-sheet-height';
+  private onboardingFlowModelCacheKey = '';
+  private onboardingFlowModelCache: FormFlowModel | null = null;
 
-  protected readonly steps: OnboardingStep[] = [
-    { id: 'basics', title: 'Basics', optional: false },
-    { id: 'photos', title: 'Photos', optional: false },
-    { id: 'identity', title: 'Identity', optional: true },
-    { id: 'about', title: 'About', optional: true },
-    { id: 'lifestyle', title: 'Lifestyle', optional: true },
-    { id: 'values', title: 'Values', optional: true },
-    { id: 'interests', title: 'Interests', optional: true },
-    { id: 'experience', title: 'Experience', optional: true },
-    { id: 'review', title: 'Review', optional: false }
-  ];
-  protected readonly physiqueOptions = APP_STATIC_DATA.physiqueOptions;
-  protected readonly languageSuggestions = APP_STATIC_DATA.languageSuggestions;
-  protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
-  protected readonly profileDetailValueOptions = APP_STATIC_DATA.profileDetailValueOptions;
-  protected readonly beliefsValuesOptionGroups = APP_STATIC_DATA.beliefsValuesOptionGroups;
-  protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
-  protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
   protected draft: ProfileOnboardingDraft | null = null;
-  protected assessment: ProfileOnboardingAssessment | null = null;
-  protected birthdayDate: Date | null = null;
   protected saving = false;
   protected saveError = '';
-  protected imageUploadError = '';
-  protected attemptedContinue = false;
-  protected experienceEntriesLoading = false;
-  protected experienceFormVisible = false;
-  protected experienceForm: ExperienceFormDraft = this.createEmptyExperienceForm();
-  protected experienceRangeStart: Date | null = null;
-  protected experienceRangeEnd: Date | null = null;
-  protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
-  protected selectedImageIndex = 0;
-  protected pendingImageUploadIndex: number | null = null;
-  protected uploadingImageSlotIndex: number | null = null;
-  protected languageInput = '';
-  protected mobileProfileSelectorSheet: MobileProfileSelectorSheet | null = null;
+  protected experienceManagerOpen = false;
+  protected experienceManagerFilter: ExperienceFilter = 'All';
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']) {
@@ -160,38 +85,22 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return;
     }
     if (!this.open || !this.user) {
-      this.stopDraftAutosaveLoop();
-      this.resetDraftAutosaveTracking();
-      this.draft = null;
-      this.assessment = null;
-      this.birthdayDate = null;
-      this.saveError = '';
-      this.imageUploadError = '';
-      this.saving = false;
-      this.attemptedContinue = false;
-      this.experienceFormVisible = false;
-      this.experienceRangeStart = null;
-      this.experienceRangeEnd = null;
-      this.experienceLoadToken += 1;
-      this.experienceEntriesLoadedForUserId = '';
-      this.imageSlots = this.createEmptyImageSlots();
-      this.selectedImageIndex = 0;
-      this.pendingImageUploadIndex = null;
-      this.uploadingImageSlotIndex = null;
-      this.closeMobileProfileSelectorSheet();
+      this.resetPopupState();
       return;
     }
-    this.assessment = this.onboarding.assessUser(this.user);
-    this.draft = this.onboarding.loadDraft(this.user);
-    this.syncBirthdayDateFromDraft();
-    this.syncImageSlotsFromDraft();
-    this.seedDraftAutosaveSignature();
-    this.startDraftAutosaveLoop();
+    const nextUserId = this.user.id.trim();
+    if (this.draft?.userId === nextUserId) {
+      return;
+    }
+    this.draft = ProfileOnboardingDraftConverter.convert(this.user);
+    this.saveError = '';
+    this.saving = false;
+    this.experienceManagerOpen = false;
+    this.experienceManagerFilter = 'All';
+    this.clearOnboardingFlowModelCache();
   }
 
   ngOnDestroy(): void {
-    this.stopDraftAutosaveLoop();
-    this.closeMobileProfileSelectorSheet();
     this.unlockDocumentScroll();
   }
 
@@ -199,29 +108,118 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return this.draft?.form ?? null;
   }
 
-  protected currentStep(): OnboardingStep {
-    const stepId = this.draft?.currentStepId ?? 'basics';
-    return this.steps.find(step => step.id === stepId) ?? this.steps[0];
-  }
-
-  protected currentStepIndex(): number {
-    const stepId = this.currentStep().id;
-    return Math.max(0, this.steps.findIndex(step => step.id === stepId));
-  }
-
-  protected progressPercent(): number {
-    return Math.round(((this.currentStepIndex() + 1) / this.steps.length) * 100);
-  }
-
-  protected requiredMissingLabels(): string[] {
-    const labels = this.basicsMissingLabels();
-    if (this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
-      labels.push('3 photos');
+  protected onboardingFlowModel(): FormFlowModel | null {
+    if (!this.draft) {
+      this.clearOnboardingFlowModelCache();
+      return null;
     }
-    return labels;
+    const form = this.draft.form;
+    const cacheKey = [
+      this.draft.userId,
+      this.title,
+      this.message,
+      this.user?.id ?? '',
+      form.physique,
+      form.genderDetail,
+      form.profileStatus,
+      form.drinking,
+      form.smoking,
+      form.workout,
+      form.pets,
+      form.familyPlans,
+      form.children,
+      form.loveStyle,
+      form.communicationStyle,
+      form.sexualOrientation,
+      form.religion,
+      form.values.join('|'),
+      form.interests.join('|'),
+      form.experienceEntries
+        .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
+        .join('|')
+    ].join('\u0001');
+    if (this.onboardingFlowModelCache && this.onboardingFlowModelCacheKey === cacheKey) {
+      return this.onboardingFlowModelCache;
+    }
+    this.onboardingFlowModelCacheKey = cacheKey;
+    this.onboardingFlowModelCache = ProfileOnboardingFormFlowConverter.convert(this.draft, {
+      title: this.title,
+      subtitle: this.message,
+      userId: this.user?.id ?? ''
+    });
+    return this.onboardingFlowModelCache;
   }
 
-  protected basicsMissingLabels(): string[] {
+  protected onOnboardingFlowSave(): void {
+    if (!this.draft || this.saving) {
+      return;
+    }
+    this.normalizeDraft();
+    void this.saveAndComplete();
+  }
+
+  protected onOnboardingFlowAction(event: FormFlowActionEvent): void {
+    const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
+    if (context?.menu === 'experienceSelector') {
+      this.openExperienceManager(context.value);
+    }
+  }
+
+  protected requestDismiss(): void {
+    if (this.saving) {
+      return;
+    }
+    this.dismissed.emit();
+  }
+
+  protected closeExperienceManager(): void {
+    this.experienceManagerOpen = false;
+  }
+
+  protected experienceManagerTitle(): string {
+    if (this.experienceManagerFilter === 'Workspace') {
+      return 'profile.experience.workplace';
+    }
+    if (this.experienceManagerFilter === 'School') {
+      return 'profile.experience.school';
+    }
+    return 'Experience';
+  }
+
+  protected onExperienceManagerEntriesChange(event: ProfileExperienceEntriesChange): void {
+    if (!this.draft) {
+      return;
+    }
+    this.draft.form.experienceEntries = event.entries.map(entry => ({ ...entry }));
+    this.clearOnboardingFlowModelCache();
+    this.cdr.markForCheck();
+  }
+
+  private async saveAndComplete(): Promise<void> {
+    if (!this.user || !this.draft || this.requiredMissingLabels().length > 0 || this.saving) {
+      return;
+    }
+    this.saving = true;
+    this.saveError = '';
+    const payload = this.buildUserPayload(this.user, this.draft);
+    let completionEmitted = false;
+    try {
+      const savedUser = await this.usersService.saveUserProfileExt(payload, this.draft.form.experienceEntries);
+      if (!savedUser) {
+        throw new Error('Profile save returned no user.');
+      }
+      completionEmitted = true;
+      this.completed.emit(savedUser);
+    } catch {
+      this.saveError = 'Profile could not be saved. Please check the required fields and try again.';
+    } finally {
+      if (!completionEmitted) {
+        this.saving = false;
+      }
+    }
+  }
+
+  private requiredMissingLabels(): string[] {
     if (!this.draft) {
       return [];
     }
@@ -241,778 +239,173 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.draft.form.physique.trim()) {
       labels.push('Physique');
     }
-    if (!this.hasLanguageReady()) {
+    if (this.draft.form.languages.length === 0) {
       labels.push('Language');
+    }
+    if (this.draft.form.images.length < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
+      labels.push('3 photos');
     }
     return labels;
   }
 
-  protected canContinue(): boolean {
-    if (!this.draft || this.saving || this.uploadingImageSlotIndex !== null) {
-      return false;
-    }
-    if (this.currentStep().id === 'basics') {
-      return this.basicsMissingLabels().length === 0;
-    }
-    if (this.currentStep().id === 'photos') {
-      return this.imageCount() >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
-    }
-    if (this.currentStep().id === 'review') {
-      return this.requiredMissingLabels().length === 0;
-    }
-    return true;
-  }
-
-  protected primaryActionLabel(): string {
-    if (this.saving) {
-      return 'Saving...';
-    }
-    return this.currentStep().id === 'review' ? 'Save' : 'Next';
-  }
-
-  protected requestDismiss(): void {
-    if (this.saving || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    this.dismissed.emit();
-  }
-
-  protected persistDraft(): void {
+  private normalizeDraft(): void {
     if (!this.draft) {
       return;
     }
-    this.onboarding.saveDraft(this.draft);
+    this.draft = ProfileOnboardingDraftConverter.convert(this.draft);
+    this.clearOnboardingFlowModelCache();
   }
 
-  protected goBack(): void {
-    if (!this.draft || this.saving || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const index = this.currentStepIndex();
-    if (index <= 0) {
-      return;
-    }
-    this.setStep(this.steps[index - 1].id);
-  }
-
-  protected skipStep(): void {
-    if (!this.draft || !this.currentStep().optional || this.saving || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const current = this.currentStep().id;
-    this.draft.skippedStepIds = [...new Set([...this.draft.skippedStepIds, current])];
-    this.goNext();
-  }
-
-  protected goNext(): void {
-    if (!this.draft || this.saving || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    this.attemptedContinue = true;
-    if (!this.canContinue()) {
-      this.persistDraft();
-      return;
-    }
-    const current = this.currentStep().id;
-    this.draft.completedStepIds = [...new Set([...this.draft.completedStepIds, current])];
-    if (current === 'review') {
-      void this.saveAndComplete();
-      return;
-    }
-    const nextStep = this.steps[Math.min(this.steps.length - 1, this.currentStepIndex() + 1)];
-    this.setStep(nextStep.id);
-  }
-
-  protected onLanguagesChange(values: string[] | string | null): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.languages = this.normalizeSelectedLanguages(values);
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  protected removeLanguage(value: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.languages = this.draft.form.languages.filter(language => language !== value);
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  protected openLanguageSelector(event: Event): void {
-    event.stopPropagation();
-    if (this.saving || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const viewportHeight = globalThis.window?.innerHeight ?? 0;
-    if (viewportHeight > 0) {
-      const stableHeight = Math.max(viewportHeight - 6, 320);
-      this.document.documentElement.style.setProperty(this.languageSheetHeightCssVar, `${stableHeight}px`);
-    }
-    this.languageInput = '';
-    this.mobileProfileSelectorSheet = {
-      title: 'Languages',
-      selected: '',
-      options: this.languageSuggestions.map(option => ({
-        value: option,
-        label: option,
-        icon: 'language'
-      })),
-      context: { kind: 'language' }
-    };
-  }
-
-  protected closeMobileProfileSelectorSheet(): void {
-    this.document.documentElement.style.removeProperty(this.languageSheetHeightCssVar);
-    this.mobileProfileSelectorSheet = null;
-    this.languageInput = '';
-  }
-
-  protected submitMobileLanguageAndClose(event: Event): void {
-    event.stopPropagation();
-    this.addCustomLanguage();
-    this.closeMobileProfileSelectorSheet();
-  }
-
-  protected isMobileSelectorOptionActive(value: string): boolean {
-    return this.draft?.form.languages.some(item => item.toLowerCase() === value.toLowerCase()) ?? false;
-  }
-
-  protected selectMobileProfileSelectorOption(value: string): void {
-    this.toggleLanguage(value);
-  }
-
-  protected addCustomLanguage(value = this.languageInput): void {
-    if (!this.draft) {
-      return;
-    }
-    const normalized = value.trim();
-    if (!normalized) {
-      return;
-    }
-    const exists = this.draft.form.languages.some(item => item.toLowerCase() === normalized.toLowerCase());
-    if (!exists) {
-      this.draft.form.languages = [...this.draft.form.languages, normalized];
-    }
-    if (!this.languageSuggestions.some(item => item.toLowerCase() === normalized.toLowerCase())) {
-      this.languageSuggestions.push(normalized);
-    }
-    this.languageInput = '';
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  protected onLanguageInputBlur(): void {
-    this.addCustomLanguage();
-  }
-
-  protected onLanguageInputKeydown(event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ',') {
-      return;
-    }
-    event.preventDefault();
-    this.addCustomLanguage();
-  }
-
-  protected languageTriggerPrimaryLabel(languages: readonly string[], maxVisible = 2): string {
-    const normalized = languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    if (normalized.length === 0) {
-      return '';
-    }
-    return normalized.slice(0, Math.max(1, maxVisible)).join(', ');
-  }
-
-  protected languageTriggerOverflowCount(languages: readonly string[], maxVisible = 2): number {
-    const normalized = languages
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    return Math.max(0, normalized.length - Math.max(1, maxVisible));
-  }
-
-  protected languageToneClass(value: string): string {
-    return `language-tone-${this.languageToneIndex(value)}`;
-  }
-
-  protected get availableLanguageSuggestions(): string[] {
-    const selected = this.draft?.form.languages ?? [];
-    const query = this.languageInput.trim().toLowerCase();
-    return this.languageSuggestions.filter(item => {
-      const isSelected = selected.some(language => language.toLowerCase() === item.toLowerCase());
-      if (isSelected) {
-        return false;
-      }
-      return query.length === 0 ? true : item.toLowerCase().includes(query);
-    });
-  }
-
-  protected get availableLanguageDisplaySuggestions(): string[] {
-    return this.availableLanguageSuggestions.slice(0, 20);
-  }
-
-  protected fieldMenuTrigger(value: string | null | undefined, icon = 'tune', palette: AppMenuPalette = 'neutral'): AppMenuTrigger {
-    const label = `${value ?? ''}`.trim();
-    return {
-      label: label || 'Select',
-      icon,
-      palette,
-      shape: 'field',
-      disabled: () => this.saving || this.uploadingImageSlotIndex !== null,
-      ariaLabel: 'Open selector'
-    };
-  }
-
-  protected fieldMenuItems(
-    field: OnboardingMenuField,
-    options: readonly string[],
-    activeValue: string | null | undefined,
-    icon = 'radio_button_checked',
-    palette: AppMenuPalette = 'neutral'
-  ): readonly AppMenuItem<string, OnboardingMenuContext>[] {
-    return options.map(option => ({
-      id: `${field}-${option}`,
-      label: option,
-      icon: this.fieldMenuItemIcon(field, option, icon),
-      kind: 'radio',
-      active: option === activeValue,
-      palette: this.fieldMenuItemPalette(field, option, options, palette),
-      surface: 'tinted',
-      context: { menu: 'field', field, value: option }
-    }));
-  }
-
-  protected profileStatusMenuTrigger(status: ProfileStatus): AppMenuTrigger {
-    return this.fieldMenuTrigger(status, this.statusIcon(status), this.profileStatusPalette(status));
-  }
-
-  protected profileStatusMenuItems(status: ProfileStatus): readonly AppMenuItem<string, OnboardingMenuContext>[] {
-    return this.profileStatusOptions.map(option => ({
-      id: `profile-status-${option.value}`,
-      label: option.value,
-      icon: option.icon,
-      kind: 'radio',
-      active: option.value === status,
-      palette: this.profileStatusPalette(option.value),
-      surface: 'tinted',
-      context: { menu: 'field', field: 'profileStatus', value: option.value }
-    }));
-  }
-
-  protected experienceTypeMenuTrigger(type: string): AppMenuTrigger {
-    return this.fieldMenuTrigger(type, this.experienceTypeIcon(type), this.experienceTypePalette(type));
-  }
-
-  protected experienceTypeMenuItems(type: string): readonly AppMenuItem<string, OnboardingMenuContext>[] {
-    return this.experienceTypeOptions.map(option => ({
-      id: `experience-type-${option}`,
-      label: option,
-      icon: this.experienceTypeIcon(option),
-      kind: 'radio',
-      active: option === type,
-      palette: this.experienceTypePalette(option),
-      surface: 'tinted',
-      context: { menu: 'experience-type', value: option }
-    }));
-  }
-
-  protected onProfileOnboardingMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    const context = event.context as OnboardingMenuContext | undefined;
-    if (!context) {
-      return;
-    }
-    if (context.menu === 'experience-type') {
-      this.experienceForm.type = context.value as ExperienceEntry['type'];
-      return;
-    }
-    this.updateOnboardingField(context.field, context.value);
-  }
-
-  protected onBirthdayDateChange(value: Date | string | null): void {
-    if (!this.draft) {
-      return;
-    }
-    const candidate = value instanceof Date
-      ? value
-      : AppUtils.fromIsoDate(`${value ?? ''}`.trim());
-    const parsed = candidate && Number.isFinite(candidate.getTime()) ? candidate : null;
-    this.birthdayDate = parsed;
-    this.draft.form.birthday = parsed ? AppUtils.toIsoDate(parsed) : '';
-    this.persistDraft();
-  }
-
-  protected selectedImagePreview(): string | null {
-    return this.imageSlots[this.selectedImageIndex] ?? null;
-  }
-
-  protected imageCount(): number {
-    return this.imageSlots.filter(slot => Boolean(slot?.trim())).length;
-  }
-
-  protected selectImageSlot(index: number): void {
-    if (this.uploadingImageSlotIndex !== null || this.saving) {
-      return;
-    }
-    const isSelectedSlot = this.selectedImageIndex === index;
-    const hasImage = Boolean(this.imageSlots[index]);
-    this.selectedImageIndex = index;
-    if (hasImage && !isSelectedSlot) {
-      return;
-    }
-    this.pendingImageUploadIndex = index;
-    this.onboardingImageInput?.nativeElement.click();
-  }
-
-  protected removeImage(index: number): void {
-    if (this.uploadingImageSlotIndex === index || this.saving) {
-      return;
-    }
-    this.revokeObjectUrl(this.imageSlots[index]);
-    this.imageSlots[index] = null;
-    this.syncDraftImagesFromSlots();
-    if (this.selectedImageIndex === index) {
-      const nearest = this.findNearestFilledImageIndex(index);
-      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
-    }
-  }
-
-  protected onImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0] ?? null;
-    const slotIndex = this.pendingImageUploadIndex;
-    this.pendingImageUploadIndex = null;
-    target.value = '';
-    if (!file || slotIndex === null) {
-      return;
-    }
-    void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
-  }
-
-  protected isImageSlotUploading(index: number): boolean {
-    return this.uploadingImageSlotIndex === index;
-  }
-
-  protected isSelectedImageUploading(): boolean {
-    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
-  }
-
-  protected reviewValue(value: string | number | null | undefined): string {
-    const normalized = `${value ?? ''}`.trim();
-    return normalized || 'Not set';
-  }
-
-  protected reviewList(values: readonly string[] | null | undefined): string {
-    const normalized = (values ?? [])
-      .map(value => `${value ?? ''}`.trim())
-      .filter(value => value.length > 0);
-    return normalized.length > 0 ? normalized.join(', ') : 'Not set';
-  }
-
-  private hasLanguageReady(): boolean {
-    return Boolean(this.draft?.form.languages.length);
-  }
-
-  private syncBirthdayDateFromDraft(): void {
-    this.birthdayDate = AppUtils.fromIsoDate(this.draft?.form.birthday ?? '');
-  }
-
-  protected toggleValue(option: string): void {
-    this.toggleLimitedOption('values', option, this.beliefsValuesAllOptions());
-  }
-
-  protected toggleInterest(option: string): void {
-    this.toggleLimitedOption('interests', option, this.interestAllOptions());
-  }
-
-  protected removeValueOption(option: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.values = this.draft.form.values.filter(item => item !== option);
-    this.persistDraft();
-  }
-
-  protected removeInterestOption(option: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.interests = this.draft.form.interests.filter(item => item !== option);
-    this.persistDraft();
-  }
-
-  protected clearValues(): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.values = [];
-    this.persistDraft();
-  }
-
-  protected clearInterests(): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.interests = [];
-    this.persistDraft();
-  }
-
-  protected isValueSelected(option: string): boolean {
-    return this.draft?.form.values.includes(option) ?? false;
-  }
-
-  protected isInterestSelected(option: string): boolean {
-    return this.draft?.form.interests.includes(option) ?? false;
-  }
-
-  protected profileSelectorToneIcon(toneClass: string): string {
-    switch (toneClass) {
-      case 'section-family':
-        return 'family_restroom';
-      case 'section-ambition':
-        return 'rocket_launch';
-      case 'section-lifestyle':
-        return 'eco';
-      case 'section-beliefs':
-        return 'auto_awesome';
-      case 'section-social':
-        return 'celebration';
-      case 'section-arts':
-        return 'palette';
-      case 'section-food':
-        return 'restaurant';
-      case 'section-active':
-        return 'hiking';
-      case 'section-mind':
-        return 'self_improvement';
-      case 'section-identity':
-        return 'public';
-      default:
-        return 'label';
-    }
-  }
-
-  protected openExperienceForm(): void {
-    if (this.saving) {
-      return;
-    }
-    this.experienceForm = this.createEmptyExperienceForm();
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
-    this.experienceFormVisible = true;
-  }
-
-  protected closeExperienceForm(): void {
-    this.experienceFormVisible = false;
-    this.experienceForm = this.createEmptyExperienceForm();
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
-  }
-
-  protected canAddExperience(): boolean {
-    return Boolean(
-      this.experienceForm.title.trim()
-      && this.experienceForm.org.trim()
-      && this.experienceRangeStart
-    );
-  }
-
-  protected addExperienceEntry(): void {
-    if (!this.draft || !this.canAddExperience()) {
-      return;
-    }
-    const entry: ExperienceEntry = {
-      id: this.createExperienceId(),
-      type: this.experienceForm.type,
-      title: this.experienceForm.title.trim(),
-      org: this.experienceForm.org.trim(),
-      city: this.experienceForm.city.trim(),
-      dateFrom: AppUtils.toYearMonth(this.experienceRangeStart),
-      dateTo: this.experienceRangeEnd ? AppUtils.toYearMonth(this.experienceRangeEnd) : 'Present',
-      description: this.experienceForm.description.trim()
-    };
-    this.draft.form.experienceEntries = [...this.draft.form.experienceEntries, entry];
-    this.closeExperienceForm();
-    this.persistDraft();
-  }
-
-  protected removeExperienceEntry(entryId: string): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.experienceEntries = this.draft.form.experienceEntries.filter(entry => entry.id !== entryId);
-    this.persistDraft();
-  }
-
-  protected statusIcon(status: ProfileStatus): string {
-    return this.profileStatusOptions.find(option => option.value === status)?.icon ?? 'public';
-  }
-
-  private getPhysiqueIcon(value: string): string {
-    const normalized = AppUtils.normalizeText(value);
-    if (normalized.includes('slim')) {
-      return 'directions_walk';
-    }
-    if (normalized.includes('lean') || normalized.includes('fit')) {
-      return 'fitness_center';
-    }
-    if (normalized.includes('athletic')) {
-      return 'sports_gymnastics';
-    }
-    if (normalized.includes('curvy')) {
-      return 'accessibility';
-    }
-    if (normalized.includes('muscular')) {
-      return 'sports_mma';
-    }
-    return 'accessibility_new';
-  }
-
-  private getPhysiqueClass(value: string): string {
-    const normalized = AppUtils.normalizeText(value);
-    if (normalized.includes('slim')) {
-      return 'physique-slim';
-    }
-    if (normalized.includes('lean')) {
-      return 'physique-lean';
-    }
-    if (normalized.includes('fit')) {
-      return 'physique-fit';
-    }
-    if (normalized.includes('athletic')) {
-      return 'physique-athletic';
-    }
-    if (normalized.includes('curvy')) {
-      return 'physique-curvy';
-    }
-    if (normalized.includes('muscular')) {
-      return 'physique-muscular';
-    }
-    return 'physique-average';
-  }
-
-  private profileStatusPalette(status: string): AppMenuPalette {
-    switch (status) {
-      case 'Public':
-        return 'green';
-      case 'Friends':
-        return 'blue';
-      case 'Hosts':
-        return 'orange';
-      case 'Private':
-        return 'slate';
-      default:
-        return 'neutral';
-    }
-  }
-
-  private detailToneFromOptions(value: string, options: readonly string[]): string {
-    const index = options.findIndex(item => AppUtils.normalizeText(item) === AppUtils.normalizeText(value));
-    return `detail-tone-${((index >= 0 ? index : 0) % 8) + 1}`;
-  }
-
-  private languageToneIndex(value: string): number {
-    const normalized = AppUtils.normalizeText(value);
-    if (!normalized) {
-      return 1;
-    }
-    let hash = 0;
-    for (const char of normalized) {
-      hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-    }
-    return (hash % 8) + 1;
-  }
-
-  private paletteFromProfileTone(toneClass: string): AppMenuPalette {
-    switch (toneClass) {
-      case 'status-public':
-      case 'physique-lean':
-      case 'physique-fit':
-      case 'detail-tone-2':
-      case 'detail-tone-5':
-      case 'section-active':
-        return 'green';
-      case 'status-friends':
-      case 'physique-athletic':
-      case 'detail-tone-1':
-      case 'section-social':
-        return 'blue';
-      case 'status-host':
-      case 'detail-tone-8':
-        return 'brown';
-      case 'physique-slim':
-      case 'detail-tone-7':
-        return 'sky';
-      case 'physique-curvy':
-      case 'detail-tone-6':
-        return 'pink';
-      case 'physique-muscular':
-        return 'red';
-      case 'detail-tone-3':
-      case 'section-family':
-      case 'section-food':
-        return 'orange';
-      case 'section-ambition':
-        return 'amber';
-      case 'section-lifestyle':
-      case 'section-mind':
-        return 'teal';
-      case 'detail-tone-4':
-      case 'section-beliefs':
-      case 'section-arts':
-      case 'section-identity':
-        return 'violet';
-      case 'status-inactive':
-      default:
-        return 'muted';
-    }
-  }
-
-  private experienceTypeIcon(type: string): string {
-    switch (type) {
-      case 'School':
-        return 'school';
-      case 'Online session':
-        return 'videocam';
-      case 'Additional project':
-        return 'rocket_launch';
-      case 'Workspace':
-      default:
-        return 'apartment';
-    }
-  }
-
-  private experienceTypePalette(type: string): AppMenuPalette {
-    switch (type) {
-      case 'School':
-        return 'blue';
-      case 'Online session':
-        return 'green';
-      case 'Additional project':
-        return 'violet';
-      case 'Workspace':
-      default:
-        return 'pink';
-    }
-  }
-
-  private toggleLanguage(language: string): void {
-    if (!this.draft) {
-      return;
-    }
-    const normalized = language.trim();
-    if (!normalized) {
-      return;
-    }
-    const current = this.draft.form.languages;
-    const exists = current.some(item => item.toLowerCase() === normalized.toLowerCase());
-    this.draft.form.languages = exists
-      ? current.filter(item => item.toLowerCase() !== normalized.toLowerCase())
-      : [...current, normalized];
-    this.languageInput = '';
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  private fieldMenuItemIcon(field: OnboardingMenuField, value: string, fallback: string): string {
-    if (field === 'physique') {
-      return this.getPhysiqueIcon(value);
-    }
-    return fallback;
-  }
-
-  private fieldMenuItemPalette(
-    field: OnboardingMenuField,
-    value: string,
-    options: readonly string[],
-    fallback: AppMenuPalette
-  ): AppMenuPalette {
-    if (field === 'physique') {
-      return this.paletteFromProfileTone(this.getPhysiqueClass(value));
-    }
-    if (field !== 'profileStatus') {
-      return this.paletteFromProfileTone(this.detailToneFromOptions(value, options));
-    }
-    return fallback;
-  }
-
-  private updateOnboardingField(field: OnboardingMenuField, value: string): void {
-    if (!this.draft) {
-      return;
-    }
-    const form = this.draft.form as unknown as Record<OnboardingMenuField, string>;
-    form[field] = value;
-    this.persistDraft();
-  }
-
-  protected stepDone(stepId: ProfileOnboardingStepId): boolean {
-    return this.draft?.completedStepIds.includes(stepId) ?? false;
-  }
-
-  protected stepSkipped(stepId: ProfileOnboardingStepId): boolean {
-    return this.draft?.skippedStepIds.includes(stepId) ?? false;
-  }
-
-  protected stepRequiredMissing(stepId: ProfileOnboardingStepId): boolean {
-    if (stepId === 'basics') {
-      return this.basicsMissingLabels().length > 0;
-    }
-    if (stepId === 'photos') {
-      return this.imageCount() < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES;
-    }
-    return false;
-  }
-
-  protected stepIcon(step: OnboardingStep): string {
-    if (this.stepRequiredMissing(step.id)) {
-      return 'priority_high';
-    }
-    if (this.stepDone(step.id)) {
-      return 'done';
-    }
-    if (this.stepSkipped(step.id)) {
-      return 'remove';
-    }
-    return step.optional ? 'radio_button_unchecked' : 'priority_high';
-  }
-
-  protected detailOptions(label: string): string[] {
-    return this.profileDetailValueOptions[this.profileDetailKeyFromLabel(label)] ?? [];
-  }
-
-  protected basicsErrorVisible(): boolean {
-    return this.attemptedContinue && this.currentStep().id === 'basics' && this.basicsMissingLabels().length > 0;
-  }
-
-  private async saveAndComplete(): Promise<void> {
-    if (!this.user || !this.draft || !this.canContinue()) {
-      return;
-    }
-    this.stopDraftAutosaveLoop();
-    this.saving = true;
+  private resetPopupState(): void {
+    this.draft = null;
     this.saveError = '';
-    this.persistDraft();
-    const payload = this.buildUserPayload(this.user, this.draft);
-    let completionEmitted = false;
-    try {
-      const savedUser = await this.usersService.saveUserProfile(payload);
-      if (!savedUser) {
-        throw new Error('Profile save returned no user.');
-      }
-      if (this.draft.form.experienceEntries.length > 0) {
-        await this.userExperiencesService.saveUserExperiences(savedUser.id, this.draft.form.experienceEntries);
-      }
-      this.onboarding.clearDraft(savedUser.id);
-      completionEmitted = true;
-      this.completed.emit(savedUser);
-    } catch {
-      this.saveError = 'Profile could not be saved. Please check the required fields and try again.';
-    } finally {
-      if (!completionEmitted) {
-        this.saving = false;
+    this.saving = false;
+    this.experienceManagerOpen = false;
+    this.experienceManagerFilter = 'All';
+    this.clearOnboardingFlowModelCache();
+  }
+
+  private openExperienceManager(type: OnboardingExperienceSelectorType): void {
+    if (this.saving) {
+      return;
+    }
+    this.experienceManagerFilter = type;
+    this.experienceManagerOpen = true;
+  }
+
+  private clearOnboardingFlowModelCache(): void {
+    this.onboardingFlowModelCacheKey = '';
+    this.onboardingFlowModelCache = null;
+  }
+
+  private buildUserPayload(user: UserDto, draft: ProfileOnboardingDraft): UserDto {
+    const birthdayDate = AppUtils.fromIsoDate(draft.form.birthday);
+    const name = draft.form.fullName.trim();
+    const birthday = birthdayDate ? AppUtils.toIsoDate(birthdayDate) : draft.form.birthday.trim();
+    return {
+      ...user,
+      name,
+      initials: AppUtils.initialsFromText(name),
+      birthday,
+      age: AppUtils.ageFromIsoDate(birthday, user.age),
+      city: draft.form.city.trim(),
+      height: `${draft.form.heightCm ?? 0} cm`,
+      physique: draft.form.physique.trim(),
+      languages: [...draft.form.languages],
+      horoscope: birthdayDate ? AppUtils.horoscopeByDate(birthdayDate) : user.horoscope,
+      headline: `${user.headline ?? ''}`.trim(),
+      about: draft.form.about.trim().slice(0, 160),
+      images: [...draft.form.images],
+      profileStatus: draft.form.profileStatus,
+      profileFormVersion: ProfileOnboardingDraftConverter.currentProfileFormVersion,
+      profileDetails: this.buildProfileDetails(user, draft),
+      completion: this.completionPercent(draft)
+    };
+  }
+
+  private buildProfileDetails(user: UserDto, draft: ProfileOnboardingDraft): ProfileDetailFormGroup[] {
+    const form = draft.form;
+    const basicValues: Record<string, string> = {
+      'profile.name': form.fullName.trim(),
+      'profile.city': form.city.trim(),
+      'profile.birthday': this.formatDateForDetail(form.birthday),
+      'profile.height': `${form.heightCm ?? 0} cm`,
+      'profile.physique': form.physique.trim(),
+      'profile.languages': form.languages.join(', '),
+      'profile.horoscope': AppUtils.fromIsoDate(form.birthday)
+        ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(form.birthday) as Date)
+        : '',
+      'profile.gender': form.genderDetail.trim()
+    };
+    const optionalValues: Record<string, string> = {
+      'profile.details.interest': form.interests.join(', '),
+      'profile.details.drinking': form.drinking,
+      'profile.details.smoking': form.smoking,
+      'profile.details.workout': form.workout,
+      'profile.details.pets': form.pets,
+      'profile.details.familyPlans': form.familyPlans,
+      'profile.details.children': form.children,
+      'profile.details.loveStyle': form.loveStyle,
+      'profile.details.communicationStyle': form.communicationStyle,
+      'profile.details.sexualOrientation': form.sexualOrientation,
+      'profile.details.religion': form.religion,
+      'profile.details.values': form.values.join(', ')
+    };
+    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
+      title: group.title,
+      rows: group.rows.map(row => ({
+        labelKey: row.labelKey,
+        value: basicValues[row.labelKey] ?? optionalValues[row.labelKey] ?? this.existingDetailValue(user, row.labelKey),
+        privacy: this.existingDetailPrivacy(user, row.labelKey, row.privacy),
+        options: this.detailOptionsForRow(row.labelKey)
+      }))
+    }));
+  }
+
+  private detailOptionsForRow(labelKey: string): string[] {
+    if (labelKey === 'profile.details.values') {
+      return APP_STATIC_DATA.beliefsValuesOptionGroups.flatMap(group => group.options);
+    }
+    if (labelKey === 'profile.details.interest') {
+      return APP_STATIC_DATA.interestOptionGroups.flatMap(group => group.options);
+    }
+    return APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
+  }
+
+  private existingDetailValue(user: UserDto, labelKey: string): string {
+    const target = AppUtils.normalizeText(labelKey);
+    for (const group of user.profileDetails ?? []) {
+      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
+      if (row) {
+        return row.value;
       }
     }
+    return '';
+  }
+
+  private existingDetailPrivacy(user: UserDto, labelKey: string, fallback: DetailPrivacy): DetailPrivacy {
+    const target = AppUtils.normalizeText(labelKey);
+    for (const group of user.profileDetails ?? []) {
+      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
+      if (row && this.isDetailPrivacy(row.privacy)) {
+        return row.privacy;
+      }
+    }
+    return fallback;
+  }
+
+  private isDetailPrivacy(value: string): value is DetailPrivacy {
+    return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
+  }
+
+  private completionPercent(draft: ProfileOnboardingDraft): number {
+    let completed = 0;
+    let total = 0;
+    const add = (ok: boolean): void => {
+      total += 1;
+      if (ok) {
+        completed += 1;
+      }
+    };
+    add(Boolean(draft.form.fullName.trim()));
+    add(Boolean(draft.form.birthday.trim()));
+    add(Boolean(draft.form.city.trim()));
+    add((draft.form.heightCm ?? 0) > 0);
+    add(Boolean(draft.form.physique.trim()));
+    add(draft.form.languages.length > 0);
+    add(draft.form.images.length >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES);
+    add(draft.form.about.trim().length >= 20);
+    add(draft.form.values.length > 0);
+    add(draft.form.interests.length > 0);
+    add(draft.form.experienceEntries.length > 0);
+    return total === 0 ? 0 : Math.round((completed / total) * 100);
+  }
+
+  private formatDateForDetail(value: string): string {
+    const parsed = AppUtils.fromIsoDate(value);
+    return parsed
+      ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
   }
 
   private syncDocumentScrollLock(): void {
@@ -1058,449 +451,5 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       documentElement.style.overscrollBehavior = this.previousDocumentOverscrollBehavior;
     }
     this.documentScrollLocked = false;
-  }
-
-  private buildUserPayload(user: UserDto, draft: ProfileOnboardingDraft): UserDto {
-    const birthdayDate = AppUtils.fromIsoDate(draft.form.birthday);
-    const name = draft.form.fullName.trim();
-    const birthday = birthdayDate ? AppUtils.toIsoDate(birthdayDate) : draft.form.birthday.trim();
-    return {
-      ...user,
-      name,
-      initials: AppUtils.initialsFromText(name),
-      birthday,
-      age: AppUtils.ageFromIsoDate(birthday, user.age),
-      city: draft.form.city.trim(),
-      height: `${draft.form.heightCm ?? 0} cm`,
-      physique: draft.form.physique.trim(),
-      languages: [...draft.form.languages],
-      horoscope: birthdayDate ? AppUtils.horoscopeByDate(birthdayDate) : user.horoscope,
-      headline: draft.form.headline.trim(),
-      about: draft.form.about.trim().slice(0, 160),
-      images: this.collectPersistedProfileImages(draft.form.images),
-      profileStatus: draft.form.profileStatus,
-      profileFormVersion: this.onboarding.currentProfileFormVersion,
-      profileDetails: this.buildProfileDetails(user, draft),
-      completion: this.completionPercent(draft)
-    };
-  }
-
-  private buildAutosaveUserPayload(user: UserDto, draft: ProfileOnboardingDraft): UserDto {
-    const payload = this.buildUserPayload(user, draft);
-    const currentFormVersion = Math.max(1, Math.trunc(Number(this.onboarding.currentProfileFormVersion) || 1));
-    const existingFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
-    return {
-      ...payload,
-      profileStatus: user.profileStatus === 'onboarding' ? 'onboarding' : payload.profileStatus,
-      profileFormVersion: Math.min(existingFormVersion, currentFormVersion - 1)
-    };
-  }
-
-  private buildProfileDetails(user: UserDto, draft: ProfileOnboardingDraft): ProfileDetailFormGroup[] {
-    const form = draft.form;
-    const basicValues: Record<string, string> = {
-      'profile.name': form.fullName.trim(),
-      'profile.city': form.city.trim(),
-      'profile.birthday': this.formatDateForDetail(form.birthday),
-      'profile.height': `${form.heightCm ?? 0} cm`,
-      'profile.physique': form.physique.trim(),
-      'profile.languages': form.languages.join(', '),
-      'profile.horoscope': AppUtils.fromIsoDate(form.birthday)
-        ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(form.birthday) as Date)
-        : '',
-      'profile.gender': form.genderDetail.trim()
-    };
-    const optionalValues: Record<string, string> = {
-      'profile.details.interest': form.interests.join(', '),
-      'profile.details.drinking': form.drinking,
-      'profile.details.smoking': form.smoking,
-      'profile.details.workout': form.workout,
-      'profile.details.pets': form.pets,
-      'profile.details.familyPlans': form.familyPlans,
-      'profile.details.children': form.children,
-      'profile.details.loveStyle': form.loveStyle,
-      'profile.details.communicationStyle': form.communicationStyle,
-      'profile.details.sexualOrientation': form.sexualOrientation,
-      'profile.details.religion': form.religion,
-      'profile.details.values': form.values.join(', ')
-    };
-    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
-      title: group.title,
-      rows: group.rows.map(row => ({
-        labelKey: row.labelKey,
-        value: basicValues[row.labelKey] ?? optionalValues[row.labelKey] ?? this.existingDetailValue(user, row.labelKey),
-        privacy: this.existingDetailPrivacy(user, row.labelKey, row.privacy),
-        options: this.detailOptionsForRow(row.labelKey)
-      }))
-    }));
-  }
-
-  private detailOptionsForRow(labelKey: string): string[] {
-    if (labelKey === 'profile.details.values') {
-      return this.beliefsValuesAllOptions();
-    }
-    if (labelKey === 'profile.details.interest') {
-      return this.interestAllOptions();
-    }
-    return this.profileDetailValueOptions[labelKey] ?? [];
-  }
-
-  private existingDetailValue(user: UserDto, labelKey: string): string {
-    const target = AppUtils.normalizeText(labelKey);
-    for (const group of user.profileDetails ?? []) {
-      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
-      if (row) {
-        return row.value;
-      }
-    }
-    return '';
-  }
-
-  private existingDetailPrivacy(user: UserDto, labelKey: string, fallback: DetailPrivacy): DetailPrivacy {
-    const target = AppUtils.normalizeText(labelKey);
-    for (const group of user.profileDetails ?? []) {
-      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
-      if (row && this.isDetailPrivacy(row.privacy)) {
-        return row.privacy;
-      }
-    }
-    return fallback;
-  }
-
-  private profileDetailKeyFromLabel(label: string): string {
-    switch (label) {
-      case 'Gender':
-        return 'profile.gender';
-      case 'Drinking':
-        return 'profile.details.drinking';
-      case 'Smoking':
-        return 'profile.details.smoking';
-      case 'Workout':
-        return 'profile.details.workout';
-      case 'Pets':
-        return 'profile.details.pets';
-      case 'Family plans':
-        return 'profile.details.familyPlans';
-      case 'Children':
-        return 'profile.details.children';
-      case 'Love style':
-        return 'profile.details.loveStyle';
-      case 'Communication style':
-        return 'profile.details.communicationStyle';
-      case 'Sexual orientation':
-        return 'profile.details.sexualOrientation';
-      case 'Religion':
-        return 'profile.details.religion';
-      case 'Values':
-        return 'profile.details.values';
-      case 'Interest':
-        return 'profile.details.interest';
-      default:
-        return label;
-    }
-  }
-
-  private isDetailPrivacy(value: string): value is DetailPrivacy {
-    return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
-  }
-
-  protected setStep(stepId: ProfileOnboardingStepId): void {
-    if (!this.draft || this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    this.draft.currentStepId = stepId;
-    this.attemptedContinue = false;
-    this.persistDraft();
-    if (stepId === 'experience') {
-      this.loadExperienceEntriesForCurrentUserOnce();
-    }
-  }
-
-  private toggleLimitedOption(kind: 'values' | 'interests', option: string, allowed: string[]): void {
-    if (!this.draft || !allowed.includes(option)) {
-      return;
-    }
-    const current = this.draft.form[kind];
-    this.draft.form[kind] = current.includes(option)
-      ? current.filter(item => item !== option)
-      : [...current, option].slice(0, 5);
-    this.persistDraft();
-  }
-
-  private async loadExistingExperienceEntries(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !this.draft) {
-      return;
-    }
-    const token = ++this.experienceLoadToken;
-    this.experienceEntriesLoading = true;
-    this.cdr.detectChanges();
-    try {
-      const entries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
-      if (token !== this.experienceLoadToken || !this.draft || this.draft.userId !== normalizedUserId) {
-        return;
-      }
-      if (this.draft.form.experienceEntries.length === 0 && entries.length > 0) {
-        this.draft.form.experienceEntries = entries.map(entry => ({ ...entry }));
-        this.persistDraft();
-      }
-    } catch {
-      // Experience is optional, so onboarding can continue without this enrichment.
-    } finally {
-      if (token === this.experienceLoadToken) {
-        this.experienceEntriesLoading = false;
-        this.cdr.detectChanges();
-      }
-    }
-  }
-
-  private loadExperienceEntriesForCurrentUserOnce(): void {
-    const userId = this.user?.id?.trim() ?? '';
-    if (!userId || this.experienceEntriesLoadedForUserId === userId) {
-      return;
-    }
-    this.experienceEntriesLoadedForUserId = userId;
-    void this.loadExistingExperienceEntries(userId);
-  }
-
-  private startDraftAutosaveLoop(): void {
-    this.stopDraftAutosaveLoop();
-    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/auth/me/onboarding-draft-autosave', () => {
-      void this.runDraftAutosaveIfNeeded();
-    });
-  }
-
-  private stopDraftAutosaveLoop(): void {
-    if (!this.stopDraftAutosave) {
-      return;
-    }
-    this.stopDraftAutosave();
-    this.stopDraftAutosave = null;
-  }
-
-  private resetDraftAutosaveTracking(): void {
-    this.lastDraftAutosaveSignature = '';
-    this.isDraftAutosavePending = false;
-  }
-
-  private seedDraftAutosaveSignature(): void {
-    this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
-    this.isDraftAutosavePending = false;
-  }
-
-  private shouldAutosaveDraft(): boolean {
-    return this.open
-      && Boolean(this.user)
-      && Boolean(this.draft)
-      && !this.saving
-      && this.uploadingImageSlotIndex === null
-      && !this.isDraftAutosavePending;
-  }
-
-  private async runDraftAutosaveIfNeeded(): Promise<void> {
-    if (!this.user || !this.draft || !this.shouldAutosaveDraft()) {
-      return;
-    }
-    const nextSignature = this.buildDraftAutosaveSignature();
-    if (!nextSignature || nextSignature === this.lastDraftAutosaveSignature) {
-      return;
-    }
-    this.isDraftAutosavePending = true;
-    try {
-      const savedUser = await this.usersService.saveUserProfile(this.buildAutosaveUserPayload(this.user, this.draft));
-      if (savedUser) {
-        this.user = savedUser;
-        this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
-      }
-    } finally {
-      this.isDraftAutosavePending = false;
-    }
-  }
-
-  private buildDraftAutosaveSignature(): string {
-    if (!this.user || !this.draft) {
-      return '';
-    }
-    return JSON.stringify({
-      userId: this.user.id,
-      currentStepId: this.draft.currentStepId,
-      completedStepIds: [...this.draft.completedStepIds],
-      skippedStepIds: [...this.draft.skippedStepIds],
-      form: {
-        ...this.draft.form,
-        languages: [...this.draft.form.languages],
-        images: [...this.draft.form.images],
-        values: [...this.draft.form.values],
-        interests: [...this.draft.form.interests],
-        experienceEntries: this.draft.form.experienceEntries.map(entry => ({ ...entry }))
-      }
-    });
-  }
-
-  private completionPercent(draft: ProfileOnboardingDraft): number {
-    let completed = 0;
-    let total = 0;
-    const add = (ok: boolean): void => {
-      total += 1;
-      if (ok) {
-        completed += 1;
-      }
-    };
-    add(Boolean(draft.form.fullName.trim()));
-    add(Boolean(draft.form.birthday.trim()));
-    add(Boolean(draft.form.city.trim()));
-    add((draft.form.heightCm ?? 0) > 0);
-    add(Boolean(draft.form.physique.trim()));
-    add(draft.form.languages.length > 0);
-    add(draft.form.images.length >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES);
-    add(draft.form.about.trim().length >= 20);
-    add(draft.form.values.length > 0);
-    add(draft.form.interests.length > 0);
-    add(draft.form.experienceEntries.length > 0);
-    return total === 0 ? 0 : Math.round((completed / total) * 100);
-  }
-
-  private beliefsValuesAllOptions(): string[] {
-    return this.beliefsValuesOptionGroups.flatMap(group => group.options);
-  }
-
-  private interestAllOptions(): string[] {
-    return this.interestOptionGroups.flatMap(group => group.options);
-  }
-
-  private createEmptyImageSlots(): Array<string | null> {
-    return Array.from({ length: ProfileOnboardingPopupComponent.MAX_IMAGE_SLOTS }, () => null);
-  }
-
-  private syncImageSlotsFromDraft(): void {
-    const slots = this.createEmptyImageSlots();
-    const images = (this.draft?.form.images ?? [])
-      .map(image => `${image ?? ''}`.trim())
-      .filter(image => image.length > 0)
-      .slice(0, ProfileOnboardingPopupComponent.MAX_IMAGE_SLOTS);
-    images.forEach((image, index) => {
-      slots[index] = image;
-    });
-    this.imageSlots = slots;
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
-  }
-
-  private syncDraftImagesFromSlots(): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.form.images = this.collectPersistedProfileImages(this.imageSlots);
-    this.persistDraft();
-    this.cdr.detectChanges();
-  }
-
-  private collectPersistedProfileImages(values: readonly (string | null)[] = []): string[] {
-    const images: string[] = [];
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = `${value ?? ''}`.trim();
-      if (!normalized || seen.has(normalized)) {
-        continue;
-      }
-      images.push(normalized);
-      seen.add(normalized);
-      if (images.length >= ProfileOnboardingPopupComponent.MAX_IMAGE_SLOTS) {
-        break;
-      }
-    }
-    return images;
-  }
-
-  private findNearestFilledImageIndex(fromIndex: number): number {
-    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
-      const right = fromIndex + distance;
-      if (right < this.imageSlots.length && this.imageSlots[right]) {
-        return right;
-      }
-      const left = fromIndex - distance;
-      if (left >= 0 && this.imageSlots[left]) {
-        return left;
-      }
-    }
-    return this.imageSlots.findIndex(slot => Boolean(slot));
-  }
-
-  private async uploadAndRefreshProfileImageSlot(file: File, slotIndex: number): Promise<void> {
-    if (!this.user || !this.draft) {
-      return;
-    }
-    if (!file.type.toLowerCase().startsWith('image/')) {
-      this.imageUploadError = 'Please choose an image file.';
-      return;
-    }
-    const previousImage = this.imageSlots[slotIndex] ?? null;
-    this.uploadingImageSlotIndex = slotIndex;
-    this.imageUploadError = '';
-    this.cdr.detectChanges();
-    try {
-      this.syncDraftImagesFromSlots();
-      const uploadResult = await this.mediaService.uploadImage(this.user.id, `profile-${slotIndex}`, file);
-      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
-      if (!uploadResult.uploaded || !uploadedImageUrl) {
-        throw new Error('Upload failed.');
-      }
-      this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = uploadedImageUrl;
-      this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-      this.syncDraftImagesFromSlots();
-    } catch {
-      this.imageUploadError = 'Image could not be uploaded. Please try another image.';
-    } finally {
-      this.uploadingImageSlotIndex = null;
-      this.cdr.detectChanges();
-    }
-  }
-
-  private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
-    if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
-      return slotIndex;
-    }
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    return firstFilled >= 0 ? firstFilled : 0;
-  }
-
-  private revokeObjectUrl(value: string | null): void {
-    if (value && value.startsWith('blob:') && typeof URL !== 'undefined') {
-      URL.revokeObjectURL(value);
-    }
-  }
-
-  private formatDateForDetail(value: string): string {
-    const parsed = AppUtils.fromIsoDate(value);
-    return parsed
-      ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : '';
-  }
-
-  private createEmptyExperienceForm(): ExperienceFormDraft {
-    return {
-      type: 'Workspace',
-      title: '',
-      org: '',
-      city: '',
-      dateFrom: '',
-      dateTo: '',
-      current: true,
-      description: ''
-    };
-  }
-
-  private createExperienceId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return `exp-${crypto.randomUUID()}`;
-    }
-    return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  }
-
-  private normalizeSelectedLanguages(values: string[] | string | null): string[] {
-    const rawValues = Array.isArray(values) ? values : values ? [values] : [];
-    const selected = new Set(rawValues.map(value => value.trim().toLowerCase()).filter(Boolean));
-    return this.languageSuggestions.filter(language => selected.has(language.trim().toLowerCase()));
   }
 }

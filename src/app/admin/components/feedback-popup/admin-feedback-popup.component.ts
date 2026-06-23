@@ -7,17 +7,18 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import type { AdminFeedbackDto } from '../../../shared/core';
 import {
+  SingleRowComponent,
   SmartListComponent,
   type ListQuery,
   type PageResult,
+  type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  ActivityChatSingleRowConverter
 } from '../../../shared/ui';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { toActivityChatRow } from '../../../shared/core/base/converters/activities-chat.converter';
-import type { ActivityListRow } from '../../../shared/core/base/models';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 
@@ -28,13 +29,13 @@ interface AdminFeedbackListFilters {
 interface AdminFeedbackListItem {
   id: string;
   feedback: AdminFeedbackDto;
-  row: ActivityListRow;
+  row: SingleRowData;
 }
 
 @Component({
   selector: 'app-admin-feedback-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent],
   templateUrl: './admin-feedback-popup.component.html',
   styleUrl: '../admin-popups.scss'
 })
@@ -87,6 +88,35 @@ export class AdminFeedbackPopupComponent {
     this.feedbackDetail = item.feedback;
   }
 
+  protected feedbackSingleRow(item: AdminFeedbackListItem, groupLabel: string | null): SingleRowData {
+    const feedback = item.feedback;
+    return {
+      id: item.id,
+      groupLabel,
+      title: feedback.userName || 'Feedback',
+      subtitle: feedback.subject || this.feedbackCategoryLabel(feedback),
+      detail: feedback.details || this.feedbackListMeta(feedback),
+      avatarInitials: this.feedbackInitial(feedback),
+      avatarUrl: this.feedbackAvatarUrl(feedback) || null,
+      avatarAriaLabel: feedback.userName || 'Feedback author',
+      surfaceTone: this.feedbackSingleRowTone(feedback),
+      badges: [
+        {
+          label: this.feedbackTime(feedback.createdDate),
+          tone: 'muted',
+          position: 'side'
+        },
+        {
+          label: this.feedbackCategoryLabel(feedback),
+          tone: this.feedbackCategoryBadgeTone(feedback),
+          position: 'side'
+        }
+      ],
+      clickable: true,
+      eagerDetail: feedback
+    };
+  }
+
   protected closeFeedbackDetails(): void {
     this.feedbackDetail = null;
   }
@@ -126,6 +156,25 @@ export class AdminFeedbackPopupComponent {
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '') || 'general'}`;
+  }
+
+  protected feedbackSingleRowTone(item: AdminFeedbackDto): NonNullable<SingleRowData['surfaceTone']> {
+    switch (this.feedbackCategoryLabel(item)) {
+      case 'Bug report':
+        return 'danger';
+      case 'Feature request':
+        return 'success';
+      case 'UX improvement':
+        return 'accent';
+      case 'Performance':
+        return 'warning';
+      default:
+        return 'info';
+    }
+  }
+
+  protected feedbackCategoryBadgeTone(item: AdminFeedbackDto): NonNullable<SingleRowData['sideLabelTone']> {
+    return this.feedbackSingleRowTone(item);
   }
 
   protected shortDate(value: string | null | undefined): string {
@@ -170,7 +219,7 @@ export class AdminFeedbackPopupComponent {
     };
   }
 
-  private buildFeedbackActivityRow(feedback: AdminFeedbackDto): ActivityListRow {
+  private buildFeedbackActivityRow(feedback: AdminFeedbackDto): SingleRowData {
     const source: ChatRecord = {
       id: feedback.id,
       avatar: this.feedbackInitial(feedback),
@@ -183,7 +232,7 @@ export class AdminFeedbackPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
-    return toActivityChatRow(source, {
+    return ActivityChatSingleRowConverter.convert(source, {
       activeUserId: 'admin',
       users: [
         this.chatUser(feedback.userId, feedback.userName, this.feedbackInitial(feedback), 'woman')

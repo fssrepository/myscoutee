@@ -60,7 +60,10 @@ export { ActivityInviteCandidatesService } from './base/services/activity-invite
 export { ChatsService } from './base/services/chats.service';
 export { ChatVoiceClipsService } from './base/services/chat-voice-clips.service';
 export { RatesService } from './base/services/rates.service';
-export { UserExperiencesService } from './base/services/user-experiences.service';
+export {
+  UserExperiencesService,
+  type UserExperiencesRouteConfig
+} from './base/services/user-experiences.service';
 export {
   ProfileOnboardingService,
   type ProfileOnboardingAssessment,
@@ -81,7 +84,8 @@ export {
   type SupportSessionContext
 } from './base/services/session.service';
 export * from './base/builders';
-export * from './base/converters';
+export * from './base/mappers';
 export type * from './contracts';
 export * from './base/models';
+export * from './base/normalizers';
 export * from './local/seed';

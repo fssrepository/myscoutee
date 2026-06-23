@@ -6,6 +6,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostListener,
   Input,
   Injector,
   NgZone,
@@ -73,6 +74,7 @@ import type {
   SmartListLoadPage,
   SmartListLoaders,
   SmartListMergeStrategy,
+  SmartListOrientation,
   SmartListPaginationMode,
   SmartListPresentation,
   SmartListPrependRestoreMode,
@@ -130,6 +132,7 @@ type SmartListCalendarWindow = {
 export class SmartListComponent<T, TFilters extends SmartListFilters = SmartListFilters> implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly DEFAULT_LOADING_DELAY_MS = 0;
   private static readonly DEFAULT_LOADING_WINDOW_MS = ROUTE_CONFIG.defaultRequestTimeoutMs;
+  private static readonly DEFAULT_MOBILE_BREAKPOINT_PX = 760;
   private static readonly DEFAULT_MOBILE_PAGE_SIZE_CAP = 6;
   private static readonly QUICK_COMPLETE_THRESHOLD_MS = 120;
   private static readonly HOSTED_FULLSCREEN_STACK_SIZE = 3;
@@ -186,6 +189,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected loading = false;
   protected initialLoading = true;
   protected suppressListSnapNearEnd = false;
+  protected horizontalListScrollInProgress = false;
 
   private total = 0;
   private resolvedListTrackKeys: Array<string | number> = [];
@@ -288,6 +292,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   closeMenu(id?: string): void {
     this.itemMenuDispatcher.close(id);
   }
+
+  @HostListener('window:resize')
+  protected onViewportResize(): void {
+    this.refreshSurfaceSoon();
+    this.syncHorizontalViewportAfterResize();
+  }
+
   private hasMore = true;
   private pageIndex = 0;
   private nextPageCursor: string | null = null;
@@ -303,11 +314,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private loadSequence = 0;
   private loadingCounter = 0;
   private loadingStartedAtMs = 0;
+  private autoplayTimer: ReturnType<typeof setInterval> | null = null;
+  private autoplayPaused = false;
   private loadingInterval: ReturnType<typeof setInterval> | null = null;
   private loadingCompleteTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressVisibleLoadingProgress = false;
   private listSnapSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private listSnapSettleGuardTimer: ReturnType<typeof setTimeout> | null = null;
+  private horizontalListScrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+  private horizontalCursorScrollLockTargetIndex: number | null = null;
+  private horizontalCursorScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressListSnapSettle = false;
   private flushScheduled = false;
   private awaitScrollReset = false;
@@ -344,6 +360,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private forceAnimatedLoadingCompletion = false;
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
+  private hostedFullscreenEmptyCursor = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   private suspendSnapReactivation = false;
@@ -364,6 +381,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onSurfaceTouchStart(): void {
     this.isTouchingSurface = true;
+    if (this.isHorizontalList()) {
+      this.pausePaginationAutoplay();
+    }
     this.cdr.markForCheck();
 
     this.clearListSnapSettleTimers();
@@ -371,6 +391,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (scrollElement) {
+      if (this.shouldUseHorizontalMobileStepper()) {
+        return;
+      }
+
       const currentTop = scrollElement.scrollTop;
       const currentLeft = scrollElement.scrollLeft;
 
@@ -394,10 +418,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.touchStartScrollSnapType = null;
       return;
     }
-    scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
-    this.touchStartScrollSnapType = null;
+    if (!this.shouldUseHorizontalMobileStepper()) {
+      scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
+      this.touchStartScrollSnapType = null;
+    }
 
     if (this.currentViewMode === 'list') {
+      if (this.isHorizontalList() && !this.shouldUseHorizontalMobileStepper()) {
+        this.clearHorizontalListScrollEndTimer();
+      }
+      if (this.shouldUseHorizontalMobileStepper()) {
+        this.touchStartScrollSnapType = null;
+        return;
+      }
       this.scheduleListSnapSettle(scrollElement);
       return;
     }
@@ -472,6 +505,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       || changes['filters']
       || changes['groupBy']
     ) {
+      this.resetPaginationAutoplay();
       this.resetAndReload();
     }
 
@@ -499,9 +533,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.calendarRenderDeferred = false;
     this.calendarDeferredPageKeys.clear();
     this.clearListSnapSettleTimers();
+    this.clearHorizontalCursorScrollLock();
     this.clearCalendarSettleTimers();
     this.clearLoadingAnimation();
     this.clearHostedFullscreenTransitionTimer();
+    this.clearPaginationAutoplay();
     this.paginationHelper.destroy();
   }
 
@@ -570,6 +606,25 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolvedPaginationMode() === 'arrows';
   }
 
+  protected shouldRenderHorizontalPaginationDots(): boolean {
+    return this.isHorizontalList() && this.buildCursorState().total > 1;
+  }
+
+  protected horizontalPaginationDotIndexes(): number[] {
+    const total = this.buildCursorState().total;
+    return Array.from({ length: Math.max(0, total) }, (_item, index) => index);
+  }
+
+  protected isHorizontalPaginationDotActive(index: number): boolean {
+    return this.buildCursorState().index === index;
+  }
+
+  protected onHorizontalPaginationDotClick(index: number, event: Event): void {
+    event.stopPropagation();
+    this.pausePaginationAutoplay();
+    void this.setCursorIndex(index);
+  }
+
   protected resolvedPaginationRatingBarConfig(): RatingStarBarConfig | null {
     const baseConfig = this.config.pagination?.ratingBarConfig?.(this.cursorItem(), this.currentQuery()) ?? null;
     if (!baseConfig) {
@@ -599,6 +654,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return {
       id: SmartListComponent.PAGINATION_RATING_MENU_ID,
       kind: 'select',
+      layout: 'row',
       title: null,
       filterable: false,
       items: this.paginationRatingMenuItems(),
@@ -640,6 +696,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPaginationPrev(event: Event): void {
     event.stopPropagation();
+    this.pausePaginationAutoplay();
     if (this.shouldUseHostedFullscreenPagination()) {
       this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(-1);
@@ -650,6 +707,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPaginationNext(event: Event): void {
     event.stopPropagation();
+    this.pausePaginationAutoplay();
     if (this.shouldUseHostedFullscreenPagination()) {
       this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(1);
@@ -717,6 +775,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.currentViewMode !== 'list') {
       return;
     }
+    this.hostedFullscreenEmptyCursor = false;
     this.clearLoadingAnimation();
     this.loading = false;
     this.initialLoading = false;
@@ -742,7 +801,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (targetIndex < 0) {
       return false;
     }
-    return targetIndex <= cursor.total;
+    return targetIndex < cursor.total;
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -771,6 +830,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     this.syncCursorBounds();
+    this.scrollHorizontalListItemIntoView(normalizedIndex, 'smooth');
     this.emitState();
     this.cdr.markForCheck();
     return this.buildCursorState().index === normalizedIndex;
@@ -821,6 +881,32 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolveConfigValue(this.config.listLayout, 'stack');
   }
 
+  protected resolvedOrientation(): SmartListOrientation {
+    return this.resolveConfigValue(this.config.orientation, 'vertical');
+  }
+
+  protected isHorizontalList(): boolean {
+    return this.currentViewMode === 'list' && this.resolvedOrientation() === 'horizontal';
+  }
+
+  protected shouldUseCompactHorizontal(): boolean {
+    return this.isHorizontalList() && this.resolveConfigValue(this.config.compactHorizontal, false);
+  }
+
+  protected shouldSuspendHorizontalSnap(): boolean {
+    return this.horizontalListScrollInProgress
+      && this.isCompactHorizontalViewport()
+      && !this.shouldUseHorizontalMobileStepper();
+  }
+
+  protected shouldSuppressSnapDuringTouch(): boolean {
+    return this.isTouchingSurface && !this.shouldUseHorizontalMobileStepper();
+  }
+
+  protected resolvedMobileStepper(): boolean {
+    return this.resolveConfigValue(this.config.mobileStepper, false);
+  }
+
   protected isReversedListFlow(): boolean {
     return this.resolveConfigValue(this.config.listFlow, 'normal') === 'reverse';
   }
@@ -834,7 +920,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected resolvedSnapMode(): 'none' | 'proximity' | 'mandatory' {
-    const snapMode = this.resolveConfigValue(this.config.snapMode, 'none');
+    const baseSnapMode = this.resolveConfigValue(this.config.snapMode, 'none');
+    const snapMode = this.shouldUseHorizontalMobileStepper() ? 'mandatory' : baseSnapMode;
     this.trackSnapModeTransition(snapMode);
     return this.deferSnapReactivationUntilScroll ? 'none' : snapMode;
   }
@@ -872,8 +959,71 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.itemAnchorKey(item, index) === this.prependRestoreSpacerAnchorKey;
   }
 
+  protected onHorizontalWheel(event: WheelEvent): void {
+    if (!this.isHorizontalList()) {
+      return;
+    }
+    const target = event.currentTarget as HTMLDivElement | null;
+    if (!target) {
+      return;
+    }
+    const maxScrollLeft = Math.max(0, target.scrollWidth - target.clientWidth);
+    if (maxScrollLeft <= 1) {
+      return;
+    }
+    if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) {
+      return;
+    }
+    const rawDelta = event.deltaX;
+    const delta = this.normalizedWheelDelta(rawDelta, event.deltaMode, target);
+    if (!Number.isFinite(delta) || Math.abs(delta) < 0.5) {
+      return;
+    }
+    const nextScrollLeft = Math.max(0, Math.min(maxScrollLeft, target.scrollLeft + delta));
+    if (Math.abs(nextScrollLeft - target.scrollLeft) < 0.5) {
+      return;
+    }
+    this.pausePaginationAutoplay();
+    this.beginHorizontalListScroll(target);
+    event.preventDefault();
+    target.scrollLeft = nextScrollLeft;
+    this.syncListScrollState(target, { scheduleSnap: false });
+    this.scheduleHorizontalListScrollEnd(target);
+  }
+
+  private normalizedWheelDelta(delta: number, deltaMode: number, target: HTMLDivElement): number {
+    if (deltaMode === WheelEvent.DOM_DELTA_LINE) {
+      return delta * 16;
+    }
+    if (deltaMode === WheelEvent.DOM_DELTA_PAGE) {
+      return delta * target.clientWidth;
+    }
+    return delta;
+  }
+
   protected onListScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    const isHorizontal = this.isHorizontalList();
+    if (isHorizontal) {
+      this.beginHorizontalListScroll(target);
+    }
+    this.syncListScrollState(target, { scheduleSnap: !isHorizontal });
+    if (isHorizontal) {
+      this.scheduleHorizontalListScrollEnd(target);
+    }
+  }
+
+  protected onListScrollEnd(event: Event): void {
+    const target = event.target as HTMLDivElement;
+    if (this.isHorizontalList()) {
+      this.finishHorizontalListScroll(target);
+    }
+  }
+
+  private syncListScrollState(
+    target: HTMLDivElement,
+    options: { scheduleSnap?: boolean } = {}
+  ): void {
     this.releaseDeferredSnapOnScroll();
     if (this.shouldShowStickyHeader()) {
       this.updateStickyLabel(target.scrollTop);
@@ -882,9 +1032,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     this.updateListSnapNearEndSuppression(target);
     this.updateScrollProgress(target);
+    this.syncHorizontalCursorIndexToVisibleListItem(target);
     this.emitState();
     this.maybeLoadMore(target);
-    this.scheduleListSnapSettle(target);
+    if (options.scheduleSnap !== false) {
+      this.scheduleListSnapSettle(target);
+    }
   }
 
   protected onCalendarScroll(event: Event): void {
@@ -1236,6 +1389,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private resetAndReload(): void {
     this.resetHostedFullscreenTransition();
     this.clearCalendarSettleTimers();
+    this.clearHorizontalCursorScrollLock();
     this.suppressCalendarEdgeSettle = false;
     this.clearLoadingAnimation();
     this.calendarLoadAbortController?.abort();
@@ -1249,6 +1403,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loading = false;
     this.loadSequence += 1;
     this.suppressVisibleLoadingProgress = false;
+    this.hostedFullscreenEmptyCursor = false;
     this.items = [];
     this.groups = [];
     this.calendarMonthPages = [];
@@ -1528,6 +1683,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const triggerEdge = this.listLoadTriggerEdge();
     const threshold = Math.max(0, this.config.preloadOffsetPx ?? (triggerEdge === 'start' ? 48 : 520));
+    if (this.isHorizontalList()) {
+      this.maybeLoadMoreHorizontal(scrollElement, threshold, triggerEdge);
+      return;
+    }
     const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
     const distanceToVisualTop = this.reverseDistanceToVisualTop(scrollElement, maxVerticalScroll);
 
@@ -1580,6 +1739,36 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     if (!this.shouldStartAppendPreload(scrollElement, remainingPx, threshold)) {
+      return;
+    }
+    void this.loadNextPage();
+  }
+
+  private maybeLoadMoreHorizontal(
+    scrollElement: HTMLDivElement,
+    threshold: number,
+    triggerEdge: SmartListLoadTriggerEdge
+  ): void {
+    const maxHorizontalScroll = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    if (maxHorizontalScroll <= 1) {
+      return;
+    }
+
+    if (this.awaitScrollReset) {
+      this.clearAwaitScrollReset();
+    }
+
+    const scrollLeft = Math.max(0, scrollElement.scrollLeft);
+    if (triggerEdge === 'start') {
+      if (scrollLeft > threshold) {
+        return;
+      }
+      void this.loadNextPage();
+      return;
+    }
+
+    const remainingPx = maxHorizontalScroll - scrollLeft;
+    if (remainingPx > threshold) {
       return;
     }
     void this.loadNextPage();
@@ -2366,6 +2555,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.progress = 0;
       return;
     }
+    if (this.isHorizontalList()) {
+      const maxHorizontalScroll = Math.max(0, target.scrollWidth - target.clientWidth);
+      const scrollOffset = Math.max(0, target.scrollLeft);
+      this.scrollable = maxHorizontalScroll > 1;
+      this.progress = maxHorizontalScroll > 1
+        ? this.clamp(scrollOffset / maxHorizontalScroll)
+        : 0;
+      return;
+    }
     const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
     const scrollOffset = this.isReversedListFlow()
       ? Math.abs(target.scrollTop)
@@ -2386,8 +2584,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       // The occluded backing list can be heightless, which would otherwise eagerly drain all pages on mount.
       return;
     }
-    const maxVerticalScroll = Math.max(0, target.scrollHeight - target.clientHeight);
-    if (maxVerticalScroll > 1) {
+    const maxScroll = this.isHorizontalList()
+      ? Math.max(0, target.scrollWidth - target.clientWidth)
+      : Math.max(0, target.scrollHeight - target.clientHeight);
+    if (maxScroll > 1) {
       return;
     }
     void this.loadNextPage();
@@ -2515,7 +2715,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (!this.shouldBootstrapInitialListSnap(scrollElement)) {
         return;
       }
-      if (scrollElement.scrollTop > 1) {
+      if (this.isHorizontalList() || scrollElement.scrollTop > 1) {
         return;
       }
       const firstSnapTarget = this.listCardSnapTargets(scrollElement)[0] ?? null;
@@ -2526,7 +2726,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (maxVerticalScroll <= 1) {
         return;
       }
-      const finalTop = this.listSnapTargetTop(scrollElement, firstSnapTarget);
+      const finalTop = this.listSnapTargetPosition(scrollElement, firstSnapTarget);
       const overshootTop = Math.min(maxVerticalScroll, finalTop + 28);
       if (overshootTop <= finalTop + 1) {
         return;
@@ -2564,7 +2764,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private shouldBootstrapInitialListSnap(_scrollElement: HTMLDivElement): boolean {
-    return this.resolvedListLayout() === 'card-grid' && this.resolvedSnapMode() !== 'none';
+    return !this.isHorizontalList()
+      && this.resolvedListLayout() === 'card-grid'
+      && this.resolvedSnapMode() !== 'none';
   }
 
   private scheduleListSnapSettle(scrollElement: HTMLDivElement): void {
@@ -2584,10 +2786,77 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return !this.suppressListSnapSettle
       && !this.suppressListSnapNearEnd
       && !this.isTouchingSurface
+      && !this.horizontalListScrollInProgress
       && this.currentViewMode === 'list'
       && this.resolvedListLayout() === 'card-grid'
+      && (!this.isHorizontalList() || this.isCompactHorizontalViewport())
       && this.resolvedSnapMode() !== 'none'
       && scrollElement === this.scrollHostRef?.nativeElement;
+  }
+
+  private isCompactHorizontalViewport(): boolean {
+    return this.isMobileViewport();
+  }
+
+  private shouldUseHorizontalMobileStepper(): boolean {
+    return this.currentViewMode === 'list'
+      && this.isHorizontalList()
+      && this.resolvedMobileStepper()
+      && this.isMobileViewport();
+  }
+
+  private isMobileViewport(): boolean {
+    const breakpointPx = SmartListComponent.DEFAULT_MOBILE_BREAKPOINT_PX;
+    const matcher = globalThis.matchMedia?.(`(max-width: ${breakpointPx}px)`);
+    if (matcher) {
+      return matcher.matches;
+    }
+    return (globalThis.innerWidth ?? Number.POSITIVE_INFINITY) <= breakpointPx;
+  }
+
+  private beginHorizontalListScroll(scrollElement: HTMLDivElement): void {
+    if (!this.isHorizontalList() || scrollElement !== this.scrollHostRef?.nativeElement) {
+      return;
+    }
+    this.clearListSnapSettleTimer();
+    if (this.horizontalListScrollInProgress) {
+      return;
+    }
+    this.horizontalListScrollInProgress = true;
+    this.cdr.markForCheck();
+  }
+
+  private scheduleHorizontalListScrollEnd(scrollElement: HTMLDivElement): void {
+    if (!this.isHorizontalList() || scrollElement !== this.scrollHostRef?.nativeElement) {
+      this.clearHorizontalListScrollEndTimer();
+      return;
+    }
+    if (this.horizontalListScrollEndTimer) {
+      clearTimeout(this.horizontalListScrollEndTimer);
+    }
+    this.horizontalListScrollEndTimer = setTimeout(() => {
+      this.horizontalListScrollEndTimer = null;
+      this.finishHorizontalListScroll(scrollElement);
+    }, SmartListComponent.LIST_SNAP_SETTLE_DELAY_MS);
+  }
+
+  private finishHorizontalListScroll(scrollElement: HTMLDivElement): void {
+    if (this.horizontalListScrollEndTimer) {
+      clearTimeout(this.horizontalListScrollEndTimer);
+      this.horizontalListScrollEndTimer = null;
+    }
+    if (!this.isHorizontalList() || scrollElement !== this.scrollHostRef?.nativeElement) {
+      this.clearHorizontalListScrollEndTimer();
+      return;
+    }
+    if (this.horizontalListScrollInProgress) {
+      this.horizontalListScrollInProgress = false;
+      this.cdr.markForCheck();
+    }
+    if (this.shouldUseHorizontalMobileStepper()) {
+      return;
+    }
+    this.settleListSnapSmoothly(scrollElement);
   }
 
   private settleListSnapSmoothly(scrollElement: HTMLDivElement): void {
@@ -2600,13 +2869,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return;
     }
 
-    const targetTop = this.listSnapTargetTop(scrollElement, nearestTarget);
-    if (Math.abs(scrollElement.scrollTop - targetTop) <= 2) {
+    const targetPosition = this.listSnapTargetPosition(scrollElement, nearestTarget);
+    const currentPosition = this.listSnapScrollPosition(scrollElement);
+    if (Math.abs(currentPosition - targetPosition) <= 2) {
       return;
     }
 
     this.guardListSnapSettle();
-    scrollElement.scrollTo({ top: targetTop, behavior: 'smooth' });
+    this.scrollToListSnapPosition(scrollElement, targetPosition, 'smooth');
   }
 
   private nearestListSnapTarget(scrollElement: HTMLDivElement): HTMLElement | null {
@@ -2615,10 +2885,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
 
-    const currentTop = scrollElement.scrollTop;
+    const currentPosition = this.listSnapScrollPosition(scrollElement);
     return targets.reduce<HTMLElement>((nearest, candidate) => {
-      const nearestDistance = Math.abs(this.listSnapTargetTop(scrollElement, nearest) - currentTop);
-      const candidateDistance = Math.abs(this.listSnapTargetTop(scrollElement, candidate) - currentTop);
+      const nearestDistance = Math.abs(this.listSnapTargetPosition(scrollElement, nearest) - currentPosition);
+      const candidateDistance = Math.abs(this.listSnapTargetPosition(scrollElement, candidate) - currentPosition);
       return candidateDistance < nearestDistance ? candidate : nearest;
     }, targets[0]);
   }
@@ -2644,11 +2914,23 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private clearListSnapSettleTimers(): void {
     this.clearListSnapSettleTimer();
+    this.clearHorizontalListScrollEndTimer();
     if (this.listSnapSettleGuardTimer) {
       clearTimeout(this.listSnapSettleGuardTimer);
       this.listSnapSettleGuardTimer = null;
     }
     this.suppressListSnapSettle = false;
+  }
+
+  private clearHorizontalListScrollEndTimer(): void {
+    if (this.horizontalListScrollEndTimer) {
+      clearTimeout(this.horizontalListScrollEndTimer);
+      this.horizontalListScrollEndTimer = null;
+    }
+    if (this.horizontalListScrollInProgress) {
+      this.horizontalListScrollInProgress = false;
+      this.cdr.markForCheck();
+    }
   }
 
   private updateAutoFooterSpacerHeight(scrollElement?: HTMLDivElement | null): void {
@@ -2714,6 +2996,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private listCardSnapTargets(scrollElement: HTMLDivElement): HTMLElement[] {
+    if (this.isHorizontalList()) {
+      return Array.from(
+        scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-index]')
+      );
+    }
     return Array.from(
       scrollElement.querySelectorAll<HTMLElement>(SmartListComponent.LIST_CARD_SNAP_TARGET_SELECTOR)
     );
@@ -2748,48 +3035,74 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return false;
     }
 
-    const maxVerticalScroll = Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
-    if (maxVerticalScroll <= 1) {
+    const maxScroll = this.listMaxScroll(scrollElement);
+    if (maxScroll <= 1) {
       return false;
     }
 
-    const lastReachableSnapTop = this.lastReachableListSnapTargetTop(scrollElement, maxVerticalScroll);
-    if (lastReachableSnapTop === null || maxVerticalScroll <= lastReachableSnapTop + 1) {
+    const lastReachableSnapPosition = this.lastReachableListSnapTargetPosition(scrollElement, maxScroll);
+    if (lastReachableSnapPosition === null || maxScroll <= lastReachableSnapPosition + 1) {
       return false;
     }
 
-    return scrollElement.scrollTop > lastReachableSnapTop + 1;
+    return this.listSnapScrollPosition(scrollElement) > lastReachableSnapPosition + 1;
   }
 
-  private lastReachableListSnapTargetTop(scrollElement: HTMLDivElement, maxVerticalScroll?: number): number | null {
-    const maxScroll = maxVerticalScroll ?? Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
-    const reachableTops = this.listCardSnapTargets(scrollElement)
-      .map(target => this.listSnapTargetTop(scrollElement, target))
-      .filter(top => top <= maxScroll + 1);
-    if (reachableTops.length === 0) {
+  private lastReachableListSnapTargetPosition(scrollElement: HTMLDivElement, maxScroll?: number): number | null {
+    const maxPosition = maxScroll ?? this.listMaxScroll(scrollElement);
+    const reachablePositions = this.listCardSnapTargets(scrollElement)
+      .map(target => this.listSnapTargetPosition(scrollElement, target))
+      .filter(position => position <= maxPosition + 1);
+    if (reachablePositions.length === 0) {
       return null;
     }
-    return Math.max(...reachableTops);
+    return Math.max(...reachablePositions);
   }
 
-  private listSnapTargetTop(scrollElement: HTMLDivElement, target: HTMLElement): number {
-    const scrollPaddingTop = this.listSnapPaddingTop(scrollElement);
-    return Math.max(0, target.offsetTop - scrollPaddingTop);
+  private listMaxScroll(scrollElement: HTMLDivElement): number {
+    return this.isHorizontalList()
+      ? Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth)
+      : Math.max(0, scrollElement.scrollHeight - scrollElement.clientHeight);
   }
 
-  private listSnapPaddingTop(scrollElement: HTMLDivElement): number {
+  private listSnapScrollPosition(scrollElement: HTMLDivElement): number {
+    return this.isHorizontalList()
+      ? Math.max(0, scrollElement.scrollLeft)
+      : Math.max(0, scrollElement.scrollTop);
+  }
+
+  private listSnapTargetPosition(scrollElement: HTMLDivElement, target: HTMLElement): number {
+    const scrollPadding = this.listSnapPaddingStart(scrollElement);
+    const targetOffset = this.isHorizontalList() ? target.offsetLeft : target.offsetTop;
+    return Math.max(0, targetOffset - scrollPadding);
+  }
+
+  private scrollToListSnapPosition(
+    scrollElement: HTMLDivElement,
+    position: number,
+    behavior: ScrollBehavior
+  ): void {
+    if (this.isHorizontalList()) {
+      scrollElement.scrollTo({ left: position, behavior });
+      return;
+    }
+    scrollElement.scrollTo({ top: position, behavior });
+  }
+
+  private listSnapPaddingStart(scrollElement: HTMLDivElement): number {
     const computed = globalThis.getComputedStyle?.(scrollElement);
-    const rawScrollPaddingTop = computed?.scrollPaddingTop
-      || computed?.getPropertyValue('scroll-padding-top')
+    const rawScrollPadding = this.isHorizontalList()
+      ? computed?.scrollPaddingLeft || computed?.getPropertyValue('scroll-padding-left')
+      : computed?.scrollPaddingTop || computed?.getPropertyValue('scroll-padding-top')
       || '';
-    const parsedScrollPaddingTop = Number.parseFloat(rawScrollPaddingTop);
+    const parsedScrollPadding = Number.parseFloat(rawScrollPadding);
     const stickyHeaderHeight = this.shouldShowStickyHeader()
       ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
-    const scrollPaddingTop = Number.isFinite(parsedScrollPaddingTop)
-      ? parsedScrollPaddingTop
-      : stickyHeaderHeight;
-    return scrollPaddingTop;
+    if (Number.isFinite(parsedScrollPadding)) {
+      return parsedScrollPadding;
+    }
+    return this.isHorizontalList() ? 0 : stickyHeaderHeight;
   }
 
   private resetScrollSoon(): void {
@@ -2973,6 +3286,60 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private emitState(): void {
     this.stateChange.emit(this.buildStateChange());
+    this.syncPaginationAutoplay();
+  }
+
+  private resolvedPaginationAutoplayMs(): number | null {
+    const value = this.resolveConfigValue(this.config.pagination?.autoplayMs, null);
+    const normalized = Math.trunc(Number(value));
+    return Number.isFinite(normalized) && normalized >= 1000 ? normalized : null;
+  }
+
+  private syncPaginationAutoplay(): void {
+    const autoplayMs = this.resolvedPaginationAutoplayMs();
+    const canAutoplay = autoplayMs !== null
+      && !this.autoplayPaused
+      && this.currentViewMode === 'list'
+      && this.isHorizontalList()
+      && this.items.length > 1;
+    if (!canAutoplay) {
+      this.clearPaginationAutoplay();
+      return;
+    }
+    if (this.autoplayTimer !== null) {
+      return;
+    }
+    this.ngZone.runOutsideAngular(() => {
+      this.autoplayTimer = setInterval(() => {
+        const cursor = this.buildCursorState();
+        if (cursor.total <= 1) {
+          this.clearPaginationAutoplay();
+          return;
+        }
+        const nextIndex = cursor.index >= cursor.total - 1 ? 0 : cursor.index + 1;
+        this.ngZone.run(() => {
+          void this.setCursorIndex(nextIndex);
+        });
+      }, autoplayMs);
+    });
+  }
+
+  private pausePaginationAutoplay(): void {
+    this.autoplayPaused = true;
+    this.clearPaginationAutoplay();
+  }
+
+  private resetPaginationAutoplay(): void {
+    this.autoplayPaused = false;
+    this.clearPaginationAutoplay();
+  }
+
+  private clearPaginationAutoplay(): void {
+    if (this.autoplayTimer === null) {
+      return;
+    }
+    clearInterval(this.autoplayTimer);
+    this.autoplayTimer = null;
   }
 
   private buildStateChange(): SmartListStateChange<T, TFilters> {
@@ -3027,6 +3394,109 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     void this.setCursorIndex(visibleIndex);
   }
 
+  private syncHorizontalCursorIndexToVisibleListItem(scrollElement: HTMLDivElement): void {
+    if (!this.isHorizontalList() || this.items.length === 0) {
+      return;
+    }
+    if (this.horizontalCursorScrollLockTargetIndex !== null) {
+      this.scheduleHorizontalCursorScrollLockRelease(scrollElement);
+      return;
+    }
+    const visibleIndex = this.firstVisibleHorizontalListItemIndex(scrollElement);
+    if (visibleIndex === null || visibleIndex === this.buildCursorState().index) {
+      return;
+    }
+    this.cursorIndex = visibleIndex;
+    this.syncCursorBounds();
+    this.cdr.markForCheck();
+  }
+
+  private firstVisibleHorizontalListItemIndex(scrollElement: HTMLDivElement): number | null {
+    const listRect = scrollElement.getBoundingClientRect();
+    const visibleLeft = listRect.left + 1;
+    const itemElements = Array.from(scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-index]'));
+    const anchorElement =
+      itemElements.find(element => element.getBoundingClientRect().right > visibleLeft)
+      ?? itemElements.find(element => element.getBoundingClientRect().left >= listRect.left - 1)
+      ?? itemElements[0]
+      ?? null;
+    if (!anchorElement) {
+      return null;
+    }
+    const rawIndex = Number.parseInt(anchorElement.dataset['smartListIndex'] ?? '', 10);
+    return Number.isFinite(rawIndex) ? Math.max(0, rawIndex) : null;
+  }
+
+  private scrollHorizontalListItemIntoView(index: number, behavior: ScrollBehavior): void {
+    if (!this.isHorizontalList()) {
+      return;
+    }
+    const run = () => {
+      const scrollElement = this.scrollHostRef?.nativeElement;
+      if (!scrollElement || !this.isHorizontalList()) {
+        return;
+      }
+      const itemElement = scrollElement.querySelector<HTMLElement>(`.smart-list__item-shell[data-smart-list-index="${index}"]`);
+      if (!itemElement) {
+        return;
+      }
+      if (behavior === 'smooth') {
+        this.horizontalCursorScrollLockTargetIndex = index;
+        this.scheduleHorizontalCursorScrollLockRelease(scrollElement);
+      } else {
+        this.clearHorizontalCursorScrollLock();
+      }
+      this.scrollToListSnapPosition(scrollElement, this.listSnapTargetPosition(scrollElement, itemElement), behavior);
+      this.updateScrollProgress(scrollElement);
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(run));
+      return;
+    }
+    setTimeout(run, 0);
+  }
+
+  private syncHorizontalViewportAfterResize(): void {
+    if (!this.afterViewInit || !this.isHorizontalList()) {
+      return;
+    }
+    if (!this.shouldUseCompactHorizontal() && !this.shouldUseHorizontalMobileStepper()) {
+      return;
+    }
+    this.scrollHorizontalListItemIntoView(this.buildCursorState().index, 'auto');
+  }
+
+  private scheduleHorizontalCursorScrollLockRelease(scrollElement: HTMLDivElement): void {
+    if (this.horizontalCursorScrollLockTimer) {
+      clearTimeout(this.horizontalCursorScrollLockTimer);
+    }
+    this.horizontalCursorScrollLockTimer = setTimeout(() => {
+      this.horizontalCursorScrollLockTimer = null;
+      const targetIndex = this.horizontalCursorScrollLockTargetIndex;
+      this.horizontalCursorScrollLockTargetIndex = null;
+      const currentScrollElement = this.scrollHostRef?.nativeElement;
+      if (!currentScrollElement || currentScrollElement !== scrollElement || !this.isHorizontalList()) {
+        return;
+      }
+      const finalIndex = this.firstVisibleHorizontalListItemIndex(currentScrollElement) ?? targetIndex;
+      if (finalIndex === null || finalIndex === this.cursorIndex) {
+        return;
+      }
+      this.cursorIndex = finalIndex;
+      this.syncCursorBounds();
+      this.emitState();
+      this.cdr.markForCheck();
+    }, 120);
+  }
+
+  private clearHorizontalCursorScrollLock(): void {
+    if (this.horizontalCursorScrollLockTimer) {
+      clearTimeout(this.horizontalCursorScrollLockTimer);
+      this.horizontalCursorScrollLockTimer = null;
+    }
+    this.horizontalCursorScrollLockTargetIndex = null;
+  }
+
   private firstVisibleListItemIndex(scrollElement: HTMLDivElement): number | null {
     const threadRect = scrollElement.getBoundingClientRect();
     const visibleTop = threadRect.top + this.listTopInset(scrollElement);
@@ -3048,7 +3518,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   private async handleHostedFullscreenRatingSelect(score: number): Promise<void> {
     this.interruptHostedFullscreenTransition();
     await this.config.pagination?.onRatingSelect?.(this.cursorItem(), score, this.currentQuery());
-    if (!this.shouldUseHostedFullscreenPagination() || !this.canMoveCursor(1)) {
+    if (!this.shouldUseHostedFullscreenPagination()) {
+      return;
+    }
+    const canMoveToNextItem = this.canMoveCursor(1);
+    const canMoveToEmptyState = !canMoveToNextItem && this.canMoveHostedFullscreenCursorToEmptyState();
+    if (!canMoveToNextItem && !canMoveToEmptyState) {
       return;
     }
     if (this.ratingAdvanceInFlight) {
@@ -3060,23 +3535,30 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
         return;
       }
-      await this.advanceHostedFullscreenPagination(1);
+      await this.advanceHostedFullscreenPagination(1, { allowEmptyTarget: canMoveToEmptyState });
     } finally {
       this.ratingAdvanceInFlight = false;
     }
   }
 
-  private async advanceHostedFullscreenPagination(delta: number): Promise<boolean> {
+  private async advanceHostedFullscreenPagination(
+    delta: number,
+    options: { allowEmptyTarget?: boolean } = {}
+  ): Promise<boolean> {
     if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
       return false;
     }
     const normalizedDelta = Math.trunc(delta);
-    if (!this.canMoveCursor(normalizedDelta)) {
+    const allowEmptyTarget = options.allowEmptyTarget === true
+      && normalizedDelta > 0
+      && this.canMoveHostedFullscreenCursorToEmptyState();
+    if (!this.canMoveCursor(normalizedDelta) && !allowEmptyTarget) {
       return false;
     }
     const currentIndex = this.buildCursorState().index;
     const targetIndex = currentIndex + normalizedDelta;
-    if (!await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
+    const targetIsEmptyState = allowEmptyTarget && targetIndex === this.hostedFullscreenCursorTotal();
+    if (!targetIsEmptyState && !await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
       return false;
     }
     if (normalizedDelta > 0) {
@@ -3088,6 +3570,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return this.moveCursor(normalizedDelta);
     }
     this.cursorIndex = targetIndex;
+    this.hostedFullscreenEmptyCursor = targetIsEmptyState;
     this.syncCursorBounds();
     this.emitState();
     this.cdr.markForCheck();
@@ -3140,13 +3623,15 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         item: null
       };
     }
-    const index = Math.max(0, Math.min(indexOverride, total));
+    const lastItemIndex = Math.max(0, total - 1);
+    const maxCursorIndex = this.canUseHostedFullscreenEmptyCursor() ? total : lastItemIndex;
+    const index = Math.max(0, Math.min(indexOverride, maxCursorIndex));
     return {
       index,
       total,
-      progress: this.clamp(index / total),
+      progress: index >= total ? 1 : lastItemIndex > 0 ? this.clamp(index / lastItemIndex) : 0,
       canPrev: index > 0,
-      canNext: index < total,
+      canNext: index < lastItemIndex,
       item: index < this.items.length ? (this.items[index] ?? null) : null
     };
   }
@@ -3157,7 +3642,30 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.cursorIndex = 0;
       return;
     }
-    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, total));
+    const maxCursorIndex = this.canUseHostedFullscreenEmptyCursor() ? total : total - 1;
+    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, maxCursorIndex));
+  }
+
+  private hostedFullscreenCursorTotal(): number {
+    return Math.max(0, Math.max(this.total, this.items.length));
+  }
+
+  private canUseHostedFullscreenEmptyCursor(): boolean {
+    return this.hostedFullscreenEmptyCursor
+      && this.cursorIndex >= this.hostedFullscreenCursorTotal()
+      && this.hostedFullscreenCursorTotal() > 0
+      && !this.hasMore
+      && !this.loading;
+  }
+
+  private canMoveHostedFullscreenCursorToEmptyState(): boolean {
+    const cursor = this.buildCursorState();
+    return this.shouldUseHostedFullscreenPagination()
+      && cursor.item !== null
+      && cursor.total > 0
+      && cursor.index === cursor.total - 1
+      && !this.hasMore
+      && !this.loading;
   }
 
   private isVisibleCalendarPageLoading(): boolean {
@@ -3490,7 +3998,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private mobilePageSizeCapForView(viewKey: string | null = this.currentViewKey): number | null {
-    if (typeof window === 'undefined' || !window.matchMedia('(max-width: 760px)').matches) {
+    if (typeof window === 'undefined' || !this.isMobileViewport()) {
       return null;
     }
     if (this.resolveViewMode(viewKey) !== 'list') {

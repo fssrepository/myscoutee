@@ -4,8 +4,9 @@ import type {
 } from '../components/menu';
 import {
   CARD_MENU_ACTIONS,
-  type CardResolvedMenuAction
+  type CardMenuAction
 } from '../components/card';
+import type { UiConverter } from './converter.types';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   menu: 'activity-event-card';
@@ -22,7 +23,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
 export interface ActivityEventInfoCardMenuContext {
   menu: 'activity-event-card';
   subject: ActivityEventInfoCardMenuSubject;
-  action: CardResolvedMenuAction;
+  action: CardMenuAction;
 }
 
 export interface ActivityEventInfoCardMenuConverterOptions {
@@ -31,7 +32,7 @@ export interface ActivityEventInfoCardMenuConverterOptions {
 }
 
 export class ActivityEventInfoCardMenuConverter {
-  static readonly availableActions: readonly string[] = [
+  private static readonly availableActions: readonly string[] = [
     'restore',
     'takeOver',
     'publish',
@@ -74,7 +75,7 @@ export class ActivityEventInfoCardMenuConverter {
     if (!config) {
       return [];
     }
-    const action: CardResolvedMenuAction = {
+    const action: CardMenuAction = {
       id: actionId,
       ...config
     };
@@ -228,7 +229,7 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 
-  private static actionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private static actionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'brown';
@@ -242,3 +243,10 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 }
+
+export const activityEventInfoCardMenuConverter =
+  ActivityEventInfoCardMenuConverter satisfies UiConverter<
+    ActivityEventInfoCardMenuSubject | null | undefined,
+    readonly AppMenuItem<string, ActivityEventInfoCardMenuContext>[],
+    ActivityEventInfoCardMenuConverterOptions | undefined
+  >;

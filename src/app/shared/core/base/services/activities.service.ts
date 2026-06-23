@@ -8,7 +8,7 @@ import type { UserDto } from '../../contracts/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
   toActivitiesPageRequest
-} from '../converters';
+} from '../mappers';
 import { AppContext } from '../../../ui/context';
 import type { ActivityEventDTO, ActivityEventRecord, ActivityRateDTO } from '../../contracts/activity.interface';
 import { ChatsService } from './chats.service';

@@ -15,11 +15,13 @@ export const routes: Routes = [
   },
   {
     path: 'privacy-policy',
-    loadComponent: () => import('./shared/ui/components/privacy-policy-popup/privacy-policy-popup.component').then(m => m.PrivacyPolicyPopupComponent)
+    loadComponent: () => import('./shared/ui/components/document-viewer/document-viewer.component').then(m => m.DocumentViewerComponent),
+    data: { documentKind: 'privacy' }
   },
   {
     path: 'terms',
-    loadComponent: () => import('./shared/ui/components/terms-policy/terms-policy.component').then(m => m.TermsPolicyComponent)
+    loadComponent: () => import('./shared/ui/components/document-viewer/document-viewer.component').then(m => m.DocumentViewerComponent),
+    data: { documentKind: 'terms' }
   },
   {
     path: 'admin/help/:token',

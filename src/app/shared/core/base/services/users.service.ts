@@ -5,6 +5,7 @@ import { LocalUsersService } from '../../local';
 import { HttpUsersService } from '../../http';
 import type { BootstrapProcessState } from './bootstrap.service';
 import type {
+  ProfileExtDto,
   UserSelectorListItemDto,
   UserSelectorRole,
   UserDeleteRequestDto,
@@ -20,7 +21,8 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import { UserRealtimeSnapshotConverter } from '../converters';
+import type { ExperienceEntry } from '../../contracts/profile.interface';
+import { UserRealtimeSnapshotMapper } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
@@ -216,6 +218,37 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
+  async saveUserProfileExt(profile: UserDto, experienceEntries: readonly ExperienceEntry[]): Promise<UserDto | null> {
+    if (!profile?.id?.trim()) {
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
+      return null;
+    }
+
+    const request: ProfileExtDto = {
+      profile,
+      experienceEntries: experienceEntries.map(entry => ({ ...entry }))
+    };
+    this.appCtx.setUserProfile(profile);
+    this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
+
+    try {
+      const savedUser = await this.userService.saveUserProfileExt(request);
+      if (savedUser) {
+        this.appCtx.setUserProfile(savedUser);
+      }
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
+      return savedUser;
+    } catch (error) {
+      if (this.isTimeoutError(error, 'Profile save request timeout.')) {
+        this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'timeout', 'Profile save request timeout.');
+        return null;
+      }
+
+      this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Unable to save profile.');
+      return null;
+    }
+  }
+
   async submitUserFeedback(
     request: UserFeedbackSubmitRequestDto,
     requestTimeoutMs?: number,
@@ -395,7 +428,7 @@ export class UsersService extends BaseRouteModeService {
     fallbackUserId: string,
     fallbackCursor: string | null
   ): UserRealtimeLongPollResponseDto {
-    return UserRealtimeSnapshotConverter.snapshot(snapshot, fallbackUserId, fallbackCursor);
+    return UserRealtimeSnapshotMapper.snapshot(snapshot, fallbackUserId, fallbackCursor);
   }
 
   private normalizeCounterOverrides(
@@ -509,7 +542,7 @@ export class UsersService extends BaseRouteModeService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: UserRealtimeSnapshotConverter.impressions(user.impressions),
+      impressions: UserRealtimeSnapshotMapper.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),

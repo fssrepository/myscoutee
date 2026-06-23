@@ -17,7 +17,6 @@ export class ActivityResourcesService extends BaseRouteModeService {
   private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
   private readonly appCtx = inject(AppContext);
 
-
   private get activityResourcesService(): LocalActivityResourcesService | HttpActivityResourcesService {
     return this.resolveRouteService(
       '/activities/events/subevent-resources',
@@ -51,7 +50,11 @@ export class ActivityResourcesService extends BaseRouteModeService {
     if (!ref) {
       return null;
     }
-    return this.activityResourcesService.querySubEventResourceState(ref);
+    const state = await this.activityResourcesService.querySubEventResourceState(ref);
+    if (state) {
+      this.appCtx.emitActivityResourceSync(ref);
+    }
+    return state;
   }
 
   async replaceSubEventResourceState(
@@ -65,12 +68,20 @@ export class ActivityResourcesService extends BaseRouteModeService {
     if (!normalizedState) {
       return null;
     }
-    return this.activityResourcesService.replaceSubEventResourceState({
+    const savedState = await this.activityResourcesService.replaceSubEventResourceState({
       ...state,
       ownerId: normalizedState.ownerId,
       subEventId: normalizedState.subEventId,
       assetOwnerUserId: normalizedState.assetOwnerUserId
     }, signal);
+    if (savedState) {
+      this.appCtx.emitActivityResourceSync({
+        ownerId: savedState.ownerId,
+        subEventId: savedState.subEventId,
+        assetOwnerUserId: savedState.assetOwnerUserId
+      });
+    }
+    return savedState;
   }
 
   subEventResourceInfoCard(

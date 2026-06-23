@@ -1,8 +1,6 @@
-import type * as AppDTOs from '../../../shared/core/base/dto';
-
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 
-import type * as AppTypes from '../../../shared/core/base/models';
+import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 
 @Component({
   selector: 'app-asset-ticket-scanner-popup',
@@ -13,7 +11,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
 })
 export class AssetTicketScannerPopupComponent implements AfterViewInit, OnDestroy {
   @Input() state: 'idle' | 'reading' | 'success' = 'idle';
-  @Input() result: AppDTOs.TicketScanPayloadDTO | null = null;
+  @Input() result: AssetContracts.TicketScanPayloadDTO | null = null;
   @Input() avatarUrl = '';
   @Input() initials = '';
   @Input() personLine = '';

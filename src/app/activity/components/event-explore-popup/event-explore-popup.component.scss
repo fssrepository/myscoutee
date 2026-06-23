@@ -43,21 +43,6 @@
   --app-menu-panel-gap: 0.6rem;
 }
 
-:host ::ng-deep .event-explore-basket-menu .app-menu__trigger--shape-icon {
-  width: 58px;
-  height: 58px;
-  min-width: 58px;
-  min-height: 58px;
-  box-shadow: 0 18px 34px rgba(122, 74, 18, 0.24);
-}
-
-:host ::ng-deep .event-explore-basket-menu .app-menu__trigger--shape-icon .mat-icon {
-  width: 24px;
-  height: 24px;
-  font-size: 24px;
-  line-height: 24px;
-}
-
 .event-explore-header-controls {
   display: flex;
   align-items: center;

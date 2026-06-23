@@ -13,7 +13,7 @@
           @if (!loading()) {
             <app-menu
               class="monitoring-filter-wrap"
-              kind="button-row"
+              kind="inline"
               [model]="filterMenuModel()"
               (itemSelect)="onFilterMenuSelect($event)"
             ></app-menu>

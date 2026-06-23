@@ -27,7 +27,7 @@ import {
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListLoadPage,
@@ -101,13 +101,13 @@ type EventResourceMenuContext =
       menu: 'resource-card';
       card: AppDTOs.SubEventResourceCardDTO;
       infoCard: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     }
   | {
       menu: 'asset-explore-card';
       card: AppDTOs.AssetCardDTO;
       infoCard: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     };
 
 const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
@@ -816,7 +816,7 @@ export class EventResourcePopupComponent implements DoCheck {
       ariaLabel: 'Open asset filter',
       palette: this.resourceTypePalette(filter),
       counter: count > 0 ? { value: count, max: 99 } : null,
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -846,7 +846,7 @@ export class EventResourcePopupComponent implements DoCheck {
       ariaLabel: 'Open sub-event asset actions',
       hideLabel: true,
       palette: 'green',
-      shape: 'icon'
+      layout: 'icon'
     };
   }
 
@@ -877,7 +877,7 @@ export class EventResourcePopupComponent implements DoCheck {
       icon: this.assetExploreOrderIcon(),
       ariaLabel: 'Open asset explore order',
       palette: this.assetExploreOrderPalette(this.assetExploreOrder),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -901,7 +901,7 @@ export class EventResourcePopupComponent implements DoCheck {
       icon: this.assetExploreCategoryIcon(explore.category),
       ariaLabel: 'Open asset explore category',
       palette: this.assetCategoryPalette(explore.category),
-      shape: 'field'
+      layout: 'field'
     };
   }
 
@@ -1027,7 +1027,7 @@ export class EventResourcePopupComponent implements DoCheck {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -1055,7 +1055,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   }
 
-  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';

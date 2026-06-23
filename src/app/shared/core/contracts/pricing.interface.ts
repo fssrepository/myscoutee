@@ -1,18 +1,7 @@
-import type {
-  PricingCancellationRefundKind,
-  PricingCancellationUnit,
-  PricingChargeType,
-  PricingDemandOperator,
-  PricingMode,
-  PricingRoundingMode,
-  PricingRuleActionKind,
-  PricingRuleScope,
-  PricingTaxMode,
-  PricingTimeRuleTrigger
-} from '../common/constants';
+import type * as AppConstants from '../common/constants';
 
 export interface PricingAction {
-  kind: PricingRuleActionKind;
+  kind: AppConstants.PricingRuleActionKind;
   value: number;
 }
 
@@ -35,21 +24,21 @@ export interface PricingSlotOverride {
 
 export interface PricingDemandRule {
   id: string;
-  operator: PricingDemandOperator;
+  operator: AppConstants.PricingDemandOperator;
   capacityFilledPercent: number;
   action: PricingAction;
-  appliesTo: PricingRuleScope;
+  appliesTo: AppConstants.PricingRuleScope;
   slotIds: string[];
 }
 
 export interface PricingTimeRule {
   id: string;
-  trigger: PricingTimeRuleTrigger;
+  trigger: AppConstants.PricingTimeRuleTrigger;
   offsetValue: number | null;
   specificDateStart?: string | null;
   specificDateEnd?: string | null;
   action: PricingAction;
-  appliesTo: PricingRuleScope;
+  appliesTo: AppConstants.PricingRuleScope;
   slotIds: string[];
 }
 
@@ -61,9 +50,9 @@ export interface PricingPromoCode {
 
 export interface PricingCancellationRule {
   id: string;
-  offsetUnit: PricingCancellationUnit;
+  offsetUnit: AppConstants.PricingCancellationUnit;
   offsetValue: number | null;
-  refundKind: PricingCancellationRefundKind;
+  refundKind: AppConstants.PricingCancellationRefundKind;
   refundValue: number | null;
 }
 
@@ -83,14 +72,14 @@ export interface PricingAudienceSettings {
 
 export interface PricingConfig {
   enabled: boolean;
-  mode: PricingMode;
+  mode: AppConstants.PricingMode;
   basePrice: number;
   currency: string;
-  taxMode: PricingTaxMode;
-  chargeType: PricingChargeType;
+  taxMode: AppConstants.PricingTaxMode;
+  chargeType: AppConstants.PricingChargeType;
   minPrice: number | null;
   maxPrice: number | null;
-  rounding: PricingRoundingMode;
+  rounding: AppConstants.PricingRoundingMode;
   demandRulesEnabled: boolean;
   demandRules: PricingDemandRule[];
   timeRulesEnabled: boolean;

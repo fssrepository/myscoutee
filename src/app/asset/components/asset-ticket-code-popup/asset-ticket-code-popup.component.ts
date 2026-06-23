@@ -1,7 +1,7 @@
 
 import { Component, Input } from '@angular/core';
 
-import type * as AppTypes from '../../../shared/core/base/models';
+import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 
 @Component({
   selector: 'app-asset-ticket-code-popup',
@@ -11,7 +11,7 @@ import type * as AppTypes from '../../../shared/core/base/models';
   styleUrl: './asset-ticket-code-popup.component.scss'
 })
 export class AssetTicketCodePopupComponent {
-  @Input() selectedTicketRow: AppTypes.ActivityListRow | null = null;
+  @Input() selectedTicketRow: AssetContracts.AssetTicketDTO | null = null;
   @Input() avatarUrl = '';
   @Input() initials = '';
   @Input() personLine = '';

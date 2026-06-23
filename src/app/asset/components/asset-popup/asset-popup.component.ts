@@ -8,7 +8,6 @@ import { AssetFacadeService } from '../../asset-facade.service';
 import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import { AssetCardBuilder, PricingBuilder } from '../../../shared/core/base/builders';
-import type * as AppTypes from '../../../shared/core/base/models';
 import { AppContext } from '../../../shared/ui';
 import { AssetTicketsService, ShareTokensService } from '../../../shared/core';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
@@ -27,7 +26,7 @@ import {
   type AppMenuTrigger,
   type InfoCardData,
   type CardMenuActionEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SingleRowData,
   type SmartListConfig,
@@ -40,6 +39,7 @@ import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 
 import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 import type * as AppConstants from '../../../shared/core/common/constants';
 interface AssetTicketListFilters {
   userId?: string;
@@ -71,7 +71,7 @@ type AssetPopupMenuContext =
       menu: 'asset-info-card';
       assetCard: AppDTOs.AssetCardDTO;
       card: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     };
 
 @Component({
@@ -168,7 +168,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     },
     trackBy: (_index, card) => card.id
   };
-  protected readonly ticketSmartListConfig: SmartListConfig<AppTypes.ActivityListRow, AssetTicketListFilters> = {
+  protected readonly ticketSmartListConfig: SmartListConfig<AssetContracts.AssetTicketDTO, AssetTicketListFilters> = {
     pageSize: 18,
     defaultView: 'list',
     emptyLabel: 'No ticketed events',
@@ -374,7 +374,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       label: () => this.assetPopup.ticketDateOrderLabel(),
       icon: () => this.assetPopup.ticketDateOrderIcon(),
       palette: 'blue',
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'Open ticket date ordering'
     };
   }
@@ -440,7 +440,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       icon: () => this.supplyRequestFilterIcon(),
       palette: this.supplyRequestFilterPalette(this.supplyRequestFilter),
       counter: () => this.supplyRequestFilterCount(),
-      shape: 'pill',
+      layout: 'pill',
       ariaLabel: 'asset.requests.filter.open'
     };
   }
@@ -467,7 +467,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     return {
       icon: 'more_vert',
       closeIcon: 'close',
-      shape: 'icon',
+      layout: 'icon',
       palette: 'slate',
       disabled: () => this.isSupplyRequestRowBusy(row, 'accept')
         || this.isSupplyRequestRowBusy(row, 'remove')
@@ -1128,7 +1128,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   }
 
   protected ticketInfoCard(
-    row: AppTypes.ActivityListRow,
+    row: AssetContracts.AssetTicketDTO,
     options: { groupLabel?: string | null } = {}
   ) {
     return this.assetFacade.ticketInfoCard(row, options);
@@ -1138,7 +1138,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     this.assetPopup.setTicketScannerVideoElement(element);
   }
 
-  protected onTicketSmartListStateChange(change: SmartListStateChange<AppTypes.ActivityListRow, AssetTicketListFilters>): void {
+  protected onTicketSmartListStateChange(change: SmartListStateChange<AssetContracts.AssetTicketDTO, AssetTicketListFilters>): void {
     this.assetPopup.updateTicketListState(change);
   }
 
@@ -1359,7 +1359,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   private async loadTicketSmartListPage(
     query: ListQuery<AssetTicketListFilters>
-  ): Promise<{ items: AppTypes.ActivityListRow[]; total: number }> {
+  ): Promise<{ items: AssetContracts.AssetTicketDTO[]; total: number }> {
     const userId = query.filters?.userId?.trim() || this.activeUserId();
     if (!userId) {
       return {

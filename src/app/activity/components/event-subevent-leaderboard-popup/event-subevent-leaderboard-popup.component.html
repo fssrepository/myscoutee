@@ -47,11 +47,14 @@
               <article class="subevent-leaderboard-group">
                 <div
                   class="subevent-leaderboard-group-head"
+                  data-motion="none"
                   role="button"
                   tabindex="0"
                   (click)="toggleGroup(group, $event)"
                   (keydown.enter)="toggleGroup(group, $event)"
                   (keydown.space)="toggleGroup(group, $event); $event.preventDefault()"
+                  [attr.aria-expanded]="isGroupOpen(group.key)"
+                  [attr.aria-label]="(isGroupOpen(group.key) ? 'Collapse ' : 'Expand ') + group.title"
                   >
                   <span class="subevent-leaderboard-group-title">{{ group.title }}</span>
                   @if (!readOnly) {
@@ -68,7 +71,9 @@
                 </div>
                 @if (isGroupOpen(group.key)) {
                   <div class="subevent-leaderboard-group-body">
-                    <p class="subevent-leaderboard-advance-line">Top {{ group.advancePerGroup }} advance from this group.</p>
+                    @if (!hasMemberDetails(group)) {
+                      <p class="subevent-leaderboard-advance-line">Top {{ group.advancePerGroup }} advance from this group.</p>
+                    }
                     @if (mode === 'Score') {
                       @if (hasMemberDetails(group)) {
                         <div class="subevent-leaderboard-history-head">

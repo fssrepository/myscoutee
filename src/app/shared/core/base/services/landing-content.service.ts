@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalLandingContentService } from '../../local/source/services/landing-content.service';
 import { HttpLandingContentService } from '../../http/services/landing-content.service';
-import type { LandingContentState } from '../../contracts';
+import type { LandingContentStateDto } from '../../contracts';
 import type { InfoCardData } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { IdeaPostsService } from './idea-posts.service';
@@ -10,7 +10,7 @@ import { PrivacyPolicyService } from './privacy-policy.service';
 import { TermsPolicyService } from './terms-policy.service';
 
 export interface LandingContentDisplayState {
-  state: LandingContentState;
+  state: LandingContentStateDto;
   ideaCards: InfoCardData[];
 }
 
@@ -24,13 +24,13 @@ export class LandingContentService extends BaseRouteModeService {
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
-  private readonly stateRef = signal<LandingContentState | null>(null);
-  private loadPromise: Promise<LandingContentState> | null = null;
+  private readonly stateRef = signal<LandingContentStateDto | null>(null);
+  private loadPromise: Promise<LandingContentStateDto> | null = null;
   private displayLoadPromise: Promise<LandingContentDisplayState> | null = null;
 
   readonly state = this.stateRef.asReadonly();
 
-  async loadOnce(): Promise<LandingContentState> {
+  async loadOnce(): Promise<LandingContentStateDto> {
     const current = this.stateRef();
     if (current) {
       return this.cloneState(current);
@@ -83,14 +83,14 @@ export class LandingContentService extends BaseRouteModeService {
     );
   }
 
-  private cloneDisplayState(state: LandingContentState): LandingContentDisplayState {
+  private cloneDisplayState(state: LandingContentStateDto): LandingContentDisplayState {
     return {
       state: this.cloneState(state),
       ideaCards: this.ideaInfoCards()
     };
   }
 
-  private cloneState(state: LandingContentState): LandingContentState {
+  private cloneState(state: LandingContentStateDto): LandingContentStateDto {
     return {
       privacy: {
         activeRevision: state.privacy.activeRevision

@@ -1,11 +1,11 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type {
-  HelpCenterRevision,
-  HelpCenterSection,
-  HelpCenterState,
-  PrivacyConsentRecord,
-  PrivacyConsentSaveRequest
+  HelpCenterRevisionDto,
+  HelpCenterSectionDto,
+  HelpCenterStateDto,
+  PrivacyConsentDto,
+  PrivacyConsentSaveRequestDto
 } from '../../contracts';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 import { HelpCenterService } from './help-center.service';
@@ -25,11 +25,11 @@ export class PrivacyPolicyService {
 
   readonly loading = this.loadingRef.asReadonly();
   readonly state = this.helpCenter.privacyState;
-  readonly activeRevision = computed<HelpCenterRevision | null>(() => this.helpCenter.activePrivacyRevision());
+  readonly activeRevision = computed<HelpCenterRevisionDto | null>(() => this.helpCenter.activePrivacyRevision());
   readonly hasActiveRevision = computed(() => Boolean(this.activeRevision()));
   readonly activeVersionLabel = this.helpCenter.activePrivacyVersionLabel;
 
-  async prepareOpen(options: PrivacyPolicyOpenOptions = {}): Promise<HelpCenterRevision | null> {
+  async prepareOpen(options: PrivacyPolicyOpenOptions = {}): Promise<HelpCenterRevisionDto | null> {
     const lazy = options.lazy !== false;
     const current = this.activeRevision();
     if (current || !lazy) {
@@ -44,19 +44,19 @@ export class PrivacyPolicyService {
     }
   }
 
-  applyState(state: HelpCenterState): void {
+  applyState(state: HelpCenterStateDto): void {
     this.helpCenter.applyState('privacy', state);
   }
 
-  async loadConsent(userId: string, revisionId: string, revisionVersion?: number): Promise<PrivacyConsentRecord | null> {
+  async loadConsent(userId: string, revisionId: string, revisionVersion?: number): Promise<PrivacyConsentDto | null> {
     return this.helpCenter.loadPrivacyConsent(userId, revisionId, revisionVersion);
   }
 
-  async saveConsent(request: PrivacyConsentSaveRequest): Promise<PrivacyConsentRecord> {
+  async saveConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
     return this.helpCenter.savePrivacyConsent(request);
   }
 
-  loadEntryOptionalApprovals(revision: HelpCenterRevision): Set<string> {
+  loadEntryOptionalApprovals(revision: HelpCenterRevisionDto): Set<string> {
     if (typeof localStorage === 'undefined') {
       return new Set();
     }
@@ -77,7 +77,7 @@ export class PrivacyPolicyService {
     }
   }
 
-  saveEntryOptionalApprovals(revision: HelpCenterRevision, approvedSectionIds: readonly string[]): void {
+  saveEntryOptionalApprovals(revision: HelpCenterRevisionDto, approvedSectionIds: readonly string[]): void {
     if (typeof localStorage === 'undefined') {
       return;
     }
@@ -93,11 +93,11 @@ export class PrivacyPolicyService {
     }));
   }
 
-  revisionKey(revision: HelpCenterRevision): string {
+  revisionKey(revision: HelpCenterRevisionDto): string {
     return `${revision.id}:v${revision.version}`;
   }
 
-  private optionalSectionIds(sections: readonly HelpCenterSection[]): Set<string> {
+  private optionalSectionIds(sections: readonly HelpCenterSectionDto[]): Set<string> {
     return new Set(
       sections
         .filter(section => section.optional === true)

@@ -69,7 +69,7 @@ export class LocalUsersRepository {
     if (!user) {
       return null;
     }
-    return LocalUsersMapper.toDTO(user);
+    return LocalUsersMapper.toDto(user);
   }
 
   upsertUser(user: UserDto): UserDto {
@@ -103,7 +103,7 @@ export class LocalUsersRepository {
         }
       };
     });
-    return LocalUsersMapper.toDTO(normalizedUser);
+    return LocalUsersMapper.toDto(normalizedUser);
   }
 
   purgeUser(userId: string): void {
@@ -211,7 +211,7 @@ export class LocalUsersRepository {
     return users.ids
       .map(id => users.byId[id])
       .filter((user): user is UserDto => Boolean(user))
-      .map(user => LocalUsersMapper.toDTO(user));
+      .map(user => LocalUsersMapper.toDto(user));
   }
 
   private normalizeImages(images: readonly string[] | undefined): string[] {

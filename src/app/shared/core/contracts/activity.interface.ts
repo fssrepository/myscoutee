@@ -1,34 +1,8 @@
-import type {
-  ActivitiesChatContextFilter,
-  ActivitiesChatPageResultDTO,
-  ChatRecord,
-  SupportCaseFilter
-} from './chat.interface';
-import type {
-  EventBlindMode,
-  EventEditorTarget,
-  EventPolicyItem,
-  EventRecordKind,
-  EventSlotOccurrence,
-  EventSlotTemplate,
-  SubEventFormItem,
-  SubEventsDisplayMode
-} from './event.interface';
-import type { PricingConfig } from './pricing.interface';
-import type { LocationCoordinates, UserDto } from './user.interface';
-import type {
-  ActivityInviteSort,
-  ActivityMemberOwnerType,
-  ActivityMemberRequestKind,
-  ActivityMemberRole,
-  ActivityMemberStatus,
-  ActivityPendingReason,
-  ActivityPendingSource,
-  AssetType,
-  EventFeedbackListFilter,
-  EventVisibility,
-  UserGender
-} from '../common/constants';
+import type * as AppConstants from '../common/constants';
+import type * as ChatContracts from './chat.interface';
+import type * as EventContracts from './event.interface';
+import type * as PricingContracts from './pricing.interface';
+import type * as UserContracts from './user.interface';
 
 export type ActivitiesPrimaryFilter = 'chats' | 'invitations' | 'events' | 'hosting' | 'rates';
 export type ActivitiesEventScope = 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash';
@@ -69,7 +43,7 @@ export interface ActivityRatePageResultDTO {
   items: ActivityRateDTO[];
   total: number;
   nextCursor?: string | null;
-  users?: UserDto[];
+  users?: UserContracts.UserDto[];
 }
 
 export interface IEventsService {
@@ -80,9 +54,13 @@ export interface IEventsService {
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
-  loadEventFeedbackDeck(
-    query: EventFeedbackDeckQueryDto
-  ): Promise<EventFeedbackDeckResultDto>;
+  loadEventFeedback(
+    query: EventFeedbackQueryDto
+  ): Promise<EventFeedbackDetailDto>;
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void>;
+  saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void>;
+  removeEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
+  restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
   saveActivityEvent(
     payload: ActivityEventSaveDTO
   ): Promise<ActivityEventDTO | null>;
@@ -92,8 +70,8 @@ export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
-    options?: { chatItems?: readonly ChatRecord[] }
-  ): Promise<ActivitiesChatPageResultDTO>;
+    options?: { chatItems?: readonly ChatContracts.ChatRecord[] }
+  ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
 }
 
 export interface IRatesService {
@@ -109,12 +87,12 @@ export interface ActivitiesFeedFilters {
   primaryFilter?: ActivitiesPrimaryFilter;
   eventScopeFilter?: ActivitiesEventScope;
   secondaryFilter?: ActivitiesSecondaryFilter;
-  chatContextFilter?: ActivitiesChatContextFilter;
+  chatContextFilter?: ChatContracts.ActivitiesChatContextFilter;
   hostingPublicationFilter?: HostingPublicationFilter;
   rateFilter?: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
   adminServiceOnly?: boolean;
-  supportCaseFilter?: SupportCaseFilter;
+  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export interface EventExploreFeedFilters {
@@ -145,30 +123,30 @@ export interface ActivityEventSaveDTO {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
-  pricing?: PricingConfig | null;
+  pricing?: PricingContracts.PricingConfig | null;
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplate[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
-  eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
-  visibility?: EventVisibility;
-  blindMode?: EventBlindMode;
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrence | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrence[];
+  visibility?: AppConstants.EventVisibility;
+  blindMode?: EventContracts.EventBlindMode;
   status?: ActivityEventStatus;
   creatorUserId?: string;
   creatorName?: string;
   creatorInitials?: string;
-  creatorGender?: UserGender;
+  creatorGender?: AppConstants.UserGender;
   creatorCity?: string;
   location?: string;
-  locationCoordinates?: LocationCoordinates;
+  locationCoordinates?: UserContracts.LocationCoordinates;
   sourceLink?: string;
-  policies?: EventPolicyItem[];
+  policies?: EventContracts.EventPolicyItem[];
   topics?: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  subEvents?: EventContracts.SubEventFormItem[];
+  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   paymentSessionId?: string | null;
 }
 
@@ -176,7 +154,7 @@ export interface ActivitiesPageRequest {
   primaryFilter: ActivitiesPrimaryFilter;
   eventScopeFilter?: ActivitiesEventScope;
   secondaryFilter: ActivitiesSecondaryFilter;
-  chatContextFilter: ActivitiesChatContextFilter;
+  chatContextFilter: ChatContracts.ActivitiesChatContextFilter;
   hostingPublicationFilter: HostingPublicationFilter;
   rateFilter: RateFilterKey;
   rateSocialBadgeEnabled?: boolean;
@@ -191,7 +169,7 @@ export interface ActivitiesPageRequest {
   rangeStart?: string;
   rangeEnd?: string;
   adminServiceOnly?: boolean;
-  supportCaseFilter?: SupportCaseFilter;
+  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export type ActivityEventScopeFilter = ActivitiesEventScope;
@@ -220,102 +198,51 @@ export interface ActivityEventRecord {
   inviter: string | null;
   unread: number;
   activity: number;
-  isAdmin?: boolean;
-  isInvitation?: boolean;
-  isHosting?: boolean;
-  isTrashed?: boolean;
   trashedAtIso: string | null;
   creatorUserId: string;
   creatorName: string;
   creatorInitials: string;
-  creatorGender: UserGender;
+  creatorGender: AppConstants.UserGender;
   creatorCity: string;
-  visibility: EventVisibility;
-  blindMode: EventBlindMode;
+  visibility: AppConstants.EventVisibility;
+  blindMode: EventContracts.EventBlindMode;
   startAtIso: string;
   endAtIso: string;
   distanceKm: number;
   imageUrl: string;
   sourceLink: string;
   location: string;
-  locationCoordinates: LocationCoordinates | null;
+  locationCoordinates: UserContracts.LocationCoordinates | null;
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
-  pricing?: PricingConfig | null;
-  policies?: EventPolicyItem[];
+  pricing?: PricingContracts.PricingConfig | null;
+  policies?: EventContracts.EventPolicyItem[];
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplate[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
-  eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrence | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrence[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  subEvents?: EventContracts.SubEventFormItem[];
+  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   rating: number;
   boost: number;
   affinity: number;
 }
-
-export interface ActivityEventListItem {
-  id: string;
-  userId: string;
-  type: ActivityEventRepositoryItemType;
-  status?: ActivityEventStatus;
-  adminIds?: string[];
-  avatar: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  inviter?: string | null;
-  unread: number;
-  activity: number;
-  isAdmin?: boolean;
-  isInvitation?: boolean;
-  isHosting?: boolean;
-  isTrashed?: boolean;
-  creatorUserId: string;
-  creatorName: string;
-  creatorInitials: string;
-  creatorCity: string;
-  visibility: EventVisibility;
-  startAtIso: string;
-  endAtIso: string;
-  distanceKm: number;
-  imageUrl: string;
-  location: string;
-  capacityMin: number | null;
-  capacityMax: number | null;
-  capacityTotal: number;
-  ticketing: boolean;
-  eventType?: EventRecordKind;
-  acceptedMembers: number;
-  pendingMembers: number;
-  acceptedMemberUserIds?: string[];
-  pendingMemberUserIds?: string[];
-  invitedMemberUserIds?: string[];
-  pendingRequestMemberUserIds?: string[];
-  pendingReason?: ActivityPendingReason;
-  topics: string[];
-  rating: number;
-  boost: number;
-  affinity: number;
-}
-
-export type ActivityEventCardRecord = ActivityEventRecord | ActivityEventListItem;
 
 export type ActivityEventDTOStatus = ActivityEventStatus;
 
@@ -324,6 +251,7 @@ export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>
 export class ActivityEventDTO {
   id!: string;
   userId!: string;
+  type!: ActivityEventRepositoryItemType;
   status?: ActivityEventDTOStatus;
   statusBeforeSuppression?: ActivityEventDTOStatus | null;
   adminIds!: string[];
@@ -338,43 +266,43 @@ export class ActivityEventDTO {
   creatorUserId!: string;
   creatorName!: string;
   creatorInitials!: string;
-  creatorGender?: UserGender;
+  creatorGender?: AppConstants.UserGender;
   creatorCity!: string;
-  visibility!: EventVisibility;
-  blindMode?: EventBlindMode;
+  visibility!: AppConstants.EventVisibility;
+  blindMode?: EventContracts.EventBlindMode;
   startAtIso!: string;
   endAtIso!: string;
   distanceKm!: number;
   imageUrl!: string;
   sourceLink?: string;
   location!: string;
-  locationCoordinates?: LocationCoordinates | null;
+  locationCoordinates?: UserContracts.LocationCoordinates | null;
   capacityMin!: number | null;
   capacityMax!: number | null;
   capacityTotal!: number;
   autoInviter?: boolean;
   frequency?: string;
   ticketing!: boolean;
-  pricing?: PricingConfig | null;
-  policies?: EventPolicyItem[];
+  pricing?: PricingContracts.PricingConfig | null;
+  policies?: EventContracts.EventPolicyItem[];
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplate[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
-  eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
+  eventType?: EventContracts.EventRecordKind;
+  nextSlot?: EventContracts.EventSlotOccurrence | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrence[];
   acceptedMembers!: number;
   pendingMembers!: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
   topics!: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  subEvents?: EventContracts.SubEventFormItem[];
+  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
   rating!: number;
   boost!: number;
   affinity!: number;
@@ -476,7 +404,7 @@ export interface ActivityEventActivitiesQuery {
 }
 
 export interface ActivityEventActivitiesListQueryResult {
-  records: ActivityEventListItem[];
+  records: ActivityEventDTO[];
   total: number;
   nextCursor: string | null;
 }
@@ -486,29 +414,29 @@ export interface ActivityMemberEntry {
   userId: string;
   name: string;
   initials: string;
-  gender: UserGender;
+  gender: AppConstants.UserGender;
   city: string;
   statusText: string;
-  role: ActivityMemberRole;
-  status: ActivityMemberStatus;
-  pendingSource: ActivityPendingSource;
-  requestKind: ActivityMemberRequestKind;
+  role: AppConstants.ActivityMemberRole;
+  status: AppConstants.ActivityMemberStatus;
+  pendingSource: AppConstants.ActivityPendingSource;
+  requestKind: AppConstants.ActivityMemberRequestKind;
   invitedByActiveUser: boolean;
   invitedByUserId?: string | null;
   metAtIso: string;
   actionAtIso: string;
   metWhere: string;
   avatarUrl: string;
-  profile?: UserDto | null;
+  profile?: UserContracts.UserDto | null;
 }
 
 export interface ActivityMemberOwnerRef {
-  ownerType: ActivityMemberOwnerType;
+  ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
 }
 
 export interface ActivityMembersSummary {
-  ownerType: ActivityMemberOwnerType;
+  ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
   acceptedMembers: number;
   pendingMembers: number;
@@ -519,7 +447,7 @@ export interface ActivityMembersSummary {
 
 export interface ActivityInviteOwnerContext {
   ownerId: string;
-  ownerType: ActivityMemberOwnerType;
+  ownerType: AppConstants.ActivityMemberOwnerType;
   title: string;
   subtitle: string;
   detail: string;
@@ -533,7 +461,7 @@ export interface ActivityInviteCandidatesQuery {
   activeUserId: string;
   owner: ActivityInviteOwnerContext;
   existingMemberUserIds: readonly string[];
-  sort: ActivityInviteSort;
+  sort: AppConstants.ActivityInviteSort;
 }
 
 export interface IActivityInviteCandidatesService {
@@ -570,7 +498,7 @@ export interface UserGameFilterPreferencesDto {
   values?: string[];
   physiques?: string[];
   languages?: string[];
-  genders?: UserGender[];
+  genders?: AppConstants.UserGender[];
   horoscopes?: string[];
   traitLabels?: string[];
   smoking?: string[];
@@ -608,7 +536,7 @@ export interface UserGameCardsQueryResponse {
 
 export interface EventCheckoutAssetSelection {
   subEventId: string;
-  resourceType: AssetType;
+  resourceType: AppConstants.AssetType;
 }
 
 export interface EventCheckoutLineItem {
@@ -631,7 +559,7 @@ export interface EventCheckoutSelection {
   currency: string;
   paymentSessionId?: string | null;
   bookingConfirmed?: boolean;
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
 }
 
 export interface EventCheckoutRequest {
@@ -644,7 +572,7 @@ export interface EventCheckoutRequest {
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
-  pendingReason?: ActivityPendingReason;
+  pendingReason?: AppConstants.ActivityPendingReason;
 }
 
 export interface EventCheckoutSession {
@@ -662,7 +590,7 @@ export interface SubmittedEventFeedbackAnswer {
   eventId: string;
   kind: 'event' | 'attendee';
   targetUserId: string | null;
-  targetRole: ActivityMemberRole;
+  targetRole: AppConstants.ActivityMemberRole;
   primaryValue: string;
   secondaryValue: string;
   personalityTraitIds: string[];
@@ -679,32 +607,14 @@ export interface EventFeedbackStateDto {
   answersByCardId?: Record<string, SubmittedEventFeedbackAnswer>;
 }
 
-export interface EventFeedbackReceivedEntryDto {
-  viewerUserId: string;
-  viewerName: string;
-  viewerInitials: string;
-  viewerGender: UserGender;
-  viewerImageUrl: string;
-  eventId: string;
-  submittedAtIso: string;
-  updatedAtIso: string;
-  organizerNote: string;
-  answers: SubmittedEventFeedbackAnswer[];
-}
-
-export interface EventFeedbackReceivedEventDto {
-  eventId: string;
-  entries: EventFeedbackReceivedEntryDto[];
-}
-
 export interface EventFeedbackPageQueryDto {
   userId: string;
-  filter: EventFeedbackListFilter;
+  filter: AppConstants.EventFeedbackListFilter;
   page: number;
   pageSize: number;
 }
 
-export interface EventFeedbackDeckQueryDto {
+export interface EventFeedbackQueryDto {
   userId: string;
   eventId: string;
 }
@@ -725,7 +635,7 @@ export interface EventFeedbackPageStateSnapshotDto {
   organizerNotesByEventId: Record<string, string>;
 }
 
-export interface EventFeedbackPageItemDto {
+export interface EventFeedbackDto {
   eventId: string;
   title: string;
   subtitle: string;
@@ -741,13 +651,13 @@ export interface EventFeedbackPageItemDto {
   isOwnEvent?: boolean;
 }
 
-export interface EventFeedbackCardSourceDto {
+export interface EventFeedbackCardDto {
   id: string;
   eventId: string;
   kind: 'event' | 'attendee';
   attendeeUserId?: string;
   targetUserId?: string;
-  targetRole?: ActivityMemberRole;
+  targetRole?: AppConstants.ActivityMemberRole;
   eventTitle: string;
   eventSubtitle: string;
   eventImageUrl: string;
@@ -757,43 +667,524 @@ export interface EventFeedbackCardSourceDto {
   targetName: string;
   targetAge?: number;
   targetCity?: string;
-  targetGender?: UserGender;
+  targetGender?: AppConstants.UserGender;
   targetTraitLabel?: string;
   targetImageUrl?: string;
+  answerPrimary?: string;
+  answerSecondary?: string;
+  selectedTraitIds?: string[];
 }
 
-export interface EventFeedbackPageResultDto {
-  items: EventFeedbackPageItemDto[];
-  total: number;
-  allItems: EventFeedbackPageItemDto[];
-  organizerItems: EventFeedbackPageItemDto[];
-  receivedEvents: EventFeedbackReceivedEventDto[];
-  state: EventFeedbackPageStateSnapshotDto;
-  counts: EventFeedbackPageCountsDto;
-}
-
-export interface EventFeedbackDeckResultDto {
+export interface EventFeedbackReceivedEntryDto {
+  viewerUserId: string;
+  viewerName: string;
+  viewerInitials: string;
+  viewerGender: AppConstants.UserGender;
+  viewerImageUrl: string;
   eventId: string;
-  title: string;
-  cards: EventFeedbackCardSourceDto[];
-}
-
-export interface EventFeedbackAnswerSubmitDto {
-  cardId: string;
-  kind: 'event' | 'attendee';
-  targetUserId: string | null;
-  targetRole: ActivityMemberRole;
-  primaryValue: string;
-  secondaryValue: string;
-  personalityTraitIds: string[];
-  tags: string[];
   submittedAtIso: string;
+  updatedAtIso: string;
+  organizerNote: string;
+  answers: SubmittedEventFeedbackAnswer[];
 }
 
-export interface EventFeedbackSubmitRequestDto {
-  userId: string;
+export interface EventFeedbackReceivedEventDto {
   eventId: string;
-  answers: EventFeedbackAnswerSubmitDto[];
+  entries: EventFeedbackReceivedEntryDto[];
+}
+
+export type EventFeedbackFilterCountDelta = Partial<Record<AppConstants.EventFeedbackListFilter, number>>;
+
+export class EventFeedbackPageResultDto {
+  readonly items: EventFeedbackDto[];
+  readonly total: number;
+  readonly allItems: EventFeedbackDto[];
+  readonly organizerItems: EventFeedbackDto[];
+  readonly receivedEvents: EventFeedbackReceivedEventDto[];
+  readonly state: EventFeedbackPageStateSnapshotDto;
+  readonly counts: EventFeedbackPageCountsDto;
+
+  static normalize(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
+    return new EventFeedbackPageResultDto(result);
+  }
+
+  constructor(result: Partial<EventFeedbackPageResultDto> | null | undefined = null) {
+    const allItems = EventFeedbackPageResultDto.clonePageItems(result?.allItems);
+    const organizerItems = EventFeedbackPageResultDto.clonePageItems(result?.organizerItems);
+    this.items = EventFeedbackPageResultDto.clonePageItems(result?.items);
+    this.total = Math.max(0, Math.trunc(Number(result?.total) || 0));
+    this.allItems = allItems;
+    this.organizerItems = organizerItems;
+    this.receivedEvents = EventFeedbackPageResultDto.cloneReceivedEvents(result?.receivedEvents);
+    this.state = EventFeedbackPageResultDto.cloneStateSnapshot(result?.state);
+    this.counts = {
+      ownEvents: Math.max(0, Math.trunc(Number(result?.counts?.ownEvents ?? organizerItems.length) || 0)),
+      pending: Math.max(0, Math.trunc(Number(result?.counts?.pending) || 0)),
+      feedbacked: Math.max(0, Math.trunc(Number(result?.counts?.feedbacked) || 0)),
+      removed: Math.max(0, Math.trunc(Number(result?.counts?.removed) || 0))
+    };
+  }
+
+  itemById(eventId: string): EventFeedbackDto | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    return [
+      ...this.items,
+      ...this.allItems,
+      ...this.organizerItems
+    ].find(item => item.eventId === normalizedEventId) ?? null;
+  }
+
+  eventTitleById(eventId: string): string {
+    return this.itemById(eventId)?.title?.trim() || 'this event';
+  }
+
+  filterCount(filter: AppConstants.EventFeedbackListFilter): number {
+    switch (filter) {
+      case 'own-events':
+        return Math.max(0, Math.trunc(Number(this.counts.ownEvents) || 0));
+      case 'feedbacked':
+        return Math.max(0, Math.trunc(Number(this.counts.feedbacked) || 0));
+      case 'removed':
+        return Math.max(0, Math.trunc(Number(this.counts.removed) || 0));
+      case 'pending':
+      default:
+        return Math.max(0, Math.trunc(Number(this.counts.pending) || 0));
+    }
+  }
+
+  filterCountWithDelta(
+    filter: AppConstants.EventFeedbackListFilter,
+    delta: EventFeedbackFilterCountDelta = {}
+  ): number {
+    return Math.max(0, this.filterCount(filter) + (delta[filter] ?? 0));
+  }
+
+  itemMatchesFilter(item: EventFeedbackDto, filter: AppConstants.EventFeedbackListFilter): boolean {
+    switch (filter) {
+      case 'own-events':
+        return item.isOwnEvent === true;
+      case 'feedbacked':
+        return item.isFeedbacked === true;
+      case 'removed':
+        return item.isRemoved === true;
+      case 'pending':
+      default:
+        return !item.isRemoved && item.pendingCards > 0;
+    }
+  }
+
+  applySubmitToItem(
+    item: EventFeedbackDto,
+    dto: EventFeedbackDetailDto
+  ): EventFeedbackDto {
+    const submittedAtMs = this.submitTimestampMs(dto);
+    const pendingCards = Math.max(0, item.pendingCards - dto.cards.length);
+    return {
+      ...item,
+      pendingCards,
+      isRemoved: false,
+      isFeedbacked: pendingCards === 0,
+      feedbackedAtMs: pendingCards === 0 ? submittedAtMs : item.feedbackedAtMs,
+      removedAtMs: null
+    };
+  }
+
+  removeItem(item: EventFeedbackDto, removedAtMs = Date.now()): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: true,
+      isFeedbacked: false,
+      removedAtMs
+    };
+  }
+
+  restoreItem(item: EventFeedbackDto): EventFeedbackDto {
+    return {
+      ...item,
+      isRemoved: false,
+      isFeedbacked: item.pendingCards === 0,
+      removedAtMs: null
+    };
+  }
+
+  filterCountDelta(
+    before: EventFeedbackDto,
+    after: EventFeedbackDto
+  ): EventFeedbackFilterCountDelta {
+    return {
+      pending: this.filterMembershipDelta(before, after, 'pending'),
+      feedbacked: this.filterMembershipDelta(before, after, 'feedbacked'),
+      removed: this.filterMembershipDelta(before, after, 'removed'),
+      'own-events': this.filterMembershipDelta(before, after, 'own-events')
+    };
+  }
+
+  patchItem(item: EventFeedbackDto): EventFeedbackPageResultDto {
+    const patchList = (items: readonly EventFeedbackDto[]) =>
+      items.map(current => current.eventId === item.eventId ? { ...item } : { ...current });
+    return new EventFeedbackPageResultDto({
+      ...this,
+      items: patchList(this.items),
+      allItems: patchList(this.allItems),
+      organizerItems: patchList(this.organizerItems)
+    });
+  }
+
+  patchOrganizerNote(eventId: string, text: string): EventFeedbackPageResultDto {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return this;
+    }
+    const organizerNotesByEventId = { ...this.state.organizerNotesByEventId };
+    const trimmedText = text.trim();
+    if (trimmedText) {
+      organizerNotesByEventId[normalizedEventId] = trimmedText;
+    } else {
+      delete organizerNotesByEventId[normalizedEventId];
+    }
+    return new EventFeedbackPageResultDto({
+      ...this,
+      state: {
+        ...this.state,
+        organizerNotesByEventId
+      }
+    });
+  }
+
+  receivedEntries(eventId: string): readonly EventFeedbackReceivedEntryDto[] {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return [];
+    }
+    return this.receivedEvents.find(item => item.eventId === normalizedEventId)?.entries ?? [];
+  }
+
+  organizerEntries(eventId: string): EventFeedbackReceivedEntryDto[] {
+    return [...this.receivedEntries(eventId)]
+      .sort((left, right) => this.entryTimestampMs(right) - this.entryTimestampMs(left));
+  }
+
+  entriesLatestAtMs(entries: readonly EventFeedbackReceivedEntryDto[]): number | null {
+    let latestAtMs: number | null = null;
+    for (const entry of entries) {
+      const candidateMs = this.entryTimestampMs(entry);
+      if (candidateMs <= 0) {
+        continue;
+      }
+      latestAtMs = latestAtMs === null ? candidateMs : Math.max(latestAtMs, candidateMs);
+    }
+    return latestAtMs;
+  }
+
+  groupTimestampMs(item: EventFeedbackDto, filter: AppConstants.EventFeedbackListFilter): number | null {
+    switch (filter) {
+      case 'feedbacked':
+        return this.numberOrNull(item.feedbackedAtMs ?? item.startAtMs);
+      case 'removed':
+        return this.numberOrNull(item.removedAtMs ?? item.feedbackedAtMs ?? item.startAtMs);
+      case 'own-events':
+      case 'pending':
+      default:
+        return this.numberOrNull(item.startAtMs);
+    }
+  }
+
+  private static clonePageItems(items: readonly EventFeedbackDto[] | undefined): EventFeedbackDto[] {
+    return (items ?? []).map(item => ({
+      eventId: item.eventId?.trim() ?? '',
+      title: item.title?.trim() ?? '',
+      subtitle: item.subtitle?.trim() ?? '',
+      timeframe: item.timeframe?.trim() ?? '',
+      imageUrl: item.imageUrl?.trim() ?? '',
+      startAtMs: Math.max(0, Math.trunc(Number(item.startAtMs) || 0)),
+      pendingCards: Math.max(0, Math.trunc(Number(item.pendingCards) || 0)),
+      totalCards: Math.max(0, Math.trunc(Number(item.totalCards) || 0)),
+      isRemoved: item.isRemoved === true,
+      isFeedbacked: item.isFeedbacked === true,
+      feedbackedAtMs: EventFeedbackPageResultDto.numberOrNullStatic(item.feedbackedAtMs),
+      removedAtMs: EventFeedbackPageResultDto.numberOrNullStatic(item.removedAtMs),
+      isOwnEvent: item.isOwnEvent === true
+    })).filter(item => item.eventId.length > 0);
+  }
+
+  private static cloneReceivedEvents(
+    events: readonly EventFeedbackReceivedEventDto[] | undefined
+  ): EventFeedbackReceivedEventDto[] {
+    return (events ?? [])
+      .map(item => {
+        const eventId = item.eventId?.trim() ?? '';
+        return {
+          eventId,
+          entries: (item.entries ?? []).map(entry => ({
+            viewerUserId: entry.viewerUserId?.trim() ?? '',
+            viewerName: entry.viewerName?.trim() ?? '',
+            viewerInitials: entry.viewerInitials?.trim() ?? '',
+            viewerGender: (entry.viewerGender === 'woman' ? 'woman' : 'man') as AppConstants.UserGender,
+            viewerImageUrl: entry.viewerImageUrl?.trim() ?? '',
+            eventId: entry.eventId?.trim() || eventId,
+            submittedAtIso: entry.submittedAtIso?.trim() ?? '',
+            updatedAtIso: entry.updatedAtIso?.trim() ?? '',
+            organizerNote: entry.organizerNote?.trim() ?? '',
+            answers: (entry.answers ?? []).map(answer => EventFeedbackPageResultDto.cloneSubmittedAnswer(answer))
+          })).filter(entry => entry.viewerUserId.length > 0)
+        };
+      })
+      .filter(item => item.eventId.length > 0);
+  }
+
+  private static cloneStateSnapshot(
+    state: Partial<EventFeedbackPageStateSnapshotDto> | null | undefined
+  ): EventFeedbackPageStateSnapshotDto {
+    const next: EventFeedbackPageStateSnapshotDto = {
+      submittedCardsById: {},
+      submittedAnswersByCardId: {},
+      submittedEventsById: {},
+      removedEventsById: {},
+      removedEventDatesById: {},
+      organizerNotesByEventId: {}
+    };
+    for (const [key, value] of Object.entries(state?.submittedCardsById ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.submittedCardsById[normalizedKey] = true;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.submittedAnswersByCardId ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.submittedAnswersByCardId[normalizedKey] = EventFeedbackPageResultDto.cloneSubmittedAnswer(value);
+      }
+    }
+    for (const [key, value] of Object.entries(state?.submittedEventsById ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.submittedEventsById[normalizedKey] = normalizedValue;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.removedEventsById ?? {})) {
+      const normalizedKey = key.trim();
+      if (normalizedKey && value) {
+        next.removedEventsById[normalizedKey] = true;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.removedEventDatesById ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.removedEventDatesById[normalizedKey] = normalizedValue;
+      }
+    }
+    for (const [key, value] of Object.entries(state?.organizerNotesByEventId ?? {})) {
+      const normalizedKey = key.trim();
+      const normalizedValue = value?.trim() ?? '';
+      if (normalizedKey && normalizedValue) {
+        next.organizerNotesByEventId[normalizedKey] = normalizedValue;
+      }
+    }
+    return next;
+  }
+
+  private static cloneSubmittedAnswer(answer: SubmittedEventFeedbackAnswer): SubmittedEventFeedbackAnswer {
+    return {
+      ...answer,
+      cardId: answer.cardId?.trim() ?? '',
+      eventId: answer.eventId?.trim() ?? '',
+      kind: answer.kind === 'attendee' ? 'attendee' : 'event',
+      targetUserId: answer.targetUserId?.trim() || null,
+      targetRole: answer.targetRole === 'Admin' || answer.targetRole === 'Manager' ? answer.targetRole : 'Member',
+      primaryValue: answer.primaryValue?.trim() ?? '',
+      secondaryValue: answer.secondaryValue?.trim() ?? '',
+      personalityTraitIds: [...(answer.personalityTraitIds ?? [])],
+      tags: [...(answer.tags ?? [])],
+      submittedAtIso: answer.submittedAtIso?.trim() ?? ''
+    };
+  }
+
+  private static numberOrNullStatic(value: number | null | undefined): number | null {
+    return Number.isFinite(value) && (value ?? 0) > 0 ? Number(value) : null;
+  }
+
+  private submitTimestampMs(dto: EventFeedbackDetailDto): number {
+    const submittedAtIso = dto.submittedAtIso.trim();
+    const submittedAtMs = submittedAtIso ? new Date(submittedAtIso).getTime() : Date.now();
+    return Number.isNaN(submittedAtMs) ? Date.now() : submittedAtMs;
+  }
+
+  private filterMembershipDelta(
+    before: EventFeedbackDto,
+    after: EventFeedbackDto,
+    filter: AppConstants.EventFeedbackListFilter
+  ): number {
+    const wasVisible = this.itemMatchesFilter(before, filter);
+    const isVisible = this.itemMatchesFilter(after, filter);
+    return wasVisible === isVisible ? 0 : wasVisible ? -1 : 1;
+  }
+
+  private entryTimestampMs(entry: EventFeedbackReceivedEntryDto): number {
+    const iso = entry.updatedAtIso?.trim()
+      || entry.submittedAtIso?.trim()
+      || (entry.answers ?? []).map(answer => answer.submittedAtIso?.trim() ?? '').find(Boolean)
+      || '';
+    const value = iso ? new Date(iso).getTime() : 0;
+    return Number.isNaN(value) ? 0 : value;
+  }
+
+  private numberOrNull(value: number | null | undefined): number | null {
+    return EventFeedbackPageResultDto.numberOrNullStatic(value);
+  }
+}
+
+export interface EventFeedbackDetailPendingOptions {
+  activeUserId?: string | null;
+  fallbackTitle?: string | null;
+}
+
+export class EventFeedbackDetailDto {
+  readonly eventId: string;
+  readonly title: string;
+  readonly submittedAtIso: string;
+  readonly cards: EventFeedbackCardDto[];
+
+  static normalize(result: Partial<EventFeedbackDetailDto> | null | undefined): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto(result);
+  }
+
+  constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
+    this.eventId = result?.eventId?.trim() ?? '';
+    this.title = result?.title?.trim() ?? '';
+    this.submittedAtIso = result?.submittedAtIso?.trim() ?? '';
+    this.cards = EventFeedbackDetailDto.cloneCards(result?.cards);
+  }
+
+  pending(options: EventFeedbackDetailPendingOptions = {}): EventFeedbackDetailDto {
+    const activeUserId = options.activeUserId?.trim() ?? '';
+    return new EventFeedbackDetailDto({
+      ...this,
+      title: this.title || options.fallbackTitle?.trim() || '',
+      cards: this.cards.filter(card =>
+        card.eventId === this.eventId
+        && !(card.kind === 'attendee' && card.attendeeUserId === activeUserId)
+      )
+    });
+  }
+
+  submitted(options: { submittedAtIso: string }): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
+      ...this,
+      submittedAtIso: options.submittedAtIso
+    });
+  }
+
+  withEmptyAnswers(): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
+      ...this,
+      cards: this.cards.map(card => ({
+        ...card,
+        answerPrimary: '',
+        answerSecondary: '',
+        selectedTraitIds: []
+      }))
+    });
+  }
+
+  withFormValue(value: unknown): EventFeedbackDetailDto {
+    const record = EventFeedbackDetailDto.isRecord(value) ? value : {};
+    const inputCards = Array.isArray(record['cards']) ? record['cards'] : [];
+    const cardInputById = new Map<string, Record<string, unknown>>();
+    for (const item of inputCards) {
+      if (!EventFeedbackDetailDto.isRecord(item)) {
+        continue;
+      }
+      const cardId = `${item['id'] ?? ''}`.trim();
+      if (cardId) {
+        cardInputById.set(cardId, item);
+      }
+    }
+    return new EventFeedbackDetailDto({
+      ...this,
+      cards: this.cards.map(card => {
+        const inputCard = cardInputById.get(card.id) ?? {};
+        return {
+          ...card,
+          answerPrimary: EventFeedbackDetailDto.stringValue(inputCard['answerPrimary']),
+          answerSecondary: EventFeedbackDetailDto.stringValue(inputCard['answerSecondary']),
+          selectedTraitIds: EventFeedbackDetailDto.normalizeSelectedTraitIds(inputCard['selectedTraitIds'])
+        };
+      })
+    });
+  }
+
+  private static cloneCards(cards: readonly EventFeedbackCardDto[] | undefined): EventFeedbackCardDto[] {
+    return (cards ?? []).map(card => ({
+      id: card.id?.trim() ?? '',
+      eventId: card.eventId?.trim() ?? '',
+      kind: card.kind === 'attendee' ? 'attendee' as const : 'event' as const,
+      attendeeUserId: card.attendeeUserId?.trim() || undefined,
+      targetUserId: card.targetUserId?.trim() || undefined,
+      targetRole: EventFeedbackDetailDto.normalizeRole(card.targetRole),
+      eventTitle: card.eventTitle?.trim() ?? '',
+      eventSubtitle: card.eventSubtitle?.trim() ?? '',
+      eventImageUrl: card.eventImageUrl?.trim() ?? '',
+      eventTimeframe: card.eventTimeframe?.trim() ?? '',
+      eventStartAtIso: card.eventStartAtIso?.trim() ?? '',
+      eventLabel: card.eventLabel?.trim() ?? '',
+      targetName: card.targetName?.trim() ?? '',
+      targetAge: EventFeedbackDetailDto.numberOrUndefined(card.targetAge),
+      targetCity: card.targetCity?.trim() || undefined,
+      targetGender: card.targetGender === 'woman' ? 'woman' as const : 'man' as const,
+      targetTraitLabel: card.targetTraitLabel?.trim() || undefined,
+      targetImageUrl: card.targetImageUrl?.trim() || undefined,
+      answerPrimary: card.answerPrimary?.trim() ?? '',
+      answerSecondary: card.answerSecondary?.trim() ?? '',
+      selectedTraitIds: [...(card.selectedTraitIds ?? [])]
+        .map(traitId => traitId.trim())
+        .filter(Boolean)
+    })).filter(card => card.id.length > 0 && card.eventId.length > 0);
+  }
+
+  private static normalizeRole(role: AppConstants.ActivityMemberRole | undefined): AppConstants.ActivityMemberRole | undefined {
+    if (role === 'Admin' || role === 'Manager' || role === 'Member') {
+      return role;
+    }
+    return undefined;
+  }
+
+  private static numberOrUndefined(value: number | null | undefined): number | undefined {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) && normalized > 0 ? normalized : undefined;
+  }
+
+  private static stringValue(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  private static normalizeSelectedTraitIds(value: unknown): string[] {
+    const requestedValues = Array.isArray(value)
+      ? value
+      : value === null || value === undefined || value === ''
+        ? []
+        : [value];
+    const selectedTraitIds: string[] = [];
+    for (const requestedValue of requestedValues) {
+      const traitId = `${requestedValue ?? ''}`.trim();
+      if (!traitId || selectedTraitIds.includes(traitId)) {
+        continue;
+      }
+      selectedTraitIds.push(traitId);
+      if (selectedTraitIds.length >= 3) {
+        break;
+      }
+    }
+    return selectedTraitIds;
+  }
+
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
 }
 
 export interface EventFeedbackNoteRequestDto {
@@ -808,7 +1199,7 @@ export interface EventFeedbackToggleRequestDto {
 }
 
 export interface UserGameDataService {
-  queryGameCardsUsersSnapshot(): UserDto[];
+  queryGameCardsUsersSnapshot(): UserContracts.UserDto[];
   queryUserGameCardsByFilter(
     request: UserGameCardsQueryRequest,
     requestTimeoutMs?: number

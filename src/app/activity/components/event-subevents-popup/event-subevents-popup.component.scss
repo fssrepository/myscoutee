@@ -14,7 +14,6 @@
   .activities-calendar-nav-btn,
   .popup-header-add-btn,
   .experience-form-close-btn,
-  .subevent-leaderboard-group-head,
   .subevent-leaderboard-group-add,
   .link-btn
 ) {
@@ -35,7 +34,6 @@
   .activities-calendar-nav-btn,
   .popup-header-add-btn,
   .experience-form-close-btn,
-  .subevent-leaderboard-group-head,
   .subevent-leaderboard-group-add,
   .link-btn
 ):focus-visible {
@@ -49,7 +47,6 @@
     .activities-calendar-nav-btn,
     .popup-header-add-btn,
     .experience-form-close-btn,
-    .subevent-leaderboard-group-head,
     .subevent-leaderboard-group-add,
     .link-btn
   ):not(:disabled):not([aria-disabled='true']) {
@@ -86,7 +83,6 @@
     .activities-calendar-nav-btn,
     .popup-header-add-btn,
     .experience-form-close-btn,
-    .subevent-leaderboard-group-head,
     .subevent-leaderboard-group-add,
     .link-btn
   ):not(:disabled):not([aria-disabled='true']):active {
@@ -692,23 +688,6 @@
   position: relative;
 }
 
-.subevents-group-badge {
-  position: absolute;
-  top: -8px;
-  right: -4px;
-  min-width: 20px;
-  height: 20px;
-  border: 1px solid #fff;
-  border-radius: 50%;
-  background: #de4d4d;
-  color: #fff;
-  font-size: 0.7rem;
-  font-weight: 800;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .subevents-casual-grid {
   display: grid;
   align-items: stretch;
@@ -1133,6 +1112,18 @@
   gap: 0.3rem;
   background: linear-gradient(180deg, #f8fcff 0%, #edf4ff 100%);
   cursor: pointer;
+  transition: background-color var(--interactive-motion-duration) var(--interactive-motion-ease);
+}
+
+.subevent-leaderboard-group-head:focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .subevent-leaderboard-group-head:hover {
+    background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
+  }
 }
 
 .subevent-leaderboard-group-title {
@@ -1180,11 +1171,11 @@
 
 .subevent-leaderboard-table th,
 .subevent-leaderboard-table td {
-  padding: 0.2rem 0.16rem;
+  padding: 0.24rem 0.2rem;
   border-bottom: 1px solid rgba(67, 99, 140, 0.16);
   color: #254568;
-  font-size: 0.67rem;
-  line-height: 1.18;
+  font-size: 0.76rem;
+  line-height: 1.22;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -1217,7 +1208,7 @@
 
 .subevent-leaderboard-table-score th:nth-child(5),
 .subevent-leaderboard-table-score td:nth-child(5) {
-  width: 18px;
+  width: 16px;
 }
 
 .subevent-leaderboard-member-cell {

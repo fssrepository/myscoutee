@@ -8,6 +8,7 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette
 } from '../menu';
+import { I18nPipe } from '../../pipes';
 
 export interface ConfirmationDialogLocalConfig {
   visible?: boolean;
@@ -45,7 +46,7 @@ type RenderedConfirmationDialogState = {
 @Component({
   selector: 'app-confirmation-dialog',
   standalone: true,
-  imports: [AppMenuComponent],
+  imports: [AppMenuComponent, I18nPipe],
   templateUrl: './confirmation-dialog.component.html',
   styleUrl: './confirmation-dialog.component.scss'
 })

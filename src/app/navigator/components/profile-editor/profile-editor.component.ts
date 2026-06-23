@@ -1,13 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, ElementRef, HostListener, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../shared/app-calendar-date-adapter';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type {
   ExperienceImportProgressState,
@@ -17,15 +12,25 @@ import type {
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
-import { MediaService, ProfileOnboardingService, UserExperiencesService, UsersService, type UserDto } from '../../../shared/core';
+import {
+  ProfileOnboardingService,
+  USER_PROFILE_SAVE_CONTEXT_KEY,
+  UserExperiencesService,
+  UsersService,
+  type ProfileOnboardingDraft,
+  type ProfileOnboardingForm,
+  type UserDto
+} from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
-import { ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  EditableImageCarouselComponent,
+  ProfileExperienceManagerComponent,
+  type ProfileExperienceEntriesChange
+} from '../../../shared/ui';
 import {
   AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
-  AppMenuTriggerComponent,
   buildTabbedMenuModel,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -33,6 +38,16 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
+import {
+  FormFlowComponent,
+  type FormFlowActionEvent,
+  type FormFlowModel
+} from '../../../shared/ui/components/form-flow';
+import {
+  ProfileOnboardingDraftConverter,
+  ProfileOnboardingFormFlowConverter,
+  type ProfileOnboardingFormFlowMenuContext
+} from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
@@ -40,16 +55,19 @@ import type * as ProfileContracts from '../../../shared/core/contracts/profile.i
 import type * as AppConstants from '../../../shared/core/common/constants';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
+type ProfileEditorExperienceSelectorType = Extract<ProfileContracts.ExperienceEntry['type'], 'Workspace' | 'School'>;
 
 type ProfileEditorMenuContext =
   | { kind: 'profileStatus'; value: AppConstants.ProfileStatus }
   | { kind: 'physique'; value: string }
   | { kind: 'detailValue'; groupIndex: number; rowIndex: number; value: string }
   | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppConstants.DetailPrivacy }
+  | { kind: 'experienceSelector'; value: ProfileEditorExperienceSelectorType }
   | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppConstants.DetailPrivacy }
   | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
   | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
   | { kind: 'experienceQuickAction'; action: 'create' | 'upload' }
+  | { kind: 'profileSave' }
   | { kind: 'languageOption'; value: string }
   | { kind: 'valuesOption'; groupIndex: number; rowIndex: number; value: string }
   | { kind: 'interestOption'; groupIndex: number; rowIndex: number; value: string };
@@ -85,28 +103,21 @@ interface ExperienceImportDialogState {
     CommonModule,
     FormsModule,
     MatButtonModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
     AppMenuComponent,
     AppMenuOutletComponent,
-    AppMenuTriggerComponent,
-    ProgressIndicatorComponent,
-    I18nPipe
+    FormFlowComponent,
+    EditableImageCarouselComponent,
+    ProfileExperienceManagerComponent
   ],
   providers: [
-    AppMenuDispatcher,
-    { provide: DateAdapter, useClass: AppCalendarDateAdapter },
-    { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateOnly }
+    AppMenuDispatcher
   ],
   templateUrl: './profile-editor.component.html',
   styleUrl: './profile-editor.component.scss'
 })
 export class ProfileEditorComponent {
-  @ViewChild('slotImageInput') private slotImageInput?: ElementRef<HTMLInputElement>;
-  @ViewChild('experienceImportInput') private experienceImportInput?: ElementRef<HTMLInputElement>;
+  @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
@@ -117,7 +128,7 @@ export class ProfileEditorComponent {
   private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
-  private readonly mediaService = inject(MediaService);
+  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly profileDetailsFormByUser: Record<string, ProfileContracts.ProfileDetailFormGroup[]> = {};
   private readonly profileImageSlotsByUser: Record<string, Array<string | null>> = {};
   private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
@@ -125,6 +136,8 @@ export class ProfileEditorComponent {
   private experienceEntriesLoadToken = 0;
   private experienceEntriesSaveToken = 0;
   private experienceImportToken = 0;
+  private profileEditorFlowModelCacheKey = '';
+  private profileEditorFlowModelCache: FormFlowModel | null = null;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
   protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
@@ -136,15 +149,19 @@ export class ProfileEditorComponent {
   protected readonly experienceFilterOptions = APP_STATIC_DATA.experienceFilterOptions;
   protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
   protected readonly languageSuggestions = APP_STATIC_DATA.languageSuggestions;
+  protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
+  protected readonly hasProfileSaveError = computed(() => {
+    const status = this.profileSaveLoadState().status;
+    return status === 'error' || status === 'timeout';
+  });
+  protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
 
   protected panel: ProfileEditorPanel = 'profile';
   protected profileUser: UserDto | null = null;
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
+  protected profileEditorForm: ProfileOnboardingForm = this.createEmptyProfileEditorForm();
   protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
-  protected selectedImageIndex = 0;
-  protected pendingSlotUploadIndex: number | null = null;
-  protected uploadingImageSlotIndex: number | null = null;
   protected privacyFabJustSelectedKey: string | null = null;
   protected experienceVisibility: Record<'workspace' | 'school', AppConstants.DetailPrivacy> = {
     workspace: 'Public',
@@ -152,6 +169,7 @@ export class ProfileEditorComponent {
   };
   protected experienceEntries: ProfileContracts.ExperienceEntry[] = [];
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
+  protected experienceManagerOverlayOpen = false;
   protected showExperienceForm = false;
   protected editingExperienceId: string | null = null;
   protected pendingExperienceDeleteId: string | null = null;
@@ -215,10 +233,6 @@ export class ProfileEditorComponent {
     return this.profileUser;
   }
 
-  protected get selectedImagePreview(): string | null {
-    return this.imageSlots[this.selectedImageIndex] ?? null;
-  }
-
   protected get featuredImagePreview(): string | null {
     return this.imageSlots[0] ?? null;
   }
@@ -227,6 +241,14 @@ export class ProfileEditorComponent {
     return this.imageSlots
       .map((slot, index) => (slot ? index : -1))
       .filter(index => index >= 0);
+  }
+
+  protected get profileImageUrls(): string[] {
+    return this.collectPersistedProfileImages();
+  }
+
+  protected set profileImageUrls(imageUrls: string[]) {
+    this.applyProfileImageUrls(imageUrls);
   }
 
   protected get profileCompletionPercent(): number {
@@ -253,16 +275,6 @@ export class ProfileEditorComponent {
     return [...filtered].sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
   }
 
-  protected get workspaceExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'Workspace').length;
-    return `${count} items`;
-  }
-
-  protected get schoolExperienceSummary(): string {
-    const count = this.experienceEntries.filter(item => item.type === 'School').length;
-    return `${count} items`;
-  }
-
   protected get canSaveExperienceEntry(): boolean {
     return Boolean(this.experienceForm.title.trim() && this.experienceForm.org.trim() && this.experienceRangeStart);
   }
@@ -271,6 +283,50 @@ export class ProfileEditorComponent {
     return !this.experienceImportDialog.busy
       && !this.experienceImportDialog.error
       && (this.experienceImportDialog.draft?.importedIds.length ?? 0) > 0;
+  }
+
+  protected profileEditorFlowModel(): FormFlowModel {
+    const cacheKey = this.profileEditorFlowModelKey();
+    if (this.profileEditorFlowModelCache && this.profileEditorFlowModelCacheKey === cacheKey) {
+      return this.profileEditorFlowModelCache;
+    }
+    this.profileEditorFlowModelCacheKey = cacheKey;
+    this.profileEditorFlowModelCache = ProfileOnboardingFormFlowConverter.convert(
+      this.profileEditorDraft(this.profileEditorForm),
+      {
+        title: 'Profile',
+        subtitle: '',
+        userId: this.profileUser?.id ?? '',
+        layout: 'grouped',
+        imageEditor: 'external',
+        privacy: {
+          values: this.profileEditorPrivacyValues(),
+          experience: {
+            workspace: this.experienceVisibility.workspace,
+            school: this.experienceVisibility.school
+          }
+        },
+        showHeader: false,
+        showSave: false
+      }
+    );
+    return this.profileEditorFlowModelCache;
+  }
+
+  protected onProfileEditorFlowAction(event: FormFlowActionEvent): void {
+    const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
+    if (context?.menu === 'experienceSelector') {
+      this.openExperienceSelector(context.value);
+      return;
+    }
+    if (context?.menu === 'privacy') {
+      this.setProfileDetailPrivacy(context.key, context.value);
+      return;
+    }
+    if (context?.menu === 'experiencePrivacy') {
+      this.experienceVisibility[context.type] = context.value;
+      this.clearProfileEditorFlowModelCache();
+    }
   }
 
   protected popupTitle(): string {
@@ -294,18 +350,24 @@ export class ProfileEditorComponent {
   }
 
   protected async handleCloseAction(): Promise<void> {
-    if (this.experienceImportDialog.visible) {
-      this.cancelExperienceImportDialog();
-      return;
-    }
-    if (this.showExperienceForm) {
-      this.closeExperienceForm();
+    if (this.panel === 'experience' && this.experienceManager?.closeActiveOverlay()) {
       return;
     }
     if (this.panel !== 'profile') {
       this.panel = 'profile';
+      this.experienceManagerOverlayOpen = false;
       return;
     }
+    this.navigatorService.closeProfileEditor();
+    this.resetTransientUiState();
+  }
+
+  private async saveProfileFromHeader(event: Event): Promise<void> {
+    event.stopPropagation();
+    if (this.panel !== 'profile' || this.isProfileSaving()) {
+      return;
+    }
+    this.applyProfileEditorFormToEditorState();
     await this.commitProfileForm(false);
     this.navigatorService.closeProfileEditor();
     this.resetTransientUiState();
@@ -319,90 +381,96 @@ export class ProfileEditorComponent {
     this.panel = 'image';
   }
 
-  protected openWorkspaceSelector(): void {
-    this.openExperienceSelector('Workspace');
-  }
-
-  protected openSchoolSelector(): void {
-    this.openExperienceSelector('School');
-  }
-
   protected openExperienceSelector(filter: ProfileContracts.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
+    this.experienceManager?.setFilter(filter);
     this.pendingExperienceDeleteId = null;
     this.editingExperienceId = null;
     this.resetExperienceForm();
     this.panel = 'experience';
   }
 
-  protected selectImageSlot(index: number): void {
-    if (this.uploadingImageSlotIndex !== null) {
-      return;
-    }
-    const isSelectedSlot = this.selectedImageIndex === index;
-    const hasImage = Boolean(this.imageSlots[index]);
-    this.selectedImageIndex = index;
-    if (hasImage && !isSelectedSlot) {
-      return;
-    }
-    this.pendingSlotUploadIndex = index;
-    this.slotImageInput?.nativeElement.click();
+  protected experienceSelectorLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.workplace'
+      : 'profile.experience.school';
   }
 
-  protected selectImageFromStack(index: number): void {
-    if (!this.imageSlots[index]) {
-      return;
-    }
-    this.selectedImageIndex = index;
+  protected experienceSelectorMenuTrigger(type: ProfileEditorExperienceSelectorType): AppMenuTrigger {
+    const entries = this.experienceSelectorEntries(type);
+    return {
+      icon: this.experienceTypeIcon(type),
+      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(type)),
+      layout: 'field',
+      action: 'custom',
+      trailingIcon: 'chevron_right',
+      ariaLabel: entries.length > 0
+        ? this.experienceSelectorOpenLabelKey(type)
+        : this.experienceSelectorEmptyLabelKey(type),
+      context: { kind: 'experienceSelector', value: type }
+    };
   }
 
-  protected removeImage(index: number): void {
-    if (this.uploadingImageSlotIndex === index) {
-      return;
-    }
-    this.revokeObjectUrl(this.imageSlots[index]);
-    this.imageSlots[index] = null;
+  protected experienceSelectorMenuModel(
+    type: ProfileEditorExperienceSelectorType
+  ): AppMenuModel<ProfileEditorMenuId, ProfileEditorMenuContext> {
+    const palette = this.paletteFromProfileTone(this.experienceTypeToneClass(type));
+    return {
+      layout: 'tabs',
+      summary: {
+        emptyLabel: this.experienceSelectorEmptyLabelKey(type),
+        maxLabels: 2,
+        counter: 'overflow'
+      },
+      groups: [{
+        id: `experience-selector-${type.toLowerCase().replace(/\s+/g, '-')}`,
+        label: this.experienceSelectorLabelKey(type),
+        icon: this.experienceTypeIcon(type),
+        palette,
+        items: this.experienceSelectorEntries(type).map(entry => ({
+          id: `experience-selector-${type}:${entry.id}`,
+          label: this.experienceSelectorEntryLabel(entry),
+          icon: this.experienceTypeIcon(type),
+          kind: 'checkbox',
+          active: true,
+          checked: true,
+          removable: false,
+          closeOnSelect: false,
+          palette,
+          context: { kind: 'experienceSelector', value: type }
+        }))
+      }]
+    };
+  }
+
+  private applyProfileImageUrls(imageUrls: string[]): void {
+    const slots = this.createEmptyImageSlots();
+    imageUrls
+      .map(imageUrl => `${imageUrl ?? ''}`.trim())
+      .filter(Boolean)
+      .slice(0, slots.length)
+      .forEach((imageUrl, index) => {
+        slots[index] = imageUrl;
+      });
+    this.imageSlots = slots;
+    this.profileEditorForm = {
+      ...this.profileEditorForm,
+      images: slots
+        .map(image => image?.trim() ?? '')
+        .filter(Boolean)
+    };
+    this.clearProfileEditorFlowModelCache();
     this.persistActiveUserImageSlots();
-    if (this.selectedImageIndex === index) {
-      const nearest = this.findNearestFilledImageIndex(index);
-      this.selectedImageIndex = nearest >= 0 ? nearest : 0;
-    }
-  }
-
-  protected onSlotImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    const slotIndex = this.pendingSlotUploadIndex;
-    this.pendingSlotUploadIndex = null;
-    if (!file || slotIndex === null) {
-      target.value = '';
-      return;
-    }
-    target.value = '';
-    void this.uploadAndRefreshProfileImageSlot(file, slotIndex);
-  }
-
-  protected isImageSlotUploading(index: number): boolean {
-    return this.uploadingImageSlotIndex === index;
-  }
-
-  protected isSelectedImageUploading(): boolean {
-    return this.uploadingImageSlotIndex !== null && this.uploadingImageSlotIndex === this.selectedImageIndex;
   }
 
   protected openExperienceCreateAction(event?: Event): void {
     event?.stopPropagation();
-    this.openExperienceForm();
+    this.experienceManager?.openCreate(this.experienceFilter === 'All' ? 'Workspace' : this.experienceFilter);
   }
 
   protected openExperienceUploadAction(event?: Event): void {
     event?.stopPropagation();
-    const input = this.experienceImportInput?.nativeElement;
-    if (!input) {
-      return;
-    }
-    input.value = '';
-    input.click();
+    this.experienceManager?.openImport();
   }
 
   protected experienceQuickActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -435,17 +503,39 @@ export class ProfileEditorComponent {
     ];
   }
 
-  protected profileStatusMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.profileForm.profileStatus,
-      icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
-      palette: this.profileStatusPalette(this.profileForm.profileStatus),
-      shape: 'pill',
-      ariaLabel: 'Open profile status selector'
-    };
+  protected profileHeaderActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    const items: AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] = [];
+    if (!this.isAdminProfile()) {
+      items.push({
+        id: 'profile-status-trigger',
+        label: this.profileForm.profileStatus,
+        icon: this.getProfileStatusIcon(this.profileForm.profileStatus),
+        kind: 'select-trigger',
+        layout: 'pill',
+        palette: this.profileStatusPalette(this.profileForm.profileStatus),
+        ariaLabel: 'Open profile status selector',
+        items: this.profileStatusMenuItems()
+      });
+    }
+    items.push({
+      id: 'profile-save',
+      icon: 'done',
+      kind: 'action',
+      palette: 'green',
+      disabled: () => this.isProfileSaving(),
+      progress: {
+        state: () => this.showProfileSaveRing()
+          ? this.hasProfileSaveError() ? 'error' : 'loading'
+          : null,
+        shape: 'circle'
+      },
+      ariaLabel: 'Save profile',
+      context: { kind: 'profileSave' }
+    });
+    return items;
   }
 
-  protected profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+  private profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
     return this.profileStatusOptions.map(option => ({
       id: this.menuItemId('profile-status', option.value),
       label: option.value,
@@ -463,7 +553,7 @@ export class ProfileEditorComponent {
       label: this.profileForm.physique,
       icon: this.getPhysiqueIcon(this.profileForm.physique),
       palette: this.paletteFromProfileTone(this.getPhysiqueClass(this.profileForm.physique)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open physique selector'
     };
   }
@@ -486,7 +576,7 @@ export class ProfileEditorComponent {
       label: row.value,
       icon: this.detailOptionIcon(row.labelKey, row.value),
       palette: this.paletteFromProfileTone(this.detailSelectedClass(row.labelKey, row.value, row.options)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: `Open ${this.i18n.translate(row.labelKey)} selector`
     };
   }
@@ -555,7 +645,7 @@ export class ProfileEditorComponent {
       label: this.experienceFilter,
       icon: this.experienceFilterIcon(this.experienceFilter),
       palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience filter'
     };
   }
@@ -578,7 +668,7 @@ export class ProfileEditorComponent {
       label: this.experienceForm.type,
       icon: this.experienceTypeIcon(this.experienceForm.type),
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: 'Open experience type selector'
     };
   }
@@ -601,7 +691,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'auto_awesome',
       palette: this.paletteFromProfileTone(this.valuesDominantToneClass(row.value)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: selected.length > 0 ? 'open.values.selector' : 'select.values'
     };
   }
@@ -629,7 +719,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'sell',
       palette: this.paletteFromProfileTone(this.interestDominantToneClass(row.value)),
-      shape: 'field',
+      layout: 'field',
       ariaLabel: selected.length > 0 ? 'open.interests.selector' : 'select.interests'
     };
   }
@@ -656,7 +746,7 @@ export class ProfileEditorComponent {
     return {
       icon: 'language',
       palette: 'blue',
-      shape: 'field',
+      layout: 'field',
       ariaLabel: this.profileForm.languages.length > 0 ? 'open.languages.selector' : 'select.languages'
     };
   }
@@ -691,6 +781,10 @@ export class ProfileEditorComponent {
     switch (context.kind) {
       case 'profileStatus':
         this.profileForm.profileStatus = context.value;
+        this.profileEditorForm = {
+          ...this.profileEditorForm,
+          profileStatus: context.value
+        };
         return;
       case 'physique':
         this.profileForm.physique = context.value;
@@ -715,8 +809,12 @@ export class ProfileEditorComponent {
       case 'experiencePrivacy':
         this.experienceVisibility[context.type] = context.value;
         return;
+      case 'experienceSelector':
+        this.openExperienceSelector(context.value);
+        return;
       case 'experienceFilter':
         this.experienceFilter = context.value;
+        this.experienceManager?.setFilter(context.value);
         return;
       case 'experienceType':
         this.experienceForm.type = context.value;
@@ -727,6 +825,9 @@ export class ProfileEditorComponent {
           return;
         }
         this.openExperienceUploadAction(event.sourceEvent);
+        return;
+      case 'profileSave':
+        void this.saveProfileFromHeader(event.sourceEvent);
         return;
       case 'languageOption':
         this.toggleLanguageOption(context.value, event.action === 'remove');
@@ -756,6 +857,15 @@ export class ProfileEditorComponent {
     event: AppMenuItemSelectEvent<ProfileEditorMenuId, unknown>
   ): void {
     this.onProfileEditorMenuSelect(event as AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>);
+  }
+
+  protected onExperienceEntriesChange(event: ProfileExperienceEntriesChange): void {
+    this.setExperienceEntries(event.entries, event.highlightedIds ?? null);
+    void this.persistExperienceEntries(event.entries, { highlightedIds: event.highlightedIds ?? [] });
+  }
+
+  protected onExperienceOverlayStateChange(open: boolean): void {
+    this.experienceManagerOverlayOpen = open;
   }
 
   protected onExperienceImportFileChange(event: Event): void {
@@ -971,6 +1081,31 @@ export class ProfileEditorComponent {
     return this.experienceVisibility[type];
   }
 
+  private experienceSelectorEntries(type: ProfileEditorExperienceSelectorType): ProfileContracts.ExperienceEntry[] {
+    return this.experienceEntries
+      .filter(item => item.type === type)
+      .sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
+  }
+
+  private experienceSelectorEntryLabel(entry: ProfileContracts.ExperienceEntry): string {
+    return entry.title.trim()
+      || entry.org.trim()
+      || entry.city.trim()
+      || this.experienceSelectorLabelKey(entry.type as ProfileEditorExperienceSelectorType);
+  }
+
+  private experienceSelectorEmptyLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.selectWorkplace'
+      : 'profile.experience.selectSchool';
+  }
+
+  private experienceSelectorOpenLabelKey(type: ProfileEditorExperienceSelectorType): string {
+    return type === 'Workspace'
+      ? 'profile.experience.openWorkplace'
+      : 'profile.experience.openSchool';
+  }
+
   private updateMultiValueDetailRow(
     groupIndex: number,
     rowIndex: number,
@@ -1090,7 +1225,7 @@ export class ProfileEditorComponent {
         return 'pets';
       }
       if (normalizedOption.includes('cat')) {
-        return 'cat';
+        return 'pets';
       }
       if (normalizedOption.includes('all')) {
         return 'cruelty_free';
@@ -1160,7 +1295,7 @@ export class ProfileEditorComponent {
       }
       return 'privacy_tip';
     }
-    if (normalizedLabel === 'gender') {
+    if (normalizedLabel.includes('gender')) {
       if (normalizedOption.includes('woman')) {
         return 'female';
       }
@@ -1418,9 +1553,9 @@ export class ProfileEditorComponent {
     const slots = this.profileImageSlotsByUser[user.id] ?? this.resolveUserImageSlots(user);
     this.profileImageSlotsByUser[user.id] = [...slots];
     this.imageSlots = [...slots];
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    this.selectedImageIndex = firstFilled >= 0 ? firstFilled : 0;
     this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
+    this.profileEditorForm = this.buildProfileEditorFormFromState();
+    this.clearProfileEditorFlowModelCache();
     this.panel = 'profile';
     void this.loadExperienceEntriesForUser(user.id);
   }
@@ -1438,6 +1573,186 @@ export class ProfileEditorComponent {
       profileStatus: 'public',
       about: ''
     };
+  }
+
+  private createEmptyProfileEditorForm(): ProfileOnboardingForm {
+    return {
+      fullName: '',
+      birthday: '',
+      city: '',
+      heightCm: null,
+      physique: '',
+      languages: [],
+      images: [],
+      about: '',
+      profileStatus: 'public',
+      genderDetail: '',
+      drinking: '',
+      smoking: '',
+      workout: '',
+      pets: '',
+      familyPlans: '',
+      children: '',
+      loveStyle: '',
+      communicationStyle: '',
+      sexualOrientation: '',
+      religion: '',
+      values: [],
+      interests: [],
+      experienceEntries: []
+    };
+  }
+
+  private buildProfileEditorFormFromState(): ProfileOnboardingForm {
+    return this.normalizeProfileEditorForm({
+      fullName: this.profileForm.fullName,
+      birthday: this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : '',
+      city: this.profileForm.city,
+      heightCm: this.profileForm.heightCm,
+      physique: this.profileForm.physique,
+      languages: [...this.profileForm.languages],
+      images: this.imageSlots
+        .map(image => image?.trim() ?? '')
+        .filter(Boolean),
+      about: this.profileForm.about,
+      profileStatus: this.profileForm.profileStatus,
+      genderDetail: this.profileDetailValueByKey('profile.gender'),
+      drinking: this.profileDetailValueByKey('profile.details.drinking'),
+      smoking: this.profileDetailValueByKey('profile.details.smoking'),
+      workout: this.profileDetailValueByKey('profile.details.workout'),
+      pets: this.profileDetailValueByKey('profile.details.pets'),
+      familyPlans: this.profileDetailValueByKey('profile.details.familyPlans'),
+      children: this.profileDetailValueByKey('profile.details.children'),
+      loveStyle: this.profileDetailValueByKey('profile.details.loveStyle'),
+      communicationStyle: this.profileDetailValueByKey('profile.details.communicationStyle'),
+      sexualOrientation: this.profileDetailValueByKey('profile.details.sexualOrientation'),
+      religion: this.profileDetailValueByKey('profile.details.religion'),
+      values: this.parseCommaValues(this.profileDetailValueByKey('profile.details.values')),
+      interests: this.parseCommaValues(this.profileDetailValueByKey('profile.details.interest')),
+      experienceEntries: this.cloneExperienceEntries(this.experienceEntries)
+    });
+  }
+
+  private normalizeProfileEditorForm(value: unknown): ProfileOnboardingForm {
+    const fallback = this.createEmptyProfileEditorForm();
+    const form = (value && typeof value === 'object' ? value : fallback) as Partial<ProfileOnboardingForm>;
+    return ProfileOnboardingDraftConverter.convert(this.profileEditorDraft({
+      ...fallback,
+      ...form,
+      languages: Array.isArray(form.languages) ? form.languages : [],
+      images: Array.isArray(form.images) ? form.images : [],
+      values: Array.isArray(form.values) ? form.values : [],
+      interests: Array.isArray(form.interests) ? form.interests : [],
+      experienceEntries: Array.isArray(form.experienceEntries) ? form.experienceEntries : []
+    })).form;
+  }
+
+  private profileEditorDraft(form: ProfileOnboardingForm): ProfileOnboardingDraft {
+    return {
+      version: 1,
+      userId: this.profileUser?.id?.trim() ?? '',
+      currentStepId: 'basics',
+      updatedAtIso: new Date().toISOString(),
+      completedStepIds: [],
+      skippedStepIds: [],
+      form
+    };
+  }
+
+  private profileEditorFlowModelKey(): string {
+    const form = this.profileEditorForm;
+    return [
+      this.profileUser?.id ?? '',
+      this.isProfileSaving() ? 'saving' : 'idle',
+      form.fullName,
+      form.birthday,
+      form.city,
+      form.heightCm ?? '',
+      form.physique,
+      form.languages.join('|'),
+      form.images.join('|'),
+      form.about,
+      form.profileStatus,
+      form.genderDetail,
+      form.drinking,
+      form.smoking,
+      form.workout,
+      form.pets,
+      form.familyPlans,
+      form.children,
+      form.loveStyle,
+      form.communicationStyle,
+      form.sexualOrientation,
+      form.religion,
+      form.values.join('|'),
+      form.interests.join('|'),
+      form.experienceEntries
+        .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
+        .join('|'),
+      `workspace:${this.experienceVisibility.workspace}`,
+      `school:${this.experienceVisibility.school}`,
+      Object.entries(this.profileEditorPrivacyValues())
+        .map(([key, value]) => `${key}:${value}`)
+        .join('|')
+    ].join('\u0001');
+  }
+
+  private profileEditorPrivacyValues(): Record<string, AppConstants.DetailPrivacy> {
+    const values: Record<string, AppConstants.DetailPrivacy> = {};
+    for (const group of this.profileDetailsForm) {
+      for (const row of group.rows) {
+        values[row.labelKey] = row.privacy;
+      }
+    }
+    return values;
+  }
+
+  private clearProfileEditorFlowModelCache(): void {
+    this.profileEditorFlowModelCacheKey = '';
+    this.profileEditorFlowModelCache = null;
+  }
+
+  private applyProfileEditorFormToEditorState(): void {
+    const form = this.normalizeProfileEditorForm(this.profileEditorForm);
+    const birthday = AppUtils.fromIsoDate(form.birthday);
+    this.profileEditorForm = form;
+    this.profileForm = {
+      ...this.profileForm,
+      fullName: form.fullName.trim(),
+      birthday,
+      city: form.city.trim(),
+      heightCm: form.heightCm,
+      physique: form.physique.trim(),
+      languages: [...form.languages],
+      horoscope: birthday ? AppUtils.horoscopeByDate(birthday) : this.profileForm.horoscope,
+      profileStatus: form.profileStatus,
+      about: form.about.trim().slice(0, 160)
+    };
+    const nextSlots = this.createEmptyImageSlots();
+    form.images
+      .map(image => image.trim())
+      .filter(Boolean)
+      .slice(0, nextSlots.length)
+      .forEach((image, index) => {
+        nextSlots[index] = image;
+      });
+    this.imageSlots = nextSlots;
+    if (this.profileUser) {
+      this.profileImageSlotsByUser[this.profileUser.id] = [...nextSlots];
+    }
+    this.setProfileDetailValue('profile.gender', form.genderDetail);
+    this.setProfileDetailValue('profile.details.drinking', form.drinking);
+    this.setProfileDetailValue('profile.details.smoking', form.smoking);
+    this.setProfileDetailValue('profile.details.workout', form.workout);
+    this.setProfileDetailValue('profile.details.pets', form.pets);
+    this.setProfileDetailValue('profile.details.familyPlans', form.familyPlans);
+    this.setProfileDetailValue('profile.details.children', form.children);
+    this.setProfileDetailValue('profile.details.loveStyle', form.loveStyle);
+    this.setProfileDetailValue('profile.details.communicationStyle', form.communicationStyle);
+    this.setProfileDetailValue('profile.details.sexualOrientation', form.sexualOrientation);
+    this.setProfileDetailValue('profile.details.religion', form.religion);
+    this.setProfileDetailValue('profile.details.values', form.values.join(', '));
+    this.setProfileDetailValue('profile.details.interest', form.interests.join(', '));
   }
 
   private createEmptyImageSlots(): Array<string | null> {
@@ -1587,6 +1902,35 @@ export class ProfileEditorComponent {
       }
     }
     return null;
+  }
+
+  private profileDetailValueByKey(labelKey: string): string {
+    const row = this.profileUser
+      ? this.profileDetailRowByKey(this.profileUser.id, labelKey)
+      : null;
+    return `${row?.value ?? ''}`.trim();
+  }
+
+  private setProfileDetailValue(labelKey: string, value: string): void {
+    if (!this.profileUser) {
+      return;
+    }
+    const row = this.profileDetailRowByKey(this.profileUser.id, labelKey);
+    if (!row) {
+      return;
+    }
+    row.value = `${value ?? ''}`.trim();
+  }
+
+  private setProfileDetailPrivacy(labelKey: string, value: AppConstants.DetailPrivacy): void {
+    if (!this.profileUser) {
+      return;
+    }
+    const row = this.profileDetailRowByKey(this.profileUser.id, labelKey);
+    if (!row) {
+      return;
+    }
+    row.privacy = value;
   }
 
   private seededOptionForUser(user: UserDto, options: string[], context: string): string {
@@ -1782,7 +2126,7 @@ export class ProfileEditorComponent {
       icon: this.privacyStatusIcon(value),
       closeIcon: 'close',
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: this.privacyPalette(value),
       ariaLabel
     };
@@ -1949,6 +2293,11 @@ export class ProfileEditorComponent {
     if (this.profileUser) {
       this.experienceEntriesByUser[this.profileUser.id] = this.cloneExperienceEntries(nextEntries);
     }
+    this.profileEditorForm = {
+      ...this.profileEditorForm,
+      experienceEntries: this.cloneExperienceEntries(nextEntries)
+    };
+    this.clearProfileEditorFlowModelCache();
     if (highlightedIds) {
       const validIds = new Set(nextEntries.map(entry => entry.id));
       this.highlightedImportedExperienceIds = new Set(highlightedIds.filter(id => validIds.has(id)));
@@ -2160,66 +2509,6 @@ export class ProfileEditorComponent {
     this.pushProfileUserToContextAndLegacyMirror(user);
   }
 
-  private findNearestFilledImageIndex(fromIndex: number): number {
-    for (let distance = 1; distance < this.imageSlots.length; distance += 1) {
-      const right = fromIndex + distance;
-      if (right < this.imageSlots.length && this.imageSlots[right]) {
-        return right;
-      }
-      const left = fromIndex - distance;
-      if (left >= 0 && this.imageSlots[left]) {
-        return left;
-      }
-    }
-    return this.imageSlots.findIndex(slot => Boolean(slot));
-  }
-
-  private async uploadAndRefreshProfileImageSlot(file: File, slotIndex: number): Promise<void> {
-    if (!this.profileUser) {
-      return;
-    }
-    const userId = this.profileUser.id;
-    const previousImage = this.imageSlots[slotIndex] ?? null;
-    this.uploadingImageSlotIndex = slotIndex;
-    this.cdr.markForCheck();
-    try {
-      this.syncActiveUserImageSlotsState(true);
-      const uploadResult = await this.mediaService.uploadImage(userId, `profile-${slotIndex}`, file);
-      const uploadedImageUrl = uploadResult.imageUrl?.trim() ?? '';
-      if (!uploadResult.uploaded || !uploadedImageUrl) {
-        this.confirmationDialogService.openInfo('Unable to upload image', {
-          title: 'Upload failed',
-          confirmTone: 'neutral'
-        });
-        return;
-      }
-      this.revokeObjectUrl(previousImage);
-      this.imageSlots[slotIndex] = uploadedImageUrl;
-      this.selectedImageIndex = this.resolveSelectedImageIndexAfterUpload(slotIndex);
-      this.syncActiveUserImageSlotsState(false);
-      if (this.profileUser) {
-        await this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
-      }
-    } finally {
-      this.uploadingImageSlotIndex = null;
-      this.cdr.markForCheck();
-    }
-  }
-
-  private resolveSelectedImageIndexAfterUpload(slotIndex: number): number {
-    if (slotIndex >= 0 && slotIndex < this.imageSlots.length && this.imageSlots[slotIndex]) {
-      return slotIndex;
-    }
-    const firstFilled = this.imageSlots.findIndex(slot => Boolean(slot));
-    return firstFilled >= 0 ? firstFilled : 0;
-  }
-
-  private revokeObjectUrl(value: string | null): void {
-    if (value && value.startsWith('blob:')) {
-      URL.revokeObjectURL(value);
-    }
-  }
-
   private async commitProfileForm(showAlert: boolean): Promise<void> {
     if (!this.profileUser) {
       return;
@@ -2228,6 +2517,7 @@ export class ProfileEditorComponent {
       await this.commitAdminProfileForm(showAlert);
       return;
     }
+    this.applyProfileEditorFormToEditorState();
     const user = this.cloneUser(this.profileUser);
     user.name = this.profileForm.fullName.trim() || user.name;
     user.headline = this.profileForm.headline.trim() || user.headline;
@@ -2244,6 +2534,7 @@ export class ProfileEditorComponent {
     user.initials = AppUtils.initialsFromText(user.name);
     user.images = this.collectPersistedProfileImages(user.images ?? []);
     this.syncProfileBasicsIntoDetailRows(user);
+    this.setProfileDetailValue('profile.gender', this.profileEditorForm.genderDetail);
     user.profileDetails = this.cloneProfileDetailsForm(this.profileDetailsForm);
     user.completion = this.calculateProfileCompletionPercent();
     user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
@@ -2332,7 +2623,7 @@ export class ProfileEditorComponent {
     this.menuDispatcher.close();
     this.panel = 'profile';
     this.privacyFabJustSelectedKey = null;
-    this.pendingSlotUploadIndex = null;
+    this.experienceManagerOverlayOpen = false;
     this.showExperienceForm = false;
     this.editingExperienceId = null;
     this.pendingExperienceDeleteId = null;

@@ -1,5 +1,5 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type { HelpCenterDocumentKind, HelpCenterRevision } from '../../contracts';
+import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../contracts';
 
 export class HelpCenterContentBuilder {
   static explanationBootstrapContextKeys(): string[] {
@@ -9,7 +9,7 @@ export class HelpCenterContentBuilder {
       .filter((contextKey): contextKey is string => Boolean(contextKey));
   }
 
-  static defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevision {
+  static defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto {
     const language = this.normalizeLang(lang);
     const revisionsByLang = this.defaultRevisionsByLang(kind, contextKey);
     return this.cloneRevision(language === 'hu' ? revisionsByLang.hu : revisionsByLang.en);
@@ -95,7 +95,7 @@ export class HelpCenterContentBuilder {
   private static defaultRevisionsByLang(
     kind: HelpCenterDocumentKind,
     contextKey?: string | null
-  ): { en: HelpCenterRevision; hu: HelpCenterRevision } {
+  ): { en: HelpCenterRevisionDto; hu: HelpCenterRevisionDto } {
     if (kind === 'privacy') {
       return APP_STATIC_DATA.defaultPrivacyCenterRevisionsByLang;
     }
@@ -115,7 +115,7 @@ export class HelpCenterContentBuilder {
     return APP_STATIC_DATA.defaultHelpCenterRevisionsByLang;
   }
 
-  private static cloneRevision(revision: HelpCenterRevision): HelpCenterRevision {
+  private static cloneRevision(revision: HelpCenterRevisionDto): HelpCenterRevisionDto {
     return {
       ...revision,
       sections: revision.sections.map(section => ({ ...section }))

@@ -1,10 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { LocalEventsRepository } from './events.repository';
 import { LocalAssetTicketsMapper } from '../mappers/asset.mapper';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AssetContracts from '../../../contracts/asset.interface';
 @Injectable({
   providedIn: 'root'
 })
@@ -12,12 +11,12 @@ export class LocalAssetTicketsRepository {
   private readonly eventsRepository = inject(LocalEventsRepository);
 
   peekTicketCountByUser(userId: string): number {
-    return LocalAssetTicketsMapper.toTicketRows(this.ticketRecordsByUser(userId)).length;
+    return LocalAssetTicketsMapper.toTicketDTOs(this.ticketRecordsByUser(userId)).length;
   }
 
-  async queryTicketPage(query: AppDTOs.AssetTicketPageQueryDTO): Promise<AppDTOs.AssetTicketPageResultDTO> {
+  async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
     return LocalAssetTicketsMapper.pageRows(
-      LocalAssetTicketsMapper.toTicketRows(this.ticketRecordsByUser(query.userId)),
+      LocalAssetTicketsMapper.toTicketDTOs(this.ticketRecordsByUser(query.userId)),
       query
     );
   }

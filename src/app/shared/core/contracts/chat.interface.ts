@@ -1,4 +1,4 @@
-import type { AssetType } from '../common/constants';
+import type * as AppConstants from '../common/constants';
 
 export type ChatUserGender = 'woman' | 'man' | 'deleted';
 
@@ -67,7 +67,7 @@ export interface ChatMessageAttachment {
   type: ChatMessageAttachmentType;
   title: string;
   entityId?: string | null;
-  assetType?: AssetType | null;
+  assetType?: AppConstants.AssetType | null;
   ownerUserId?: string | null;
   status?: 'available' | 'unavailable' | null;
   unavailableReason?: string | null;

@@ -1,14 +1,13 @@
 import { AppUtils } from '../../../app-utils';
 import type { ActivityMemberRole, EventFeedbackListFilter } from '../../common/constants';
+import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../contracts/activity.interface';
 import type {
   ActivityEventRecord,
-  EventFeedbackCardSourceDto,
-  EventFeedbackDeckQueryDto,
-  EventFeedbackDeckResultDto,
+  EventFeedbackCardDto,
+  EventFeedbackQueryDto,
   EventFeedbackPageCountsDto,
-  EventFeedbackPageItemDto,
+  EventFeedbackDto,
   EventFeedbackPageQueryDto,
-  EventFeedbackPageResultDto,
   EventFeedbackPageStateSnapshotDto,
   EventFeedbackReceivedEntryDto,
   EventFeedbackReceivedEventDto,
@@ -38,14 +37,14 @@ export class EventFeedbackBuilder {
     const receivedByEventId = new Map(receivedEvents.map(item => [item.eventId, item.entries]));
     const unlockDelayMs = options.eventFeedbackUnlockDelayMs ?? this.DEFAULT_UNLOCK_DELAY_MS;
     const nowMs = options.nowMs ?? Date.now();
-    const cardSources = this.buildEventFeedbackCardSources({
+    const feedbackCards = this.buildEventFeedbackCards({
       records,
       users,
       activeUser: options.activeUser,
       eventFeedbackUnlockDelayMs: unlockDelayMs,
       nowMs
     });
-    const cardsByEventId = this.cardsByEventId(cardSources);
+    const cardsByEventId = this.cardsByEventId(feedbackCards);
     const allItems = this.buildFeedbackEventItems({
       records,
       cardsByEventId,
@@ -58,7 +57,7 @@ export class EventFeedbackBuilder {
     const filtered = this.filterItems(query.filter, allItems, organizerItems);
     const pageItems = filtered.slice(query.page * query.pageSize, (query.page * query.pageSize) + query.pageSize);
 
-    return {
+    return new EventFeedbackPageResultDto({
       items: pageItems,
       total: filtered.length,
       allItems,
@@ -66,97 +65,60 @@ export class EventFeedbackBuilder {
       receivedEvents,
       state,
       counts: this.counts(allItems, organizerItems)
-    };
+    });
   }
 
   static emptyPageResult(_filter: EventFeedbackListFilter = 'pending'): EventFeedbackPageResultDto {
-    return {
-      items: [],
-      total: 0,
-      allItems: [],
-      organizerItems: [],
-      receivedEvents: [],
-      state: this.emptyStateSnapshot(),
-      counts: {
-        ownEvents: 0,
-        pending: 0,
-        feedbacked: 0,
-        removed: 0
-      }
-    };
+    return new EventFeedbackPageResultDto();
   }
 
   static clonePageResult(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
-    if (!result) {
-      return this.emptyPageResult();
-    }
-    const allItems = this.clonePageItems(result.allItems);
-    const organizerItems = this.clonePageItems(result.organizerItems);
-    return {
-      items: this.clonePageItems(result.items),
-      total: Math.max(0, Math.trunc(Number(result.total) || 0)),
-      allItems,
-      organizerItems,
-      receivedEvents: this.cloneReceivedEvents(result.receivedEvents),
-      state: this.cloneStateSnapshot(result.state),
-      counts: {
-        ownEvents: Math.max(0, Math.trunc(Number(result.counts?.ownEvents ?? organizerItems.length) || 0)),
-        pending: Math.max(0, Math.trunc(Number(result.counts?.pending) || 0)),
-        feedbacked: Math.max(0, Math.trunc(Number(result.counts?.feedbacked) || 0)),
-        removed: Math.max(0, Math.trunc(Number(result.counts?.removed) || 0))
-      }
-    };
+    return EventFeedbackPageResultDto.normalize(result);
   }
 
-  static buildDeckResult(options: {
-    query: EventFeedbackDeckQueryDto;
+  static buildDetail(options: {
+    query: EventFeedbackQueryDto;
     records: readonly ActivityEventRecord[];
     users: readonly UserDto[];
     activeUser: UserDto;
     eventFeedbackUnlockDelayMs?: number;
     nowMs?: number;
-  }): EventFeedbackDeckResultDto {
+  }): EventFeedbackDetailDto {
     const eventId = options.query.eventId.trim();
-    if (!options.query.userId.trim() || !eventId) {
-      return this.emptyDeckResult(eventId);
+    const userId = options.query.userId.trim();
+    if (!userId || !eventId) {
+      return this.emptyDetail(eventId);
     }
     const records = this.uniqueEventRecords(options.records);
     const record = records.find(item => item.id === eventId) ?? null;
     if (!record) {
-      return this.emptyDeckResult(eventId);
+      return this.emptyDetail(eventId);
     }
     const users = this.uniqueUsers(options.users, options.activeUser);
-    const cards = this.buildEventFeedbackCardSources({
+    const cards = this.buildEventFeedbackCards({
       records: [record],
       users,
       activeUser: options.activeUser,
       eventFeedbackUnlockDelayMs: options.eventFeedbackUnlockDelayMs ?? this.DEFAULT_UNLOCK_DELAY_MS,
       nowMs: options.nowMs ?? Date.now()
     }).filter(card => card.eventId === eventId);
-    return {
+    return this.cloneDetail({
       eventId,
       title: record.title,
       cards
-    };
+    });
   }
 
-  static emptyDeckResult(eventId = ''): EventFeedbackDeckResultDto {
-    return {
+  static emptyDetail(eventId = ''): EventFeedbackDetailDto {
+    return new EventFeedbackDetailDto({
       eventId: eventId.trim(),
       title: '',
       cards: []
-    };
+    });
   }
 
-  static cloneDeckResult(result: Partial<EventFeedbackDeckResultDto> | null | undefined): EventFeedbackDeckResultDto {
-    if (!result) {
-      return this.emptyDeckResult();
-    }
-    return {
-      eventId: result.eventId?.trim() ?? '',
-      title: result.title?.trim() ?? '',
-      cards: this.cloneCardSources(result.cards)
-    };
+  static cloneDetail(result: Partial<EventFeedbackDetailDto> | null | undefined): EventFeedbackDetailDto {
+    return EventFeedbackDetailDto.normalize(result);
   }
 
   static cloneSubmittedEventFeedbackAnswer(answer: SubmittedEventFeedbackAnswer): SubmittedEventFeedbackAnswer {
@@ -175,16 +137,16 @@ export class EventFeedbackBuilder {
     };
   }
 
-  private static buildEventFeedbackCardSources(options: {
+  private static buildEventFeedbackCards(options: {
     records: readonly ActivityEventRecord[];
     users: readonly UserDto[];
     activeUser: UserDto;
     eventFeedbackUnlockDelayMs: number;
     nowMs: number;
-  }): EventFeedbackCardSourceDto[] {
-    const cards: EventFeedbackCardSourceDto[] = [];
+  }): EventFeedbackCardDto[] {
+    const cards: EventFeedbackCardDto[] = [];
     for (const record of options.records) {
-      if (record.type !== 'events' || record.isTrashed || record.isInvitation || record.isAdmin) {
+      if (!this.isFeedbackAttendeeRecord(record)) {
         continue;
       }
       const startMs = this.eventStartAtMs(record);
@@ -242,15 +204,15 @@ export class EventFeedbackBuilder {
 
   private static buildFeedbackEventItems(options: {
     records: readonly ActivityEventRecord[];
-    cardsByEventId: Record<string, EventFeedbackCardSourceDto[]>;
+    cardsByEventId: Record<string, EventFeedbackCardDto[]>;
     state: EventFeedbackPageStateSnapshotDto;
     activeUserId: string;
     eventFeedbackUnlockDelayMs: number;
     nowMs: number;
-  }): EventFeedbackPageItemDto[] {
-    const items: EventFeedbackPageItemDto[] = [];
+  }): EventFeedbackDto[] {
+    const items: EventFeedbackDto[] = [];
     for (const record of options.records) {
-      if (record.type !== 'events' || record.isTrashed || record.isInvitation || record.isAdmin) {
+      if (!this.isFeedbackAttendeeRecord(record)) {
         continue;
       }
       const startMs = this.eventStartAtMs(record);
@@ -288,9 +250,9 @@ export class EventFeedbackBuilder {
   private static buildOrganizerItems(
     records: readonly ActivityEventRecord[],
     receivedByEventId: Map<string, readonly EventFeedbackReceivedEntryDto[]>
-  ): EventFeedbackPageItemDto[] {
+  ): EventFeedbackDto[] {
     return records
-      .filter(record => !record.isTrashed && !record.isInvitation && record.isAdmin)
+      .filter(record => !this.isRecordTrashed(record) && !this.isRecordInvitation(record) && this.isRecordAdmin(record))
       .map(record => {
         const entries = receivedByEventId.get(record.id) ?? [];
         return {
@@ -320,9 +282,9 @@ export class EventFeedbackBuilder {
 
   private static filterItems(
     filter: EventFeedbackListFilter,
-    allItems: readonly EventFeedbackPageItemDto[],
-    organizerItems: readonly EventFeedbackPageItemDto[]
-  ): EventFeedbackPageItemDto[] {
+    allItems: readonly EventFeedbackDto[],
+    organizerItems: readonly EventFeedbackDto[]
+  ): EventFeedbackDto[] {
     switch (filter) {
       case 'own-events':
         return organizerItems.map(item => ({ ...item }));
@@ -346,7 +308,7 @@ export class EventFeedbackBuilder {
     }
   }
 
-  private static sortPendingItems(items: readonly EventFeedbackPageItemDto[]): EventFeedbackPageItemDto[] {
+  private static sortPendingItems(items: readonly EventFeedbackDto[]): EventFeedbackDto[] {
     return [...items].sort((left, right) =>
       this.compareDates(left.startAtMs, right.startAtMs, 'asc')
       || left.title.localeCompare(right.title)
@@ -354,8 +316,8 @@ export class EventFeedbackBuilder {
   }
 
   private static counts(
-    allItems: readonly EventFeedbackPageItemDto[],
-    organizerItems: readonly EventFeedbackPageItemDto[]
+    allItems: readonly EventFeedbackDto[],
+    organizerItems: readonly EventFeedbackDto[]
   ): EventFeedbackPageCountsDto {
     return {
       ownEvents: organizerItems.length,
@@ -480,9 +442,9 @@ export class EventFeedbackBuilder {
   }
 
   private static cloneCardsByEventId(
-    cardsByEventId: Record<string, EventFeedbackCardSourceDto[]> | undefined
-  ): Record<string, EventFeedbackCardSourceDto[]> {
-    const next: Record<string, EventFeedbackCardSourceDto[]> = {};
+    cardsByEventId: Record<string, EventFeedbackCardDto[]> | undefined
+  ): Record<string, EventFeedbackCardDto[]> {
+    const next: Record<string, EventFeedbackCardDto[]> = {};
     for (const [eventId, cards] of Object.entries(cardsByEventId ?? {})) {
       const normalizedEventId = eventId.trim();
       if (!normalizedEventId) {
@@ -493,7 +455,7 @@ export class EventFeedbackBuilder {
     return next;
   }
 
-  private static cloneCardSources(cards: readonly EventFeedbackCardSourceDto[] | undefined): EventFeedbackCardSourceDto[] {
+  private static cloneCardSources(cards: readonly EventFeedbackCardDto[] | undefined): EventFeedbackCardDto[] {
     return (cards ?? []).map(card => ({
       id: card.id?.trim() ?? '',
       eventId: card.eventId?.trim() ?? '',
@@ -516,7 +478,7 @@ export class EventFeedbackBuilder {
     })).filter(card => card.id.length > 0 && card.eventId.length > 0);
   }
 
-  private static clonePageItems(items: readonly EventFeedbackPageItemDto[] | undefined): EventFeedbackPageItemDto[] {
+  private static clonePageItems(items: readonly EventFeedbackDto[] | undefined): EventFeedbackDto[] {
     return (items ?? []).map(item => ({
       eventId: item.eventId?.trim() ?? '',
       title: item.title?.trim() ?? '',
@@ -534,8 +496,8 @@ export class EventFeedbackBuilder {
     })).filter(item => item.eventId.length > 0);
   }
 
-  private static cardsByEventId(cards: readonly EventFeedbackCardSourceDto[]): Record<string, EventFeedbackCardSourceDto[]> {
-    const next: Record<string, EventFeedbackCardSourceDto[]> = {};
+  private static cardsByEventId(cards: readonly EventFeedbackCardDto[]): Record<string, EventFeedbackCardDto[]> {
+    const next: Record<string, EventFeedbackCardDto[]> = {};
     for (const card of cards) {
       const eventId = card.eventId?.trim() ?? '';
       if (!eventId) {
@@ -562,10 +524,33 @@ export class EventFeedbackBuilder {
   }
 
   private static eventRecordPreferenceScore(record: ActivityEventRecord): number {
-    return (record.isAdmin ? 8 : 0)
+    return (this.isRecordAdmin(record) ? 8 : 0)
       + (record.type === 'hosting' ? 4 : 0)
-      + (!record.isInvitation ? 2 : 0)
-      + (!record.isTrashed ? 1 : 0);
+      + (!this.isRecordInvitation(record) ? 2 : 0)
+      + (!this.isRecordTrashed(record) ? 1 : 0);
+  }
+
+  private static isFeedbackAttendeeRecord(record: ActivityEventRecord): boolean {
+    return record.type === 'events'
+      && !this.isRecordTrashed(record)
+      && !this.isRecordInvitation(record)
+      && !this.isRecordAdmin(record);
+  }
+
+  private static isRecordAdmin(record: ActivityEventRecord): boolean {
+    const userId = `${record.userId ?? ''}`.trim();
+    return !!userId && (
+      record.creatorUserId === userId
+      || (record.adminIds ?? []).some(adminId => `${adminId ?? ''}`.trim() === userId)
+    );
+  }
+
+  private static isRecordInvitation(record: ActivityEventRecord): boolean {
+    return record.type === 'invitations';
+  }
+
+  private static isRecordTrashed(record: ActivityEventRecord): boolean {
+    return record.status === 'T';
   }
 
   private static uniqueUsers(users: readonly UserDto[], activeUser: UserDto): UserDto[] {

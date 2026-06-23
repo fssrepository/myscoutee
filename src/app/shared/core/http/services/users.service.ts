@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type {
+  ProfileExtDto,
   UserSelectorListItemDto,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
@@ -22,7 +23,7 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import { AppContext } from '../../../ui/context';
-import { UserRealtimeSnapshotConverter } from '../../base/converters';
+import { UserRealtimeSnapshotMapper } from '../../base/mappers';
 import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
@@ -34,6 +35,7 @@ import { SessionService } from '../../base/services/session.service';
 export class HttpUsersService implements UserService {
   private static readonly DEMO_USERS_ROUTE = '/auth/demo-users';
   private static readonly USER_BY_ID_ROUTE = '/auth/me';
+  private static readonly USER_PROFILE_EXT_ROUTE = '/auth/me/profile-ext';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
@@ -175,7 +177,7 @@ export class HttpUsersService implements UserService {
       if (!response || !response.counters) {
         return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
       }
-      return UserRealtimeSnapshotConverter.snapshot(response, normalizedUserId, cursor);
+      return UserRealtimeSnapshotMapper.snapshot(response, normalizedUserId, cursor);
     } catch (error) {
       if (this.isTimeoutError(error, 'User realtime request timeout.')) {
         throw error;
@@ -218,6 +220,24 @@ export class HttpUsersService implements UserService {
     );
     if (!response) {
       return this.cloneUser(user);
+    }
+    return this.cloneUser(response);
+  }
+
+  async saveUserProfileExt(request: ProfileExtDto, requestTimeoutMs?: number): Promise<UserDto | null> {
+    if (!request?.profile?.id?.trim()) {
+      return null;
+    }
+    const response = await this.routeDelay.withRequestTimeout(
+      HttpUsersService.USER_PROFILE_EXT_ROUTE,
+      this.http
+        .post<UserDto | null>(`${this.apiBaseUrl}${HttpUsersService.USER_PROFILE_EXT_ROUTE}`, request)
+        .toPromise(),
+      'Profile save request timeout.',
+      requestTimeoutMs
+    );
+    if (!response) {
+      return this.cloneUser(request.profile);
     }
     return this.cloneUser(response);
   }
@@ -382,7 +402,7 @@ export class HttpUsersService implements UserService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: UserRealtimeSnapshotConverter.impressions(user.impressions),
+      impressions: UserRealtimeSnapshotMapper.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
@@ -591,7 +611,7 @@ export class HttpUsersService implements UserService {
     if (!byIdResponse.user) {
       return null;
     }
-    return UserRealtimeSnapshotConverter.snapshotFromUser(byIdResponse.user, cursor, {
+    return UserRealtimeSnapshotMapper.snapshotFromUser(byIdResponse.user, cursor, {
       userId: normalizedUserId
     });
   }

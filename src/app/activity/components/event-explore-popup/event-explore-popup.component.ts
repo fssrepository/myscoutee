@@ -16,7 +16,6 @@ import { from } from 'rxjs';
 import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils } from '../../../shared/app-utils';
 import {
@@ -40,7 +39,7 @@ import {
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type CardResolvedMenuAction,
+  type CardMenuAction,
   type ListQuery,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -70,7 +69,7 @@ type EventExploreMenuContext =
       menu: 'info-card';
       record: ActivityEventRecord;
       card: InfoCardData;
-      action: CardResolvedMenuAction;
+      action: CardMenuAction;
     };
 
 @Component({
@@ -357,7 +356,7 @@ export class EventExplorePopupComponent {
       icon: this.eventExploreOrderIcon(),
       ariaLabel: 'Open event explore order',
       palette: this.eventExploreOrderPalette(this.eventExploreOrder),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -381,7 +380,7 @@ export class EventExplorePopupComponent {
       icon: this.eventExploreCurrentViewIcon(),
       ariaLabel: 'Open event explore view',
       palette: this.eventExploreViewPalette(this.eventExploreView),
-      shape: 'pill'
+      layout: 'pill'
     };
   }
 
@@ -406,7 +405,7 @@ export class EventExplorePopupComponent {
         label: 'Friends going',
         icon: 'groups',
         kind: 'toggle',
-        layout: 'summary',
+        layout: 'pill',
         active: this.eventExploreFilterFriendsOnly,
         checked: this.eventExploreFilterFriendsOnly,
         closeOnSelect: false,
@@ -418,7 +417,7 @@ export class EventExplorePopupComponent {
         label: 'Open spots',
         icon: 'hotel',
         kind: 'toggle',
-        layout: 'summary',
+        layout: 'pill',
         active: this.eventExploreFilterHasRooms,
         checked: this.eventExploreFilterHasRooms,
         closeOnSelect: false,
@@ -432,7 +431,7 @@ export class EventExplorePopupComponent {
           : 'Topic',
         icon: 'sell',
         kind: 'select-trigger',
-        layout: 'summary',
+        layout: 'pill',
         active: !!this.eventExploreFilterTopic,
         checked: !!this.eventExploreFilterTopic,
         closeOnSelect: false,
@@ -449,6 +448,8 @@ export class EventExplorePopupComponent {
       idPrefix: 'topic',
       groups: this.topicFilterGroups,
       selected: this.eventExploreFilterTopic ? [this.eventExploreFilterTopic] : [],
+      maxSelected: 1,
+      kind: 'radio',
       context: topic => ({ menu: 'topic-filter', topic }),
       itemLabel: topic => `#${this.eventExploreTopicLabel(topic)}`,
       removeAriaLabel: topic => `Clear ${topic}`,
@@ -551,7 +552,7 @@ export class EventExplorePopupComponent {
       if (!config) {
         return [];
       }
-      const action: CardResolvedMenuAction = {
+      const action: CardMenuAction = {
         id: actionId,
         ...config
       };
@@ -571,7 +572,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  private infoCardActionPalette(tone: CardResolvedMenuAction['tone']): AppMenuPalette {
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
       case 'accent':
         return 'green';
@@ -694,7 +695,8 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.popupCtx.requestActivitiesNavigation({
       type: 'eventEditor',
-      row: EventExploreBuilder.buildActivityRow(record),
+      eventId: record.id,
+      target: record.type === 'hosting' ? 'hosting' : 'events',
       readOnly: true
     });
     this.cdr.markForCheck();
@@ -810,7 +812,7 @@ export class EventExplorePopupComponent {
       ariaLabel: count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`,
       counter: count,
       hideLabel: true,
-      shape: 'icon',
+      layout: 'icon',
       palette: 'orange'
     };
   }
@@ -831,7 +833,7 @@ export class EventExplorePopupComponent {
         kind: 'action',
         palette: this.checkoutDraftMenuPalette(entry),
         surface: 'tinted',
-        layout: 'summary',
+        layout: 'pill',
         disabled: clearing,
         removable: true,
         removeIcon: 'close',
@@ -1290,6 +1292,18 @@ export class EventExplorePopupComponent {
     };
   }
 
+  private activityMemberSource(record: ActivityEventRecord) {
+    return {
+      id: record.id,
+      type: record.type,
+      isAdmin: true,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      capacityMax: record.capacityMax
+    };
+  }
+
   private async loadEventExploreMembers(owner: ActivityMemberOwnerRef, record: ActivityEventRecord): Promise<void> {
     const members = await this.activityMembersService.queryMembersByOwner(owner);
     if (!this.selectedMembersRecord || this.selectedMembersRecord.id !== record.id) {
@@ -1300,8 +1314,8 @@ export class EventExplorePopupComponent {
   }
 
   private buildMemberEntries(record: ActivityEventRecord): ActivityContracts.ActivityMemberEntry[] {
-    const row = EventExploreBuilder.buildActivityRow(record);
-    const rowKey = `${row.type}:${row.id}`;
+    const source = this.activityMemberSource(record);
+    const rowKey = `${source.type}:${source.id}`;
     const summary = this.activityMembersService.peekSummaryByOwner(this.eventMembersOwner(record));
     const acceptedUserIds = this.ensureMemberUserIds(
       summary?.acceptedMemberUserIds ?? [],
@@ -1323,7 +1337,7 @@ export class EventExplorePopupComponent {
       const user = this.resolveUser(userId, record);
       const base = ActivityMembersBuilder.toActivityMemberEntry(
         user,
-        { ...row, isAdmin: true },
+        source,
         rowKey,
         record.creatorUserId,
         { status: 'accepted', pendingSource: null, invitedByActiveUser: false },
@@ -1338,7 +1352,7 @@ export class EventExplorePopupComponent {
       const user = this.resolveUser(userId, record);
       const base = ActivityMembersBuilder.toActivityMemberEntry(
         user,
-        { ...row, isAdmin: true },
+        source,
         rowKey,
         record.creatorUserId,
         { status: 'pending', pendingSource: 'admin', invitedByActiveUser: false },
@@ -1831,11 +1845,11 @@ export class EventExplorePopupComponent {
     pendingReason: ActivityPendingReason = null
   ): ActivityContracts.ActivityMemberEntry {
     const user = this.resolveUser(this.activeUserId, record);
-    const row = EventExploreBuilder.buildActivityRow(record);
+    const source = this.activityMemberSource(record);
     const entry = ActivityMembersBuilder.toActivityMemberEntry(
       user,
-      row,
-      `${row.type}:${row.id}`,
+      source,
+      `${source.type}:${source.id}`,
       record.creatorUserId,
       {
         status: accepted ? 'accepted' : 'pending',

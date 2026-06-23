@@ -81,6 +81,34 @@
   background-repeat: no-repeat;
 }
 
+.activities-rate-image-loader {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.activities-rate-image-loader app-progress-indicator {
+  position: relative;
+  z-index: 1;
+}
+
+.activities-rate-pair-inline-layer.lazy-bg-loading .activities-rate-image-loader,
+.activities-rate-profile-layer.lazy-bg-loading .activities-rate-image-loader {
+  opacity: 1;
+}
+
+.activities-rate-pair-inline-layer.lazy-bg-loaded .activities-rate-image-loader,
+.activities-rate-profile-layer.lazy-bg-loaded .activities-rate-image-loader,
+.activities-rate-pair-inline-layer.lazy-bg-error .activities-rate-image-loader,
+.activities-rate-profile-layer.lazy-bg-error .activities-rate-image-loader {
+  opacity: 0;
+}
+
 .activities-rate-pair-inline-layer::after,
 .activities-rate-profile-layer::after {
   content: '';

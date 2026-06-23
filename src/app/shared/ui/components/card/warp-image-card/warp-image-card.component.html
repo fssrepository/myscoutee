@@ -1,0 +1,12 @@
+@if (card) {
+  <article [ngClass]="rootClassList()">
+    <div class="ui-warp-image-card__headline">
+      <span class="ui-warp-image-card__index">{{ card.index }}</span>
+      <div class="ui-warp-image-card__copy">
+        <h3>{{ card.titleKey | i18n: card.title }}</h3>
+        <p>{{ card.messageKey | i18n: card.message }}</p>
+      </div>
+    </div>
+    <div class="ui-warp-image-card__visual" [ngStyle]="visualStyle()" aria-hidden="true"></div>
+  </article>
+}

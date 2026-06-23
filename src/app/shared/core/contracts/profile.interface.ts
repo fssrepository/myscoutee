@@ -1,13 +1,10 @@
-import type { UserDto } from './user.interface';
-import type {
-  DetailPrivacy,
-  ProfileStatus
-} from '../common/constants';
+import type * as AppConstants from '../common/constants';
+import type * as UserContracts from './user.interface';
 
 export interface ProfileDetailFormRow {
   labelKey: string;
   value: string;
-  privacy: DetailPrivacy;
+  privacy: AppConstants.DetailPrivacy;
   options: string[];
 }
 
@@ -133,7 +130,7 @@ export interface MobileProfileSelectorSheet {
 export interface ProfileRow {
   label: string;
   value: string;
-  privacy: DetailPrivacy;
+  privacy: AppConstants.DetailPrivacy;
 }
 
 export interface ProfileGroup {
@@ -142,6 +139,6 @@ export interface ProfileGroup {
 }
 
 export interface ProfileViewData {
-  user: UserDto | null;
+  user: UserContracts.UserDto | null;
   experiences: ExperienceEntry[];
 }

@@ -9,64 +9,13 @@
     </a>
     @if (homeHeaderControlsReady) {
     <div class="game-actions">
-      <div class="game-action-mode-select" [ngClass]="homeModeToneClass(selectedHomeMode)" [class.is-disabled]="isBlockedUser">
-        <mat-select
-          [ngModel]="selectedHomeMode"
-          (ngModelChange)="selectHomeMode($event)"
-          panelWidth="248px"
-          panelClass="home-mode-select-panel"
-          [disabled]="isBlockedUser"
-          >
-          <mat-select-trigger>
-            <span class="game-action-mode">
-              <mat-icon>{{ selectedHomeModeIcon() }}</mat-icon>
-              <span>{{ selectedHomeModeLabel() }}</span>
-              <mat-icon class="game-action-mode-chevron">expand_more</mat-icon>
-            </span>
-          </mat-select-trigger>
-          @for (option of homeModeOptions; track option) {
-            <mat-option
-              [value]="option.key"
-              class="home-mode-option"
-              [ngClass]="homeModeToneClass(option.key)"
-              >
-              <span class="game-mode-option">
-                <mat-icon>{{ option.icon }}</mat-icon>
-                <span>{{ option.label }}</span>
-              </span>
-            </mat-option>
-          }
-        </mat-select>
-      </div>
-      <button
-        #filterButton
-        type="button"
-        class="game-action-filter has-badge"
-        [class.game-action-filter-has-matches]="hasRemainingCandidatesForCurrentMode"
-        [class.game-action-filter-no-matches]="!hasRemainingCandidatesForCurrentMode"
-        [disabled]="isBlockedUser"
-        (click)="openFilter()"
-        aria-label="Open profile filters"
-        >
-        <span class="game-action-ripple" matRipple [matRippleTrigger]="filterButton" aria-hidden="true"></span>
-        <mat-icon>filter_alt</mat-icon>
-        <span class="filter-state-badge" [class.active]="isFilterActive">{{ filterBadgeCount | counterBadge }}</span>
-      </button>
-      <button
-        #historyButton
-        type="button"
-        class="game-action-filter game-action-history has-badge"
-        [class.is-disabled]="!canOpenHistory || isBlockedUser"
-        [disabled]="!canOpenHistory || isBlockedUser"
-        (click)="openHistory()"
-        aria-label="Open game history"
-        >
-        <span class="game-action-ripple" matRipple [matRippleTrigger]="historyButton" aria-hidden="true"></span>
-        <mat-icon>history</mat-icon>
-        @if (historyBadgeCount > 0) {
-          <span class="history-badge">{{ historyBadgeCount | counterBadge }}</span>
-        }
-      </button>
+      <app-menu
+        class="game-header-menu"
+        kind="inline"
+        layout="row"
+        [items]="homeHeaderMenuItems()"
+        (itemSelect)="onHomeHeaderMenuSelect($event)"
+      ></app-menu>
     </div>
     }
   </header>

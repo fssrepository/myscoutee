@@ -1,4 +1,3 @@
-import type * as AppTypes from '../../../../../shared/core/base/models';
 import {
   buildPairRateCardData,
   buildSingleRateCardData,
@@ -23,12 +22,12 @@ interface BuildActivitiesRateCardOptions {
   fullscreenSplitEnabled: boolean;
 }
 
-export function isActivitiesPairRateRow(row: AppTypes.ActivityListRow): boolean {
-  return row.type === 'rates' && row.mode === 'pair';
+export function isActivitiesPairRateRow(row: ImageCardData): boolean {
+  return row.mode === 'pair';
 }
 
 export function buildActivitiesSingleRateCard(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   options: BuildActivitiesRateCardOptions
 ): SingleCardData {
   return buildSingleRateCardData({
@@ -39,7 +38,7 @@ export function buildActivitiesSingleRateCard(
 }
 
 export function buildActivitiesPairRateCard(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   options: BuildActivitiesRateCardOptions
 ): PairCardData {
   return buildPairRateCardData({
@@ -49,15 +48,14 @@ export function buildActivitiesPairRateCard(
 }
 
 function buildActivitiesRateCardInput(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   options: BuildActivitiesRateCardOptions
 ) {
-  const item = row.type === 'rates' ? row : null;
   const presentation = options.presentation ?? 'list';
   const resolvedPrimaryUser = resolveActivitiesRatePrimaryUser(row, options.resolveUserById);
-  const displayPrimaryUser = toActivitiesRateCardPerson(item?.primaryUser);
-  const mode = normalizeRateCardMode(item?.mode);
-  const direction = normalizeRateCardDirection(options.displayedDirection ?? item?.displayedDirection ?? item?.direction);
+  const displayPrimaryUser = toActivitiesRateCardPerson(row.primaryUser);
+  const mode = normalizeRateCardMode(row.mode);
+  const direction = normalizeRateCardDirection(options.displayedDirection ?? row.displayedDirection ?? row.direction);
 
   return {
     rowId: row.id,
@@ -66,16 +64,16 @@ function buildActivitiesRateCardInput(
     distanceKm: distanceKmFromMeters(row.distanceMetersExact),
     mode,
     direction,
-    eventName: item?.eventName ?? '',
-    happenedOnLabel: item?.happenedOnLabel ?? 'Unknown',
+    eventName: row.eventName ?? '',
+    happenedOnLabel: row.happenedOnLabel ?? 'Unknown',
     primaryUser: mergeActivitiesRateCardPerson(displayPrimaryUser, resolvedPrimaryUser),
     pairUsers: buildActivitiesRateCardPairUsers(row, options.resolveUserById),
     availableUsers: options.availableUsers,
-    singleImageUrls: resolveActivitiesRateImageUrls(item?.singleImageUrls),
+    singleImageUrls: resolveActivitiesRateImageUrls(row.singleImageUrls),
     pairSlots: buildActivitiesRateCardPairSlots(row, options.resolveUserById),
     fallbackGender: options.activeUserGender,
-    stackClasses: item?.stackClasses?.length
-      ? [...item.stackClasses]
+    stackClasses: row.stackClasses?.length
+      ? [...row.stackClasses]
       : buildActivitiesRateCardStackClasses(mode, direction),
     presentation,
     state: options.state ?? 'default',
@@ -101,15 +99,14 @@ function buildActivitiesRateCardStackClasses(
 }
 
 function buildActivitiesRateCardPairSlots(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   resolveUserById: (userId: string) => RateCardPerson | null
 ): PairCardData['slots'] | undefined {
-  const item = row.type === 'rates' ? row : null;
-  if (!item?.pairSlots?.length) {
+  if (!row.pairSlots?.length) {
     return undefined;
   }
 
-  const hasUsableImage = item.pairSlots.some(slot =>
+  const hasUsableImage = row.pairSlots.some(slot =>
     slot.slides.some(slide => `${slide.imageUrl ?? ''}`.trim().length > 0)
   );
   if (!hasUsableImage) {
@@ -118,7 +115,7 @@ function buildActivitiesRateCardPairSlots(
 
   const pairUsers = buildActivitiesRateCardPairUsers(row, resolveUserById);
   const pairUserByGender = new Map(pairUsers.map(user => [user.gender, user]));
-  return item.pairSlots.map((slot, index) => {
+  return row.pairSlots.map((slot, index) => {
     const profileUser = (slot.tone ? pairUserByGender.get(slot.tone) : null) ?? pairUsers[index] ?? null;
     return {
       key: slot.key,
@@ -136,46 +133,32 @@ function buildActivitiesRateCardPairSlots(
 }
 
 function buildActivitiesRateCardPairUsers(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   resolveUserById: (userId: string) => RateCardPerson | null
 ): RateCardPerson[] {
-  if (row.type !== 'rates') {
-    return [];
-  }
-
-  const item = row.type === 'rates' ? row : null;
-  const imageCardPairUsers = item?.pairUsers ?? [];
+  const imageCardPairUsers = row.pairUsers ?? [];
   if (imageCardPairUsers.length > 0) {
     return imageCardPairUsers
       .map(user => mergeActivitiesRateCardPerson(toActivitiesRateCardPerson(user), resolveUserById(user.id)))
       .filter((user): user is RateCardPerson => Boolean(user));
   }
-  return [item?.userId, item?.secondaryUserId]
+  return [row.userId, row.secondaryUserId]
     .filter((userId): userId is string => typeof userId === 'string' && userId.length > 0)
     .map(userId => resolveUserById(userId))
     .filter((user): user is RateCardPerson => Boolean(user));
 }
 
 function resolveActivitiesRatePrimaryUser(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   resolveUserById: (userId: string) => RateCardPerson | null
 ): RateCardPerson | null {
-  if (row.type !== 'rates') {
-    return null;
-  }
-
-  const item = row.type === 'rates' ? row : null;
-  return resolveUserById(`${item?.userId ?? ''}`.trim());
+  return resolveUserById(`${row.userId ?? ''}`.trim());
 }
 
 function buildActivitiesRateContextBadge(
-  row: AppTypes.ActivityListRow,
+  row: ImageCardData,
   resolveUserById: (userId: string) => RateCardPerson | null
 ): CardContextBadgeConfig | null {
-  if (row.type !== 'rates') {
-    return null;
-  }
-
   const item = row;
   if (item?.mode !== 'individual' || item.socialContext !== 'friends-in-common') {
     return null;

@@ -19,9 +19,10 @@ export interface BuildTabbedMenuGroupsParams<TId extends string, TContext> {
   idPrefix: string;
   groups: readonly AppMenuStaticOptionGroup[];
   selected?: readonly string[];
+  maxSelected?: number | null;
   context: (option: string, group: AppMenuStaticOptionGroup) => TContext;
   normalize?: (value: string) => string;
-  itemKind?: AppMenuItemKind;
+  kind?: AppMenuItemKind;
   closeOnSelect?: boolean;
   itemLabel?: (option: string, group: AppMenuStaticOptionGroup) => string;
   itemIcon?: (option: string, group: AppMenuStaticOptionGroup) => string;
@@ -42,8 +43,9 @@ export function buildTabbedMenuModel<TId extends string = string, TContext = unk
 ): AppMenuModel<TId, TContext> {
   const { summary, ...groupParams } = params;
   return {
-    presentation: 'tabs',
+    layout: 'tabs',
     summary: summary ?? null,
+    maxSelected: params.maxSelected ?? null,
     groups: buildTabbedMenuGroups<TId, TContext>(groupParams)
   };
 }
@@ -67,7 +69,7 @@ export function buildTabbedMenuGroups<TId extends string = string, TContext = un
         id: `${params.idPrefix}-${appMenuSafeId(option)}` as TId,
         label,
         icon: params.itemIcon?.(option, group) ?? appMenuIconFromToneClass(group.toneClass),
-        kind: params.itemKind ?? 'checkbox',
+        kind: params.kind ?? 'checkbox',
         active: selected,
         checked: selected,
         removable: params.removable?.(option, group, selected) ?? selected,

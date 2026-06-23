@@ -22,7 +22,7 @@
           @if (!loading() && !detailOpen()) {
             <app-menu
               class="process-filter-wrap"
-              kind="button-row"
+              kind="inline"
               [model]="processFilterMenuModel()"
               (itemSelect)="onProcessFilterMenuSelect($event)"
             ></app-menu>

@@ -1,10 +1,8 @@
 import type {
-  ActivityMemberRole,
   AssetCategory,
   AssetLifecycleStatus,
   AssetRequestKind,
   AssetRequestStatus,
-  AssetTicketOrder,
   AssetType,
   EventVisibility,
   PricingCancellationRefundKind,
@@ -20,7 +18,6 @@ import type {
   SubEventResourceFilter,
   UserGender
 } from '../../common/constants';
-import type { ActivityListRow } from '../models/activities-ui.model';
 
 export interface EventPolicyItemDTO {
   id: string;
@@ -234,31 +231,4 @@ export interface SubEventSupplyContributionRowDTO {
   city: string;
   addedAtIso: string;
   quantity: number;
-}
-
-export interface TicketScanPayloadDTO {
-  code: string;
-  holderUserId: string;
-  holderName: string;
-  holderAge: number;
-  holderCity: string;
-  holderRole: ActivityMemberRole;
-  eventId: string;
-  eventTitle: string;
-  eventSubtitle: string;
-  eventTimeframe: string;
-  eventDateLabel: string;
-  issuedAtIso: string;
-}
-
-export interface AssetTicketPageQueryDTO {
-  userId: string;
-  page: number;
-  pageSize: number;
-  order: AssetTicketOrder;
-}
-
-export interface AssetTicketPageResultDTO {
-  items: ActivityListRow[];
-  total: number;
 }

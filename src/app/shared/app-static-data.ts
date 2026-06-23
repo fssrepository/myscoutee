@@ -9,7 +9,12 @@ import type {
   SubEventsDisplayMode,
   TournamentLeaderboardType
 } from './core/contracts';
-import type { ExplainableSurface, HelpCenterRevision, HelpCenterSection } from './core/contracts';
+import type {
+  ExplainableSurface,
+  HelpCenterHeaderColor,
+  HelpCenterRevisionDto,
+  HelpCenterSectionDto
+} from './core/contracts';
 import type {
   EventFeedbackOption,
   EventFeedbackTraitOption,
@@ -44,6 +49,55 @@ interface PersonalityTraitCatalogEntry {
   toneClass: string;
 }
 
+type NavigatorMenuPalette =
+  | 'blue'
+  | 'brown'
+  | 'gold'
+  | 'green'
+  | 'orange'
+  | 'pink'
+  | 'purple'
+  | 'sky'
+  | 'slate'
+  | 'teal'
+  | 'violet';
+
+interface NavigatorHostTierPresenterEntry {
+  id: string;
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+}
+
+interface NavigatorHostTierPresenterDefault {
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+}
+
+interface NavigatorTraitPresenterEntry {
+  id: string;
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+  memberTitle: string;
+}
+
+interface NavigatorTraitPresenterDefault {
+  aliases: string[];
+  icon: string;
+  colorClass: string;
+  toneClass: string;
+  menuPalette: NavigatorMenuPalette;
+  memberTitle: string;
+}
+
 const VIBE_CATEGORIES = ['Energetic', 'Social', 'Deep', 'Relaxed', 'Creative', 'Exclusive', 'Focused'];
 const HOSTED_EVENT_TYPES = ['Road Trip', 'Game Night', 'Brunch', 'Hiking', 'Coffee Meetup', 'Sports'];
 const VIBE_ICONS: Record<string, string> = {
@@ -66,6 +120,139 @@ const MEMBER_TRAIT_ICONS: Record<string, string> = {
   Adventurer: '🔥',
   'Deep Thinker': '🧠',
   Empath: '💛'
+};
+const NAVIGATOR_HOST_TIER_PRESENTERS: NavigatorHostTierPresenterEntry[] = [
+  {
+    id: 'platinum',
+    aliases: ['platinum'],
+    icon: 'diamond',
+    colorClass: 'icon-tier-platinum',
+    toneClass: 'impression-shortcut-tone-platinum',
+    menuPalette: 'sky'
+  },
+  {
+    id: 'gold',
+    aliases: ['gold'],
+    icon: 'emoji_events',
+    colorClass: 'icon-tier-gold',
+    toneClass: 'impression-shortcut-tone-gold',
+    menuPalette: 'gold'
+  },
+  {
+    id: 'silver',
+    aliases: ['silver'],
+    icon: 'workspace_premium',
+    colorClass: 'icon-tier-silver',
+    toneClass: 'impression-shortcut-tone-silver',
+    menuPalette: 'slate'
+  },
+  {
+    id: 'bronze',
+    aliases: ['bronze'],
+    icon: 'military_tech',
+    colorClass: 'icon-tier-bronze',
+    toneClass: 'impression-shortcut-tone-bronze',
+    menuPalette: 'brown'
+  }
+];
+const NAVIGATOR_HOST_TIER_PRESENTER_DEFAULT: NavigatorHostTierPresenterDefault = {
+  aliases: [],
+  icon: 'workspace_premium',
+  colorClass: 'icon-tier-default',
+  toneClass: 'impression-shortcut-tone-platinum',
+  menuPalette: 'blue'
+};
+const NAVIGATOR_TRAIT_PRESENTERS: NavigatorTraitPresenterEntry[] = [
+  {
+    id: 'creative',
+    aliases: ['kreat', 'creative'],
+    icon: 'palette',
+    colorClass: 'icon-trait-creative',
+    toneClass: 'impression-shortcut-tone-creative',
+    menuPalette: 'violet',
+    memberTitle: 'Creative Attendee'
+  },
+  {
+    id: 'empath',
+    aliases: ['empat', 'empath'],
+    icon: 'favorite',
+    colorClass: 'icon-trait-empath',
+    toneClass: 'impression-shortcut-tone-empath',
+    menuPalette: 'pink',
+    memberTitle: 'Empathetic Attendee'
+  },
+  {
+    id: 'reliable',
+    aliases: ['megbizh', 'reliable'],
+    icon: 'verified',
+    colorClass: 'icon-trait-reliable',
+    toneClass: 'impression-shortcut-tone-reliable',
+    menuPalette: 'green',
+    memberTitle: 'Reliable Attendee'
+  },
+  {
+    id: 'adventurer',
+    aliases: ['advent'],
+    icon: 'hiking',
+    colorClass: 'icon-trait-adventurer',
+    toneClass: 'impression-shortcut-tone-adventurer',
+    menuPalette: 'sky',
+    memberTitle: 'Adventurous Attendee'
+  },
+  {
+    id: 'thinker',
+    aliases: ['think'],
+    icon: 'psychology',
+    colorClass: 'icon-trait-thinker',
+    toneClass: 'impression-shortcut-tone-thinker',
+    menuPalette: 'blue',
+    memberTitle: 'Thoughtful Attendee'
+  },
+  {
+    id: 'social',
+    aliases: ['social'],
+    icon: 'groups',
+    colorClass: 'icon-trait-social',
+    toneClass: 'impression-shortcut-tone-social',
+    menuPalette: 'teal',
+    memberTitle: 'Social Attendee'
+  },
+  {
+    id: 'playful',
+    aliases: ['playful'],
+    icon: 'sports_esports',
+    colorClass: 'icon-trait-playful',
+    toneClass: 'impression-shortcut-tone-playful',
+    menuPalette: 'orange',
+    memberTitle: 'Playful Attendee'
+  },
+  {
+    id: 'ambitious',
+    aliases: ['ambitious', 'goal'],
+    icon: 'trending_up',
+    colorClass: 'icon-trait-ambitious',
+    toneClass: 'impression-shortcut-tone-ambitious',
+    menuPalette: 'purple',
+    memberTitle: 'Ambitious Attendee'
+  }
+];
+const NAVIGATOR_MEMBER_IMPRESSION_TITLE_PRESENTERS: NavigatorTraitPresenterEntry[] = [
+  NAVIGATOR_TRAIT_PRESENTERS[1],
+  NAVIGATOR_TRAIT_PRESENTERS[3],
+  NAVIGATOR_TRAIT_PRESENTERS[0],
+  NAVIGATOR_TRAIT_PRESENTERS[4],
+  NAVIGATOR_TRAIT_PRESENTERS[5],
+  NAVIGATOR_TRAIT_PRESENTERS[6],
+  NAVIGATOR_TRAIT_PRESENTERS[7],
+  NAVIGATOR_TRAIT_PRESENTERS[2]
+].filter((entry): entry is NavigatorTraitPresenterEntry => Boolean(entry));
+const NAVIGATOR_TRAIT_PRESENTER_DEFAULT: NavigatorTraitPresenterDefault = {
+  aliases: [],
+  icon: 'auto_awesome',
+  colorClass: 'icon-trait-default',
+  toneClass: 'impression-shortcut-tone-thinker',
+  menuPalette: 'violet',
+  memberTitle: 'Attendee'
 };
 const PERSONALITY_TRAIT_CATALOG: PersonalityTraitCatalogEntry[] = [
   {
@@ -170,6 +357,31 @@ const CONTENT_LANGUAGES = [
   { lang: 'en', label: 'English' },
   { lang: 'hu', label: 'Magyar' }
 ];
+const HELP_CENTER_HEADER_COLORS: readonly HelpCenterHeaderColor[] = [
+  'amber',
+  'blue',
+  'green',
+  'rose',
+  'violet',
+  'slate'
+];
+const HELP_CENTER_HEADER_COLOR_OPTIONS: Array<{ id: HelpCenterHeaderColor; label: string }> = [
+  { id: 'amber', label: 'Amber' },
+  { id: 'blue', label: 'Blue' },
+  { id: 'green', label: 'Green' },
+  { id: 'rose', label: 'Rose' },
+  { id: 'violet', label: 'Violet' },
+  { id: 'slate', label: 'Slate' }
+];
+const DOCUMENT_VIEWER_HEADER_PALETTES = [
+  'amber',
+  'blue',
+  'green',
+  'rose',
+  'violet',
+  'slate',
+  'teal'
+] as const;
 const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'home.game', label: 'Home cards', icon: 'style', owner: 'route', order: 10, enabled: true },
   { key: 'activities.rates', label: 'Activity ratings', icon: 'star', owner: 'popup', order: 20, enabled: true },
@@ -455,11 +667,11 @@ const ACTIVITIES_SECONDARY_FILTERS: Array<{ key: ActivitiesSecondaryFilter; labe
   { key: 'past', label: 'Past', icon: 'history' }
 ];
 const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter; label: string; icon: string }> = [
-  { key: 'all', label: 'All', icon: 'forum' },
-  { key: 'event', label: 'Event', icon: 'event' },
-  { key: 'subEvent', label: 'Sub event', icon: 'event_available' },
-  { key: 'group', label: 'Group', icon: 'groups' },
-  { key: 'service', label: 'Service', icon: 'support_agent' }
+  { key: 'all', label: 'all', icon: 'forum' },
+  { key: 'event', label: 'event', icon: 'event' },
+  { key: 'subEvent', label: 'sub.event', icon: 'event_available' },
+  { key: 'group', label: 'group', icon: 'groups' },
+  { key: 'service', label: 'service', icon: 'support_agent' }
 ];
 const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
   { key: 'individual-given', label: 'Given' },
@@ -833,7 +1045,7 @@ const EVENT_FEEDBACK_LIST_FILTER_OPTIONS: Array<{ key: EventFeedbackListFilter; 
   EVENT_FEEDBACK_LIST_FILTERS.map(key => ({ key, ...EVENT_FEEDBACK_LIST_FILTER_META[key] }));
 const DEFAULT_HELP_CENTER_DESCRIPTION = 'MyScoutee helps you plan events end-to-end: invite people, split into stages/groups, assign resources, and coordinate in context chats.';
 const DEFAULT_PRIVACY_CENTER_DESCRIPTION = 'Before continuing, please review and accept how your data is used in MyScoutee.';
-const HELP_CENTER_SECTIONS: HelpCenterSection[] = [
+const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'events',
     icon: 'event_note',
@@ -940,7 +1152,7 @@ const htmlList = (items: readonly string[]): string => `<ul>${items.map(item => 
 
 const DEFAULT_TERMS_CENTER_DESCRIPTION = 'Review the terms that apply when you use MyScoutee features, accounts, events, chats, and community tools.';
 
-const TERMS_CENTER_SECTIONS: HelpCenterSection[] = [
+const TERMS_CENTER_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'terms',
     icon: 'rule',
@@ -985,7 +1197,7 @@ const TERMS_CENTER_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const PRIVACY_CENTER_SECTIONS: HelpCenterSection[] = [
+const PRIVACY_CENTER_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'privacy',
     icon: 'policy',
@@ -1065,7 +1277,7 @@ const PRIVACY_CENTER_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const HELP_CENTER_SECTIONS_HU: HelpCenterSection[] = [
+const HELP_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'events',
     icon: 'event_note',
@@ -1096,7 +1308,7 @@ const HELP_CENTER_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
+const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'privacy',
     icon: 'policy',
@@ -1169,7 +1381,7 @@ const PRIVACY_CENTER_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const TERMS_CENTER_SECTIONS_HU: HelpCenterSection[] = [
+const TERMS_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'terms',
     icon: 'rule',
@@ -1214,7 +1426,7 @@ const TERMS_CENTER_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevision = {
+const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevisionDto = {
   id: 'help-default-v1',
   documentKind: 'help',
   lang: 'en',
@@ -1232,7 +1444,7 @@ const DEFAULT_HELP_CENTER_REVISION: HelpCenterRevision = {
   updatedByUserId: 'system'
 };
 
-const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_HELP_CENTER_REVISION,
   id: 'help-default-hu-v1',
   lang: 'hu',
@@ -1243,7 +1455,7 @@ const DEFAULT_HELP_CENTER_REVISION_HU: HelpCenterRevision = {
   sections: HELP_CENTER_SECTIONS_HU
 };
 
-const DEFAULT_PRIVACY_CENTER_REVISION: HelpCenterRevision = {
+const DEFAULT_PRIVACY_CENTER_REVISION: HelpCenterRevisionDto = {
   id: 'privacy-default-v1',
   documentKind: 'privacy',
   lang: 'en',
@@ -1261,7 +1473,7 @@ const DEFAULT_PRIVACY_CENTER_REVISION: HelpCenterRevision = {
   updatedByUserId: 'system'
 };
 
-const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_PRIVACY_CENTER_REVISION,
   id: 'privacy-default-hu-v1',
   lang: 'hu',
@@ -1272,7 +1484,7 @@ const DEFAULT_PRIVACY_CENTER_REVISION_HU: HelpCenterRevision = {
   sections: PRIVACY_CENTER_SECTIONS_HU
 };
 
-const DEFAULT_TERMS_CENTER_REVISION: HelpCenterRevision = {
+const DEFAULT_TERMS_CENTER_REVISION: HelpCenterRevisionDto = {
   id: 'terms-default-v1',
   documentKind: 'terms',
   lang: 'en',
@@ -1290,7 +1502,7 @@ const DEFAULT_TERMS_CENTER_REVISION: HelpCenterRevision = {
   updatedByUserId: 'system'
 };
 
-const DEFAULT_TERMS_CENTER_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_TERMS_CENTER_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_TERMS_CENTER_REVISION,
   id: 'terms-default-hu-v1',
   lang: 'hu',
@@ -1301,7 +1513,7 @@ const DEFAULT_TERMS_CENTER_REVISION_HU: HelpCenterRevision = {
   sections: TERMS_CENTER_SECTIONS_HU
 };
 
-const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_HOME_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'affinity',
     icon: 'tune',
@@ -1339,7 +1551,7 @@ const EXPLANATION_HOME_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'affinity',
     icon: 'tune',
@@ -1377,7 +1589,7 @@ const EXPLANATION_HOME_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'activity-rate-filter',
     icon: 'north_east',
@@ -1408,7 +1620,7 @@ const EXPLANATION_ACTIVITY_RATES_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'activity-rate-filter',
     icon: 'north_east',
@@ -1439,7 +1651,7 @@ const EXPLANATION_ACTIVITY_RATES_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_EVENTS_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_EVENTS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'activity-event-entry',
     icon: 'event',
@@ -1477,7 +1689,7 @@ const EXPLANATION_EVENTS_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_EVENTS_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_EVENTS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'activity-event-entry',
     icon: 'event',
@@ -1515,7 +1727,7 @@ const EXPLANATION_EVENTS_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_CHATS_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_CHATS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'activity-chat-list',
     icon: 'forum',
@@ -1553,7 +1765,7 @@ const EXPLANATION_CHATS_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'activity-chat-list',
     icon: 'forum',
@@ -1591,7 +1803,7 @@ const EXPLANATION_CHATS_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_CONTACTS_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_CONTACTS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'contacts-list',
     icon: 'contacts',
@@ -1615,7 +1827,7 @@ const EXPLANATION_CONTACTS_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'contacts-list',
     icon: 'contacts',
@@ -1639,7 +1851,7 @@ const EXPLANATION_CONTACTS_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_PROFILE_EDITOR_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_PROFILE_EDITOR_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'profile-editor-basics',
     icon: 'manage_accounts',
@@ -1670,7 +1882,7 @@ const EXPLANATION_PROFILE_EDITOR_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_PROFILE_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_PROFILE_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'profile-editor-basics',
     icon: 'manage_accounts',
@@ -1701,7 +1913,7 @@ const EXPLANATION_PROFILE_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_PROFILE_VIEW_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_PROFILE_VIEW_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'profile-view-overview',
     icon: 'visibility',
@@ -1725,7 +1937,7 @@ const EXPLANATION_PROFILE_VIEW_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_PROFILE_VIEW_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_PROFILE_VIEW_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'profile-view-overview',
     icon: 'visibility',
@@ -1749,7 +1961,7 @@ const EXPLANATION_PROFILE_VIEW_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'event-feedback-entry',
     icon: 'rate_review',
@@ -1773,7 +1985,7 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'event-feedback-entry',
     icon: 'rate_review',
@@ -1797,7 +2009,7 @@ const EXPLANATION_EVENT_FEEDBACK_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_ASSETS_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_ASSETS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'assets-entry',
     icon: 'inventory_2',
@@ -1835,7 +2047,7 @@ const EXPLANATION_ASSETS_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'assets-entry',
     icon: 'inventory_2',
@@ -1874,16 +2086,16 @@ const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSection[] = [
 ];
 
 function assetExplanationSections(
-  baseSections: HelpCenterSection[],
-  overrides: Record<string, Partial<HelpCenterSection>>
-): HelpCenterSection[] {
+  baseSections: HelpCenterSectionDto[],
+  overrides: Record<string, Partial<HelpCenterSectionDto>>
+): HelpCenterSectionDto[] {
   return baseSections.map(section => ({
     ...section,
     ...(overrides[section.id] ?? {})
   }));
 }
 
-const EXPLANATION_ASSETS_CAR_SECTIONS: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+const EXPLANATION_ASSETS_CAR_SECTIONS: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
   'assets-entry': {
     icon: 'directions_car',
     title: 'Your cars',
@@ -1901,7 +2113,7 @@ const EXPLANATION_ASSETS_CAR_SECTIONS: HelpCenterSection[] = assetExplanationSec
   }
 });
 
-const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
   'assets-entry': {
     icon: 'apartment',
     title: 'Your accommodation',
@@ -1919,7 +2131,7 @@ const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS: HelpCenterSection[] = assetExpl
   }
 });
 
-const EXPLANATION_ASSETS_SUPPLIES_SECTIONS: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+const EXPLANATION_ASSETS_SUPPLIES_SECTIONS: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
   'assets-entry': {
     icon: 'inventory_2',
     title: 'Your supplies',
@@ -1937,7 +2149,7 @@ const EXPLANATION_ASSETS_SUPPLIES_SECTIONS: HelpCenterSection[] = assetExplanati
   }
 });
 
-const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'assets-tickets',
     icon: 'qr_code_2',
@@ -1961,7 +2173,7 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_ASSETS_CAR_SECTIONS_HU: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+const EXPLANATION_ASSETS_CAR_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
   'assets-entry': {
     icon: 'directions_car',
     title: 'Saját autóid',
@@ -1979,7 +2191,7 @@ const EXPLANATION_ASSETS_CAR_SECTIONS_HU: HelpCenterSection[] = assetExplanation
   }
 });
 
-const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
   'assets-entry': {
     icon: 'apartment',
     title: 'Saját ingatlanok',
@@ -1997,7 +2209,7 @@ const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSection[] = assetE
   }
 });
 
-const EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU: HelpCenterSection[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+const EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
   'assets-entry': {
     icon: 'inventory_2',
     title: 'Saját kellékek',
@@ -2015,7 +2227,7 @@ const EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU: HelpCenterSection[] = assetExplan
   }
 });
 
-const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'assets-tickets',
     icon: 'qr_code_2',
@@ -2039,7 +2251,7 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSection[] = [
+const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSectionDto[] = [
   {
     id: 'event-editor-main',
     icon: 'edit_calendar',
@@ -2084,7 +2296,7 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSection[] = [
   }
 ];
 
-const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSection[] = [
+const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
   {
     id: 'event-editor-main',
     icon: 'edit_calendar',
@@ -2133,7 +2345,7 @@ const EXPLANATION_IMAGE_SLOT_LIMIT = 8;
 const SEEDED_EXPLANATION_IMAGE_REF_PREFIX = 'help-seeded-image:';
 const SEEDED_EXPLANATION_IMAGE_ASSET_ROOT = 'assets/help-center/explanations';
 const LAZY_IMAGE_PLACEHOLDER_URL = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
-const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> = {
+const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSectionDto['panelSpan']> = {
   'affinity-network': 'span-2',
   'activity-chat-message-window': 'span-2',
   'contacts-list': 'span-2',
@@ -2147,7 +2359,7 @@ const EXPLANATION_SECTION_SPANS: Record<string, HelpCenterSection['panelSpan']> 
 };
 const SPAN_1_EXPLANATION_CONTEXTS = new Set(['events', 'event.editor']);
 
-function withSeededExplanationImages(contextKey: string, sections: HelpCenterSection[], lang: string): HelpCenterSection[] {
+function withSeededExplanationImages(contextKey: string, sections: HelpCenterSectionDto[], lang: string): HelpCenterSectionDto[] {
   return sections.map(section => {
     const seededImageUrl = seededExplanationImageRef(contextKey, lang, section.id);
     return {
@@ -2216,7 +2428,7 @@ function escapeHtmlAttribute(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
-const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevisionDto = {
   id: 'explanation-home-default-v1',
   documentKind: 'explanation',
   contextKey: 'home.game',
@@ -2235,7 +2447,7 @@ const DEFAULT_EXPLANATION_HOME_REVISION: HelpCenterRevision = {
   updatedByUserId: 'system'
 };
 
-const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-home-default-hu-v1',
   lang: 'hu',
@@ -2246,7 +2458,7 @@ const DEFAULT_EXPLANATION_HOME_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('home.game', EXPLANATION_HOME_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-activity-rates-default-v1',
   contextKey: 'activities.rates',
@@ -2255,7 +2467,7 @@ const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('activities.rates', EXPLANATION_ACTIVITY_RATES_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION,
   id: 'explanation-activity-rates-default-hu-v1',
   lang: 'hu',
@@ -2265,7 +2477,7 @@ const DEFAULT_EXPLANATION_ACTIVITY_RATES_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('activities.rates', EXPLANATION_ACTIVITY_RATES_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_EVENTS_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_EVENTS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-events-default-v1',
   contextKey: 'events',
@@ -2274,7 +2486,7 @@ const DEFAULT_EXPLANATION_EVENTS_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('events', EXPLANATION_EVENTS_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_EVENTS_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_EVENTS_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_EVENTS_REVISION,
   id: 'explanation-events-default-hu-v1',
   lang: 'hu',
@@ -2284,7 +2496,7 @@ const DEFAULT_EXPLANATION_EVENTS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('events', EXPLANATION_EVENTS_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-assets-default-v1',
   contextKey: 'assets',
@@ -2293,7 +2505,7 @@ const DEFAULT_EXPLANATION_ASSETS_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-default-hu-v1',
   lang: 'hu',
@@ -2303,7 +2515,7 @@ const DEFAULT_EXPLANATION_ASSETS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-car-default-v1',
   contextKey: 'assets.car',
@@ -2312,7 +2524,7 @@ const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.car', EXPLANATION_ASSETS_CAR_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_CAR_REVISION,
   id: 'explanation-assets-car-default-hu-v1',
   lang: 'hu',
@@ -2322,7 +2534,7 @@ const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.car', EXPLANATION_ASSETS_CAR_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-accommodation-default-v1',
   contextKey: 'assets.accommodation',
@@ -2331,7 +2543,7 @@ const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION,
   id: 'explanation-assets-accommodation-default-hu-v1',
   lang: 'hu',
@@ -2341,7 +2553,7 @@ const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU: HelpCenterRevision =
   sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-supplies-default-v1',
   contextKey: 'assets.supplies',
@@ -2350,7 +2562,7 @@ const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.supplies', EXPLANATION_ASSETS_SUPPLIES_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION,
   id: 'explanation-assets-supplies-default-hu-v1',
   lang: 'hu',
@@ -2360,7 +2572,7 @@ const DEFAULT_EXPLANATION_ASSETS_SUPPLIES_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.supplies', EXPLANATION_ASSETS_SUPPLIES_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
   id: 'explanation-assets-tickets-default-v1',
   contextKey: 'assets.tickets',
@@ -2369,7 +2581,7 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION,
   id: 'explanation-assets-tickets-default-hu-v1',
   lang: 'hu',
@@ -2379,7 +2591,7 @@ const DEFAULT_EXPLANATION_ASSETS_TICKETS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('assets.tickets', EXPLANATION_ASSETS_TICKETS_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-event-editor-default-v1',
   contextKey: 'event.editor',
@@ -2388,7 +2600,7 @@ const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('event.editor', EXPLANATION_EVENT_EDITOR_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION,
   id: 'explanation-event-editor-default-hu-v1',
   lang: 'hu',
@@ -2398,7 +2610,7 @@ const DEFAULT_EXPLANATION_EVENT_EDITOR_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('event.editor', EXPLANATION_EVENT_EDITOR_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_CHATS_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_CHATS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-chats-default-v1',
   contextKey: 'chats',
@@ -2407,7 +2619,7 @@ const DEFAULT_EXPLANATION_CHATS_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_CHATS_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_CHATS_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_CHATS_REVISION,
   id: 'explanation-chats-default-hu-v1',
   lang: 'hu',
@@ -2417,7 +2629,7 @@ const DEFAULT_EXPLANATION_CHATS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('chats', EXPLANATION_CHATS_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_CONTACTS_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_CONTACTS_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-contacts-default-v1',
   contextKey: 'contacts',
@@ -2426,7 +2638,7 @@ const DEFAULT_EXPLANATION_CONTACTS_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_CONTACTS_REVISION,
   id: 'explanation-contacts-default-hu-v1',
   lang: 'hu',
@@ -2436,7 +2648,7 @@ const DEFAULT_EXPLANATION_CONTACTS_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('contacts', EXPLANATION_CONTACTS_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-profile-editor-default-v1',
   contextKey: 'profile.editor',
@@ -2445,7 +2657,7 @@ const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('profile.editor', EXPLANATION_PROFILE_EDITOR_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION,
   id: 'explanation-profile-editor-default-hu-v1',
   lang: 'hu',
@@ -2455,7 +2667,7 @@ const DEFAULT_EXPLANATION_PROFILE_EDITOR_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('profile.editor', EXPLANATION_PROFILE_EDITOR_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-profile-view-default-v1',
   contextKey: 'profile.view',
@@ -2464,7 +2676,7 @@ const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION,
   id: 'explanation-profile-view-default-hu-v1',
   lang: 'hu',
@@ -2474,7 +2686,7 @@ const DEFAULT_EXPLANATION_PROFILE_VIEW_REVISION_HU: HelpCenterRevision = {
   sections: withSeededExplanationImages('profile.view', EXPLANATION_PROFILE_VIEW_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_HOME_REVISION,
   id: 'explanation-event-feedback-default-v1',
   contextKey: 'event.feedback',
@@ -2483,7 +2695,7 @@ const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION: HelpCenterRevision = {
   sections: withSeededExplanationImages('event.feedback', EXPLANATION_EVENT_FEEDBACK_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU: HelpCenterRevision = {
+const DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION_HU: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_EVENT_FEEDBACK_REVISION,
   id: 'explanation-event-feedback-default-hu-v1',
   lang: 'hu',
@@ -2499,6 +2711,11 @@ export const APP_STATIC_DATA = {
   vibeIcons: VIBE_ICONS,
   categoryIcons: CATEGORY_ICONS,
   memberTraitIcons: MEMBER_TRAIT_ICONS,
+  navigatorHostTierPresenters: NAVIGATOR_HOST_TIER_PRESENTERS,
+  navigatorHostTierPresenterDefault: NAVIGATOR_HOST_TIER_PRESENTER_DEFAULT,
+  navigatorTraitPresenters: NAVIGATOR_TRAIT_PRESENTERS,
+  navigatorMemberImpressionTitlePresenters: NAVIGATOR_MEMBER_IMPRESSION_TITLE_PRESENTERS,
+  navigatorTraitPresenterDefault: NAVIGATOR_TRAIT_PRESENTER_DEFAULT,
   personalityTraitCatalog: PERSONALITY_TRAIT_CATALOG,
   physiqueOptions: PHYSIQUE_OPTIONS,
   languageSuggestions: LANGUAGE_SUGGESTIONS,
@@ -2514,6 +2731,9 @@ export const APP_STATIC_DATA = {
   homeUserFacetById: HOME_USER_FACET_BY_ID,
   profileStatusOptions: PROFILE_STATUS_OPTIONS,
   contentLanguages: CONTENT_LANGUAGES,
+  helpCenterHeaderColors: HELP_CENTER_HEADER_COLORS,
+  helpCenterHeaderColorOptions: HELP_CENTER_HEADER_COLOR_OPTIONS,
+  documentViewerHeaderPalettes: DOCUMENT_VIEWER_HEADER_PALETTES,
   explainableSurfaces: EXPLAINABLE_SURFACES,
   profileDetailValueOptions: PROFILE_DETAIL_VALUE_OPTIONS,
   profileDetailGroupTemplates: PROFILE_DETAIL_GROUP_TEMPLATES,

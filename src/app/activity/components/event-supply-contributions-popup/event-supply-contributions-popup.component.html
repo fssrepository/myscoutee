@@ -37,26 +37,10 @@
         ></app-smart-list>
 
         <ng-template #supplyContributionItemTemplate let-row>
-          <article class="subevent-supply-contribution-row">
-            <span class="chat-members-popup-avatar" [class]="'user-color-' + row.gender">{{ row.initials }}</span>
-            <div class="subevent-supply-contribution-meta">
-              <p class="subevent-supply-contribution-name">{{ row.name }}, {{ row.age }} · {{ row.city }}</p>
-              <p class="subevent-supply-contribution-date">{{ host.addedLabel(row.addedAtIso) }}</p>
-            </div>
-            <span class="subevent-supply-contribution-quantity">{{ host.quantityLabel(row.quantity) }}</span>
-            <div class="subevent-supply-contribution-actions">
-              <button
-                type="button"
-                class="experience-action-btn experience-action-delete subevent-supply-contribution-delete motion-static"
-                [class.is-disabled]="!host.canDelete(row)"
-                [disabled]="!host.canDelete(row)"
-                (click)="host.requestDelete(row, $event)"
-                [attr.aria-label]="host.canDelete(row) ? 'Delete my quantity row' : 'Only your own quantity rows can be deleted'"
-                >
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </article>
+          <single-row
+            [row]="supplyContributionSingleRow(row)"
+            (menuAction)="onSupplyContributionMenuAction(row, $event)"
+          ></single-row>
         </ng-template>
 
         @if (host.bringDialog(); as dialog) {

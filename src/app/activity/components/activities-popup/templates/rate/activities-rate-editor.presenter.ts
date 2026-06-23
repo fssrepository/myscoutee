@@ -1,16 +1,15 @@
-import type * as AppTypes from '../../../../../shared/core/base/models';
-import type { RatingStarBarConfig } from '../../../../../shared/ui';
+import type { ImageCardData, RatingStarBarConfig } from '../../../../../shared/ui';
 
 interface ActivitiesRateEditorPresenterDeps {
   getActivitiesRateFilter: () => string;
-  getSelectedRow: () => AppTypes.ActivityListRow | null;
-  getFocusedRow: () => AppTypes.ActivityListRow | null;
+  getSelectedRow: () => ImageCardData | null;
+  getFocusedRow: () => ImageCardData | null;
   isFullscreenModeActive: () => boolean;
   isEditorClosing: () => boolean;
   isEditorOpen: () => boolean;
   getRatingScale: () => readonly number[];
-  getOwnRatingValue: (row: AppTypes.ActivityListRow) => number;
-  isPairReceivedRateRow: (row: AppTypes.ActivityListRow) => boolean;
+  getOwnRatingValue: (row: ImageCardData) => number;
+  isPairReceivedRateRow: (row: ImageCardData) => boolean;
 }
 
 export class ActivitiesRateEditorPresenter {
@@ -40,7 +39,7 @@ export class ActivitiesRateEditorPresenter {
 
   private selectedModeLabel(): string {
     const row = this.deps.getSelectedRow();
-    if (!row || row.type !== 'rates') {
+    if (!row) {
       return this.deps.getActivitiesRateFilter().startsWith('individual') ? 'Single' : 'Pair';
     }
     return row.mode === 'pair' ? 'Pair' : 'Single';

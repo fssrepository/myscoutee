@@ -20,6 +20,7 @@ export type SmartListClassValue = string | string[] | Set<string> | Record<strin
 export type SmartListCalendarVariant = 'default' | 'rate-counts';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
 export type SmartListListFlow = 'normal' | 'reverse';
+export type SmartListOrientation = 'vertical' | 'horizontal';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
 export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
@@ -231,6 +232,8 @@ export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = Sm
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   mobilePageSizeCap?: number | null;
+  compactHorizontal?: SmartListConfigValue<boolean, TFilters>;
+  mobileStepper?: SmartListConfigValue<boolean, TFilters>;
   initialPageCount?: number;
   initialPageSize?: number;
   preloadOffsetPx?: number;
@@ -267,6 +270,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   selectMode?: SmartListConfigValue<boolean, TFilters>;
   listLayout?: SmartListConfigValue<SmartListListLayout, TFilters>;
   listFlow?: SmartListConfigValue<SmartListListFlow, TFilters>;
+  orientation?: SmartListConfigValue<SmartListOrientation, TFilters>;
   desktopColumns?: SmartListConfigValue<number | null, TFilters>;
   snapMode?: SmartListConfigValue<SmartListSnapMode, TFilters>;
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;
@@ -278,6 +282,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);
+    autoplayMs?: SmartListConfigValue<number | null, TFilters>;
     ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => RatingStarBarConfig | null;
     ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;
     onRatingSelect?: (item: T | null, score: number, query: ListQuery<TFilters>) => void | Promise<void>;

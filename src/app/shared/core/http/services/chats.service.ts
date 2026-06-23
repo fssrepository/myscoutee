@@ -3,7 +3,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type {
@@ -13,7 +12,7 @@ import type {
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesPageRequest } from '../../contracts';
-import { activityChatContextFilterKey } from '../../base/converters';
+import { activityChatContextFilterKey } from '../../base/mappers';
 import { AppContext } from '../../../ui/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';
@@ -369,7 +368,7 @@ export class HttpChatsService implements IChatsService {
     clientId?: string,
     replyTo?: ContractTypes.ChatPopupMessage['replyTo']
   ): Promise<ContractTypes.ChatPopupMessage | null> {
-    const trimmedText = text.trim();
+    const trimmedText = AppUtils.convertAsciiEmojis(text.trim());
     if (!trimmedText && attachments.length === 0) {
       return null;
     }
@@ -474,7 +473,7 @@ export class HttpChatsService implements IChatsService {
     };
     if (typeof mutation.text === 'string') {
       action = 'edit';
-      payload.text = mutation.text;
+      payload.text = AppUtils.convertAsciiEmojis(mutation.text.trim());
     } else if (mutation.deleted === true) {
       action = 'delete';
     } else if (typeof mutation.pinned === 'boolean') {
@@ -770,7 +769,7 @@ export class HttpChatsService implements IChatsService {
       || this.normalizeHttpText(senderAvatar?.initials)
       || AppUtils.initialsFromText(senderName || senderId || 'User');
     const senderGender = this.normalizeHttpGender(message.senderGender ?? senderAvatar?.gender);
-    const senderImageUrl = this.normalizeHttpMediaUrl(message.senderImageUrl)
+    const senderImageUrl = this.normalizeHttpMediaUrl(message.senderImageUrl, 'small')
       ?? this.resolveHttpChatAvatarImageUrl(senderId, senderAvatar);
     const text = this.normalizeHttpText(message.text);
     const sentAtIso = this.normalizeHttpText(message.sentAtIso) || new Date().toISOString();
@@ -805,7 +804,7 @@ export class HttpChatsService implements IChatsService {
           id: `${reader.id ?? ''}`.trim(),
           initials: `${reader.initials ?? ''}`.trim(),
           gender: this.normalizeHttpGender(reader.gender),
-          imageUrl: this.normalizeHttpMediaUrl(reader.imageUrl)
+          imageUrl: this.normalizeHttpMediaUrl(reader.imageUrl, 'small')
             ?? this.resolveHttpChatAvatarImageUrl(`${reader.id ?? ''}`.trim(), null)
         })),
       deletedAtIso: message.deletedAtIso ?? null,
@@ -883,25 +882,28 @@ export class HttpChatsService implements IChatsService {
     avatar: HttpChatSenderAvatarDto | null
   ): string | null {
     void userId;
-    return this.normalizeHttpMediaUrl(avatar?.imageUrl ?? avatar?.avatarUrl ?? avatar?.url);
+    return this.normalizeHttpMediaUrl(avatar?.imageUrl ?? avatar?.avatarUrl ?? avatar?.url, 'small');
   }
 
-  private normalizeHttpMediaUrl(value: unknown): string | null {
+  private normalizeHttpMediaUrl(value: unknown, variant?: 'small' | 'medium' | 'large'): string | null {
     const url = this.normalizeHttpText(value);
     if (!url) {
       return null;
     }
+    let resolvedUrl: string;
     if (/^(?:https?:|data:|blob:|indexeddb:)/i.test(url) || url.startsWith('/api/')) {
-      return url;
+      resolvedUrl = url;
+    } else {
+      const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
+      if (url.startsWith('/media/')) {
+        resolvedUrl = `${baseUrl}${url}`;
+      } else if (url.startsWith('media/')) {
+        resolvedUrl = `${baseUrl}/${url}`;
+      } else {
+        resolvedUrl = url;
+      }
     }
-    const baseUrl = this.apiBaseUrl.replace(/\/+$/, '');
-    if (url.startsWith('/media/')) {
-      return `${baseUrl}${url}`;
-    }
-    if (url.startsWith('media/')) {
-      return `${baseUrl}/${url}`;
-    }
-    return url;
+    return variant ? AppUtils.mediaImageVariantUrl(resolvedUrl, variant) : resolvedUrl;
   }
 
   private toHttpChatReply(replyTo: ContractTypes.ChatPopupMessage['replyTo']): HttpChatMessageReplyDto | null {
@@ -936,9 +938,7 @@ export class HttpChatsService implements IChatsService {
       || member.requestKind === 'waitlist-invite'
       ? member.requestKind
       : null;
-    const avatarUrl = this.normalizeHttpText(member.avatarUrl)
-      || this.normalizeHttpText(member.imageUrl)
-      || '';
+    const avatarUrl = this.normalizeHttpMediaUrl(member.avatarUrl ?? member.imageUrl, 'small') ?? '';
     const nowIso = this.normalizeHttpText(member.actionAtIso)
       || this.normalizeHttpText(member.metAtIso)
       || new Date().toISOString();
@@ -977,7 +977,7 @@ export class HttpChatsService implements IChatsService {
       subtitle: typeof attachment.subtitle === 'string' ? attachment.subtitle.trim() : null,
       description: typeof attachment.description === 'string' ? attachment.description.trim() : null,
       url: this.normalizeHttpMediaUrl(attachment.url),
-      previewUrl: this.normalizeHttpMediaUrl(attachment.previewUrl),
+      previewUrl: this.normalizeHttpMediaUrl(attachment.previewUrl, 'medium'),
       mimeType: typeof attachment.mimeType === 'string' ? attachment.mimeType.trim() : null,
       sizeBytes: Number.isFinite(Number(attachment.sizeBytes)) ? Math.max(0, Math.trunc(Number(attachment.sizeBytes))) : null
     };

@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { ExplanationGuideService } from '../../../core';
-import type { HelpCenterSection } from '../../../core/contracts';
+import type { HelpCenterSectionDto } from '../../../core/contracts';
 import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
 import { ProgressIndicatorComponent } from '../progress-indicator';
@@ -57,11 +57,11 @@ export class ExplanationPopupComponent {
       : this.homeFilterModeOptionsEn;
   }
 
-  protected shouldShowGeneratedVisual(section: HelpCenterSection): boolean {
+  protected shouldShowGeneratedVisual(section: HelpCenterSectionDto): boolean {
     return !/<img[\s>]/i.test(this.sectionContentHtml(section));
   }
 
-  protected sectionContentHtml(section: HelpCenterSection): string {
+  protected sectionContentHtml(section: HelpCenterSectionDto): string {
     const contentHtml = `${section.contentHtml ?? ''}`.trim();
     if (/<img[\s>]/i.test(contentHtml)) {
       return contentHtml;
@@ -74,12 +74,12 @@ export class ExplanationPopupComponent {
     return `${contentHtml}${contentHtml ? '' : ''}${seededFigure}`;
   }
 
-  protected sectionLayoutClass(section: HelpCenterSection): string | null {
+  protected sectionLayoutClass(section: HelpCenterSectionDto): string | null {
     const layout = this.sectionLayout(section);
     return layout ? `explanation-popup__item--${layout}` : null;
   }
 
-  private sectionLayout(section: HelpCenterSection): ExplanationSectionLayout | null {
+  private sectionLayout(section: HelpCenterSectionDto): ExplanationSectionLayout | null {
     const panelSpan = this.normalizeSectionLayout(section.panelSpan);
     if (panelSpan) {
       return panelSpan;
@@ -115,7 +115,7 @@ export class ExplanationPopupComponent {
     return null;
   }
 
-  private primarySectionImageUrl(section: HelpCenterSection): string {
+  private primarySectionImageUrl(section: HelpCenterSectionDto): string {
     return `${section.imageUrls?.[0] ?? ''}`.trim();
   }
 

@@ -1,10 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetTicketsRepository } from '../repositories/asset-tickets.repository';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AssetContracts from '../../../contracts/asset.interface';
 @Injectable({
   providedIn: 'root'
 })
@@ -16,7 +15,7 @@ export class LocalAssetTicketsService extends LocalRouteDelayService {
     return this.assetTicketsRepository.peekTicketCountByUser(userId);
   }
 
-  async queryTicketPage(query: AppDTOs.AssetTicketPageQueryDTO): Promise<AppDTOs.AssetTicketPageResultDTO> {
+  async queryTicketPage(query: AssetContracts.AssetTicketPageQueryDTO): Promise<AssetContracts.AssetTicketPageResultDTO> {
     await this.waitForRouteDelay(LocalAssetTicketsService.ASSET_TICKETS_ROUTE);
     return this.assetTicketsRepository.queryTicketPage(query);
   }
