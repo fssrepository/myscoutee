@@ -493,7 +493,16 @@ export class ActivitiesEventsController {
 
   public runActivityItemRestoreAction(row: AppTypes.ActivityListRow, event?: Event): void {
     event?.stopPropagation();
-    void this.restoreActivityRow(row);
+    this.confirmationDialogService.open({
+      title: 'Restore event?',
+      message: row.title,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Restore',
+      busyConfirmLabel: 'Restoring...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to restore event.',
+      onConfirm: () => this.restoreActivityRow(row)
+    });
   }
 
   public runActivityItemSecondaryAction(row: AppTypes.ActivityListRow, event?: Event): void {
