@@ -87,5 +87,4 @@ export * from './base/builders';
 export * from './base/converters';
 export type * from './contracts';
 export * from './base/models';
-export * from './memory';
 export * from './local/seed';

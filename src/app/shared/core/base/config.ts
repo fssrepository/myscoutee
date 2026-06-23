@@ -7,7 +7,7 @@ export interface RouteConfigEntry {
   http?: boolean;
 }
 
-export type RouteMode = 'local' | 'http' | 'memory';
+export type RouteMode = 'local' | 'http';
 
 export interface RouteConfig {
   defaultDemoDelayMs: number;
@@ -336,5 +336,5 @@ function normalizeDelayMs(value: number): number {
 }
 
 function normalizeRouteMode(value: RouteMode | null | undefined): RouteMode | null {
-  return value === 'local' || value === 'http' || value === 'memory' ? value : null;
+  return value === 'local' || value === 'http' ? value : null;
 }
