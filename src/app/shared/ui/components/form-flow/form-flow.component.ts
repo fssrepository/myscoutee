@@ -21,16 +21,16 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import {
-  AppMenuComponent,
-  type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuKind,
-  type AppMenuLayout,
-  type AppMenuModel,
-  type AppMenuPanelMode,
-  type AppMenuTrigger
-} from '../menu';
+import { AppMenuComponent } from '../menu/menu.component';
+import type {
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuKind,
+  AppMenuLayout,
+  AppMenuModel,
+  AppMenuPanelMode,
+  AppMenuTrigger
+} from '../menu/menu.types';
 import { EditableImageCarouselComponent } from '../editable-image-carousel';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 import { ImageCardComponent, InfoCardComponent } from '../card';
@@ -95,6 +95,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private formValue: unknown = {};
   private readonly emptyStringArray: readonly string[] = [];
   private readonly stringArrayValueCache = new WeakMap<readonly unknown[], readonly string[]>();
+  private readonly csvStringArrayValueCache = new Map<string, readonly string[]>();
+  private readonly dateValueCache = new Map<string, Date>();
   private onControlChange: (value: unknown) => void = () => undefined;
   private onControlTouched: () => void = () => undefined;
   private viewportScrollLockTargetIndex: number | null = null;
@@ -326,12 +328,20 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       return null;
     }
+    const cached = this.dateValueCache.get(value);
+    if (cached) {
+      return cached;
+    }
     const [year, month, day] = value.split('-').map(part => Number(part));
     if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
       return null;
     }
     const parsed = new Date(year, month - 1, day);
-    return Number.isFinite(parsed.getTime()) ? parsed : null;
+    if (!Number.isFinite(parsed.getTime())) {
+      return null;
+    }
+    this.dateValueCache.set(value, parsed);
+    return parsed;
   }
 
   protected controlDateLabel(control: FormFlowControlModel): string {
@@ -775,14 +785,21 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       .map(segment => /^\d+$/.test(segment) ? Number(segment) : segment);
   }
 
-  private csvStringArrayValue(value: unknown): string[] {
+  private csvStringArrayValue(value: unknown): readonly string[] {
     if (Array.isArray(value)) {
       return value.map(item => `${item ?? ''}`.trim()).filter(Boolean);
     }
-    return `${value ?? ''}`
+    const textValue = `${value ?? ''}`;
+    const cached = this.csvStringArrayValueCache.get(textValue);
+    if (cached) {
+      return cached;
+    }
+    const normalized = textValue
       .split(',')
       .map(item => item.trim())
       .filter(Boolean);
+    this.csvStringArrayValueCache.set(textValue, normalized);
+    return normalized;
   }
 
   private csvStringValue(value: unknown): string {

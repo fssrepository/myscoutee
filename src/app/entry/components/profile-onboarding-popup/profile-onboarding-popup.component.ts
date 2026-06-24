@@ -3,18 +3,13 @@ import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/profile-experience-manager';
-import {
-  FormFlowComponent,
-  type FormFlowActionEvent,
-  type FormFlowModel
-} from '../../../shared/ui/components/form-flow';
-import { I18nPipe } from '../../../shared/ui/pipes';
-import {
-  UsersService,
-  type ProfileOnboardingDraft,
-  type UserDto
-} from '../../../shared/core';
+import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/profile-experience-manager/profile-experience-manager.component';
+import { FormFlowComponent } from '../../../shared/ui/components/form-flow/form-flow.component';
+import type { FormFlowActionEvent, FormFlowModel } from '../../../shared/ui/components/form-flow/form-flow.types';
+import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
+import { UsersService } from '../../../shared/core/base/services/users.service';
+import type { ProfileOnboardingDraft } from '../../../shared/core/base/services/profile-onboarding.service';
+import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
 import type {
   ExperienceEntry,
   ExperienceFilter
@@ -108,7 +103,19 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
     if (context?.menu === 'experienceSelector') {
       this.openExperienceManager(context.value);
+      return;
     }
+    if (context?.menu === 'field') {
+      this.refreshOnboardingFlowModel();
+      this.cdr.markForCheck();
+    }
+  }
+
+  protected onOnboardingDataChange(data: ProfileExtDto): void {
+    if (!this.draft) {
+      return;
+    }
+    this.draft.data = data;
   }
 
   protected requestDismiss(): void {

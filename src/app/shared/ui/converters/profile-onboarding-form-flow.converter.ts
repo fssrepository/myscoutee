@@ -1,6 +1,6 @@
 import { APP_STATIC_DATA } from '../../app-static-data';
 import { AppUtils } from '../../app-utils';
-import type { ProfileOnboardingDraft } from '../../core';
+import type { ProfileOnboardingDraft } from '../../core/base/services/profile-onboarding.service';
 import type { ProfileExtDto, UserDto } from '../../core/contracts/user.interface';
 import type { DetailPrivacy, ProfileStatus } from '../../core/common/constants';
 import type { ExperienceEntry, ProfileDetailFormGroup } from '../../core/contracts/profile.interface';
@@ -8,9 +8,9 @@ import type {
   AppMenuItem,
   AppMenuPalette,
   AppMenuTrigger
-} from '../components/menu';
-import { buildTabbedMenuModel } from '../components/menu';
-import type { FormFlowControlModel, FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
+} from '../components/menu/menu.types';
+import { buildTabbedMenuModel } from '../components/menu/menu-option-groups';
+import type { FormFlowControlModel, FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow/form-flow.types';
 import type { UiConverter } from './converter.types';
 
 export interface ProfileOnboardingFormFlowPrivacyOptions {

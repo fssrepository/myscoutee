@@ -1,4 +1,4 @@
-@if (draft && user) {
+@if (open && draft && user) {
   @if (draft.data; as onboardingData) {
     <section
       class="profile-onboarding-shell"
@@ -31,7 +31,8 @@
             <app-form-flow
               class="profile-onboarding-flow"
               [model]="flowModel"
-              [(ngModel)]="draft.data"
+              [ngModel]="draft.data"
+              (ngModelChange)="onOnboardingDataChange($event)"
               [saving]="saving"
               [disabled]="saving"
               (save)="onOnboardingFlowSave()"

@@ -677,6 +677,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       this.onboardingUser = user;
       this.onboardingTitle = copy.title;
       this.onboardingMessage = copy.message ?? '';
+      this.showFirebaseAuthPopup = false;
       this.onboardingOpen = true;
       this.changeDetectorRef.detectChanges();
     });
