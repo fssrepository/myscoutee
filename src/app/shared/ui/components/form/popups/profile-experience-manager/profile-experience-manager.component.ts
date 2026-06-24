@@ -20,28 +20,28 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../app-static-data';
-import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../app-calendar-date-adapter';
-import { AppUtils } from '../../../app-utils';
-import { UserExperiencesService, type UserExperiencesRouteConfig } from '../../../core';
+import { APP_STATIC_DATA } from '../../../../../app-static-data';
+import { AppCalendarDateAdapter, AppCalendarDateFormats } from '../../../../../app-calendar-date-adapter';
+import { AppUtils } from '../../../../../app-utils';
+import { UserExperiencesService, type UserExperiencesRouteConfig } from '../../../../../core';
 import type {
   ExperienceEntry,
   ExperienceFilter,
   ExperienceImportProgressState,
   ExperienceImportStatistics,
   UserExperienceImportDraft
-} from '../../../core/contracts/profile.interface';
+} from '../../../../../core/contracts/profile.interface';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger
-} from '../menu';
+} from '../../../menu';
 import {
   SingleRowComponent,
   type SingleRowData
-} from '../card';
+} from '../../../smart-list/card';
 import {
   SmartListComponent,
   type ListQuery,
@@ -49,7 +49,7 @@ import {
   type SmartListConfig,
   type SmartListFilters,
   type SmartListLoadPage
-} from '../smart-list';
+} from '../../../smart-list';
 
 type ProfileExperienceManagerMenuId = string;
 

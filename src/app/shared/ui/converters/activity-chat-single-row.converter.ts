@@ -1,6 +1,6 @@
 import type { ChatChannelType, ChatDTO } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
-import type { SingleRowData } from '../components/card';
+import type { SingleRowData } from '../components/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityChatSingleRowConverterOptions {

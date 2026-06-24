@@ -7,7 +7,7 @@ import type {
 } from '../../core/common/constants';
 import type {
   InfoCardData
-} from '../components/card';
+} from '../components/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityEventInfoCardConverterOptions {

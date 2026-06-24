@@ -3,9 +3,9 @@ import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/profile-experience-manager/profile-experience-manager.component';
-import { FormFlowComponent } from '../../../shared/ui/components/form-flow/form-flow.component';
-import type { FormFlowActionEvent, FormFlowDraft, FormFlowModel } from '../../../shared/ui/components/form-flow/form-flow.types';
+import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/form/popups/profile-experience-manager';
+import { FormFlowComponent } from '../../../shared/ui/components/form/flow/form-flow.component';
+import type { FormFlowActionEvent, FormFlowDraft, FormFlowModel } from '../../../shared/ui/components/form/flow/form-flow.types';
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 import { UsersService } from '../../../shared/core/base/services/users.service';
 import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';

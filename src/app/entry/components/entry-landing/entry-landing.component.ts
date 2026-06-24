@@ -9,7 +9,7 @@ import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/conten
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import {
   InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
-} from '../../../shared/ui/components/card';
+} from '../../../shared/ui/components/smart-list/card';
 import {
   SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';

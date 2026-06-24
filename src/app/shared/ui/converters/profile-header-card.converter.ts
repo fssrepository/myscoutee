@@ -1,5 +1,5 @@
 import type { ProgressIndicatorState } from '../components/progress-indicator';
-import type { HeaderCardModel } from '../components/card/header-card';
+import type { HeaderCardModel } from '../components/smart-list/card/header-card';
 import type { UserDto } from '../../core/contracts/user.interface';
 
 export interface ProfileHeaderCardConverterOptions {

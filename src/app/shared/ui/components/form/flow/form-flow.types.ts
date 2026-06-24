@@ -6,8 +6,8 @@ import type {
   AppMenuModel,
   AppMenuPanelMode,
   AppMenuTrigger
-} from '../menu';
-import type { ImageCardData, InfoCardData } from '../card';
+} from '../../menu';
+import type { ImageCardData, InfoCardData } from '../../smart-list/card';
 
 export interface FormFlowDraft<TData> {
   version: 1;

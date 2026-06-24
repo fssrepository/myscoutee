@@ -17,8 +17,8 @@ import type {
   FormFlowMenuControlConfig,
   FormFlowModel,
   FormFlowStepModel
-} from '../components/form-flow/form-flow.types';
-import { formFlowCompletionPercent } from '../components/form-flow/form-flow.utils';
+} from '../components/form/flow/form-flow.types';
+import { formFlowCompletionPercent } from '../components/form/flow/form-flow.utils';
 import type { UiConverter } from './converter.types';
 
 export interface ProfileFormFlowPrivacyOptions {

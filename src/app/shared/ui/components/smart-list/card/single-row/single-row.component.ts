@@ -2,8 +2,8 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../../app-utils';
-import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
+import { AppUtils } from '../../../../../app-utils';
+import { CounterBadgePipe } from '../../../../pipes/counter-badge.pipe';
 import {
   AppMenuComponent,
   type AppMenuKind,
@@ -13,7 +13,7 @@ import {
   type AppMenuPanelMode,
   type AppMenuPalette,
   type AppMenuTrigger
-} from '../../menu';
+} from '../../../menu';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,

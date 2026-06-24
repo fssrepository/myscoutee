@@ -2,15 +2,15 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../../app-utils';
-import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
+import { AppUtils } from '../../../../../app-utils';
+import { LazyBgImageDirective } from '../../../../directives/lazy-bg-image.directive';
 import {
   AppMenuTriggerComponent,
   type AppMenuItem,
   type AppMenuPalette,
   type AppMenuTrigger
-} from '../../menu';
-import { ProgressIndicatorComponent } from '../../progress-indicator';
+} from '../../../menu';
+import { ProgressIndicatorComponent } from '../../../progress-indicator';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,

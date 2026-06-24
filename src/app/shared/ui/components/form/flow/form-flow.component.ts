@@ -21,7 +21,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 
-import { AppMenuComponent } from '../menu/menu.component';
+import { AppMenuComponent } from '../../menu/menu.component';
 import type {
   AppMenuItem,
   AppMenuItemSelectEvent,
@@ -31,10 +31,10 @@ import type {
   AppMenuPanelMode,
   AppMenuTrigger,
   AppMenuValueKey
-} from '../menu/menu.types';
-import { EditableImageCarouselComponent } from '../editable-image-carousel';
-import { ProgressIndicatorComponent } from '../progress-indicator';
-import { ImageCardComponent, InfoCardComponent } from '../card';
+} from '../../menu/menu.types';
+import { EditableImageCarouselComponent } from '../../editable-image-carousel';
+import { ProgressIndicatorComponent } from '../../progress-indicator';
+import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import type {
   FormFlowActionEvent,
   FormFlowControlModel,

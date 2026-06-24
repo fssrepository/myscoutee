@@ -1,4 +1,4 @@
-@use '../../styles' as ui;
+@use '../../../../styles' as ui;
 
 @include ui.popup-shell();
 @include ui.interactive-motion();

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
-import { I18nPipe } from '../../../pipes';
+import { I18nPipe } from '../../../../pipes';
 
 export type WarpImageCardTone = 'blue' | 'purple' | 'pink' | 'orange';
 

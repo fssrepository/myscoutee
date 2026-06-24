@@ -29,7 +29,7 @@ import {
   type FormFlowActionEvent,
   type FormFlowDraft,
   type FormFlowModel
-} from '../../../shared/ui/components/form-flow';
+} from '../../../shared/ui/components/form/flow';
 import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,

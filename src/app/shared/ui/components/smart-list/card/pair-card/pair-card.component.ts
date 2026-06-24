@@ -17,9 +17,9 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../../app-utils';
-import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
-import { ProgressIndicatorComponent } from '../../progress-indicator';
+import { AppUtils } from '../../../../../app-utils';
+import { LazyBgImageDirective } from '../../../../directives/lazy-bg-image.directive';
+import { ProgressIndicatorComponent } from '../../../progress-indicator';
 import type {
   CardImageSlide,
   CardMenuRequestEvent,

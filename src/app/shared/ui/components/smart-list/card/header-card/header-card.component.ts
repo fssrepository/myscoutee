@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { ProgressIndicatorComponent, type ProgressIndicatorState } from '../../progress-indicator';
+import { ProgressIndicatorComponent, type ProgressIndicatorState } from '../../../progress-indicator';
 
 export interface HeaderCardModel {
   title?: string | null;

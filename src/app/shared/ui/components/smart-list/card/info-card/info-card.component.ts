@@ -13,17 +13,17 @@ import {
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AppUtils } from '../../../../app-utils';
-import { LazyBgImageDirective } from '../../../directives/lazy-bg-image.directive';
-import { I18nPipe } from '../../../pipes';
-import { ProgressIndicatorComponent } from '../../progress-indicator';
-import { CounterBadgePipe } from '../../../pipes/counter-badge.pipe';
+import { AppUtils } from '../../../../../app-utils';
+import { LazyBgImageDirective } from '../../../../directives/lazy-bg-image.directive';
+import { I18nPipe } from '../../../../pipes';
+import { ProgressIndicatorComponent } from '../../../progress-indicator';
+import { CounterBadgePipe } from '../../../../pipes/counter-badge.pipe';
 import {
   AppMenuTriggerComponent,
   type AppMenuItem,
   type AppMenuPalette,
   type AppMenuTrigger
-} from '../../menu';
+} from '../../../menu';
 import type {
   CardClickEvent,
   InfoCardData,

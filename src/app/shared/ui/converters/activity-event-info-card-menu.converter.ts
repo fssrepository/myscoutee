@@ -5,7 +5,7 @@ import type {
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction
-} from '../components/card';
+} from '../components/smart-list/card';
 import type { UiConverter } from './converter.types';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {

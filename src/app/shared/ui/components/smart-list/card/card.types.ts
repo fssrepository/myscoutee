@@ -1,4 +1,4 @@
-import type { AppMenuPalette } from '../menu/menu.types';
+import type { AppMenuPalette } from '../../menu/menu.types';
 
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';

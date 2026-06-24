@@ -11,7 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { PricingBuilder } from '../../../../../core/base/builders';
 import type * as AppTypes from '../../../../../core/base/models';
 import type * as ContractTypes from '../../../../../core/contracts';
-import { PricingSlotPanelComponent } from '../../../pricing-slot-panel';
+import { PricingSlotPanelComponent } from '../../popups/pricing-slot-panel';
 
 import type * as AppConstants from '../../../../../core/common/constants';
 interface PricingPreviewState {
