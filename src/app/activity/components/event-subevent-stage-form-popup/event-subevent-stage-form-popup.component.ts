@@ -12,11 +12,13 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
+  LocationInputComponent,
+  type LocationInputConfig,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  PricingEditorComponent,
+  PricingEditorInputComponent,
   type PricingEditorConfig
 } from '../../../shared/ui';
 
@@ -90,7 +92,8 @@ export interface EventSubeventStageFormModel {
     MatTimepickerModule,
     MatNativeDateModule,
     AppMenuComponent,
-    PricingEditorComponent
+    LocationInputComponent,
+    PricingEditorInputComponent
   ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
   styleUrls: ['./event-subevent-stage-form-popup.component.scss']
@@ -114,7 +117,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   @Output() readonly selectOptional = new EventEmitter<boolean>();
   @Output() readonly selectInsertPlacement = new EventEmitter<EventSubeventStageInsertPlacement>();
   @Output() readonly insertTargetChange = new EventEmitter<string | null>();
-  @Output() readonly openLocationMap = new EventEmitter<Event>();
   @Output() readonly capacityMinChange = new EventEmitter<number | string>();
   @Output() readonly capacityMaxChange = new EventEmitter<number | string>();
   @Output() readonly tournamentGroupCapacityMinChange = new EventEmitter<number | string>();
@@ -131,6 +133,12 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     presentation: 'popup-summary',
     allowSlotFeatures: false,
     showAudienceSection: false
+  };
+  protected readonly subeventLocationInputConfig: LocationInputConfig = {
+    label: 'Location',
+    placeholder: 'Sub event location',
+    mapMode: 'search',
+    mapAriaLabel: 'Open sub event location on map'
   };
 
   ngOnChanges(changes: SimpleChanges): void {

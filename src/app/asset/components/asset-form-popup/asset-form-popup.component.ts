@@ -8,7 +8,9 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import {
   AppMenuComponent,
-  PricingEditorComponent,
+  LocationInputComponent,
+  type LocationInputConfig,
+  PricingEditorInputComponent,
   ProgressIndicatorComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -33,7 +35,8 @@ type AssetFormMenuContext =
     FormsModule,
     MatIconModule,
     AppMenuComponent,
-    PricingEditorComponent,
+    LocationInputComponent,
+    PricingEditorInputComponent,
     ProgressIndicatorComponent
   ],
   templateUrl: './asset-form-popup.component.html',
@@ -61,7 +64,6 @@ export class AssetFormPopupComponent implements OnChanges {
   @Input({ required: true }) save!: () => void | Promise<void>;
   @Input({ required: true }) setAssetFormVisibility!: (option: AppConstants.EventVisibility) => void;
   @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
-  @Input({ required: true }) openAssetFormRouteStopMap!: (index: number, event?: Event) => void;
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
   @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
   protected showPoliciesPopup = false;
@@ -74,6 +76,14 @@ export class AssetFormPopupComponent implements OnChanges {
     presentation: 'popup-summary',
     allowSlotFeatures: false,
     showAudienceSection: false
+  };
+  protected readonly assetLocationInputConfig: LocationInputConfig = {
+    label: 'Location',
+    placeholder: 'Property address',
+    required: true,
+    routeStops: () => this.assetFormRouteStops,
+    mapMode: 'search',
+    mapAriaLabel: 'Open location on map'
   };
 
   ngOnChanges(changes: SimpleChanges): void {

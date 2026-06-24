@@ -68,18 +68,19 @@
       <section class="editor-list-card">
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDetailDTO.visibility)">
           <div class="experience-form-grid">
-            <label class="experience-description-field">
+            <label class="experience-description-field event-image-field">
               <span>Image</span>
-              <input #eventImageInput type="file" accept="image/*" hidden (change)="onEventImageFileChange($event)" />
-              <button type="button" class="asset-image-dropzone" (click)="triggerEventImageUpload($event)"
-                [disabled]="eventEditorService.readOnly()">
-                <div class="asset-image-preview"
-                  [style.backgroundImage]="eventDetailDTO.imageUrl ? 'url(' + eventDetailDTO.imageUrl + ')' : null">
-                  @if (!eventEditorService.readOnly()) {
-                  <span class="asset-image-plus">+</span>
-                  }
-                </div>
-              </button>
+              <app-editable-image-carousel
+                class="event-image-carousel"
+                [slotCount]="1"
+                [compact]="true"
+                ariaLabel="Event image"
+                [disabled]="eventEditorService.readOnly()"
+                [uploadOwnerId]="eventImageUploadOwnerId()"
+                [uploadEntityId]="eventImageUploadEntityId()"
+                [ngModel]="eventImageUrls()"
+                (ngModelChange)="onEventImageUrlsChange($event)"
+              ></app-editable-image-carousel>
             </label>
             <label class="experience-title-field">
               <span>Name <span class="required-star">*</span></span>
@@ -173,80 +174,21 @@
                   </div>
                 </label>
               </section>
-              @if (eventFrequencyUsesSlots()) {
-              <section class="event-slots-panel">
-                <div class="event-slots-panel-head">
-                  <div class="event-slots-panel-title-wrap">
-                    <span class="event-slots-panel-title">
-                      <span class="event-schedule-panel-title">
-                        <mat-icon>schedule</mat-icon>
-                        <span>Slots</span>
-                      </span>
-                    </span>
-                    <p class="event-slots-panel-subtitle">Base schedule and date-specific overrides.</p>
-                  </div>
-                </div>
-                <div class="event-slots-panel-body">
-                  <button type="button" class="event-slots-open-btn event-slots-open-btn-inline"
-                    [disabled]="eventStructureReadOnly()" (click)="openSlotsPopup($event)">
-                    <mat-icon>tune</mat-icon>
-                    <span>Open Slot Setup</span>
-                  </button>
-                  <div class="event-slots-summary">
-                    <section class="event-slots-summary-block">
-                      <span class="event-slots-summary-label">Base schedule</span>
-                      @if (slotSummaryBaseItems().length > 0) {
-                      <div class="event-slots-summary-list">
-                        @for (slot of slotSummaryBaseItems(); track slotTrackId($index, slot); let i = $index) {
-                        <article class="event-slots-summary-item">
-                          <span class="event-slots-summary-title">{{ slotTemplateLabel(i) }}</span>
-                          <span class="event-slots-summary-meta">{{ slotSummaryWindowLabel(slot) }}</span>
-                        </article>
-                        }
-                      </div>
-                      } @else {
-                      <p class="event-slots-summary-note">No base slots yet. Open slot setup to create the first one.
-                      </p>
-                      }
-                    </section>
-
-                    <section class="event-slots-summary-block">
-                      <span class="event-slots-summary-label">Specific date overrides</span>
-                      @if (slotSummaryOverrideItems().length > 0) {
-                      <div class="event-slots-summary-list">
-                        @for (override of slotSummaryOverrideItems(); track override.dateKey) {
-                        <article class="event-slots-summary-item">
-                          <span class="event-slots-summary-title">{{ override.label }}</span>
-                          <span class="event-slots-summary-meta">{{ override.detail }}</span>
-                        </article>
-                        }
-                      </div>
-                      } @else {
-                      <p class="event-slots-summary-note">No date-specific overrides yet. The event is still using only
-                        the base schedule.</p>
-                      }
-                    </section>
-                  </div>
-                </div>
-              </section>
-              }
+              <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
+                [config]="eventSlotsInputConfig"
+                [readOnly]="eventStructureReadOnly()"></app-event-slots-input>
             </section>
-            <app-pricing-editor class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
-              [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor>
+            <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
+              [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
               [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
-            <label class="experience-description-field event-location-field">
-              <span>Location</span>
-              <div class="asset-route-row asset-route-row-inline">
-                <input type="text" [ngModel]="eventDetailDTO.location" (ngModelChange)="onEventLocationChange($event)"
-                  placeholder="Event route location" [readonly]="eventEditorService.readOnly()" />
-                <button type="button"
-                  class="experience-action-btn asset-route-map-btn asset-route-main-map-btn event-location-map-btn"
-                  (click)="requestOpenLocationMap()" aria-label="Open event route on map">
-                  <mat-icon>location_on</mat-icon>
-                </button>
-              </div>
-            </label>
+            <app-location-input
+              class="experience-description-field event-location-field"
+              [ngModel]="eventDetailDTO.location"
+              (ngModelChange)="onEventLocationChange($event)"
+              [config]="eventLocationInputConfig"
+              [readOnly]="eventEditorService.readOnly()"
+            ></app-location-input>
             <label class="event-subevents-field">
               <button type="button" class="event-subevents-panel-trigger" (click)="requestOpenSubEvents()">
                 <span class="event-subevents-panel-head">
@@ -306,120 +248,6 @@
       }
     </div>
   </div>
-  @if (showSlotsPopup) {
-  <div class="event-slots-popup-backdrop" (click)="closeSlotsPopup()"></div>
-  <section class="event-slots-popup" role="dialog" aria-modal="true" aria-label="Slot setup">
-    <header class="event-slots-popup-head">
-      <div class="event-slots-popup-copy">
-        <span class="event-slots-popup-title">Slot Setup</span>
-        <span class="event-slots-popup-subtitle">Edit the base schedule and any date-specific overrides here.</span>
-      </div>
-      <button type="button" class="event-slots-popup-close" (click)="closeSlotsPopup()" aria-label="Close slot setup">
-        <mat-icon>close</mat-icon>
-      </button>
-    </header>
-
-    <div class="event-slots-popup-body">
-      <div class="event-slot-editor-toolbar">
-        <div class="event-slot-mode-switch" role="tablist" aria-label="Slot editor mode">
-          <button type="button" class="event-slot-mode-btn" [ngClass]="slotEditorModeButtonClass('base')"
-            [disabled]="!canConfigureSlotsSeries()" (click)="selectSlotEditorMode('base', $event)">
-            Base schedule
-          </button>
-          <button type="button" class="event-slot-mode-btn" [ngClass]="slotEditorModeButtonClass('date')"
-            [disabled]="!canConfigureSlotsSeries()" (click)="selectSlotEditorMode('date', $event)">
-            Specific date
-          </button>
-        </div>
-        @if (canConfigureSlotsSeries()) {
-        <button type="button" class="popup-header-add-btn event-slots-add-btn" (click)="addSlotTemplate()"
-          aria-label="Add slot">
-          <mat-icon>add</mat-icon>
-        </button>
-        }
-        @if (showSlotOverrideDatePicker()) {
-        <div class="event-slot-toolbar-date-row">
-          <mat-form-field appearance="outline" class="event-slot-date-picker" subscriptSizing="dynamic">
-            <mat-label>Date</mat-label>
-            <input matInput [matDatepicker]="slotOverridePopupPicker" [ngModel]="slotOverrideDateValue"
-              (ngModelChange)="onSlotOverrideDateChange($event)" [min]="slotOverrideDateMin()"
-              [max]="slotOverrideDateMax()" [disabled]="!canConfigureSlotsSeries()" />
-            <mat-datepicker-toggle matSuffix [for]="slotOverridePopupPicker"></mat-datepicker-toggle>
-            <mat-datepicker #slotOverridePopupPicker></mat-datepicker>
-          </mat-form-field>
-        </div>
-        }
-      </div>
-      <p class="event-slot-mode-note">{{ slotEditorModeDescription() }}</p>
-      <div class="event-slots-list">
-        @for (slot of activeSlotTemplates(); track slotTrackId($index, slot); let i = $index) {
-        <div class="event-slot-row">
-          <div class="event-slot-row-head">
-            <span class="event-slot-row-title">{{ slotTemplateLabel(i) }}</span>
-            <button type="button" class="event-slot-remove-btn" [disabled]="!canConfigureSlotsSeries()"
-              (click)="removeSlotTemplate(i)" aria-label="Remove slot">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-          <div class="event-slot-row-grid">
-            <label class="event-slot-field">
-              <span>Start</span>
-              <div class="event-datetime-row event-slot-datetime-row">
-                <mat-form-field appearance="outline"
-                  class="event-date-field event-date-field-start event-slot-date-field"
-                  [class.event-slot-date-field-locked]="isSlotOverrideDateFieldLocked()" subscriptSizing="dynamic">
-                  <input matInput [matDatepicker]="slotStartPopupPicker" [ngModel]="slotTemplateStartDateValue(slot)"
-                    (ngModelChange)="onSlotTemplateStartDateChange(i, $event)" [min]="slotTemplateDateMin(slot)"
-                    [max]="slotTemplateDateMax(slot)"
-                    [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isSlotOverrideDateFieldLocked()" />
-                  <mat-datepicker-toggle matSuffix [for]="slotStartPopupPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #slotStartPopupPicker></mat-datepicker>
-                </mat-form-field>
-                <mat-form-field appearance="outline"
-                  class="event-time-field event-time-field-start event-slot-time-field" subscriptSizing="dynamic">
-                  <input matInput [matTimepicker]="slotStartPopupTimePicker" [matTimepickerOpenOnClick]="true"
-                    [ngModel]="slotTemplateStartTimeValue(slot)"
-                    (ngModelChange)="onSlotTemplateStartTimeChange(i, $event)"
-                    [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries()" />
-                  <mat-timepicker-toggle matSuffix [for]="slotStartPopupTimePicker"></mat-timepicker-toggle>
-                  <mat-timepicker #slotStartPopupTimePicker></mat-timepicker>
-                </mat-form-field>
-              </div>
-            </label>
-            <label class="event-slot-field">
-              <span>End</span>
-              <div class="event-datetime-row event-slot-datetime-row">
-                <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field"
-                  [class.event-slot-date-field-locked]="isSlotOverrideDateFieldLocked()" subscriptSizing="dynamic">
-                  <input matInput [matDatepicker]="slotEndPopupPicker" [ngModel]="slotTemplateEndDateValue(slot)"
-                    (ngModelChange)="onSlotTemplateEndDateChange(i, $event)" [min]="slotTemplateEndDateMin(slot)"
-                    [max]="slotTemplateEndDateMax(i, slot)"
-                    [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries() || isSlotOverrideDateFieldLocked()" />
-                  <mat-datepicker-toggle matSuffix [for]="slotEndPopupPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #slotEndPopupPicker></mat-datepicker>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field"
-                  subscriptSizing="dynamic">
-                  <input matInput [matTimepicker]="slotEndPopupTimePicker" [matTimepickerOpenOnClick]="true"
-                    [ngModel]="slotTemplateEndTimeValue(slot)" (ngModelChange)="onSlotTemplateEndTimeChange(i, $event)"
-                    [disabled]="eventEditorService.readOnly() || !canConfigureSlotsSeries()" />
-                  <mat-timepicker-toggle matSuffix [for]="slotEndPopupTimePicker"></mat-timepicker-toggle>
-                  <mat-timepicker #slotEndPopupTimePicker></mat-timepicker>
-                </mat-form-field>
-              </div>
-            </label>
-          </div>
-        </div>
-        }
-        @if (activeSlotTemplates().length === 0) {
-        <div class="event-slot-empty-state">
-          <span>No slots for this schedule.</span>
-        </div>
-        }
-      </div>
-    </div>
-  </section>
-  }
   <app-event-subevents-popup [open]="showSubEventsPopup" [readOnly]="eventEditorService.readOnly()"
     [structureReadOnly]="isPublishedManageMode()"
     [parentTitle]="eventDetailDTO.title" [ownerId]="editingEventId" [subEvents]="eventDetailDTO.subEvents"

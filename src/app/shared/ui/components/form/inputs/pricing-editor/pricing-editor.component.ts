@@ -58,7 +58,7 @@ interface ResolvedPricingEditorConfig {
 }
 
 @Component({
-  selector: 'app-pricing-editor',
+  selector: 'app-pricing-editor-input',
   standalone: true,
   imports: [
     CommonModule,
@@ -77,12 +77,12 @@ interface ResolvedPricingEditorConfig {
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => PricingEditorComponent),
+      useExisting: forwardRef(() => PricingEditorInputComponent),
       multi: true
     }
   ]
 })
-export class PricingEditorComponent implements OnChanges, DoCheck, ControlValueAccessor {
+export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
   private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
 
   @Input() config: PricingEditorConfig = {};
@@ -1084,7 +1084,7 @@ export class PricingEditorComponent implements OnChanges, DoCheck, ControlValueA
 
   private resolveMobileScopeSheetViewport(): boolean {
     return typeof window !== 'undefined'
-      && window.innerWidth <= PricingEditorComponent.MOBILE_SCOPE_SHEET_BREAKPOINT_PX;
+      && window.innerWidth <= PricingEditorInputComponent.MOBILE_SCOPE_SHEET_BREAKPOINT_PX;
   }
 
   private slotLabelById(slotId: string | null | undefined): string {

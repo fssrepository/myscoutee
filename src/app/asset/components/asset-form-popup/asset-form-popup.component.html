@@ -104,12 +104,12 @@
             <span>Details</span>
             <textarea rows="3" [(ngModel)]="assetForm.details" [disabled]="isSavePending"></textarea>
           </label>
-          <app-pricing-editor
+          <app-pricing-editor-input
             class="experience-description-field asset-pricing-field"
             [(ngModel)]="assetForm.pricing"
             [config]="assetPricingEditorConfig"
             [readOnly]="isSavePending"
-          ></app-pricing-editor>
+          ></app-pricing-editor-input>
           <section class="event-policies-panel asset-policies-panel experience-description-field">
             <div class="event-policies-panel-head">
               <div class="event-policies-panel-title-wrap">
@@ -150,27 +150,13 @@
             </div>
           </section>
           @if (isPropertyAssetForm()) {
-            <label class="experience-description-field">
-              <span>Location<span class="asset-form-required-marker">*</span></span>
-              <div class="asset-route-row asset-route-row-inline">
-                <input
-                  type="text"
-                  [ngModel]="assetFormRouteStops[0]"
-                  (ngModelChange)="setAssetFormRouteStop(0, $event)"
-                  [disabled]="isSavePending"
-                  placeholder="Property address"
-                  />
-                <button
-                  type="button"
-                  class="experience-action-btn asset-route-map-btn"
-                  [disabled]="isSavePending"
-                  (click)="openAssetFormRouteStopMap(0, $event)"
-                  aria-label="Open location on map"
-                  >
-                  <mat-icon>location_on</mat-icon>
-                </button>
-              </div>
-            </label>
+            <app-location-input
+              class="experience-description-field"
+              [ngModel]="assetFormRouteStops[0]"
+              (ngModelChange)="setAssetFormRouteStop(0, $event)"
+              [config]="assetLocationInputConfig"
+              [disabled]="isSavePending"
+            ></app-location-input>
           }
         </div>
       </section>

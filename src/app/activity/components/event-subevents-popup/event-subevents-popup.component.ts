@@ -1533,15 +1533,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `${estimateMin} - ${estimateMax}`;
   }
 
-  protected openSubEventLocationMap(event?: Event): void {
-    event?.stopPropagation();
-    const query = `${this.subEventForm.location ?? ''}`.trim();
-    if (!query || typeof window === 'undefined') {
-      return;
-    }
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
-  }
-
   protected canOpenSubEventLocation(item: EventSubeventsItem | null | undefined): boolean {
     return `${item?.location ?? ''}`.trim().length > 0;
   }

@@ -149,27 +149,19 @@
               </mat-form-field>
             </div>
           </label>
-          <label class="experience-description-field subevent-location-field">
-            <span>Location</span>
-            <div class="asset-route-row asset-route-row-inline">
-              <input type="text" [(ngModel)]="model.location" placeholder="Sub event location" />
-              <button
-                type="button"
-                class="experience-action-btn asset-route-map-btn"
-                (click)="openLocationMap.emit($event)"
-                aria-label="Open sub event location on map"
-                >
-                <mat-icon>location_on</mat-icon>
-              </button>
-            </div>
-          </label>
+          <app-location-input
+            class="experience-description-field subevent-location-field"
+            [(ngModel)]="model.location"
+            [config]="subeventLocationInputConfig"
+            [readOnly]="view.readOnly"
+          ></app-location-input>
           @if (model.optional) {
-            <app-pricing-editor
+            <app-pricing-editor-input
               class="experience-description-field subevent-pricing-field"
               [(ngModel)]="model.pricing"
               [config]="subeventPricingEditorConfig"
               [readOnly]="view.readOnly"
-            ></app-pricing-editor>
+            ></app-pricing-editor-input>
           } @else {
             <div class="experience-description-field subevent-pricing-note">
               <mat-icon>info</mat-icon>

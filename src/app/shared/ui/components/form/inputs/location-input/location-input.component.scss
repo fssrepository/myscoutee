@@ -1,0 +1,45 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.location-input {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.location-input__label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  color: #223550;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.location-input__required {
+  color: #b93243;
+}
+
+.location-input__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.62rem;
+  min-width: 0;
+}
+
+.location-input input {
+  width: 100%;
+  min-width: 0;
+}
+
+.location-input__map-menu {
+  width: 32px;
+  min-width: 32px;
+}
+
+.location-input--disabled {
+  opacity: 0.72;
+}
