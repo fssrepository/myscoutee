@@ -1,13 +1,15 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
-import { type ActivityCounterKey } from '../../../shared/ui';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
-import { AppContext } from '../../../shared/ui';
 import { HelpCenterService, USER_BY_ID_LOAD_CONTEXT_KEY, USER_PROFILE_SAVE_CONTEXT_KEY, type UserDto } from '../../../shared/core';
-import { CounterBadgePipe, ProgressIndicatorComponent } from '../../../shared/ui';
+import {
+  AppContext,
+  AppMenuComponent,
+  type ActivityCounterKey,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
 
 interface NavigatorAvatarState {
@@ -15,10 +17,13 @@ interface NavigatorAvatarState {
   imageUrl: string | null;
 }
 
+type NavigatorAvatarMenuItemId = 'navigator-avatar';
+type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
+
 @Component({
   selector: 'app-avatar-btn',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, ProgressIndicatorComponent, CounterBadgePipe],
+  imports: [CommonModule, AppMenuComponent],
   templateUrl: './avatar-btn.component.html',
   styleUrl: './avatar-btn.component.scss'
 })
@@ -127,6 +132,36 @@ export class AvatarBtnComponent implements OnDestroy {
     }
     return 'Loading profile';
   });
+  protected readonly avatarMenuItems = computed<readonly AppMenuItem<NavigatorAvatarMenuItemId, NavigatorAvatarMenuContext>[]>(() => {
+    const user = this.activeUser();
+    const canToggle = this.canToggle();
+    const isLoading = this.isLoading();
+    const hasLoadError = this.hasLoadError();
+    const badgeCount = this.badgeCount();
+    const imageUrl = canToggle ? this.avatarState().imageUrl ?? '' : '';
+    const icon = isLoading ? 'schedule' : hasLoadError ? 'person_off' : '';
+    return [{
+      id: 'navigator-avatar',
+      kind: 'action',
+      layout: 'image',
+      palette: canToggle && user?.gender === 'man' ? 'blue' : canToggle ? 'pink' : 'neutral',
+      imageUrl,
+      imageAlt: this.ariaLabel(),
+      imageFallback: !imageUrl && canToggle ? user?.initials ?? '' : '',
+      icon,
+      ariaLabel: this.ariaLabel(),
+      disabled: !canToggle,
+      counter: canToggle && badgeCount > 0 ? { value: badgeCount, max: 9 } : null,
+      progress: this.showLoadRing()
+        ? {
+            state: hasLoadError ? 'error' : 'loading',
+            shape: 'circle',
+            durationMs: AvatarBtnComponent.USER_MENU_LOAD_DURATION_MS
+          }
+        : null,
+      context: { kind: 'toggle-menu' }
+    }];
+  });
 
   constructor() {
     this.routerEventsSubscription = this.router.events.subscribe(event => {
@@ -169,24 +204,12 @@ export class AvatarBtnComponent implements OnDestroy {
     this.navigatorService.toggleMenu();
   }
 
-  protected avatarClassList(): Record<string, boolean> {
-    const activeUser = this.activeUser();
-    const avatarState = this.avatarState();
-    const canToggle = this.canToggle();
-    const imageUrl = avatarState.imageUrl;
-    return {
-      [`user-color-${activeUser?.gender === 'man' ? 'man' : 'woman'}`]: canToggle,
-      'has-photo': canToggle && !!imageUrl,
-      'is-placeholder': !canToggle
-    };
-  }
-
-  protected avatarBackgroundImage(): string | null {
-    if (!this.canToggle()) {
-      return null;
+  protected onAvatarMenuSelect(
+    event: AppMenuItemSelectEvent<NavigatorAvatarMenuItemId, NavigatorAvatarMenuContext>
+  ): void {
+    if (event.context?.kind === 'toggle-menu') {
+      this.onToggleMenu();
     }
-    const trimmedImageUrl = this.avatarState().imageUrl?.trim() ?? '';
-    return trimmedImageUrl ? `url(${trimmedImageUrl})` : null;
   }
 
   ngOnDestroy(): void {

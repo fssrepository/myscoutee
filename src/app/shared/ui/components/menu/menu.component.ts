@@ -902,6 +902,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.itemVisualLayout(item) === 'action';
   }
 
+  protected isImageLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return this.itemVisualLayout(item) === 'image';
+  }
+
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
     if (this.isActionRowItemOpen(item)) {
       const openIcon = `${this.resolveLiveValue(item.closeIcon ?? item.openIcon) ?? ''}`.trim();
@@ -913,6 +917,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       }
     }
     return this.itemIcon(item);
+  }
+
+  protected actionRowItemImageUrl(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageUrl) ?? ''}`.trim();
+  }
+
+  protected actionRowItemImageAlt(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageAlt) ?? this.actionRowItemAriaLabel(item) ?? ''}`.trim();
+  }
+
+  protected actionRowItemImageFallback(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
   }
 
   protected actionRowItemLabel(item: AppMenuItem<TId, TContext>): string {

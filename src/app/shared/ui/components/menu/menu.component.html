@@ -54,6 +54,7 @@
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
             [class.app-menu__button-row-item--action]="isActionLayoutItem(item)"
+            [class.app-menu__button-row-item--image]="isImageLayoutItem(item)"
             [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
             [class.app-menu__button-row-item--progress]="itemProgressState(item) !== null"
             [class.app-menu__button-row-item--progress-loading]="itemProgressState(item) === 'loading'"
@@ -79,7 +80,17 @@
                 ></app-progress-indicator>
               </span>
             }
-            @if (actionRowItemIcon(item)) {
+            @if (isImageLayoutItem(item)) {
+              <span class="app-menu__button-row-image">
+                @if (actionRowItemImageUrl(item); as imageUrl) {
+                  <img [src]="imageUrl" [alt]="actionRowItemImageAlt(item)" />
+                } @else if (actionRowItemImageFallback(item)) {
+                  <span>{{ actionRowItemImageFallback(item) }}</span>
+                } @else if (actionRowItemIcon(item)) {
+                  <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
+                }
+              </span>
+            } @else if (actionRowItemIcon(item)) {
               <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
             }
             @if (isInlineRowBig) {
