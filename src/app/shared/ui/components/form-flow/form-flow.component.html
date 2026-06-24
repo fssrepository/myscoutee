@@ -283,7 +283,15 @@
                             @if (dateMetaLabel(control)) {
                               <span class="form-flow__date-meta-label">{{ dateMetaLabel(control) }}</span>
                             }
-                            <span class="form-flow__date-meta-badge">{{ dateMetaValue(control) }}</span>
+                            <span
+                              class="form-flow__date-meta-badge"
+                              [ngClass]="'form-flow__date-meta-badge--' + dateMetaPalette(control)"
+                            >
+                              @if (dateMetaIcon(control)) {
+                                <span class="form-flow__date-meta-icon">{{ dateMetaIcon(control) }}</span>
+                              }
+                              <span>{{ dateMetaValue(control) }}</span>
+                            </span>
                           </div>
                         }
                       </div>

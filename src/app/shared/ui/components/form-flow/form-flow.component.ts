@@ -39,6 +39,7 @@ import type {
   FormFlowActionEvent,
   FormFlowControlModel,
   FormFlowDateControlConfig,
+  FormFlowDateMetaValue,
   FormFlowImageCarouselControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
@@ -548,13 +549,33 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.dateConfig(control).meta?.label?.trim() || '';
   }
 
+  protected dateMetaIcon(control: FormFlowControlModel): string {
+    return this.dateMetaValueObject(control)?.icon?.trim()
+      || this.dateConfig(control).meta?.icon?.trim()
+      || '';
+  }
+
+  protected dateMetaPalette(control: FormFlowControlModel): string {
+    return this.dateMetaValueObject(control)?.palette?.trim()
+      || this.dateConfig(control).meta?.palette?.trim()
+      || 'blue';
+  }
+
   protected dateMetaValue(control: FormFlowControlModel): string {
     const meta = this.dateConfig(control).meta;
     const value = meta?.value?.(this.formValue, control);
+    if (this.isDateMetaValue(value)) {
+      return `${value.label ?? ''}`.trim() || meta?.emptyLabel?.trim() || '';
+    }
     if (value === null || value === undefined || `${value}`.trim().length === 0) {
       return meta?.emptyLabel?.trim() || '';
     }
     return `${value}`;
+  }
+
+  private dateMetaValueObject(control: FormFlowControlModel): FormFlowDateMetaValue | null {
+    const value = this.dateConfig(control).meta?.value?.(this.formValue, control);
+    return this.isDateMetaValue(value) ? value : null;
   }
 
   protected summaryTitle(): string {
@@ -1031,6 +1052,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   private isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private isDateMetaValue(value: unknown): value is FormFlowDateMetaValue {
+    return this.isRecord(value) && ('label' in value || 'icon' in value || 'palette' in value);
   }
 
   private isMenuControlConfig(config: FormFlowControlModel['config']): config is FormFlowMenuControlConfig {

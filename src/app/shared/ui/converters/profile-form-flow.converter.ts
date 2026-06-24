@@ -12,6 +12,7 @@ import { buildTabbedMenuModel } from '../components/menu/menu-option-groups';
 import type {
   FormFlowCompletionItemConfig,
   FormFlowControlModel,
+  FormFlowDateMetaValue,
   FormFlowDraft,
   FormFlowMenuControlConfig,
   FormFlowModel,
@@ -43,6 +44,12 @@ export type ProfileFormFlowMenuContext =
   | { menu: 'experienceSelector'; value: Extract<ExperienceEntry['type'], 'Workspace' | 'School'> }
   | { menu: 'privacy'; key: string; value: DetailPrivacy }
   | { menu: 'experiencePrivacy'; type: 'workspace' | 'school'; value: DetailPrivacy };
+
+type HoroscopeBadgeMeta = {
+  label: string;
+  icon: string;
+  palette: NonNullable<FormFlowDateMetaValue['palette']>;
+};
 
 export class ProfileFormFlowDataConverter {
   static convert(user: UserDto): FormFlowDraft<ProfileExtDto>;
@@ -306,6 +313,21 @@ export class ProfileFormFlowDataConverter {
 }
 
 export class ProfileFormFlowConverter {
+  private static readonly horoscopeBadgeMetaBySign: Record<string, HoroscopeBadgeMeta> = {
+    Aries: { label: 'Kos', icon: '♈', palette: 'aries' },
+    Taurus: { label: 'Bika', icon: '♉', palette: 'taurus' },
+    Gemini: { label: 'Ikrek', icon: '♊', palette: 'gemini' },
+    Cancer: { label: 'Rák', icon: '♋', palette: 'cancer' },
+    Leo: { label: 'Oroszlán', icon: '♌', palette: 'leo' },
+    Virgo: { label: 'Szűz', icon: '♍', palette: 'virgo' },
+    Libra: { label: 'Mérleg', icon: '♎', palette: 'libra' },
+    Scorpio: { label: 'Skorpió', icon: '♏', palette: 'scorpio' },
+    Sagittarius: { label: 'Nyilas', icon: '♐', palette: 'sagittarius' },
+    Capricorn: { label: 'Bak', icon: '♑', palette: 'capricorn' },
+    Aquarius: { label: 'Vízöntő', icon: '♒', palette: 'aquarius' },
+    Pisces: { label: 'Halak', icon: '♓', palette: 'pisces' }
+  };
+
   static completionPercent(data: ProfileExtDto): number {
     const profile = data.profile;
     const model = this.convert({
@@ -773,72 +795,14 @@ export class ProfileFormFlowConverter {
     }
   }
 
-  private static horoscopeBadge(value: unknown): string {
+  private static horoscopeBadge(value: unknown): FormFlowDateMetaValue | string {
     const birthday = `${(value as Partial<ProfileExtDto> | null | undefined)?.profile?.birthday ?? ''}`.trim();
     const parsed = AppUtils.fromIsoDate(birthday);
     if (!parsed) {
       return 'Nincs beállítva';
     }
     const horoscope = AppUtils.horoscopeByDate(parsed);
-    return `${this.horoscopeSymbol(horoscope)} ${this.horoscopeLabel(horoscope)}`;
-  }
-
-  private static horoscopeSymbol(value: string): string {
-    switch (value) {
-      case 'Aries':
-        return '♈';
-      case 'Taurus':
-        return '♉';
-      case 'Gemini':
-        return '♊';
-      case 'Cancer':
-        return '♋';
-      case 'Leo':
-        return '♌';
-      case 'Virgo':
-        return '♍';
-      case 'Libra':
-        return '♎';
-      case 'Scorpio':
-        return '♏';
-      case 'Sagittarius':
-        return '♐';
-      case 'Capricorn':
-        return '♑';
-      case 'Aquarius':
-        return '♒';
-      default:
-        return '♓';
-    }
-  }
-
-  private static horoscopeLabel(value: string): string {
-    switch (value) {
-      case 'Aries':
-        return 'Kos';
-      case 'Taurus':
-        return 'Bika';
-      case 'Gemini':
-        return 'Ikrek';
-      case 'Cancer':
-        return 'Rák';
-      case 'Leo':
-        return 'Oroszlán';
-      case 'Virgo':
-        return 'Szűz';
-      case 'Libra':
-        return 'Mérleg';
-      case 'Scorpio':
-        return 'Skorpió';
-      case 'Sagittarius':
-        return 'Nyilas';
-      case 'Capricorn':
-        return 'Bak';
-      case 'Aquarius':
-        return 'Vízöntő';
-      default:
-        return 'Halak';
-    }
+    return this.horoscopeBadgeMetaBySign[horoscope] ?? this.horoscopeBadgeMetaBySign['Pisces'];
   }
 
   private static detailSelectMenuConfig(
