@@ -6,4 +6,5 @@ export * from './image-card';
 export * from './info-card';
 export * from './warp-image-card';
 export * from './header-card';
+export * from './calendar-card';
 export * from './rate-card.helpers';

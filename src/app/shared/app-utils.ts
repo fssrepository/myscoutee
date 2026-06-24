@@ -372,6 +372,17 @@ export class AppUtils {
     return `${year}-${month}-${day}`;
   }
 
+  static dateKey(value: Date): string {
+    return this.toIsoDate(this.dateOnly(value));
+  }
+
+  static monthKey(value: Date): string {
+    const copy = this.startOfMonth(value);
+    const year = copy.getFullYear();
+    const month = `${copy.getMonth() + 1}`.padStart(2, '0');
+    return `${year}-${month}`;
+  }
+
   static toIsoDateTime(value: Date): string {
     const year = value.getFullYear();
     const month = `${value.getMonth() + 1}`.padStart(2, '0');

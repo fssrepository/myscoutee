@@ -83,6 +83,11 @@ export {
   type ProfileHeaderCardConverterOptions
 } from './profile-header-card.converter';
 export {
+  CalendarCardConverter,
+  calendarCardConverter,
+  type CalendarCardConverterInput
+} from './calendar-card.converter';
+export {
   EventFeedbackInfoCardConverter,
   EventFeedbackOrganizerInfoCardConverter,
   eventFeedbackInfoCardConverter,
