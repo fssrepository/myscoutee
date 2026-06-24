@@ -20,9 +20,6 @@ export type FormFlowControlKind =
   | 'text'
   | 'textarea';
 
-export type FormFlowPathSegment = string | number;
-export type FormFlowPath = string | readonly FormFlowPathSegment[];
-
 export interface FormFlowHeaderModel {
   title?: string;
   subtitle?: string;
@@ -43,10 +40,6 @@ export interface FormFlowMenuControlConfig {
   trigger?: AppMenuTrigger | null;
   model?: AppMenuModel<string, unknown> | null;
   items?: readonly AppMenuItem<string, unknown>[];
-}
-
-export interface FormFlowControlAccessoryConfig {
-  menu?: FormFlowMenuControlConfig | null;
 }
 
 export interface FormFlowImageCarouselControlConfig {
@@ -77,7 +70,7 @@ export interface FormFlowControlSummaryConfig {
 
 export interface FormFlowControlModel {
   id: string;
-  bind?: FormFlowPath;
+  bind?: string | readonly (string | number)[];
   kind: FormFlowControlKind;
   layout?: 'default' | 'half' | 'wide';
   label?: string;
@@ -90,8 +83,9 @@ export interface FormFlowControlModel {
   step?: number | string;
   rows?: number;
   maxLength?: number;
+  valueFormat?: 'csv';
   config?: FormFlowMenuControlConfig | FormFlowImageCarouselControlConfig | FormFlowDateControlConfig | null;
-  accessory?: FormFlowControlAccessoryConfig | null;
+  accessory?: { menu?: FormFlowMenuControlConfig | null } | null;
   summary?: FormFlowControlSummaryConfig | null;
 }
 

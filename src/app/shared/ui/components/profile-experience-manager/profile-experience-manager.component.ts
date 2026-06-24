@@ -5,6 +5,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  forwardRef,
   Input,
   OnChanges,
   Output,
@@ -12,7 +13,7 @@ import {
   ViewChild,
   inject
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -97,6 +98,11 @@ export interface ProfileExperienceEntriesChange {
     SingleRowComponent
   ],
   providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => ProfileExperienceManagerComponent),
+      multi: true
+    },
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
     { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateOnly }
   ],
@@ -104,7 +110,7 @@ export interface ProfileExperienceEntriesChange {
   styleUrl: './profile-experience-manager.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProfileExperienceManagerComponent implements OnChanges {
+export class ProfileExperienceManagerComponent implements ControlValueAccessor, OnChanges {
   @Input() entries: readonly ExperienceEntry[] = [];
   @Input() initialFilter: ExperienceFilter = 'All';
   @Input() userId = '';
@@ -123,6 +129,9 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   private experienceImportToken = 0;
   private overlayOpen = false;
   private experienceEntriesRevision = 0;
+  private controlDisabled = false;
+  private onValueChange: (entries: ExperienceEntry[]) => void = () => undefined;
+  private onTouched: () => void = () => undefined;
 
   protected readonly experienceFilterOptions = APP_STATIC_DATA.experienceFilterOptions;
   protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
@@ -160,6 +169,24 @@ export class ProfileExperienceManagerComponent implements OnChanges {
     this.loadExperienceRowsPage(query)
   );
 
+  writeValue(value: unknown): void {
+    this.setLocalEntries(Array.isArray(value) ? value as readonly ExperienceEntry[] : []);
+    this.cdr.markForCheck();
+  }
+
+  registerOnChange(fn: (entries: ExperienceEntry[]) => void): void {
+    this.onValueChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.controlDisabled = isDisabled;
+    this.cdr.markForCheck();
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['entries']) {
       this.setLocalEntries(this.entries);
@@ -195,11 +222,14 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   openCreate(defaultType: ExperienceEntry['type'] = 'Workspace'): void {
+    if (this.controlDisabled) {
+      return;
+    }
     this.openExperienceForm(undefined, defaultType);
   }
 
   openImport(): void {
-    if (!this.allowImport) {
+    if (this.controlDisabled || !this.allowImport) {
       return;
     }
     const input = this.experienceImportInput?.nativeElement;
@@ -274,7 +304,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   protected async submitExperienceImport(): Promise<void> {
-    if (!this.canSubmitExperienceImport || !this.experienceImportDialog.draft) {
+    if (this.controlDisabled || !this.canSubmitExperienceImport || !this.experienceImportDialog.draft) {
       return;
     }
     const draft = this.experienceImportDialog.draft;
@@ -427,6 +457,9 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   protected openExperienceForm(entry?: ExperienceEntry, defaultType: ExperienceEntry['type'] = 'Workspace'): void {
+    if (this.controlDisabled) {
+      return;
+    }
     this.pendingExperienceDeleteId = null;
     this.showExperienceForm = true;
     if (entry) {
@@ -461,7 +494,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   protected async saveExperienceEntry(): Promise<void> {
-    if (!this.canSaveExperienceEntry) {
+    if (this.controlDisabled || !this.canSaveExperienceEntry) {
       return;
     }
     const dateFrom = this.experienceRangeStart ? AppUtils.toYearMonth(this.experienceRangeStart) : '';
@@ -493,6 +526,9 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   protected requestExperienceDelete(entryId: string): void {
+    if (this.controlDisabled) {
+      return;
+    }
     this.pendingExperienceDeleteId = entryId;
     this.syncOverlayState();
     this.cdr.markForCheck();
@@ -528,7 +564,7 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   protected async confirmExperienceDelete(): Promise<void> {
-    if (!this.pendingExperienceDeleteId) {
+    if (this.controlDisabled || !this.pendingExperienceDeleteId) {
       return;
     }
     const nextEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
@@ -817,8 +853,11 @@ export class ProfileExperienceManagerComponent implements OnChanges {
   }
 
   private emitEntriesChange(entries: readonly ExperienceEntry[], highlightedIds?: readonly string[]): void {
+    const nextEntries = this.cloneExperienceEntries(entries);
+    this.onValueChange(nextEntries);
+    this.onTouched();
     this.entriesChange.emit({
-      entries: this.cloneExperienceEntries(entries),
+      entries: nextEntries,
       highlightedIds: highlightedIds ? [...highlightedIds] : undefined
     });
   }

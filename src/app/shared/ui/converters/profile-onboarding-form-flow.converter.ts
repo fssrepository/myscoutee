@@ -1,19 +1,16 @@
 import { APP_STATIC_DATA } from '../../app-static-data';
 import { AppUtils } from '../../app-utils';
-import type {
-  ProfileOnboardingDraft,
-  ProfileOnboardingForm
-} from '../../core';
-import type { UserDto } from '../../core/contracts/user.interface';
+import type { ProfileOnboardingDraft } from '../../core';
+import type { ProfileExtDto, UserDto } from '../../core/contracts/user.interface';
 import type { DetailPrivacy, ProfileStatus } from '../../core/common/constants';
-import type { ExperienceEntry } from '../../core/contracts/profile.interface';
+import type { ExperienceEntry, ProfileDetailFormGroup } from '../../core/contracts/profile.interface';
 import type {
   AppMenuItem,
   AppMenuPalette,
   AppMenuTrigger
 } from '../components/menu';
 import { buildTabbedMenuModel } from '../components/menu';
-import type { FormFlowControlAccessoryConfig, FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
+import type { FormFlowControlModel, FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow';
 import type { UiConverter } from './converter.types';
 
 export interface ProfileOnboardingFormFlowPrivacyOptions {
@@ -91,7 +88,7 @@ export class ProfileOnboardingDraftConverter {
   }
 
   private static isDraft(value: UserDto | ProfileOnboardingDraft): value is ProfileOnboardingDraft {
-    return 'form' in value && 'currentStepId' in value;
+    return 'data' in value && 'currentStepId' in value;
   }
 
   private static createDraft(user: UserDto): ProfileOnboardingDraft {
@@ -102,80 +99,108 @@ export class ProfileOnboardingDraftConverter {
       updatedAtIso: new Date().toISOString(),
       completedStepIds: [],
       skippedStepIds: [],
-      form: this.initialForm(user)
+      data: this.initialData(user)
     });
   }
 
-  private static initialForm(user: UserDto): ProfileOnboardingForm {
-    const emptyProfile = this.isProfileEffectivelyEmpty(user);
+  private static initialData(user: UserDto): ProfileExtDto {
+    const profile = this.normalizeProfile(user);
+    profile.profileDetails = this.normalizeProfileDetails(profile);
     return {
-      fullName: `${user.name ?? ''}`.trim(),
-      birthday: this.isIsoDate(user.birthday) ? user.birthday.trim() : '',
-      city: `${user.city ?? ''}`.trim(),
-      heightCm: this.parseHeightCm(user.height),
-      physique: `${user.physique ?? ''}`.trim(),
-      languages: this.normalizeStringList(user.languages),
-      images: this.normalizeStringList(user.images).slice(0, 8),
-      about: `${user.about ?? ''}`.trim().slice(0, 160),
-      profileStatus: this.normalizeProfileStatus(user.profileStatus),
-      genderDetail: emptyProfile
-        ? ''
-        : this.profileDetailValue(user, 'profile.gender'),
-      drinking: this.profileDetailValue(user, 'profile.details.drinking'),
-      smoking: this.profileDetailValue(user, 'profile.details.smoking'),
-      workout: this.profileDetailValue(user, 'profile.details.workout'),
-      pets: this.profileDetailValue(user, 'profile.details.pets'),
-      familyPlans: this.profileDetailValue(user, 'profile.details.familyPlans'),
-      children: this.profileDetailValue(user, 'profile.details.children'),
-      loveStyle: this.profileDetailValue(user, 'profile.details.loveStyle'),
-      communicationStyle: this.profileDetailValue(user, 'profile.details.communicationStyle'),
-      sexualOrientation: this.profileDetailValue(user, 'profile.details.sexualOrientation'),
-      religion: this.profileDetailValue(user, 'profile.details.religion'),
-      values: this.parseCommaValues(this.profileDetailValue(user, 'profile.details.values')),
-      interests: this.parseCommaValues(this.profileDetailValue(user, 'profile.details.interest')),
+      profile,
       experienceEntries: []
     };
   }
 
   private static normalizeDraft(draft: ProfileOnboardingDraft): ProfileOnboardingDraft {
+    const data = this.normalizeData(draft.data);
     return {
       version: 1,
-      userId: `${draft.userId ?? ''}`.trim(),
+      userId: `${draft.userId ?? data.profile.id ?? ''}`.trim(),
       currentStepId: this.normalizeStepId(draft.currentStepId),
       updatedAtIso: new Date().toISOString(),
       completedStepIds: this.normalizeStepIds(draft.completedStepIds),
       skippedStepIds: this.normalizeStepIds(draft.skippedStepIds),
-      form: {
-        fullName: `${draft.form?.fullName ?? ''}`.trim(),
-        birthday: this.isIsoDate(draft.form?.birthday ?? '') ? `${draft.form?.birthday}`.trim() : '',
-        city: `${draft.form?.city ?? ''}`.trim(),
-        heightCm: this.normalizeHeightCm(draft.form?.heightCm),
-        physique: `${draft.form?.physique ?? ''}`.trim(),
-        languages: this.normalizeStringList(draft.form?.languages),
-        images: this.normalizeStringList(draft.form?.images).slice(0, 8),
-        about: `${draft.form?.about ?? ''}`.trim().slice(0, 160),
-        profileStatus: this.normalizeProfileStatus(draft.form?.profileStatus),
-        genderDetail: `${draft.form?.genderDetail ?? ''}`.trim(),
-        drinking: `${draft.form?.drinking ?? ''}`.trim(),
-        smoking: `${draft.form?.smoking ?? ''}`.trim(),
-        workout: `${draft.form?.workout ?? ''}`.trim(),
-        pets: `${draft.form?.pets ?? ''}`.trim(),
-        familyPlans: `${draft.form?.familyPlans ?? ''}`.trim(),
-        children: `${draft.form?.children ?? ''}`.trim(),
-        loveStyle: `${draft.form?.loveStyle ?? ''}`.trim(),
-        communicationStyle: `${draft.form?.communicationStyle ?? ''}`.trim(),
-        sexualOrientation: `${draft.form?.sexualOrientation ?? ''}`.trim(),
-        religion: `${draft.form?.religion ?? ''}`.trim(),
-        values: this.normalizeStringList(draft.form?.values).slice(0, 5),
-        interests: this.normalizeStringList(draft.form?.interests).slice(0, 5),
-        experienceEntries: this.normalizeExperienceEntries(draft.form?.experienceEntries ?? [])
-      }
+      data
     };
   }
 
-  private static profileDetailValue(user: UserDto, labelKey: string): string {
+  private static normalizeData(data: ProfileExtDto): ProfileExtDto {
+    const profile = this.normalizeProfile(data.profile);
+    const experienceEntries = this.normalizeExperienceEntries(data.experienceEntries ?? []);
+    const normalizedProfile: UserDto = {
+      ...profile,
+      profileDetails: this.normalizeProfileDetails(profile),
+      profileFormVersion: this.currentProfileFormVersion
+    };
+    normalizedProfile.completion = this.completionPercent(normalizedProfile, experienceEntries);
+    return {
+      profile: normalizedProfile,
+      experienceEntries
+    };
+  }
+
+  private static normalizeProfile(user: UserDto): UserDto {
+    const birthday = this.isIsoDate(user.birthday) ? user.birthday.trim() : '';
+    const name = `${user.name ?? ''}`.trim();
+    return {
+      ...user,
+      name,
+      initials: AppUtils.initialsFromText(name),
+      birthday,
+      age: AppUtils.ageFromIsoDate(birthday, user.age),
+      city: `${user.city ?? ''}`.trim(),
+      height: this.normalizeHeightText(user.height),
+      physique: `${user.physique ?? ''}`.trim(),
+      languages: this.normalizeStringList(user.languages),
+      horoscope: birthday ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(birthday) as Date) : `${user.horoscope ?? ''}`.trim(),
+      headline: `${user.headline ?? ''}`.trim(),
+      about: `${user.about ?? ''}`.trim().slice(0, 160),
+      images: this.normalizeStringList(user.images).slice(0, 8),
+      profileStatus: this.normalizeProfileStatus(user.profileStatus),
+      profileDetails: this.normalizeProfileDetails(user),
+      activities: {
+        game: user.activities?.game ?? 0,
+        chat: user.activities?.chat ?? 0,
+        invitations: user.activities?.invitations ?? 0,
+        events: user.activities?.events ?? 0,
+        hosting: user.activities?.hosting ?? 0,
+        cars: user.activities?.cars ?? 0,
+        accommodation: user.activities?.accommodation ?? 0,
+        supplies: user.activities?.supplies ?? 0,
+        tickets: user.activities?.tickets ?? 0,
+        contacts: user.activities?.contacts ?? 0,
+        feedback: user.activities?.feedback ?? 0,
+        event: user.activities?.event ? { ...user.activities.event } : undefined,
+        asset: user.activities?.asset ? { ...user.activities.asset } : undefined,
+        eventFeedback: user.activities?.eventFeedback ? { ...user.activities.eventFeedback } : undefined,
+        adminJobs: user.activities?.adminJobs,
+        adminMetrics: user.activities?.adminMetrics
+      },
+      impressions: user.impressions
+        ? {
+            host: user.impressions.host ? { ...user.impressions.host } : undefined,
+            member: user.impressions.member ? { ...user.impressions.member } : undefined
+          }
+        : undefined
+    };
+  }
+
+  private static normalizeProfileDetails(user: UserDto): ProfileDetailFormGroup[] {
+    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
+      title: group.title,
+      rows: group.rows.map(row => ({
+        labelKey: row.labelKey,
+        value: this.profileDetailValue(user, row.labelKey) || this.profileDetailSeedValue(user, row.labelKey),
+        privacy: this.profileDetailPrivacy(user, row.labelKey, row.privacy),
+        options: this.profileDetailOptions(row.labelKey)
+      }))
+    }));
+  }
+
+  static profileDetailValue(user: UserDto | null | undefined, labelKey: string): string {
     const normalizedLabel = this.normalizeToken(labelKey);
-    for (const group of user.profileDetails ?? []) {
+    for (const group of user?.profileDetails ?? []) {
       for (const row of group.rows ?? []) {
         if (this.normalizeToken(row.labelKey) === normalizedLabel) {
           return `${row.value ?? ''}`.trim();
@@ -183,6 +208,92 @@ export class ProfileOnboardingDraftConverter {
       }
     }
     return '';
+  }
+
+  private static profileDetailPrivacy(user: UserDto, labelKey: string, fallback: DetailPrivacy): DetailPrivacy {
+    const normalizedLabel = this.normalizeToken(labelKey);
+    for (const group of user.profileDetails ?? []) {
+      for (const row of group.rows ?? []) {
+        if (this.normalizeToken(row.labelKey) === normalizedLabel && this.isDetailPrivacy(row.privacy)) {
+          return row.privacy;
+        }
+      }
+    }
+    return fallback;
+  }
+
+  private static profileDetailSeedValue(user: UserDto, labelKey: string): string {
+    switch (labelKey) {
+      case 'profile.name':
+        return `${user.name ?? ''}`.trim();
+      case 'profile.city':
+        return `${user.city ?? ''}`.trim();
+      case 'profile.birthday':
+        return this.formatDateForDetail(user.birthday);
+      case 'profile.height':
+        return this.normalizeHeightText(user.height);
+      case 'profile.physique':
+        return `${user.physique ?? ''}`.trim();
+      case 'profile.languages':
+        return this.normalizeStringList(user.languages).join(', ');
+      case 'profile.horoscope':
+        return `${user.horoscope ?? ''}`.trim();
+      case 'profile.gender':
+        return user.gender === 'woman' ? 'Woman' : 'Man';
+      default:
+        return '';
+    }
+  }
+
+  private static profileDetailOptions(labelKey: string): string[] {
+    if (labelKey === 'profile.details.values') {
+      return APP_STATIC_DATA.beliefsValuesOptionGroups.flatMap(group => group.options);
+    }
+    if (labelKey === 'profile.details.interest') {
+      return APP_STATIC_DATA.interestOptionGroups.flatMap(group => group.options);
+    }
+    return APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
+  }
+
+  private static isDetailPrivacy(value: unknown): value is DetailPrivacy {
+    return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
+  }
+
+  private static normalizeHeightText(value: unknown): string {
+    const heightCm = this.parseHeightCm(`${value ?? ''}`);
+    return heightCm ? `${heightCm} cm` : `${value ?? ''}`.trim();
+  }
+
+  private static completionPercent(profile: UserDto, experienceEntries: readonly ExperienceEntry[]): number {
+    let completed = 0;
+    let total = 0;
+    const add = (ok: boolean): void => {
+      total += 1;
+      if (ok) {
+        completed += 1;
+      }
+    };
+    const values = this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.values'));
+    const interests = this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.interest'));
+    add(this.hasText(profile.name));
+    add(this.isIsoDate(profile.birthday));
+    add(this.hasText(profile.city));
+    add((this.parseHeightCm(profile.height) ?? 0) > 0);
+    add(this.hasText(profile.physique));
+    add(this.normalizeStringList(profile.languages).length > 0);
+    add(this.normalizeStringList(profile.images).length >= 3);
+    add(this.hasText(profile.about) && `${profile.about ?? ''}`.trim().length >= 20);
+    add(values.length > 0);
+    add(interests.length > 0);
+    add(experienceEntries.length > 0);
+    return total === 0 ? 0 : Math.round((completed / total) * 100);
+  }
+
+  private static formatDateForDetail(value: string): string {
+    const parsed = AppUtils.fromIsoDate(value);
+    return parsed
+      ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      : '';
   }
 
   private static normalizeExperienceEntries(entries: readonly ExperienceEntry[]): ExperienceEntry[] {
@@ -275,7 +386,9 @@ export class ProfileOnboardingFormFlowConverter {
     draft: ProfileOnboardingDraft | null | undefined,
     options: ProfileOnboardingFormFlowConverterOptions = {}
   ): FormFlowModel {
-    const form = draft?.form ?? null;
+    const data = draft?.data ?? null;
+    const profile = data?.profile ?? null;
+    const experienceEntries = data?.experienceEntries ?? [];
     const imageEditor = options.imageEditor ?? 'flow';
     return {
       title: options.title?.trim() || 'profile.setup',
@@ -308,7 +421,7 @@ export class ProfileOnboardingFormFlowConverter {
               id: 'about',
               kind: 'textarea',
               label: 'Rólam',
-              bind: 'about',
+              bind: 'profile.about',
               rows: 3,
               maxLength: 160
             },
@@ -316,7 +429,7 @@ export class ProfileOnboardingFormFlowConverter {
               id: 'full-name',
               kind: 'text',
               label: 'Név',
-              bind: 'fullName',
+              bind: 'profile.name',
               required: true,
               placeholder: 'Név'
             },
@@ -325,7 +438,7 @@ export class ProfileOnboardingFormFlowConverter {
               kind: 'date',
               layout: 'half',
               label: 'Születésnap',
-              bind: 'birthday',
+              bind: 'profile.birthday',
               required: true,
               placeholder: 'dd/mm/yyyy',
               config: {
@@ -340,46 +453,44 @@ export class ProfileOnboardingFormFlowConverter {
               id: 'city',
               kind: 'text',
               label: 'Város',
-              bind: 'city',
+              bind: 'profile.city',
               required: true,
               placeholder: 'Város'
             },
             {
               id: 'height',
-              kind: 'number',
+              kind: 'text',
               label: 'Magasság (cm)',
-              bind: 'heightCm',
+              bind: 'profile.height',
               required: true,
-              min: 40,
-              max: 250,
-              step: 1
+              placeholder: '180 cm'
             },
             {
               id: 'physique',
               kind: 'menu',
               label: 'Testalkat',
-              bind: 'physique',
+              bind: 'profile.physique',
               required: true,
-              config: this.physiqueMenuConfig(form?.physique)
+              config: this.physiqueMenuConfig(profile?.physique)
             },
             {
               id: 'gender',
               kind: 'menu',
               label: 'Nem',
-              bind: 'genderDetail',
+              bind: this.detailValueBind(profile, 'profile.gender'),
               required: true,
-              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet', form?.genderDetail),
+              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet', this.profileDetailValue(profile, 'profile.gender')),
               accessory: this.privacyAccessory('profile.gender', options.privacy)
             },
             {
               id: 'languages',
               kind: 'menu',
               label: 'Nyelvek',
-              bind: 'languages',
+              bind: 'profile.languages',
               required: true,
               config: this.checkboxMenuConfig(
                 'Nyelvek',
-                this.languageOptions(form?.languages ?? []),
+                this.languageOptions(profile?.languages ?? []),
                 'language',
                 'blue',
                 'Nyelvek választása',
@@ -390,8 +501,8 @@ export class ProfileOnboardingFormFlowConverter {
               id: 'visibility',
               kind: 'menu',
               label: 'Láthatóság',
-              bind: 'profileStatus',
-              config: this.profileStatusMenuConfig(form?.profileStatus)
+              bind: 'profile.profileStatus',
+              config: this.profileStatusMenuConfig(profile?.profileStatus)
             },
             {
               id: 'workspace',
@@ -399,7 +510,7 @@ export class ProfileOnboardingFormFlowConverter {
               layout: 'half',
               label: 'Munkahely',
               bind: 'experienceEntries',
-              config: this.experienceSelectorMenuConfig('Workspace', form?.experienceEntries ?? []),
+              config: this.experienceSelectorMenuConfig('Workspace', experienceEntries),
               accessory: this.experiencePrivacyAccessory('workspace', options.privacy),
               summary: {
                 value: value => this.experienceSummaryValue(value, 'Workspace')
@@ -411,7 +522,7 @@ export class ProfileOnboardingFormFlowConverter {
               layout: 'half',
               label: 'Iskola',
               bind: 'experienceEntries',
-              config: this.experienceSelectorMenuConfig('School', form?.experienceEntries ?? []),
+              config: this.experienceSelectorMenuConfig('School', experienceEntries),
               accessory: this.experiencePrivacyAccessory('school', options.privacy),
               summary: {
                 value: value => this.experienceSummaryValue(value, 'School')
@@ -429,7 +540,7 @@ export class ProfileOnboardingFormFlowConverter {
               id: 'images',
               kind: 'image-carousel' as const,
               label: 'Profilfotók',
-              bind: 'images',
+              bind: 'profile.images',
               required: true,
               min: 3,
               config: {
@@ -451,21 +562,22 @@ export class ProfileOnboardingFormFlowConverter {
           subtitle: 'Opcionális részletek.',
           icon: 'interests',
           controls: [
-            this.detailMenuControl('drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', form?.drinking, options.privacy),
-            this.detailMenuControl('smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', form?.smoking, options.privacy),
-            this.detailMenuControl('workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', form?.workout, options.privacy),
-            this.detailMenuControl('pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', form?.pets, options.privacy),
-            this.detailMenuControl('familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', form?.familyPlans, options.privacy),
-            this.detailMenuControl('children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', form?.children, options.privacy),
-            this.detailMenuControl('loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', form?.loveStyle, options.privacy),
-            this.detailMenuControl('communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', form?.communicationStyle, options.privacy),
-            this.detailMenuControl('sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', form?.sexualOrientation, options.privacy),
-            this.detailMenuControl('religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', form?.religion, options.privacy),
+            this.detailMenuControl(profile, 'drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', options.privacy),
+            this.detailMenuControl(profile, 'smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', options.privacy),
+            this.detailMenuControl(profile, 'workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', options.privacy),
+            this.detailMenuControl(profile, 'pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', options.privacy),
+            this.detailMenuControl(profile, 'familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', options.privacy),
+            this.detailMenuControl(profile, 'children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', options.privacy),
+            this.detailMenuControl(profile, 'loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', options.privacy),
+            this.detailMenuControl(profile, 'communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', options.privacy),
+            this.detailMenuControl(profile, 'sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', options.privacy),
+            this.detailMenuControl(profile, 'religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', options.privacy),
             {
               id: 'values',
               kind: 'menu',
               label: 'Értékek',
-              bind: 'values',
+              bind: this.detailValueBind(profile, 'profile.details.values'),
+              valueFormat: 'csv',
               config: this.groupedCheckboxMenuConfig(
                 'Értékek',
                 APP_STATIC_DATA.beliefsValuesOptionGroups,
@@ -473,7 +585,7 @@ export class ProfileOnboardingFormFlowConverter {
                 'purple',
                 5,
                 'select.values',
-                form?.values ?? []
+                this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.values'))
               ),
               accessory: this.privacyAccessory('profile.details.values', options.privacy)
             },
@@ -481,7 +593,8 @@ export class ProfileOnboardingFormFlowConverter {
               id: 'interests',
               kind: 'menu',
               label: 'Érdeklődés',
-              bind: 'interests',
+              bind: this.detailValueBind(profile, 'profile.details.interest'),
+              valueFormat: 'csv',
               config: this.groupedCheckboxMenuConfig(
                 'Érdeklődés',
                 APP_STATIC_DATA.interestOptionGroups,
@@ -489,7 +602,7 @@ export class ProfileOnboardingFormFlowConverter {
                 'teal',
                 5,
                 'select.interests',
-                form?.interests ?? []
+                this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.interest'))
               ),
               accessory: this.privacyAccessory('profile.details.interest', options.privacy)
             }
@@ -500,28 +613,51 @@ export class ProfileOnboardingFormFlowConverter {
   }
 
   private static detailMenuControl(
+    profile: UserDto | null,
     field: string,
     label: string,
     key: string,
     icon: string,
     palette: AppMenuPalette,
-    selectedValue?: string | null,
     privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
   ) {
     return {
       id: field,
       kind: 'menu' as const,
       label,
-      bind: field,
-      config: this.detailSelectMenuConfig(label, key, icon, palette, selectedValue),
+      bind: this.detailValueBind(profile, key),
+      config: this.detailSelectMenuConfig(label, key, icon, palette, this.profileDetailValue(profile, key)),
       accessory: this.privacyAccessory(key, privacy)
     };
+  }
+
+  private static detailValueBind(profile: UserDto | null | undefined, labelKey: string): FormFlowControlModel['bind'] {
+    const normalizedLabel = AppUtils.normalizeText(labelKey);
+    for (const [groupIndex, group] of (profile?.profileDetails ?? []).entries()) {
+      for (const [rowIndex, row] of (group.rows ?? []).entries()) {
+        if (AppUtils.normalizeText(row.labelKey) === normalizedLabel) {
+          return ['profile', 'profileDetails', groupIndex, 'rows', rowIndex, 'value'];
+        }
+      }
+    }
+    return ['profile', 'profileDetails', 0, 'rows', 0, 'value'];
+  }
+
+  private static profileDetailValue(profile: UserDto | null | undefined, labelKey: string): string {
+    return ProfileOnboardingDraftConverter.profileDetailValue(profile, labelKey);
+  }
+
+  private static parseCommaValues(value: string): string[] {
+    return value
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
   }
 
   private static privacyAccessory(
     key: string,
     privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
-  ): FormFlowControlAccessoryConfig | null {
+  ): { menu?: FormFlowMenuControlConfig | null } | null {
     if (!privacy?.values) {
       return null;
     }
@@ -558,7 +694,7 @@ export class ProfileOnboardingFormFlowConverter {
   private static experiencePrivacyAccessory(
     type: 'workspace' | 'school',
     privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
-  ): FormFlowControlAccessoryConfig | null {
+  ): { menu?: FormFlowMenuControlConfig | null } | null {
     if (!privacy?.experience) {
       return null;
     }
@@ -629,7 +765,7 @@ export class ProfileOnboardingFormFlowConverter {
   }
 
   private static horoscopeBadge(value: unknown): string {
-    const birthday = `${(value as Partial<ProfileOnboardingForm> | null | undefined)?.birthday ?? ''}`.trim();
+    const birthday = `${(value as Partial<ProfileExtDto> | null | undefined)?.profile?.birthday ?? ''}`.trim();
     const parsed = AppUtils.fromIsoDate(birthday);
     if (!parsed) {
       return 'Nincs beállítva';
@@ -945,7 +1081,7 @@ export class ProfileOnboardingFormFlowConverter {
   }
 
   private static experienceEntries(value: unknown): ExperienceEntry[] {
-    const entries = (value as Partial<ProfileOnboardingForm> | null | undefined)?.experienceEntries;
+    const entries = (value as Partial<ProfileExtDto> | null | undefined)?.experienceEntries;
     return Array.isArray(entries) ? entries : [];
   }
 
@@ -973,7 +1109,7 @@ export class ProfileOnboardingFormFlowConverter {
   }
 
   private static imageCount(value: unknown): number {
-    const images = (value as Partial<ProfileOnboardingForm> | null | undefined)?.images;
+    const images = (value as Partial<ProfileExtDto> | null | undefined)?.profile?.images;
     return Array.isArray(images)
       ? images.filter(image => `${image ?? ''}`.trim().length > 0).length
       : 0;

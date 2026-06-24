@@ -67,7 +67,6 @@ export {
   ProfileOnboardingService,
   type ProfileOnboardingAssessment,
   type ProfileOnboardingDraft,
-  type ProfileOnboardingForm,
   type ProfileOnboardingStepId
 } from './base/services/profile-onboarding.service';
 export {

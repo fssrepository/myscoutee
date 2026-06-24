@@ -21,7 +21,6 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { UserRealtimeSnapshotMapper } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -218,21 +217,22 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  async saveUserProfileExt(profile: UserDto, experienceEntries: readonly ExperienceEntry[]): Promise<UserDto | null> {
+  async saveUserProfileExt(request: ProfileExtDto): Promise<UserDto | null> {
+    const profile = request?.profile;
     if (!profile?.id?.trim()) {
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
 
-    const request: ProfileExtDto = {
+    const payload: ProfileExtDto = {
       profile,
-      experienceEntries: experienceEntries.map(entry => ({ ...entry }))
+      experienceEntries: (request.experienceEntries ?? []).map(entry => ({ ...entry }))
     };
-    this.appCtx.setUserProfile(profile);
+    this.appCtx.setUserProfile(payload.profile);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
-      const savedUser = await this.userService.saveUserProfileExt(request);
+      const savedUser = await this.userService.saveUserProfileExt(payload);
       if (savedUser) {
         this.appCtx.setUserProfile(savedUser);
       }

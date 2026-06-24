@@ -18,14 +18,13 @@ import {
   UserExperiencesService,
   UsersService,
   type ProfileOnboardingDraft,
-  type ProfileOnboardingForm,
   type UserDto
 } from '../../../shared/core';
+import type { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
 import { I18nService } from '../../../shared/core';
 import {
   EditableImageCarouselComponent,
-  ProfileExperienceManagerComponent,
-  type ProfileExperienceEntriesChange
+  ProfileExperienceManagerComponent
 } from '../../../shared/ui';
 import {
   AppMenuComponent,
@@ -136,8 +135,6 @@ export class ProfileEditorComponent {
   private experienceEntriesLoadToken = 0;
   private experienceEntriesSaveToken = 0;
   private experienceImportToken = 0;
-  private profileEditorFlowModelCacheKey = '';
-  private profileEditorFlowModelCache: FormFlowModel | null = null;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
   protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
@@ -159,7 +156,8 @@ export class ProfileEditorComponent {
   protected panel: ProfileEditorPanel = 'profile';
   protected profileUser: UserDto | null = null;
   protected profileForm: ProfileFormState = this.createEmptyProfileForm();
-  protected profileEditorForm: ProfileOnboardingForm = this.createEmptyProfileEditorForm();
+  protected profileEditorData: ProfileExtDto = this.createEmptyProfileEditorData();
+  protected profileEditorFlowModel: FormFlowModel | null = null;
   protected profileDetailsForm: ProfileContracts.ProfileDetailFormGroup[] = [];
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected privacyFabJustSelectedKey: string | null = null;
@@ -285,34 +283,6 @@ export class ProfileEditorComponent {
       && (this.experienceImportDialog.draft?.importedIds.length ?? 0) > 0;
   }
 
-  protected profileEditorFlowModel(): FormFlowModel {
-    const cacheKey = this.profileEditorFlowModelKey();
-    if (this.profileEditorFlowModelCache && this.profileEditorFlowModelCacheKey === cacheKey) {
-      return this.profileEditorFlowModelCache;
-    }
-    this.profileEditorFlowModelCacheKey = cacheKey;
-    this.profileEditorFlowModelCache = ProfileOnboardingFormFlowConverter.convert(
-      this.profileEditorDraft(this.profileEditorForm),
-      {
-        title: 'Profile',
-        subtitle: '',
-        userId: this.profileUser?.id ?? '',
-        layout: 'grouped',
-        imageEditor: 'external',
-        privacy: {
-          values: this.profileEditorPrivacyValues(),
-          experience: {
-            workspace: this.experienceVisibility.workspace,
-            school: this.experienceVisibility.school
-          }
-        },
-        showHeader: false,
-        showSave: false
-      }
-    );
-    return this.profileEditorFlowModelCache;
-  }
-
   protected onProfileEditorFlowAction(event: FormFlowActionEvent): void {
     const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
     if (context?.menu === 'experienceSelector') {
@@ -321,11 +291,12 @@ export class ProfileEditorComponent {
     }
     if (context?.menu === 'privacy') {
       this.setProfileDetailPrivacy(context.key, context.value);
+      this.refreshProfileEditorFlowModel();
       return;
     }
     if (context?.menu === 'experiencePrivacy') {
       this.experienceVisibility[context.type] = context.value;
-      this.clearProfileEditorFlowModelCache();
+      this.refreshProfileEditorFlowModel();
     }
   }
 
@@ -367,7 +338,7 @@ export class ProfileEditorComponent {
     if (this.panel !== 'profile' || this.isProfileSaving()) {
       return;
     }
-    this.applyProfileEditorFormToEditorState();
+    this.applyProfileEditorDataToEditorState();
     await this.commitProfileForm(false);
     this.navigatorService.closeProfileEditor();
     this.resetTransientUiState();
@@ -453,13 +424,16 @@ export class ProfileEditorComponent {
         slots[index] = imageUrl;
       });
     this.imageSlots = slots;
-    this.profileEditorForm = {
-      ...this.profileEditorForm,
-      images: slots
-        .map(image => image?.trim() ?? '')
-        .filter(Boolean)
+    this.profileEditorData = {
+      ...this.profileEditorData,
+      profile: {
+        ...this.profileEditorData.profile,
+        images: slots
+          .map(image => image?.trim() ?? '')
+          .filter(Boolean)
+      }
     };
-    this.clearProfileEditorFlowModelCache();
+    this.refreshProfileEditorFlowModel();
     this.persistActiveUserImageSlots();
   }
 
@@ -781,9 +755,12 @@ export class ProfileEditorComponent {
     switch (context.kind) {
       case 'profileStatus':
         this.profileForm.profileStatus = context.value;
-        this.profileEditorForm = {
-          ...this.profileEditorForm,
-          profileStatus: context.value
+        this.profileEditorData = {
+          ...this.profileEditorData,
+          profile: {
+            ...this.profileEditorData.profile,
+            profileStatus: context.value
+          }
         };
         return;
       case 'physique':
@@ -793,6 +770,7 @@ export class ProfileEditorComponent {
         const row = this.profileDetailsForm[context.groupIndex]?.rows[context.rowIndex];
         if (row && row.options.includes(context.value)) {
           row.value = context.value;
+          this.syncProfileEditorDataProfileDetailsFromState();
         }
         return;
       }
@@ -802,6 +780,7 @@ export class ProfileEditorComponent {
           return;
         }
         row.privacy = context.value;
+        this.syncProfileEditorDataProfileDetailsFromState();
         const key = this.detailPrivacyFabKey(context.groupIndex, context.rowIndex);
         this.markPrivacyFabJustSelected(key);
         return;
@@ -859,9 +838,8 @@ export class ProfileEditorComponent {
     this.onProfileEditorMenuSelect(event as AppMenuItemSelectEvent<ProfileEditorMenuId, ProfileEditorMenuContext>);
   }
 
-  protected onExperienceEntriesChange(event: ProfileExperienceEntriesChange): void {
-    this.setExperienceEntries(event.entries, event.highlightedIds ?? null);
-    void this.persistExperienceEntries(event.entries, { highlightedIds: event.highlightedIds ?? [] });
+  protected onExperienceEntriesChange(entries: readonly ProfileContracts.ExperienceEntry[]): void {
+    this.setExperienceEntries(entries);
   }
 
   protected onExperienceOverlayStateChange(open: boolean): void {
@@ -1131,6 +1109,7 @@ export class ProfileEditorComponent {
     }
 
     row.value = current.join(', ');
+    this.syncProfileEditorDataProfileDetailsFromState();
   }
 
   private containsNormalizedOption(options: readonly string[], value: string): boolean {
@@ -1554,8 +1533,8 @@ export class ProfileEditorComponent {
     this.profileImageSlotsByUser[user.id] = [...slots];
     this.imageSlots = [...slots];
     this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
-    this.profileEditorForm = this.buildProfileEditorFormFromState();
-    this.clearProfileEditorFlowModelCache();
+    this.profileEditorData = this.buildProfileEditorDataFromState();
+    this.refreshProfileEditorFlowModel();
     this.panel = 'profile';
     void this.loadExperienceEntriesForUser(user.id);
   }
@@ -1575,79 +1554,72 @@ export class ProfileEditorComponent {
     };
   }
 
-  private createEmptyProfileEditorForm(): ProfileOnboardingForm {
+  private createEmptyProfileEditorData(): ProfileExtDto {
     return {
-      fullName: '',
-      birthday: '',
-      city: '',
-      heightCm: null,
-      physique: '',
-      languages: [],
-      images: [],
-      about: '',
-      profileStatus: 'public',
-      genderDetail: '',
-      drinking: '',
-      smoking: '',
-      workout: '',
-      pets: '',
-      familyPlans: '',
-      children: '',
-      loveStyle: '',
-      communicationStyle: '',
-      sexualOrientation: '',
-      religion: '',
-      values: [],
-      interests: [],
+      profile: this.createEmptyProfileEditorUser(),
       experienceEntries: []
     };
   }
 
-  private buildProfileEditorFormFromState(): ProfileOnboardingForm {
-    return this.normalizeProfileEditorForm({
-      fullName: this.profileForm.fullName,
-      birthday: this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : '',
-      city: this.profileForm.city,
-      heightCm: this.profileForm.heightCm,
-      physique: this.profileForm.physique,
-      languages: [...this.profileForm.languages],
-      images: this.imageSlots
-        .map(image => image?.trim() ?? '')
-        .filter(Boolean),
-      about: this.profileForm.about,
-      profileStatus: this.profileForm.profileStatus,
-      genderDetail: this.profileDetailValueByKey('profile.gender'),
-      drinking: this.profileDetailValueByKey('profile.details.drinking'),
-      smoking: this.profileDetailValueByKey('profile.details.smoking'),
-      workout: this.profileDetailValueByKey('profile.details.workout'),
-      pets: this.profileDetailValueByKey('profile.details.pets'),
-      familyPlans: this.profileDetailValueByKey('profile.details.familyPlans'),
-      children: this.profileDetailValueByKey('profile.details.children'),
-      loveStyle: this.profileDetailValueByKey('profile.details.loveStyle'),
-      communicationStyle: this.profileDetailValueByKey('profile.details.communicationStyle'),
-      sexualOrientation: this.profileDetailValueByKey('profile.details.sexualOrientation'),
-      religion: this.profileDetailValueByKey('profile.details.religion'),
-      values: this.parseCommaValues(this.profileDetailValueByKey('profile.details.values')),
-      interests: this.parseCommaValues(this.profileDetailValueByKey('profile.details.interest')),
+  private createEmptyProfileEditorUser(): UserDto {
+    return {
+      id: '',
+      name: '',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: '',
+      gender: 'man',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileDetails: [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0
+      }
+    };
+  }
+
+  private buildProfileEditorDataFromState(): ProfileExtDto {
+    const user = this.profileUser ? this.cloneUser(this.profileUser) : this.createEmptyProfileEditorUser();
+    user.name = this.profileForm.fullName.trim() || user.name;
+    user.birthday = this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : user.birthday;
+    user.age = AppUtils.ageFromIsoDate(user.birthday, user.age);
+    user.city = this.profileForm.city.trim() || user.city;
+    user.height = this.profileForm.heightCm ? `${this.profileForm.heightCm} cm` : user.height;
+    user.physique = this.profileForm.physique || user.physique;
+    user.languages = this.profileForm.languages.length > 0 ? [...this.profileForm.languages] : user.languages;
+    user.horoscope = this.profileForm.horoscope || user.horoscope;
+    user.profileStatus = this.profileForm.profileStatus;
+    user.about = this.profileForm.about.trim().slice(0, 160);
+    user.images = this.imageSlots
+      .map(image => image?.trim() ?? '')
+      .filter(Boolean);
+    user.profileDetails = this.cloneProfileDetailsForm(this.profileDetailsForm);
+    return this.normalizeProfileEditorData({
+      profile: user,
       experienceEntries: this.cloneExperienceEntries(this.experienceEntries)
     });
   }
 
-  private normalizeProfileEditorForm(value: unknown): ProfileOnboardingForm {
-    const fallback = this.createEmptyProfileEditorForm();
-    const form = (value && typeof value === 'object' ? value : fallback) as Partial<ProfileOnboardingForm>;
-    return ProfileOnboardingDraftConverter.convert(this.profileEditorDraft({
-      ...fallback,
-      ...form,
-      languages: Array.isArray(form.languages) ? form.languages : [],
-      images: Array.isArray(form.images) ? form.images : [],
-      values: Array.isArray(form.values) ? form.values : [],
-      interests: Array.isArray(form.interests) ? form.interests : [],
-      experienceEntries: Array.isArray(form.experienceEntries) ? form.experienceEntries : []
-    })).form;
+  private normalizeProfileEditorData(value: ProfileExtDto): ProfileExtDto {
+    return ProfileOnboardingDraftConverter.convert(this.profileEditorDraft(value)).data;
   }
 
-  private profileEditorDraft(form: ProfileOnboardingForm): ProfileOnboardingDraft {
+  private profileEditorDraft(data: ProfileExtDto): ProfileOnboardingDraft {
     return {
       version: 1,
       userId: this.profileUser?.id?.trim() ?? '',
@@ -1655,46 +1627,8 @@ export class ProfileEditorComponent {
       updatedAtIso: new Date().toISOString(),
       completedStepIds: [],
       skippedStepIds: [],
-      form
+      data
     };
-  }
-
-  private profileEditorFlowModelKey(): string {
-    const form = this.profileEditorForm;
-    return [
-      this.profileUser?.id ?? '',
-      this.isProfileSaving() ? 'saving' : 'idle',
-      form.fullName,
-      form.birthday,
-      form.city,
-      form.heightCm ?? '',
-      form.physique,
-      form.languages.join('|'),
-      form.images.join('|'),
-      form.about,
-      form.profileStatus,
-      form.genderDetail,
-      form.drinking,
-      form.smoking,
-      form.workout,
-      form.pets,
-      form.familyPlans,
-      form.children,
-      form.loveStyle,
-      form.communicationStyle,
-      form.sexualOrientation,
-      form.religion,
-      form.values.join('|'),
-      form.interests.join('|'),
-      form.experienceEntries
-        .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
-        .join('|'),
-      `workspace:${this.experienceVisibility.workspace}`,
-      `school:${this.experienceVisibility.school}`,
-      Object.entries(this.profileEditorPrivacyValues())
-        .map(([key, value]) => `${key}:${value}`)
-        .join('|')
-    ].join('\u0001');
   }
 
   private profileEditorPrivacyValues(): Record<string, AppConstants.DetailPrivacy> {
@@ -1707,29 +1641,35 @@ export class ProfileEditorComponent {
     return values;
   }
 
-  private clearProfileEditorFlowModelCache(): void {
-    this.profileEditorFlowModelCacheKey = '';
-    this.profileEditorFlowModelCache = null;
+  private refreshProfileEditorFlowModel(): void {
+    this.profileEditorFlowModel = ProfileOnboardingFormFlowConverter.convert(
+      this.profileEditorDraft(this.profileEditorData),
+      {
+        title: 'Profile',
+        subtitle: '',
+        userId: this.profileUser?.id ?? '',
+        layout: 'grouped',
+        imageEditor: 'external',
+        privacy: {
+          values: this.profileEditorPrivacyValues(),
+          experience: {
+            workspace: this.experienceVisibility.workspace,
+            school: this.experienceVisibility.school
+          }
+        },
+        showHeader: false,
+        showSave: false
+      }
+    );
   }
 
-  private applyProfileEditorFormToEditorState(): void {
-    const form = this.normalizeProfileEditorForm(this.profileEditorForm);
-    const birthday = AppUtils.fromIsoDate(form.birthday);
-    this.profileEditorForm = form;
-    this.profileForm = {
-      ...this.profileForm,
-      fullName: form.fullName.trim(),
-      birthday,
-      city: form.city.trim(),
-      heightCm: form.heightCm,
-      physique: form.physique.trim(),
-      languages: [...form.languages],
-      horoscope: birthday ? AppUtils.horoscopeByDate(birthday) : this.profileForm.horoscope,
-      profileStatus: form.profileStatus,
-      about: form.about.trim().slice(0, 160)
-    };
+  private applyProfileEditorDataToEditorState(): void {
+    const data = this.normalizeProfileEditorData(this.profileEditorData);
+    this.profileEditorData = data;
+    this.syncProfileEditorSideStateFromData(data);
+    const profile = data.profile;
     const nextSlots = this.createEmptyImageSlots();
-    form.images
+    (profile.images ?? [])
       .map(image => image.trim())
       .filter(Boolean)
       .slice(0, nextSlots.length)
@@ -1740,19 +1680,47 @@ export class ProfileEditorComponent {
     if (this.profileUser) {
       this.profileImageSlotsByUser[this.profileUser.id] = [...nextSlots];
     }
-    this.setProfileDetailValue('profile.gender', form.genderDetail);
-    this.setProfileDetailValue('profile.details.drinking', form.drinking);
-    this.setProfileDetailValue('profile.details.smoking', form.smoking);
-    this.setProfileDetailValue('profile.details.workout', form.workout);
-    this.setProfileDetailValue('profile.details.pets', form.pets);
-    this.setProfileDetailValue('profile.details.familyPlans', form.familyPlans);
-    this.setProfileDetailValue('profile.details.children', form.children);
-    this.setProfileDetailValue('profile.details.loveStyle', form.loveStyle);
-    this.setProfileDetailValue('profile.details.communicationStyle', form.communicationStyle);
-    this.setProfileDetailValue('profile.details.sexualOrientation', form.sexualOrientation);
-    this.setProfileDetailValue('profile.details.religion', form.religion);
-    this.setProfileDetailValue('profile.details.values', form.values.join(', '));
-    this.setProfileDetailValue('profile.details.interest', form.interests.join(', '));
+  }
+
+  private syncProfileEditorSideStateFromData(data: ProfileExtDto): void {
+    const profile = data.profile;
+    const birthday = AppUtils.fromIsoDate(profile.birthday);
+    this.profileForm = {
+      ...this.profileForm,
+      fullName: `${profile.name ?? ''}`.trim(),
+      birthday,
+      city: `${profile.city ?? ''}`.trim(),
+      heightCm: Number.parseInt(`${profile.height ?? ''}`.replace(/[^0-9]/g, ''), 10) || null,
+      physique: `${profile.physique ?? ''}`.trim(),
+      languages: [...(profile.languages ?? [])],
+      horoscope: birthday ? AppUtils.horoscopeByDate(birthday) : `${profile.horoscope ?? ''}`.trim(),
+      profileStatus: profile.profileStatus,
+      about: `${profile.about ?? ''}`.trim().slice(0, 160)
+    };
+    this.profileDetailsForm = this.cloneProfileDetailsForm(profile.profileDetails ?? []);
+    if (this.profileUser) {
+      this.profileDetailsFormByUser[this.profileUser.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
+    }
+    const nextEntries = this.cloneExperienceEntries(data.experienceEntries ?? []);
+    this.experienceEntries = nextEntries;
+    if (this.profileUser) {
+      this.experienceEntriesByUser[this.profileUser.id] = this.cloneExperienceEntries(nextEntries);
+    }
+    this.pruneHighlightedExperienceIds(nextEntries);
+  }
+
+  private syncProfileEditorDataProfileDetailsFromState(): void {
+    this.profileEditorData = {
+      ...this.profileEditorData,
+      profile: {
+        ...this.profileEditorData.profile,
+        profileDetails: this.cloneProfileDetailsForm(this.profileDetailsForm)
+      }
+    };
+    if (this.profileUser) {
+      this.profileDetailsFormByUser[this.profileUser.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
+    }
+    this.refreshProfileEditorFlowModel();
   }
 
   private createEmptyImageSlots(): Array<string | null> {
@@ -1894,7 +1862,10 @@ export class ProfileEditorComponent {
 
   private profileDetailRowByKey(userId: string, labelKey: string): ProfileContracts.ProfileDetailFormRow | null {
     const target = AppUtils.normalizeText(labelKey);
-    for (const group of this.profileDetailsForUser(userId, this.profileUser ?? undefined)) {
+    const groups = userId === this.profileUser?.id
+      ? this.profileDetailsForm
+      : this.profileDetailsForUser(userId, this.profileUser ?? undefined);
+    for (const group of groups) {
       for (const row of group.rows) {
         if (AppUtils.normalizeText(row.labelKey) === target) {
           return row;
@@ -1920,6 +1891,7 @@ export class ProfileEditorComponent {
       return;
     }
     row.value = `${value ?? ''}`.trim();
+    this.syncProfileEditorDataProfileDetailsFromState();
   }
 
   private setProfileDetailPrivacy(labelKey: string, value: AppConstants.DetailPrivacy): void {
@@ -1931,6 +1903,7 @@ export class ProfileEditorComponent {
       return;
     }
     row.privacy = value;
+    this.syncProfileEditorDataProfileDetailsFromState();
   }
 
   private seededOptionForUser(user: UserDto, options: string[], context: string): string {
@@ -2293,11 +2266,11 @@ export class ProfileEditorComponent {
     if (this.profileUser) {
       this.experienceEntriesByUser[this.profileUser.id] = this.cloneExperienceEntries(nextEntries);
     }
-    this.profileEditorForm = {
-      ...this.profileEditorForm,
+    this.profileEditorData = {
+      ...this.profileEditorData,
       experienceEntries: this.cloneExperienceEntries(nextEntries)
     };
-    this.clearProfileEditorFlowModelCache();
+    this.refreshProfileEditorFlowModel();
     if (highlightedIds) {
       const validIds = new Set(nextEntries.map(entry => entry.id));
       this.highlightedImportedExperienceIds = new Set(highlightedIds.filter(id => validIds.has(id)));
@@ -2428,11 +2401,10 @@ export class ProfileEditorComponent {
     }
 
     const requestToken = ++this.experienceEntriesSaveToken;
-    const savedEntries = await this.userExperiencesService.saveUserExperiences(userId, entries);
     if (requestToken !== this.experienceEntriesSaveToken || this.profileUser?.id !== userId) {
       return;
     }
-    this.setExperienceEntries(savedEntries.length > 0 ? savedEntries : entries, options?.highlightedIds ?? null);
+    this.setExperienceEntries(entries, options?.highlightedIds ?? null);
     options?.onComplete?.();
     this.cdr.markForCheck();
   }
@@ -2450,7 +2422,7 @@ export class ProfileEditorComponent {
   private persistActiveUserImageSlots(): void {
     this.syncActiveUserImageSlotsState();
     if (this.profileUser) {
-      void this.usersService.saveUserProfile(this.cloneUser(this.profileUser));
+      void this.usersService.saveUserProfileExt(this.normalizeProfileEditorData(this.profileEditorData));
     }
   }
 
@@ -2517,30 +2489,12 @@ export class ProfileEditorComponent {
       await this.commitAdminProfileForm(showAlert);
       return;
     }
-    this.applyProfileEditorFormToEditorState();
-    const user = this.cloneUser(this.profileUser);
-    user.name = this.profileForm.fullName.trim() || user.name;
-    user.headline = this.profileForm.headline.trim() || user.headline;
-    const birthday = this.profileForm.birthday ? AppUtils.toIsoDate(this.profileForm.birthday) : user.birthday;
-    user.birthday = birthday;
-    user.age = AppUtils.ageFromIsoDate(birthday, user.age);
-    user.city = this.profileForm.city.trim() || user.city;
-    user.height = this.profileForm.heightCm ? `${this.profileForm.heightCm} cm` : user.height;
-    user.physique = this.profileForm.physique || user.physique;
-    user.languages = this.profileForm.languages.length > 0 ? [...this.profileForm.languages] : user.languages;
-    user.horoscope = this.profileForm.horoscope || user.horoscope;
-    user.profileStatus = this.profileForm.profileStatus;
-    user.about = this.profileForm.about.trim().slice(0, 160);
-    user.initials = AppUtils.initialsFromText(user.name);
-    user.images = this.collectPersistedProfileImages(user.images ?? []);
-    this.syncProfileBasicsIntoDetailRows(user);
-    this.setProfileDetailValue('profile.gender', this.profileEditorForm.genderDetail);
-    user.profileDetails = this.cloneProfileDetailsForm(this.profileDetailsForm);
-    user.completion = this.calculateProfileCompletionPercent();
-    user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
-    this.profileDetailsFormByUser[user.id] = this.cloneProfileDetailsForm(this.profileDetailsForm);
-    this.pushProfileUserToContextAndLegacyMirror(user);
-    await this.usersService.saveUserProfile(this.cloneUser(user));
+    this.applyProfileEditorDataToEditorState();
+    const request = this.normalizeProfileEditorData(this.profileEditorData);
+    this.profileEditorData = request;
+    this.profileDetailsFormByUser[request.profile.id] = this.cloneProfileDetailsForm(request.profile.profileDetails ?? []);
+    this.pushProfileUserToContextAndLegacyMirror(request.profile);
+    await this.usersService.saveUserProfileExt(request);
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {
         title: 'Profile updated',

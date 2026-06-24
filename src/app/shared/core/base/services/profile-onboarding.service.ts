@@ -1,40 +1,12 @@
 import { Injectable } from '@angular/core';
 
-import type { UserDto } from '../../contracts/user.interface';
-import type { ProfileStatus } from '../../common/constants';
-import type { ExperienceEntry } from '../../contracts/profile.interface';
+import type { ProfileExtDto, UserDto } from '../../contracts/user.interface';
 
 export type ProfileOnboardingStepId =
   | 'basics'
   | 'photos'
   | 'lifestyle'
   | 'review';
-
-export interface ProfileOnboardingForm {
-  fullName: string;
-  birthday: string;
-  city: string;
-  heightCm: number | null;
-  physique: string;
-  languages: string[];
-  images: string[];
-  about: string;
-  profileStatus: ProfileStatus;
-  genderDetail: string;
-  drinking: string;
-  smoking: string;
-  workout: string;
-  pets: string;
-  familyPlans: string;
-  children: string;
-  loveStyle: string;
-  communicationStyle: string;
-  sexualOrientation: string;
-  religion: string;
-  values: string[];
-  interests: string[];
-  experienceEntries: ExperienceEntry[];
-}
 
 export interface ProfileOnboardingDraft {
   version: 1;
@@ -43,7 +15,7 @@ export interface ProfileOnboardingDraft {
   updatedAtIso: string;
   completedStepIds: ProfileOnboardingStepId[];
   skippedStepIds: ProfileOnboardingStepId[];
-  form: ProfileOnboardingForm;
+  data: ProfileExtDto;
 }
 
 export interface ProfileOnboardingAssessment {

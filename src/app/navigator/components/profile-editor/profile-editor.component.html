@@ -137,8 +137,8 @@
               <div class="profile-editor-flow-area">
                 <app-form-flow
                   class="profile-editor-flow"
-                  [model]="profileEditorFlowModel()"
-                  [(ngModel)]="profileEditorForm"
+                  [model]="profileEditorFlowModel"
+                  [(ngModel)]="profileEditorData"
                   [saving]="isProfileSaving()"
                   [disabled]="isProfileSaving()"
                   (action)="onProfileEditorFlowAction($event)"
@@ -159,9 +159,9 @@
           }
           @if (panel === 'experience') {
             <app-profile-experience-manager
-              [entries]="experienceEntries"
+              [ngModel]="experienceEntries"
               [initialFilter]="experienceFilter"
-              (entriesChange)="onExperienceEntriesChange($event)"
+              (ngModelChange)="onExperienceEntriesChange($event)"
               (overlayStateChange)="onExperienceOverlayStateChange($event)"
             ></app-profile-experience-manager>
           }

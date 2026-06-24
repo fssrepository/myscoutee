@@ -41,8 +41,6 @@ import type {
   FormFlowImageCarouselControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
-  FormFlowPath,
-  FormFlowPathSegment,
   FormFlowSaveEvent,
   FormFlowStepModel
 } from './form-flow.types';
@@ -308,7 +306,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected controlValue(control: FormFlowControlModel): unknown {
-    return this.readPath(this.formValue, control.bind);
+    const value = this.readPath(this.formValue, control.bind);
+    return control.valueFormat === 'csv' ? this.csvStringArrayValue(value) : value;
   }
 
   protected controlTextValue(control: FormFlowControlModel): string {
@@ -368,7 +367,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     if (this.isControlDisabled(control)) {
       return;
     }
-    this.formValue = this.writePath(this.formValue, control.bind, value);
+    const nextValue = control.valueFormat === 'csv' ? this.csvStringValue(value) : value;
+    this.formValue = this.writePath(this.formValue, control.bind, nextValue);
     this.onControlChange(this.formValue);
     this.onControlTouched();
     this.cdr.markForCheck();
@@ -699,7 +699,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return true;
   }
 
-  private readPath(source: unknown, path: FormFlowPath | undefined): unknown {
+  private readPath(source: unknown, path: FormFlowControlModel['bind']): unknown {
     const segments = this.normalizePath(path);
     if (segments.length === 0) {
       return source;
@@ -722,7 +722,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return current;
   }
 
-  private writePath(source: unknown, path: FormFlowPath | undefined, value: unknown): unknown {
+  private writePath(source: unknown, path: FormFlowControlModel['bind'], value: unknown): unknown {
     const segments = this.normalizePath(path);
     if (segments.length === 0) {
       return value;
@@ -730,7 +730,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.writePathAt(source, segments, value, 0);
   }
 
-  private writePathAt(source: unknown, segments: readonly FormFlowPathSegment[], value: unknown, index: number): unknown {
+  private writePathAt(source: unknown, segments: readonly (string | number)[], value: unknown, index: number): unknown {
     const segment = segments[index];
     const isLast = index === segments.length - 1;
     const clone: Record<string, unknown> | unknown[] = Array.isArray(source)
@@ -760,7 +760,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return clone;
   }
 
-  private normalizePath(path: FormFlowPath | undefined): FormFlowPathSegment[] {
+  private normalizePath(path: FormFlowControlModel['bind']): Array<string | number> {
     if (!path) {
       return [];
     }
@@ -773,6 +773,20 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       .map(segment => segment.trim())
       .filter(Boolean)
       .map(segment => /^\d+$/.test(segment) ? Number(segment) : segment);
+  }
+
+  private csvStringArrayValue(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.map(item => `${item ?? ''}`.trim()).filter(Boolean);
+    }
+    return `${value ?? ''}`
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  private csvStringValue(value: unknown): string {
+    return this.csvStringArrayValue(value).join(', ');
   }
 
   private menuSelectionLabels(control: FormFlowControlModel, value: unknown): string[] {

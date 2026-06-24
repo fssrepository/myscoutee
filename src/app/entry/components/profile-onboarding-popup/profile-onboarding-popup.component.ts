@@ -3,34 +3,27 @@ import { ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import {
-  I18nPipe,
-  ProfileExperienceManagerComponent,
-  type ProfileExperienceEntriesChange
-} from '../../../shared/ui';
+import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/profile-experience-manager';
 import {
   FormFlowComponent,
   type FormFlowActionEvent,
   type FormFlowModel
 } from '../../../shared/ui/components/form-flow';
+import { I18nPipe } from '../../../shared/ui/pipes';
 import {
   UsersService,
   type ProfileOnboardingDraft,
   type UserDto
 } from '../../../shared/core';
-import type { DetailPrivacy, ProfileStatus } from '../../../shared/core/common/constants';
 import type {
   ExperienceEntry,
-  ExperienceFilter,
-  ProfileDetailFormGroup
+  ExperienceFilter
 } from '../../../shared/core/contracts/profile.interface';
 import {
   ProfileOnboardingDraftConverter,
   ProfileOnboardingFormFlowConverter,
   type ProfileOnboardingFormFlowMenuContext
-} from '../../../shared/ui/converters';
+} from '../../../shared/ui/converters/profile-onboarding-form-flow.converter';
 
 type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Workspace' | 'School'>;
 
@@ -68,10 +61,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private previousBodyOverscrollBehavior = '';
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
-  private onboardingFlowModelCacheKey = '';
-  private onboardingFlowModelCache: FormFlowModel | null = null;
 
   protected draft: ProfileOnboardingDraft | null = null;
+  protected onboardingFlowModel: FormFlowModel | null = null;
   protected saving = false;
   protected saveError = '';
   protected experienceManagerOpen = false;
@@ -97,57 +89,11 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.saving = false;
     this.experienceManagerOpen = false;
     this.experienceManagerFilter = 'All';
-    this.clearOnboardingFlowModelCache();
+    this.refreshOnboardingFlowModel();
   }
 
   ngOnDestroy(): void {
     this.unlockDocumentScroll();
-  }
-
-  protected get form() {
-    return this.draft?.form ?? null;
-  }
-
-  protected onboardingFlowModel(): FormFlowModel | null {
-    if (!this.draft) {
-      this.clearOnboardingFlowModelCache();
-      return null;
-    }
-    const form = this.draft.form;
-    const cacheKey = [
-      this.draft.userId,
-      this.title,
-      this.message,
-      this.user?.id ?? '',
-      form.physique,
-      form.genderDetail,
-      form.profileStatus,
-      form.drinking,
-      form.smoking,
-      form.workout,
-      form.pets,
-      form.familyPlans,
-      form.children,
-      form.loveStyle,
-      form.communicationStyle,
-      form.sexualOrientation,
-      form.religion,
-      form.values.join('|'),
-      form.interests.join('|'),
-      form.experienceEntries
-        .map(entry => `${entry.id}:${entry.type}:${entry.title}:${entry.org}:${entry.dateFrom}:${entry.dateTo}`)
-        .join('|')
-    ].join('\u0001');
-    if (this.onboardingFlowModelCache && this.onboardingFlowModelCacheKey === cacheKey) {
-      return this.onboardingFlowModelCache;
-    }
-    this.onboardingFlowModelCacheKey = cacheKey;
-    this.onboardingFlowModelCache = ProfileOnboardingFormFlowConverter.convert(this.draft, {
-      title: this.title,
-      subtitle: this.message,
-      userId: this.user?.id ?? ''
-    });
-    return this.onboardingFlowModelCache;
   }
 
   protected onOnboardingFlowSave(): void {
@@ -186,12 +132,15 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     return 'Experience';
   }
 
-  protected onExperienceManagerEntriesChange(event: ProfileExperienceEntriesChange): void {
+  protected onExperienceManagerEntriesChange(entries: readonly ExperienceEntry[]): void {
     if (!this.draft) {
       return;
     }
-    this.draft.form.experienceEntries = event.entries.map(entry => ({ ...entry }));
-    this.clearOnboardingFlowModelCache();
+    this.draft.data = {
+      ...this.draft.data,
+      experienceEntries: entries.map(entry => ({ ...entry }))
+    };
+    this.refreshOnboardingFlowModel();
     this.cdr.markForCheck();
   }
 
@@ -201,10 +150,9 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     }
     this.saving = true;
     this.saveError = '';
-    const payload = this.buildUserPayload(this.user, this.draft);
     let completionEmitted = false;
     try {
-      const savedUser = await this.usersService.saveUserProfileExt(payload, this.draft.form.experienceEntries);
+      const savedUser = await this.usersService.saveUserProfileExt(this.draft.data);
       if (!savedUser) {
         throw new Error('Profile save returned no user.');
       }
@@ -224,25 +172,26 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return [];
     }
     const labels: string[] = [];
-    if (!this.draft.form.fullName.trim()) {
+    const profile = this.draft.data.profile;
+    if (!profile.name.trim()) {
       labels.push('Name');
     }
-    if (!this.draft.form.birthday.trim()) {
+    if (!profile.birthday.trim()) {
       labels.push('Birthday');
     }
-    if (!this.draft.form.city.trim()) {
+    if (!profile.city.trim()) {
       labels.push('City');
     }
-    if ((this.draft.form.heightCm ?? 0) <= 0) {
+    if ((Number.parseInt(`${profile.height ?? ''}`.replace(/[^0-9]/g, ''), 10) || 0) <= 0) {
       labels.push('Height');
     }
-    if (!this.draft.form.physique.trim()) {
+    if (!profile.physique.trim()) {
       labels.push('Physique');
     }
-    if (this.draft.form.languages.length === 0) {
+    if (profile.languages.length === 0) {
       labels.push('Language');
     }
-    if (this.draft.form.images.length < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
+    if ((profile.images ?? []).length < ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES) {
       labels.push('3 photos');
     }
     return labels;
@@ -253,16 +202,16 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       return;
     }
     this.draft = ProfileOnboardingDraftConverter.convert(this.draft);
-    this.clearOnboardingFlowModelCache();
+    this.refreshOnboardingFlowModel();
   }
 
   private resetPopupState(): void {
     this.draft = null;
+    this.onboardingFlowModel = null;
     this.saveError = '';
     this.saving = false;
     this.experienceManagerOpen = false;
     this.experienceManagerFilter = 'All';
-    this.clearOnboardingFlowModelCache();
   }
 
   private openExperienceManager(type: OnboardingExperienceSelectorType): void {
@@ -273,139 +222,14 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.experienceManagerOpen = true;
   }
 
-  private clearOnboardingFlowModelCache(): void {
-    this.onboardingFlowModelCacheKey = '';
-    this.onboardingFlowModelCache = null;
-  }
-
-  private buildUserPayload(user: UserDto, draft: ProfileOnboardingDraft): UserDto {
-    const birthdayDate = AppUtils.fromIsoDate(draft.form.birthday);
-    const name = draft.form.fullName.trim();
-    const birthday = birthdayDate ? AppUtils.toIsoDate(birthdayDate) : draft.form.birthday.trim();
-    return {
-      ...user,
-      name,
-      initials: AppUtils.initialsFromText(name),
-      birthday,
-      age: AppUtils.ageFromIsoDate(birthday, user.age),
-      city: draft.form.city.trim(),
-      height: `${draft.form.heightCm ?? 0} cm`,
-      physique: draft.form.physique.trim(),
-      languages: [...draft.form.languages],
-      horoscope: birthdayDate ? AppUtils.horoscopeByDate(birthdayDate) : user.horoscope,
-      headline: `${user.headline ?? ''}`.trim(),
-      about: draft.form.about.trim().slice(0, 160),
-      images: [...draft.form.images],
-      profileStatus: draft.form.profileStatus,
-      profileFormVersion: ProfileOnboardingDraftConverter.currentProfileFormVersion,
-      profileDetails: this.buildProfileDetails(user, draft),
-      completion: this.completionPercent(draft)
-    };
-  }
-
-  private buildProfileDetails(user: UserDto, draft: ProfileOnboardingDraft): ProfileDetailFormGroup[] {
-    const form = draft.form;
-    const basicValues: Record<string, string> = {
-      'profile.name': form.fullName.trim(),
-      'profile.city': form.city.trim(),
-      'profile.birthday': this.formatDateForDetail(form.birthday),
-      'profile.height': `${form.heightCm ?? 0} cm`,
-      'profile.physique': form.physique.trim(),
-      'profile.languages': form.languages.join(', '),
-      'profile.horoscope': AppUtils.fromIsoDate(form.birthday)
-        ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(form.birthday) as Date)
-        : '',
-      'profile.gender': form.genderDetail.trim()
-    };
-    const optionalValues: Record<string, string> = {
-      'profile.details.interest': form.interests.join(', '),
-      'profile.details.drinking': form.drinking,
-      'profile.details.smoking': form.smoking,
-      'profile.details.workout': form.workout,
-      'profile.details.pets': form.pets,
-      'profile.details.familyPlans': form.familyPlans,
-      'profile.details.children': form.children,
-      'profile.details.loveStyle': form.loveStyle,
-      'profile.details.communicationStyle': form.communicationStyle,
-      'profile.details.sexualOrientation': form.sexualOrientation,
-      'profile.details.religion': form.religion,
-      'profile.details.values': form.values.join(', ')
-    };
-    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
-      title: group.title,
-      rows: group.rows.map(row => ({
-        labelKey: row.labelKey,
-        value: basicValues[row.labelKey] ?? optionalValues[row.labelKey] ?? this.existingDetailValue(user, row.labelKey),
-        privacy: this.existingDetailPrivacy(user, row.labelKey, row.privacy),
-        options: this.detailOptionsForRow(row.labelKey)
-      }))
-    }));
-  }
-
-  private detailOptionsForRow(labelKey: string): string[] {
-    if (labelKey === 'profile.details.values') {
-      return APP_STATIC_DATA.beliefsValuesOptionGroups.flatMap(group => group.options);
-    }
-    if (labelKey === 'profile.details.interest') {
-      return APP_STATIC_DATA.interestOptionGroups.flatMap(group => group.options);
-    }
-    return APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
-  }
-
-  private existingDetailValue(user: UserDto, labelKey: string): string {
-    const target = AppUtils.normalizeText(labelKey);
-    for (const group of user.profileDetails ?? []) {
-      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
-      if (row) {
-        return row.value;
-      }
-    }
-    return '';
-  }
-
-  private existingDetailPrivacy(user: UserDto, labelKey: string, fallback: DetailPrivacy): DetailPrivacy {
-    const target = AppUtils.normalizeText(labelKey);
-    for (const group of user.profileDetails ?? []) {
-      const row = (group.rows ?? []).find(candidate => AppUtils.normalizeText(candidate.labelKey) === target);
-      if (row && this.isDetailPrivacy(row.privacy)) {
-        return row.privacy;
-      }
-    }
-    return fallback;
-  }
-
-  private isDetailPrivacy(value: string): value is DetailPrivacy {
-    return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
-  }
-
-  private completionPercent(draft: ProfileOnboardingDraft): number {
-    let completed = 0;
-    let total = 0;
-    const add = (ok: boolean): void => {
-      total += 1;
-      if (ok) {
-        completed += 1;
-      }
-    };
-    add(Boolean(draft.form.fullName.trim()));
-    add(Boolean(draft.form.birthday.trim()));
-    add(Boolean(draft.form.city.trim()));
-    add((draft.form.heightCm ?? 0) > 0);
-    add(Boolean(draft.form.physique.trim()));
-    add(draft.form.languages.length > 0);
-    add(draft.form.images.length >= ProfileOnboardingPopupComponent.MIN_REQUIRED_IMAGES);
-    add(draft.form.about.trim().length >= 20);
-    add(draft.form.values.length > 0);
-    add(draft.form.interests.length > 0);
-    add(draft.form.experienceEntries.length > 0);
-    return total === 0 ? 0 : Math.round((completed / total) * 100);
-  }
-
-  private formatDateForDetail(value: string): string {
-    const parsed = AppUtils.fromIsoDate(value);
-    return parsed
-      ? parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      : '';
+  private refreshOnboardingFlowModel(): void {
+    this.onboardingFlowModel = this.draft
+      ? ProfileOnboardingFormFlowConverter.convert(this.draft, {
+          title: this.title,
+          subtitle: this.message,
+          userId: this.user?.id ?? ''
+        })
+      : null;
   }
 
   private syncDocumentScrollLock(): void {

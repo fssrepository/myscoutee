@@ -1,5 +1,5 @@
-@if (open && draft && user) {
-  @if (form; as f) {
+@if (draft && user) {
+  @if (draft.data; as onboardingData) {
     <section
       class="profile-onboarding-shell"
       [class.profile-onboarding-shell--mobile]="mobile"
@@ -27,11 +27,11 @@
         </header>
 
         <main class="profile-onboarding-body">
-          @if (onboardingFlowModel(); as flowModel) {
+          @if (onboardingFlowModel; as flowModel) {
             <app-form-flow
               class="profile-onboarding-flow"
               [model]="flowModel"
-              [(ngModel)]="draft.form"
+              [(ngModel)]="draft.data"
               [saving]="saving"
               [disabled]="saving"
               (save)="onOnboardingFlowSave()"
@@ -69,11 +69,11 @@
               </header>
               <section class="profile-onboarding-experience-manager-body popup-surface-body">
                 <app-profile-experience-manager
-                  [entries]="f.experienceEntries"
+                  [ngModel]="onboardingData.experienceEntries"
                   [initialFilter]="experienceManagerFilter"
                   [userId]="user.id"
                   [showInlineActions]="true"
-                  (entriesChange)="onExperienceManagerEntriesChange($event)"
+                  (ngModelChange)="onExperienceManagerEntriesChange($event)"
                 ></app-profile-experience-manager>
               </section>
             </div>
