@@ -45,12 +45,6 @@ export type ProfileFormFlowMenuContext =
   | { menu: 'privacy'; key: string; value: DetailPrivacy }
   | { menu: 'experiencePrivacy'; type: 'workspace' | 'school'; value: DetailPrivacy };
 
-type HoroscopeBadgeMeta = {
-  label: string;
-  icon: string;
-  palette: NonNullable<FormFlowDateMetaValue['palette']>;
-};
-
 export class ProfileFormFlowDataConverter {
   static convert(user: UserDto): FormFlowDraft<ProfileExtDto>;
   static convert(draft: FormFlowDraft<ProfileExtDto>): FormFlowDraft<ProfileExtDto>;
@@ -313,7 +307,7 @@ export class ProfileFormFlowDataConverter {
 }
 
 export class ProfileFormFlowConverter {
-  private static readonly horoscopeBadgeMetaBySign: Record<string, HoroscopeBadgeMeta> = {
+  private static readonly horoscopeBadgeMetaBySign: Record<string, FormFlowDateMetaValue> = {
     Aries: { label: 'Kos', icon: '♈', palette: 'aries' },
     Taurus: { label: 'Bika', icon: '♉', palette: 'taurus' },
     Gemini: { label: 'Ikrek', icon: '♊', palette: 'gemini' },
