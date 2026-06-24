@@ -1,8 +1,7 @@
 import { APP_STATIC_DATA } from '../../app-static-data';
 import { AppUtils } from '../../app-utils';
-import type { ProfileOnboardingDraft } from '../../core/base/services/profile-onboarding.service';
 import type { ProfileExtDto, UserDto } from '../../core/contracts/user.interface';
-import type { DetailPrivacy, ProfileStatus } from '../../core/common/constants';
+import { CURRENT_PROFILE_FORM_VERSION, type DetailPrivacy, type ProfileStatus } from '../../core/common/constants';
 import type { ExperienceEntry, ProfileDetailFormGroup } from '../../core/contracts/profile.interface';
 import type {
   AppMenuItem,
@@ -10,88 +9,51 @@ import type {
   AppMenuTrigger
 } from '../components/menu/menu.types';
 import { buildTabbedMenuModel } from '../components/menu/menu-option-groups';
-import type { FormFlowControlModel, FormFlowMenuControlConfig, FormFlowModel } from '../components/form-flow/form-flow.types';
+import type {
+  FormFlowControlModel,
+  FormFlowDraft,
+  FormFlowMenuControlConfig,
+  FormFlowModel
+} from '../components/form-flow/form-flow.types';
 import type { UiConverter } from './converter.types';
 
-export interface ProfileOnboardingFormFlowPrivacyOptions {
+export interface ProfileFormFlowPrivacyOptions {
   values?: Record<string, DetailPrivacy | undefined>;
   experience?: Partial<Record<'workspace' | 'school', DetailPrivacy | undefined>>;
 }
 
-export interface ProfileOnboardingFormFlowConverterOptions {
+export interface ProfileFormFlowConverterOptions {
   title?: string | null;
   subtitle?: string | null;
   userId?: string | null;
   layout?: FormFlowModel['layout'];
   imageEditor?: 'flow' | 'external';
-  privacy?: ProfileOnboardingFormFlowPrivacyOptions | null;
+  privacy?: ProfileFormFlowPrivacyOptions | null;
   showHeader?: boolean;
   showSave?: boolean;
   saveDisabled?: boolean;
 }
 
-export type ProfileOnboardingFormFlowMenuContext =
+export type ProfileFormFlowMenuContext =
   | { menu: 'field'; field: string; value: string }
   | { menu: 'experienceSelector'; value: Extract<ExperienceEntry['type'], 'Workspace' | 'School'> }
   | { menu: 'privacy'; key: string; value: DetailPrivacy }
   | { menu: 'experiencePrivacy'; type: 'workspace' | 'school'; value: DetailPrivacy };
 
-export class ProfileOnboardingDraftConverter {
-  static readonly currentProfileFormVersion = 2;
-
-  static convert(user: UserDto): ProfileOnboardingDraft;
-  static convert(draft: ProfileOnboardingDraft): ProfileOnboardingDraft;
-  static convert(value: UserDto | ProfileOnboardingDraft): ProfileOnboardingDraft {
+export class ProfileFormFlowDataConverter {
+  static convert(user: UserDto): FormFlowDraft<ProfileExtDto>;
+  static convert(draft: FormFlowDraft<ProfileExtDto>): FormFlowDraft<ProfileExtDto>;
+  static convert(value: UserDto | FormFlowDraft<ProfileExtDto>): FormFlowDraft<ProfileExtDto> {
     return this.isDraft(value)
       ? this.normalizeDraft(value)
       : this.createDraft(value);
   }
 
-  static requiredMissingKeys(user: UserDto): string[] {
-    const missing: string[] = [];
-    if (!this.hasText(user.name)) {
-      missing.push('name');
-    }
-    if (!this.isIsoDate(user.birthday)) {
-      missing.push('birthday');
-    }
-    if (!this.hasText(user.city)) {
-      missing.push('city');
-    }
-    if ((this.parseHeightCm(user.height) ?? 0) <= 0) {
-      missing.push('height');
-    }
-    if (!this.hasText(user.physique)) {
-      missing.push('physique');
-    }
-    if ((user.languages ?? []).filter(language => this.hasText(language)).length === 0) {
-      missing.push('languages');
-    }
-    if ((user.images ?? []).filter(image => this.hasText(image)).length < 3) {
-      missing.push('images');
-    }
-    return missing;
-  }
-
-  static isProfileEffectivelyEmpty(user: UserDto): boolean {
-    const signals = [
-      this.hasText(user.name),
-      this.isIsoDate(user.birthday),
-      this.hasText(user.city),
-      (this.parseHeightCm(user.height) ?? 0) > 0,
-      this.hasText(user.physique),
-      (user.languages ?? []).some(language => this.hasText(language)),
-      this.hasText(user.about),
-      (user.images ?? []).some(image => this.hasText(image))
-    ];
-    return signals.filter(Boolean).length <= 2;
-  }
-
-  private static isDraft(value: UserDto | ProfileOnboardingDraft): value is ProfileOnboardingDraft {
+  private static isDraft(value: UserDto | FormFlowDraft<ProfileExtDto>): value is FormFlowDraft<ProfileExtDto> {
     return 'data' in value && 'currentStepId' in value;
   }
 
-  private static createDraft(user: UserDto): ProfileOnboardingDraft {
+  private static createDraft(user: UserDto): FormFlowDraft<ProfileExtDto> {
     return this.normalizeDraft({
       version: 1,
       userId: user.id.trim(),
@@ -112,7 +74,7 @@ export class ProfileOnboardingDraftConverter {
     };
   }
 
-  private static normalizeDraft(draft: ProfileOnboardingDraft): ProfileOnboardingDraft {
+  private static normalizeDraft(draft: FormFlowDraft<ProfileExtDto>): FormFlowDraft<ProfileExtDto> {
     const data = this.normalizeData(draft.data);
     return {
       version: 1,
@@ -131,7 +93,7 @@ export class ProfileOnboardingDraftConverter {
     const normalizedProfile: UserDto = {
       ...profile,
       profileDetails: this.normalizeProfileDetails(profile),
-      profileFormVersion: this.currentProfileFormVersion
+      profileFormVersion: CURRENT_PROFILE_FORM_VERSION
     };
     normalizedProfile.completion = this.completionPercent(normalizedProfile, experienceEntries);
     return {
@@ -141,7 +103,7 @@ export class ProfileOnboardingDraftConverter {
   }
 
   private static normalizeProfile(user: UserDto): UserDto {
-    const birthday = this.isIsoDate(user.birthday) ? user.birthday.trim() : '';
+    const birthday = AppUtils.isIsoDate(user.birthday) ? user.birthday.trim() : '';
     const name = `${user.name ?? ''}`.trim();
     return {
       ...user,
@@ -275,14 +237,14 @@ export class ProfileOnboardingDraftConverter {
     };
     const values = this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.values'));
     const interests = this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.interest'));
-    add(this.hasText(profile.name));
-    add(this.isIsoDate(profile.birthday));
-    add(this.hasText(profile.city));
+    add(AppUtils.hasText(profile.name));
+    add(AppUtils.isIsoDate(profile.birthday));
+    add(AppUtils.hasText(profile.city));
     add((this.parseHeightCm(profile.height) ?? 0) > 0);
-    add(this.hasText(profile.physique));
+    add(AppUtils.hasText(profile.physique));
     add(this.normalizeStringList(profile.languages).length > 0);
     add(this.normalizeStringList(profile.images).length >= 3);
-    add(this.hasText(profile.about) && `${profile.about ?? ''}`.trim().length >= 20);
+    add(AppUtils.hasText(profile.about) && `${profile.about ?? ''}`.trim().length >= 20);
     add(values.length > 0);
     add(interests.length > 0);
     add(experienceEntries.length > 0);
@@ -319,16 +281,13 @@ export class ProfileOnboardingDraftConverter {
       : 'Workspace';
   }
 
-  private static normalizeStepId(value: unknown): ProfileOnboardingDraft['currentStepId'] {
+  private static normalizeStepId(value: unknown): FormFlowDraft<ProfileExtDto>['currentStepId'] {
     const candidate = `${value ?? ''}`.trim();
-    return candidate === 'photos' || candidate === 'lifestyle' || candidate === 'review'
-      ? candidate
-      : 'basics';
+    return candidate || 'basics';
   }
 
-  private static normalizeStepIds(values: readonly ProfileOnboardingDraft['currentStepId'][] | undefined): ProfileOnboardingDraft['currentStepId'][] {
-    const allowed = new Set<ProfileOnboardingDraft['currentStepId']>(['basics', 'photos', 'lifestyle', 'review']);
-    return [...new Set((values ?? []).filter(stepId => allowed.has(stepId)))];
+  private static normalizeStepIds(values: readonly FormFlowDraft<ProfileExtDto>['currentStepId'][] | undefined): FormFlowDraft<ProfileExtDto>['currentStepId'][] {
+    return [...new Set((values ?? []).map(value => `${value ?? ''}`.trim()).filter(Boolean))];
   }
 
   private static normalizeProfileStatus(value: unknown): ProfileStatus {
@@ -363,28 +322,15 @@ export class ProfileOnboardingDraftConverter {
     return this.normalizeHeightCm(parsed);
   }
 
-  private static isIsoDate(value: string | null | undefined): boolean {
-    const normalized = `${value ?? ''}`.trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
-      return false;
-    }
-    const parsed = Date.parse(`${normalized}T00:00:00Z`);
-    return Number.isFinite(parsed);
-  }
-
-  private static hasText(value: unknown): boolean {
-    return `${value ?? ''}`.trim().length > 0;
-  }
-
   private static normalizeToken(value: unknown): string {
     return `${value ?? ''}`.trim().toLowerCase();
   }
 }
 
-export class ProfileOnboardingFormFlowConverter {
+export class ProfileFormFlowConverter {
   static convert(
-    draft: ProfileOnboardingDraft | null | undefined,
-    options: ProfileOnboardingFormFlowConverterOptions = {}
+    draft: FormFlowDraft<ProfileExtDto> | null | undefined,
+    options: ProfileFormFlowConverterOptions = {}
   ): FormFlowModel {
     const data = draft?.data ?? null;
     const profile = data?.profile ?? null;
@@ -617,7 +563,7 @@ export class ProfileOnboardingFormFlowConverter {
     key: string,
     icon: string,
     palette: AppMenuPalette,
-    privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
+    privacy?: ProfileFormFlowPrivacyOptions | null
   ) {
     return {
       id: field,
@@ -642,12 +588,12 @@ export class ProfileOnboardingFormFlowConverter {
   }
 
   private static profileDetailValue(profile: UserDto | null | undefined, labelKey: string): string {
-    return ProfileOnboardingDraftConverter.profileDetailValue(profile, labelKey);
+    return ProfileFormFlowDataConverter.profileDetailValue(profile, labelKey);
   }
 
   private static privacyAccessory(
     key: string,
-    privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
+    privacy?: ProfileFormFlowPrivacyOptions | null
   ): { menu?: FormFlowMenuControlConfig | null } | null {
     if (!privacy?.values) {
       return null;
@@ -676,7 +622,7 @@ export class ProfileOnboardingFormFlowConverter {
           active: option === current,
           palette: this.privacyPalette(option),
           surface: 'tinted',
-          context: { menu: 'privacy', key, value: option } satisfies ProfileOnboardingFormFlowMenuContext
+          context: { menu: 'privacy', key, value: option } satisfies ProfileFormFlowMenuContext
         }))
       }
     };
@@ -684,7 +630,7 @@ export class ProfileOnboardingFormFlowConverter {
 
   private static experiencePrivacyAccessory(
     type: 'workspace' | 'school',
-    privacy?: ProfileOnboardingFormFlowPrivacyOptions | null
+    privacy?: ProfileFormFlowPrivacyOptions | null
   ): { menu?: FormFlowMenuControlConfig | null } | null {
     if (!privacy?.experience) {
       return null;
@@ -713,7 +659,7 @@ export class ProfileOnboardingFormFlowConverter {
           active: option === current,
           palette: this.privacyPalette(option),
           surface: 'tinted',
-          context: { menu: 'experiencePrivacy', type, value: option } satisfies ProfileOnboardingFormFlowMenuContext
+          context: { menu: 'experiencePrivacy', type, value: option } satisfies ProfileFormFlowMenuContext
         }))
       }
     };
@@ -936,7 +882,7 @@ export class ProfileOnboardingFormFlowConverter {
       filterable: true,
       closeOnSelect: false,
       trigger: this.trigger(title, icon, palette),
-      model: buildTabbedMenuModel<string, ProfileOnboardingFormFlowMenuContext>({
+      model: buildTabbedMenuModel<string, ProfileFormFlowMenuContext>({
         idPrefix: this.idToken(title),
         groups,
         maxSelected,
@@ -973,7 +919,7 @@ export class ProfileOnboardingFormFlowConverter {
         action: 'custom',
         trailingIcon: 'chevron_right',
         ariaLabel: emptyLabel,
-        context: { menu: 'experienceSelector', value: type } satisfies ProfileOnboardingFormFlowMenuContext
+        context: { menu: 'experienceSelector', value: type } satisfies ProfileFormFlowMenuContext
       },
       model: {
         layout: 'tabs',
@@ -1000,7 +946,7 @@ export class ProfileOnboardingFormFlowConverter {
             closeOnSelect: false,
             palette,
             surface: 'tinted',
-            context: { menu: 'experienceSelector', value: type } satisfies ProfileOnboardingFormFlowMenuContext
+            context: { menu: 'experienceSelector', value: type } satisfies ProfileFormFlowMenuContext
           }))
         }]
       }
@@ -1022,7 +968,7 @@ export class ProfileOnboardingFormFlowConverter {
     value: string,
     icon: string,
     palette: AppMenuPalette
-  ): AppMenuItem<string, ProfileOnboardingFormFlowMenuContext> {
+  ): AppMenuItem<string, ProfileFormFlowMenuContext> {
     return {
       id: `${this.idToken(field)}-${this.idToken(value)}`,
       label: value,
@@ -1040,7 +986,7 @@ export class ProfileOnboardingFormFlowConverter {
     value: string,
     icon: string,
     palette: AppMenuPalette
-  ): AppMenuItem<string, ProfileOnboardingFormFlowMenuContext> {
+  ): AppMenuItem<string, ProfileFormFlowMenuContext> {
     return {
       id: `${this.idToken(field)}-${this.idToken(value)}`,
       label: value,
@@ -1376,9 +1322,9 @@ export class ProfileOnboardingFormFlowConverter {
   }
 }
 
-export const profileOnboardingFormFlowConverter =
-  ProfileOnboardingFormFlowConverter satisfies UiConverter<
-    ProfileOnboardingDraft | null | undefined,
+export const profileFormFlowConverter =
+  ProfileFormFlowConverter satisfies UiConverter<
+    FormFlowDraft<ProfileExtDto> | null | undefined,
     FormFlowModel,
-    ProfileOnboardingFormFlowConverterOptions
+    ProfileFormFlowConverterOptions
   >;

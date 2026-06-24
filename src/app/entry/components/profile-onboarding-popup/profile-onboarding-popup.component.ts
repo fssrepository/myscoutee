@@ -5,20 +5,19 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/profile-experience-manager/profile-experience-manager.component';
 import { FormFlowComponent } from '../../../shared/ui/components/form-flow/form-flow.component';
-import type { FormFlowActionEvent, FormFlowModel } from '../../../shared/ui/components/form-flow/form-flow.types';
+import type { FormFlowActionEvent, FormFlowDraft, FormFlowModel } from '../../../shared/ui/components/form-flow/form-flow.types';
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 import { UsersService } from '../../../shared/core/base/services/users.service';
-import type { ProfileOnboardingDraft } from '../../../shared/core/base/services/profile-onboarding.service';
-import type { UserDto } from '../../../shared/core/contracts/user.interface';
+import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
 import type {
   ExperienceEntry,
   ExperienceFilter
 } from '../../../shared/core/contracts/profile.interface';
 import {
-  ProfileOnboardingDraftConverter,
-  ProfileOnboardingFormFlowConverter,
-  type ProfileOnboardingFormFlowMenuContext
-} from '../../../shared/ui/converters/profile-onboarding-form-flow.converter';
+  ProfileFormFlowDataConverter,
+  ProfileFormFlowConverter,
+  type ProfileFormFlowMenuContext
+} from '../../../shared/ui/converters/profile-form-flow.converter';
 
 type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Workspace' | 'School'>;
 
@@ -57,7 +56,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   private previousDocumentOverflow = '';
   private previousDocumentOverscrollBehavior = '';
 
-  protected draft: ProfileOnboardingDraft | null = null;
+  protected draft: FormFlowDraft<ProfileExtDto> | null = null;
   protected onboardingFlowModel: FormFlowModel | null = null;
   protected saving = false;
   protected saveError = '';
@@ -79,7 +78,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (this.draft?.userId === nextUserId) {
       return;
     }
-    this.draft = ProfileOnboardingDraftConverter.convert(this.user);
+    this.draft = ProfileFormFlowDataConverter.convert(this.user);
     this.saveError = '';
     this.saving = false;
     this.experienceManagerOpen = false;
@@ -100,7 +99,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
   }
 
   protected onOnboardingFlowAction(event: FormFlowActionEvent): void {
-    const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
+    const context = event.context as ProfileFormFlowMenuContext | undefined;
     if (context?.menu === 'experienceSelector') {
       this.openExperienceManager(context.value);
     }
@@ -196,7 +195,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     if (!this.draft) {
       return;
     }
-    this.draft = ProfileOnboardingDraftConverter.convert(this.draft);
+    this.draft = ProfileFormFlowDataConverter.convert(this.draft);
     this.refreshOnboardingFlowModel();
   }
 
@@ -219,7 +218,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
 
   private refreshOnboardingFlowModel(): void {
     this.onboardingFlowModel = this.draft
-      ? ProfileOnboardingFormFlowConverter.convert(this.draft, {
+      ? ProfileFormFlowConverter.convert(this.draft, {
           title: this.title,
           subtitle: this.message,
           userId: this.user?.id ?? ''

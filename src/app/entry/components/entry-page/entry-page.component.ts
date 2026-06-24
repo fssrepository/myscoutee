@@ -2,12 +2,12 @@ import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, 
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
+import { AppUtils } from '../../../shared/app-utils';
 import { AppPopupContext } from '../../../shared/ui';
 import {
   HelpCenterService,
   LandingContentService,
   PrivacyPolicyService,
-  ProfileOnboardingService,
   SessionService,
   TermsPolicyService,
   UsersService,
@@ -23,7 +23,7 @@ import type {
   LocationCoordinates
 } from '../../../shared/core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
-import type { AuthMode } from '../../../shared/core/common/constants';
+import { CURRENT_PROFILE_FORM_VERSION, type AuthMode } from '../../../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -80,7 +80,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
-  private readonly onboardingService = inject(ProfileOnboardingService);
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly landingContent = inject(LandingContentService);
@@ -475,7 +474,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     const selectedUser = this.usersService.peekCachedUserById(normalizedUserId);
-    if (selectedUser && this.onboardingService.shouldPrompt(selectedUser)) {
+    if (selectedUser && this.requiresProfileOnboarding(selectedUser)) {
       this.pendingDemoSessionUserId = normalizedUserId;
       this.openOnboardingGate(selectedUser, this.redirectUrl());
       selection.complete();
@@ -633,7 +632,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       await this.router.navigateByUrl(redirectUrl);
       return;
     }
-    if (!this.onboardingService.shouldPrompt(user)) {
+    if (!this.requiresProfileOnboarding(user)) {
       this.closeOnboardingGate();
       await this.router.navigateByUrl(redirectUrl);
       return;
@@ -648,6 +647,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           }
         : undefined
     );
+  }
+
+  private requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
+    if (!user || user.admin === true || user.profileStatus === 'blocked' || user.profileStatus === 'deleted' || user.hostTier === 'Admin') {
+      return false;
+    }
+    return user.profileStatus === 'onboarding'
+      || AppUtils.positiveInteger(user.profileFormVersion) < CURRENT_PROFILE_FORM_VERSION;
   }
 
   private isAdminRedirect(redirectUrl: string): boolean {

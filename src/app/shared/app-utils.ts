@@ -117,8 +117,13 @@ export class AppUtils {
     return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
   }
 
-  static hasText(value: string | null | undefined, minLength = 1): boolean {
-    return (value?.trim().length ?? 0) >= Math.max(0, Math.trunc(minLength));
+  static hasText(value: unknown, minLength = 1): boolean {
+    return `${value ?? ''}`.trim().length >= Math.max(0, Math.trunc(minLength));
+  }
+
+  static positiveInteger(value: unknown, fallback = 0): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
   }
 
   static hashText(value: string): number {
@@ -272,6 +277,14 @@ export class AppUtils {
     }
     const parsed = new Date(`${value}T00:00:00`);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  static isIsoDate(value: string | null | undefined): boolean {
+    const normalized = `${value ?? ''}`.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      return false;
+    }
+    return Number.isFinite(Date.parse(`${normalized}T00:00:00Z`));
   }
 
   static parseDate(value: unknown): Date | null {

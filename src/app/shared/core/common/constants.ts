@@ -103,6 +103,8 @@ export const PRICING_CANCELLATION_REFUND_KINDS = ['percent', 'fixed_amount', 'fu
 export type PricingCancellationRefundKind = typeof PRICING_CANCELLATION_REFUND_KINDS[number];
 
 // Profile
+export const CURRENT_PROFILE_FORM_VERSION = 2;
+
 export const PROFILE_STATUSES = [
   'public',
   'friends only',

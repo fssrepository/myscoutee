@@ -4,20 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type {
-  ExperienceImportProgressState,
-  ExperienceImportStatistics,
-  UserExperienceImportDraft
-} from '../../../shared/core/contracts/profile.interface';
 import type * as AppTypes from '../../../shared/core/base/models';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
 import {
-  ProfileOnboardingService,
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UserExperiencesService,
   UsersService,
-  type ProfileOnboardingDraft,
   type UserDto
 } from '../../../shared/core';
 import type { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
@@ -40,17 +33,19 @@ import {
 import {
   FormFlowComponent,
   type FormFlowActionEvent,
+  type FormFlowDraft,
   type FormFlowModel
 } from '../../../shared/ui/components/form-flow';
 import {
-  ProfileOnboardingDraftConverter,
-  ProfileOnboardingFormFlowConverter,
-  type ProfileOnboardingFormFlowMenuContext
+  ProfileFormFlowDataConverter,
+  ProfileFormFlowConverter,
+  type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../navigator.service';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
+import { CURRENT_PROFILE_FORM_VERSION } from '../../../shared/core/common/constants';
 import type * as AppConstants from '../../../shared/core/common/constants';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
@@ -63,9 +58,6 @@ type ProfileEditorMenuContext =
   | { kind: 'detailPrivacy'; groupIndex: number; rowIndex: number; value: AppConstants.DetailPrivacy }
   | { kind: 'experienceSelector'; value: ProfileEditorExperienceSelectorType }
   | { kind: 'experiencePrivacy'; type: 'workspace' | 'school'; value: AppConstants.DetailPrivacy }
-  | { kind: 'experienceFilter'; value: ProfileContracts.ExperienceFilter }
-  | { kind: 'experienceType'; value: ProfileContracts.ExperienceEntry['type'] }
-  | { kind: 'experienceQuickAction'; action: 'create' | 'upload' }
   | { kind: 'profileSave' }
   | { kind: 'languageOption'; value: string }
   | { kind: 'valuesOption'; groupIndex: number; rowIndex: number; value: string }
@@ -82,17 +74,6 @@ interface ProfileFormState {
   horoscope: string;
   profileStatus: AppConstants.ProfileStatus;
   about: string;
-}
-
-interface ExperienceImportDialogState {
-  visible: boolean;
-  fileName: string;
-  busy: boolean;
-  progress: ExperienceImportProgressState;
-  statistics: ExperienceImportStatistics;
-  warnings: string[];
-  error: string | null;
-  draft: UserExperienceImportDraft | null;
 }
 
 @Component({
@@ -124,7 +105,6 @@ export class ProfileEditorComponent {
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly profileOnboardingService = inject(ProfileOnboardingService);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
@@ -133,8 +113,6 @@ export class ProfileEditorComponent {
   private readonly experienceEntriesByUser: Record<string, ProfileContracts.ExperienceEntry[]> = {};
   private lastLoadedUserId = '';
   private experienceEntriesLoadToken = 0;
-  private experienceEntriesSaveToken = 0;
-  private experienceImportToken = 0;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
   protected readonly profileStatusOptions = APP_STATIC_DATA.profileStatusOptions;
@@ -143,8 +121,6 @@ export class ProfileEditorComponent {
   protected readonly beliefsValuesOptionGroups = APP_STATIC_DATA.beliefsValuesOptionGroups;
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
   protected readonly detailPrivacyOptions = APP_STATIC_DATA.detailPrivacyOptions;
-  protected readonly experienceFilterOptions = APP_STATIC_DATA.experienceFilterOptions;
-  protected readonly experienceTypeOptions = APP_STATIC_DATA.experienceTypeOptions;
   protected readonly languageSuggestions = APP_STATIC_DATA.languageSuggestions;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
@@ -168,22 +144,6 @@ export class ProfileEditorComponent {
   protected experienceEntries: ProfileContracts.ExperienceEntry[] = [];
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
   protected experienceManagerOverlayOpen = false;
-  protected showExperienceForm = false;
-  protected editingExperienceId: string | null = null;
-  protected pendingExperienceDeleteId: string | null = null;
-  protected highlightedImportedExperienceIds = new Set<string>();
-  protected experienceImportDialog: ExperienceImportDialogState = this.createEmptyExperienceImportDialogState();
-  protected experienceRangeStart: Date | null = null;
-  protected experienceRangeEnd: Date | null = null;
-  protected experienceForm: Omit<ProfileContracts.ExperienceEntry, 'id'> = {
-    type: 'Workspace',
-    title: '',
-    org: '',
-    city: '',
-    dateFrom: '',
-    dateTo: '',
-    description: ''
-  };
 
   constructor() {
     effect(() => {
@@ -263,28 +223,8 @@ export class ProfileEditorComponent {
     return AppUtils.ageFromIsoDate(AppUtils.toIsoDate(this.profileForm.birthday), this.profileUser.age);
   }
 
-  protected get filteredExperienceEntries(): ProfileContracts.ExperienceEntry[] {
-    const filtered = this.experienceEntries.filter(item => {
-      if (this.experienceFilter === 'All') {
-        return true;
-      }
-      return item.type === this.experienceFilter;
-    });
-    return [...filtered].sort((a, b) => AppUtils.toSortableDate(b.dateFrom) - AppUtils.toSortableDate(a.dateFrom));
-  }
-
-  protected get canSaveExperienceEntry(): boolean {
-    return Boolean(this.experienceForm.title.trim() && this.experienceForm.org.trim() && this.experienceRangeStart);
-  }
-
-  protected get canSubmitExperienceImport(): boolean {
-    return !this.experienceImportDialog.busy
-      && !this.experienceImportDialog.error
-      && (this.experienceImportDialog.draft?.importedIds.length ?? 0) > 0;
-  }
-
   protected onProfileEditorFlowAction(event: FormFlowActionEvent): void {
-    const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
+    const context = event.context as ProfileFormFlowMenuContext | undefined;
     if (context?.menu === 'experienceSelector') {
       this.openExperienceSelector(context.value);
       return;
@@ -355,9 +295,6 @@ export class ProfileEditorComponent {
   protected openExperienceSelector(filter: ProfileContracts.ExperienceFilter = 'All'): void {
     this.experienceFilter = filter;
     this.experienceManager?.setFilter(filter);
-    this.pendingExperienceDeleteId = null;
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
     this.panel = 'experience';
   }
 
@@ -435,46 +372,6 @@ export class ProfileEditorComponent {
     };
     this.refreshProfileEditorFlowModel();
     this.persistActiveUserImageSlots();
-  }
-
-  protected openExperienceCreateAction(event?: Event): void {
-    event?.stopPropagation();
-    this.experienceManager?.openCreate(this.experienceFilter === 'All' ? 'Workspace' : this.experienceFilter);
-  }
-
-  protected openExperienceUploadAction(event?: Event): void {
-    event?.stopPropagation();
-    this.experienceManager?.openImport();
-  }
-
-  protected experienceQuickActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
-    return [
-      {
-        id: 'experience-actions',
-        icon: 'add',
-        closeIcon: 'close',
-        ariaLabel: 'Open experience actions',
-        palette: 'blue',
-        items: [
-          {
-            id: 'experience-action-create',
-            label: 'Create',
-            icon: 'add_circle',
-            palette: 'teal',
-            surface: 'tinted',
-            context: { kind: 'experienceQuickAction', action: 'create' }
-          },
-          {
-            id: 'experience-action-upload',
-            label: 'Upload',
-            icon: 'upload_file',
-            palette: 'orange',
-            surface: 'tinted',
-            context: { kind: 'experienceQuickAction', action: 'upload' }
-          }
-        ]
-      }
-    ];
   }
 
   protected profileHeaderActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -614,52 +511,6 @@ export class ProfileEditorComponent {
     }));
   }
 
-  protected experienceFilterMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.experienceFilter,
-      icon: this.experienceFilterIcon(this.experienceFilter),
-      palette: this.paletteFromProfileTone(this.experienceFilterClass(this.experienceFilter)),
-      layout: 'field',
-      ariaLabel: 'Open experience filter'
-    };
-  }
-
-  protected experienceFilterMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
-    return this.experienceFilterOptions.map(option => ({
-      id: this.menuItemId('experience-filter', option),
-      label: option,
-      icon: this.experienceFilterIcon(option),
-      kind: 'radio',
-      active: option === this.experienceFilter,
-      palette: this.paletteFromProfileTone(this.experienceFilterClass(option)),
-      surface: 'tinted',
-      context: { kind: 'experienceFilter', value: option }
-    }));
-  }
-
-  protected experienceTypeMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.experienceForm.type,
-      icon: this.experienceTypeIcon(this.experienceForm.type),
-      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(this.experienceForm.type)),
-      layout: 'field',
-      ariaLabel: 'Open experience type selector'
-    };
-  }
-
-  protected experienceTypeMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
-    return this.experienceTypeOptions.map(option => ({
-      id: this.menuItemId('experience-type', option),
-      label: option,
-      icon: this.experienceTypeIcon(option),
-      kind: 'radio',
-      active: option === this.experienceForm.type,
-      palette: this.paletteFromProfileTone(this.experienceTypeToneClass(option)),
-      surface: 'tinted',
-      context: { kind: 'experienceType', value: option }
-    }));
-  }
-
   protected valuesDetailMenuTrigger(row: ProfileContracts.ProfileDetailFormRow): AppMenuTrigger {
     const selected = this.parseCommaValues(row.value);
     return {
@@ -791,20 +642,6 @@ export class ProfileEditorComponent {
       case 'experienceSelector':
         this.openExperienceSelector(context.value);
         return;
-      case 'experienceFilter':
-        this.experienceFilter = context.value;
-        this.experienceManager?.setFilter(context.value);
-        return;
-      case 'experienceType':
-        this.experienceForm.type = context.value;
-        return;
-      case 'experienceQuickAction':
-        if (context.action === 'create') {
-          this.openExperienceCreateAction(event.sourceEvent);
-          return;
-        }
-        this.openExperienceUploadAction(event.sourceEvent);
-        return;
       case 'profileSave':
         void this.saveProfileFromHeader(event.sourceEvent);
         return;
@@ -844,60 +681,6 @@ export class ProfileEditorComponent {
 
   protected onExperienceOverlayStateChange(open: boolean): void {
     this.experienceManagerOverlayOpen = open;
-  }
-
-  protected onExperienceImportFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    target.value = '';
-    if (!file) {
-      return;
-    }
-    void this.prepareExperienceImport(file);
-  }
-
-  protected cancelExperienceImportDialog(): void {
-    if (this.experienceImportDialog.busy && this.experienceImportDialog.progress.stage === 'saving') {
-      return;
-    }
-    this.experienceImportToken += 1;
-    this.experienceImportDialog = this.createEmptyExperienceImportDialogState();
-  }
-
-  protected submitExperienceImport(): void {
-    if (!this.canSubmitExperienceImport || !this.profileUser || !this.experienceImportDialog.draft) {
-      return;
-    }
-    const activeRequestToken = ++this.experienceImportToken;
-    const draft = this.experienceImportDialog.draft;
-    this.experienceImportDialog = {
-      ...this.experienceImportDialog,
-      busy: true,
-      progress: {
-        stage: 'saving',
-        percent: 100,
-        label: 'Saving imported experience batch'
-      }
-    };
-    void this.persistExperienceEntries(draft.nextEntries, {
-      highlightedIds: draft.importedIds,
-      onComplete: () => {
-        if (activeRequestToken !== this.experienceImportToken) {
-          return;
-        }
-        this.experienceFilter = 'All';
-        this.experienceImportDialog = this.createEmptyExperienceImportDialogState();
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  protected isExperienceEntryHighlighted(entryId: string): boolean {
-    return this.highlightedImportedExperienceIds.has(entryId);
-  }
-
-  protected experienceImportTypeCount(type: ProfileContracts.ExperienceEntry['type']): number {
-    return this.experienceImportDialog.statistics.countsByType[type] ?? 0;
   }
 
   protected profileStatusClass(value: AppConstants.ProfileStatus = this.profileForm.profileStatus): string {
@@ -1374,49 +1157,6 @@ export class ProfileEditorComponent {
     }
   }
 
-  protected experienceTypeClass(type: ProfileContracts.ExperienceEntry['type']): string {
-    switch (type) {
-      case 'Workspace':
-        return 'experience-card-workspace';
-      case 'School':
-        return 'experience-card-school';
-      case 'Online Session':
-        return 'experience-card-online';
-      default:
-        return 'experience-card-project';
-    }
-  }
-
-  protected experienceFilterIcon(option: ProfileContracts.ExperienceFilter): string {
-    switch (option) {
-      case 'Workspace':
-        return 'apartment';
-      case 'School':
-        return 'school';
-      case 'Online Session':
-        return 'videocam';
-      case 'Additional Project':
-        return 'rocket_launch';
-      default:
-        return 'filter_alt';
-    }
-  }
-
-  protected experienceFilterClass(option: ProfileContracts.ExperienceFilter): string {
-    switch (option) {
-      case 'Workspace':
-        return 'experience-filter-workspace';
-      case 'School':
-        return 'experience-filter-school';
-      case 'Online Session':
-        return 'experience-filter-online';
-      case 'Additional Project':
-        return 'experience-filter-project';
-      default:
-        return 'experience-filter-all';
-    }
-  }
-
   protected experienceTypeToneClass(type: ProfileContracts.ExperienceEntry['type']): string {
     switch (type) {
       case 'Workspace':
@@ -1428,87 +1168,6 @@ export class ProfileEditorComponent {
       default:
         return 'experience-filter-project';
     }
-  }
-
-  protected openExperienceForm(entry?: ProfileContracts.ExperienceEntry): void {
-    this.pendingExperienceDeleteId = null;
-    this.showExperienceForm = true;
-    if (entry) {
-      this.editingExperienceId = entry.id;
-      this.experienceForm = {
-        type: entry.type,
-        title: entry.title,
-        org: entry.org,
-        city: entry.city,
-        dateFrom: entry.dateFrom,
-        dateTo: entry.dateTo === 'Present' ? '' : entry.dateTo,
-        description: entry.description
-      };
-      this.experienceRangeStart = AppUtils.fromYearMonth(entry.dateFrom);
-      this.experienceRangeEnd = entry.dateTo === 'Present' ? null : AppUtils.fromYearMonth(entry.dateTo);
-      return;
-    }
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
-  }
-
-  protected closeExperienceForm(): void {
-    this.showExperienceForm = false;
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
-  }
-
-  protected saveExperienceEntry(): void {
-    if (!this.experienceForm.title.trim() || !this.experienceForm.org.trim() || !this.experienceRangeStart) {
-      return;
-    }
-    const dateFrom = AppUtils.toYearMonth(this.experienceRangeStart);
-    if (!dateFrom) {
-      return;
-    }
-    const dateTo = this.experienceRangeEnd ? AppUtils.toYearMonth(this.experienceRangeEnd) : 'Present';
-    const payload: Omit<ProfileContracts.ExperienceEntry, 'id'> = {
-      ...this.experienceForm,
-      dateFrom,
-      title: this.experienceForm.title.trim(),
-      org: this.experienceForm.org.trim(),
-      city: this.experienceForm.city.trim(),
-      dateTo: dateTo || 'Present',
-      description: this.experienceForm.description.trim()
-    };
-    const nextEntries = this.editingExperienceId
-      ? this.experienceEntries.map(item =>
-        item.id === this.editingExperienceId
-          ? { ...item, ...payload }
-          : item
-      )
-      : [
-          ...this.experienceEntries,
-          { id: this.createExperienceId(), ...payload }
-        ];
-    this.setExperienceEntries(nextEntries);
-    this.showExperienceForm = false;
-    this.editingExperienceId = null;
-    this.resetExperienceForm();
-    void this.persistExperienceEntries(nextEntries);
-  }
-
-  protected requestExperienceDelete(entryId: string): void {
-    this.pendingExperienceDeleteId = entryId;
-  }
-
-  protected cancelExperienceDelete(): void {
-    this.pendingExperienceDeleteId = null;
-  }
-
-  protected confirmExperienceDelete(): void {
-    if (!this.pendingExperienceDeleteId) {
-      return;
-    }
-    const nextEntries = this.experienceEntries.filter(item => item.id !== this.pendingExperienceDeleteId);
-    this.setExperienceEntries(nextEntries);
-    this.pendingExperienceDeleteId = null;
-    void this.persistExperienceEntries(nextEntries);
   }
 
   private loadProfileEditorState(user: UserDto): void {
@@ -1532,7 +1191,7 @@ export class ProfileEditorComponent {
     const slots = this.profileImageSlotsByUser[user.id] ?? this.resolveUserImageSlots(user);
     this.profileImageSlotsByUser[user.id] = [...slots];
     this.imageSlots = [...slots];
-    this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? [], []);
+    this.setExperienceEntries(this.experienceEntriesByUser[user.id] ?? []);
     this.profileEditorData = this.buildProfileEditorDataFromState();
     this.refreshProfileEditorFlowModel();
     this.panel = 'profile';
@@ -1616,10 +1275,10 @@ export class ProfileEditorComponent {
   }
 
   private normalizeProfileEditorData(value: ProfileExtDto): ProfileExtDto {
-    return ProfileOnboardingDraftConverter.convert(this.profileEditorDraft(value)).data;
+    return ProfileFormFlowDataConverter.convert(this.profileEditorDraft(value)).data;
   }
 
-  private profileEditorDraft(data: ProfileExtDto): ProfileOnboardingDraft {
+  private profileEditorDraft(data: ProfileExtDto): FormFlowDraft<ProfileExtDto> {
     return {
       version: 1,
       userId: this.profileUser?.id?.trim() ?? '',
@@ -1642,7 +1301,7 @@ export class ProfileEditorComponent {
   }
 
   private refreshProfileEditorFlowModel(): void {
-    this.profileEditorFlowModel = ProfileOnboardingFormFlowConverter.convert(
+    this.profileEditorFlowModel = ProfileFormFlowConverter.convert(
       this.profileEditorDraft(this.profileEditorData),
       {
         title: 'Profile',
@@ -1706,7 +1365,6 @@ export class ProfileEditorComponent {
     if (this.profileUser) {
       this.experienceEntriesByUser[this.profileUser.id] = this.cloneExperienceEntries(nextEntries);
     }
-    this.pruneHighlightedExperienceIds(nextEntries);
   }
 
   private syncProfileEditorDataProfileDetailsFromState(): void {
@@ -2208,59 +1866,11 @@ export class ProfileEditorComponent {
     return `${groupIndex}-${rowIndex}`;
   }
 
-  private resetExperienceForm(): void {
-    this.experienceForm = {
-      type: 'Workspace',
-      title: '',
-      org: '',
-      city: '',
-      dateFrom: '',
-      dateTo: '',
-      description: ''
-    };
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
-  }
-
-  private createEmptyExperienceImportDialogState(): ExperienceImportDialogState {
-    return {
-      visible: false,
-      fileName: '',
-      busy: false,
-      progress: {
-        stage: 'ready',
-        percent: 0,
-        label: ''
-      },
-      statistics: this.createEmptyExperienceImportStatistics(),
-      warnings: [],
-      error: null,
-      draft: null
-    };
-  }
-
-  private createEmptyExperienceImportStatistics(): ExperienceImportStatistics {
-    return {
-      detectedCount: 0,
-      importedCount: 0,
-      duplicateCount: 0,
-      countsByType: {
-        Workspace: 0,
-        School: 0,
-        'Online Session': 0,
-        'Additional Project': 0
-      }
-    };
-  }
-
   private cloneExperienceEntries(entries: readonly ProfileContracts.ExperienceEntry[]): ProfileContracts.ExperienceEntry[] {
     return entries.map(entry => ({ ...entry }));
   }
 
-  private setExperienceEntries(
-    entries: readonly ProfileContracts.ExperienceEntry[],
-    highlightedIds: readonly string[] | null = null
-  ): void {
+  private setExperienceEntries(entries: readonly ProfileContracts.ExperienceEntry[]): void {
     const nextEntries = this.cloneExperienceEntries(entries);
     this.experienceEntries = nextEntries;
     if (this.profileUser) {
@@ -2271,35 +1881,12 @@ export class ProfileEditorComponent {
       experienceEntries: this.cloneExperienceEntries(nextEntries)
     };
     this.refreshProfileEditorFlowModel();
-    if (highlightedIds) {
-      const validIds = new Set(nextEntries.map(entry => entry.id));
-      this.highlightedImportedExperienceIds = new Set(highlightedIds.filter(id => validIds.has(id)));
-      return;
-    }
-    this.pruneHighlightedExperienceIds(nextEntries);
-  }
-
-  private pruneHighlightedExperienceIds(entries: readonly ProfileContracts.ExperienceEntry[]): void {
-    if (this.highlightedImportedExperienceIds.size === 0) {
-      return;
-    }
-    const validIds = new Set(entries.map(entry => entry.id));
-    this.highlightedImportedExperienceIds = new Set(
-      [...this.highlightedImportedExperienceIds].filter(id => validIds.has(id))
-    );
-  }
-
-  private createExperienceId(): string {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-      return `exp-${crypto.randomUUID()}`;
-    }
-    return `exp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
   private async loadExperienceEntriesForUser(userId: string): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
-      this.setExperienceEntries([], []);
+      this.setExperienceEntries([]);
       return;
     }
 
@@ -2309,114 +1896,15 @@ export class ProfileEditorComponent {
       if (requestToken !== this.experienceEntriesLoadToken || this.profileUser?.id !== normalizedUserId) {
         return;
       }
-      this.setExperienceEntries(loadedEntries, []);
+      this.setExperienceEntries(loadedEntries);
       this.cdr.markForCheck();
     } catch {
       if (requestToken !== this.experienceEntriesLoadToken || this.profileUser?.id !== normalizedUserId) {
         return;
       }
-      this.setExperienceEntries(this.experienceEntriesByUser[normalizedUserId] ?? [], []);
+      this.setExperienceEntries(this.experienceEntriesByUser[normalizedUserId] ?? []);
       this.cdr.markForCheck();
     }
-  }
-
-  private async prepareExperienceImport(file: File): Promise<void> {
-    const importToken = ++this.experienceImportToken;
-    this.experienceImportDialog = {
-      ...this.createEmptyExperienceImportDialogState(),
-      visible: true,
-      fileName: file.name,
-      busy: true,
-      progress: {
-        stage: 'reading',
-        percent: 0,
-        label: 'Preparing import preview'
-      }
-    };
-    this.cdr.markForCheck();
-
-    try {
-      const draft = await this.userExperiencesService.prepareUserExperienceImport(
-        file,
-        this.experienceEntries,
-        progress => {
-          if (importToken !== this.experienceImportToken) {
-            return;
-          }
-          this.experienceImportDialog = {
-            ...this.experienceImportDialog,
-            visible: true,
-            fileName: file.name,
-            busy: true,
-            progress,
-            error: null
-          };
-          this.cdr.markForCheck();
-        }
-      );
-      if (importToken !== this.experienceImportToken) {
-        return;
-      }
-      this.experienceImportDialog = {
-        visible: true,
-        fileName: file.name,
-        busy: false,
-        progress: {
-          stage: 'ready',
-          percent: 100,
-          label: draft.statistics.detectedCount > 0 ? 'Import preview ready' : 'No experience items recognized'
-        },
-        statistics: draft.statistics,
-        warnings: [...draft.warnings],
-        error: null,
-        draft
-      };
-      this.cdr.markForCheck();
-    } catch (error) {
-      if (importToken !== this.experienceImportToken) {
-        return;
-      }
-      this.experienceImportDialog = {
-        ...this.createEmptyExperienceImportDialogState(),
-        visible: true,
-        fileName: file.name,
-        error: this.resolveExperienceImportError(error),
-        progress: {
-          stage: 'ready',
-          percent: 100,
-          label: 'Import preview unavailable'
-        }
-      };
-      this.cdr.markForCheck();
-    }
-  }
-
-  private async persistExperienceEntries(
-    entries: readonly ProfileContracts.ExperienceEntry[],
-    options?: { highlightedIds?: readonly string[]; onComplete?: () => void }
-  ): Promise<void> {
-    const userId = this.profileUser?.id?.trim() ?? '';
-    if (!userId) {
-      return;
-    }
-
-    const requestToken = ++this.experienceEntriesSaveToken;
-    if (requestToken !== this.experienceEntriesSaveToken || this.profileUser?.id !== userId) {
-      return;
-    }
-    this.setExperienceEntries(entries, options?.highlightedIds ?? null);
-    options?.onComplete?.();
-    this.cdr.markForCheck();
-  }
-
-  private resolveExperienceImportError(error: unknown): string {
-    if (error instanceof Error) {
-      const normalizedMessage = error.message.trim();
-      if (normalizedMessage) {
-        return normalizedMessage;
-      }
-    }
-    return 'Invalid document. Please upload a PDF, DOC, DOCX, ODT, RTF, or TXT file.';
   }
 
   private persistActiveUserImageSlots(): void {
@@ -2515,7 +2003,7 @@ export class ProfileEditorComponent {
     user.statusText = 'Admin workspace';
     user.hostTier = 'Admin';
     user.completion = 100;
-    user.profileFormVersion = this.profileOnboardingService.currentProfileFormVersion;
+    user.profileFormVersion = CURRENT_PROFILE_FORM_VERSION;
     this.pushProfileUserToContextAndLegacyMirror(user);
     await this.usersService.saveUserProfile(this.cloneUser(user));
     if (showAlert) {
@@ -2578,11 +2066,5 @@ export class ProfileEditorComponent {
     this.panel = 'profile';
     this.privacyFabJustSelectedKey = null;
     this.experienceManagerOverlayOpen = false;
-    this.showExperienceForm = false;
-    this.editingExperienceId = null;
-    this.pendingExperienceDeleteId = null;
-    this.highlightedImportedExperienceIds = new Set<string>();
-    this.cancelExperienceImportDialog();
-    this.resetExperienceForm();
   }
 }

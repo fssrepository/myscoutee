@@ -64,12 +64,6 @@ export {
   type UserExperiencesRouteConfig
 } from './base/services/user-experiences.service';
 export {
-  ProfileOnboardingService,
-  type ProfileOnboardingAssessment,
-  type ProfileOnboardingDraft,
-  type ProfileOnboardingStepId
-} from './base/services/profile-onboarding.service';
-export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
   USER_BY_ID_LOAD_CONTEXT_KEY,

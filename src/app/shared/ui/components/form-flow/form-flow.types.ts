@@ -9,6 +9,16 @@ import type {
 } from '../menu';
 import type { ImageCardData, InfoCardData } from '../card';
 
+export interface FormFlowDraft<TData> {
+  version: 1;
+  userId: string;
+  currentStepId: string;
+  updatedAtIso: string;
+  completedStepIds: string[];
+  skippedStepIds: string[];
+  data: TData;
+}
+
 export type FormFlowControlKind =
   | 'date'
   | 'image-carousel'

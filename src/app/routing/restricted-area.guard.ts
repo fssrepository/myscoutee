@@ -1,11 +1,13 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
-import { ProfileOnboardingService, SessionService, UsersService } from '../shared/core';
+import { SessionService, UsersService } from '../shared/core';
+import { AppUtils } from '../shared/app-utils';
+import { CURRENT_PROFILE_FORM_VERSION } from '../shared/core/common/constants';
+import type { UserDto } from '../shared/core/contracts/user.interface';
 
 export const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   const sessionService = inject(SessionService);
-  const onboardingService = inject(ProfileOnboardingService);
   const usersService = inject(UsersService);
   const router = inject(Router);
   const session = await sessionService.ensureSession();
@@ -15,7 +17,7 @@ export const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
       if (user?.admin === true) {
         return router.createUrlTree(['/admin']);
       }
-      if (onboardingService.shouldPrompt(user)) {
+      if (requiresProfileOnboarding(user)) {
         return router.createUrlTree(['/entry'], {
           queryParams: {
             redirect: state.url && state.url !== '/' ? state.url : '/game',
@@ -30,3 +32,11 @@ export const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
     queryParams: state.url && state.url !== '/' ? { redirect: state.url } : undefined
   });
 };
+
+function requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
+  if (!user || user.admin === true || user.profileStatus === 'blocked' || user.profileStatus === 'deleted' || user.hostTier === 'Admin') {
+    return false;
+  }
+  return user.profileStatus === 'onboarding'
+    || AppUtils.positiveInteger(user.profileFormVersion) < CURRENT_PROFILE_FORM_VERSION;
+}

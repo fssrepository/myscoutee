@@ -21,15 +21,6 @@
           <div class="popup-title">
             <h2>{{ popupTitle() }}</h2>
           </div>
-          @if (panel === 'experience' && !experienceManagerOverlayOpen) {
-            <div class="experience-quick-actions">
-              <app-menu
-                kind="inline"
-                [items]="experienceQuickActionMenuItems()"
-                (itemSelect)="onProfileEditorMenuSelect($event)"
-              ></app-menu>
-            </div>
-          }
           @if (panel === 'profile') {
             <div class="profile-header-actions">
               <app-menu
@@ -161,6 +152,7 @@
             <app-profile-experience-manager
               [ngModel]="experienceEntries"
               [initialFilter]="experienceFilter"
+              [showInlineActions]="true"
               (ngModelChange)="onExperienceEntriesChange($event)"
               (overlayStateChange)="onExperienceOverlayStateChange($event)"
             ></app-profile-experience-manager>

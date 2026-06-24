@@ -45,6 +45,10 @@ import type {
   FormFlowSaveEvent,
   FormFlowStepModel
 } from './form-flow.types';
+import {
+  formFlowIsControlMissingRequired,
+  formFlowMissingRequiredControls
+} from './form-flow.utils';
 
 interface FormFlowSelectedMenuItem {
   item: AppMenuItem<string, unknown>;
@@ -684,36 +688,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   private stepMissingRequiredCount(step: FormFlowStepModel): number {
-    return step.controls.reduce((count, control) => count + (this.isControlMissingRequired(control) ? 1 : 0), 0);
+    return formFlowMissingRequiredControls({
+      title: '',
+      steps: [step]
+    }, this.formValue).length;
   }
 
   private isControlMissingRequired(control: FormFlowControlModel): boolean {
-    return control.required === true
-      && this.normalizePath(control.bind).length > 0
-      && !this.hasRequiredValue(this.controlValue(control), control);
-  }
-
-  private hasRequiredValue(value: unknown, control?: FormFlowControlModel): boolean {
-    if (value === null || value === undefined) {
-      return false;
-    }
-    if (typeof value === 'string') {
-      return value.trim().length > 0;
-    }
-    if (typeof value === 'number') {
-      return Number.isFinite(value);
-    }
-    if (typeof value === 'boolean') {
-      return true;
-    }
-    if (Array.isArray(value)) {
-      const requiredCount = Math.max(1, Math.trunc(Number(control?.min) || 1));
-      return value.filter(item => this.hasRequiredValue(item)).length >= requiredCount;
-    }
-    if (this.isRecord(value)) {
-      return Object.keys(value).length > 0;
-    }
-    return true;
+    return formFlowIsControlMissingRequired(control, this.formValue);
   }
 
   private readPath(source: unknown, path: FormFlowControlModel['bind']): unknown {
