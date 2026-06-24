@@ -166,14 +166,9 @@
           @if (model.optional) {
             <app-pricing-editor
               class="experience-description-field subevent-pricing-field"
-              [(pricing)]="model.pricing"
-              [context]="'subevent'"
-              [presentation]="'popup-summary'"
-              [allowSlotFeatures]="false"
-              [showAudienceSection]="false"
+              [(ngModel)]="model.pricing"
+              [config]="subeventPricingEditorConfig"
               [readOnly]="view.readOnly"
-              [title]="'Optional Pricing'"
-              [subtitle]="'Optional sub events can add a separate charge beyond the main event price without slot-specific rules.'"
             ></app-pricing-editor>
           } @else {
             <div class="experience-description-field subevent-pricing-note">

@@ -10,10 +10,31 @@
       <span class="pricing-editor__title-copy">
         <span class="pricing-editor__title-text">
           <mat-icon>paid</mat-icon>
-          <span>{{ title }}</span>
+          @switch (resolvedConfig.context) {
+            @case ('asset') {
+              <span>Asset Pricing</span>
+            }
+            @case ('subevent') {
+              <span>Optional Pricing</span>
+            }
+            @default {
+              <span>Pricing</span>
+            }
+          }
         </span>
-        @if (subtitle) {
-          <span class="pricing-editor__subtitle">{{ subtitle }}</span>
+        @switch (subtitleKey()) {
+          @case ('event-enabled') {
+            <span class="pricing-editor__subtitle">Configure paid entry for the main event and optional slot overrides.</span>
+          }
+          @case ('event-disabled') {
+            <span class="pricing-editor__subtitle">Keep it free for now or prepare ticketing rules in advance.</span>
+          }
+          @case ('asset') {
+            <span class="pricing-editor__subtitle">Set the default charge for using this asset without event slot-specific pricing controls.</span>
+          }
+          @case ('subevent') {
+            <span class="pricing-editor__subtitle">Optional sub events can add a separate charge beyond the main event price without slot-specific rules.</span>
+          }
         }
       </span>
     </div>
@@ -43,7 +64,7 @@
         </button>
       </div>
     }
-    @if (resolvedShowPreview) {
+    @if (resolvedConfig.showPreview) {
       <div class="pricing-editor__preview pricing-editor__preview--summary">
         <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
       </div>
@@ -54,7 +75,7 @@
         <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
       </div>
 
-      @if (resolvedShowPreview) {
+      @if (resolvedConfig.showPreview) {
         <aside class="pricing-editor__preview">
           <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
         </aside>
@@ -67,7 +88,17 @@
     <section class="pricing-editor__wizard" role="dialog" aria-modal="true" aria-label="Pricing setup wizard">
       <header class="pricing-editor__wizard-head">
         <div class="pricing-editor__wizard-copy">
-          <span class="pricing-editor__wizard-title">{{ title }} Setup</span>
+          @switch (resolvedConfig.context) {
+            @case ('asset') {
+              <span class="pricing-editor__wizard-title">Asset Pricing Setup</span>
+            }
+            @case ('subevent') {
+              <span class="pricing-editor__wizard-title">Optional Pricing Setup</span>
+            }
+            @default {
+              <span class="pricing-editor__wizard-title">Pricing Setup</span>
+            }
+          }
           <span class="pricing-editor__wizard-subtitle">Adjust the full pricing configuration here while the summary stays compact on the form.</span>
         </div>
         <button type="button" class="pricing-editor__wizard-close" (click)="closeWizard()" aria-label="Close pricing setup">
@@ -76,7 +107,7 @@
       </header>
 
       <div class="pricing-editor__wizard-body">
-        @if (resolvedShowPreview) {
+        @if (resolvedConfig.showPreview) {
           <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
             <ng-container [ngTemplateOutlet]="pricingWizardPreviewCard"></ng-container>
           </aside>
@@ -131,7 +162,7 @@
       type="button"
       class="pricing-editor__scope-option"
       [class.is-selected]="currentRuleScopeDraftMode() === 'selected_slots'"
-      [disabled]="slotCatalog.length === 0"
+      [disabled]="resolvedConfig.slotCatalog.length === 0"
       (click)="selectRuleScopeDraftMode('selected_slots', $event)"
       >
       <mat-icon>{{ currentRuleScopeDraftMode() === 'selected_slots' ? 'check' : 'view_list' }}</mat-icon>
@@ -140,7 +171,7 @@
   </div>
   @if (currentRuleScopeDraftMode() === 'selected_slots') {
     <div class="pricing-editor__scope-slot-list">
-      @for (slot of slotCatalog; track slot.id) {
+      @for (slot of resolvedConfig.slotCatalog; track slot.id) {
         <button
           type="button"
           class="pricing-editor__scope-slot"
@@ -154,7 +185,7 @@
           </span>
         </button>
       }
-      @if (slotCatalog.length === 0) {
+      @if (resolvedConfig.slotCatalog.length === 0) {
         <p class="pricing-editor__scope-empty">Add slots to use specific slot targeting.</p>
       }
     </div>
@@ -235,7 +266,7 @@
             disableOptionCentering
             panelClass="selector-options-panel profile-bottom-sheet-panel"
             >
-            @for (option of resolvedChargeTypeOptions; track option) {
+            @for (option of resolvedConfig.chargeTypeOptions; track option) {
               <mat-option [value]="option">{{ chargeTypeLabel(option) }}</mat-option>
             }
           </mat-select>
@@ -317,7 +348,7 @@
             <article class="pricing-editor__rule-card">
               <div
                 class="pricing-editor__rule-grid"
-                [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures"
+                [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
               >
                 <label class="pricing-editor__field">
                   <span>If</span>
@@ -376,7 +407,7 @@
                     [disabled]="readOnly"
                     />
                 </label>
-                @if (resolvedAllowSlotFeatures) {
+                @if (resolvedConfig.allowSlotFeatures) {
                   <label class="pricing-editor__field">
                     <span>Applies To</span>
                     <div class="pricing-editor__scope-picker" (click)="$event.stopPropagation()">
@@ -445,7 +476,7 @@
             <article class="pricing-editor__rule-card">
               <div
                 class="pricing-editor__rule-grid"
-                [class.pricing-editor__rule-grid--slots]="resolvedAllowSlotFeatures"
+                [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
                 [class.pricing-editor__rule-grid--time-date-desktop]="rule.trigger === 'specific_date'"
               >
                 <label class="pricing-editor__field">
@@ -530,7 +561,7 @@
                     [disabled]="readOnly"
                     />
                 </label>
-                @if (resolvedAllowSlotFeatures) {
+                  @if (resolvedConfig.allowSlotFeatures) {
                   <label class="pricing-editor__field">
                     <span>Applies To</span>
                     <div class="pricing-editor__scope-picker" (click)="$event.stopPropagation()">
@@ -691,13 +722,13 @@
       (enabledChange)="onSlotPricingEnabledChange($event)"
       [overrides]="workingPricing.slotOverrides"
       (overridesChange)="onSlotOverridesChange($event)"
-      [slotCatalog]="slotCatalog"
+      [slotCatalog]="resolvedConfig.slotCatalog"
       [currency]="workingPricing.currency"
       [readOnly]="readOnly"
     ></app-pricing-slot-panel>
   }
 
-  @if (resolvedShowAudienceSection) {
+  @if (resolvedConfig.showAudienceSection) {
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
         <span>Advanced Audience Pricing</span>

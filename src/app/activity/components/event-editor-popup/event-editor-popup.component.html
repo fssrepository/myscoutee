@@ -231,56 +231,10 @@
               </section>
               }
             </section>
-            <app-pricing-editor class="experience-description-field event-pricing-field" [(pricing)]="eventDetailDTO.pricing"
-              [context]="'event'" [presentation]="'popup-summary'" [slotCatalog]="pricingSlotCatalog()"
-              [readOnly]="eventStructureReadOnly()"
-              [subtitle]="eventStructureReadOnly()
-                ? ''
-                : (eventDetailDTO.ticketing ? 'Configure paid entry for the main event and optional slot overrides.' : 'Keep it free for now or prepare ticketing rules in advance.')"></app-pricing-editor>
-            @if (!eventEditorService.readOnly() || eventDetailDTO.policies.length > 0) {
-            <section class="event-policies-panel">
-              <div class="event-policies-panel-head">
-                <div class="event-policies-panel-title-wrap">
-                  <span class="event-policies-panel-title">
-                    <mat-icon>policy</mat-icon>
-                    <span>Event Policies</span>
-                  </span>
-                  @if (!eventPoliciesReadOnly()) {
-                    <p class="event-policies-panel-subtitle">Add the rules attendees need to read and approve before joining.</p>
-                  }
-                </div>
-              </div>
-              <div class="event-policies-panel-body">
-                <button type="button" class="event-slots-open-btn event-slots-open-btn-inline"
-                  (click)="openPoliciesPopup($event)">
-                  <mat-icon>gavel</mat-icon>
-                  <span>{{ eventPoliciesReadOnly() ? 'View Policies' : 'Open Policy Setup' }}</span>
-                </button>
-                <div class="event-slots-summary">
-                  <section class="event-slots-summary-block">
-                    <span class="event-slots-summary-label">Summary</span>
-                    @if (eventDetailDTO.policies.length > 0) {
-                    <div class="event-slots-summary-list">
-                      <article class="event-slots-summary-item">
-                        <span class="event-slots-summary-title">{{ policiesCountLabel() }}</span>
-                        <span class="event-slots-summary-meta">
-                          {{ requiredPoliciesCount() }} required · {{ eventDetailDTO.policies.length -
-                          requiredPoliciesCount() }} optional
-                        </span>
-                      </article>
-                    </div>
-                    } @else {
-                    <p class="event-slots-summary-note">
-                      {{ eventPoliciesReadOnly()
-                        ? 'No policies are configured for this event.'
-                        : 'No policies yet. Add policies if attendees must review terms before joining or booking.' }}
-                    </p>
-                    }
-                  </section>
-                </div>
-              </div>
-            </section>
-            }
+            <app-pricing-editor class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
+              [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor>
+            <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
+              [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
             <label class="experience-description-field event-location-field">
               <span>Location</span>
               <div class="asset-route-row asset-route-row-inline">
@@ -465,102 +419,6 @@
       </div>
     </div>
   </section>
-  }
-  @if (showPoliciesPopup) {
-  <div class="event-slots-popup-backdrop" (click)="closePoliciesPopup()"></div>
-  <section class="event-slots-popup event-policies-popup" role="dialog" aria-modal="true" aria-label="Policy setup">
-    <header class="event-slots-popup-head">
-      <div class="event-slots-popup-copy">
-        <span class="event-slots-popup-title">Policy Setup</span>
-        <span class="event-slots-popup-subtitle">Keep the list compact here. Open a policy to edit the details attendees
-          need to read and approve.</span>
-      </div>
-      <div class="event-policies-popup-head-controls">
-        @if (!eventPoliciesReadOnly()) {
-        <button type="button" class="popup-header-add-btn event-slots-add-btn"
-          (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
-          <mat-icon>add</mat-icon>
-        </button>
-        }
-        <button type="button" class="event-slots-popup-close" (click)="closePoliciesPopup()"
-          aria-label="Close policy setup">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-    </header>
-
-    <div class="event-slots-popup-body event-policies-popup-body">
-      <div class="event-policies-list event-policies-list-compact">
-        @for (policy of workingPolicies; track policy.id; let i = $index) {
-        <article class="event-policy-list-card" [class.is-readonly]="eventPoliciesReadOnly()"
-          (click)="openPolicyEditor(i, $event)">
-          <div class="event-policy-list-card-head">
-            <div class="event-policy-list-card-copy">
-              <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
-              <span>{{ policyCardMetaLabel(policy) }}</span>
-            </div>
-            @if (!eventPoliciesReadOnly()) {
-            <button type="button" class="event-slot-remove-btn" (click)="removePolicyDraft(i, $event)"
-              aria-label="Remove policy">
-              <mat-icon>delete</mat-icon>
-            </button>
-            }
-          </div>
-          <p>{{ policyCardPreview(policy) }}</p>
-        </article>
-        }
-        @if (workingPolicies.length === 0) {
-        <div class="event-slot-empty-state event-policy-empty-state">
-          <span>No policies yet.</span>
-        </div>
-        }
-      </div>
-    </div>
-  </section>
-  @if (showPolicyEditorPopup) {
-  <div class="event-policy-editor-backdrop" (click)="closePolicyEditor()"></div>
-  <section class="event-slots-popup event-policy-editor-popup" role="dialog" aria-modal="true" aria-label="Edit policy">
-    <header class="event-slots-popup-head">
-      <div class="event-slots-popup-copy">
-        <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
-        <span class="event-slots-popup-subtitle">Write the policy clearly and choose whether attendees must approve it
-          before joining.</span>
-      </div>
-      <div class="event-policies-popup-head-controls">
-        @if (!eventPoliciesReadOnly()) {
-        <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
-          [class.form-save-invalid]="!canSavePolicyDraft()" [disabled]="!canSavePolicyDraft()"
-          (click)="savePolicyDraft()" aria-label="Save policy">
-          <mat-icon>done</mat-icon>
-        </button>
-        }
-        <button type="button" class="event-slots-popup-close" (click)="closePolicyEditor()"
-          aria-label="Close policy form">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-    </header>
-
-    <div class="event-slots-popup-body event-policy-editor-body">
-      <article class="event-policy-card">
-        <label class="event-policy-field">
-          <span>Title</span>
-          <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="eventPoliciesReadOnly()"
-            placeholder="Policy title" />
-        </label>
-        <label class="event-policy-field">
-          <span>Description</span>
-          <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="eventPoliciesReadOnly()"
-            placeholder="Explain the policy clearly."></textarea>
-        </label>
-        <label class="event-policy-check">
-          <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="eventPoliciesReadOnly()" />
-          <span>Attendees must approve this policy</span>
-        </label>
-      </article>
-    </div>
-  </section>
-  }
   }
   <app-event-subevents-popup [open]="showSubEventsPopup" [readOnly]="eventEditorService.readOnly()"
     [structureReadOnly]="isPublishedManageMode()"

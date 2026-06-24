@@ -16,7 +16,8 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  PricingEditorComponent
+  PricingEditorComponent,
+  type PricingEditorConfig
 } from '../../../shared/ui';
 
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
@@ -125,6 +126,12 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   protected subEventStartTimeValue: Date | null = null;
   protected subEventEndDateValue: Date | null = null;
   protected subEventEndTimeValue: Date | null = null;
+  protected readonly subeventPricingEditorConfig: PricingEditorConfig = {
+    context: 'subevent',
+    presentation: 'popup-summary',
+    allowSlotFeatures: false,
+    showAudienceSection: false
+  };
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model'] || changes['view']) {

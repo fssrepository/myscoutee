@@ -30,7 +30,9 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger,
   CounterBadgePipe,
+  EventPoliciesInputComponent,
   PricingEditorComponent,
+  type PricingEditorConfig,
   ProgressIndicatorComponent
 } from '../../../shared/ui';
 import { environment } from '../../../../environments/environment';
@@ -60,6 +62,7 @@ type EventEditorMenuContext =
     MatTimepickerModule,
     MatNativeDateModule,
     AppMenuComponent,
+    EventPoliciesInputComponent,
     EventSubeventsPopupComponent,
     PricingEditorComponent,
     ProgressIndicatorComponent,
@@ -126,8 +129,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       if (!isOpen) {
         this.showSlotsPopup = false;
-        this.showPoliciesPopup = false;
-        this.showPolicyEditorPopup = false;
         this.showSubEventsPopup = false;
         this.resetDraftAutosaveTracking();
         return;
@@ -153,8 +154,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
       this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
       this.showSlotsPopup = false;
-      this.showPoliciesPopup = false;
-      this.showPolicyEditorPopup = false;
       this.showSubEventsPopup = true;
     });
 
@@ -189,14 +188,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
       this.showSubEventsPopup = false;
-      this.showPoliciesPopup = false;
-      this.showPolicyEditorPopup = false;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showSubEventsPopup = false;
-      this.showPoliciesPopup = false;
-      this.showPolicyEditorPopup = false;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
@@ -224,21 +219,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   slotEditorMode: 'base' | 'date' = 'base';
   slotsPanelExpanded = false;
   showSlotsPopup = false;
-  showPoliciesPopup = false;
-  showPolicyEditorPopup = false;
   showSubEventsPopup = false;
   isSavePending = false;
-  workingPolicies: ContractTypes.EventPolicyDTO[] = [];
-  workingPolicyDraft: ContractTypes.EventPolicyDTO = this.createEmptyPolicyDraft();
-  editingPolicyDraftIndex: number | null = null;
 
   readonly visibilityOptions: AppConstants.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'];
 
+  protected readonly eventPricingEditorConfig: PricingEditorConfig = {
+    context: 'event',
+    presentation: 'popup-summary',
+    slotCatalog: () => this.pricingSlotCatalog()
+  };
+
   close(): void {
     this.showSlotsPopup = false;
-    this.showPoliciesPopup = false;
-    this.showPolicyEditorPopup = false;
     this.showSubEventsPopup = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
@@ -394,97 +388,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showSlotsPopup = false;
   }
 
-  protected openPoliciesPopup(event?: Event): void {
-    event?.preventDefault();
-    this.workingPolicies = ActivityEventDetailDTO.normalizePolicies(this.eventDetailDTO.policies);
-    this.showPoliciesPopup = true;
-    this.showPolicyEditorPopup = false;
-  }
-
-  protected closePoliciesPopup(): void {
-    if (this.showPoliciesPopup || this.showPolicyEditorPopup) {
-      this.syncEventPoliciesFromWorkingPolicies();
-    }
-    this.showPoliciesPopup = false;
-    this.showPolicyEditorPopup = false;
-    this.workingPolicies = [];
-    this.workingPolicyDraft = this.createEmptyPolicyDraft();
-    this.editingPolicyDraftIndex = null;
-  }
-
-  protected openPolicyEditor(index?: number, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (!this.showPoliciesPopup) {
-      return;
-    }
-    const existing = Number.isInteger(index) && index !== undefined
-      ? this.workingPolicies[index] ?? null
-      : null;
-    this.editingPolicyDraftIndex = existing ? (index ?? null) : null;
-    this.workingPolicyDraft = existing
-      ? { ...existing }
-      : this.createEmptyPolicyDraft();
-    this.showPolicyEditorPopup = true;
-  }
-
-  protected closePolicyEditor(): void {
-    this.showPolicyEditorPopup = false;
-    this.workingPolicyDraft = this.createEmptyPolicyDraft();
-    this.editingPolicyDraftIndex = null;
-  }
-
-  protected removePolicyDraft(index: number, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (this.eventPoliciesReadOnly()) {
-      return;
-    }
-    if (index < 0 || index >= this.workingPolicies.length) {
-      return;
-    }
-    this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
-    if (this.editingPolicyDraftIndex === index) {
-      this.editingPolicyDraftIndex = null;
-      this.workingPolicyDraft = this.createEmptyPolicyDraft();
-    }
-    this.syncEventPoliciesFromWorkingPolicies();
-  }
-
-  protected policyPopupTitle(): string {
-    return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
-  }
-
-  protected policyCardMetaLabel(policy: ContractTypes.EventPolicyDTO): string {
-    return policy.required !== false ? 'Required approval' : 'Optional policy';
-  }
-
-  protected policyCardPreview(policy: ContractTypes.EventPolicyDTO): string {
-    const description = policy.description.trim();
-    if (description.length > 0) {
-      return description;
-    }
-    return policy.required !== false
-      ? 'Attendees must approve this policy before joining.'
-      : 'Optional policy shown during join or checkout.';
-  }
-
-  protected canSavePolicyDraft(): boolean {
-    if (this.eventPoliciesReadOnly()) {
-      return false;
-    }
-    return this.workingPolicyDraft.title.trim().length > 0 || this.workingPolicyDraft.description.trim().length > 0;
-  }
-
-  private createEmptyPolicyDraft(): ContractTypes.EventPolicyDTO {
-    return {
-      id: `policy-${Date.now()}`,
-      title: '',
-      description: '',
-      required: true
-    };
-  }
-
   private createEmptyEventDetailDTO(): ActivityEventDetailDTO {
     return new ActivityEventDetailDTO().apply({
       id: '',
@@ -620,15 +523,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private optionalNonNegativeInteger(value: unknown): number | undefined {
     return this.toNonNegativeIntegerOrNull(value) ?? undefined;
-  }
-
-  protected policiesCountLabel(): string {
-    const count = this.eventDetailDTO.policies.length;
-    return count === 1 ? '1 policy' : `${count} policies`;
-  }
-
-  protected requiredPoliciesCount(): number {
-    return this.eventDetailDTO.policies.filter(item => item.required !== false).length;
   }
 
   requestOpenLocationMap(): void {
@@ -1655,14 +1549,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.showSlotsPopup = false;
       return;
     }
-    if (this.showPolicyEditorPopup) {
-      this.closePolicyEditor();
-      return;
-    }
-    if (this.showPoliciesPopup) {
-      this.closePoliciesPopup();
-      return;
-    }
     if (this.showSubEventsPopup) {
       this.showSubEventsPopup = false;
       return;
@@ -1729,9 +1615,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventDateRange();
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
-    if (this.showPoliciesPopup || this.showPolicyEditorPopup) {
-      this.syncEventPoliciesFromWorkingPolicies();
-    }
     const normalizedCapacity = this.eventDetailDTO.normalizeCapacityRange();
     if (!options.allowIncomplete && !this.canSaveEventDetailDTO()) {
       return false;
@@ -2559,42 +2442,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventDetailDTO.syncFirstSubEventLocation(this.eventDetailDTO.location);
-  }
-
-  protected savePolicyDraft(): void {
-    if (this.eventPoliciesReadOnly() || !this.canSavePolicyDraft()) {
-      return;
-    }
-    const nextItem = this.normalizedWorkingPolicyDraft();
-    if (this.editingPolicyDraftIndex !== null && this.editingPolicyDraftIndex >= 0 && this.editingPolicyDraftIndex < this.workingPolicies.length) {
-      this.workingPolicies = this.workingPolicies.map((item, index) => (
-        index === this.editingPolicyDraftIndex ? nextItem : item
-      ));
-    } else {
-      this.workingPolicies = [...this.workingPolicies, nextItem];
-    }
-    this.syncEventPoliciesFromWorkingPolicies();
-    this.closePolicyEditor();
-  }
-
-  private normalizedWorkingPolicyDraft(): ContractTypes.EventPolicyDTO {
-    return {
-      id: this.workingPolicyDraft.id?.trim() || `policy-${Date.now()}`,
-      title: this.workingPolicyDraft.title.trim(),
-      description: this.workingPolicyDraft.description.trim(),
-      required: this.workingPolicyDraft.required !== false
-    };
-  }
-
-  private syncEventPoliciesFromWorkingPolicies(): void {
-    this.eventDetailDTO.policies = this.workingPolicies
-      .map(item => ({
-        id: `${item.id ?? ''}`.trim(),
-        title: `${item.title ?? ''}`.trim(),
-        description: `${item.description ?? ''}`.trim(),
-        required: item.required !== false
-      }))
-      .filter(item => item.title.length > 0 || item.description.length > 0);
   }
 
   private eventLocationRouteStops(): string[] {

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, DoCheck, forwardRef, HostListener, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,12 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
-import { PricingBuilder } from '../../../core/base/builders';
-import type * as AppTypes from '../../../core/base/models';
-import type * as ContractTypes from '../../../core/contracts';
-import { PricingSlotPanelComponent } from '../pricing-slot-panel';
+import { PricingBuilder } from '../../../../../core/base/builders';
+import type * as AppTypes from '../../../../../core/base/models';
+import type * as ContractTypes from '../../../../../core/contracts';
+import { PricingSlotPanelComponent } from '../../../pricing-slot-panel';
 
-import type * as AppConstants from '../../../core/common/constants';
+import type * as AppConstants from '../../../../../core/common/constants';
 interface PricingPreviewState {
   basePrice: number;
   slotOverridePrice: number | null;
@@ -33,6 +33,30 @@ interface RuleScopePickerState {
   slotIds: string[];
 }
 
+export type PricingEditorContext = 'event' | 'asset' | 'subevent';
+export type PricingEditorPresentation = 'inline' | 'popup-summary';
+export type PricingEditorSubtitleKey = 'none' | 'event-enabled' | 'event-disabled' | 'asset' | 'subevent';
+export type PricingEditorConfigValue<TValue> = TValue | (() => TValue);
+
+export interface PricingEditorConfig {
+  context?: PricingEditorConfigValue<PricingEditorContext>;
+  presentation?: PricingEditorConfigValue<PricingEditorPresentation>;
+  slotCatalog?: PricingEditorConfigValue<readonly ContractTypes.PricingSlotReference[]>;
+  showAudienceSection?: PricingEditorConfigValue<boolean | null>;
+  showPreview?: PricingEditorConfigValue<boolean | null>;
+  allowSlotFeatures?: PricingEditorConfigValue<boolean | null>;
+}
+
+interface ResolvedPricingEditorConfig {
+  context: PricingEditorContext;
+  presentation: PricingEditorPresentation;
+  slotCatalog: readonly ContractTypes.PricingSlotReference[];
+  showAudienceSection: boolean;
+  showPreview: boolean;
+  allowSlotFeatures: boolean;
+  chargeTypeOptions: readonly AppConstants.PricingChargeType[];
+}
+
 @Component({
   selector: 'app-pricing-editor',
   standalone: true,
@@ -49,23 +73,20 @@ interface RuleScopePickerState {
   ],
   templateUrl: './pricing-editor.component.html',
   styleUrl: './pricing-editor.component.scss',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => PricingEditorComponent),
+      multi: true
+    }
+  ]
 })
-export class PricingEditorComponent implements OnChanges {
+export class PricingEditorComponent implements OnChanges, DoCheck, ControlValueAccessor {
   private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
 
-  @Input() pricing: ContractTypes.PricingConfig | null | undefined = null;
-  @Output() readonly pricingChange = new EventEmitter<ContractTypes.PricingConfig>();
-
-  @Input() context: 'event' | 'asset' | 'subevent' = 'event';
-  @Input() presentation: 'inline' | 'popup-summary' = 'inline';
-  @Input() slotCatalog: readonly ContractTypes.PricingSlotReference[] = [];
+  @Input() config: PricingEditorConfig = {};
   @Input() readOnly = false;
-  @Input() title = 'Pricing';
-  @Input() subtitle = '';
-  @Input() showAudienceSection: boolean | null = null;
-  @Input() showPreview: boolean | null = null;
-  @Input() allowSlotFeatures: boolean | null = null;
 
   protected workingPricing: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
@@ -79,16 +100,16 @@ export class PricingEditorComponent implements OnChanges {
   protected readonly cancellationUnitOptions: readonly AppConstants.PricingCancellationUnit[] = ['hours', 'days', 'weeks', 'months'];
   protected readonly cancellationRefundKindOptions: readonly AppConstants.PricingCancellationRefundKind[] = ['percent', 'fixed_amount', 'full', 'none'];
   protected readonly soldOutLabelOptions = ['Show "Sold Out"', 'Hide from list', 'Show "Waitlist"'];
-  protected resolvedChargeTypeOptions: readonly AppConstants.PricingChargeType[] = ['per_attendee', 'per_booking', 'per_slot'];
-  protected resolvedAllowSlotFeatures = true;
-  protected resolvedShowAudienceSection = true;
-  protected resolvedShowPreview = true;
-  protected resolvedPresentation: 'inline' | 'popup-summary' = 'inline';
+  protected resolvedConfig: ResolvedPricingEditorConfig = this.resolveConfig();
   protected wizardOpen = false;
 
+  private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
   private mobileScopeSheetViewport = this.resolveMobileScopeSheetViewport();
+  private pricingValue: ContractTypes.PricingConfig | null | undefined = null;
+  private onModelChange: (value: ContractTypes.PricingConfig) => void = () => {};
+  private onModelTouched: () => void = () => {};
 
   protected currentPreview!: PricingPreviewState;
   
@@ -98,19 +119,33 @@ export class PricingEditorComponent implements OnChanges {
   protected currentFallbackLines: string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (
-      changes['pricing']
-      || changes['slotCatalog']
-      || changes['context']
-      || changes['allowSlotFeatures']
-      || changes['showAudienceSection']
-      || changes['showPreview']
-      || changes['presentation']
-    ) {
-      this.syncResolvedCapabilities();
-      this.syncWorkingPricing();
+    if (changes['config']) {
+      this.syncResolvedConfig();
       this.cdr.markForCheck();
     }
+  }
+
+  ngDoCheck(): void {
+    this.syncResolvedConfig();
+  }
+
+  writeValue(value: ContractTypes.PricingConfig | null | undefined): void {
+    this.pricingValue = value;
+    this.syncWorkingPricing();
+    this.cdr.markForCheck();
+  }
+
+  registerOnChange(fn: (value: ContractTypes.PricingConfig) => void): void {
+    this.onModelChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onModelTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.readOnly = isDisabled;
+    this.cdr.markForCheck();
   }
 
 
@@ -138,7 +173,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected chargeTypeFieldLabel(): string {
-    return this.context === 'asset' ? 'Charge Basis' : 'Charge Type';
+    return this.resolvedConfig.context === 'asset' ? 'Charge Basis' : 'Charge Type';
   }
 
   protected roundingLabel(rounding: AppConstants.PricingRoundingMode): string {
@@ -197,11 +232,11 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected showSlotSection(): boolean {
-    return this.resolvedAllowSlotFeatures;
+    return this.resolvedConfig.allowSlotFeatures;
   }
 
   protected showCancellationSection(): boolean {
-    return this.context === 'event' || this.context === 'asset';
+    return this.resolvedConfig.context === 'event' || this.resolvedConfig.context === 'asset';
   }
 
   protected isDynamicMode(): boolean {
@@ -213,7 +248,21 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   protected usesSummaryPopup(): boolean {
-    return this.resolvedPresentation === 'popup-summary';
+    return this.resolvedConfig.presentation === 'popup-summary';
+  }
+
+  protected subtitleKey(): PricingEditorSubtitleKey {
+    if (this.readOnly) {
+      return 'none';
+    }
+    switch (this.resolvedConfig.context) {
+      case 'asset':
+        return 'asset';
+      case 'subevent':
+        return 'subevent';
+      default:
+        return this.isPricingEnabled() ? 'event-enabled' : 'event-disabled';
+    }
   }
 
   protected openWizard(): void {
@@ -805,15 +854,15 @@ export class PricingEditorComponent implements OnChanges {
       }
     }
 
-    if (this.resolvedAllowSlotFeatures) {
-      if (this.slotCatalog.length === 0) {
+    if (this.resolvedConfig.allowSlotFeatures) {
+      if (this.resolvedConfig.slotCatalog.length === 0) {
         lines.push('Slot-specific pricing is unavailable until the event has at least one slot in the Slots section.');
       } else if (!this.workingPricing.slotPricingEnabled || this.workingPricing.slotOverrides.length === 0) {
         lines.push('Slot overrides are off, so every slot is still using the same main event price.');
       }
     }
 
-    if (this.resolvedShowAudienceSection && !this.workingPricing.audience.enabled) {
+    if (this.resolvedConfig.showAudienceSection && !this.workingPricing.audience.enabled) {
       lines.push('Audience pricing is off, so members, VIP guests, and promo codes are not changing the public price.');
     }
 
@@ -833,7 +882,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private syncWorkingPricing(): void {
-    this.workingPricing = this.normalizePricingWithCapabilities(this.pricing);
+    this.workingPricing = this.normalizePricingWithCapabilities(this.pricingValue);
     this.currentPreview = this.calculatePreviewState();
     // Cache the lines here
     this.currentExplanationLines = this.previewExplanationLines();
@@ -848,8 +897,11 @@ export class PricingEditorComponent implements OnChanges {
     // Cache the lines here
     this.currentExplanationLines = this.previewExplanationLines();
     this.currentFallbackLines = this.previewFallbackLines();
-    
-    this.pricingChange.emit(PricingBuilder.clonePricingConfig(this.workingPricing));
+
+    const nextPricing = PricingBuilder.clonePricingConfig(this.workingPricing);
+    this.pricingValue = nextPricing;
+    this.onModelChange(nextPricing);
+    this.onModelTouched();
     this.cdr.markForCheck();
   }
 
@@ -867,22 +919,69 @@ export class PricingEditorComponent implements OnChanges {
     }
   }
 
-  private syncResolvedCapabilities(): void {
-    this.resolvedAllowSlotFeatures = this.allowSlotFeatures ?? this.context === 'event';
-    this.resolvedShowAudienceSection = this.showAudienceSection ?? this.context === 'event';
-    this.resolvedShowPreview = this.showPreview ?? true;
-    this.resolvedPresentation = this.presentation ?? 'inline';
-    this.resolvedChargeTypeOptions = this.resolveChargeTypeOptions();
+  private syncResolvedConfig(): void {
+    const nextConfig = this.resolveConfig();
+    const nextSignature = this.buildResolvedConfigSignature(nextConfig);
+    if (nextSignature === this.resolvedConfigSignature) {
+      return;
+    }
+    this.resolvedConfig = nextConfig;
+    this.resolvedConfigSignature = nextSignature;
     if (!this.usesSummaryPopup()) {
       this.wizardOpen = false;
     }
+    this.syncWorkingPricing();
   }
 
-  private resolveChargeTypeOptions(): readonly AppConstants.PricingChargeType[] {
-    const base: AppConstants.PricingChargeType[] = this.context === 'asset'
+  private resolveConfig(): ResolvedPricingEditorConfig {
+    const context = this.resolveConfigValue(this.config.context, 'event');
+    const allowSlotFeatures = this.resolveConfigValue(this.config.allowSlotFeatures, context === 'event') ?? context === 'event';
+    return {
+      context,
+      presentation: this.resolveConfigValue(this.config.presentation, 'inline'),
+      slotCatalog: this.resolveConfigValue(this.config.slotCatalog, []),
+      showAudienceSection: this.resolveConfigValue(this.config.showAudienceSection, context === 'event') ?? context === 'event',
+      showPreview: this.resolveConfigValue(this.config.showPreview, true) ?? true,
+      allowSlotFeatures,
+      chargeTypeOptions: this.resolveChargeTypeOptions(context, allowSlotFeatures)
+    };
+  }
+
+  private resolveConfigValue<TValue>(
+    value: PricingEditorConfigValue<TValue> | null | undefined,
+    fallback: TValue
+  ): TValue {
+    if (typeof value === 'function') {
+      return (value as () => TValue)() ?? fallback;
+    }
+    return value ?? fallback;
+  }
+
+  private buildResolvedConfigSignature(config: ResolvedPricingEditorConfig): string {
+    return JSON.stringify({
+      context: config.context,
+      presentation: config.presentation,
+      showAudienceSection: config.showAudienceSection,
+      showPreview: config.showPreview,
+      allowSlotFeatures: config.allowSlotFeatures,
+      chargeTypeOptions: config.chargeTypeOptions,
+      slotCatalog: config.slotCatalog.map(slot => ({
+        id: slot.id,
+        label: slot.label,
+        startAt: slot.startAt,
+        endAt: slot.endAt
+      }))
+    });
+  }
+
+  private resolveChargeTypeOptions(
+    context: PricingEditorContext,
+    allowSlotFeatures: boolean
+  ): readonly AppConstants.PricingChargeType[] {
+    const base: AppConstants.PricingChargeType[] = context === 'asset'
       ? ['per_booking', 'per_attendee']
       : ['per_attendee', 'per_booking'];
-    if (this.resolvedAllowSlotFeatures) {
+    if (allowSlotFeatures) {
       base.push('per_slot');
     }
     return base;
@@ -892,10 +991,10 @@ export class PricingEditorComponent implements OnChanges {
     value: ContractTypes.PricingConfig | null | undefined
   ): ContractTypes.PricingConfig {
     return PricingBuilder.normalizePricingConfig(value, {
-      context: this.context,
-      slotCatalog: this.resolvedAllowSlotFeatures ? this.slotCatalog : [],
-      allowSlotFeatures: this.resolvedAllowSlotFeatures,
-      allowedChargeTypes: this.resolvedChargeTypeOptions,
+      context: this.resolvedConfig.context,
+      slotCatalog: this.resolvedConfig.allowSlotFeatures ? this.resolvedConfig.slotCatalog : [],
+      allowSlotFeatures: this.resolvedConfig.allowSlotFeatures,
+      allowedChargeTypes: this.resolvedConfig.chargeTypeOptions,
       preserveEmptyPromoCodes: true
     });
   }
@@ -979,7 +1078,7 @@ export class PricingEditorComponent implements OnChanges {
   }
 
   private defaultDraftSlotIds(): string[] {
-    const firstSlotId = `${this.slotCatalog[0]?.id ?? ''}`.trim();
+    const firstSlotId = `${this.resolvedConfig.slotCatalog[0]?.id ?? ''}`.trim();
     return firstSlotId ? [firstSlotId] : [];
   }
 
@@ -993,7 +1092,7 @@ export class PricingEditorComponent implements OnChanges {
     if (!normalizedSlotId) {
       return '';
     }
-    return this.slotCatalog.find(slot => slot.id === normalizedSlotId)?.label ?? '';
+    return this.resolvedConfig.slotCatalog.find(slot => slot.id === normalizedSlotId)?.label ?? '';
   }
 
   private formatSlotTime(value: string | null | undefined): string {

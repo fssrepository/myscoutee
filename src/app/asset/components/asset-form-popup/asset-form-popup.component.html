@@ -106,14 +106,9 @@
           </label>
           <app-pricing-editor
             class="experience-description-field asset-pricing-field"
-            [(pricing)]="assetForm.pricing"
-            [context]="'asset'"
-            [presentation]="'popup-summary'"
-            [allowSlotFeatures]="false"
-            [showAudienceSection]="false"
+            [(ngModel)]="assetForm.pricing"
+            [config]="assetPricingEditorConfig"
             [readOnly]="isSavePending"
-            [title]="'Asset Pricing'"
-            [subtitle]="'Set the default charge for using this asset without event slot-specific pricing controls.'"
           ></app-pricing-editor>
           <section class="event-policies-panel asset-policies-panel experience-description-field">
             <div class="event-policies-panel-head">

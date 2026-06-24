@@ -13,7 +13,8 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
-  type AppMenuTrigger
+  type AppMenuTrigger,
+  type PricingEditorConfig
 } from '../../../shared/ui';
 
 import type * as AppDTOs from '../../../shared/core/base/dto';
@@ -68,6 +69,12 @@ export class AssetFormPopupComponent implements OnChanges {
   protected workingPolicies: ContractTypes.EventPolicyDTO[] = [];
   protected workingPolicyDraft: ContractTypes.EventPolicyDTO = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
+  protected readonly assetPricingEditorConfig: PricingEditorConfig = {
+    context: 'asset',
+    presentation: 'popup-summary',
+    allowSlotFeatures: false,
+    showAudienceSection: false
+  };
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && changes['visible'].currentValue === true) {
