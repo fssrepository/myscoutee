@@ -117,7 +117,7 @@ export class ProfileFormFlowDataConverter {
       birthday,
       age: AppUtils.ageFromIsoDate(birthday, user.age),
       city: `${user.city ?? ''}`.trim(),
-      height: this.normalizeHeightText(user.height),
+      height: this.normalizeHeightValue(user.height),
       physique: `${user.physique ?? ''}`.trim(),
       languages: this.normalizeStringList(user.languages),
       horoscope: birthday ? AppUtils.horoscopeByDate(AppUtils.fromIsoDate(birthday) as Date) : `${user.horoscope ?? ''}`.trim(),
@@ -198,7 +198,7 @@ export class ProfileFormFlowDataConverter {
       case 'profile.birthday':
         return this.formatDateForDetail(user.birthday);
       case 'profile.height':
-        return this.normalizeHeightText(user.height);
+        return this.normalizeHeightValue(user.height);
       case 'profile.physique':
         return `${user.physique ?? ''}`.trim();
       case 'profile.languages':
@@ -226,9 +226,9 @@ export class ProfileFormFlowDataConverter {
     return value === 'Public' || value === 'Friends' || value === 'Hosts' || value === 'Private';
   }
 
-  private static normalizeHeightText(value: unknown): string {
+  private static normalizeHeightValue(value: unknown): string {
     const heightCm = this.parseHeightCm(`${value ?? ''}`);
-    return heightCm ? `${heightCm} cm` : `${value ?? ''}`.trim();
+    return heightCm ? `${heightCm}` : `${value ?? ''}`.trim();
   }
 
   private static formatDateForDetail(value: string): string {
@@ -406,7 +406,7 @@ export class ProfileFormFlowConverter {
               label: 'Magasság (cm)',
               bind: 'profile.height',
               required: true,
-              placeholder: '180 cm'
+              placeholder: '180'
             },
             {
               id: 'physique',

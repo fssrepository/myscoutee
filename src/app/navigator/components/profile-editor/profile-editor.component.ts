@@ -93,7 +93,6 @@ export class ProfileEditorComponent {
   protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected profileCompletionPercent = 0;
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
-  protected experienceManagerOverlayOpen = false;
 
   constructor() {
     effect(() => {
@@ -200,13 +199,9 @@ export class ProfileEditorComponent {
     return Boolean(user && (user.hostTier === 'Admin' || user.statusText === 'Admin workspace' || user.id.startsWith('admin-')));
   }
 
-  protected async handleCloseAction(): Promise<void> {
-    if (this.panel === 'experience' && this.experienceManager?.closeActiveOverlay()) {
-      return;
-    }
+  protected handleCloseAction(): void {
     if (this.panel !== 'profile') {
       this.panel = 'profile';
-      this.experienceManagerOverlayOpen = false;
       return;
     }
     this.navigatorService.closeProfileEditor();
@@ -305,10 +300,6 @@ export class ProfileEditorComponent {
 
   protected onExperienceEntriesChange(entries: readonly ProfileContracts.ExperienceEntry[]): void {
     this.setExperienceEntries(entries);
-  }
-
-  protected onExperienceOverlayStateChange(open: boolean): void {
-    this.experienceManagerOverlayOpen = open;
   }
 
   protected onProfileCompletionPercentChange(percent: number): void {
@@ -670,6 +661,5 @@ export class ProfileEditorComponent {
   private resetTransientUiState(): void {
     this.menuDispatcher.close();
     this.panel = 'profile';
-    this.experienceManagerOverlayOpen = false;
   }
 }
