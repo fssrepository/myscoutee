@@ -71,6 +71,11 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
     return this.previewMode;
   }
 
+  @HostBinding('class.editable-image-carousel-host--single-slot')
+  protected get singleSlotClass(): boolean {
+    return this.normalizedSlotCount() === 1;
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['slotCount']) {
       this.carouselIndex = this.clampPageIndex(this.carouselIndex);
