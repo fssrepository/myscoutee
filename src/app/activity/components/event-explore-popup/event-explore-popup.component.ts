@@ -1949,7 +1949,7 @@ export class EventExplorePopupComponent {
               : []
           }))
         : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode,
+      mode: record.mode,
       paymentSessionId
     });
   }

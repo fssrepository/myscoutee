@@ -33,13 +33,6 @@
             >
             <mat-icon>add</mat-icon>
           </button>
-          <app-menu
-            class="subevents-mode-picker"
-            kind="select"
-            [trigger]="displayModeMenuTrigger()"
-            [items]="displayModeMenuItems()"
-            (itemSelect)="onSubeventMenuSelect($event)"
-          ></app-menu>
         </div>
         @if (showHeaderTimeBadge()) {
           <span class="subevents-slot-preview-chip">{{ headerTimeBadgeLabel() }}</span>
@@ -47,7 +40,7 @@
       </header>
       <div class="subevents-body">
         @if (sortedSubEvents.length > 0) {
-          @if (displayMode === 'Tournament') {
+          @if (mode === 'Tournament') {
             <div class="subevents-period-head">
               <span class="subevents-period-nav subevents-period-nav-left">
                 <button

@@ -925,7 +925,7 @@ export class ActivitiesEventsController {
         subEvents: Array.isArray(record?.subEvents)
           ? this.cloneSyncedSubEventForms(record.subEvents)
           : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
-        subEventsDisplayMode: record?.subEventsDisplayMode ?? relatedSource.subEventsDisplayMode,
+        mode: record?.mode ?? relatedSource.mode,
         paymentSessionId: selection?.paymentSessionId ?? null
       }),
       nextMembers: this.buildAcceptedInvitationMembers(currentMembers, activeUserId, requiresAdminApproval),
@@ -1134,7 +1134,7 @@ export class ActivitiesEventsController {
       subEvents: Array.isArray(record?.subEvents)
         ? this.cloneSyncedSubEventForms(record.subEvents)
         : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined),
-      subEventsDisplayMode: record?.subEventsDisplayMode ?? source.subEventsDisplayMode,
+      mode: record?.mode ?? source.mode,
       paymentSessionId: null
     });
   }

@@ -194,7 +194,7 @@ export interface ActivityEventRecord {
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
   subEvents?: EventContracts.SubEventDTO[];
-  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
+  mode?: EventContracts.EventMode;
   rating: number;
   boost: number;
   affinity: number;
@@ -289,7 +289,7 @@ export class ActivityEventDetailDTO {
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[] = [];
   subEvents: EventContracts.SubEventDTO[] = [];
-  subEventsDisplayMode: EventContracts.SubEventsDisplayMode = 'Casual';
+  mode: EventContracts.EventMode = 'Casual';
   rating = 0;
   boost = 0;
   affinity = 0;
@@ -353,7 +353,7 @@ export class ActivityEventDetailDTO {
     this.pendingReason = update.pendingReason ?? this.pendingReason;
     this.topics = [...(update.topics ?? this.topics)];
     this.applySubEvents(update.subEvents ?? this.subEvents);
-    this.subEventsDisplayMode = update.subEventsDisplayMode ?? this.subEventsDisplayMode;
+    this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
     this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
     this.boost = ActivityEventDetailDTO.nonNegativeInteger(update.boost ?? this.boost);
     this.affinity = ActivityEventDetailDTO.nonNegativeInteger(update.affinity ?? this.affinity);
@@ -540,6 +540,11 @@ export class ActivityEventDetailDTO {
   static normalizeBlindMode(value: unknown): EventContracts.EventBlindMode {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
     return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
+  }
+
+  static normalizeMode(value: unknown): EventContracts.EventMode {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized === 'tournament' ? 'Tournament' : 'Casual';
   }
 
   static normalizeTopics(value: unknown): string[] {

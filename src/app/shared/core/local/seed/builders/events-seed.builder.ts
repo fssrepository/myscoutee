@@ -702,7 +702,7 @@ interface ActivityEventSeedOverrides {
   slotTemplates?: ContractTypes.EventSlotTemplateDTO[];
   generated?: boolean;
   subEvents?: ContractTypes.SubEventDTO[];
-  subEventsDisplayMode?: ContractTypes.SubEventsDisplayMode;
+  mode?: ContractTypes.EventMode;
   rating?: number;
   boost?: number;
   affinity?: number;
@@ -1316,7 +1316,7 @@ export class SeedEventsBuilder {
       pendingMembers,
       topics,
       subEvents,
-      subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? SeedEventBuilder.inferredSubEventsDisplayMode(subEvents),
+      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventMode(subEvents),
       rating,
       boost: Number.isFinite(record.seed?.boost)
         ? Number(record.seed?.boost)
@@ -1791,7 +1791,7 @@ export class SeedEventsBuilder {
       slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,
       topics: 'topics' in item ? item.topics : undefined,
       subEvents: 'subEvents' in item ? this.cloneSubEvents(item.subEvents) : undefined,
-      subEventsDisplayMode: 'subEventsDisplayMode' in item ? item.subEventsDisplayMode : undefined,
+      mode: 'mode' in item ? item.mode : undefined,
       rating: 'rating' in item ? item.rating : undefined,
       boost: 'boost' in item ? item.boost : undefined,
       affinity: 'affinity' in item ? item.affinity : undefined,

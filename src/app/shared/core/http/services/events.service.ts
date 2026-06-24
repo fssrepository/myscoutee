@@ -760,7 +760,7 @@ export class HttpEventsService implements IEventsService {
           groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
         })),
-        subEventsDisplayMode: record.subEventsDisplayMode ?? 'Casual',
+        mode: ActivityEventDetailDTO.normalizeMode(record.mode),
         rating: Math.max(0, Number(record.rating) || 0),
         boost: Math.max(0, Number(record.boost) || 0),
         affinity: Math.max(0, Number(record.affinity) || 0)

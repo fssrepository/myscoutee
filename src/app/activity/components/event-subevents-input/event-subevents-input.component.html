@@ -11,9 +11,9 @@
     </span>
     @if (subEvents.length > 0) {
       <span class="event-subevents-panel-meta">
-        <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
-          <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
-          <span>{{ displayMode }}</span>
+        <span class="event-subevents-panel-mode" [ngClass]="subEventsModeClass()">
+          <mat-icon>{{ subEventsModeIcon() }}</mat-icon>
+          <span>{{ mode }}</span>
         </span>
         <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
           {{ subEventsCountLabel() }}
@@ -53,12 +53,11 @@
   [parentTitle]="parentTitle"
   [ownerId]="ownerId"
   [ngModel]="subEvents"
-  [displayMode]="displayMode"
+  [mode]="mode"
   [slotsEnabled]="slotsEnabled"
   [slotTemplates]="slotTemplates"
   [parentStartAt]="parentStartAt"
   [parentEndAt]="parentEndAt"
   (close)="closeSubEvents()"
   (ngModelChange)="onPopupSubEventsChange($event)"
-  (displayModeChange)="onPopupDisplayModeChange($event)"
 ></app-event-subevents-popup>

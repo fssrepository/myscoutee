@@ -19,7 +19,6 @@ import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
-  AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
@@ -35,11 +34,10 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
-type SubEventsDisplayMode = 'Casual' | 'Tournament';
+type EventMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage' | 'start-tournament' | 'close-stage' | 'finalize-stage' | 'reopen-scores' | 'suspend-tournament' | 'resume-tournament';
 type GroupMenuAction = 'edit-group' | 'delete-group';
-type DisplayModeMenuItemId = 'display-casual' | 'display-tournament';
-type SubeventActionMenuItemId = DisplayModeMenuItemId | StageMenuAction | GroupMenuAction | 'stage-location' | 'members' | 'car' | 'accommodation' | 'supplies' | 'edit-casual' | 'delete-casual' | 'show-map';
+type SubeventActionMenuItemId = StageMenuAction | GroupMenuAction | 'stage-location' | 'members' | 'car' | 'accommodation' | 'supplies' | 'edit-casual' | 'delete-casual' | 'show-map';
 type StageInsertPlacement = 'before' | 'after';
 type TournamentLeaderboardType = 'Score' | 'Fifa';
 type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
@@ -152,7 +150,6 @@ interface EventSubeventsPreparedItem extends EventSubeventsItem {
 }
 
 type SubeventActionMenuContext =
-  | { scope: 'display-mode'; mode: SubEventsDisplayMode }
   | { scope: 'stage-action'; stage: EventSubeventsStageCard; action: StageMenuAction | 'stage-location' }
   | { scope: 'group-action'; row: EventSubeventsStageRow; action: GroupMenuAction }
   | { scope: 'group-resource'; row: EventSubeventsStageRow; resourceType: EventEditorSubEventResourceType }
@@ -240,7 +237,6 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
-    AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     EventSubeventStageFormPopupComponent,
@@ -274,19 +270,17 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   @Input() parentTitle = '';
   @Input() ownerId: string | null = null;
   @Input() subEvents: readonly EventSubeventsItem[] = [];
-  @Input() displayMode: SubEventsDisplayMode = 'Casual';
+  @Input() mode: EventMode = 'Casual';
   @Input() slotsEnabled = false;
   @Input() slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = [];
   @Input() parentStartAt = '';
   @Input() parentEndAt = '';
 
   @Output() readonly close = new EventEmitter<void>();
-  @Output() readonly displayModeChange = new EventEmitter<SubEventsDisplayMode>();
   @Output() readonly subEventsChange = new EventEmitter<EventSubeventsItem[]>();
 
   @ViewChild('stageViewport') private stageViewportRef?: ElementRef<HTMLDivElement>;
 
-  protected readonly displayModeOptions: readonly SubEventsDisplayMode[] = ['Casual', 'Tournament'];
   protected stagePageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= 920;
 
@@ -396,7 +390,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       void this.hydrateOwnerRecord();
     }
 
-    if (changes['displayMode'] && !changes['displayMode'].firstChange) {
+    if (changes['mode'] && !changes['mode'].firstChange) {
       this.stagePageIndex = 0;
       this.clampStagePageIndex();
     }
@@ -461,7 +455,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       this.toInputDateTime(new Date(start.getTime() + (2 * 60 * 60 * 1000)))
     );
     const stageNumber = this.workingSubEvents.length + 1;
-    const defaultName = this.displayMode === 'Tournament' ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
+    const defaultName = this.mode === 'Tournament' ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     this.resetSubEventStageInsertControls();
     const fallbackGroupMin = this.defaultTournamentGroupCapacityMin();
     const fallbackGroupMax = this.defaultTournamentGroupCapacityMax(fallbackGroupMin);
@@ -475,7 +469,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       location: '',
       startAt: initialRange.startAt,
       endAt: initialRange.endAt,
-      optional: this.displayMode !== 'Tournament',
+      optional: this.mode !== 'Tournament',
       pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: fallbackStageMin,
       capacityMax: fallbackStageMax,
@@ -491,24 +485,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
 
     this.applySubEventInsertTargetDateRangeToForm();
     this.showSubEventForm = true;
-  }
-
-  protected selectDisplayMode(mode: SubEventsDisplayMode, event: Event): void {
-    event.stopPropagation();
-    if (this.subEventStructureReadOnly()) {
-      return;
-    }
-    if (this.displayMode === mode) {
-      return;
-    }
-    this.localMutationVersion += 1;
-    this.onModelTouched();
-    this.displayModeChange.emit(mode);
-    this.stagePageIndex = 0;
-  }
-
-  protected currentDisplayModeIcon(mode: SubEventsDisplayMode = this.displayMode): string {
-    return mode === 'Tournament' ? 'emoji_events' : 'groups';
   }
 
   protected canScrollStagePages(direction: -1 | 1): boolean {
@@ -527,7 +503,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected onStageViewportScroll(): void {
-    if (!this.isMobileViewport || this.displayMode !== 'Tournament') {
+    if (!this.isMobileViewport || this.mode !== 'Tournament') {
       return;
     }
     const viewport = this.stageViewportRef?.nativeElement;
@@ -760,31 +736,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     });
   }
 
-  protected displayModeMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.displayMode,
-      icon: this.currentDisplayModeIcon(),
-      ariaLabel: 'Change sub events mode',
-      palette: this.displayModePalette(this.displayMode),
-      disabled: this.subEventStructureReadOnly(),
-      layout: 'pill'
-    };
-  }
-
-  protected displayModeMenuItems(): readonly AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] {
-    return this.displayModeOptions.map(mode => ({
-      id: this.displayModeMenuItemId(mode),
-      label: mode,
-      icon: this.currentDisplayModeIcon(mode),
-      kind: 'radio',
-      active: this.displayMode === mode,
-      checked: this.displayMode === mode,
-      palette: this.displayModePalette(mode),
-      surface: 'tinted',
-      context: { scope: 'display-mode', mode }
-    }));
-  }
-
   protected stageActionMenuTrigger(stage: EventSubeventsStageCard): AppMenuTrigger {
     return this.actionMenuTrigger(`Open actions for ${stage.title}`);
   }
@@ -1010,9 +961,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       return;
     }
     switch (context.scope) {
-      case 'display-mode':
-        this.selectDisplayMode(context.mode, menuEvent.sourceEvent);
-        return;
       case 'stage-action':
         if (context.action === 'stage-location') {
           this.openStageLocation(context.stage, menuEvent.sourceEvent);
@@ -1039,14 +987,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       default:
         return;
     }
-  }
-
-  private displayModeMenuItemId(mode: SubEventsDisplayMode): DisplayModeMenuItemId {
-    return mode === 'Tournament' ? 'display-tournament' : 'display-casual';
-  }
-
-  private displayModePalette(mode: SubEventsDisplayMode): AppMenuPalette {
-    return mode === 'Tournament' ? 'amber' : 'green';
   }
 
   private stageActionMenuItem(
@@ -1328,7 +1268,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected selectSubEventOptional(optional: boolean): void {
-    if (this.displayMode === 'Tournament') {
+    if (this.mode === 'Tournament') {
       this.subEventForm.optional = false;
       return;
     }
@@ -1357,7 +1297,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected showSubEventOptionalToggle(): boolean {
-    return this.displayMode !== 'Tournament';
+    return this.mode !== 'Tournament';
   }
 
   protected showSubEventInsertControls(): boolean {
@@ -1365,14 +1305,14 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected subEventInsertFieldLabel(): string {
-    return this.displayMode === 'Tournament' ? 'Insert Stage' : 'Insert Sub Event';
+    return this.mode === 'Tournament' ? 'Insert Stage' : 'Insert Sub Event';
   }
 
   protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
     const source = this.subEventInsertTargetSource();
     return source.map((item, index) => ({
       id: item.id ?? `subevent-option-${index}`,
-      label: this.displayMode === 'Tournament'
+      label: this.mode === 'Tournament'
         ? `Stage ${this.resolveStageNumberById(item.id) ?? (index + 1)} · ${item.name ?? item.title ?? 'Untitled'}`
         : `${item.name ?? item.title ?? `Sub Event ${index + 1}`}`
     }));
@@ -1400,7 +1340,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected showTournamentStageConfigFields(): boolean {
-    return this.displayMode === 'Tournament';
+    return this.mode === 'Tournament';
   }
 
   protected onTournamentGroupCapacityMinChange(value: number | string): void {
@@ -1594,7 +1534,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       return;
     }
     this.normalizeSubEventCapacityRange();
-    const forceMandatoryTournament = this.displayMode === 'Tournament';
+    const forceMandatoryTournament = this.mode === 'Tournament';
     if (forceMandatoryTournament) {
       this.normalizeTournamentStageConfigOnForm();
     }
@@ -2016,7 +1956,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected subEventFormTitle(): string {
-    if (this.displayMode === 'Tournament') {
+    if (this.mode === 'Tournament') {
       let stageNumber = this.subEventFormMode === 'edit'
         ? this.resolveStageNumberById(this.editingSubEventId())
         : this.subEventInsertStageNumberPreview();
@@ -2195,7 +2135,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected finalTournamentResultsStage(): EventSubeventsStageCard | null {
-    if (this.displayMode !== 'Tournament' || this.stageCards.length === 0) {
+    if (this.mode !== 'Tournament' || this.stageCards.length === 0) {
       return null;
     }
     const finalStage = this.stageCards[this.stageCards.length - 1] ?? null;
@@ -2501,7 +2441,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
 
     this.subEventFormMode = 'edit';
     this.subEventFormSourceIndex = sourceIndex;
-    const fallbackName = this.displayMode === 'Tournament'
+    const fallbackName = this.mode === 'Tournament'
       ? `Stage ${sourceIndex + 1}`
       : `Sub Event ${sourceIndex + 1}`;
     this.subEventForm = {
@@ -2510,7 +2450,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
       ...this.subEventDraftDateRange(sourceItem),
-      optional: sourceItem.optional ?? (this.displayMode !== 'Tournament'),
+      optional: sourceItem.optional ?? (this.mode !== 'Tournament'),
       pricing: PricingBuilder.clonePricingConfig(sourceItem.pricing ?? PricingBuilder.createDefaultPricingConfig('subevent')),
       capacityMin: Math.max(0, Number(sourceItem.capacityMin) || 0),
       capacityMax: Math.max(
@@ -2622,7 +2562,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     sourceIndex: number | null,
     draft: SubEventFormModel
   ): EventSubeventsGroupItem[] {
-    if (this.displayMode !== 'Tournament') {
+    if (this.mode !== 'Tournament') {
       return [];
     }
 
@@ -3252,7 +3192,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   private queueMobileStageViewportSync(behavior: ScrollBehavior): void {
-    if (!this.isMobileViewport || this.displayMode !== 'Tournament') {
+    if (!this.isMobileViewport || this.mode !== 'Tournament') {
       this.clearMobileStageScrollLock();
       return;
     }
@@ -3351,7 +3291,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   protected stageGridTransform(): string {
-    if (this.stageCards.length === 0 || this.displayMode !== 'Tournament') {
+    if (this.stageCards.length === 0 || this.mode !== 'Tournament') {
       return '';
     }
     const startIndex = this.stagePageStartIndexesCache[this.stagePageIndex] ?? 0;
@@ -3373,7 +3313,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   private alignPageToCurrentStage(): void {
-    if (this.displayMode !== 'Tournament') {
+    if (this.mode !== 'Tournament') {
       this.stagePageIndex = 0;
       this.syncVisibleStageCards();
       return;
@@ -3577,10 +3517,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     this.bumpCasualSmartListRevision();
     this.alignPageToCurrentStage();
 
-    const nextDisplayMode = record.subEventsDisplayMode === 'Tournament' ? 'Tournament' : 'Casual';
-    if (nextDisplayMode !== this.displayMode) {
-      this.displayModeChange.emit(nextDisplayMode);
-    }
     const hydratedSubEvents = this.cloneSubEvents(this.workingSubEvents);
     this.onModelTouched();
     this.onModelChange(hydratedSubEvents);
@@ -3934,7 +3870,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       location: '',
       startAt: '',
       endAt: '',
-      optional: this.displayMode !== 'Tournament',
+      optional: this.mode !== 'Tournament',
       pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: 4,
       capacityMax: 7,

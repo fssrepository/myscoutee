@@ -46,7 +46,7 @@ export class ActivityEventSeedMapper {
       upcomingSlots: record.upcomingSlots ? [...record.upcomingSlots] : undefined,
       topics: [...record.topics],
       subEvents: record.subEvents ? [...record.subEvents] : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode,
+      mode: record.mode,
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity,

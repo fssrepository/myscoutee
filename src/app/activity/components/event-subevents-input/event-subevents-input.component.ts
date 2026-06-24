@@ -37,8 +37,7 @@ export class EventSubeventsInputComponent implements ControlValueAccessor {
   @Input() structureReadOnly = false;
   @Input() parentTitle = '';
   @Input() ownerId: string | null = null;
-  @Input() displayMode: ContractTypes.SubEventsDisplayMode = 'Casual';
-  @Output() readonly displayModeChange = new EventEmitter<ContractTypes.SubEventsDisplayMode>();
+  @Input() mode: ContractTypes.EventMode = 'Casual';
 
   @Input() slotsEnabled = false;
   @Input() slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = [];
@@ -99,14 +98,6 @@ export class EventSubeventsInputComponent implements ControlValueAccessor {
     this.cdr.markForCheck();
   }
 
-  protected onPopupDisplayModeChange(mode: ContractTypes.SubEventsDisplayMode): void {
-    const nextMode = mode === 'Tournament' ? 'Tournament' : 'Casual';
-    this.displayMode = nextMode;
-    this.displayModeChange.emit(nextMode);
-    this.onModelTouched();
-    this.cdr.markForCheck();
-  }
-
   protected subEventsCountLabel(): string {
     const count = this.subEvents.length;
     return count === 1 ? '1 item' : `${count} items`;
@@ -124,7 +115,7 @@ export class EventSubeventsInputComponent implements ControlValueAccessor {
 
   protected subEventPanelChipTitle(subEvent: ContractTypes.SubEventDTO, index: number): string {
     const baseName = this.subEventName(subEvent).trim() || 'Untitled';
-    return this.displayMode === 'Tournament' ? `Stage ${index + 1} - ${baseName}` : baseName;
+    return this.mode === 'Tournament' ? `Stage ${index + 1} - ${baseName}` : baseName;
   }
 
   protected subEventPanelChipTrackId(index: number, subEvent: ContractTypes.SubEventDTO): string {
@@ -163,7 +154,7 @@ export class EventSubeventsInputComponent implements ControlValueAccessor {
   }
 
   protected subEventPanelChipStyle(index: number): Record<string, string> {
-    if (this.displayMode === 'Tournament') {
+    if (this.mode === 'Tournament') {
       const totalStages = Math.max(1, this.subEvents.length);
       const stageNumber = AppUtils.clampNumber(index + 1, 1, totalStages);
       const hue = this.subEventStageAccentHue(stageNumber, totalStages);
@@ -191,11 +182,11 @@ export class EventSubeventsInputComponent implements ControlValueAccessor {
         };
   }
 
-  protected subEventsDisplayModeClass(mode: string = this.displayMode): string {
+  protected subEventsModeClass(mode: string = this.mode): string {
     return mode === 'Tournament' ? 'subevents-mode-tournament' : 'subevents-mode-casual';
   }
 
-  protected subEventsDisplayModeIcon(mode: string = this.displayMode): string {
+  protected subEventsModeIcon(mode: string = this.mode): string {
     return mode === 'Tournament' ? 'emoji_events' : 'groups';
   }
 

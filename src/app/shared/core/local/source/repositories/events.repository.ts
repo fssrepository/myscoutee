@@ -1920,7 +1920,7 @@ export class LocalEventsRepository {
           pendingMembers: 0,
           topics: [...parent.topics],
           subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
-          subEventsDisplayMode: parent.subEventsDisplayMode,
+          mode: parent.mode,
           rating: parent.rating,
           boost: parent.boost,
           affinity: parent.affinity
@@ -2004,7 +2004,7 @@ export class LocalEventsRepository {
         pendingMembers: 0,
         topics: [...parent.topics],
         subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
-        subEventsDisplayMode: parent.subEventsDisplayMode,
+        mode: parent.mode,
         rating: parent.rating,
         boost: parent.boost,
         affinity: parent.affinity

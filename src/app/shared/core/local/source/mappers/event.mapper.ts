@@ -176,9 +176,11 @@ export class LocalActivityEventDetailsMapper {
       pendingRequestMemberUserIds: [...context.pendingRequestMemberUserIds],
       topics,
       subEvents,
-      subEventsDisplayMode: payload.subEventsDisplayMode
-        ?? existing?.subEventsDisplayMode
-        ?? ActivityEventRecordBuilder.inferredSubEventsDisplayMode(subEvents),
+      mode: ActivityEventRecordBuilder.normalizeEventMode(
+        payload.mode
+          ?? existing?.mode
+          ?? ActivityEventRecordBuilder.inferredEventMode(subEvents)
+      ),
       rating,
       boost,
       affinity
@@ -240,7 +242,7 @@ export class LocalActivityEventDetailsMapper {
       pendingReason: record.pendingReason,
       topics: [...(record.topics ?? [])],
       subEvents: record.subEvents ?? [],
-      subEventsDisplayMode: record.subEventsDisplayMode ?? 'Casual',
+      mode: ActivityEventRecordBuilder.normalizeEventMode(record.mode),
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity,

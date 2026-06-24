@@ -47,7 +47,7 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'frequency'; frequency: string }
-  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
+  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-event-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
   | { menu: 'save' };
@@ -305,12 +305,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.syncDateTimeControlsFromDTO();
   }
 
-  updateSubEventsDisplayMode(mode: ContractTypes.SubEventsDisplayMode): void {
-    this.eventDetailDTO.subEventsDisplayMode = mode === 'Tournament' ? 'Tournament' : 'Casual';
-    this.syncMainEventBoundsFromSubEvents();
-    this.syncDateTimeControlsFromDTO();
-  }
-
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
     const normalizedSlots = ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates);
     const nextKey = normalizedSlots
@@ -376,7 +370,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       pendingRequestMemberUserIds: [],
       topics: [],
       subEvents: [],
-      subEventsDisplayMode: 'Casual',
+      mode: 'Casual',
       rating: 0,
       boost: 0,
       affinity: 0,
@@ -544,6 +538,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         model: this.eventTopicsMenuModel()
       },
       {
+        id: 'event-mode',
+        label: this.eventModeLabel(this.eventDetailDTO.mode),
+        detail: this.eventModeDescription(this.eventDetailDTO.mode),
+        icon: this.eventModeIcon(this.eventDetailDTO.mode),
+        kind: 'toggle',
+        layout: 'big',
+        active: this.eventDetailDTO.mode === 'Tournament',
+        checked: this.eventDetailDTO.mode === 'Tournament',
+        palette: this.eventDetailDTO.mode === 'Tournament' ? 'orange' : 'green',
+        disabled: this.eventStructureReadOnly(),
+        closeOnSelect: false,
+        context: { menu: 'event-intel', action: 'toggle-event-mode' }
+      },
+      {
         id: 'event-auto-inviter',
         label: this.eventAutoInviterLabel(this.eventDetailDTO.autoInviter),
         detail: this.eventAutoInviterDescription(this.eventDetailDTO.autoInviter),
@@ -633,6 +641,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return ActivityEventDetailDTO.normalizeBlindMode(mode) === 'Blind Event'
       ? 'Attendees won\'t see each other before the event.'
       : 'Attendees can preview each other before the event.';
+  }
+
+  eventModeIcon(mode: ContractTypes.EventMode): string {
+    return mode === 'Tournament' ? 'emoji_events' : 'groups';
+  }
+
+  eventModeLabel(mode: ContractTypes.EventMode): string {
+    return mode === 'Tournament' ? 'Tournament On' : 'Casual Event';
+  }
+
+  eventModeDescription(mode: ContractTypes.EventMode): string {
+    return mode === 'Tournament'
+      ? 'Stages, groups and leaderboard are enabled.'
+      : 'Simple sub-events without tournament brackets.';
   }
 
   eventAutoInviterIcon(enabled: boolean): string {
@@ -764,6 +786,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (event.context.menu === 'event-intel') {
       if (event.context.action === 'toggle-blind-mode') {
         this.toggleEventBlindMode(event.sourceEvent);
+        return;
+      }
+      if (event.context.action === 'toggle-event-mode') {
+        this.toggleEventMode(event.sourceEvent);
         return;
       }
       if (event.context.action === 'toggle-auto-inviter') {
@@ -976,6 +1002,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventDetailDTO.blindMode = this.eventDetailDTO.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
+  }
+
+  toggleEventMode(event: Event): void {
+    event.preventDefault();
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    this.eventDetailDTO.mode = this.eventDetailDTO.mode === 'Tournament' ? 'Casual' : 'Tournament';
+    this.syncMainEventBoundsFromSubEvents();
+    this.syncDateTimeControlsFromDTO();
   }
 
   toggleEventAutoInviter(event: Event): void {
@@ -1214,11 +1250,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private buildDraftAutosaveSignature(): string {
     return JSON.stringify({
       target: this.editorTarget,
-      mode: this.eventEditorService.mode(),
+      editorMode: this.eventEditorService.mode(),
       readOnly: this.eventEditorService.readOnly(),
       editingEventId: this.editingEventId,
       draftEventId: this.draftEventId,
-      subEventsDisplayMode: this.eventDetailDTO.subEventsDisplayMode,
+      mode: this.eventDetailDTO.mode,
       form: {
         ...this.eventDetailDTO,
         topics: [...this.eventDetailDTO.topics],
@@ -1330,7 +1366,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO = dto.apply({
       slotsEnabled: ActivityEventDetailDTO.normalizeFrequency(dto.frequency) !== 'One-time'
     });
-    this.eventDetailDTO.subEventsDisplayMode = dto.subEventsDisplayMode ?? 'Casual';
+    this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange();
     this.syncDateTimeControlsFromDTO();
     this.seedDraftAutosaveSignature();
@@ -1365,7 +1401,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       endAtIso: AppUtils.toIsoDateTimeLocal(end)
     });
 
-    this.eventDetailDTO.subEventsDisplayMode = 'Casual';
+    this.eventDetailDTO.mode = 'Casual';
     this.syncDateTimeControlsFromDTO();
     this.seedDraftAutosaveSignature();
   }
@@ -1422,7 +1458,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const tournamentMode = this.eventDetailDTO.subEventsDisplayMode === 'Tournament';
+    const tournamentMode = this.eventDetailDTO.mode === 'Tournament';
     let minStartMs: number | null = null;
     let maxEndMs: number | null = null;
     let minCapacity: number | null = null;

@@ -103,7 +103,7 @@ export class SeedEventBuilder {
     return this.buildSeededCasualSubEvents(source, startMs, endMs, seed, options.activeUserId, eventMax);
   }
 
-  static inferredSubEventsDisplayMode(items: readonly ContractTypes.SubEventDTO[]): ContractTypes.SubEventsDisplayMode {
+  static inferredEventMode(items: readonly ContractTypes.SubEventDTO[]): ContractTypes.EventMode {
     if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
       return 'Tournament';
     }

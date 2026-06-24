@@ -36,11 +36,15 @@ export class ActivityEventRecordBuilder {
     return `${userId}:${type}:${sourceId}`;
   }
 
-  static inferredSubEventsDisplayMode(items: readonly { optional?: boolean; groups?: readonly unknown[] }[]): 'Casual' | 'Tournament' {
+  static inferredEventMode(items: readonly { optional?: boolean; groups?: readonly unknown[] }[]): 'Casual' | 'Tournament' {
     if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
       return 'Tournament';
     }
     return 'Casual';
+  }
+
+  static normalizeEventMode(value: unknown): 'Casual' | 'Tournament' {
+    return `${value ?? ''}`.trim().toLowerCase() === 'tournament' ? 'Tournament' : 'Casual';
   }
 
   static resolveEventAffinity(options: {

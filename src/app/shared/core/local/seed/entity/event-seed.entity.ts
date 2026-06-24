@@ -7,7 +7,7 @@ import type {
   EventSlotOccurrenceDTO,
   EventSlotTemplateDTO,
   SubEventDTO,
-  SubEventsDisplayMode
+  EventMode
 } from '../../../contracts/event.interface';
 import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
 import type { PricingConfig } from '../../../contracts/pricing.interface';
@@ -83,7 +83,7 @@ export interface ActivityEventSeedItem {
   upcomingSlots?: EventSlotOccurrenceDTO[];
   topics?: string[];
   subEvents?: SubEventDTO[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
+  mode?: EventMode;
   policies?: EventPolicyDTO[];
   rating?: number;
   boost?: number;
