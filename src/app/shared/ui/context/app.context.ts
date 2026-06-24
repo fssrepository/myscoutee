@@ -186,7 +186,12 @@ export class AppContext {
     const user = this._userProfilesByUserId()[normalizedUserId];
     return user ? this.cloneUserProfile(user) : null;
   });
-  readonly activeAdminUser = computed(() => this.adminUserFromProfile(this.activeUserProfile()));
+  readonly activeUserIsAdmin = computed(() =>
+    this.isAdminUserProfile(this.activeUserProfile(), this._activeUserId())
+  );
+  readonly activeAdminUser = computed(() =>
+    this.activeUserIsAdmin() ? this.adminUserFromProfile(this.activeUserProfile()) : null
+  );
 
   selectLoadingState(contextKey: string) {
     return computed(() => this._loadingState()[contextKey] ?? DEFAULT_LOAD_STATE);
@@ -281,6 +286,15 @@ export class AppContext {
 
   getActiveAdminUser(): AppContextAdminUserDto | null {
     return this.activeAdminUser();
+  }
+
+  isAdminUserProfile(user: UserDto | null | undefined, fallbackUserId = ''): boolean {
+    const normalizedUserId = `${user?.id ?? fallbackUserId ?? ''}`.trim();
+    return user?.admin === true
+      || user?.hostTier === 'Admin'
+      || user?.statusText === 'Admin workspace'
+      || normalizedUserId === 'admin'
+      || normalizedUserId.startsWith('admin-');
   }
 
   clearUserProfile(userId: string): void {

@@ -40,36 +40,23 @@
           [class.popup-body-experience]="panel === 'experience'"
           >
           @if (panel === 'profile') {
-            @if (isAdminProfile()) {
+            @if (activeUserIsAdmin()) {
               <div class="profile-editor-wrap profile-editor-wrap-admin">
-                <div class="profile-identity-card profile-identity-card-large status-friends admin-profile-editor-card">
-                  <div class="avatar-stack avatar-stack-editor">
-                    <span
-                      class="user-avatar user-avatar-large"
-                      [ngClass]="['user-color-' + user.gender, featuredImagePreview ? 'has-photo' : '']"
-                      [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
-                      >
-                      @if (!featuredImagePreview) {
-                        {{ user.initials }}
-                      }
-                    </span>
-                    <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(user.completion)">
-                      <span>ADMIN</span>
-                    </span>
-                  </div>
-                  <div class="profile-header-text">
-                    <h3 class="profile-name-line">
-                      <span>{{ profileEditorData.profile.name || user.name }}</span>
-                    </h3>
-                    <span class="profile-city-line">
-                      <mat-icon>admin_panel_settings</mat-icon>
-                      <span>{{ profileEditorData.profile.headline || user.headline || 'Admin workspace' }}</span>
-                    </span>
-                  </div>
-                </div>
+                <app-header-card
+                  statusClass="status-friends"
+                  [admin]="true"
+                  [title]="profileEditorData.profile.name || user.name"
+                  [meta]="profileEditorData.profile.headline || user.headline || 'Admin workspace'"
+                  metaIcon="admin_panel_settings"
+                  [imageUrl]="featuredImagePreview"
+                  [initials]="user.initials"
+                  [gender]="user.gender"
+                  badgeLabel="ADMIN"
+                  [badgeStyle]="completionBadgeStyle(user.completion)"
+                  [showEdit]="true"
+                  editAriaLabel="Open image editor"
+                  (edit)="openImageEditor()"
+                ></app-header-card>
                 <div class="profile-editor-scroll-area">
                   <div class="profile-details-structured">
                     <label class="profile-about-field">
@@ -97,34 +84,20 @@
               </div>
             } @else {
             <div class="profile-editor-wrap">
-              <div class="profile-identity-card profile-identity-card-large" [ngClass]="profileStatusClass(profileEditorData.profile.profileStatus)">
-                <div class="avatar-stack avatar-stack-editor">
-                  <span
-                    class="user-avatar user-avatar-large"
-                    [ngClass]="['user-color-' + user.gender, featuredImagePreview ? 'has-photo' : '']"
-                    [style.backgroundImage]="featuredImagePreview ? 'url(' + featuredImagePreview + ')' : null"
-                    >
-                    @if (!featuredImagePreview) {
-                      {{ user.initials }}
-                    }
-                  </span>
-                  <button type="button" class="avatar-edit-btn" aria-label="Open image editor" (click)="openImageEditor()">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <span class="avatar-bottom-pill avatar-bottom-pill-header" [ngStyle]="completionBadgeStyle(profileCompletionPercent)">
-                    <span>{{ profileCompletionPercent }}%</span>
-                  </span>
-                </div>
-                <div class="profile-header-text">
-                  <h3 class="profile-name-line">
-                    <span>{{ (profileEditorData.profile.name || user.name) + ', ' + profileEditorAge }}</span>
-                  </h3>
-                  <span class="profile-city-line">
-                    <mat-icon>location_on</mat-icon>
-                    <span>{{ profileEditorData.profile.city || user.city }}</span>
-                  </span>
-                </div>
-              </div>
+              <app-header-card
+                [statusClass]="profileStatusClass(profileEditorData.profile.profileStatus)"
+                [title]="(profileEditorData.profile.name || user.name) + ', ' + profileEditorAge"
+                [meta]="profileEditorData.profile.city || user.city"
+                metaIcon="location_on"
+                [imageUrl]="featuredImagePreview"
+                [initials]="user.initials"
+                [gender]="user.gender"
+                [badgeLabel]="profileCompletionPercent + '%'"
+                [badgeStyle]="completionBadgeStyle(profileCompletionPercent)"
+                [showEdit]="true"
+                editAriaLabel="Open image editor"
+                (edit)="openImageEditor()"
+              ></app-header-card>
               <div class="profile-editor-flow-area">
                 <app-form-flow
                   class="profile-editor-flow"
@@ -144,7 +117,8 @@
             <div class="image-editor-wrap">
               <app-editable-image-carousel
                 [previewMode]="true"
-                [(ngModel)]="profileImageUrls"
+                [ngModel]="profileEditorData.profile.images"
+                (ngModelChange)="onProfileImagesChange($event)"
                 [uploadOwnerId]="user.id"
               ></app-editable-image-carousel>
             </div>

@@ -126,6 +126,16 @@ export class AppUtils {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
   }
 
+  static normalizeRoutePath(url: string | null | undefined): string {
+    const [pathWithQuery] = `${url ?? '/'}`.split('?');
+    const [path] = (pathWithQuery || '').split('#');
+    const normalized = path.trim();
+    if (!normalized || normalized === '/') {
+      return '/';
+    }
+    return normalized.startsWith('/') ? normalized : `/${normalized}`;
+  }
+
   static hashText(value: string): number {
     let hash = 0;
     for (let index = 0; index < value.length; index += 1) {

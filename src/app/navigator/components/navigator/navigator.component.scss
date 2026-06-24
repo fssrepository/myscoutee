@@ -2,11 +2,172 @@
   display: block;
 }
 
-// Ensure menu is at a baseline level
-app-navigator-menu {
-  display: block;
-  position: relative;
+.navigator-trigger-rail {
+  position: fixed;
+  top: 0.95rem;
+  right: 1rem;
+  z-index: 1480;
+  pointer-events: none;
+  transition: transform 0.16s ease, opacity 0.16s ease;
+}
+
+.navigator-trigger-rail.is-open {
+  opacity: 0;
+  transform: scale(0.88);
+  pointer-events: none;
+}
+
+.navigator-trigger-rail.is-covered {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.navigator-trigger-rail-inner {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.user-selector-menu {
+  pointer-events: auto;
+  --app-menu-image-button-size: 48px;
+  --app-menu-image-ring-inset: -5px;
+  --app-menu-image-counter-size: 22px;
+  --app-menu-image-counter-top: -4px;
+  --app-menu-image-counter-right: -2px;
+  --app-menu-image-counter-font-size: 11px;
+}
+
+.user-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1490;
+  background: rgba(9, 18, 33, 0.48);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.user-menu-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.user-menu-backdrop.is-covered {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.user-menu-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1500;
+  width: min(444px, 95vw);
+  display: flex;
+  flex-direction: column;
+  background: #f8faff;
+  border-left: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow: -10px 0 34px rgba(10, 20, 38, 0.3);
+  opacity: 1;
+  transform: translateX(100%);
+  transition: transform 0.24s ease;
+}
+
+.user-menu-panel.open {
+  transform: translateX(0);
+}
+
+.user-menu-panel.is-covered {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.navigator-menu-header {
+  position: relative;
+}
+
+.navigator-menu-header-card {
+  display: block;
+  border-bottom: 1px solid rgba(23, 33, 54, 0.12);
+  --app-header-card-radius: 0;
+  --app-header-card-padding-top: 1.25rem;
+  --app-header-card-text-padding-top: 1.15rem;
+}
+
+.navigator-header-actions {
+  position: absolute;
+  top: 0.88rem;
+  right: 0.58rem;
+  z-index: 7;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.navigator-header-actions-menu {
+  min-width: 0;
+}
+
+.user-menu-close-btn {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  color: rgba(31, 58, 90, 0.86);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.user-menu-close-btn .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.user-menu-content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.54rem;
+  padding: 0.86rem;
+}
+
+.user-menu-offline-note {
+  margin: 0 0 0.95rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(53, 97, 146, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(239, 246, 255, 0.92), rgba(232, 241, 253, 0.94));
+  color: rgba(29, 56, 89, 0.86);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+:where(.user-menu-close-btn):focus-visible {
+  outline: 2px solid rgba(66, 110, 182, 0.44);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .user-menu-close-btn:hover {
+    transform: translateY(-1px) scale(1.01);
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .user-menu-close-btn:active {
+    transform: scale(0.98);
+  }
 }
 
 // Let each popup shell manage its own z-index.
@@ -23,4 +184,17 @@ app-event-members-popup,
 app-event-resource-popup,
 app-event-supply-contributions-popup {
   display: contents;
+}
+
+@media (max-width: 900px) {
+  .navigator-trigger-rail {
+    top: 0.7rem;
+    right: 0.7rem;
+  }
+
+  .user-menu-panel {
+    width: 100vw;
+    max-width: none;
+    border-left: 0;
+  }
 }

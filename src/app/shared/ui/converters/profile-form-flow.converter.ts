@@ -29,6 +29,7 @@ export interface ProfileFormFlowConverterOptions {
   subtitle?: string | null;
   userId?: string | null;
   layout?: FormFlowModel['layout'];
+  profileSize?: 'small' | 'big';
   imageEditor?: 'flow' | 'external';
   privacy?: ProfileFormFlowPrivacyOptions | null;
   showHeader?: boolean;
@@ -329,6 +330,7 @@ export class ProfileFormFlowConverter {
     const profile = data?.profile ?? null;
     const experienceEntries = data?.experienceEntries ?? [];
     const imageEditor = options.imageEditor ?? 'flow';
+    const profileSize = options.profileSize ?? 'big';
     return {
       title: options.title?.trim() || 'profile.setup',
       subtitle: options.subtitle?.trim() || '',
@@ -359,119 +361,7 @@ export class ProfileFormFlowConverter {
           title: 'Alapadatok',
           subtitle: 'Alap profiladatok.',
           icon: 'badge',
-          controls: [
-            {
-              id: 'about',
-              kind: 'textarea',
-              label: 'Rólam',
-              bind: 'profile.about',
-              rows: 3,
-              maxLength: 160
-            },
-            {
-              id: 'full-name',
-              kind: 'text',
-              label: 'Név',
-              bind: 'profile.name',
-              required: true,
-              placeholder: 'Név'
-            },
-            {
-              id: 'birthday',
-              kind: 'date',
-              layout: 'half',
-              label: 'Születésnap',
-              bind: 'profile.birthday',
-              required: true,
-              placeholder: 'dd/mm/yyyy',
-              config: {
-                meta: {
-                  label: 'Horoszkóp',
-                  emptyLabel: 'Nincs beállítva',
-                  value: value => this.horoscopeBadge(value)
-                }
-              }
-            },
-            {
-              id: 'city',
-              kind: 'text',
-              label: 'Város',
-              bind: 'profile.city',
-              required: true,
-              placeholder: 'Város'
-            },
-            {
-              id: 'height',
-              kind: 'text',
-              label: 'Magasság (cm)',
-              bind: 'profile.height',
-              required: true,
-              placeholder: '180'
-            },
-            {
-              id: 'physique',
-              kind: 'menu',
-              label: 'Testalkat',
-              bind: 'profile.physique',
-              required: true,
-              config: this.physiqueMenuConfig()
-            },
-            {
-              id: 'gender',
-              kind: 'menu',
-              label: 'Nem',
-              bind: this.detailValueBind(profile, 'profile.gender'),
-              required: true,
-              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet'),
-              accessory: this.privacyAccessory('profile.gender', options.privacy)
-            },
-            {
-              id: 'languages',
-              kind: 'menu',
-              label: 'Nyelvek',
-              bind: 'profile.languages',
-              required: true,
-              config: this.checkboxMenuConfig(
-                'Nyelvek',
-                this.languageOptions(profile?.languages ?? []),
-                'language',
-                'blue',
-                'Nyelvek választása',
-                2
-              )
-            },
-            {
-              id: 'visibility',
-              kind: 'menu',
-              label: 'Láthatóság',
-              bind: 'profile.profileStatus',
-              config: this.profileStatusMenuConfig()
-            },
-            {
-              id: 'workspace',
-              kind: 'menu',
-              layout: 'half',
-              label: 'Munkahely',
-              bind: 'experienceEntries',
-              config: this.experienceSelectorMenuConfig('Workspace', experienceEntries),
-              accessory: this.experiencePrivacyAccessory('workspace', options.privacy),
-              summary: {
-                value: value => this.experienceSummaryValue(value, 'Workspace')
-              }
-            },
-            {
-              id: 'school',
-              kind: 'menu',
-              layout: 'half',
-              label: 'Iskola',
-              bind: 'experienceEntries',
-              config: this.experienceSelectorMenuConfig('School', experienceEntries),
-              accessory: this.experiencePrivacyAccessory('school', options.privacy),
-              summary: {
-                value: value => this.experienceSummaryValue(value, 'School')
-              }
-            }
-          ]
+          controls: this.profileBasicsControls(profile, experienceEntries, options, profileSize)
         },
         ...(imageEditor === 'external' ? [] : [{
           id: 'photos',
@@ -499,7 +389,7 @@ export class ProfileFormFlowConverter {
             }
           ]
         }]),
-        {
+        ...(profileSize === 'small' ? [] : [{
           id: 'lifestyle',
           title: 'Életmód',
           subtitle: 'Opcionális részletek.',
@@ -548,9 +438,145 @@ export class ProfileFormFlowConverter {
               accessory: this.privacyAccessory('profile.details.interest', options.privacy)
             }
           ]
-        }
+        }])
       ]
     };
+  }
+
+  private static profileBasicsControls(
+    profile: UserDto | null,
+    experienceEntries: readonly ExperienceEntry[],
+    options: ProfileFormFlowConverterOptions,
+    profileSize: 'small' | 'big'
+  ): readonly FormFlowControlModel[] {
+    const baseControls: FormFlowControlModel[] = [
+      {
+        id: 'about',
+        kind: 'textarea',
+        label: 'Rólam',
+        bind: 'profile.about',
+        rows: 3,
+        maxLength: 160
+      },
+      {
+        id: 'full-name',
+        kind: 'text',
+        label: 'Név',
+        bind: 'profile.name',
+        required: true,
+        placeholder: 'Név'
+      }
+    ];
+    if (profileSize === 'small') {
+      return [
+        ...baseControls,
+        {
+          id: 'headline',
+          kind: 'text',
+          label: 'Headline',
+          bind: 'profile.headline',
+          placeholder: 'Admin workspace'
+        }
+      ];
+    }
+    return [
+      ...baseControls,
+      {
+        id: 'birthday',
+        kind: 'date',
+        layout: 'half',
+        label: 'Születésnap',
+        bind: 'profile.birthday',
+        required: true,
+        placeholder: 'dd/mm/yyyy',
+        config: {
+          meta: {
+            label: 'Horoszkóp',
+            emptyLabel: 'Nincs beállítva',
+            value: value => this.horoscopeBadge(value)
+          }
+        }
+      },
+      {
+        id: 'city',
+        kind: 'text',
+        label: 'Város',
+        bind: 'profile.city',
+        required: true,
+        placeholder: 'Város'
+      },
+      {
+        id: 'height',
+        kind: 'text',
+        label: 'Magasság (cm)',
+        bind: 'profile.height',
+        required: true,
+        placeholder: '180'
+      },
+      {
+        id: 'physique',
+        kind: 'menu',
+        label: 'Testalkat',
+        bind: 'profile.physique',
+        required: true,
+        config: this.physiqueMenuConfig()
+      },
+      {
+        id: 'gender',
+        kind: 'menu',
+        label: 'Nem',
+        bind: this.detailValueBind(profile, 'profile.gender'),
+        required: true,
+        config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet'),
+        accessory: this.privacyAccessory('profile.gender', options.privacy)
+      },
+      {
+        id: 'languages',
+        kind: 'menu',
+        label: 'Nyelvek',
+        bind: 'profile.languages',
+        required: true,
+        config: this.checkboxMenuConfig(
+          'Nyelvek',
+          this.languageOptions(profile?.languages ?? []),
+          'language',
+          'blue',
+          'Nyelvek választása',
+          2
+        )
+      },
+      {
+        id: 'visibility',
+        kind: 'menu',
+        label: 'Láthatóság',
+        bind: 'profile.profileStatus',
+        config: this.profileStatusMenuConfig()
+      },
+      {
+        id: 'workspace',
+        kind: 'menu',
+        layout: 'half',
+        label: 'Munkahely',
+        bind: 'experienceEntries',
+        config: this.experienceSelectorMenuConfig('Workspace', experienceEntries),
+        accessory: this.experiencePrivacyAccessory('workspace', options.privacy),
+        summary: {
+          value: value => this.experienceSummaryValue(value, 'Workspace')
+        }
+      },
+      {
+        id: 'school',
+        kind: 'menu',
+        layout: 'half',
+        label: 'Iskola',
+        bind: 'experienceEntries',
+        config: this.experienceSelectorMenuConfig('School', experienceEntries),
+        accessory: this.experiencePrivacyAccessory('school', options.privacy),
+        summary: {
+          value: value => this.experienceSummaryValue(value, 'School')
+        }
+      }
+    ];
   }
 
   private static detailMenuControl(

@@ -2,6 +2,7 @@ import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import { type ActivityCounters } from '../shared/ui';
 import { NavigationEnd, Router } from '@angular/router';
 import { AppContext } from '../shared/ui';
+import { AppUtils } from '../shared/app-utils';
 import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
 import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
@@ -68,7 +69,7 @@ export class NavigatorService {
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly assetPopupService = inject(AssetPopupStateService);
-  private readonly currentRouteUrlRef = signal(this.normalizeRouteUrl(this.router.url));
+  private readonly currentRouteUrlRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
   private readonly menuOpenRef = signal(false);
@@ -113,7 +114,7 @@ export class NavigatorService {
       if (!(event instanceof NavigationEnd)) {
         return;
       }
-      this.currentRouteUrlRef.set(this.normalizeRouteUrl(event.urlAfterRedirects));
+      this.currentRouteUrlRef.set(AppUtils.normalizeRoutePath(event.urlAfterRedirects));
     });
 
     effect(() => {
@@ -169,7 +170,7 @@ export class NavigatorService {
         this.contactsPopupOpenRef.set(false);
         return;
       }
-      if (this.isAdminWorkspaceRoute() || this.isAdminProfileActive(activeUserId)) {
+      if (this.isAdminWorkspaceRoute() || this.appCtx.activeUserIsAdmin()) {
         this.impressionsPopupOpenRef.set(false);
         this.contactsPopupOpenRef.set(false);
         this.activateUserRealtimeLongPoll(activeUserId);
@@ -620,7 +621,7 @@ export class NavigatorService {
         this.closeProfileEditor();
         this.closeImpressionsPopup();
         this.closeContactsPopup();
-        if (this.router.url.split('?')[0].startsWith('/admin')) {
+        if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           this.clearHydratedUser();
           localStorage.removeItem(NavigatorService.ADMIN_SESSION_STORAGE_KEY);
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
@@ -663,7 +664,7 @@ export class NavigatorService {
         this.closeImpressionsPopup();
         this.closeContactsPopup();
         const activeUserId = this.appCtx.activeUserId().trim();
-        if (this.router.url.split('?')[0].startsWith('/admin')) {
+        if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);
             if (!result.submitted) {
@@ -772,7 +773,7 @@ export class NavigatorService {
   }
 
   private isAdminWorkspaceRoute(routeUrl = this.currentRouteUrlRef()): boolean {
-    const path = this.normalizeRouteUrl(routeUrl);
+    const path = AppUtils.normalizeRoutePath(routeUrl);
     return path === '/admin'
       || path === '/admin/'
       || path === '/admin/workspace'
@@ -780,23 +781,8 @@ export class NavigatorService {
   }
 
   private isNavigatorHydrationRoute(routeUrl = this.currentRouteUrlRef()): boolean {
-    const path = this.normalizeRouteUrl(routeUrl);
+    const path = AppUtils.normalizeRoutePath(routeUrl);
     return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
-  }
-
-  private normalizeRouteUrl(url: string): string {
-    const [pathWithQuery] = (url || '/').split('?');
-    const [path] = pathWithQuery.split('#');
-    return path.trim() || '/';
-  }
-
-  private isAdminProfileActive(userId: string): boolean {
-    const normalizedUserId = userId.trim();
-    const activeUser = this.appCtx.activeUserProfile();
-    return activeUser?.hostTier === 'Admin'
-      || activeUser?.statusText === 'Admin workspace'
-      || normalizedUserId === 'admin'
-      || normalizedUserId.startsWith('admin-');
   }
 
   private async runUserRealtimeLongPollTick(): Promise<void> {

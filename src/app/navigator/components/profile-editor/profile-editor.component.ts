@@ -15,6 +15,7 @@ import {
 import type { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
 import {
   EditableImageCarouselComponent,
+  HeaderCardComponent,
   ProfileExperienceManagerComponent
 } from '../../../shared/ui';
 import {
@@ -57,6 +58,7 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
     AppMenuOutletComponent,
     FormFlowComponent,
     EditableImageCarouselComponent,
+    HeaderCardComponent,
     ProfileExperienceManagerComponent
   ],
   providers: [
@@ -80,6 +82,7 @@ export class ProfileEditorComponent {
   private experienceEntriesLoadToken = 0;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
+  protected readonly activeUserIsAdmin = this.appCtx.activeUserIsAdmin;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
@@ -90,7 +93,6 @@ export class ProfileEditorComponent {
   protected panel: ProfileEditorPanel = 'profile';
   protected profileEditorData: ProfileExtDto = this.createEmptyProfileEditorData();
   protected profileEditorFlowModel: FormFlowModel | null = null;
-  protected imageSlots: Array<string | null> = this.createEmptyImageSlots();
   protected profileCompletionPercent = 0;
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
 
@@ -141,21 +143,7 @@ export class ProfileEditorComponent {
   }
 
   protected get featuredImagePreview(): string | null {
-    return this.imageSlots[0] ?? null;
-  }
-
-  protected get imageStackSlots(): number[] {
-    return this.imageSlots
-      .map((slot, index) => (slot ? index : -1))
-      .filter(index => index >= 0);
-  }
-
-  protected get profileImageUrls(): string[] {
-    return this.collectPersistedProfileImages();
-  }
-
-  protected set profileImageUrls(imageUrls: string[]) {
-    this.applyProfileImageUrls(imageUrls);
+    return AppUtils.firstImageUrl(this.profileEditorData.profile.images) || null;
   }
 
   protected get profileEditorAge(): number {
@@ -183,7 +171,7 @@ export class ProfileEditorComponent {
     if (this.panel === 'image') {
       return 'Images';
     }
-    if (this.isAdminProfile()) {
+    if (this.activeUserIsAdmin()) {
       return 'Admin profile';
     }
     switch (this.panel) {
@@ -192,11 +180,6 @@ export class ProfileEditorComponent {
       default:
         return 'Profile';
     }
-  }
-
-  protected isAdminProfile(): boolean {
-    const user = this.profileEditorData.profile;
-    return Boolean(user && (user.hostTier === 'Admin' || user.statusText === 'Admin workspace' || user.id.startsWith('admin-')));
   }
 
   protected handleCloseAction(): void {
@@ -233,27 +216,19 @@ export class ProfileEditorComponent {
     this.panel = 'experience';
   }
 
-  private applyProfileImageUrls(imageUrls: string[]): void {
-    const slots = this.createEmptyImageSlots();
-    imageUrls
+  protected onProfileImagesChange(imageUrls: readonly string[]): void {
+    const images = Array.from(new Set((imageUrls ?? [])
       .map(imageUrl => `${imageUrl ?? ''}`.trim())
-      .filter(Boolean)
-      .slice(0, slots.length)
-      .forEach((imageUrl, index) => {
-        slots[index] = imageUrl;
-      });
-    this.imageSlots = slots;
+      .filter(Boolean)))
+      .slice(0, 8);
     this.profileEditorData = {
       ...this.profileEditorData,
       profile: {
         ...this.profileEditorData.profile,
-        images: slots
-          .map(image => image?.trim() ?? '')
-          .filter(Boolean)
+        images
       }
     };
     this.refreshProfileEditorFlowModel();
-    this.persistActiveUserImageSlots();
   }
 
   protected profileHeaderActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -332,7 +307,6 @@ export class ProfileEditorComponent {
   private loadProfileEditorState(user: UserDto): void {
     this.resetTransientUiState();
     this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(user.completion) || 0)));
-    this.imageSlots = this.resolveUserImageSlots(user);
     this.profileEditorData = this.normalizeProfileEditorData({
       profile: this.cloneUser(user),
       experienceEntries: []
@@ -426,42 +400,7 @@ export class ProfileEditorComponent {
   }
 
   private applyProfileEditorDataToEditorState(): void {
-    const data = this.normalizeProfileEditorData({
-      ...this.profileEditorData,
-      profile: {
-        ...this.profileEditorData.profile,
-        images: this.imageSlots
-          .map(image => image?.trim() ?? '')
-          .filter(Boolean)
-      }
-    });
-    this.profileEditorData = data;
-    const profile = data.profile;
-    const nextSlots = this.createEmptyImageSlots();
-    (profile.images ?? [])
-      .map(image => image.trim())
-      .filter(Boolean)
-      .slice(0, nextSlots.length)
-      .forEach((image, index) => {
-        nextSlots[index] = image;
-      });
-    this.imageSlots = nextSlots;
-  }
-
-  private createEmptyImageSlots(): Array<string | null> {
-    return Array.from({ length: 8 }, () => null);
-  }
-
-  private resolveUserImageSlots(user: UserDto): Array<string | null> {
-    const slots = this.createEmptyImageSlots();
-    const explicitImages = (user.images ?? [])
-      .map(image => image?.trim() ?? '')
-      .filter(image => image.length > 0)
-      .slice(0, 8);
-    explicitImages.forEach((url, index) => {
-      slots[index] = url;
-    });
-    return slots;
+    this.profileEditorData = this.normalizeProfileEditorData(this.profileEditorData);
   }
 
 
@@ -525,78 +464,13 @@ export class ProfileEditorComponent {
     }
   }
 
-  private persistActiveUserImageSlots(): void {
-    this.syncActiveUserImageSlotsState();
-    if (this.profileEditorData.profile.id) {
-      void this.usersService.saveUserProfileExt(this.normalizeProfileEditorData(this.profileEditorData));
-    }
-  }
-
-  private collectPersistedProfileImages(existingImages: readonly string[] = []): string[] {
-    const merged: string[] = [];
-    const seen = new Set<string>();
-    const pushIfValid = (value: string | null | undefined): void => {
-      const normalized = value?.trim() ?? '';
-      if (!normalized || seen.has(normalized)) {
-        return;
-      }
-      merged.push(normalized);
-      seen.add(normalized);
-    };
-    for (const image of existingImages) {
-      pushIfValid(image);
-    }
-    for (const slot of this.imageSlots) {
-      pushIfValid(slot);
-    }
-    return merged;
-  }
-
-  private syncActiveUserImageSlotsState(preserveExisting = false): void {
-    if (!this.profileEditorData.profile.id) {
-      return;
-    }
-    const user = this.cloneUser(this.profileEditorData.profile);
-    const previousImages = [...(user.images ?? [])];
-    const nextImages = this.collectPersistedProfileImages();
-    if (!preserveExisting) {
-      user.images = nextImages;
-    } else {
-      const merged: string[] = [];
-      const pushed = new Set<string>();
-      for (const image of previousImages) {
-        const normalized = image?.trim() ?? '';
-        if (!normalized) {
-          continue;
-        }
-        merged.push(normalized);
-        pushed.add(normalized);
-      }
-      for (const image of nextImages) {
-        const normalized = image?.trim() ?? '';
-        if (!normalized || pushed.has(normalized)) {
-          continue;
-        }
-        merged.push(normalized);
-        pushed.add(normalized);
-      }
-      user.images = merged;
-    }
-    user.completion = this.profileCompletionPercent;
-    this.profileEditorData = {
-      ...this.profileEditorData,
-      profile: user
-    };
-    this.pushProfileUserToContextAndLegacyMirror(user);
-  }
-
   private async commitProfileForm(showAlert: boolean): Promise<void> {
     if (!this.profileEditorData.profile.id) {
       return;
     }
     this.applyProfileEditorDataToEditorState();
     const request = this.normalizeProfileEditorData(this.profileEditorData);
-    request.profile.completion = this.isAdminProfile() ? 100 : this.profileCompletionPercent;
+    request.profile.completion = this.activeUserIsAdmin() ? 100 : this.profileCompletionPercent;
     this.profileEditorData = request;
     this.pushProfileUserToContextAndLegacyMirror(request.profile);
     await this.usersService.saveUserProfileExt(request);

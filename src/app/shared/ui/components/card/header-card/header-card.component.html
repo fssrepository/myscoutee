@@ -1,0 +1,52 @@
+<section
+  class="header-card"
+  [class.header-card--admin]="admin"
+  [ngClass]="statusClass"
+>
+  <div class="header-card__main">
+    <div class="header-card__avatar-stack" [attr.title]="ringTitle">
+      @if (showRing) {
+        <span class="header-card__ring" aria-hidden="true">
+          <app-progress-indicator
+            kind="action-ring"
+            shape="circle"
+            [state]="ringState"
+          ></app-progress-indicator>
+        </span>
+      }
+      <span
+        [ngClass]="avatarClassList"
+        [style.backgroundImage]="imageUrl ? 'url(' + imageUrl + ')' : null"
+      >
+        @if (!imageUrl) {
+          {{ initials }}
+        }
+      </span>
+      @if (showEdit) {
+        <button
+          type="button"
+          class="header-card__edit"
+          [disabled]="editDisabled"
+          [attr.aria-label]="editAriaLabel"
+          (click)="onEdit($event)"
+        >
+          <mat-icon>edit</mat-icon>
+        </button>
+      }
+      @if (badgeLabel) {
+        <span class="header-card__badge" [ngStyle]="badgeStyle">
+          <span>{{ badgeLabel }}</span>
+        </span>
+      }
+    </div>
+    <div class="header-card__text">
+      <h3>{{ title }}</h3>
+      @if (meta) {
+        <span class="header-card__meta">
+          <mat-icon>{{ metaIcon }}</mat-icon>
+          <span>{{ meta }}</span>
+        </span>
+      }
+    </div>
+  </div>
+</section>
