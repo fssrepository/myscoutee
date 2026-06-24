@@ -10,11 +10,13 @@ import type {
 } from '../components/menu/menu.types';
 import { buildTabbedMenuModel } from '../components/menu/menu-option-groups';
 import type {
+  FormFlowCompletionItemConfig,
   FormFlowControlModel,
   FormFlowDraft,
   FormFlowMenuControlConfig,
   FormFlowModel
 } from '../components/form-flow/form-flow.types';
+import { formFlowCompletionPercent } from '../components/form-flow/form-flow.utils';
 import type { UiConverter } from './converter.types';
 
 export interface ProfileFormFlowPrivacyOptions {
@@ -95,7 +97,10 @@ export class ProfileFormFlowDataConverter {
       profileDetails: this.normalizeProfileDetails(profile),
       profileFormVersion: CURRENT_PROFILE_FORM_VERSION
     };
-    normalizedProfile.completion = this.completionPercent(normalizedProfile, experienceEntries);
+    normalizedProfile.completion = ProfileFormFlowConverter.completionPercent({
+      profile: normalizedProfile,
+      experienceEntries
+    });
     return {
       profile: normalizedProfile,
       experienceEntries
@@ -226,31 +231,6 @@ export class ProfileFormFlowDataConverter {
     return heightCm ? `${heightCm} cm` : `${value ?? ''}`.trim();
   }
 
-  private static completionPercent(profile: UserDto, experienceEntries: readonly ExperienceEntry[]): number {
-    let completed = 0;
-    let total = 0;
-    const add = (ok: boolean): void => {
-      total += 1;
-      if (ok) {
-        completed += 1;
-      }
-    };
-    const values = this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.values'));
-    const interests = this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.interest'));
-    add(AppUtils.hasText(profile.name));
-    add(AppUtils.isIsoDate(profile.birthday));
-    add(AppUtils.hasText(profile.city));
-    add((this.parseHeightCm(profile.height) ?? 0) > 0);
-    add(AppUtils.hasText(profile.physique));
-    add(this.normalizeStringList(profile.languages).length > 0);
-    add(this.normalizeStringList(profile.images).length >= 3);
-    add(AppUtils.hasText(profile.about) && `${profile.about ?? ''}`.trim().length >= 20);
-    add(values.length > 0);
-    add(interests.length > 0);
-    add(experienceEntries.length > 0);
-    return total === 0 ? 0 : Math.round((completed / total) * 100);
-  }
-
   private static formatDateForDetail(value: string): string {
     const parsed = AppUtils.fromIsoDate(value);
     return parsed
@@ -305,10 +285,6 @@ export class ProfileFormFlowDataConverter {
     )];
   }
 
-  private static parseCommaValues(value: string): string[] {
-    return this.normalizeStringList(value.split(','));
-  }
-
   private static normalizeHeightCm(value: unknown): number | null {
     const parsed = Math.trunc(Number(value));
     if (!Number.isFinite(parsed) || parsed <= 0) {
@@ -328,6 +304,23 @@ export class ProfileFormFlowDataConverter {
 }
 
 export class ProfileFormFlowConverter {
+  static completionPercent(data: ProfileExtDto): number {
+    const profile = data.profile;
+    const model = this.convert({
+      version: 1,
+      userId: profile.id.trim(),
+      currentStepId: 'basics',
+      updatedAtIso: '',
+      completedStepIds: [],
+      skippedStepIds: [],
+      data
+    }, {
+      showHeader: false,
+      showSave: false
+    });
+    return formFlowCompletionPercent(model, data);
+  }
+
   static convert(
     draft: FormFlowDraft<ProfileExtDto> | null | undefined,
     options: ProfileFormFlowConverterOptions = {}
@@ -355,6 +348,10 @@ export class ProfileFormFlowConverter {
         icon: 'fact_check',
         emptyLabel: 'Nincs beállítva',
         includeEmpty: true
+      },
+      completion: {
+        controls: 'none',
+        items: this.profileCompletionItems(profile)
       },
       steps: [
         {
@@ -573,6 +570,42 @@ export class ProfileFormFlowConverter {
       config: this.detailSelectMenuConfig(label, key, icon, palette),
       accessory: this.privacyAccessory(key, privacy)
     };
+  }
+
+  private static profileCompletionItems(profile: UserDto | null): readonly FormFlowCompletionItemConfig[] {
+    const detailItem = (id: string, labelKey: string): FormFlowCompletionItemConfig => ({
+      id,
+      bind: this.detailValueBind(profile, labelKey)
+    });
+    return [
+      { id: 'name', bind: 'profile.name' },
+      { id: 'birthday', bind: 'profile.birthday', metric: 'isoDate', weight: 2 },
+      { id: 'city', bind: 'profile.city' },
+      { id: 'height', bind: 'profile.height', metric: 'positiveNumber' },
+      { id: 'physique', bind: 'profile.physique' },
+      { id: 'profile-status', bind: 'profile.profileStatus' },
+      { id: 'languages', bind: 'profile.languages', metric: 'count', thresholds: [1, 2, 3] },
+      { id: 'about', bind: 'profile.about', metric: 'length', thresholds: [20, 80, 140] },
+      { ...detailItem('values', 'profile.details.values'), valueFormat: 'csv', metric: 'count', thresholds: [1, 3] },
+      { ...detailItem('interests', 'profile.details.interest'), valueFormat: 'csv', metric: 'count', thresholds: [1, 3] },
+      detailItem('drinking', 'profile.details.drinking'),
+      detailItem('smoking', 'profile.details.smoking'),
+      detailItem('workout', 'profile.details.workout'),
+      detailItem('pets', 'profile.details.pets'),
+      detailItem('family-plans', 'profile.details.familyPlans'),
+      detailItem('children', 'profile.details.children'),
+      detailItem('love-style', 'profile.details.loveStyle'),
+      detailItem('communication-style', 'profile.details.communicationStyle'),
+      detailItem('sexual-orientation', 'profile.details.sexualOrientation'),
+      detailItem('religion', 'profile.details.religion'),
+      detailItem('gender', 'profile.gender'),
+      {
+        id: 'images',
+        bind: 'profile.images',
+        metric: 'count',
+        thresholds: [1, 2, 3, 4, 5, 6, 7, 8]
+      }
+    ];
   }
 
   private static detailValueBind(profile: UserDto | null | undefined, labelKey: string): FormFlowControlModel['bind'] {

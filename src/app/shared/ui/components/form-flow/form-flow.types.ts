@@ -78,6 +78,22 @@ export interface FormFlowControlSummaryConfig {
   value?: (formValue: unknown, control: FormFlowControlModel) => unknown;
 }
 
+export type FormFlowCompletionMetric = 'filled' | 'count' | 'length' | 'positiveNumber' | 'isoDate';
+
+export interface FormFlowCompletionItemConfig {
+  id?: string;
+  bind?: string | readonly (string | number)[];
+  valueFormat?: 'csv';
+  metric?: FormFlowCompletionMetric;
+  thresholds?: readonly number[];
+  weight?: number;
+}
+
+export interface FormFlowCompletionModel {
+  items?: readonly FormFlowCompletionItemConfig[];
+  controls?: 'all' | 'required' | 'none';
+}
+
 export interface FormFlowControlModel {
   id: string;
   bind?: string | readonly (string | number)[];
@@ -133,6 +149,7 @@ export interface FormFlowModel {
   steps: readonly FormFlowStepModel[];
   summary?: FormFlowSummaryModel | null;
   save?: FormFlowSaveModel | null;
+  completion?: FormFlowCompletionModel | null;
   loadingLabel?: string;
 }
 

@@ -1,4 +1,39 @@
-import type { FormFlowControlModel, FormFlowModel } from './form-flow.types';
+import type {
+  FormFlowCompletionItemConfig,
+  FormFlowControlModel,
+  FormFlowModel
+} from './form-flow.types';
+
+export interface FormFlowCompletionStats {
+  completed: number;
+  total: number;
+  percent: number;
+}
+
+export function formFlowCompletionPercent(model: FormFlowModel | null | undefined, value: unknown): number {
+  return formFlowCompletionStats(model, value).percent;
+}
+
+export function formFlowCompletionStats(
+  model: FormFlowModel | null | undefined,
+  value: unknown
+): FormFlowCompletionStats {
+  const items = formFlowCompletionItems(model);
+  const stats = items.reduce(
+    (total, item) => {
+      const itemStats = formFlowCompletionItemStats(item, value);
+      return {
+        completed: total.completed + itemStats.completed,
+        total: total.total + itemStats.total
+      };
+    },
+    { completed: 0, total: 0 }
+  );
+  return {
+    ...stats,
+    percent: stats.total === 0 ? 0 : Math.round((stats.completed / stats.total) * 100)
+  };
+}
 
 export function formFlowMissingRequiredControlIds(model: FormFlowModel | null | undefined, value: unknown): string[] {
   return formFlowMissingRequiredControls(model, value).map(control => control.id);
@@ -23,6 +58,85 @@ export function formFlowIsControlMissingRequired(control: FormFlowControlModel, 
 function formFlowControlValue(value: unknown, control: FormFlowControlModel): unknown {
   const rawValue = formFlowReadPath(value, control.bind);
   return control.valueFormat === 'csv' ? formFlowCsvStringArrayValue(rawValue) : rawValue;
+}
+
+function formFlowCompletionItems(model: FormFlowModel | null | undefined): FormFlowCompletionItemConfig[] {
+  const configuredItems = [...(model?.completion?.items ?? [])];
+  const controlsMode = model?.completion?.controls ?? (configuredItems.length > 0 ? 'none' : 'all');
+  if (controlsMode === 'none') {
+    return configuredItems;
+  }
+  const controlItems = (model?.steps ?? [])
+    .flatMap(step => step.controls)
+    .filter(control => {
+      if (control.kind === 'section' || control.kind === 'static' || control.kind === 'review') {
+        return false;
+      }
+      if (formFlowNormalizePath(control.bind).length === 0) {
+        return false;
+      }
+      return controlsMode === 'all' || control.required === true;
+    })
+    .map(control => formFlowCompletionItemFromControl(control));
+  return [...configuredItems, ...controlItems];
+}
+
+function formFlowCompletionItemFromControl(control: FormFlowControlModel): FormFlowCompletionItemConfig {
+  if (control.kind === 'image-carousel') {
+    const slotCount = formFlowImageSlotCount(control);
+    return {
+      id: control.id,
+      bind: control.bind,
+      metric: 'count',
+      thresholds: Array.from({ length: slotCount }, (_value, index) => index + 1)
+    };
+  }
+  return {
+    id: control.id,
+    bind: control.bind,
+    valueFormat: control.valueFormat,
+    metric: 'filled'
+  };
+}
+
+function formFlowCompletionItemStats(
+  item: FormFlowCompletionItemConfig,
+  value: unknown
+): { completed: number; total: number } {
+  const itemValue = item.valueFormat === 'csv'
+    ? formFlowCsvStringArrayValue(formFlowReadPath(value, item.bind))
+    : formFlowReadPath(value, item.bind);
+  const metricValue = formFlowCompletionMetricValue(item, itemValue);
+  const thresholds = (item.thresholds ?? [])
+    .map(threshold => Number(threshold))
+    .filter(threshold => Number.isFinite(threshold) && threshold > 0)
+    .sort((left, right) => left - right);
+  if (thresholds.length > 0) {
+    return {
+      completed: thresholds.filter(threshold => metricValue >= threshold).length,
+      total: thresholds.length
+    };
+  }
+  const weight = Math.max(1, Math.trunc(Number(item.weight) || 1));
+  return {
+    completed: metricValue > 0 ? weight : 0,
+    total: weight
+  };
+}
+
+function formFlowCompletionMetricValue(item: FormFlowCompletionItemConfig, value: unknown): number {
+  switch (item.metric ?? 'filled') {
+    case 'count':
+      return formFlowCountValue(value);
+    case 'length':
+      return `${value ?? ''}`.trim().length;
+    case 'positiveNumber':
+      return formFlowPositiveNumber(value) > 0 ? 1 : 0;
+    case 'isoDate':
+      return formFlowIsIsoDate(value) ? 1 : 0;
+    default:
+      return formFlowHasRequiredValue(value) ? 1 : 0;
+  }
 }
 
 function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel): boolean {
@@ -94,6 +208,44 @@ function formFlowCsvStringArrayValue(value: unknown): readonly string[] {
     .split(',')
     .map(item => item.trim())
     .filter(Boolean);
+}
+
+function formFlowCountValue(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.filter(item => formFlowHasRequiredValue(item)).length;
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0 ? 1 : 0;
+  }
+  if (isRecord(value)) {
+    return Object.keys(value).length;
+  }
+  return formFlowHasRequiredValue(value) ? 1 : 0;
+}
+
+function formFlowPositiveNumber(value: unknown): number {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+  const parsed = Number.parseFloat(`${value ?? ''}`.trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formFlowIsIsoDate(value: unknown): boolean {
+  const normalized = `${value ?? ''}`.trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+    && Number.isFinite(Date.parse(`${normalized}T00:00:00Z`));
+}
+
+function formFlowImageSlotCount(control: FormFlowControlModel): number {
+  const config = control.config;
+  if (isRecord(config)) {
+    const slotCount = Math.trunc(Number(config['slotCount']));
+    if (Number.isFinite(slotCount) && slotCount > 0) {
+      return slotCount;
+    }
+  }
+  return Math.max(1, Math.trunc(Number(control.max) || Number(control.min) || 1));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

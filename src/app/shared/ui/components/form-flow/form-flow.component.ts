@@ -46,6 +46,7 @@ import type {
   FormFlowStepModel
 } from './form-flow.types';
 import {
+  formFlowCompletionPercent,
   formFlowIsControlMissingRequired,
   formFlowMissingRequiredControls
 } from './form-flow.utils';
@@ -97,6 +98,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   @Output() readonly save = new EventEmitter<FormFlowSaveEvent>();
   @Output() readonly action = new EventEmitter<FormFlowActionEvent>();
+  @Output() readonly percent = new EventEmitter<number>();
 
   protected pageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= FormFlowComponent.MOBILE_BREAKPOINT_PX;
@@ -112,12 +114,16 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private onControlTouched: () => void = () => undefined;
   private viewportScrollLockTargetIndex: number | null = null;
   private viewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastEmittedPercent: number | null = null;
+  private pendingPercent: number | null = null;
+  private percentEmitQueued = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
       this.pageIndex = this.clampPageIndex(this.pageIndex);
       this.pendingPageIndex = null;
       this.queueViewportSync('auto');
+      this.queuePercentEmit();
     }
   }
 
@@ -141,6 +147,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     this.formValue = value ?? {};
     this.pageIndex = this.clampPageIndex(this.pageIndex);
     this.queueViewportSync('auto');
+    this.queuePercentEmit();
     this.cdr.markForCheck();
   }
 
@@ -392,6 +399,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     this.formValue = this.writePath(this.formValue, control.bind, nextValue);
     this.onControlChange(this.formValue);
     this.onControlTouched();
+    this.queuePercentEmit();
     this.cdr.markForCheck();
   }
 
@@ -499,6 +507,28 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       value: this.controlValue(control),
       context: selectEvent.context,
       sourceEvent: selectEvent
+    });
+  }
+
+  private queuePercentEmit(): void {
+    const nextPercent = formFlowCompletionPercent(this.model, this.formValue);
+    if (nextPercent === this.lastEmittedPercent && this.pendingPercent === null) {
+      return;
+    }
+    this.pendingPercent = nextPercent;
+    if (this.percentEmitQueued) {
+      return;
+    }
+    this.percentEmitQueued = true;
+    queueMicrotask(() => {
+      this.percentEmitQueued = false;
+      const percent = this.pendingPercent;
+      this.pendingPercent = null;
+      if (percent === null || percent === this.lastEmittedPercent) {
+        return;
+      }
+      this.lastEmittedPercent = percent;
+      this.percent.emit(percent);
     });
   }
 
