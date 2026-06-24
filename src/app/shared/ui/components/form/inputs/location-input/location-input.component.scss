@@ -31,8 +31,38 @@
 }
 
 .location-input input {
+  box-sizing: border-box;
   width: 100%;
   min-width: 0;
+  min-height: 40px;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 10px;
+  background: #fff;
+  color: #1d3556;
+  padding: 0.56rem 0.72rem;
+  font-size: 0.88rem;
+  line-height: 1.25;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.location-input input:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
+.location-input input:read-only,
+.location-input input:disabled {
+  background: linear-gradient(180deg, #f7f9fc 0%, #edf2f7 100%);
+  border-color: rgba(122, 140, 168, 0.42);
+  color: rgba(58, 76, 103, 0.9);
+  -webkit-text-fill-color: rgba(58, 76, 103, 0.9);
+}
+
+.location-input input:read-only:focus,
+.location-input input:disabled:focus {
+  border-color: rgba(122, 140, 168, 0.42);
+  box-shadow: none;
 }
 
 .location-input__map-menu {

@@ -708,6 +708,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.setOpen(true);
       return;
     }
+    if (this.openActionRowHref(item, event)) {
+      return;
+    }
     const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
@@ -719,6 +722,38 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       action: 'select'
     });
     this.setOpen(false);
+  }
+
+  private openActionRowHref(item: AppMenuItem<TId, TContext>, event: Event): boolean {
+    const href = this.itemHref(item);
+    if (!href) {
+      return false;
+    }
+    this.itemSelect.emit({
+      id: item.id,
+      item,
+      context: item.context,
+      sourceEvent: event,
+      value: item.value,
+      controlValue: this.currentControlEventValue(),
+      action: 'select'
+    });
+    this.openHref(href, this.itemTarget(item), this.itemRel(item));
+    if (this.shouldCloseOnSelect(item)) {
+      this.setOpen(false);
+    }
+    return true;
+  }
+
+  private openHref(href: string, target: string | null, rel: string | null): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!target || target === '_self') {
+      window.location.href = href;
+      return;
+    }
+    window.open(href, target, rel || 'noopener,noreferrer');
   }
 
   protected selectBranchHeaderAction(item: AppMenuItem<TId, TContext>, event: Event): void {
