@@ -25,22 +25,7 @@
       <div class="navigator-menu-header">
         <app-header-card
           class="navigator-menu-header-card"
-          [admin]="isAdminMode()"
-          [statusClass]="navigatorHeaderStatusClass(user)"
-          [title]="navigatorHeaderName(user)"
-          [meta]="navigatorHeaderMetaText(user)"
-          [metaIcon]="navigatorHeaderMetaIcon()"
-          [imageUrl]="user.featuredImagePreview"
-          [initials]="user.initials"
-          [gender]="user.gender"
-          [badgeLabel]="navigatorHeaderBadgeLabel(user)"
-          [badgeStyle]="completionBadgeStyle(user.completion)"
-          [showEdit]="true"
-          [editDisabled]="isNavigatorHeaderProfileDisabled(user)"
-          [editAriaLabel]="navigatorHeaderProfileLabel()"
-          [showRing]="!isAdminMode() && showProfileSaveRing()"
-          [ringState]="hasProfileSaveError() ? 'error' : 'loading'"
-          [ringTitle]="isAdminMode() ? null : profileSaveAvatarTitle()"
+          [model]="navigatorHeaderCardModel(user)"
           (edit)="openNavigatorHeaderProfile($event)"
         ></app-header-card>
         <div class="navigator-header-actions">

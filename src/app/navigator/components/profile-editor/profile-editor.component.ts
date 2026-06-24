@@ -9,13 +9,13 @@ import { AppContext } from '../../../shared/ui';
 import {
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UserExperiencesService,
-  UsersService,
-  type UserDto
+  UsersService
 } from '../../../shared/core';
-import type { ProfileExtDto } from '../../../shared/core/contracts/user.interface';
+import { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
 import {
   EditableImageCarouselComponent,
   HeaderCardComponent,
+  type HeaderCardModel,
   ProfileExperienceManagerComponent
 } from '../../../shared/ui';
 import {
@@ -34,6 +34,7 @@ import {
 import {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
+  ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
@@ -91,7 +92,7 @@ export class ProfileEditorComponent {
   protected readonly showProfileSaveRing = computed(() => this.isProfileSaving() || this.hasProfileSaveError());
 
   protected panel: ProfileEditorPanel = 'profile';
-  protected profileEditorData: ProfileExtDto = this.createEmptyProfileEditorData();
+  protected profileEditorData = new ProfileExtDto();
   protected profileEditorFlowModel: FormFlowModel | null = null;
   protected profileCompletionPercent = 0;
   protected experienceFilter: ProfileContracts.ExperienceFilter = 'All';
@@ -140,10 +141,6 @@ export class ProfileEditorComponent {
 
   protected get activeUser(): UserDto | null {
     return this.profileEditorData.profile.id ? this.profileEditorData.profile : null;
-  }
-
-  protected get featuredImagePreview(): string | null {
-    return AppUtils.firstImageUrl(this.profileEditorData.profile.images) || null;
   }
 
   protected get profileEditorAge(): number {
@@ -217,15 +214,11 @@ export class ProfileEditorComponent {
   }
 
   protected onProfileImagesChange(imageUrls: readonly string[]): void {
-    const images = Array.from(new Set((imageUrls ?? [])
-      .map(imageUrl => `${imageUrl ?? ''}`.trim())
-      .filter(Boolean)))
-      .slice(0, 8);
     this.profileEditorData = {
       ...this.profileEditorData,
       profile: {
         ...this.profileEditorData.profile,
-        images
+        images: [...imageUrls]
       }
     };
     this.refreshProfileEditorFlowModel();
@@ -281,27 +274,16 @@ export class ProfileEditorComponent {
     this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(percent) || 0)));
   }
 
-  protected profileStatusClass(value: AppConstants.ProfileStatus = this.profileEditorData.profile.profileStatus): string {
-    switch (value) {
-      case 'public':
-        return 'status-public';
-      case 'friends only':
-        return 'status-friends';
-      case 'host only':
-        return 'status-host';
-      default:
-        return 'status-inactive';
-    }
-  }
-
-  protected completionBadgeStyle(value: number): Record<string, string> {
-    const clamped = Math.max(0, Math.min(100, Number.isFinite(value) ? value : 0));
-    const hue = Math.round((clamped / 100) * 120);
-    return {
-      background: `hsl(${hue}, 82%, 84%)`,
-      borderColor: `hsl(${hue}, 70%, 58%)`,
-      color: `hsl(${hue}, 74%, 24%)`
-    };
+  protected profileHeaderCardModel(): HeaderCardModel {
+    const admin = this.activeUserIsAdmin();
+    const profile = this.profileEditorData.profile;
+    return ProfileHeaderCardConverter.convert(profile, {
+      admin,
+      age: this.profileEditorAge,
+      completionPercent: this.profileCompletionPercent,
+      showEdit: true,
+      editAriaLabel: 'Open image editor'
+    });
   }
 
   private loadProfileEditorState(user: UserDto): void {
@@ -314,45 +296,6 @@ export class ProfileEditorComponent {
     this.refreshProfileEditorFlowModel();
     this.panel = 'profile';
     void this.loadExperienceEntriesForUser(user.id);
-  }
-
-  private createEmptyProfileEditorData(): ProfileExtDto {
-    return {
-      profile: this.createEmptyProfileEditorUser(),
-      experienceEntries: []
-    };
-  }
-
-  private createEmptyProfileEditorUser(): UserDto {
-    return {
-      id: '',
-      name: '',
-      age: 0,
-      birthday: '',
-      city: '',
-      height: '',
-      physique: '',
-      languages: [],
-      horoscope: '',
-      initials: '',
-      gender: 'man',
-      statusText: '',
-      hostTier: '',
-      traitLabel: '',
-      completion: 0,
-      headline: '',
-      about: '',
-      images: [],
-      profileDetails: [],
-      profileStatus: 'public',
-      activities: {
-        game: 0,
-        chat: 0,
-        invitations: 0,
-        events: 0,
-        hosting: 0
-      }
-    };
   }
 
   private normalizeProfileEditorData(value: ProfileExtDto): ProfileExtDto {
@@ -389,6 +332,7 @@ export class ProfileEditorComponent {
         subtitle: '',
         userId: this.profileEditorData.profile.id,
         layout: 'grouped',
+        profileSize: this.activeUserIsAdmin() ? 'small' : 'big',
         imageEditor: 'external',
         privacy: {
           values: this.profileEditorPrivacyValues()
@@ -472,7 +416,6 @@ export class ProfileEditorComponent {
     const request = this.normalizeProfileEditorData(this.profileEditorData);
     request.profile.completion = this.activeUserIsAdmin() ? 100 : this.profileCompletionPercent;
     this.profileEditorData = request;
-    this.pushProfileUserToContextAndLegacyMirror(request.profile);
     await this.usersService.saveUserProfileExt(request);
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {
@@ -480,16 +423,6 @@ export class ProfileEditorComponent {
         confirmTone: 'neutral'
       });
     }
-  }
-
-  private pushProfileUserToContextAndLegacyMirror(user: UserDto): void {
-    const normalized = this.cloneUser(user);
-    this.profileEditorData = {
-      ...this.profileEditorData,
-      profile: normalized
-    };
-    this.appCtx.setUserProfile(normalized);
-    this.navigatorService.syncHydratedUser(this.cloneUser(normalized));
   }
 
   private cloneUser(user: UserDto): UserDto {

@@ -14,8 +14,10 @@ import {
   type AppMenuModel,
   type AppMenuValueMap,
   HeaderCardComponent,
+  type HeaderCardModel,
   type UserImpressionChangeFlags
 } from '../../../shared/ui';
+import { ProfileHeaderCardConverter } from '../../../shared/ui/converters';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
@@ -46,9 +48,8 @@ interface NavigatorAvatarState {
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
 
-interface NavigatorMenuUser extends Omit<UserDto, 'activities'> {
+interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
-  featuredImagePreview: string | null;
   impressionChangeFlags: UserImpressionChangeFlags;
   memberImpressionTitle: string;
   totalBadgeCount: number;
@@ -338,7 +339,6 @@ export class NavigatorComponent implements OnDestroy {
       completion: this.resolveCompletionPercent(activeUser),
       impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
       activities: mergedActivities,
-      featuredImagePreview: AppUtils.firstImageUrl(activeUser.images) || null,
       impressionChangeFlags,
       memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
       totalBadgeCount
@@ -1036,47 +1036,17 @@ export class NavigatorComponent implements OnDestroy {
     this.explanationGuide.toggleEnabled();
   }
 
-  protected profileStatusClass(status: string): string {
-    switch (status) {
-      case 'public':
-        return 'status-public';
-      case 'friends only':
-        return 'status-friends';
-      case 'host only':
-        return 'status-host';
-      case 'blocked':
-        return 'status-blocked';
-      default:
-        return 'status-inactive';
-    }
-  }
-
-  protected navigatorHeaderStatusClass(user: NavigatorMenuUser): string {
-    return this.isAdminMode() ? 'status-friends' : this.profileStatusClass(user.profileStatus);
-  }
-
-  protected navigatorHeaderBadgeLabel(user: NavigatorMenuUser): string {
-    return this.isAdminMode() ? 'ADMIN' : `${user.completion}%`;
-  }
-
-  protected navigatorHeaderName(user: NavigatorMenuUser): string {
-    return this.isAdminMode() ? user.name : `${user.name}, ${user.age}`;
-  }
-
-  protected navigatorHeaderMetaIcon(): string {
-    return this.isAdminMode() ? 'admin_panel_settings' : 'location_on';
-  }
-
-  protected navigatorHeaderMetaText(user: NavigatorMenuUser): string {
-    return this.isAdminMode() ? 'Admin workspace' : user.city;
-  }
-
-  protected isNavigatorHeaderProfileDisabled(user: NavigatorMenuUser): boolean {
-    return this.isAdminMode() ? !this.isOnline() : !this.isOnline() || this.isBlockedUser(user);
-  }
-
-  protected navigatorHeaderProfileLabel(): string {
-    return this.isAdminMode() ? 'Open admin profile' : 'Open profile editor';
+  protected navigatorHeaderCardModel(user: NavigatorMenuUser): HeaderCardModel {
+    const admin = this.isAdminMode();
+    return ProfileHeaderCardConverter.convert(user, {
+      admin,
+      showEdit: true,
+      editDisabled: admin ? !this.isOnline() : !this.isOnline() || this.isBlockedUser(user),
+      editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
+      showRing: !admin && this.showProfileSaveRing(),
+      ringState: this.hasProfileSaveError() ? 'error' : 'loading',
+      ringTitle: admin ? null : this.profileSaveAvatarTitle()
+    });
   }
 
   protected openNavigatorHeaderProfile(event: Event): void {
@@ -1099,16 +1069,6 @@ export class NavigatorComponent implements OnDestroy {
 
   protected isPrimaryMenuDisabled(user: NavigatorMenuUser): boolean {
     return !this.isOnline() || this.isBlockedUser(user);
-  }
-
-  protected completionBadgeStyle(percent: number): Record<string, string> | null {
-    const clamped = Math.max(0, Math.min(100, Number.isFinite(percent) ? percent : 0));
-    const hue = Math.round((clamped / 100) * 120);
-    return {
-      background: `hsl(${hue}, 82%, 84%)`,
-      borderColor: `hsl(${hue}, 70%, 58%)`,
-      color: `hsl(${hue}, 74%, 24%)`
-    };
   }
 
   protected openProfileEditor(event?: Event): void {

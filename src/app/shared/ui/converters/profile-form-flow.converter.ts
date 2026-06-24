@@ -14,7 +14,8 @@ import type {
   FormFlowControlModel,
   FormFlowDraft,
   FormFlowMenuControlConfig,
-  FormFlowModel
+  FormFlowModel,
+  FormFlowStepModel
 } from '../components/form-flow/form-flow.types';
 import { formFlowCompletionPercent } from '../components/form-flow/form-flow.utils';
 import type { UiConverter } from './converter.types';
@@ -331,6 +332,19 @@ export class ProfileFormFlowConverter {
     const experienceEntries = data?.experienceEntries ?? [];
     const imageEditor = options.imageEditor ?? 'flow';
     const profileSize = options.profileSize ?? 'big';
+    const steps: FormFlowStepModel[] = [{
+      id: 'basics',
+      title: 'Alapadatok',
+      subtitle: 'Alap profiladatok.',
+      icon: 'badge',
+      controls: this.profileBasicsControls(profile, experienceEntries, options, profileSize)
+    }];
+    if (imageEditor !== 'external') {
+      steps.push(this.photosStep(options));
+    }
+    if (profileSize !== 'small') {
+      steps.push(this.lifestyleStep(profile, options));
+    }
     return {
       title: options.title?.trim() || 'profile.setup',
       subtitle: options.subtitle?.trim() || '',
@@ -355,90 +369,89 @@ export class ProfileFormFlowConverter {
         controls: 'none',
         items: this.profileCompletionItems(profile)
       },
-      steps: [
-        {
-          id: 'basics',
-          title: 'Alapadatok',
-          subtitle: 'Alap profiladatok.',
-          icon: 'badge',
-          controls: this.profileBasicsControls(profile, experienceEntries, options, profileSize)
+      steps
+    };
+  }
+
+  private static photosStep(options: ProfileFormFlowConverterOptions): FormFlowStepModel {
+    return {
+      id: 'photos',
+      title: 'Fotók',
+      subtitle: 'Adj hozzá legalább 3 fotót.',
+      icon: 'photo_library',
+      controls: [{
+        id: 'images',
+        kind: 'image-carousel',
+        label: 'Profilfotók',
+        bind: 'profile.images',
+        required: true,
+        min: 3,
+        config: {
+          slotCount: 8,
+          previewMode: true,
+          ariaLabel: 'Profilfotók',
+          uploadOwnerId: options.userId?.trim() || '',
+          uploadEntityId: options.userId?.trim() || 'profile-onboarding'
         },
-        ...(imageEditor === 'external' ? [] : [{
-          id: 'photos',
-          title: 'Fotók',
-          subtitle: 'Adj hozzá legalább 3 fotót.',
-          icon: 'photo_library',
-          controls: [
-            {
-              id: 'images',
-              kind: 'image-carousel' as const,
-              label: 'Profilfotók',
-              bind: 'profile.images',
-              required: true,
-              min: 3,
-              config: {
-                slotCount: 8,
-                previewMode: true,
-                ariaLabel: 'Profilfotók',
-                uploadOwnerId: options.userId?.trim() || '',
-                uploadEntityId: options.userId?.trim() || 'profile-onboarding'
-              },
-              summary: {
-                value: (value: unknown) => `${this.imageCount(value)}/8 (kötelező: 3)`
-              }
-            }
-          ]
-        }]),
-        ...(profileSize === 'small' ? [] : [{
-          id: 'lifestyle',
-          title: 'Életmód',
-          subtitle: 'Opcionális részletek.',
-          icon: 'interests',
-          controls: [
-            this.detailMenuControl(profile, 'drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', options.privacy),
-            this.detailMenuControl(profile, 'smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', options.privacy),
-            this.detailMenuControl(profile, 'workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', options.privacy),
-            this.detailMenuControl(profile, 'pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', options.privacy),
-            this.detailMenuControl(profile, 'familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', options.privacy),
-            this.detailMenuControl(profile, 'children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', options.privacy),
-            this.detailMenuControl(profile, 'loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', options.privacy),
-            this.detailMenuControl(profile, 'communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', options.privacy),
-            this.detailMenuControl(profile, 'sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', options.privacy),
-            this.detailMenuControl(profile, 'religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', options.privacy),
-            {
-              id: 'values',
-              kind: 'menu',
-              label: 'Értékek',
-              bind: this.detailValueBind(profile, 'profile.details.values'),
-              valueFormat: 'csv',
-              config: this.groupedCheckboxMenuConfig(
-                'Értékek',
-                APP_STATIC_DATA.beliefsValuesOptionGroups,
-                'auto_awesome',
-                'purple',
-                5,
-                'select.values'
-              ),
-              accessory: this.privacyAccessory('profile.details.values', options.privacy)
-            },
-            {
-              id: 'interests',
-              kind: 'menu',
-              label: 'Érdeklődés',
-              bind: this.detailValueBind(profile, 'profile.details.interest'),
-              valueFormat: 'csv',
-              config: this.groupedCheckboxMenuConfig(
-                'Érdeklődés',
-                APP_STATIC_DATA.interestOptionGroups,
-                'sell',
-                'teal',
-                5,
-                'select.interests'
-              ),
-              accessory: this.privacyAccessory('profile.details.interest', options.privacy)
-            }
-          ]
-        }])
+        summary: {
+          value: (value: unknown) => `${this.imageCount(value)}/8 (kötelező: 3)`
+        }
+      }]
+    };
+  }
+
+  private static lifestyleStep(
+    profile: UserDto | null,
+    options: ProfileFormFlowConverterOptions
+  ): FormFlowStepModel {
+    return {
+      id: 'lifestyle',
+      title: 'Életmód',
+      subtitle: 'Opcionális részletek.',
+      icon: 'interests',
+      controls: [
+        this.detailMenuControl(profile, 'drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', options.privacy),
+        this.detailMenuControl(profile, 'smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', options.privacy),
+        this.detailMenuControl(profile, 'workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', options.privacy),
+        this.detailMenuControl(profile, 'pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', options.privacy),
+        this.detailMenuControl(profile, 'familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', options.privacy),
+        this.detailMenuControl(profile, 'children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', options.privacy),
+        this.detailMenuControl(profile, 'loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', options.privacy),
+        this.detailMenuControl(profile, 'communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', options.privacy),
+        this.detailMenuControl(profile, 'sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', options.privacy),
+        this.detailMenuControl(profile, 'religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', options.privacy),
+        {
+          id: 'values',
+          kind: 'menu',
+          label: 'Értékek',
+          bind: this.detailValueBind(profile, 'profile.details.values'),
+          valueFormat: 'csv',
+          config: this.groupedCheckboxMenuConfig(
+            'Értékek',
+            APP_STATIC_DATA.beliefsValuesOptionGroups,
+            'auto_awesome',
+            'purple',
+            5,
+            'select.values'
+          ),
+          accessory: this.privacyAccessory('profile.details.values', options.privacy)
+        },
+        {
+          id: 'interests',
+          kind: 'menu',
+          label: 'Érdeklődés',
+          bind: this.detailValueBind(profile, 'profile.details.interest'),
+          valueFormat: 'csv',
+          config: this.groupedCheckboxMenuConfig(
+            'Érdeklődés',
+            APP_STATIC_DATA.interestOptionGroups,
+            'sell',
+            'teal',
+            5,
+            'select.interests'
+          ),
+          accessory: this.privacyAccessory('profile.details.interest', options.privacy)
+        }
       ]
     };
   }

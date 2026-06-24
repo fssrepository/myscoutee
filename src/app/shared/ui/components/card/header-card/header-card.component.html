@@ -1,50 +1,56 @@
+@let card = model;
+@let imageUrl = card?.imageUrl || null;
+@let gender = card?.gender || null;
+
 <section
   class="header-card"
-  [class.header-card--admin]="admin"
-  [ngClass]="statusClass"
+  [class.header-card--admin]="card?.admin === true"
+  [ngClass]="card?.statusClass || 'status-inactive'"
 >
   <div class="header-card__main">
-    <div class="header-card__avatar-stack" [attr.title]="ringTitle">
-      @if (showRing) {
+    <div class="header-card__avatar-stack" [attr.title]="card?.ringTitle || null">
+      @if (card?.showRing === true) {
         <span class="header-card__ring" aria-hidden="true">
           <app-progress-indicator
             kind="action-ring"
             shape="circle"
-            [state]="ringState"
+            [state]="card?.ringState || 'loading'"
           ></app-progress-indicator>
         </span>
       }
       <span
-        [ngClass]="avatarClassList"
+        class="header-card__avatar"
+        [class.has-photo]="!!imageUrl"
+        [ngClass]="gender ? 'user-color-' + gender : null"
         [style.backgroundImage]="imageUrl ? 'url(' + imageUrl + ')' : null"
       >
         @if (!imageUrl) {
-          {{ initials }}
+          {{ card?.initials || '' }}
         }
       </span>
-      @if (showEdit) {
+      @if (card?.showEdit === true) {
         <button
           type="button"
           class="header-card__edit"
-          [disabled]="editDisabled"
-          [attr.aria-label]="editAriaLabel"
+          [disabled]="card?.editDisabled === true"
+          [attr.aria-label]="card?.editAriaLabel || 'Edit'"
           (click)="onEdit($event)"
         >
           <mat-icon>edit</mat-icon>
         </button>
       }
-      @if (badgeLabel) {
-        <span class="header-card__badge" [ngStyle]="badgeStyle">
-          <span>{{ badgeLabel }}</span>
+      @if (card?.badgeLabel) {
+        <span class="header-card__badge" [ngStyle]="card?.badgeStyle ?? null">
+          <span>{{ card?.badgeLabel }}</span>
         </span>
       }
     </div>
     <div class="header-card__text">
-      <h3>{{ title }}</h3>
-      @if (meta) {
+      <h3>{{ card?.title || '' }}</h3>
+      @if (card?.meta) {
         <span class="header-card__meta">
-          <mat-icon>{{ metaIcon }}</mat-icon>
-          <span>{{ meta }}</span>
+          <mat-icon>{{ card?.metaIcon || 'location_on' }}</mat-icon>
+          <span>{{ card?.meta }}</span>
         </span>
       }
     </div>

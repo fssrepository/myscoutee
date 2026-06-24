@@ -79,6 +79,10 @@ export {
   type ProfileFormFlowMenuContext
 } from './profile-form-flow.converter';
 export {
+  ProfileHeaderCardConverter,
+  type ProfileHeaderCardConverterOptions
+} from './profile-header-card.converter';
+export {
   EventFeedbackInfoCardConverter,
   EventFeedbackOrganizerInfoCardConverter,
   eventFeedbackInfoCardConverter,

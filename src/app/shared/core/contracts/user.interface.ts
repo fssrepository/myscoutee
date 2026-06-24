@@ -144,32 +144,32 @@ export interface UserSelectorListItemDto {
 
 export type UserSelectorRole = 'member' | 'admin';
 
-export interface UserDto {
-  id: string;
-  name: string;
-  age: number;
-  birthday: string;
-  city: string;
-  height: string;
-  physique: string;
-  languages: string[];
-  horoscope: string;
-  initials: string;
-  gender: AppConstants.UserGender;
-  statusText: string;
-  hostTier: string;
-  traitLabel: string;
-  completion: number;
+export class UserDto {
+  id = '';
+  name = '';
+  age = 0;
+  birthday = '';
+  city = '';
+  height = '';
+  physique = '';
+  languages: string[] = [];
+  horoscope = '';
+  initials = '';
+  gender: AppConstants.UserGender = 'man';
+  statusText = '';
+  hostTier = '';
+  traitLabel = '';
+  completion = 0;
   profileFormVersion?: number;
-  headline: string;
-  about: string;
+  headline = '';
+  about = '';
   affinity?: number;
   locationCoordinates?: LocationCoordinates;
   partitionKey?: string;
   images?: string[];
   profileDetails?: ProfileContracts.ProfileDetailFormGroup[];
   impressions?: UserImpressionsDto;
-  profileStatus: AppConstants.ProfileStatus;
+  profileStatus: AppConstants.ProfileStatus = 'public';
   previousProfileStatus?: AppConstants.ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
@@ -190,7 +190,18 @@ export interface UserDto {
     eventFeedback?: UserEventFeedbackCountersDto;
     adminJobs?: number;
     adminMetrics?: number;
+  } = {
+    game: 0,
+    chat: 0,
+    invitations: 0,
+    events: 0,
+    hosting: 0
   };
+
+  constructor() {
+    this.images = [];
+    this.profileDetails = [];
+  }
 }
 
 export interface UserByIdQueryResponse {
@@ -200,9 +211,9 @@ export interface UserByIdQueryResponse {
   counterOverrides?: UserMenuCountersDto | null;
 }
 
-export interface ProfileExtDto {
-  profile: UserDto;
-  experienceEntries: ProfileContracts.ExperienceEntry[];
+export class ProfileExtDto {
+  profile = new UserDto();
+  experienceEntries: ProfileContracts.ExperienceEntry[] = [];
 }
 
 export interface UserFeedbackSubmitRequestDto {

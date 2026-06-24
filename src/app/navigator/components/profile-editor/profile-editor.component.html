@@ -40,62 +40,9 @@
           [class.popup-body-experience]="panel === 'experience'"
           >
           @if (panel === 'profile') {
-            @if (activeUserIsAdmin()) {
-              <div class="profile-editor-wrap profile-editor-wrap-admin">
-                <app-header-card
-                  statusClass="status-friends"
-                  [admin]="true"
-                  [title]="profileEditorData.profile.name || user.name"
-                  [meta]="profileEditorData.profile.headline || user.headline || 'Admin workspace'"
-                  metaIcon="admin_panel_settings"
-                  [imageUrl]="featuredImagePreview"
-                  [initials]="user.initials"
-                  [gender]="user.gender"
-                  badgeLabel="ADMIN"
-                  [badgeStyle]="completionBadgeStyle(user.completion)"
-                  [showEdit]="true"
-                  editAriaLabel="Open image editor"
-                  (edit)="openImageEditor()"
-                ></app-header-card>
-                <div class="profile-editor-scroll-area">
-                  <div class="profile-details-structured">
-                    <label class="profile-about-field">
-                      <div class="profile-about-head">
-                        <span>About</span>
-                        <small>{{ profileEditorData.profile.about.length }}/160</small>
-                      </div>
-                      <textarea rows="3" maxlength="160" [(ngModel)]="profileEditorData.profile.about"></textarea>
-                    </label>
-                    <section class="profile-details-group profile-details-group-basics">
-                      <h4>Basics</h4>
-                      <div class="profile-form-grid profile-details-form-grid basics-moved-grid admin-profile-details-grid">
-                        <label class="name-field">
-                          <span>Name</span>
-                          <input type="text" [(ngModel)]="profileEditorData.profile.name" />
-                        </label>
-                        <label class="city-field">
-                          <span>Headline</span>
-                          <input type="text" [(ngModel)]="profileEditorData.profile.headline" />
-                        </label>
-                      </div>
-                    </section>
-                  </div>
-                </div>
-              </div>
-            } @else {
-            <div class="profile-editor-wrap">
+            <div class="profile-editor-wrap" [class.profile-editor-wrap-admin]="activeUserIsAdmin()">
               <app-header-card
-                [statusClass]="profileStatusClass(profileEditorData.profile.profileStatus)"
-                [title]="(profileEditorData.profile.name || user.name) + ', ' + profileEditorAge"
-                [meta]="profileEditorData.profile.city || user.city"
-                metaIcon="location_on"
-                [imageUrl]="featuredImagePreview"
-                [initials]="user.initials"
-                [gender]="user.gender"
-                [badgeLabel]="profileCompletionPercent + '%'"
-                [badgeStyle]="completionBadgeStyle(profileCompletionPercent)"
-                [showEdit]="true"
-                editAriaLabel="Open image editor"
+                [model]="profileHeaderCardModel()"
                 (edit)="openImageEditor()"
               ></app-header-card>
               <div class="profile-editor-flow-area">
@@ -110,7 +57,6 @@
                 ></app-form-flow>
               </div>
             </div>
-            }
           }
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
           @if (panel === 'image') {
