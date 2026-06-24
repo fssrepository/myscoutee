@@ -40,7 +40,7 @@ import {
   type PricingEditorConfig,
   ProgressIndicatorComponent
 } from '../../../shared/ui';
-import { EventSubeventsPopupComponent, EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
+import { EventSubeventsInputComponent } from '../event-subevents-input';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -70,7 +70,7 @@ type EventEditorMenuContext =
     EventPoliciesInputComponent,
     EventSlotsInputComponent,
     LocationInputComponent,
-    EventSubeventsPopupComponent,
+    EventSubeventsInputComponent,
     PricingEditorInputComponent,
     ProgressIndicatorComponent,
     CounterBadgePipe
@@ -213,7 +213,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   eventStartTimeValue: Date | null = null;
   eventEndDateValue: Date | null = null;
   eventEndTimeValue: Date | null = null;
-  subEventsDisplayMode: ContractTypes.SubEventsDisplayMode = 'Casual';
   showSubEventsPopup = false;
   isSavePending = false;
 
@@ -300,23 +299,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
   }
 
-  requestOpenSubEvents(): void {
-    this.showSubEventsPopup = true;
-  }
-
-  closeSubEventsPopup(): void {
-    this.showSubEventsPopup = false;
-  }
-
-  handleSubEventsChange(subEvents: readonly EventSubeventsItem[]): void {
-    const mapped = subEvents.map((item, index) => this.toSubEventDTO(item, index));
-    this.eventDetailDTO.applySubEvents(mapped);
+  handleSubEventsChange(subEvents: readonly ContractTypes.SubEventDTO[]): void {
+    this.eventDetailDTO.applySubEvents(subEvents);
     this.syncMainEventBoundsFromSubEvents();
     this.syncDateTimeControlsFromDTO();
   }
 
   updateSubEventsDisplayMode(mode: ContractTypes.SubEventsDisplayMode): void {
-    this.subEventsDisplayMode = mode;
+    this.eventDetailDTO.subEventsDisplayMode = mode === 'Tournament' ? 'Tournament' : 'Casual';
     this.syncMainEventBoundsFromSubEvents();
     this.syncDateTimeControlsFromDTO();
   }
@@ -394,55 +384,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
   }
 
-  private toSubEventDTO(item: EventSubeventsItem, index: number): ContractTypes.SubEventDTO {
-    const fallbackName = `Sub Event ${index + 1}`;
-    return {
-      id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
-      name: `${item.name ?? item.title ?? fallbackName}`.trim() || fallbackName,
-      description: `${item.description ?? ''}`.trim(),
-      startAt: `${item.startAt ?? ''}`.trim(),
-      endAt: `${item.endAt ?? ''}`.trim(),
-      location: ActivityEventDetailDTO.normalizeLocation(item.location),
-      optional: item.optional === true,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing ?? undefined,
-      capacityMin: this.nonNegativeInteger(item.capacityMin),
-      capacityMax: this.nonNegativeInteger(item.capacityMax),
-      membersAccepted: this.nonNegativeInteger(item.membersAccepted),
-      membersPending: this.nonNegativeInteger(item.membersPending),
-      carsPending: this.nonNegativeInteger(item.carsPending),
-      accommodationPending: this.nonNegativeInteger(item.accommodationPending),
-      suppliesPending: this.nonNegativeInteger(item.suppliesPending),
-      carsAccepted: this.optionalNonNegativeInteger(item.carsAccepted),
-      accommodationAccepted: this.optionalNonNegativeInteger(item.accommodationAccepted),
-      suppliesAccepted: this.optionalNonNegativeInteger(item.suppliesAccepted),
-      carsCapacityMin: this.optionalNonNegativeInteger(item.carsCapacityMin),
-      carsCapacityMax: this.optionalNonNegativeInteger(item.carsCapacityMax),
-      accommodationCapacityMin: this.optionalNonNegativeInteger(item.accommodationCapacityMin),
-      accommodationCapacityMax: this.optionalNonNegativeInteger(item.accommodationCapacityMax),
-      suppliesCapacityMin: this.optionalNonNegativeInteger(item.suppliesCapacityMin),
-      suppliesCapacityMax: this.optionalNonNegativeInteger(item.suppliesCapacityMax),
-      tournamentGroupCount: this.optionalNonNegativeInteger(item.tournamentGroupCount),
-      tournamentGroupCapacityMin: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
-      tournamentGroupCapacityMax: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
-      tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
-      tournamentAdvancePerGroup: this.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
-      groups: (item.groups ?? []).map((group, groupIndex) => ({
-        id: `${group.id ?? ''}`.trim() || `group-${index + 1}-${groupIndex + 1}`,
-        name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
-        source: group.source === 'manual' ? 'manual' : 'generated',
-        capacityMin: this.optionalNonNegativeInteger(group.capacityMin),
-        capacityMax: this.optionalNonNegativeInteger(group.capacityMax)
-      })),
-      slotStartOffsetMinutes: this.optionalNonNegativeInteger(item.slotStartOffsetMinutes),
-      slotDurationMinutes: this.optionalNonNegativeInteger(item.slotDurationMinutes),
-      stageStatus: item.stageStatus,
-      stageStatusReason: item.stageStatusReason,
-      stageStatusUpdatedAt: item.stageStatusUpdatedAt,
-      stageFinalizedAt: item.stageFinalizedAt,
-      stageFinalizedByUserId: item.stageFinalizedByUserId
-    };
-  }
-
   private parseEventEditorDateValue(value: unknown): Date | null {
     return AppUtils.parseDate(value);
   }
@@ -460,14 +401,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return null;
     }
     return Math.max(0, Math.trunc(parsed));
-  }
-
-  private nonNegativeInteger(value: unknown): number {
-    return this.toNonNegativeIntegerOrNull(value) ?? 0;
-  }
-
-  private optionalNonNegativeInteger(value: unknown): number | undefined {
-    return this.toNonNegativeIntegerOrNull(value) ?? undefined;
   }
 
   eventEditorHeaderPendingMemberCount(): number {
@@ -980,117 +913,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency) !== 'One-time';
   }
 
-  subEventsCountLabel(): string {
-    const count = this.eventDetailDTO.subEvents.length;
-    return count === 1 ? '1 item' : `${count} items`;
-  }
-
-  subEventsCurrentHeaderLabel(): string {
-    const current = this.currentSubEventPanelState();
-    if (!current) {
-      return '';
-    }
-    return this.subEventPanelChipTitle(current.item, current.index);
-  }
-
-  subEventLocationLabel(subEvent: ContractTypes.SubEventDTO | null | undefined): string {
-    const location = ActivityEventDetailDTO.normalizeLocation(subEvent?.location).trim();
-    return location || 'Location pending';
-  }
-
-  subEventPanelChipTitle(subEvent: ContractTypes.SubEventDTO, index: number): string {
-    const baseName = (this.subEventName(subEvent) || 'Untitled').trim() || 'Untitled';
-    if (this.subEventsDisplayMode !== 'Tournament') {
-      return baseName;
-    }
-    return `Stage ${index + 1} - ${baseName}`;
-  }
-
-  subEventPanelChipTrackId(index: number, subEvent: ContractTypes.SubEventDTO): string {
-    const id = `${subEvent.id ?? ''}`.trim();
-    if (id) {
-      return id;
-    }
-    return [
-      index,
-      `${subEvent.startAt ?? ''}`.trim(),
-      `${subEvent.endAt ?? ''}`.trim(),
-      this.subEventName(subEvent).trim()
-    ].join(':');
-  }
-
-  subEventCardRange(subEvent: ContractTypes.SubEventDTO): string {
-    const start = this.parseEventEditorDateValue(subEvent.startAt);
-    const end = this.parseEventEditorDateValue(subEvent.endAt);
-    if (!start || !end) {
-      return 'Date pending';
-    }
-    const startLabel = `${AppUtils.pad2(start.getMonth() + 1)}/${AppUtils.pad2(start.getDate())} ${AppUtils.pad2(start.getHours())}:${AppUtils.pad2(start.getMinutes())}`;
-    const endLabel = `${AppUtils.pad2(end.getMonth() + 1)}/${AppUtils.pad2(end.getDate())} ${AppUtils.pad2(end.getHours())}:${AppUtils.pad2(end.getMinutes())}`;
-    return `${startLabel} - ${endLabel}`;
-  }
-
-  subEventPanelChipIsCurrent(subEvent: ContractTypes.SubEventDTO): boolean {
-    const source = ActivityEventDetailDTO.sortSubEventsByStartAsc(this.eventDetailDTO.subEvents);
-    if (source.length === 0) {
-      return false;
-    }
-    const currentIndex = this.resolveCurrentSubEventIndex(source);
-    const current = source[currentIndex] ?? source[0] ?? null;
-    if (!current) {
-      return false;
-    }
-    if (current === subEvent) {
-      return true;
-    }
-    if (current.id && subEvent.id) {
-      return current.id === subEvent.id;
-    }
-    return current.startAt === subEvent.startAt
-      && current.endAt === subEvent.endAt
-      && this.subEventName(current) === this.subEventName(subEvent);
-  }
-
-  subEventPanelChipStyle(index: number): Record<string, string> {
-    if (this.subEventsDisplayMode === 'Tournament') {
-      const totalStages = Math.max(1, this.eventDetailDTO.subEvents.length);
-      const stageNumber = AppUtils.clampNumber(index + 1, 1, totalStages);
-      const hue = this.subEventStageAccentHue(stageNumber, totalStages);
-      return {
-        borderColor: `hsl(${hue} 54% 58% / 0.52)`,
-        background: `linear-gradient(180deg, hsl(${hue} 92% 96%) 0%, hsl(${hue} 84% 90%) 100%)`,
-        color: `hsl(${hue} 48% 34%)`
-      };
-    }
-
-    const subEvent = this.eventDetailDTO.subEvents[index] ?? null;
-    if (!subEvent) {
-      return {};
-    }
-
-    if (subEvent.optional) {
-      return {
-        borderColor: 'rgba(63, 118, 188, 0.34)',
-        background: 'linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%)',
-        color: '#2b5c95'
-      };
-    }
-
-    return {
-      borderColor: 'rgba(175, 78, 78, 0.34)',
-      background: 'linear-gradient(180deg, #fff3f3 0%, #ffe9e9 100%)',
-      color: '#8f3a3a'
-    };
-  }
-
-  subEventsDisplayModeClass(mode: string = this.subEventsDisplayMode): string {
-    return mode === 'Tournament' ? 'subevents-mode-tournament' : 'subevents-mode-casual';
-  }
-
-  subEventsDisplayModeIcon(mode: string = this.subEventsDisplayMode): string {
-    return mode === 'Tournament' ? 'emoji_events' : 'groups';
-  }
-
   eventTopicLabel(topic: string): string {
     return `#${topic.replace(/^#+/, '')}`;
   }
@@ -1396,7 +1218,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       readOnly: this.eventEditorService.readOnly(),
       editingEventId: this.editingEventId,
       draftEventId: this.draftEventId,
-      subEventsDisplayMode: this.subEventsDisplayMode,
+      subEventsDisplayMode: this.eventDetailDTO.subEventsDisplayMode,
       form: {
         ...this.eventDetailDTO,
         topics: [...this.eventDetailDTO.topics],
@@ -1508,8 +1330,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO = dto.apply({
       slotsEnabled: ActivityEventDetailDTO.normalizeFrequency(dto.frequency) !== 'One-time'
     });
-    this.subEventsDisplayMode = dto.subEventsDisplayMode ?? 'Casual';
-    this.eventDetailDTO.subEventsDisplayMode = this.subEventsDisplayMode;
+    this.eventDetailDTO.subEventsDisplayMode = dto.subEventsDisplayMode ?? 'Casual';
     this.normalizeEventDateRange();
     this.syncDateTimeControlsFromDTO();
     this.seedDraftAutosaveSignature();
@@ -1544,8 +1365,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       endAtIso: AppUtils.toIsoDateTimeLocal(end)
     });
 
-    this.subEventsDisplayMode = 'Casual';
-    this.eventDetailDTO.subEventsDisplayMode = this.subEventsDisplayMode;
+    this.eventDetailDTO.subEventsDisplayMode = 'Casual';
     this.syncDateTimeControlsFromDTO();
     this.seedDraftAutosaveSignature();
   }
@@ -1602,7 +1422,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const tournamentMode = this.subEventsDisplayMode === 'Tournament';
+    const tournamentMode = this.eventDetailDTO.subEventsDisplayMode === 'Tournament';
     let minStartMs: number | null = null;
     let maxEndMs: number | null = null;
     let minCapacity: number | null = null;
@@ -1675,61 +1495,4 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return `${this.eventDetailDTO.imageUrl ?? ''}`.trim();
   }
 
-  private currentSubEventPanelState(): { item: ContractTypes.SubEventDTO; index: number } | null {
-    const source = ActivityEventDetailDTO.sortSubEventsByStartAsc(this.eventDetailDTO.subEvents);
-    if (source.length === 0) {
-      return null;
-    }
-
-    const currentIndex = AppUtils.clampNumber(this.resolveCurrentSubEventIndex(source), 0, source.length - 1);
-    const current = source[currentIndex] ?? source[0] ?? null;
-    if (!current) {
-      return null;
-    }
-
-    return {
-      item: current,
-      index: currentIndex
-    };
-  }
-
-  private resolveCurrentSubEventIndex(items: ContractTypes.SubEventDTO[]): number {
-    if (items.length === 0) {
-      return 0;
-    }
-
-    const now = Date.now();
-
-    for (let index = 0; index < items.length; index += 1) {
-      const startMs = new Date(items[index].startAt ?? '').getTime();
-      const endMs = new Date(items[index].endAt ?? '').getTime();
-      if (Number.isNaN(startMs) || Number.isNaN(endMs)) {
-        continue;
-      }
-      if (startMs <= now && now <= endMs) {
-        return index;
-      }
-    }
-
-    for (let index = 0; index < items.length; index += 1) {
-      const startMs = new Date(items[index].startAt ?? '').getTime();
-      if (!Number.isNaN(startMs) && startMs > now) {
-        return index;
-      }
-    }
-
-    return Math.max(0, items.length - 1);
-  }
-
-  private subEventStageAccentHue(stageNumber: number, totalStages: number): number {
-    if (totalStages <= 1) {
-      return 210;
-    }
-    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
-    return Math.round(210 - (210 * ratio));
-  }
-
-  private subEventName(subEvent: ContractTypes.SubEventDTO): string {
-    return `${subEvent.name || 'Untitled'}`;
-  }
 }

@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
 import { AppContext } from '../../../shared/ui';
-import { FormsModule } from '@angular/forms';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
@@ -249,16 +249,24 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss',
-  providers: [AppMenuDispatcher],
+  providers: [
+    AppMenuDispatcher,
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => EventSubeventsPopupComponent),
+      multi: true
+    }
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventSubeventsPopupComponent implements OnChanges {
+export class EventSubeventsPopupComponent implements OnChanges, ControlValueAccessor {
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() open = false;
   @Input() readOnly = false;
@@ -325,6 +333,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private localMutationVersion = 0;
   private casualListRevision = 0;
   private lastAppliedActivityResourceSyncMs = 0;
+  private onModelChange: (value: EventSubeventsItem[]) => void = () => {};
+  private onModelTouched: () => void = () => {};
 
   protected casualSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
     filters: { revision: 0 }
@@ -392,6 +402,24 @@ export class EventSubeventsPopupComponent implements OnChanges {
     }
   }
 
+  writeValue(value: readonly EventSubeventsItem[] | null | undefined): void {
+    this.applyWorkingSubEvents(value ?? []);
+    this.cdr.markForCheck();
+  }
+
+  registerOnChange(fn: (value: EventSubeventsItem[]) => void): void {
+    this.onModelChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onModelTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.readOnly = isDisabled;
+    this.cdr.markForCheck();
+  }
+
   @HostListener('window:resize')
   onWindowResize(): void {
     const nextMobileViewport = this.readViewportWidth() <= 920;
@@ -405,6 +433,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected requestClose(): void {
     this.resetTransientUi();
+    this.onModelTouched();
     this.close.emit();
   }
 
@@ -473,6 +502,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
     this.localMutationVersion += 1;
+    this.onModelTouched();
     this.displayModeChange.emit(mode);
     this.stagePageIndex = 0;
   }
@@ -3480,7 +3510,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private emitWorkingSubEvents(): void {
     this.localMutationVersion += 1;
     this.rebuildRenderModel();
-    this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
+    const nextSubEvents = this.cloneSubEvents(this.workingSubEvents);
+    this.onModelTouched();
+    this.onModelChange(nextSubEvents);
+    this.subEventsChange.emit(nextSubEvents);
     this.bumpCasualSmartListRevision();
   }
 
@@ -3548,7 +3581,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     if (nextDisplayMode !== this.displayMode) {
       this.displayModeChange.emit(nextDisplayMode);
     }
-    this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
+    const hydratedSubEvents = this.cloneSubEvents(this.workingSubEvents);
+    this.onModelTouched();
+    this.onModelChange(hydratedSubEvents);
+    this.subEventsChange.emit(hydratedSubEvents);
   }
 
   private activeUserId(): string {

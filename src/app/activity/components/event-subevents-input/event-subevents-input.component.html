@@ -1,0 +1,64 @@
+<button type="button" class="event-subevents-panel-trigger" (click)="openSubEvents()">
+  <span class="event-subevents-panel-head">
+    <span class="event-subevents-panel-title">
+      <span class="event-subevents-panel-title-main">
+        <mat-icon>view_timeline</mat-icon>
+        <span class="event-subevents-panel-title-label">Sub Events</span>
+      </span>
+      @if (subEvents.length > 0) {
+        <span class="event-subevents-panel-current">{{ subEventsCurrentHeaderLabel() }}</span>
+      }
+    </span>
+    @if (subEvents.length > 0) {
+      <span class="event-subevents-panel-meta">
+        <span class="event-subevents-panel-mode" [ngClass]="subEventsDisplayModeClass()">
+          <mat-icon>{{ subEventsDisplayModeIcon() }}</mat-icon>
+          <span>{{ displayMode }}</span>
+        </span>
+        <span class="event-subevents-panel-summary event-subevents-panel-summary-inline">
+          {{ subEventsCountLabel() }}
+        </span>
+      </span>
+    }
+    <mat-icon class="event-subevents-chevron">chevron_right</mat-icon>
+  </span>
+
+  @if (subEvents.length > 0) {
+    <span class="event-subevents-panel-divider" aria-hidden="true"></span>
+    <span class="event-subevents-panel-body">
+      @for (subEvent of subEvents; track subEventPanelChipTrackId(index, subEvent); let index = $index) {
+        <span
+          class="event-subevent-panel-chip"
+          [class.event-subevent-panel-chip-current]="subEventPanelChipIsCurrent(subEvent)"
+          [ngStyle]="subEventPanelChipStyle(index)"
+        >
+          <span class="event-subevent-panel-chip-head">
+            <span class="event-subevent-panel-chip-name">{{ subEventPanelChipTitle(subEvent, index) }}</span>
+          </span>
+          <span class="event-subevent-panel-chip-location">{{ subEventLocationLabel(subEvent) }}</span>
+          <span class="event-subevent-panel-chip-date">{{ subEventCardRange(subEvent) }}</span>
+        </span>
+      }
+    </span>
+    <span class="event-subevents-panel-counter">{{ subEvents.length }}</span>
+  } @else {
+    <span class="event-subevents-panel-placeholder">Open sub events</span>
+  }
+</button>
+
+<app-event-subevents-popup
+  [open]="open"
+  [readOnly]="isReadOnly()"
+  [structureReadOnly]="structureReadOnly"
+  [parentTitle]="parentTitle"
+  [ownerId]="ownerId"
+  [ngModel]="subEvents"
+  [displayMode]="displayMode"
+  [slotsEnabled]="slotsEnabled"
+  [slotTemplates]="slotTemplates"
+  [parentStartAt]="parentStartAt"
+  [parentEndAt]="parentEndAt"
+  (close)="closeSubEvents()"
+  (ngModelChange)="onPopupSubEventsChange($event)"
+  (displayModeChange)="onPopupDisplayModeChange($event)"
+></app-event-subevents-popup>
