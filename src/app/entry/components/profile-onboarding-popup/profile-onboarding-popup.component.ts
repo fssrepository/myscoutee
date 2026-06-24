@@ -9,7 +9,7 @@ import type { FormFlowActionEvent, FormFlowModel } from '../../../shared/ui/comp
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 import { UsersService } from '../../../shared/core/base/services/users.service';
 import type { ProfileOnboardingDraft } from '../../../shared/core/base/services/profile-onboarding.service';
-import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import type {
   ExperienceEntry,
   ExperienceFilter
@@ -103,19 +103,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     const context = event.context as ProfileOnboardingFormFlowMenuContext | undefined;
     if (context?.menu === 'experienceSelector') {
       this.openExperienceManager(context.value);
-      return;
     }
-    if (context?.menu === 'field') {
-      this.refreshOnboardingFlowModel();
-      this.cdr.markForCheck();
-    }
-  }
-
-  protected onOnboardingDataChange(data: ProfileExtDto): void {
-    if (!this.draft) {
-      return;
-    }
-    this.draft.data = data;
   }
 
   protected requestDismiss(): void {

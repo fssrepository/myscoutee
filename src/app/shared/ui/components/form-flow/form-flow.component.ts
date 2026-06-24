@@ -29,7 +29,8 @@ import type {
   AppMenuLayout,
   AppMenuModel,
   AppMenuPanelMode,
-  AppMenuTrigger
+  AppMenuTrigger,
+  AppMenuValueKey
 } from '../menu/menu.types';
 import { EditableImageCarouselComponent } from '../editable-image-carousel';
 import { ProgressIndicatorComponent } from '../progress-indicator';
@@ -44,6 +45,11 @@ import type {
   FormFlowSaveEvent,
   FormFlowStepModel
 } from './form-flow.types';
+
+interface FormFlowSelectedMenuItem {
+  item: AppMenuItem<string, unknown>;
+  groupPalette?: AppMenuItem<string, unknown>['palette'];
+}
 
 @Component({
   selector: 'app-form-flow',
@@ -97,6 +103,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private readonly stringArrayValueCache = new WeakMap<readonly unknown[], readonly string[]>();
   private readonly csvStringArrayValueCache = new Map<string, readonly string[]>();
   private readonly dateValueCache = new Map<string, Date>();
+  private readonly menuTriggerCache = new WeakMap<FormFlowControlModel, { signature: string; trigger: AppMenuTrigger | null }>();
   private onControlChange: (value: unknown) => void = () => undefined;
   private onControlTouched: () => void = () => undefined;
   private viewportScrollLockTargetIndex: number | null = null;
@@ -432,7 +439,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected menuTrigger(control: FormFlowControlModel): AppMenuTrigger | null {
-    return this.menuConfig(control).trigger ?? null;
+    return this.menuTriggerForControl(control, this.menuConfig(control).trigger ?? null);
   }
 
   protected menuModel(control: FormFlowControlModel): AppMenuModel<string, unknown> | null {
@@ -804,6 +811,155 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   private csvStringValue(value: unknown): string {
     return this.csvStringArrayValue(value).join(', ');
+  }
+
+  private menuTriggerForControl(control: FormFlowControlModel, trigger: AppMenuTrigger | null): AppMenuTrigger | null {
+    if (!trigger || trigger.action === 'custom') {
+      return trigger;
+    }
+    const selectedItems = this.selectedMenuItems(control);
+    const baseLabel = this.resolveMenuText(trigger.label);
+    const selectedLabels = selectedItems
+      .map(selected => this.resolveMenuText(selected.item.label))
+      .filter(Boolean);
+    const selectedIcon = selectedItems.length === 1 ? this.resolveMenuText(selectedItems[0].item.icon) : '';
+    const selectedPalette = selectedItems[0]?.item.palette ?? selectedItems[0]?.groupPalette ?? null;
+    const baseLabelIsItemLabel = baseLabel
+      ? this.menuItemLabels(control).has(this.normalizeMenuText(baseLabel))
+      : false;
+    const signature = [
+      this.controlValueSignature(this.controlValue(control)),
+      baseLabel,
+      selectedLabels.join('|'),
+      selectedIcon,
+      selectedPalette ?? '',
+      baseLabelIsItemLabel ? 'item-label' : 'base-label'
+    ].join('\u0001');
+    const cached = this.menuTriggerCache.get(control);
+    if (cached?.signature === signature) {
+      return cached.trigger;
+    }
+    const nextTrigger: AppMenuTrigger = { ...trigger };
+    if (selectedLabels.length > 0 && baseLabel) {
+      nextTrigger.label = selectedLabels.join(', ');
+    } else if (selectedLabels.length === 0 && baseLabelIsItemLabel) {
+      nextTrigger.label = undefined;
+    }
+    if (selectedIcon) {
+      nextTrigger.icon = selectedIcon;
+    }
+    if (selectedPalette) {
+      nextTrigger.palette = selectedPalette;
+    }
+    this.menuTriggerCache.set(control, {
+      signature,
+      trigger: nextTrigger
+    });
+    return nextTrigger;
+  }
+
+  private selectedMenuItems(control: FormFlowControlModel): FormFlowSelectedMenuItem[] {
+    const value = this.controlValue(control);
+    const valueKey = this.menuModel(control)?.valueKey ?? null;
+    return this.flattenMenuItemsWithGroupPalette(control)
+      .filter(selected => this.isMenuItemSelectedByValue(selected.item, value, valueKey));
+  }
+
+  private menuItemLabels(control: FormFlowControlModel): Set<string> {
+    return new Set(
+      this.flattenMenuItemsWithGroupPalette(control)
+        .map(selected => this.normalizeMenuText(this.resolveMenuText(selected.item.label)))
+        .filter(Boolean)
+    );
+  }
+
+  private flattenMenuItemsWithGroupPalette(control: FormFlowControlModel): FormFlowSelectedMenuItem[] {
+    const config = this.menuConfig(control);
+    const items: FormFlowSelectedMenuItem[] = [];
+    const visit = (item: AppMenuItem<string, unknown>, groupPalette?: AppMenuItem<string, unknown>['palette']): void => {
+      items.push({ item, groupPalette });
+      for (const child of item.items ?? []) {
+        visit(child, groupPalette);
+      }
+      for (const group of item.model?.groups ?? []) {
+        for (const child of group.items ?? []) {
+          visit(child, group.palette);
+        }
+      }
+      for (const group of item.model?.nodes ?? []) {
+        for (const child of group.items ?? []) {
+          visit(child, group.palette);
+        }
+      }
+    };
+    for (const item of config.items ?? []) {
+      visit(item);
+    }
+    for (const group of config.model?.groups ?? []) {
+      for (const item of group.items ?? []) {
+        visit(item, group.palette);
+      }
+    }
+    for (const group of config.model?.nodes ?? []) {
+      for (const item of group.items ?? []) {
+        visit(item, group.palette);
+      }
+    }
+    return items.filter(selected => {
+      const kind = selected.item.kind ?? 'action';
+      return kind !== 'divider' && kind !== 'section';
+    });
+  }
+
+  private isMenuItemSelectedByValue(
+    item: AppMenuItem<string, unknown>,
+    selectedValue: unknown,
+    valueKey: AppMenuValueKey | null
+  ): boolean {
+    const itemValue = item.value !== undefined ? item.value : item.id;
+    if (Array.isArray(selectedValue)) {
+      return selectedValue.some(value => this.menuValuesEqual(value, itemValue, valueKey));
+    }
+    return this.menuValuesEqual(selectedValue, itemValue, valueKey);
+  }
+
+  private menuValuesEqual(first: unknown, second: unknown, valueKey: AppMenuValueKey | null): boolean {
+    if (!valueKey) {
+      return Object.is(first, second);
+    }
+    return Object.is(this.menuValueIdentity(first, valueKey), this.menuValueIdentity(second, valueKey));
+  }
+
+  private menuValueIdentity(value: unknown, valueKey: AppMenuValueKey): unknown {
+    if (typeof valueKey === 'function') {
+      return valueKey(value);
+    }
+    if (value && typeof value === 'object' && valueKey in value) {
+      return (value as Record<string, unknown>)[valueKey];
+    }
+    return value;
+  }
+
+  private resolveMenuText(value: unknown): string {
+    const resolved = typeof value === 'function' ? (value as () => unknown)() : value;
+    return `${resolved ?? ''}`.trim();
+  }
+
+  private normalizeMenuText(value: string): string {
+    return value
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  private controlValueSignature(value: unknown): string {
+    if (Array.isArray(value)) {
+      return value.map(item => this.controlValueSignature(item)).join('|');
+    }
+    if (value && typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return `${value ?? ''}`;
   }
 
   private menuSelectionLabels(control: FormFlowControlModel, value: unknown): string[] {

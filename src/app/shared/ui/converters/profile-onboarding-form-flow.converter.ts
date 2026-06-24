@@ -471,7 +471,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Testalkat',
               bind: 'profile.physique',
               required: true,
-              config: this.physiqueMenuConfig(profile?.physique)
+              config: this.physiqueMenuConfig()
             },
             {
               id: 'gender',
@@ -479,7 +479,7 @@ export class ProfileOnboardingFormFlowConverter {
               label: 'Nem',
               bind: this.detailValueBind(profile, 'profile.gender'),
               required: true,
-              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet', this.profileDetailValue(profile, 'profile.gender')),
+              config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet'),
               accessory: this.privacyAccessory('profile.gender', options.privacy)
             },
             {
@@ -502,7 +502,7 @@ export class ProfileOnboardingFormFlowConverter {
               kind: 'menu',
               label: 'Láthatóság',
               bind: 'profile.profileStatus',
-              config: this.profileStatusMenuConfig(profile?.profileStatus)
+              config: this.profileStatusMenuConfig()
             },
             {
               id: 'workspace',
@@ -584,8 +584,7 @@ export class ProfileOnboardingFormFlowConverter {
                 'auto_awesome',
                 'purple',
                 5,
-                'select.values',
-                this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.values'))
+                'select.values'
               ),
               accessory: this.privacyAccessory('profile.details.values', options.privacy)
             },
@@ -601,8 +600,7 @@ export class ProfileOnboardingFormFlowConverter {
                 'sell',
                 'teal',
                 5,
-                'select.interests',
-                this.parseCommaValues(this.profileDetailValue(profile, 'profile.details.interest'))
+                'select.interests'
               ),
               accessory: this.privacyAccessory('profile.details.interest', options.privacy)
             }
@@ -626,7 +624,7 @@ export class ProfileOnboardingFormFlowConverter {
       kind: 'menu' as const,
       label,
       bind: this.detailValueBind(profile, key),
-      config: this.detailSelectMenuConfig(label, key, icon, palette, this.profileDetailValue(profile, key)),
+      config: this.detailSelectMenuConfig(label, key, icon, palette),
       accessory: this.privacyAccessory(key, privacy)
     };
   }
@@ -645,13 +643,6 @@ export class ProfileOnboardingFormFlowConverter {
 
   private static profileDetailValue(profile: UserDto | null | undefined, labelKey: string): string {
     return ProfileOnboardingDraftConverter.profileDetailValue(profile, labelKey);
-  }
-
-  private static parseCommaValues(value: string): string[] {
-    return value
-      .split(',')
-      .map(item => item.trim())
-      .filter(Boolean);
   }
 
   private static privacyAccessory(
@@ -836,8 +827,7 @@ export class ProfileOnboardingFormFlowConverter {
     title: string,
     key: string,
     icon: string,
-    fallbackPalette: AppMenuPalette,
-    selectedValue?: string | null
+    fallbackPalette: AppMenuPalette
   ): FormFlowMenuControlConfig {
     const options = this.detailOptions(key);
     return this.selectMenuConfig(
@@ -847,12 +837,11 @@ export class ProfileOnboardingFormFlowConverter {
       fallbackPalette,
       option => this.detailOptionIcon(key, option),
       option => this.paletteFromTone(this.detailToneFromOptions(option, options)),
-      `${title} kiválasztása`,
-      selectedValue
+      `${title} kiválasztása`
     );
   }
 
-  private static physiqueMenuConfig(selectedValue?: string | null): FormFlowMenuControlConfig {
+  private static physiqueMenuConfig(): FormFlowMenuControlConfig {
     return this.selectMenuConfig(
       'Testalkat',
       APP_STATIC_DATA.physiqueOptions,
@@ -860,23 +849,15 @@ export class ProfileOnboardingFormFlowConverter {
       'green',
       option => this.physiqueIcon(option),
       option => this.paletteFromTone(this.physiqueToneClass(option)),
-      'Testalkat kiválasztása',
-      selectedValue
+      'Testalkat kiválasztása'
     );
   }
 
-  private static profileStatusMenuConfig(selectedStatus?: ProfileStatus | null): FormFlowMenuControlConfig {
-    const status = this.normalizeProfileStatus(selectedStatus);
-    const selectedOption = APP_STATIC_DATA.profileStatusOptions.find(option => option.value === status) ?? APP_STATIC_DATA.profileStatusOptions[0];
+  private static profileStatusMenuConfig(): FormFlowMenuControlConfig {
     return {
       kind: 'select',
       title: 'Láthatóság',
-      trigger: this.trigger(
-        'Láthatóság',
-        selectedOption?.icon ?? 'public',
-        this.profileStatusPalette(status),
-        status
-      ),
+      trigger: this.trigger('Láthatóság', 'public', this.profileStatusPalette('public'), 'Láthatóság'),
       items: APP_STATIC_DATA.profileStatusOptions.map(option => ({
         id: `profile-status-${option.value}`,
         label: option.value,
@@ -897,16 +878,12 @@ export class ProfileOnboardingFormFlowConverter {
     palette: AppMenuPalette,
     iconForOption: (option: string) => string = () => icon,
     paletteForOption: (option: string) => AppMenuPalette = () => palette,
-    emptyLabel = `${title} kiválasztása`,
-    selectedValue?: string | null
+    emptyLabel = `${title} kiválasztása`
   ): FormFlowMenuControlConfig {
-    const selected = this.selectedOption(options, selectedValue);
-    const triggerIcon = selected ? iconForOption(selected) : icon;
-    const triggerPalette = selected ? paletteForOption(selected) : palette;
     return {
       kind: 'select',
       title,
-      trigger: this.trigger(title, triggerIcon, triggerPalette, selected || emptyLabel),
+      trigger: this.trigger(title, icon, palette, emptyLabel),
       items: options.map(option => this.radioItem(title, option, iconForOption(option), paletteForOption(option)))
     };
   }
@@ -950,21 +927,18 @@ export class ProfileOnboardingFormFlowConverter {
     icon: string,
     palette: AppMenuPalette,
     maxSelected: number,
-    emptyLabel: string,
-    selectedValues: readonly string[] = []
+    emptyLabel: string
   ): FormFlowMenuControlConfig {
-    const triggerPalette = this.groupPaletteForSelection(groups, selectedValues) ?? palette;
     return {
       kind: 'select',
       layout: 'tabs',
       title,
       filterable: true,
       closeOnSelect: false,
-      trigger: this.trigger(title, icon, triggerPalette),
+      trigger: this.trigger(title, icon, palette),
       model: buildTabbedMenuModel<string, ProfileOnboardingFormFlowMenuContext>({
         idPrefix: this.idToken(title),
         groups,
-        selected: selectedValues,
         maxSelected,
         summary: {
           emptyLabel,
@@ -1123,30 +1097,11 @@ export class ProfileOnboardingFormFlowConverter {
     return APP_STATIC_DATA.profileDetailValueOptions[key] ?? [];
   }
 
-  private static selectedOption(options: readonly string[], selectedValue: unknown): string {
-    const normalizedSelectedValue = AppUtils.normalizeText(`${selectedValue ?? ''}`);
-    return options.find(option => AppUtils.normalizeText(option) === normalizedSelectedValue) ?? '';
-  }
-
   private static normalizeProfileStatus(value: unknown): ProfileStatus {
     if (value === 'friends only' || value === 'host only' || value === 'inactive' || value === 'blocked' || value === 'deleted') {
       return value;
     }
     return 'public';
-  }
-
-  private static groupPaletteForSelection(
-    groups: readonly { toneClass?: string; options: readonly string[] }[],
-    selectedValues: readonly string[]
-  ): AppMenuPalette | null {
-    const selected = new Set(selectedValues.map(value => AppUtils.normalizeText(value)).filter(Boolean));
-    if (selected.size === 0) {
-      return null;
-    }
-    const group = groups.find(candidate =>
-      candidate.options.some(option => selected.has(AppUtils.normalizeText(option)))
-    );
-    return group ? this.paletteFromTone(group.toneClass ?? '') : null;
   }
 
   private static profileStatusPalette(status: ProfileStatus): AppMenuPalette {

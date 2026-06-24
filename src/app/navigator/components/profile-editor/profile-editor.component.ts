@@ -289,10 +289,6 @@ export class ProfileEditorComponent {
       this.openExperienceSelector(context.value);
       return;
     }
-    if (context?.menu === 'field') {
-      this.refreshProfileEditorFlowModel();
-      return;
-    }
     if (context?.menu === 'privacy') {
       this.setProfileDetailPrivacy(context.key, context.value);
       this.refreshProfileEditorFlowModel();
@@ -302,10 +298,6 @@ export class ProfileEditorComponent {
       this.experienceVisibility[context.type] = context.value;
       this.refreshProfileEditorFlowModel();
     }
-  }
-
-  protected onProfileEditorDataChange(data: ProfileExtDto): void {
-    this.profileEditorData = data;
   }
 
   protected popupTitle(): string {

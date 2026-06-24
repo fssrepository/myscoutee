@@ -138,8 +138,7 @@
                 <app-form-flow
                   class="profile-editor-flow"
                   [model]="profileEditorFlowModel"
-                  [ngModel]="profileEditorData"
-                  (ngModelChange)="onProfileEditorDataChange($event)"
+                  [(ngModel)]="profileEditorData"
                   [saving]="isProfileSaving()"
                   [disabled]="isProfileSaving()"
                   (action)="onProfileEditorFlowAction($event)"

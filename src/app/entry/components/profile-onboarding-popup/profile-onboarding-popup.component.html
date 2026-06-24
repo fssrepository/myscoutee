@@ -31,8 +31,7 @@
             <app-form-flow
               class="profile-onboarding-flow"
               [model]="flowModel"
-              [ngModel]="draft.data"
-              (ngModelChange)="onOnboardingDataChange($event)"
+              [(ngModel)]="draft.data"
               [saving]="saving"
               [disabled]="saving"
               (save)="onOnboardingFlowSave()"
