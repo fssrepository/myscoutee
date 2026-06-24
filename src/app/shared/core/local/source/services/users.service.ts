@@ -6,6 +6,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import type { BootstrapProcessState } from '../../../base/services/bootstrap.service';
 import type {
   ProfileExtDto,
+  ProfileExtByIdQueryResponse,
   UserDto,
   UserByIdQueryResponse,
   UserDeleteRequestDto,
@@ -26,6 +27,7 @@ import {
   type LocalUserRealtimeSnapshotState
 } from '../builders';
 import { UserFilterPreferencesBuilder, UserMenuCountersBuilder } from '../../../base/builders';
+import { LocalProfileExperiencesMapper } from '../mappers';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
@@ -175,6 +177,24 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       filterPreferences: user
         ? (persistedFilterPreferences ?? UserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
         : null
+    };
+  }
+
+  async loadProfileExtById(userId?: string, _requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse> {
+    const response = await this.queryUserById(userId);
+    const user = response.user;
+    return {
+      profileExt: user
+        ? {
+            profile: user,
+            experienceEntries: LocalProfileExperiencesMapper.cloneEntries(
+              this.profileExperiencesRepository.queryUserExperienceRecords(user.id)
+            )
+          }
+        : null,
+      filterCount: response.filterCount,
+      counterOverrides: response.counterOverrides,
+      filterPreferences: response.filterPreferences
     };
   }
 

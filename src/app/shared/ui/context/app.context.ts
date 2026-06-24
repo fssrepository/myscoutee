@@ -4,7 +4,7 @@ import {
   type UserGameFilterPreferencesDto
 } from '../../core/contracts/activity.interface';
 import { EventFeedbackBuilder } from '../../core/base/builders';
-import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
+import type { ProfileExtDto, UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
@@ -148,6 +148,7 @@ function detectInitialConnectivityState(): ConnectivityState {
 export class AppContext {
   private readonly _loadingState = signal<Record<string, LoadState>>({});
   private readonly _userProfilesByUserId = signal<Record<string, UserDto>>({});
+  private readonly _profileExtByUserId = signal<Record<string, ProfileExtDto>>({});
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _filterCountByUserId = signal<Record<string, number>>({});
   private readonly _filterPreferencesByUserId = signal<Record<string, UserGameFilterPreferencesDto>>({});
@@ -162,6 +163,7 @@ export class AppContext {
 
   readonly loadingState = this._loadingState.asReadonly();
   readonly userProfilesByUserId = this._userProfilesByUserId.asReadonly();
+  readonly profileExtByUserId = this._profileExtByUserId.asReadonly();
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly filterCountByUserId = this._filterCountByUserId.asReadonly();
   readonly filterPreferencesByUserId = this._filterPreferencesByUserId.asReadonly();
@@ -265,6 +267,34 @@ export class AppContext {
         id: normalizedUserId
       })
     }));
+  }
+
+  getProfileExt(userId: string): ProfileExtDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const profileExt = this._profileExtByUserId()[normalizedUserId];
+    return profileExt ? this.cloneProfileExt(profileExt) : null;
+  }
+
+  setProfileExt(profileExt: ProfileExtDto): void {
+    const normalizedUserId = profileExt.profile.id.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedProfileExt = this.cloneProfileExt({
+      ...profileExt,
+      profile: {
+        ...profileExt.profile,
+        id: normalizedUserId
+      }
+    });
+    this._profileExtByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: normalizedProfileExt
+    }));
+    this.setUserProfile(normalizedProfileExt.profile);
   }
 
   patchActiveUserProfile(
@@ -793,6 +823,13 @@ export class AppContext {
       personalityBadges: [...(section.personalityBadges ?? [])],
       personalityTraits: (section.personalityTraits ?? []).map(trait => ({ ...trait })),
       categoryBadges: [...(section.categoryBadges ?? [])]
+    };
+  }
+
+  private cloneProfileExt(profileExt: ProfileExtDto): ProfileExtDto {
+    return {
+      profile: this.cloneUserProfile(profileExt.profile),
+      experienceEntries: (profileExt.experienceEntries ?? []).map(entry => ({ ...entry }))
     };
   }
 

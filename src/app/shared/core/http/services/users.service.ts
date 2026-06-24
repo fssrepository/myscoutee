@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   ProfileExtDto,
+  ProfileExtByIdQueryResponse,
   UserSelectorListItemDto,
   UserDeleteRequestDto,
   UserFeedbackSubmitRequestDto,
@@ -143,6 +144,40 @@ export class HttpUsersService implements UserService {
       }
       const cached = this.offlineCache.readUser(normalizedUserId);
       return cached ?? this.readUserByIdFallback(normalizedUserId) ?? { user: null };
+    }
+  }
+
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse> {
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    try {
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpUsersService.USER_PROFILE_EXT_ROUTE,
+        this.http
+          .get<ProfileExtByIdQueryResponse | null>(`${this.apiBaseUrl}${HttpUsersService.USER_PROFILE_EXT_ROUTE}`, {
+            params: normalizedUserId ? { userId: normalizedUserId } : {}
+          })
+          .toPromise(),
+        'User profile request timeout.',
+        requestTimeoutMs
+      );
+      const profileExt = this.cloneProfileExt(response?.profileExt ?? null);
+      if (!profileExt) {
+        const cached = this.readProfileExtByIdFallback(normalizedUserId);
+        return cached ?? { profileExt: null };
+      }
+      return {
+        profileExt,
+        filterCount: Number.isFinite(response?.filterCount)
+          ? Math.max(0, Math.trunc(Number(response?.filterCount)))
+          : undefined,
+        filterPreferences: response?.filterPreferences ?? null,
+        counterOverrides: this.buildInitialMenuCounterOverrides(profileExt.profile, response?.counterOverrides ?? null)
+      };
+    } catch (error) {
+      if (this.isTimeoutError(error, 'User profile request timeout.')) {
+        throw error;
+      }
+      return this.readProfileExtByIdFallback(normalizedUserId) ?? { profileExt: null };
     }
   }
 
@@ -457,12 +492,51 @@ export class HttpUsersService implements UserService {
     }));
   }
 
+  private cloneProfileExt(profileExt: ProfileExtDto | null | undefined): ProfileExtDto | null {
+    const profile = profileExt?.profile ? this.cloneUser(profileExt.profile) : null;
+    if (!profile) {
+      return null;
+    }
+    return {
+      profile,
+      experienceEntries: (profileExt?.experienceEntries ?? []).map(entry => ({ ...entry }))
+    };
+  }
+
   private cacheUserResponse(response: UserByIdQueryResponse): UserByIdQueryResponse {
     if (!response.user?.id?.trim()) {
       return response;
     }
     this.offlineCache.writeUser(response.user.id.trim(), response);
     return response;
+  }
+
+  private readProfileExtByIdFallback(userId: string): ProfileExtByIdQueryResponse | null {
+    const cached = this.offlineCache.readUser(userId.trim());
+    if (cached?.user) {
+      return {
+        profileExt: {
+          profile: this.cloneUser(cached.user),
+          experienceEntries: []
+        },
+        filterCount: cached.filterCount,
+        filterPreferences: cached.filterPreferences,
+        counterOverrides: cached.counterOverrides
+      };
+    }
+
+    const fallback = this.readUserByIdFallback(userId);
+    return fallback?.user
+      ? {
+          profileExt: {
+            profile: this.cloneUser(fallback.user),
+            experienceEntries: []
+          },
+          filterCount: fallback.filterCount,
+          filterPreferences: fallback.filterPreferences,
+          counterOverrides: fallback.counterOverrides
+        }
+      : null;
   }
 
   private readUserByIdFallback(userId: string): UserByIdQueryResponse | null {

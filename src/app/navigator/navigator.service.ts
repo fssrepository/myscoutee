@@ -230,7 +230,8 @@ export class NavigatorService {
     }
     const requestVersion = ++this.hydrationRequestVersion;
     const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
-    const loadedUser = await this.usersService.loadUserById(isFirebaseSession ? undefined : userId);
+    const loadedProfileExt = await this.usersService.loadProfileExtById(isFirebaseSession ? undefined : userId);
+    const loadedUser = loadedProfileExt?.profile ?? null;
     if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
       return null;
     }

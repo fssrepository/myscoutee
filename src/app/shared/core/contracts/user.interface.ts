@@ -216,6 +216,13 @@ export class ProfileExtDto {
   experienceEntries: ProfileContracts.ExperienceEntry[] = [];
 }
 
+export interface ProfileExtByIdQueryResponse {
+  profileExt: ProfileExtDto | null;
+  filterCount?: number;
+  filterPreferences?: ActivityContracts.UserGameFilterPreferencesDto | null;
+  counterOverrides?: UserMenuCountersDto | null;
+}
+
 export interface UserFeedbackSubmitRequestDto {
   userId?: string;
   category: string;
@@ -259,6 +266,7 @@ export interface UserService {
   queryAvailableDemoUsers(selectorRole?: UserSelectorRole): Promise<UserSelectorListItemDto[]>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
+  loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
   saveUserFilterPreferences(userId: string, preferences: ActivityContracts.UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;

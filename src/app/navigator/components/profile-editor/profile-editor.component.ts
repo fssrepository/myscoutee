@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
+import { Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -8,7 +8,6 @@ import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
 import {
   USER_PROFILE_SAVE_CONTEXT_KEY,
-  UserExperiencesService,
   UsersService
 } from '../../../shared/core';
 import { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
@@ -73,14 +72,11 @@ export class ProfileEditorComponent {
 
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
-  private readonly cdr = inject(ChangeDetectorRef);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly userExperiencesService = inject(UserExperiencesService);
   private readonly usersService = inject(UsersService);
   private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
-  private experienceEntriesLoadToken = 0;
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
   protected readonly activeUserIsAdmin = this.appCtx.activeUserIsAdmin;
@@ -114,7 +110,7 @@ export class ProfileEditorComponent {
       }
 
       this.lastLoadedUserId = activeUserId;
-      this.loadProfileEditorState(activeUser);
+      void this.loadProfileEditorState(activeUser);
     });
   }
 
@@ -286,16 +282,22 @@ export class ProfileEditorComponent {
     });
   }
 
-  private loadProfileEditorState(user: UserDto): void {
+  private async loadProfileEditorState(user: UserDto): Promise<void> {
     this.resetTransientUiState();
-    this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(user.completion) || 0)));
-    this.profileEditorData = this.normalizeProfileEditorData({
+    const normalizedUserId = user.id.trim();
+    const profileExt = this.appCtx.getProfileExt(normalizedUserId)
+      ?? await this.usersService.loadProfileExtById(normalizedUserId);
+    if (!this.isOpen() || this.lastLoadedUserId !== normalizedUserId) {
+      return;
+    }
+    const data = profileExt ?? {
       profile: this.cloneUser(user),
       experienceEntries: []
-    });
+    };
+    this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(data.profile.completion) || 0)));
+    this.profileEditorData = this.normalizeProfileEditorData(data);
     this.refreshProfileEditorFlowModel();
     this.panel = 'profile';
-    void this.loadExperienceEntriesForUser(user.id);
   }
 
   private normalizeProfileEditorData(value: ProfileExtDto): ProfileExtDto {
@@ -383,29 +385,6 @@ export class ProfileEditorComponent {
       experienceEntries: nextEntries
     };
     this.refreshProfileEditorFlowModel();
-  }
-
-  private async loadExperienceEntriesForUser(userId: string): Promise<void> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      this.setExperienceEntries([]);
-      return;
-    }
-
-    const requestToken = ++this.experienceEntriesLoadToken;
-    try {
-      const loadedEntries = await this.userExperiencesService.loadUserExperiences(normalizedUserId);
-      if (requestToken !== this.experienceEntriesLoadToken || this.profileEditorData.profile.id !== normalizedUserId) {
-        return;
-      }
-      this.setExperienceEntries(loadedEntries);
-      this.cdr.markForCheck();
-    } catch {
-      if (requestToken !== this.experienceEntriesLoadToken || this.profileEditorData.profile.id !== normalizedUserId) {
-        return;
-      }
-      this.cdr.markForCheck();
-    }
   }
 
   private async commitProfileForm(showAlert: boolean): Promise<void> {
