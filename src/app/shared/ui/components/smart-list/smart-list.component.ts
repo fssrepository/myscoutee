@@ -60,8 +60,6 @@ import type {
   SmartListClassValue,
   SmartListConfig,
   SmartListGroup,
-  SmartListHeaderAction,
-  SmartListHeaderActionSelectEvent,
   SmartListHeaderProgressState,
   SmartListInitialScrollAnchor,
   SmartListItemMenuContext,
@@ -152,7 +150,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Output() readonly stateChange = new EventEmitter<SmartListStateChange<T, TFilters>>();
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
-  @Output() readonly stickyHeaderActionSelect = new EventEmitter<SmartListHeaderActionSelectEvent<TFilters>>();
   @Output() readonly menuItemSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
 
   protected items: T[] = [];
@@ -597,35 +594,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.resolvedPaginationMode() === 'arrows'
       && this.resolveConfigValue(this.config.pagination?.headerControls, false)
       && this.shouldShowStickyHeader();
-  }
-
-  protected shouldRenderStickyActions(): boolean {
-    return this.resolvedStickyHeaderActions().length > 0 || this.shouldRenderStickyPaginationActions();
-  }
-
-  protected resolvedStickyHeaderActions(): readonly SmartListHeaderAction<TFilters>[] {
-    return this.resolveConfigValue(this.config.stickyHeaderActions, [])
-      .filter(action => !this.resolveConfigValue(action.hidden, false));
-  }
-
-  protected stickyHeaderActionClass(action: SmartListHeaderAction<TFilters>): SmartListClassValue {
-    return action.className ?? null;
-  }
-
-  protected isStickyHeaderActionDisabled(action: SmartListHeaderAction<TFilters>): boolean {
-    return this.resolveConfigValue(action.disabled, false);
-  }
-
-  protected onStickyHeaderActionSelect(action: SmartListHeaderAction<TFilters>, event: Event): void {
-    event.stopPropagation();
-    if (this.isStickyHeaderActionDisabled(action)) {
-      return;
-    }
-    this.stickyHeaderActionSelect.emit({
-      action,
-      query: this.currentQuery(),
-      sourceEvent: event
-    });
   }
 
   protected shouldRenderListHeaderOutsideScroll(): boolean {

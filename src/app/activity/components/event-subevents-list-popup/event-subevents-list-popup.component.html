@@ -63,7 +63,6 @@
             [config]="slotSectionSmartListConfigFor(section)"
             [loadPage]="slotSectionLoadPage(section)"
             [itemTemplate]="subEventTemplate"
-            (stickyHeaderActionSelect)="onSlotSectionHeaderAction(section, $event)"
           ></app-smart-list>
         </section>
       </ng-template>
@@ -75,10 +74,6 @@
         ></app-info-card>
       </ng-template>
     </div>
-    <app-event-subevent-leaderboard-popup
-      [model]="leaderboardPopupModel"
-      (close)="closeLeaderboardPopup($event)"
-    ></app-event-subevent-leaderboard-popup>
   </article>
 </section>
 }
