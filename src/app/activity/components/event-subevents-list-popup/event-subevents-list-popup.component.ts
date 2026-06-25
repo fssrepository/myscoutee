@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
@@ -71,6 +71,7 @@ export class EventSubeventsListPopupComponent {
   protected slotSections: EventSubeventsSlotSection[] = [];
   protected view: EventSubeventsListView = 'day';
   protected order: EventSubeventsListOrder = 'upcoming';
+  protected isMobileView = false;
   protected query: Partial<ListQuery<EventSubeventsListFilters>> = {
     view: 'day',
     filters: { revision: 0 }
@@ -128,6 +129,7 @@ export class EventSubeventsListPopupComponent {
   };
 
   constructor() {
+    this.syncMobileViewFromViewport();
     effect(() => {
       const request = this.state.request();
       if (!request) {
@@ -158,6 +160,11 @@ export class EventSubeventsListPopupComponent {
     });
   }
 
+  @HostListener('window:resize')
+  protected onWindowResize(): void {
+    this.syncMobileViewFromViewport();
+  }
+
   protected close(): void {
     this.state.close();
   }
@@ -185,7 +192,8 @@ export class EventSubeventsListPopupComponent {
       icon: item?.icon ?? 'schedule',
       label: (item?.label as string | null | undefined) ?? 'Upcoming',
       palette: item?.palette ?? 'blue',
-      layout: 'pill'
+      layout: 'pill',
+      hideLabel: this.isMobileView
     };
   }
 
@@ -207,7 +215,8 @@ export class EventSubeventsListPopupComponent {
       icon: item?.icon ?? 'today',
       label: (item?.label as string | null | undefined) ?? 'Day',
       palette: item?.palette ?? 'blue',
-      layout: 'pill'
+      layout: 'pill',
+      hideLabel: this.isMobileView
     };
   }
 
@@ -509,6 +518,15 @@ export class EventSubeventsListPopupComponent {
     const normalizedTitle = `${title ?? ''}`.trim();
     const normalizedSubtitle = `${subtitle ?? ''}`.trim();
     return normalizedSubtitle ? `${normalizedTitle} - ${normalizedSubtitle}` : normalizedTitle;
+  }
+
+  private syncMobileViewFromViewport(): void {
+    const next = typeof window !== 'undefined' && window.innerWidth <= 760;
+    if (next === this.isMobileView) {
+      return;
+    }
+    this.isMobileView = next;
+    this.cdr.markForCheck();
   }
 
   private slotTemplateForItem(item: ActivityEventSubEventRuntimeDTO) {

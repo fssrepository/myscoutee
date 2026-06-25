@@ -446,7 +446,7 @@
   input,
   textarea {
     width: 100%;
-    min-height: 42px;
+    min-height: var(--form-flow-control-min-height, 42px);
     box-sizing: border-box;
     border: 1px solid #b9cce5;
     border-radius: 8px;
@@ -454,7 +454,7 @@
     color: #173357;
     font: inherit;
     font-size: 14px;
-    padding: 9px 12px;
+    padding: var(--form-flow-control-padding, 9px 12px);
     outline: none;
 
     &:focus {

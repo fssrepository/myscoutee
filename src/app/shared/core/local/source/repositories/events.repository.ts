@@ -47,6 +47,7 @@ interface ActivityEventExploreCursor {
 })
 export class LocalEventsRepository {
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
+  private static readonly SLOT_READ_MODEL_USER_ID = '__slot_read_model__';
   private readonly memoryDb = inject(LocalMemoryDb);
 
   async flushToIndexedDb(): Promise<void> {
@@ -54,7 +55,6 @@ export class LocalEventsRepository {
   }
 
   queryItemsByUser(userId: string): ActivityEventRecord[] {
-    this.materializeSlotRecords();
     return this.queryUserRecords(userId);
   }
 
@@ -69,7 +69,6 @@ export class LocalEventsRepository {
   }
 
   queryItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
-    this.materializeSlotRecords();
     return this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
   }
 
@@ -98,7 +97,6 @@ export class LocalEventsRepository {
     filter: ActivityEventScopeFilter,
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
   ): ActivityEventRecord[] {
-    this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
     const memberEventItems = userItems
       .filter(record => !this.isEventAdminRecord(record, userId))
@@ -289,7 +287,6 @@ export class LocalEventsRepository {
   }
 
   queryActivitiesEventListPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesListQueryResult {
-    this.materializeSlotRecords();
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -337,7 +334,6 @@ export class LocalEventsRepository {
   }
 
   queryExploreItems(userId: string): ActivityEventRecord[] {
-    this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -360,7 +356,6 @@ export class LocalEventsRepository {
   }
 
   queryEventRecordById(userId: string, eventId: string): ActivityEventRecord | null {
-    this.materializeSlotRecords();
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -379,7 +374,6 @@ export class LocalEventsRepository {
   }
 
   querySubEventsByEventId(userId: string, eventId: string): ActivityEventSubEventsResultDTO | null {
-    this.materializeSlotRecords();
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -745,7 +739,6 @@ export class LocalEventsRepository {
     accepted = false,
     waitingList = false
   ): ActivityEventRecord | null {
-    this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     const normalizedSlotSourceId = slotSourceId?.trim() || '';
@@ -1005,13 +998,11 @@ export class LocalEventsRepository {
     const directRecords = table.ids
       .map(id => this.normalizePersistedEventRecord(table.byId[id]))
       .filter((record): record is ActivityEventRecord => Boolean(record))
-      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
       .map(record => this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
-      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record => record.creatorUserId !== normalizedUserId)
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
@@ -1045,7 +1036,7 @@ export class LocalEventsRepository {
     for (const id of table.ids) {
       const record = this.normalizePersistedEventRecord(table.byId[id]);
       const recordUserId = record?.userId?.trim() ?? '';
-      if (!record || this.isGeneratedSlotRecord(record) || !userIdSet.has(recordUserId)) {
+      if (!record || !userIdSet.has(recordUserId)) {
         continue;
       }
       if (!this.shouldIncludeUserDirectRecord(record, recordUserId, preferredRecordByEventId.get(record.id))) {
@@ -1062,7 +1053,6 @@ export class LocalEventsRepository {
     for (const userId of normalizedUserIds) {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
-        .filter(record => !this.isGeneratedSlotRecord(record))
         .filter(record => record.creatorUserId !== userId)
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
@@ -1943,10 +1933,26 @@ export class LocalEventsRepository {
 
     for (const parent of preferredParents) {
       const generatedRecords = this.buildGeneratedSlotRecordsForParent(parent, table);
+      const generatedBySourceId = new Map(generatedRecords.map(record => [record.id, record]));
+      const staleRecordKeys = nextIds.filter(recordKey => {
+        const current = nextById[recordKey];
+        if (!this.isGeneratedSlotRecord(current) || current?.parentEventId !== parent.id) {
+          return false;
+        }
+        const desired = generatedBySourceId.get(current.id);
+        if (!desired) {
+          return true;
+        }
+        return recordKey !== ActivityEventRecordBuilder.buildRecordKey(desired.userId, desired.type, desired.id);
+      });
+      for (const recordKey of staleRecordKeys) {
+        delete nextById[recordKey];
+        changed = true;
+      }
       for (const record of generatedRecords) {
         const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
         const current = nextById[recordKey];
-        if (!current) {
+        if (!current || JSON.stringify(current) !== JSON.stringify(record)) {
           nextById[recordKey] = record;
           if (!nextIds.includes(recordKey)) {
             nextIds.push(recordKey);
@@ -1964,7 +1970,7 @@ export class LocalEventsRepository {
       ...currentState,
       [EVENTS_TABLE_NAME]: {
         byId: nextById,
-        ids: nextIds
+        ids: nextIds.filter(id => Boolean(nextById[id]))
       }
     }));
   }
@@ -2018,13 +2024,12 @@ export class LocalEventsRepository {
         const existing = this.computePreferredEventRecords(table)
           .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
           ?? null;
-        if (existing) {
-          continue;
-        }
         const capacityTotal = Math.max(0, parent.capacityTotal);
+        const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
+        const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
         records.push({
           id: sourceId,
-          userId: parent.creatorUserId || parent.userId,
+          userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
           type: 'events',
           status: parent.status,
           avatar: parent.avatar,
@@ -2035,7 +2040,7 @@ export class LocalEventsRepository {
           unread: 0,
           activity: 0,
           trashedAtIso: null,
-          creatorUserId: parent.creatorUserId,
+          creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
           creatorName: parent.creatorName,
           creatorInitials: parent.creatorInitials,
           creatorGender: parent.creatorGender,
@@ -2063,8 +2068,12 @@ export class LocalEventsRepository {
           eventType: 'slot',
           nextSlot: null,
           upcomingSlots: [],
-          acceptedMembers: 0,
-          pendingMembers: 0,
+          acceptedMembers,
+          pendingMembers,
+          acceptedMemberUserIds: [],
+          pendingMemberUserIds: [],
+          invitedMemberUserIds: [],
+          pendingRequestMemberUserIds: [],
           topics: [...parent.topics],
           subEventsEnabled: false,
           subEvents: parent.subEventsEnabled === true && definitions.length > 0
@@ -2103,13 +2112,12 @@ export class LocalEventsRepository {
       const existing = this.computePreferredEventRecords(table)
         .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
         ?? null;
-      if (existing) {
-        continue;
-      }
       const capacityTotal = Math.max(0, parent.capacityTotal);
+      const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
+      const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
       records.push({
         id: sourceId,
-        userId: parent.creatorUserId || parent.userId,
+        userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
         type: 'events',
         status: parent.status,
         avatar: parent.avatar,
@@ -2120,7 +2128,7 @@ export class LocalEventsRepository {
         unread: 0,
         activity: 0,
         trashedAtIso: null,
-        creatorUserId: parent.creatorUserId,
+        creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
         creatorName: parent.creatorName,
         creatorInitials: parent.creatorInitials,
         creatorGender: parent.creatorGender,
@@ -2148,8 +2156,12 @@ export class LocalEventsRepository {
         eventType: 'slot',
         nextSlot: null,
         upcomingSlots: [],
-        acceptedMembers: 0,
-        pendingMembers: 0,
+        acceptedMembers,
+        pendingMembers,
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: [],
+        invitedMemberUserIds: [],
+        pendingRequestMemberUserIds: [],
         topics: [...parent.topics],
         subEventsEnabled: false,
         subEvents: parent.subEventsEnabled === true && definitions.length > 0
