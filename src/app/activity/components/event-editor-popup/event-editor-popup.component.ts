@@ -26,7 +26,6 @@ import {
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
-  CounterBadgePipe,
   DateInputComponent,
   type DateInputModel,
   EditableImageCarouselComponent,
@@ -79,8 +78,7 @@ interface SlotOverrideEditorState {
     EventSubeventDefinitionsPanelComponent,
     EventSubeventsInputComponent,
     PricingEditorInputComponent,
-    ProgressIndicatorComponent,
-    CounterBadgePipe
+    ProgressIndicatorComponent
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']
@@ -313,17 +311,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return Math.max(0, capacityMin, publishedFloor);
   }
 
-  requestOpenMembers(): void {
-    const eventId = this.currentEventIdentity() || 'draft-event';
-    const canManageMembers = !this.eventEditorService.readOnly();
-    this.popupCtx.requestActivitiesNavigation({
-      type: 'eventEditorMembers',
-      ownerId: eventId,
-      title: this.eventDetailDTO.title.trim() || 'New Event',
-      canManage: canManageMembers
-    });
-  }
-
   handleSubEventsChange(subEvents: readonly ContractTypes.SubEventDTO[]): void {
     this.eventDetailDTO.applySubEvents(subEvents);
     this.syncMainEventBoundsFromSubEvents();
@@ -420,26 +407,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return null;
     }
     return Math.max(0, Math.trunc(parsed));
-  }
-
-  eventEditorHeaderPendingMemberCount(): number {
-    const source: any = this.eventEditorService.sourceEvent();
-    const eventId = this.currentEventIdentity();
-    const sync = this.appCtx.activityMembersSync();
-    const pendingRaw = sync && eventId && sync.id === eventId
-      ? sync.pendingMembers
-      : source?.pendingMembersCount
-      ?? source?.pendingCount
-      ?? source?.pendingMembers
-      ?? source?.pending
-      ?? source?.pendingInvites
-      ?? this.currentMemberSummary?.pendingMembers
-      ?? 0;
-    const pendingCount = Number(pendingRaw);
-    if (!Number.isFinite(pendingCount) || pendingCount <= 0) {
-      return 0;
-    }
-    return Math.floor(pendingCount);
   }
 
   eventEditorFieldInvalid(field: 'title' | 'subtitle' | 'capacityMin' | 'capacityMax'): boolean {

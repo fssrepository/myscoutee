@@ -28,7 +28,8 @@ import type {
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventRecord
+  ActivityEventRecord,
+  ActivityEventSubEventsResultDTO
 } from '../../../contracts/activity.interface';
 import type { IEventsService } from '../../../contracts/activity.interface';
 
@@ -103,6 +104,16 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
     return record ? LocalActivityEventDetailsMapper.toDto(record) : null;
+  }
+
+  async loadSubEventsById(userId: string, eventId: string): Promise<ActivityEventSubEventsResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.querySubEventsByEventId(normalizedUserId, normalizedEventId);
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {

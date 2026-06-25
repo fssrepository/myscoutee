@@ -111,6 +111,9 @@
 @if (eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
 }
+@if (eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
+  <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
+}
 @if (eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
 }

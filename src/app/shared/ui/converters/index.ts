@@ -72,6 +72,11 @@ export {
   type EventFeedbackFormFlowConverterOptions
 } from './event-feedback-form-flow.converter';
 export {
+  EventSubeventRuntimeInfoCardConverter,
+  eventSubeventRuntimeInfoCardConverter,
+  type EventSubeventRuntimeInfoCardConverterOptions
+} from './event-subevent-runtime-info-card.converter';
+export {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   profileFormFlowConverter,

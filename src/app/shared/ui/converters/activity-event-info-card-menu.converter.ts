@@ -29,6 +29,7 @@ export interface ActivityEventInfoCardMenuContext {
 export interface ActivityEventInfoCardMenuConverterOptions {
   activeUserId?: string | null;
   availableActions?: readonly string[];
+  hiddenActions?: readonly string[];
 }
 
 export class ActivityEventInfoCardMenuConverter {
@@ -60,7 +61,22 @@ export class ActivityEventInfoCardMenuConverter {
       return [];
     }
     const availableActions = options.availableActions ?? this.availableActions;
-    return availableActions.flatMap(actionId => this.menuItem(subject, actionId, options.activeUserId ?? ''));
+    const hiddenActions = new Set((options.hiddenActions ?? []).map(actionId => `${actionId ?? ''}`.trim()));
+    return availableActions
+      .filter(actionId => !hiddenActions.has(actionId))
+      .flatMap(actionId => this.menuItem(subject, actionId, options.activeUserId ?? ''));
+  }
+
+  static canEditEvent(
+    subject: ActivityEventInfoCardMenuSubject | null | undefined,
+    options: Pick<ActivityEventInfoCardMenuConverterOptions, 'activeUserId'> = {}
+  ): boolean {
+    if (!subject) {
+      return false;
+    }
+    const activeUserId = options.activeUserId ?? '';
+    return this.isActionVisible(subject, 'editEvent', activeUserId)
+      || this.isActionVisible(subject, 'manageEvent', activeUserId);
   }
 
   private static menuItem(

@@ -23,6 +23,7 @@ import { AssetPopupStateService } from '../../../asset/asset-popup-state.service
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
+import { EventSubeventsListPopupStateService } from '../../../activity/services/event-subevents-list-popup-state.service';
 import {
   ExplanationGuideService,
   HelpCenterService,
@@ -125,6 +126,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly eventSubeventsListPopupService = inject(EventSubeventsListPopupStateService);
   protected readonly subEventResources = inject(SubEventResourcePopupController);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -144,6 +146,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -158,6 +161,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
   protected readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
+  protected readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
   protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
@@ -790,6 +794,13 @@ export class NavigatorComponent implements OnDestroy {
       const isOpen = this.eventEditorService.isOpen();
       if (isOpen && !this.eventEditorPopupComponentRef()) {
         void this.ensureEventEditorPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const isOpen = this.eventSubeventsListPopupService.isOpen();
+      if (isOpen && !this.eventSubeventsListPopupComponentRef()) {
+        void this.ensureEventSubeventsListPopupLoaded();
       }
     });
 
@@ -1436,6 +1447,14 @@ export class NavigatorComponent implements OnDestroy {
     }
     const module = await import('../../../activity/components/event-editor-popup/event-editor-popup.component');
     this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
+  }
+
+  private async ensureEventSubeventsListPopupLoaded(): Promise<void> {
+    if (this.eventSubeventsListPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-subevents-list-popup/event-subevents-list-popup.component');
+    this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
   }
 
   private async ensureActivitiesPopupLoaded(): Promise<void> {

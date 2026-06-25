@@ -26,6 +26,8 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  ActivityEventSubEventRuntimeDTO,
+  ActivityEventSubEventsResultDTO,
   ActivityEventScopeFilter
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
@@ -205,6 +207,31 @@ export class HttpEventsService implements IEventsService {
     } catch {
       return null;
     }
+  }
+
+  async loadSubEventsById(userId: string, eventId: string): Promise<ActivityEventSubEventsResultDTO | null> {
+    const detail = await this.loadEventDetailById(userId, eventId);
+    if (!detail) {
+      return null;
+    }
+    return {
+      event: detail,
+      items: this.runtimeSubEventsFromDetail(detail)
+    };
+  }
+
+  private runtimeSubEventsFromDetail(detail: ActivityEventDetailDTO): ActivityEventSubEventRuntimeDTO[] {
+    return ActivityEventDetailDTO.normalizeSubEvents(detail.subEvents ?? [])
+      .map((item, index) => ({
+        ...item,
+        runtimeId: `${detail.id || 'event'}:${item.id || `subevent-${index + 1}`}`,
+        parentEventId: detail.parentEventId || detail.id,
+        slotSourceId: detail.generated ? detail.id : null,
+        slotTemplateId: detail.slotTemplateId ?? null,
+        slotTitle: detail.generated ? detail.title : null,
+        slotTimeframe: detail.generated ? detail.timeframe : null
+      }))
+      .sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt));
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
@@ -807,6 +834,14 @@ export class HttpEventsService implements IEventsService {
       };
     }
     return next;
+  }
+
+  private toDateMs(value: string | null | undefined): number {
+    if (!value?.trim()) {
+      return Number.POSITIVE_INFINITY;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
   }
 
   private normalizeSourceIds(sourceIds: readonly string[] | null | undefined): string[] {

@@ -13,6 +13,10 @@ import {
   type CardMenuActionEvent,
   type CardMenuRequestEvent
 } from '../../../../../shared/ui';
+import {
+  ActivityEventInfoCardMenuConverter,
+  type ActivityEventInfoCardMenuSubject
+} from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
 
@@ -137,6 +141,7 @@ export class ActivitiesEventsController {
   private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
   private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
   private get eventEditorService() { return this.host.eventEditorService; }
+  private get eventSubeventsListPopupService() { return this.host.eventSubeventsListPopupService; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
@@ -288,12 +293,32 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.requestActivitiesNavigation({
-      type: 'eventEditor',
+    this.eventSubeventsListPopupService.open({
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
-      readOnly: true
+      title: row.title,
+      canEdit: this.canEditActivityEvent(row)
     });
+  }
+
+  private canEditActivityEvent(row: ActivityEventCardData): boolean {
+    return ActivityEventInfoCardMenuConverter.canEditEvent(this.activityEventMenuSubjectFromRow(row), {
+      activeUserId: this.activeUser.id
+    });
+  }
+
+  private activityEventMenuSubjectFromRow(row: ActivityEventCardData): ActivityEventInfoCardMenuSubject {
+    return {
+      menu: 'activity-event-card',
+      id: row.id,
+      status: row.status ?? null,
+      ownerUserId: row.ownerUserId ?? row.ownerId ?? null,
+      adminIds: [...(row.adminIds ?? [])],
+      acceptedMemberUserIds: [...(row.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(row.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(row.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(row.pendingRequestMemberUserIds ?? [])]
+    };
   }
 
   public runActivityItemServiceChatAction(

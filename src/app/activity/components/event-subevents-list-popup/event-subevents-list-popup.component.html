@@ -1,0 +1,72 @@
+@if (state.isOpen()) {
+<section class="app-popup event-subevents-list-popup-shell">
+  <div class="app-popup-backdrop" (click)="close()"></div>
+  <article class="app-popup-panel popup-panel-event-subevents-list" (click)="$event.stopPropagation()">
+    <header class="popup-header event-subevents-list-header">
+      <div class="popup-title event-subevents-list-title">
+        <h2>{{ popupTitle() }}</h2>
+        <p class="popup-subtitle-activities">{{ popupSubtitle() }}</p>
+      </div>
+      <div class="event-subevents-list-header-actions">
+        <app-menu
+          class="event-subevents-list-order-menu"
+          kind="select"
+          [trigger]="orderTrigger()"
+          [items]="orderMenuItems()"
+          (itemSelect)="onOrderSelect($event)"
+        ></app-menu>
+        <app-menu
+          class="event-subevents-list-view-menu"
+          kind="select"
+          [trigger]="viewTrigger()"
+          [items]="viewMenuItems()"
+          (itemSelect)="onViewSelect($event)"
+        ></app-menu>
+        <button type="button" class="popup-close" (click)="close()" aria-label="Close">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+      <div class="event-subevents-list-context-row">
+        @if (eventRangeLabel()) {
+        <span class="event-subevents-list-range-badge">
+          <mat-icon>calendar_month</mat-icon>
+          <span>{{ eventRangeLabel() }}</span>
+        </span>
+        }
+        <div class="event-subevents-list-context-actions">
+          <app-menu
+            class="event-subevents-list-context-menu"
+            kind="inline"
+            [items]="contextMenuItems()"
+            (itemSelect)="onContextMenuSelect($event)"
+          ></app-menu>
+        </div>
+      </div>
+    </header>
+
+    <div class="popup-body event-subevents-list-body">
+      @if (isLoading) {
+      <div class="event-subevents-list-loading" aria-busy="true">
+        <mat-icon>hourglass_empty</mat-icon>
+        <span>Loading sub events...</span>
+      </div>
+      } @else {
+      <app-smart-list
+        class="event-subevents-list-smart-list"
+        [config]="smartListConfig"
+        [loadPage]="loadSubEventsPage"
+        [itemTemplate]="subEventTemplate"
+        [query]="query"
+      ></app-smart-list>
+
+      <ng-template #subEventTemplate let-item let-groupLabel="groupLabel">
+        <app-info-card
+          [card]="cardFor(item, groupLabel)"
+          [useSharedMenuTrigger]="false"
+        ></app-info-card>
+      </ng-template>
+      }
+    </div>
+  </article>
+</section>
+}

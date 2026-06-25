@@ -15,6 +15,8 @@ import {
   type ActivityEventExploreQuery,
   type ActivityEventExploreQueryResult,
   type ActivityEventRecord,
+  type ActivityEventSubEventRuntimeDTO,
+  type ActivityEventSubEventsResultDTO,
   type ActivityEventScopeFilter,
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
@@ -374,6 +376,64 @@ export class LocalEventsRepository {
       this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table),
       viewerCoordinates
     );
+  }
+
+  querySubEventsByEventId(userId: string, eventId: string): ActivityEventSubEventsResultDTO | null {
+    this.materializeSlotRecords();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const preferredRecords = this.computePreferredEventRecords(table);
+    const selectedRecord = preferredRecords.find(item => item.id === normalizedEventId) ?? null;
+    if (!selectedRecord) {
+      return null;
+    }
+    const parentEventId = this.isGeneratedSlotRecord(selectedRecord)
+      ? `${selectedRecord.parentEventId ?? ''}`.trim() || selectedRecord.id
+      : selectedRecord.id;
+    const parentRecord = preferredRecords.find(item => item.id === parentEventId && !this.isGeneratedSlotRecord(item))
+      ?? selectedRecord;
+    const viewerCoordinates = this.queryUserLocationCoordinates(userId);
+    const event = LocalActivityEventDetailsMapper.toDto(
+      this.withResolvedDistance(
+        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(parentRecord), table),
+        viewerCoordinates
+      )
+    );
+    const generatedSlots = preferredRecords
+      .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
+      .filter(record => !this.isTrashStatus(record))
+      .sort((left, right) => this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso));
+    const sourceRecords = generatedSlots.length > 0 ? generatedSlots : [selectedRecord];
+    const items = sourceRecords.flatMap(record => this.runtimeSubEventsForRecord(parentEventId, record));
+    return {
+      event,
+      items: items.sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt))
+    };
+  }
+
+  private runtimeSubEventsForRecord(
+    parentEventId: string,
+    record: ActivityEventRecord
+  ): ActivityEventSubEventRuntimeDTO[] {
+    const subEvents = this.cloneSubEvents(record.subEvents) ?? [];
+    return subEvents.map((item, index) => ({
+      ...item,
+      runtimeId: this.runtimeSubEventId(record, item, index),
+      parentEventId,
+      slotSourceId: this.isGeneratedSlotRecord(record) ? record.id : null,
+      slotTemplateId: record.slotTemplateId ?? null,
+      slotTitle: this.isGeneratedSlotRecord(record) ? record.title : null,
+      slotTimeframe: this.isGeneratedSlotRecord(record) ? record.timeframe : null
+    }));
+  }
+
+  private runtimeSubEventId(record: ActivityEventRecord, item: ContractTypes.SubEventDTO, index: number): string {
+    const subEventId = `${item.id ?? ''}`.trim() || `subevent-${index + 1}`;
+    const recordId = `${record.id ?? ''}`.trim() || 'event';
+    return `${recordId}:${subEventId}`;
   }
 
   peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
@@ -2223,6 +2283,10 @@ export class LocalEventsRepository {
     }
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private toDateMs(value: string | null | undefined): number {
+    return this.parseEventDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
   private slotOverrideDateKey(value: string | null | undefined): string | null {

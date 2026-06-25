@@ -13,19 +13,6 @@
         }
       </div>
       <div class="popup-header-mobile-status-row">
-        <button
-          class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
-          type="button" (click)="requestOpenMembers()">
-          <span class="event-editor-members-invite">
-            <mat-icon>groups</mat-icon>
-            <span>Members</span>
-          </span>
-          @if (eventEditorHeaderPendingMemberCount() > 0) {
-          <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge">
-            {{ eventEditorHeaderPendingMemberCount() | counterBadge }}
-          </span>
-          }
-        </button>
         <app-menu
           class="event-visibility-picker"
           kind="select"

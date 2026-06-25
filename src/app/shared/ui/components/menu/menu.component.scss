@@ -844,17 +844,34 @@
 
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
   flex: 0 0 auto;
-  min-width: 108px;
-  height: 40px;
-  min-height: 40px;
+  min-width: auto;
+  height: 36px;
+  min-height: 36px;
   border-color: var(--app-menu-action-border, transparent);
   border-radius: 999px;
-  padding: 0 18px;
+  padding: 0 0.76rem;
   background: var(--app-menu-action-bg, var(--app-menu-bg-strong));
   color: var(--app-menu-action-fg, #fff);
   font-size: 0.78rem;
   font-weight: 800;
   box-shadow: var(--app-menu-action-shadow, 0 10px 22px var(--app-menu-shadow));
+}
+
+.app-menu__button-row-item--action.app-menu__button-row-item--labelled .app-menu__counter--trigger {
+  position: absolute;
+  top: -0.55rem;
+  right: -0.5rem;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.32rem;
+  border-radius: 999px;
+  border: 1px solid #fff;
+  background: #e14454;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 8px 16px rgba(170, 31, 52, 0.24);
 }
 
 .app-menu__button-row-item--selected-value {

@@ -53,6 +53,7 @@ export interface IEventsService {
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
   loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null>;
+  loadSubEventsById(userId: string, eventId: string): Promise<ActivityEventSubEventsResultDTO | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
@@ -237,6 +238,20 @@ export interface ActivityEventDTO {
   pendingReason?: AppConstants.ActivityPendingReason;
   boost: number;
   subEventDefinitions?: SubEventDefinitionDTO[];
+}
+
+export interface ActivityEventSubEventRuntimeDTO extends EventContracts.SubEventDTO {
+  runtimeId: string;
+  parentEventId?: string | null;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  slotTitle?: string | null;
+  slotTimeframe?: string | null;
+}
+
+export interface ActivityEventSubEventsResultDTO {
+  event: ActivityEventDetailDTO;
+  items: ActivityEventSubEventRuntimeDTO[];
 }
 
 export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';

@@ -26,7 +26,8 @@ import type {
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
-  ActivityEventRecord
+  ActivityEventRecord,
+  ActivityEventSubEventsResultDTO
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
 import type { ListQuery, PageResult } from '../../../ui';
@@ -183,6 +184,15 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return null;
     }
     return this.eventsService.loadEventDetailById(normalizedUserId, normalizedEventId);
+  }
+
+  async loadSubEventsById(userId: string, eventId: string): Promise<ActivityEventSubEventsResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    return this.eventsService.loadSubEventsById(normalizedUserId, normalizedEventId);
   }
 
   trashItem(userId: string, sourceId: string): Promise<void> {
