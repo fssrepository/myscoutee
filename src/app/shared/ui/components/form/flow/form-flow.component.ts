@@ -33,13 +33,17 @@ import { EditableImageCarouselComponent } from '../../editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
+import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
+import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
 import type {
   FormFlowActionEvent,
   FormFlowControlModel,
   FormFlowDateControlConfig,
   FormFlowImageCarouselControlConfig,
+  FormFlowLocationControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
+  FormFlowPricingControlConfig,
   FormFlowSaveEvent,
   FormFlowStepModel
 } from './form-flow.types';
@@ -63,6 +67,8 @@ interface FormFlowSelectedMenuItem {
     MatIconModule,
     AppMenuComponent,
     DateInputComponent,
+    LocationInputComponent,
+    PricingEditorInputComponent,
     EditableImageCarouselComponent,
     ProgressIndicatorComponent,
     ImageCardComponent,
@@ -366,7 +372,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   protected updateDateControlValue(control: FormFlowControlModel, value: DateInputValue): void {
-    this.updateControlValue(control, typeof value === 'string' ? value : '');
+    this.updateControlValue(control, value);
   }
 
   protected isControlDisabled(control: FormFlowControlModel): boolean {
@@ -495,6 +501,11 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isDateControlConfig(control.config) ? control.config : {};
   }
 
+  protected dateControlValue(control: FormFlowControlModel): DateInputValue {
+    const value = this.controlValue(control);
+    return typeof value === 'string' || this.isDateRangeValue(value) ? value : null;
+  }
+
   protected dateInputModel(control: FormFlowControlModel): DateInputModel {
     const config = this.dateConfig(control);
     const model = config.model ?? {};
@@ -512,6 +523,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       meta: model.meta ?? config.meta ?? null,
       disabled: this.isControlDisabled(control) || model.disabled === true
     };
+  }
+
+  protected locationConfig(control: FormFlowControlModel): LocationInputConfig {
+    return this.isLocationControlConfig(control.config) ? control.config.model ?? {} : {};
+  }
+
+  protected pricingConfig(control: FormFlowControlModel): PricingEditorConfig {
+    return this.isPricingControlConfig(control.config) ? control.config.model ?? {} : {};
   }
 
   protected summaryTitle(): string {
@@ -1000,6 +1019,18 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   private isDateControlConfig(config: FormFlowControlModel['config']): config is FormFlowDateControlConfig {
     return this.isRecord(config) && ('meta' in config || 'model' in config);
+  }
+
+  private isLocationControlConfig(config: FormFlowControlModel['config']): config is FormFlowLocationControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
+  private isPricingControlConfig(config: FormFlowControlModel['config']): config is FormFlowPricingControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
+  private isDateRangeValue(value: unknown): value is Exclude<DateInputValue, string | null> {
+    return this.isRecord(value) && ('startAt' in value || 'endAt' in value);
   }
 
   private queueViewportSync(behavior: ScrollBehavior, targetIndex = this.visiblePageIndex()): void {

@@ -254,9 +254,25 @@
                       <app-date-input
                         class="form-flow__date-input"
                         [model]="dateInputModel(control)"
-                        [ngModel]="controlTextValue(control)"
+                        [ngModel]="dateControlValue(control)"
                         (ngModelChange)="updateDateControlValue(control, $event)"
                       ></app-date-input>
+                    } @else if (control.kind === 'location') {
+                      <app-location-input
+                        class="form-flow__location-input"
+                        [config]="locationConfig(control)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlTextValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-location-input>
+                    } @else if (control.kind === 'pricing') {
+                      <app-pricing-editor-input
+                        class="form-flow__pricing-input"
+                        [config]="pricingConfig(control)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-pricing-editor-input>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

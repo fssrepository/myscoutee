@@ -157,6 +157,10 @@ function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel
     return value.filter(item => formFlowHasRequiredValue(item)).length >= requiredCount;
   }
   if (isRecord(value)) {
+    if ('startAt' in value || 'endAt' in value) {
+      return `${value['startAt'] ?? ''}`.trim().length > 0
+        && `${value['endAt'] ?? ''}`.trim().length > 0;
+    }
     return Object.keys(value).length > 0;
   }
   return true;

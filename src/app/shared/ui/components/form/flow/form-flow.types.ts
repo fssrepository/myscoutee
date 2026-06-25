@@ -8,6 +8,8 @@ import type {
   AppMenuTrigger
 } from '../../menu';
 import type { DateInputMetaModel, DateInputModel } from '../inputs/date-input';
+import type { LocationInputConfig } from '../inputs/location-input';
+import type { PricingEditorConfig } from '../inputs/pricing-editor';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
 
 export interface FormFlowDraft<TData> {
@@ -23,8 +25,10 @@ export interface FormFlowDraft<TData> {
 export type FormFlowControlKind =
   | 'date'
   | 'image-carousel'
+  | 'location'
   | 'menu'
   | 'number'
+  | 'pricing'
   | 'review'
   | 'section'
   | 'static'
@@ -69,6 +73,14 @@ export interface FormFlowDateControlConfig {
   meta?: FormFlowDateMetaConfig | null;
 }
 
+export interface FormFlowLocationControlConfig {
+  model?: LocationInputConfig | null;
+}
+
+export interface FormFlowPricingControlConfig {
+  model?: PricingEditorConfig | null;
+}
+
 export interface FormFlowControlSummaryConfig {
   hidden?: boolean;
   label?: string;
@@ -108,7 +120,13 @@ export interface FormFlowControlModel {
   rows?: number;
   maxLength?: number;
   valueFormat?: 'csv';
-  config?: FormFlowMenuControlConfig | FormFlowImageCarouselControlConfig | FormFlowDateControlConfig | null;
+  config?:
+    | FormFlowMenuControlConfig
+    | FormFlowImageCarouselControlConfig
+    | FormFlowDateControlConfig
+    | FormFlowLocationControlConfig
+    | FormFlowPricingControlConfig
+    | null;
   accessory?: { menu?: FormFlowMenuControlConfig | null } | null;
   summary?: FormFlowControlSummaryConfig | null;
 }
