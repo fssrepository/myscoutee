@@ -91,6 +91,22 @@ export interface SmartListStateChange<T, TFilters extends SmartListFilters = Sma
   cursorCanNext: boolean;
 }
 
+export interface SmartListHeaderAction<TFilters extends SmartListFilters = SmartListFilters> {
+  id: string;
+  icon: string;
+  label?: string | null;
+  ariaLabel?: string | null;
+  className?: SmartListClassValue;
+  hidden?: SmartListConfigValue<boolean, TFilters>;
+  disabled?: SmartListConfigValue<boolean, TFilters>;
+}
+
+export interface SmartListHeaderActionSelectEvent<TFilters extends SmartListFilters = SmartListFilters> {
+  action: SmartListHeaderAction<TFilters>;
+  query: ListQuery<TFilters>;
+  sourceEvent: Event;
+}
+
 export interface SmartListCursorState<T> {
   index: number;
   total: number;
@@ -265,6 +281,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   calendar?: SmartListCalendarConfig<T, TFilters>;
   containerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
   stickyHeaderClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
+  stickyHeaderActions?: SmartListConfigValue<readonly SmartListHeaderAction<TFilters>[], TFilters>;
   groupMarkerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
   footerSpacerHeight?: SmartListConfigValue<string | null, TFilters>;
   calendarVariant?: SmartListConfigValue<SmartListCalendarVariant, TFilters>;

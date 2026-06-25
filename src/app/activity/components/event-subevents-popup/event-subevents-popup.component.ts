@@ -2150,27 +2150,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       .filter(row => row.memberId);
   }
 
-  protected finalTournamentResultsStage(): EventSubeventsStageCard | null {
-    if (this.mode !== 'Tournament' || this.stageCards.length === 0) {
-      return null;
-    }
-    const finalStage = this.stageCards[this.stageCards.length - 1] ?? null;
-    return finalStage?.status === 'F' ? finalStage : null;
-  }
-
-  protected canOpenTournamentResults(): boolean {
-    return this.finalTournamentResultsStage() !== null;
-  }
-
-  protected openTournamentResults(event: Event): void {
-    event.stopPropagation();
-    const finalStage = this.finalTournamentResultsStage();
-    if (!finalStage) {
-      return;
-    }
-    this.openLeaderboardPopup(finalStage, event, true);
-  }
-
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
     return row.key;
   }

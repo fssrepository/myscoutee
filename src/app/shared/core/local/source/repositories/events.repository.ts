@@ -406,10 +406,13 @@ export class LocalEventsRepository {
       .filter(record => !this.isTrashStatus(record))
       .filter(record => this.generatedSlotFitsParentRange(record, parentRecord))
       .sort((left, right) => this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso));
+    const nowMs = Date.now();
     const generatedSlots = allGeneratedSlots
+      .filter(record => this.recordMatchesSubEventsOrder(record, query, nowMs))
       .filter(record => this.recordOverlapsSubEventsQueryRange(record, query));
     const fallbackRecords = !this.isGeneratedSlotRecord(selectedRecord)
       && allGeneratedSlots.length === 0
+      && this.recordMatchesSubEventsOrder(selectedRecord, query, nowMs)
       && this.generatedSlotFitsParentRange(selectedRecord, parentRecord)
       && this.recordOverlapsSubEventsQueryRange(selectedRecord, query)
       ? [selectedRecord]
@@ -423,6 +426,19 @@ export class LocalEventsRepository {
     };
   }
 
+  private recordMatchesSubEventsOrder(
+    record: ActivityEventRecord,
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
+  ): boolean {
+    const recordEnd = this.subEventsRecordEndMs(record);
+    if (!Number.isFinite(recordEnd) || recordEnd <= 0) {
+      return false;
+    }
+    const isPast = recordEnd < nowMs;
+    return query?.order === 'past' ? isPast : !isPast;
+  }
+
   private recordOverlapsSubEventsQueryRange(
     record: ActivityEventRecord,
     query: ActivityEventSubEventsQueryDTO | null | undefined
@@ -432,8 +448,8 @@ export class LocalEventsRepository {
     if (rangeStart === null && rangeEnd === null) {
       return true;
     }
-    const recordStart = this.toDateMs(record.startAtIso);
-    const recordEnd = this.toDateMs(record.endAtIso) || recordStart;
+    const recordStart = this.subEventsRecordStartMs(record);
+    const recordEnd = this.subEventsRecordEndMs(record);
     if (rangeStart !== null && recordEnd < rangeStart) {
       return false;
     }
@@ -441,6 +457,16 @@ export class LocalEventsRepository {
       return false;
     }
     return true;
+  }
+
+  private subEventsRecordStartMs(record: ActivityEventRecord): number {
+    return this.toDateMs(record.startAtIso);
+  }
+
+  private subEventsRecordEndMs(record: ActivityEventRecord): number {
+    const start = this.subEventsRecordStartMs(record);
+    const end = this.toDateMs(record.endAtIso);
+    return Number.isFinite(end) && end > 0 ? end : start;
   }
 
   private subEventsQueryRangeStartMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {

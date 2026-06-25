@@ -61,8 +61,24 @@
         @if (shouldRenderListHeaderOutsideScroll()) {
           <div class="smart-list__sticky smart-list__sticky--list-header" [ngClass]="resolvedStickyHeaderClass()">
             <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
-            @if (shouldRenderStickyPaginationActions()) {
+            @if (shouldRenderStickyActions()) {
               <span class="smart-list__sticky-actions">
+                @for (action of resolvedStickyHeaderActions(); track action.id) {
+                  <button
+                    type="button"
+                    class="smart-list__sticky-action-btn"
+                    [ngClass]="stickyHeaderActionClass(action)"
+                    [disabled]="isStickyHeaderActionDisabled(action)"
+                    (click)="onStickyHeaderActionSelect(action, $event)"
+                    [attr.aria-label]="action.ariaLabel || action.label || action.id"
+                  >
+                    <mat-icon>{{ action.icon }}</mat-icon>
+                    @if (action.label) {
+                      <span class="smart-list__sticky-action-label">{{ action.label }}</span>
+                    }
+                  </button>
+                }
+                @if (shouldRenderStickyPaginationActions()) {
                 <button
                   type="button"
                   class="smart-list__sticky-action-btn"
@@ -81,6 +97,7 @@
                 >
                   <mat-icon>chevron_right</mat-icon>
                 </button>
+                }
               </span>
             }
           </div>
@@ -123,8 +140,24 @@
               [ngClass]="resolvedStickyHeaderClass()"
             >
               <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
-              @if (shouldRenderStickyPaginationActions()) {
+              @if (shouldRenderStickyActions()) {
                 <span class="smart-list__sticky-actions">
+                  @for (action of resolvedStickyHeaderActions(); track action.id) {
+                    <button
+                      type="button"
+                      class="smart-list__sticky-action-btn"
+                      [ngClass]="stickyHeaderActionClass(action)"
+                      [disabled]="isStickyHeaderActionDisabled(action)"
+                      (click)="onStickyHeaderActionSelect(action, $event)"
+                      [attr.aria-label]="action.ariaLabel || action.label || action.id"
+                    >
+                      <mat-icon>{{ action.icon }}</mat-icon>
+                      @if (action.label) {
+                        <span class="smart-list__sticky-action-label">{{ action.label }}</span>
+                      }
+                    </button>
+                  }
+                  @if (shouldRenderStickyPaginationActions()) {
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
@@ -143,6 +176,7 @@
                   >
                     <mat-icon>chevron_right</mat-icon>
                   </button>
+                  }
                 </span>
               }
             </div>

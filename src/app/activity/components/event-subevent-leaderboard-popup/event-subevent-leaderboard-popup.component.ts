@@ -11,6 +11,16 @@ import {
 
 export type EventSubeventLeaderboardMode = 'Score' | 'Fifa';
 
+export interface EventSubeventLeaderboardPopupModel {
+  open: boolean;
+  title: string;
+  subtitle: string;
+  readOnly: boolean;
+  mode: EventSubeventLeaderboardMode;
+  groups: readonly EventSubeventLeaderboardGroup[];
+  resultsMode: boolean;
+}
+
 type EventSubeventLeaderboardMemberMenu =
   | 'score-member'
   | 'home-member'
@@ -99,6 +109,8 @@ export interface EventSubeventLeaderboardFifaRow {
   styleUrls: ['./event-subevent-leaderboard-popup.component.scss']
 })
 export class EventSubeventLeaderboardPopupComponent implements OnChanges {
+  private _model: EventSubeventLeaderboardPopupModel | null = null;
+
   @Input() open = false;
   @Input() title = 'Leaderboard';
   @Input() subtitle = 'Stage standings and results';
@@ -106,6 +118,34 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   @Input() mode: EventSubeventLeaderboardMode = 'Score';
   @Input() groups: readonly EventSubeventLeaderboardGroup[] = [];
   @Input() resultsMode = false;
+  @Input()
+  set model(value: EventSubeventLeaderboardPopupModel | null | undefined) {
+    this._model = value ?? null;
+    if (!value) {
+      return;
+    }
+
+    const previousOpen = this.open;
+    const previousMode = this.mode;
+    const previousGroups = this.groups;
+
+    this.open = value.open === true;
+    this.title = value.title || 'Leaderboard';
+    this.subtitle = value.subtitle || '';
+    this.readOnly = value.readOnly === true;
+    this.mode = value.mode === 'Fifa' ? 'Fifa' : 'Score';
+    this.groups = value.groups ?? [];
+    this.resultsMode = value.resultsMode === true;
+
+    const groupsChanged = previousGroups !== this.groups;
+    const openChanged = previousOpen !== this.open;
+    const modeChanged = previousMode !== this.mode;
+    this.syncInputState(groupsChanged, openChanged, modeChanged);
+  }
+
+  get model(): EventSubeventLeaderboardPopupModel | null {
+    return this._model;
+  }
 
   @Output() readonly close = new EventEmitter<Event>();
 
@@ -120,22 +160,7 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   private readonly detailMemberByGroupKey: Record<string, string | null> = {};
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['groups']) {
-      this.syncGroupsState();
-    }
-
-    if (changes['open']) {
-      if (this.open) {
-        this.resetGroupVisibilityToFirst();
-      } else {
-        this.showEntryForm = false;
-        this.editingGroupKey = null;
-      }
-    }
-
-    if ((changes['open'] || changes['mode']) && this.showEntryForm) {
-      this.syncEntryFormForCurrentGroup();
-    }
+    this.syncInputState(Boolean(changes['groups']), Boolean(changes['open']), Boolean(changes['mode']));
   }
 
   protected get resolvedGroups(): readonly EventSubeventLeaderboardGroup[] {
@@ -662,6 +687,25 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
     this.form.homeScore = null;
     this.form.awayScore = null;
     this.form.note = '';
+  }
+
+  private syncInputState(groupsChanged: boolean, openChanged: boolean, modeChanged: boolean): void {
+    if (groupsChanged) {
+      this.syncGroupsState();
+    }
+
+    if (openChanged) {
+      if (this.open) {
+        this.resetGroupVisibilityToFirst();
+      } else {
+        this.showEntryForm = false;
+        this.editingGroupKey = null;
+      }
+    }
+
+    if ((openChanged || modeChanged) && this.showEntryForm) {
+      this.syncEntryFormForCurrentGroup();
+    }
   }
 
   private syncGroupsState(): void {
