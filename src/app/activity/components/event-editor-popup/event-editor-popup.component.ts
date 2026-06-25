@@ -556,7 +556,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         layout: 'big',
         active: this.eventDetailDTO.autoInviter,
         checked: this.eventDetailDTO.autoInviter,
-        palette: this.eventDetailDTO.autoInviter ? 'green' : 'slate',
+        palette: this.eventDetailDTO.autoInviter ? 'cyan' : 'slate',
         disabled: this.eventEditorService.readOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-auto-inviter' }
@@ -570,7 +570,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         layout: 'big',
         active: this.eventDetailDTO.ticketing,
         checked: this.eventDetailDTO.ticketing,
-        palette: this.eventDetailDTO.ticketing ? 'green' : 'blue',
+        palette: this.eventDetailDTO.ticketing ? 'gold' : 'blue',
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-ticketing' }

@@ -68,12 +68,12 @@
       <section class="editor-list-card">
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDetailDTO.visibility)">
           <div class="experience-form-grid">
-            <label class="experience-description-field event-image-field">
-              <span>Image</span>
+            <div class="experience-description-field event-image-field">
               <app-editable-image-carousel
                 class="event-image-carousel"
                 [slotCount]="1"
                 [compact]="true"
+                [autoSize]="true"
                 ariaLabel="Event image"
                 [disabled]="eventEditorService.readOnly()"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
@@ -81,7 +81,7 @@
                 [ngModel]="eventImageUrls()"
                 (ngModelChange)="onEventImageUrlsChange($event)"
               ></app-editable-image-carousel>
-            </label>
+            </div>
             <label class="experience-title-field">
               <span>Name <span class="required-star">*</span></span>
               <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventEditorService.readOnly()"
@@ -100,6 +100,13 @@
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" placeholder="Max" />
               </div>
             </label>
+            <app-location-input
+              class="experience-description-field event-location-field"
+              [ngModel]="eventDetailDTO.location"
+              (ngModelChange)="onEventLocationChange($event)"
+              [config]="eventLocationInputConfig"
+              [readOnly]="eventEditorService.readOnly()"
+            ></app-location-input>
             <div class="event-intel-row">
               <app-menu
                 class="event-intel-menu"
@@ -144,13 +151,6 @@
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
               [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
-            <app-location-input
-              class="experience-description-field event-location-field"
-              [ngModel]="eventDetailDTO.location"
-              (ngModelChange)="onEventLocationChange($event)"
-              [config]="eventLocationInputConfig"
-              [readOnly]="eventEditorService.readOnly()"
-            ></app-location-input>
             <app-event-subevents-input
               [open]="showSubEventsPopup"
               (openChange)="showSubEventsPopup = $event"

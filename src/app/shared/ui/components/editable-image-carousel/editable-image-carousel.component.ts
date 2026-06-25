@@ -43,6 +43,7 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
   @Input() slotCount = 8;
   @Input() disabled = false;
   @Input() compact = false;
+  @Input() autoSize = false;
   @Input() previewMode = false;
   @Input() ariaLabel = 'Image slots';
   @Input() uploadOwnerId = '';
@@ -64,6 +65,11 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
   @HostBinding('class.editable-image-carousel-host--compact')
   protected get compactClass(): boolean {
     return this.compact;
+  }
+
+  @HostBinding('class.editable-image-carousel-host--auto-size')
+  protected get autoSizeClass(): boolean {
+    return this.autoSize;
   }
 
   @HostBinding('class.editable-image-carousel-host--preview')

@@ -453,7 +453,7 @@
 
 .experience-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(360px, 460px) minmax(0, 1fr);
   max-width: none;
   width: 100%;
   margin: 0;
@@ -517,6 +517,32 @@
   grid-column: 1 / -1;
 }
 
+.event-image-field {
+  grid-column: 1 / 2;
+  grid-row: 1 / span 3;
+  align-self: start;
+}
+
+.event-image-carousel {
+  --editable-image-single-slot-aspect-ratio: 12 / 5;
+}
+
+.experience-title-field {
+  grid-column: 2 / 3;
+  grid-row: 1;
+}
+
+.event-capacity-range-field {
+  grid-column: 2 / 3;
+  grid-row: 2;
+  width: 100%;
+}
+
+.event-location-field {
+  grid-column: 2 / 3;
+  grid-row: 3;
+}
+
 .asset-image-dropzone {
   border: 0;
   background: transparent;
@@ -551,11 +577,6 @@
   line-height: 1;
 }
 
-.event-capacity-range-field {
-  width: 100%;
-  grid-column: 2 / 3;
-}
-
 .subevent-capacity-range {
   display: flex;
   align-items: center;
@@ -580,6 +601,7 @@
 .event-intel-row {
   grid-column: 1 / -1;
   width: 100%;
+  margin-top: 0.42rem;
 }
 
 .event-intel-menu {
@@ -1092,10 +1114,6 @@ button.event-slots-enable-btn:disabled {
   gap: 0.5rem;
 }
 
-.event-location-field {
-  grid-column: 1 / -1;
-}
-
 .asset-route-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
@@ -1353,6 +1371,13 @@ button.event-slots-enable-btn:disabled {
 
   .event-capacity-range-field {
     grid-column: 1 / -1;
+  }
+
+  .event-image-field,
+  .experience-title-field,
+  .event-location-field {
+    grid-column: 1 / -1;
+    grid-row: auto;
   }
 
   .event-schedule-panel {
