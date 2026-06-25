@@ -14,6 +14,7 @@
 }
 
 .ui-info-card {
+  --ui-info-card-accent-hue: 210;
   position: relative;
   display: grid;
   flex: 1 1 auto;
@@ -96,6 +97,14 @@ button.asset-occupancy-badge:active::after,
   border-color: rgba(96, 108, 136, 0.34);
   background: linear-gradient(180deg, #fafbff 0%, #f0f3fb 100%);
   box-shadow: 0 8px 18px rgba(74, 88, 118, 0.08);
+}
+
+.ui-info-card--tone-stage {
+  border-color: hsl(var(--ui-info-card-accent-hue) 54% 58% / 0.52);
+  background:
+    radial-gradient(circle at 10% 4%, hsl(var(--ui-info-card-accent-hue) 90% 98% / 0.86), transparent 36%),
+    linear-gradient(180deg, hsl(var(--ui-info-card-accent-hue) 82% 97%) 0%, hsl(var(--ui-info-card-accent-hue) 64% 92%) 100%);
+  box-shadow: 0 8px 18px hsl(var(--ui-info-card-accent-hue) 42% 36% / 0.12);
 }
 
 .ui-info-card--tone-published {
@@ -188,6 +197,17 @@ button.asset-occupancy-badge:active::after,
   background:
     radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.78), transparent 32%),
     linear-gradient(135deg, #f4f6fb 0%, #e3e8f2 58%, #eef2f8 100%);
+}
+
+.ui-info-card--tone-stage .ui-info-card__media--title.ui-info-card__media--tone-neutral {
+  border-color: hsl(var(--ui-info-card-accent-hue) 48% 58% / 0.36);
+  background:
+    radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.78), transparent 32%),
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, hsl(var(--ui-info-card-accent-hue) 76% 54%) 14%, #ffffff 86%) 0%,
+      color-mix(in srgb, hsl(var(--ui-info-card-accent-hue) 76% 54%) 10%, #f5f9ff 90%) 100%
+    );
 }
 
 .ui-info-card__media-title-content {
@@ -769,6 +789,20 @@ button.ui-info-card__overlay-action {
   box-shadow:
     0 5px 10px rgba(72, 24, 24, 0.34),
     inset 0 0 0 1px rgba(111, 38, 38, 0.6);
+}
+
+.ui-info-card__overlay-action--tone-stage.ui-info-card__overlay-action--badge {
+  border-color: rgba(255, 255, 255, 0.9);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--ui-info-card-accent-hue) 76% 54%) 0%,
+    hsl(var(--ui-info-card-accent-hue) 72% 42%) 100%
+  );
+  color: #ffffff;
+  text-shadow: 0 1px 1px hsl(var(--ui-info-card-accent-hue) 70% 22% / 0.3);
+  box-shadow:
+    0 7px 16px hsl(var(--ui-info-card-accent-hue) 52% 34% / 0.34),
+    inset 0 0 0 1px hsl(var(--ui-info-card-accent-hue) 70% 34% / 0.54);
 }
 
 .ui-info-card__overlay-action--tone-public.ui-info-card__overlay-action--badge {

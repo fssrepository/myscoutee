@@ -6,6 +6,7 @@ export type CardBadgeLayout = 'floating' | 'between' | 'pair-overlap';
 export type InfoCardSurfaceTone =
   | 'default'
   | 'draft'
+  | 'stage'
   | 'full'
   | 'pending'
   | 'published'
@@ -20,6 +21,7 @@ export type InfoCardOverlayLayout = 'default' | 'avatar-metric' | 'badge-with-le
 export type InfoCardOverlayShape = 'default' | 'circle';
 export type InfoCardOverlayTone =
   | 'default'
+  | 'stage'
   | 'full'
   | 'inactive'
   | 'selected'
@@ -292,6 +294,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   i18nIgnoreContent?: boolean;
   footerChips?: readonly InfoCardFooterChip[];
   surfaceTone?: InfoCardSurfaceTone | null;
+  accentHue?: number | null;
   leadingIcon?: InfoCardLeadingIconConfig | null;
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;

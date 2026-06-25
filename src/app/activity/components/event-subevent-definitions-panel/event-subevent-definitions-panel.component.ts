@@ -147,7 +147,11 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
     const capacityLabel = `${item.capacityMin} - ${item.capacityMax}`;
-    const sequenceLabel = this.mode === 'Tournament' ? `Stage ${index + 1}` : `Sub Event ${index + 1}`;
+    const isTournament = this.mode === 'Tournament';
+    const stageNumber = index + 1;
+    const totalStages = Math.max(this.definitions.length, 1);
+    const accentHue = isTournament ? this.stageAccentHue(stageNumber, totalStages) : null;
+    const sequenceLabel = isTournament ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
     return {
       id: item.id,
@@ -156,16 +160,17 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       mediaTone: 'neutral',
       mediaTitle: sequenceLabel,
       mediaSubtitle: this.mode,
-      mediaIcon: item.icon || (this.mode === 'Tournament' ? 'emoji_events' : 'inventory_2'),
+      mediaIcon: item.icon || (isTournament ? 'emoji_events' : 'inventory_2'),
       metaRows: [
         `Capacity ${capacityLabel}`
       ],
       description: item.description || 'No description',
       descriptionLines: 2,
-      surfaceTone: 'draft',
+      surfaceTone: isTournament ? 'stage' : 'draft',
+      accentHue,
       leadingIcon: {
-        icon: status.icon,
-        tone: status.leadingTone
+        icon: isTournament ? 'emoji_events' : status.icon,
+        tone: isTournament ? 'pending' : status.leadingTone
       },
       mediaStart: {
         variant: 'avatar',
@@ -175,11 +180,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       },
       mediaEnd: {
         variant: 'badge',
-        layout: 'badge-with-leading-accessory',
-        tone: status.overlayTone,
-        label: status.label,
+        layout: isTournament ? 'default' : 'badge-with-leading-accessory',
+        tone: isTournament ? 'stage' : status.overlayTone,
+        label: isTournament ? sequenceLabel : status.label,
+        icon: isTournament ? 'emoji_events' : undefined,
         interactive: false,
-        leadingAccessory: {
+        leadingAccessory: isTournament ? null : {
           icon: status.icon,
           tone: status.accessoryTone
         }
@@ -211,6 +217,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       leadingTone: 'invitation',
       accessoryTone: 'negative'
     };
+  }
+
+  private stageAccentHue(stageNumber: number, totalStages: number): number {
+    if (totalStages <= 1) {
+      return 210;
+    }
+    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
+    return Math.round(210 - (210 * ratio));
   }
 
   protected definitionMenuContext(item: SubEventDefinitionDTO): Record<string, unknown> {

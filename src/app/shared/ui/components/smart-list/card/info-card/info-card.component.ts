@@ -550,6 +550,11 @@ export class InfoCardComponent implements OnDestroy {
     return classes;
   }
 
+  protected cardAccentHue(): string | null {
+    const hue = Math.trunc(Number(this.card?.accentHue));
+    return Number.isFinite(hue) ? `${AppUtils.clampNumber(hue, 0, 360)}` : null;
+  }
+
   private syncMobileViewFromViewport(): void {
     if (typeof window === 'undefined') {
       this.isMobileView = false;
