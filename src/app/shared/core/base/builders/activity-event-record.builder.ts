@@ -23,11 +23,6 @@ export class ActivityEventRecordBuilder {
       topics: [...(record.topics ?? [])],
       subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
         ...item,
-        dateRange: {
-          startAt: `${item.dateRange?.startAt ?? ''}`.trim(),
-          endAt: `${item.dateRange?.endAt ?? ''}`.trim(),
-          precision: item.dateRange?.precision === 'date' ? 'date' : 'minute'
-        },
         groups: (item.groups ?? []).map(group => ({ ...group })),
         pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
       })),

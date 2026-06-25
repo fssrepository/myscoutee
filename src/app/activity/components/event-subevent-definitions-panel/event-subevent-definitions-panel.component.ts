@@ -162,6 +162,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       mediaSubtitle: this.mode,
       mediaIcon: item.icon || (isTournament ? 'emoji_events' : 'inventory_2'),
       metaRows: [
+        `Duration ${this.durationLabel(item.durationMinutes)}`,
         `Capacity ${capacityLabel}`
       ],
       description: item.description || 'No description',
@@ -318,21 +319,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       timingSummaryTitle: timingBounds ? 'Main event range' : 'Definition',
       timingSummaryText: '',
       timingSummaryMeta,
-      dateInput: {
-        mode: 'range',
-        precision: 'minute',
-        range: {
-          start: { label: 'Start' },
-          end: { label: 'End' },
-          bounds: timingBounds
-            ? {
-              start: timingBounds.startAt,
-              end: timingBounds.endAt
-            }
-            : null
-        },
-        readOnly: !this.canEdit()
-      },
+      timingInputMode: 'duration',
       showInsertControls: state?.index === null && insertOptions.length > 0,
       insertFieldLabel: isTournament ? 'Insert Stage' : 'Insert Sub Event',
       insertPlacement: state?.insertPlacement ?? 'after',
@@ -466,7 +453,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   private createDefinitionFormModel(item: SubEventDefinitionDTO | null, _fallbackIndex: number): EventSubeventStageFormModel {
-    const range = this.defaultDefinitionRange(item);
     const groupCapacityMin = this.optionalNonNegativeInteger(item?.tournamentGroupCapacityMin) ?? 0;
     const groupCapacityMax = Math.max(groupCapacityMin, this.optionalNonNegativeInteger(item?.tournamentGroupCapacityMax) ?? groupCapacityMin);
     const optional = this.mode === 'Tournament' ? false : item?.optional ?? true;
@@ -474,7 +460,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       name: item?.name?.trim() ?? '',
       description: item?.description?.trim() ?? '',
       location: item?.location?.trim() ?? '',
-      dateRange: range,
+      durationMinutes: this.toPositiveInteger(item?.durationMinutes ?? 60),
       optional,
       pricing: item?.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: this.toNonNegativeInteger(item?.capacityMin ?? 0),
@@ -496,7 +482,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       id: state.id,
       name: model.name,
       description: model.description,
-      dateRange: ActivityEventDetailDTO.normalizeDateRange(model.dateRange),
+      durationMinutes: this.toPositiveInteger(model.durationMinutes),
       location: `${model.location ?? ''}`.trim(),
       groups: state.groups.map(group => ({ ...group })),
       tournamentGroupCount: this.optionalNonNegativeInteger(model.tournamentGroupCount),
@@ -568,24 +554,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   private canSaveDefinitionForm(model: EventSubeventStageFormModel): boolean {
-    return this.hasText(model.name) && this.hasText(model.description);
-  }
-
-  private defaultDefinitionRange(item: SubEventDefinitionDTO | null): DateRangeDto {
-    const timingBounds = this.definitionTimingBounds();
-    const fallbackStart = timingBounds ? this.parseDate(timingBounds.startAt) ?? new Date() : new Date();
-    const parsedStart = this.parseDate(item?.dateRange?.startAt) ?? fallbackStart;
-    const parsedEndRaw = this.parseDate(item?.dateRange?.endAt)
-      ?? (timingBounds ? this.parseDate(timingBounds.endAt) : null)
-      ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
-    const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
-      ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
-      : parsedEndRaw;
-    return {
-      startAt: AppUtils.toIsoDateTimeLocal(parsedStart),
-      endAt: AppUtils.toIsoDateTimeLocal(parsedEnd),
-      precision: 'minute'
-    };
+    return this.hasText(model.name)
+      && this.hasText(model.description)
+      && this.toPositiveInteger(model.durationMinutes) > 0;
   }
 
   private tournamentEstimatedGroupCountLabel(model: EventSubeventStageFormModel): string {
@@ -659,5 +630,23 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private toNonNegativeInteger(value: number | string): number {
     const parsed = Math.trunc(Number(value));
     return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
+  private toPositiveInteger(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(1, parsed) : 60;
+  }
+
+  private durationLabel(totalMinutes: number): string {
+    const safeMinutes = this.toPositiveInteger(totalMinutes);
+    const hours = Math.floor(safeMinutes / 60);
+    const minutes = safeMinutes % 60;
+    if (hours <= 0) {
+      return `${minutes}m`;
+    }
+    if (minutes <= 0) {
+      return `${hours}h`;
+    }
+    return `${hours}h ${minutes}m`;
   }
 }

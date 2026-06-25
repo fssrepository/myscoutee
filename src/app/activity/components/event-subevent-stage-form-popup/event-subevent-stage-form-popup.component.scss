@@ -346,6 +346,24 @@
   width: 100%;
 }
 
+.subevent-duration-field {
+  grid-column: 1 / -1;
+  width: min(240px, 100%);
+}
+
+.subevent-duration-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.subevent-duration-control span {
+  color: rgba(31, 56, 89, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .subevent-capacity-range {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

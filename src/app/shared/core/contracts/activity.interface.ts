@@ -242,7 +242,7 @@ export interface SubEventDefinitionDTO {
   id: string;
   name: string;
   description: string;
-  dateRange: DateRangeDto;
+  durationMinutes: number;
   location?: string;
   groups?: EventContracts.SubEventGroupDTO[];
   tournamentGroupCount?: number;
@@ -482,11 +482,12 @@ export class ActivityEventDetailDTO {
     return items.map((item, index) => {
       const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
       const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
+      const durationMinutes = Math.max(1, ActivityEventDetailDTO.nonNegativeInteger(item.durationMinutes) || 60);
       return {
         id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
         name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
         description: `${item.description ?? ''}`.trim(),
-        dateRange: ActivityEventDetailDTO.normalizeDateRange(item.dateRange),
+        durationMinutes,
         location: ActivityEventDetailDTO.normalizeLocation(item.location),
         groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
         tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),

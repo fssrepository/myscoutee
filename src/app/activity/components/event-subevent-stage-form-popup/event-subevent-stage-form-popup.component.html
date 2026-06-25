@@ -119,11 +119,27 @@
             <span>Description <span class="required-star">*</span></span>
             <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="fieldInvalid('description')" placeholder="Describe this stage"></textarea>
           </label>
-          <app-date-input
-            class="experience-description-field subevent-date-input"
-            [model]="view.dateInput"
-            [(ngModel)]="model.dateRange"
-          ></app-date-input>
+          @if (usesDurationInput()) {
+            <label class="subevent-duration-field">
+              <span>Duration <span class="required-star">*</span></span>
+              <div class="subevent-duration-control">
+                <input
+                  type="number"
+                  min="1"
+                  step="5"
+                  [(ngModel)]="model.durationMinutes"
+                  placeholder="60"
+                  />
+                <span>minutes</span>
+              </div>
+            </label>
+          } @else {
+            <app-date-input
+              class="experience-description-field subevent-date-input"
+              [model]="view.dateInput ?? null"
+              [(ngModel)]="model.dateRange"
+            ></app-date-input>
+          }
           <app-location-input
             class="experience-description-field subevent-location-field"
             [(ngModel)]="model.location"

@@ -5,7 +5,6 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { AppUtils } from '../../../shared/app-utils';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
@@ -24,6 +23,7 @@ import {
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
 export type EventSubeventStageInsertPlacement = 'before' | 'after';
 export type EventSubeventTournamentLeaderboardType = 'Score' | 'Fifa';
+export type EventSubeventStageTimingInputMode = 'range' | 'duration';
 
 type EventSubeventStageFormMenuContext =
   | { menu: 'optional'; optional: boolean }
@@ -45,7 +45,8 @@ export interface EventSubeventStageFormPopupView {
   timingSummaryTitle: string;
   timingSummaryText: string;
   timingSummaryMeta: string;
-  dateInput: DateInputModel;
+  timingInputMode?: EventSubeventStageTimingInputMode;
+  dateInput?: DateInputModel;
   showInsertControls: boolean;
   insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
@@ -63,7 +64,8 @@ export interface EventSubeventStageFormModel {
   name: string;
   description: string;
   location: string;
-  dateRange: ContractTypes.DateRangeDto;
+  dateRange?: ContractTypes.DateRangeDto;
+  durationMinutes?: number;
   optional: boolean;
   pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
@@ -99,6 +101,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     description: '',
     location: '',
     dateRange: { startAt: '', endAt: '', precision: 'minute' },
+    durationMinutes: 60,
     optional: false,
     pricing: null,
     capacityMin: 0,
@@ -131,6 +134,10 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   };
 
   ngOnChanges(): void {
+    if (this.usesDurationInput()) {
+      this.normalizeDuration();
+      return;
+    }
     this.normalizeDateRange();
   }
 
@@ -142,8 +149,9 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return !this.view.readOnly
       && this.hasText(this.model.name)
       && this.hasText(this.model.description)
-      && this.hasText(this.model.dateRange.startAt)
-      && this.hasText(this.model.dateRange.endAt);
+      && (this.usesDurationInput()
+        ? this.positiveInteger(this.model.durationMinutes) > 0
+        : this.hasText(this.model.dateRange?.startAt) && this.hasText(this.model.dateRange?.endAt));
   }
 
   protected fieldInvalid(field: 'name' | 'description'): boolean {
@@ -262,16 +270,30 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return option === 'Fifa' ? 'orange' : 'blue';
   }
 
+  protected usesDurationInput(): boolean {
+    return this.view.timingInputMode === 'duration';
+  }
+
+  private normalizeDuration(): void {
+    this.model.durationMinutes = this.positiveInteger(this.model.durationMinutes) || 60;
+  }
+
+  private positiveInteger(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  }
+
   private normalizeDateRange(): void {
-    const boundStart = this.parseDateTime(this.view.dateInput.range?.bounds?.start);
-    const boundEnd = this.parseDateTime(this.view.dateInput.range?.bounds?.end);
+    const boundStart = this.parseDateTime(this.view.dateInput?.range?.bounds?.start);
+    const boundEnd = this.parseDateTime(this.view.dateInput?.range?.bounds?.end);
     const defaultStart = boundStart ?? new Date();
     const defaultDurationMs = boundStart && boundEnd && boundEnd.getTime() > boundStart.getTime()
       ? Math.max(15 * 60 * 1000, Math.min(60 * 60 * 1000, boundEnd.getTime() - boundStart.getTime()))
       : (60 * 60 * 1000);
 
-    let start = this.parseDateTime(this.model.dateRange.startAt) ?? new Date(defaultStart.getTime());
-    let safeEnd = this.parseDateTime(this.model.dateRange.endAt);
+    const currentRange = this.model.dateRange ?? { startAt: '', endAt: '', precision: 'minute' as const };
+    let start = this.parseDateTime(currentRange.startAt) ?? new Date(defaultStart.getTime());
+    let safeEnd = this.parseDateTime(currentRange.endAt);
     if (!safeEnd || safeEnd.getTime() <= start.getTime()) {
       safeEnd = new Date(start.getTime() + defaultDurationMs);
     }
@@ -322,6 +344,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       timingSummaryTitle: '',
       timingSummaryText: '',
       timingSummaryMeta: '',
+      timingInputMode: 'range',
       dateInput: {
         mode: 'range',
         precision: 'minute',
@@ -351,7 +374,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       return null;
     }
 
-    // Handle dd/mm/yyyy, hh:mm formats produced by older local state.
     const legacyPattern = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})$/);
     if (legacyPattern) {
       const day = Number.parseInt(legacyPattern[1] ?? '', 10);
