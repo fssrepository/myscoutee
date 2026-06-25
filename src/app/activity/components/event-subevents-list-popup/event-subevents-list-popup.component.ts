@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { AppUtils } from '../../../shared/app-utils';
 import {
@@ -67,6 +67,9 @@ export class EventSubeventsListPopupComponent {
 
   private revision = 0;
   private lastLoadedEventId = '';
+  private loadedEventId = '';
+  private loadingEventId = '';
+  private loadingPromise: Promise<void> | null = null;
 
   protected readonly smartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
     pageSize: 24,
@@ -78,21 +81,14 @@ export class EventSubeventsListPopupComponent {
     desktopColumns: 3,
     mobileStepper: true,
     pagination: { mode: 'arrows' },
+    headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
     groupBy: (item, query) => this.groupLabel(item, query.view as EventSubeventsListView),
     showGroupMarker: ({ group }) => Boolean(group.label),
     trackBy: (_index, item) => item.runtimeId
   };
 
   protected readonly loadSubEventsPage: SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = query => {
-    const sorted = this.sortedItems();
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
-    const start = page * pageSize;
-    return of({
-      items: sorted.slice(start, start + pageSize),
-      total: sorted.length,
-      nextCursor: start + pageSize < sorted.length ? `${page + 1}` : null
-    } satisfies PageResult<ActivityEventSubEventRuntimeDTO>);
+    return from(this.loadSubEventsPageResult(query));
   };
 
   constructor() {
@@ -100,6 +96,9 @@ export class EventSubeventsListPopupComponent {
       const request = this.state.request();
       if (!request) {
         this.lastLoadedEventId = '';
+        this.loadedEventId = '';
+        this.loadingEventId = '';
+        this.loadingPromise = null;
         this.event = null;
         this.items = [];
         return;
@@ -108,7 +107,12 @@ export class EventSubeventsListPopupComponent {
         return;
       }
       this.lastLoadedEventId = request.eventId;
-      void this.loadSubEvents(request.eventId);
+      this.loadedEventId = '';
+      this.loadingEventId = '';
+      this.loadingPromise = null;
+      this.event = null;
+      this.items = [];
+      this.bumpQuery();
     });
   }
 
@@ -183,12 +187,12 @@ export class EventSubeventsListPopupComponent {
     const memberCount = this.eventMembersCount();
     return [
       {
-      id: canEdit ? 'edit' : 'view',
-      label: canEdit ? 'Esemény szerkesztése' : 'Esemény megtekintése',
-      icon: canEdit ? 'edit' : 'visibility',
-      palette: canEdit ? 'amber' : 'teal',
-      surface: 'tinted',
-      layout: 'pill'
+        id: canEdit ? 'edit' : 'view',
+        label: canEdit ? 'Szerkesztés' : 'Megtekintés',
+        icon: canEdit ? 'edit' : 'visibility',
+        palette: canEdit ? 'amber' : 'teal',
+        surface: 'tinted',
+        layout: 'pill'
       },
       {
         id: 'members',
@@ -290,19 +294,59 @@ export class EventSubeventsListPopupComponent {
     return item.runtimeId;
   }
 
-  private async loadSubEvents(eventId: string): Promise<void> {
-    const userId = this.appCtx.activeUserProfile()?.id?.trim() ?? '';
-    if (!userId) {
+  private async loadSubEventsPageResult(
+    query: ListQuery<EventSubeventsListFilters>
+  ): Promise<PageResult<ActivityEventSubEventRuntimeDTO>> {
+    const eventId = this.state.request()?.eventId.trim() ?? '';
+    if (!eventId) {
+      return { items: [], total: 0, nextCursor: null };
+    }
+    await this.ensureSubEventsLoaded(eventId);
+    const sorted = this.sortedItems();
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
+    const start = page * pageSize;
+    return {
+      items: sorted.slice(start, start + pageSize),
+      total: sorted.length,
+      nextCursor: start + pageSize < sorted.length ? `${page + 1}` : null
+    };
+  }
+
+  private async ensureSubEventsLoaded(eventId: string): Promise<void> {
+    if (this.loadedEventId === eventId) {
       return;
     }
+    if (this.loadingEventId === eventId && this.loadingPromise) {
+      return this.loadingPromise;
+    }
+    const userId = this.appCtx.activeUserProfile()?.id?.trim() ?? '';
+    if (!userId) {
+      this.event = null;
+      this.items = [];
+      this.loadedEventId = eventId;
+      return;
+    }
+    this.loadingEventId = eventId;
     this.isLoading = true;
     this.cdr.markForCheck();
-    const result = await this.eventsService.loadSubEventsById(userId, eventId);
-    this.event = result?.event ?? null;
-    this.items = [...(result?.items ?? [])];
-    this.isLoading = false;
-    this.bumpQuery();
-    this.cdr.markForCheck();
+    this.loadingPromise = (async () => {
+      const result = await this.eventsService.loadSubEventsById(userId, eventId);
+      if (this.state.request()?.eventId !== eventId) {
+        return;
+      }
+      this.event = result?.event ?? null;
+      this.items = [...(result?.items ?? [])];
+      this.loadedEventId = eventId;
+    })().finally(() => {
+      if (this.loadingEventId === eventId) {
+        this.loadingEventId = '';
+        this.loadingPromise = null;
+        this.isLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+    return this.loadingPromise;
   }
 
   private sortedItems(): ActivityEventSubEventRuntimeDTO[] {

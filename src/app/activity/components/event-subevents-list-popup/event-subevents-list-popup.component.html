@@ -22,10 +22,10 @@
           [items]="viewMenuItems()"
           (itemSelect)="onViewSelect($event)"
         ></app-menu>
-        <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
       </div>
+      <button type="button" class="popup-close event-subevents-list-close" (click)="close()" aria-label="Close">
+        <mat-icon>close</mat-icon>
+      </button>
       <div class="event-subevents-list-context-row">
         @if (eventRangeLabel()) {
         <span class="event-subevents-list-range-badge">
@@ -45,12 +45,6 @@
     </header>
 
     <div class="popup-body event-subevents-list-body">
-      @if (isLoading) {
-      <div class="event-subevents-list-loading" aria-busy="true">
-        <mat-icon>hourglass_empty</mat-icon>
-        <span>Loading sub events...</span>
-      </div>
-      } @else {
       <app-smart-list
         class="event-subevents-list-smart-list"
         [config]="smartListConfig"
@@ -65,7 +59,6 @@
           [useSharedMenuTrigger]="false"
         ></app-info-card>
       </ng-template>
-      }
     </div>
   </article>
 </section>

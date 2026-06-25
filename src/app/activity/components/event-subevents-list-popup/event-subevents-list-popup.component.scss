@@ -16,7 +16,8 @@
 
 .popup-panel-event-subevents-list {
   width: min(1120px, calc(100vw - 1.6rem));
-  height: min(780px, calc(100dvh - 1.2rem));
+  height: calc(100vh - 1.2rem);
+  height: calc(100dvh - 1.2rem);
   max-height: calc(100dvh - 1.2rem);
   display: flex;
   flex-direction: column;
@@ -27,10 +28,10 @@
 
 .event-subevents-list-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   grid-template-areas:
-    "title actions"
-    "context context";
+    "title actions close"
+    "context context context";
   align-items: center;
   gap: 0.64rem;
   padding: 0.8rem 1rem;
@@ -47,6 +48,10 @@
   justify-content: flex-end;
   gap: 0.5rem;
   min-width: 0;
+}
+
+.event-subevents-list-close {
+  grid-area: close;
 }
 
 .event-subevents-list-context-row {
@@ -103,27 +108,17 @@
 }
 
 .event-subevents-list-body {
+  flex: 1 1 auto;
   min-height: 0;
+  display: flex;
   padding: 0.72rem 1rem 1rem;
-}
-
-.event-subevents-list-loading {
-  min-height: 14rem;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  gap: 0.5rem;
-  color: rgba(32, 55, 83, 0.72);
-  font-weight: 800;
-}
-
-.event-subevents-list-loading .mat-icon {
-  color: #2f7ab8;
+  overflow: hidden;
 }
 
 .event-subevents-list-smart-list {
   min-height: 0;
   flex: 1 1 auto;
+  width: 100%;
 }
 
 @media (max-width: 760px) {
@@ -142,6 +137,7 @@
       "title close"
       "actions actions"
       "context context";
+    align-items: start;
     padding: 0.72rem;
   }
 
@@ -151,8 +147,9 @@
     flex-wrap: wrap;
   }
 
-  .event-subevents-list-header-actions .popup-close {
-    grid-area: close;
+  .event-subevents-list-close {
+    align-self: start;
+    justify-self: end;
   }
 
   .event-subevents-list-context-row {
