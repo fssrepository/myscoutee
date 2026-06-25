@@ -79,11 +79,13 @@ export class EventSubeventsListPopupComponent {
     emptyDescription: '',
     listLayout: 'card-grid',
     desktopColumns: 3,
+    snapMode: 'mandatory',
+    scrollPaddingTop: '2.6rem',
     mobileStepper: true,
     pagination: { mode: 'arrows' },
     headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
     groupBy: (item, query) => this.groupLabel(item, query.view as EventSubeventsListView),
-    showGroupMarker: ({ group }) => Boolean(group.label),
+    showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
     trackBy: (_index, item) => item.runtimeId
   };
 
