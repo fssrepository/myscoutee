@@ -141,7 +141,7 @@ export interface PairCardData {
 
 export interface InfoCardLeadingIconConfig {
   icon: string;
-  tone?: Extract<InfoCardOverlayTone, 'default' | 'public' | 'friends' | 'invitation'> | 'pending' | null;
+  tone?: Extract<InfoCardOverlayTone, 'default' | 'stage' | 'public' | 'friends' | 'invitation'> | 'pending' | null;
 }
 
 export interface InfoCardOverlayAccessory {

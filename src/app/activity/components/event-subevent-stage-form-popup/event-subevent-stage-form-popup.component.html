@@ -54,7 +54,7 @@
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
           <label class="experience-title-field subevent-name-field">
             <span>Name <span class="required-star">*</span></span>
-            <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="fieldInvalid('name')" placeholder="Stage name" />
+            <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="fieldInvalid('name')" placeholder="Name" />
           </label>
           @if (model.optional) {
             <label class="subevent-capacity-range-field">

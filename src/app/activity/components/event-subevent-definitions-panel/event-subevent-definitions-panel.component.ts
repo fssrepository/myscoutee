@@ -170,7 +170,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       accentHue,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : status.icon,
-        tone: isTournament ? 'pending' : status.leadingTone
+        tone: isTournament ? 'stage' : status.leadingTone
       },
       mediaStart: {
         variant: 'avatar',
@@ -465,13 +465,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     });
   }
 
-  private createDefinitionFormModel(item: SubEventDefinitionDTO | null, fallbackIndex: number): EventSubeventStageFormModel {
+  private createDefinitionFormModel(item: SubEventDefinitionDTO | null, _fallbackIndex: number): EventSubeventStageFormModel {
     const range = this.defaultDefinitionRange(item);
     const groupCapacityMin = this.optionalNonNegativeInteger(item?.tournamentGroupCapacityMin) ?? 0;
     const groupCapacityMax = Math.max(groupCapacityMin, this.optionalNonNegativeInteger(item?.tournamentGroupCapacityMax) ?? groupCapacityMin);
     const optional = this.mode === 'Tournament' ? false : item?.optional ?? true;
     return {
-      name: item?.name?.trim() || (this.mode === 'Tournament' ? `Stage ${fallbackIndex}` : `Sub Event ${fallbackIndex}`),
+      name: item?.name?.trim() ?? '',
       description: item?.description?.trim() ?? '',
       location: item?.location?.trim() ?? '',
       dateRange: range,
@@ -549,8 +549,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private definitionInsertOptions(): ReadonlyArray<{ id: string; label: string }> {
     return this.definitions.map((item, index) => ({
       id: item.id,
-      label: item.name?.trim() || this.definitionSequenceLabel(index)
+      label: this.definitionInsertOptionLabel(item, index)
     }));
+  }
+
+  private definitionInsertOptionLabel(item: SubEventDefinitionDTO, index: number): string {
+    const name = `${item.name ?? ''}`.trim();
+    const staleSubEventFallback = this.mode === 'Tournament' && /^Sub Event\s+\d+$/i.test(name);
+    return name && !staleSubEventFallback ? name : this.definitionSequenceLabel(index);
   }
 
   private definitionInsertIndex(state: SubEventDefinitionFormState): number {

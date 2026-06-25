@@ -342,6 +342,16 @@ button.asset-occupancy-badge:active::after,
   border-color: rgba(46, 111, 178, 0.34);
 }
 
+.ui-info-card__leading--stage {
+  background: linear-gradient(
+    180deg,
+    hsl(var(--ui-info-card-accent-hue) 92% 94%) 0%,
+    hsl(var(--ui-info-card-accent-hue) 84% 88%) 100%
+  );
+  border-color: hsl(var(--ui-info-card-accent-hue) 54% 58% / 0.42);
+  box-shadow: 0 5px 12px hsl(var(--ui-info-card-accent-hue) 42% 34% / 0.16);
+}
+
 .ui-info-card__leading--friends {
   background: linear-gradient(180deg, #f1f8ef 0%, #e9f3e6 100%);
   border-color: rgba(54, 129, 72, 0.34);
@@ -359,6 +369,10 @@ button.asset-occupancy-badge:active::after,
 
 .ui-info-card__leading--public .mat-icon {
   color: #2f6cae;
+}
+
+.ui-info-card__leading--stage .mat-icon {
+  color: hsl(var(--ui-info-card-accent-hue) 66% 42%);
 }
 
 .ui-info-card__leading--friends .mat-icon {
