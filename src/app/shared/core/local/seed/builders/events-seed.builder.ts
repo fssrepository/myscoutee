@@ -10,12 +10,16 @@ import { AppUtils } from '../../../../app-utils';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem, ActivityInvitationSeedItem } from '../entity';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import type { ActivityEventRecord, ActivityEventRepositoryItemType } from '../../../contracts/activity.interface';
+import {
+  ActivityEventDetailDTO,
+  type ActivityEventRecord,
+  type ActivityEventRepositoryItemType
+} from '../../../contracts/activity.interface';
 
 const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50)
   .filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id));
 
-function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyItem[] {
+function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyDTO[] {
   return [
     {
       id: 'policy-checkin-window',
@@ -40,7 +44,7 @@ function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyItem[] {
 
 function buildCheckoutDemoPricing(
   basePrice: number,
-  slotTemplates: readonly ContractTypes.EventSlotTemplate[] = []
+  slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = []
 ): ContractTypes.PricingConfig {
   const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
   pricing.enabled = true;
@@ -58,7 +62,7 @@ function buildCheckoutDemoPricing(
       slotId: slot.id,
       label: `Slot ${index + 1}`,
       startAt: slot.startAt,
-      endAt: slot.endAt,
+      endAt: null,
       price: basePrice + (index * 6),
       currency: 'USD'
     }));
@@ -74,7 +78,7 @@ function buildCheckoutDemoSubEvents(options: {
   firstSlotStartAt: string;
   firstSlotEndAt: string;
   includePaidOptional: boolean;
-}): ContractTypes.SubEventFormItem[] {
+}): ContractTypes.SubEventDTO[] {
   const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   paidAddOnPricing.enabled = options.includePaidOptional;
@@ -413,25 +417,21 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       slotTemplates: [
         {
           id: 'checkout-paid-slots-slot-1',
-          startAt: '2026-04-12T18:30:00',
-          endAt: '2026-04-12T20:00:00'
+          startAt: '2026-04-12T18:30:00'
         },
         {
           id: 'checkout-paid-slots-slot-2',
-          startAt: '2026-04-12T20:15:00',
-          endAt: '2026-04-12T22:15:00'
+          startAt: '2026-04-12T20:15:00'
         }
       ],
       pricing: buildCheckoutDemoPricing(38, [
         {
           id: 'checkout-paid-slots-slot-1',
-          startAt: '2026-04-12T18:30:00',
-          endAt: '2026-04-12T20:00:00'
+          startAt: '2026-04-12T18:30:00'
         },
         {
           id: 'checkout-paid-slots-slot-2',
-          startAt: '2026-04-12T20:15:00',
-          endAt: '2026-04-12T22:15:00'
+          startAt: '2026-04-12T20:15:00'
         }
       ]),
       policies: buildCheckoutDemoPolicies(),
@@ -551,13 +551,11 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       slotTemplates: [
         {
           id: 'checkout-free-slots-slot-1',
-          startAt: '2026-04-14T13:00:00',
-          endAt: '2026-04-14T14:15:00'
+          startAt: '2026-04-14T13:00:00'
         },
         {
           id: 'checkout-free-slots-slot-2',
-          startAt: '2026-04-14T15:00:00',
-          endAt: '2026-04-14T16:30:00'
+          startAt: '2026-04-14T15:00:00'
         }
       ],
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
@@ -697,18 +695,22 @@ interface ActivityEventSeedOverrides {
   pendingMemberUserIds?: string[];
   topics?: string[];
   pricing?: ContractTypes.PricingConfig | null;
-  policies?: ContractTypes.EventPolicyItem[];
+  policies?: ContractTypes.EventPolicyDTO[];
   slotsEnabled?: boolean;
-  slotTemplates?: ContractTypes.EventSlotTemplate[];
+  slotTemplates?: ContractTypes.EventSlotTemplateDTO[];
   generated?: boolean;
-  subEvents?: ContractTypes.SubEventFormItem[];
-  subEventsDisplayMode?: ContractTypes.SubEventsDisplayMode;
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: ContractTypes.SubEventDefinitionDTO[];
+  subEvents?: ContractTypes.SubEventDTO[];
+  mode?: ContractTypes.EventMode;
   rating?: number;
   boost?: number;
   affinity?: number;
 }
 
 export class SeedEventsBuilder {
+  private static readonly SLOT_READ_MODEL_USER_ID = '__slot_read_model__';
+
   static buildSeedInvitationItemsByUser(): Record<string, ActivityInvitationSeedItem[]> {
     return Object.fromEntries(
       Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
@@ -731,7 +733,9 @@ export class SeedEventsBuilder {
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
-          slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
+          subEventsEnabled: item.subEventsEnabled,
+          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics,
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
@@ -781,6 +785,9 @@ export class SeedEventsBuilder {
           visibility: 'Public',
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
           pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
+          subEventsEnabled: item.subEventsEnabled,
+          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
+          subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics
         });
         seedItemsByUser[creatorUserId] = creatorItems;
@@ -796,7 +803,9 @@ export class SeedEventsBuilder {
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
-          slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
+          subEventsEnabled: item.subEventsEnabled,
+          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics,
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
@@ -902,7 +911,9 @@ export class SeedEventsBuilder {
     }
 
     this.applyLifecycleDemoStatuses(byId, ids);
-    return this.rebalanceVisibleActiveEventParticipation({ byId, ids });
+    return this.materializeSeedSlotRecords(
+      this.rebalanceVisibleActiveEventParticipation({ byId, ids })
+    );
   }
 
   private static applyLifecycleDemoStatuses(byId: Record<string, ActivityEventRecord>, ids: readonly string[]): void {
@@ -980,6 +991,357 @@ export class SeedEventsBuilder {
       byId,
       ids
     };
+  }
+
+  private static materializeSeedSlotRecords(
+    collection: ActivityEventRecordCollection
+  ): ActivityEventRecordCollection {
+    const byId: Record<string, ActivityEventRecord> = { ...collection.byId };
+    const ids = [...collection.ids];
+    const existingIds = new Set(ids);
+    const parents = ids
+      .map(id => byId[id])
+      .filter((record): record is ActivityEventRecord => this.isSeedSlotParentRecord(record));
+
+    for (const parent of parents) {
+      for (const record of this.buildSeedGeneratedSlotRecordsForParent(parent)) {
+        const recordKey = this.buildRecordKey(record.userId, record.type, record.id);
+        byId[recordKey] = record;
+        if (!existingIds.has(recordKey)) {
+          ids.push(recordKey);
+          existingIds.add(recordKey);
+        }
+      }
+    }
+
+    return { byId, ids };
+  }
+
+  private static buildSeedGeneratedSlotRecordsForParent(parent: ActivityEventRecord): ActivityEventRecord[] {
+    const parentStart = this.parseSeedDateTime(parent.startAtIso);
+    const parentEnd = this.parseSeedDateTime(parent.endAtIso);
+    if (!parentStart || !parentEnd) {
+      return [];
+    }
+
+    const records: ActivityEventRecord[] = [];
+    const templates = parent.slotTemplates ?? [];
+    const overrideDates = new Set(
+      templates
+        .map(template => this.seedSlotOverrideDateKey(template.overrideDate))
+        .filter((value): value is string => Boolean(value))
+    );
+
+    for (const template of templates) {
+      if (this.seedSlotOverrideDateKey(template.overrideDate) || template.closed === true) {
+        continue;
+      }
+      records.push(...this.buildSeedGeneratedSlotRecordsForTemplate(parent, template, parentStart, parentEnd, overrideDates));
+    }
+
+    for (const template of templates) {
+      if (!this.seedSlotOverrideDateKey(template.overrideDate) || template.closed === true) {
+        continue;
+      }
+      records.push(...this.buildSeedGeneratedSlotRecordsForTemplate(parent, template, parentStart, parentEnd, new Set(), true));
+    }
+
+    return records;
+  }
+
+  private static buildSeedGeneratedSlotRecordsForTemplate(
+    parent: ActivityEventRecord,
+    template: ContractTypes.EventSlotTemplateDTO,
+    parentStart: Date,
+    parentEnd: Date,
+    overrideDates: ReadonlySet<string>,
+    overrideOnly = false
+  ): ActivityEventRecord[] {
+    const templateStart = this.parseSeedDateTime(template.startAt);
+    if (!templateStart) {
+      return [];
+    }
+    const definitions = this.seedSlotTemplateSubEventDefinitions(parent, template);
+    const durationMs = Math.max(0, this.seedSubEventDefinitionsDurationMinutes(definitions)) * 60 * 1000;
+    const starts = overrideOnly
+      ? [new Date(templateStart)]
+      : this.generateSeedSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, parentStart, parentEnd);
+
+    return starts.flatMap(startAt => {
+      const occurrenceDateKey = this.seedSlotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
+      if (!overrideOnly && occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
+        return [];
+      }
+      const endAt = new Date(startAt.getTime() + durationMs);
+      if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+        return [];
+      }
+      return [this.buildSeedGeneratedSlotRecord(parent, template, startAt, endAt, definitions)];
+    });
+  }
+
+  private static buildSeedGeneratedSlotRecord(
+    parent: ActivityEventRecord,
+    template: ContractTypes.EventSlotTemplateDTO,
+    startAt: Date,
+    endAt: Date,
+    definitions: readonly ContractTypes.SubEventDefinitionDTO[]
+  ): ActivityEventRecord {
+    const sourceId = this.buildGeneratedSlotSourceId(parent.id, template.id, startAt);
+    const subEvents = parent.subEventsEnabled === true && definitions.length > 0
+      ? this.materializeSeedSubEventDefinitionsForSlotOccurrence(definitions, startAt)
+      : this.materializeSeedSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined;
+    return {
+      ...this.cloneRecord(parent),
+      id: sourceId,
+      userId: SeedEventsBuilder.SLOT_READ_MODEL_USER_ID,
+      type: 'events',
+      title: parent.title,
+      subtitle: parent.subtitle,
+      timeframe: this.buildGeneratedSlotTimeframe(startAt, endAt),
+      inviter: null,
+      unread: 0,
+      activity: 0,
+      trashedAtIso: null,
+      creatorUserId: SeedEventsBuilder.SLOT_READ_MODEL_USER_ID,
+      startAtIso: startAt.toISOString(),
+      endAtIso: endAt.toISOString(),
+      slotsEnabled: false,
+      slotTemplates: [],
+      parentEventId: parent.id,
+      slotTemplateId: template.id,
+      generated: true,
+      eventType: 'slot',
+      nextSlot: null,
+      upcomingSlots: [],
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: [],
+      invitedMemberUserIds: [],
+      pendingRequestMemberUserIds: [],
+      subEventsEnabled: false,
+      subEvents
+    };
+  }
+
+  private static seedSubEventDefinitionTimeline(
+    items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined
+  ): Array<{ item: ContractTypes.SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    const definitions = items ?? [];
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    return definitions.map(item => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      hasPrevious = true;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
+  }
+
+  private static seedSubEventDefinitionsDurationMinutes(items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined): number {
+    return this.seedSubEventDefinitionTimeline(items)
+      .reduce((total, entry) => Math.max(total, entry.startOffsetMinutes + entry.durationMinutes), 0);
+  }
+
+  private static seedSlotTemplateSubEventDefinitions(
+    parent: ActivityEventRecord,
+    template: ContractTypes.EventSlotTemplateDTO
+  ): ContractTypes.SubEventDefinitionDTO[] {
+    if (parent.subEventsEnabled !== true) {
+      return [];
+    }
+    const overrideDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(template.subEventDefinitions ?? []);
+    return overrideDefinitions.length > 0
+      ? overrideDefinitions
+      : ActivityEventDetailDTO.normalizeSubEventDefinitions(parent.subEventDefinitions ?? []);
+  }
+
+  private static materializeSeedSubEventDefinitionsForSlotOccurrence(
+    items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined,
+    occurrenceStart: Date
+  ): ContractTypes.SubEventDTO[] {
+    return this.seedSubEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+      const startAt = new Date(occurrenceStart.getTime() + (startOffsetMinutes * 60 * 1000));
+      const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
+      return {
+        id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        startAt: AppUtils.toIsoDateTimeLocal(startAt),
+        endAt: AppUtils.toIsoDateTimeLocal(endAt),
+        location: item.location ?? '',
+        groups: item.groups?.map(group => ({ ...group })) ?? [],
+        tournamentGroupCount: item.tournamentGroupCount,
+        tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
+        tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
+        tournamentLeaderboardType: item.tournamentLeaderboardType,
+        tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
+        optional: item.optional,
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+        capacityMin: item.capacityMin,
+        capacityMax: item.capacityMax,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
+        slotStartOffsetMinutes: startOffsetMinutes,
+        slotDurationMinutes: durationMinutes
+      };
+    });
+  }
+
+  private static materializeSeedSubEventsForSlotOccurrence(
+    subEvents: readonly ContractTypes.SubEventDTO[] | undefined,
+    occurrenceStart: Date,
+    occurrenceEnd: Date
+  ): ContractTypes.SubEventDTO[] | undefined {
+    if (!Array.isArray(subEvents) || subEvents.length === 0) {
+      return subEvents ? [] : undefined;
+    }
+    const slotDurationMinutes = Math.max(1, Math.round((occurrenceEnd.getTime() - occurrenceStart.getTime()) / 60000));
+    return subEvents.map(item => {
+      const rawStart = this.parseSeedDateTime(item.startAt);
+      const rawEnd = this.parseSeedDateTime(item.endAt);
+      const explicitOffset = Number(item.slotStartOffsetMinutes);
+      const explicitDuration = Number(item.slotDurationMinutes);
+      const offsetMinutes = Number.isFinite(explicitOffset)
+        ? Math.max(0, Math.trunc(explicitOffset))
+        : Math.max(
+          0,
+          rawStart
+            ? ((rawStart.getHours() * 60) + rawStart.getMinutes()) - ((occurrenceStart.getHours() * 60) + occurrenceStart.getMinutes())
+            : 0
+        );
+      const durationMinutes = Number.isFinite(explicitDuration)
+        ? Math.max(1, Math.trunc(explicitDuration))
+        : Math.max(
+          1,
+          rawStart && rawEnd
+            ? Math.round((rawEnd.getTime() - rawStart.getTime()) / 60000)
+            : slotDurationMinutes
+        );
+      const safeOffsetMinutes = AppUtils.clampNumber(offsetMinutes, 0, Math.max(0, slotDurationMinutes - 1));
+      const safeDurationMinutes = AppUtils.clampNumber(
+        durationMinutes,
+        1,
+        Math.max(1, slotDurationMinutes - safeOffsetMinutes)
+      );
+      const startAt = new Date(occurrenceStart.getTime() + (safeOffsetMinutes * 60 * 1000));
+      const endAt = new Date(startAt.getTime() + (safeDurationMinutes * 60 * 1000));
+      return {
+        ...item,
+        startAt: AppUtils.toIsoDateTimeLocal(startAt),
+        endAt: AppUtils.toIsoDateTimeLocal(endAt),
+        slotStartOffsetMinutes: safeOffsetMinutes,
+        slotDurationMinutes: safeDurationMinutes
+      };
+    });
+  }
+
+  private static generateSeedSlotOccurrenceStarts(
+    frequency: string,
+    templateStart: Date,
+    parentStart: Date,
+    parentEnd: Date
+  ): Date[] {
+    const normalizedFrequency = `${frequency ?? ''}`.trim().toLowerCase();
+    if (normalizedFrequency === 'one-time' || normalizedFrequency === 'custom' || !normalizedFrequency) {
+      return templateStart.getTime() >= parentStart.getTime() && templateStart.getTime() <= parentEnd.getTime()
+        ? [new Date(templateStart)]
+        : [];
+    }
+
+    const starts: Date[] = [];
+    const cursor = new Date(parentStart);
+    cursor.setHours(0, 0, 0, 0);
+    const endDate = new Date(parentEnd);
+    endDate.setHours(0, 0, 0, 0);
+    while (cursor.getTime() <= endDate.getTime()) {
+      if (this.matchesSeedSlotFrequency(cursor, templateStart, normalizedFrequency)) {
+        const next = new Date(cursor);
+        next.setHours(templateStart.getHours(), templateStart.getMinutes(), templateStart.getSeconds(), templateStart.getMilliseconds());
+        if (next.getTime() >= parentStart.getTime() && next.getTime() <= parentEnd.getTime()) {
+          starts.push(next);
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return starts;
+  }
+
+  private static matchesSeedSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
+    if (frequency === 'daily') {
+      return true;
+    }
+    if (frequency === 'weekly') {
+      return date.getDay() === templateStart.getDay();
+    }
+    if (frequency === 'bi-weekly' || frequency === 'biweekly') {
+      if (date.getDay() !== templateStart.getDay()) {
+        return false;
+      }
+      const diffDays = Math.floor((date.getTime() - templateStart.getTime()) / (24 * 60 * 60 * 1000));
+      const diffWeeks = Math.floor(diffDays / 7);
+      return diffWeeks >= 0 && diffWeeks % 2 === 0;
+    }
+    if (frequency === 'monthly') {
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
+      if (date.getMonth() !== templateStart.getMonth()) {
+        return false;
+      }
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    return false;
+  }
+
+  private static isGeneratedSeedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return Boolean(record?.generated) || record?.eventType === 'slot' || Boolean(record?.parentEventId);
+  }
+
+  private static isSeedSlotParentRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return Boolean(record?.slotsEnabled) && !this.isGeneratedSeedSlotRecord(record) && (record?.slotTemplates?.length ?? 0) > 0;
+  }
+
+  private static buildGeneratedSlotSourceId(parentEventId: string, slotTemplateId: string, startAt: Date): string {
+    return `${parentEventId}:slot:${slotTemplateId}:${startAt.toISOString()}`;
+  }
+
+  private static buildGeneratedSlotTimeframe(startAt: Date, endAt: Date): string {
+    const dateLabel = startAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startLabel = startAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endLabel = endAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${dateLabel} · ${startLabel} - ${endLabel}`;
+  }
+
+  private static seedSlotOverrideDateKey(value: string | null | undefined): string | null {
+    const parsed = this.parseSeedDateTime(value?.includes('T') ? value : `${value ?? ''}T00:00`);
+    if (!parsed) {
+      return null;
+    }
+    const year = parsed.getFullYear();
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+    const day = `${parsed.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private static seedSlotOccurrenceAnchorDateKey(occurrenceStart: Date, templateStart: Date, parentStart: Date): string | null {
+    const templateOffsetMs = templateStart.getTime() - parentStart.getTime();
+    return this.seedSlotOverrideDateKey(new Date(occurrenceStart.getTime() - templateOffsetMs).toISOString());
   }
 
   private static buildCanonicalEventRecord(records: readonly ActivityEventRecord[]): ActivityEventRecord {
@@ -1069,10 +1431,16 @@ export class SeedEventsBuilder {
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
-      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       topics: [...(record.topics ?? [])],
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group })),
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
       subEvents: this.cloneSubEvents(record.subEvents)
     };
   }
@@ -1269,6 +1637,8 @@ export class SeedEventsBuilder {
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
     const subEvents = this.cloneRebasedSubEvents(record.seed?.subEvents)
       ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
+    const subEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
+    const subEventsEnabled = record.seed?.subEventsEnabled ?? subEventDefinitions.length > 0;
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
       : this.buildSeededRating(record.id, record.title, record.type);
@@ -1315,8 +1685,10 @@ export class SeedEventsBuilder {
       acceptedMembers,
       pendingMembers,
       topics,
+      subEventsEnabled,
+      subEventDefinitions,
       subEvents,
-      subEventsDisplayMode: record.seed?.subEventsDisplayMode ?? SeedEventBuilder.inferredSubEventsDisplayMode(subEvents),
+      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventMode(subEvents),
       rating,
       boost: Number.isFinite(record.seed?.boost)
         ? Number(record.seed?.boost)
@@ -1722,7 +2094,7 @@ export class SeedEventsBuilder {
     endAtIso: string,
     activeUserId: string,
     capacityRange: { min: number; max: number }
-  ): ContractTypes.SubEventFormItem[] {
+  ): ContractTypes.SubEventDTO[] {
     const source = {
       id: record.id,
       avatar: AppUtils.initialsFromText(record.title),
@@ -1790,8 +2162,10 @@ export class SeedEventsBuilder {
       slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
       slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,
       topics: 'topics' in item ? item.topics : undefined,
+      subEventsEnabled: 'subEventsEnabled' in item ? item.subEventsEnabled : undefined,
+      subEventDefinitions: 'subEventDefinitions' in item ? this.cloneSubEventDefinitions(item.subEventDefinitions) ?? undefined : undefined,
       subEvents: 'subEvents' in item ? this.cloneSubEvents(item.subEvents) : undefined,
-      subEventsDisplayMode: 'subEventsDisplayMode' in item ? item.subEventsDisplayMode : undefined,
+      mode: 'mode' in item ? item.mode : undefined,
       rating: 'rating' in item ? item.rating : undefined,
       boost: 'boost' in item ? item.boost : undefined,
       affinity: 'affinity' in item ? item.affinity : undefined,
@@ -1821,7 +2195,7 @@ export class SeedEventsBuilder {
       .filter(userId => userId.length > 0)));
   }
 
-  private static cloneSubEvents(items: readonly ContractTypes.SubEventFormItem[] | undefined): ContractTypes.SubEventFormItem[] | undefined {
+  private static cloneSubEvents(items: readonly ContractTypes.SubEventDTO[] | undefined): ContractTypes.SubEventDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1830,16 +2204,34 @@ export class SeedEventsBuilder {
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
         : []
     }));
   }
 
-  private static clonePolicies(items: readonly ContractTypes.EventPolicyItem[] | undefined): ContractTypes.EventPolicyItem[] | undefined {
+  private static cloneSubEventDefinitions(
+    items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined
+  ): ContractTypes.SubEventDefinitionDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
-    return items.map(item => ({ ...item }));
+    return items.map(item => ({
+      ...item,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+      groups: Array.isArray(item.groups)
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
+        : []
+    }));
+  }
+
+  private static clonePolicies(items: readonly ContractTypes.EventPolicyDTO[] | undefined): ContractTypes.EventPolicyDTO[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions
+    }));
   }
 
   static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
@@ -1859,7 +2251,7 @@ export class SeedEventsBuilder {
     startAtIso: string;
     endAtIso: string;
     frequency?: string | null;
-    slotTemplates?: readonly ContractTypes.EventSlotTemplate[] | null;
+    slotTemplates?: readonly ContractTypes.EventSlotTemplateDTO[] | null;
   }): string {
     const startAt = this.parseSeedDateTime(options.startAtIso);
     const endAt = this.parseSeedDateTime(options.endAtIso);
@@ -1909,22 +2301,22 @@ export class SeedEventsBuilder {
   }
 
   private static cloneRebasedSlotTemplates(
-    items: readonly ContractTypes.EventSlotTemplate[] | undefined
-  ): ContractTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplateDTO[] | undefined
+  ): ContractTypes.EventSlotTemplateDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
     return items.map(item => ({
       ...item,
       startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
-      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt,
-      overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate
+      overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate,
+      subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions
     }));
   }
 
   private static cloneRebasedSubEvents(
-    items: readonly ContractTypes.SubEventFormItem[] | undefined
-  ): ContractTypes.SubEventFormItem[] | undefined {
+    items: readonly ContractTypes.SubEventDTO[] | undefined
+  ): ContractTypes.SubEventDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
@@ -1935,7 +2327,7 @@ export class SeedEventsBuilder {
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? this.rebasePricingConfig(item.pricing) : undefined,
       groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
         : []
     }));
   }
@@ -1951,8 +2343,8 @@ export class SeedEventsBuilder {
   }
 
   private static cloneSlotTemplates(
-    items: readonly ContractTypes.EventSlotTemplate[] | undefined
-  ): ContractTypes.EventSlotTemplate[] | undefined {
+    items: readonly ContractTypes.EventSlotTemplateDTO[] | undefined
+  ): ContractTypes.EventSlotTemplateDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }

@@ -1,27 +1,29 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatTimepickerModule } from '@angular/material/timepicker';
 import { AppUtils } from '../../../shared/app-utils';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
+  DateInputComponent,
+  type DateInputModel,
+  LocationInputComponent,
+  type LocationInputConfig,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  PricingEditorComponent
+  PricingEditorInputComponent,
+  type PricingEditorConfig
 } from '../../../shared/ui';
 
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
-export type EventSubeventStageInsertPlacement = 'before' | 'after';
+export type EventSubeventStageInsertPlacement = 'before' | 'during' | 'after';
 export type EventSubeventTournamentLeaderboardType = 'Score' | 'Fifa';
+export type EventSubeventStageTimingInputMode = 'range' | 'duration';
 
 type EventSubeventStageFormMenuContext =
   | { menu: 'optional'; optional: boolean }
@@ -43,11 +45,10 @@ export interface EventSubeventStageFormPopupView {
   timingSummaryTitle: string;
   timingSummaryText: string;
   timingSummaryMeta: string;
-  startFieldLabel: string;
-  endFieldLabel: string;
-  timingBoundStartAt: string;
-  timingBoundEndAt: string;
+  timingInputMode?: EventSubeventStageTimingInputMode;
+  dateInput?: DateInputModel;
   showInsertControls: boolean;
+  showDuringInsertPlacement: boolean;
   insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
   insertTargetId: string | null;
@@ -64,12 +65,14 @@ export interface EventSubeventStageFormModel {
   name: string;
   description: string;
   location: string;
-  startAt: string;
-  endAt: string;
+  dateRange?: ContractTypes.DateRangeDto;
+  offsetMinutes?: number;
+  durationMinutes?: number;
   optional: boolean;
   pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
+  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: EventSubeventTournamentLeaderboardType;
@@ -85,11 +88,10 @@ export interface EventSubeventStageFormModel {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
-    MatTimepickerModule,
-    MatNativeDateModule,
     AppMenuComponent,
-    PricingEditorComponent
+    DateInputComponent,
+    LocationInputComponent,
+    PricingEditorInputComponent
   ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
   styleUrls: ['./event-subevent-stage-form-popup.component.scss']
@@ -100,8 +102,9 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     name: '',
     description: '',
     location: '',
-    startAt: '',
-    endAt: '',
+    dateRange: { startAt: '', endAt: '', precision: 'minute' },
+    offsetMinutes: 0,
+    durationMinutes: 60,
     optional: false,
     pricing: null,
     capacityMin: 0,
@@ -113,7 +116,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   @Output() readonly selectOptional = new EventEmitter<boolean>();
   @Output() readonly selectInsertPlacement = new EventEmitter<EventSubeventStageInsertPlacement>();
   @Output() readonly insertTargetChange = new EventEmitter<string | null>();
-  @Output() readonly openLocationMap = new EventEmitter<Event>();
   @Output() readonly capacityMinChange = new EventEmitter<number | string>();
   @Output() readonly capacityMaxChange = new EventEmitter<number | string>();
   @Output() readonly tournamentGroupCapacityMinChange = new EventEmitter<number | string>();
@@ -121,47 +123,41 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   @Output() readonly tournamentLeaderboardTypeChange = new EventEmitter<EventSubeventTournamentLeaderboardType | string | null | undefined>();
   @Output() readonly tournamentAdvancePerGroupChange = new EventEmitter<number | string>();
 
-  protected subEventStartDateValue: Date | null = null;
-  protected subEventStartTimeValue: Date | null = null;
-  protected subEventEndDateValue: Date | null = null;
-  protected subEventEndTimeValue: Date | null = null;
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['model'] || changes['view']) {
-      this.syncDateTimeControlsFromModel();
+  protected readonly subeventPricingEditorConfig: PricingEditorConfig = {
+    context: 'subevent',
+    presentation: 'popup-summary',
+    allowSlotFeatures: false,
+    showAudienceSection: false
+  };
+  protected readonly subeventLocationInputConfig: LocationInputConfig = {
+    label: 'Location',
+    placeholder: 'Sub event location',
+    mapMode: 'search',
+    mapAriaLabel: 'Open sub event location on map'
+  };
+  ngOnChanges(): void {
+    if (this.usesDurationInput()) {
+      this.normalizeDuration();
+      return;
     }
-  }
-
-  protected onStartDateChange(value: Date | null): void {
-    this.subEventStartDateValue = value;
-    this.model.startAt = AppUtils.applyDatePartToIsoLocal(this.ensureIsoLocal(this.model.startAt), value);
     this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
-  }
-
-  protected onStartTimeChange(value: Date | null): void {
-    this.subEventStartTimeValue = value;
-    this.model.startAt = AppUtils.applyTimePartFromDateToIsoLocal(this.ensureIsoLocal(this.model.startAt), value);
-    this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
-  }
-
-  protected onEndDateChange(value: Date | null): void {
-    this.subEventEndDateValue = value;
-    this.model.endAt = AppUtils.applyDatePartToIsoLocal(this.ensureIsoLocal(this.model.endAt), value);
-    this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
-  }
-
-  protected onEndTimeChange(value: Date | null): void {
-    this.subEventEndTimeValue = value;
-    this.model.endAt = AppUtils.applyTimePartFromDateToIsoLocal(this.ensureIsoLocal(this.model.endAt), value);
-    this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
   }
 
   protected trackByInsertOption(_: number, option: { id: string }): string {
     return option.id;
+  }
+
+  protected canSaveCurrentModel(): boolean {
+    return !this.view.readOnly
+      && this.hasText(this.model.name)
+      && this.hasText(this.model.description)
+      && (this.usesDurationInput()
+        ? this.positiveInteger(this.model.durationMinutes) > 0
+        : this.hasText(this.model.dateRange?.startAt) && this.hasText(this.model.dateRange?.endAt));
+  }
+
+  protected fieldInvalid(field: 'name' | 'description'): boolean {
+    return !this.hasText(this.model[field]);
   }
 
   protected optionalMenuTrigger(): AppMenuTrigger {
@@ -276,21 +272,31 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return option === 'Fifa' ? 'orange' : 'blue';
   }
 
-  private ensureIsoLocal(value: string): string {
-    const parsed = this.parseDateTime(value) ?? new Date();
-    return AppUtils.toIsoDateTimeLocal(parsed);
+  protected usesDurationInput(): boolean {
+    return this.view.timingInputMode === 'duration';
+  }
+
+  private normalizeDuration(): void {
+    this.model.offsetMinutes = this.positiveInteger(this.model.offsetMinutes);
+    this.model.durationMinutes = this.positiveInteger(this.model.durationMinutes) || 60;
+  }
+
+  private positiveInteger(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
   }
 
   private normalizeDateRange(): void {
-    const boundStart = this.parseDateTime(this.view.timingBoundStartAt);
-    const boundEnd = this.parseDateTime(this.view.timingBoundEndAt);
+    const boundStart = this.parseDateTime(this.view.dateInput?.range?.bounds?.start);
+    const boundEnd = this.parseDateTime(this.view.dateInput?.range?.bounds?.end);
     const defaultStart = boundStart ?? new Date();
     const defaultDurationMs = boundStart && boundEnd && boundEnd.getTime() > boundStart.getTime()
       ? Math.max(15 * 60 * 1000, Math.min(60 * 60 * 1000, boundEnd.getTime() - boundStart.getTime()))
       : (60 * 60 * 1000);
 
-    let start = this.parseDateTime(this.model.startAt) ?? new Date(defaultStart.getTime());
-    let safeEnd = this.parseDateTime(this.model.endAt);
+    const currentRange = this.model.dateRange ?? { startAt: '', endAt: '', precision: 'minute' as const };
+    let start = this.parseDateTime(currentRange.startAt) ?? new Date(defaultStart.getTime());
+    let safeEnd = this.parseDateTime(currentRange.endAt);
     if (!safeEnd || safeEnd.getTime() <= start.getTime()) {
       safeEnd = new Date(start.getTime() + defaultDurationMs);
     }
@@ -318,15 +324,11 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       safeEnd = new Date(endMs);
     }
 
-    this.model.startAt = AppUtils.toIsoDateTimeLocal(start);
-    this.model.endAt = AppUtils.toIsoDateTimeLocal(safeEnd);
-  }
-
-  private syncDateTimeControlsFromModel(): void {
-    this.subEventStartDateValue = this.parseDateTime(this.model.startAt);
-    this.subEventStartTimeValue = this.parseDateTime(this.model.startAt);
-    this.subEventEndDateValue = this.parseDateTime(this.model.endAt);
-    this.subEventEndTimeValue = this.parseDateTime(this.model.endAt);
+    this.model.dateRange = {
+      startAt: AppUtils.toIsoDateTimeLocal(start),
+      endAt: AppUtils.toIsoDateTimeLocal(safeEnd),
+      precision: 'minute'
+    };
   }
 
   private defaultView(): EventSubeventStageFormPopupView {
@@ -345,11 +347,18 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       timingSummaryTitle: '',
       timingSummaryText: '',
       timingSummaryMeta: '',
-      startFieldLabel: 'Start',
-      endFieldLabel: 'End',
-      timingBoundStartAt: '',
-      timingBoundEndAt: '',
+      timingInputMode: 'range',
+      dateInput: {
+        mode: 'range',
+        precision: 'minute',
+        range: {
+          start: { label: 'Start' },
+          end: { label: 'End' },
+          bounds: null
+        }
+      },
       showInsertControls: false,
+      showDuringInsertPlacement: false,
       insertFieldLabel: 'Insert Stage',
       insertPlacement: 'after',
       insertTargetId: null,
@@ -369,7 +378,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       return null;
     }
 
-    // Handle dd/mm/yyyy, hh:mm formats produced by older local state.
     const legacyPattern = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),?\s+(\d{1,2}):(\d{2})$/);
     if (legacyPattern) {
       const day = Number.parseInt(legacyPattern[1] ?? '', 10);
@@ -397,5 +405,9 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     const normalized = raw.replace(/\//g, '-');
     const parsed = new Date(normalized);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private hasText(value: unknown): boolean {
+    return `${value ?? ''}`.trim().length > 0;
   }
 }

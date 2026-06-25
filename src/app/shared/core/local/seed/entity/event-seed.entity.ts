@@ -1,13 +1,13 @@
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import type { ActivityEventStatus } from '../../../contracts/activity.interface';
+import type { ActivityEventStatus, SubEventDefinitionDTO } from '../../../contracts/activity.interface';
 import type {
   EventBlindMode,
-  EventPolicyItem,
+  EventPolicyDTO,
   EventRecordKind,
-  EventSlotOccurrence,
-  EventSlotTemplate,
-  SubEventFormItem,
-  SubEventsDisplayMode
+  EventSlotOccurrenceDTO,
+  EventSlotTemplateDTO,
+  SubEventDTO,
+  EventMode
 } from '../../../contracts/event.interface';
 import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
 import type { PricingConfig } from '../../../contracts/pricing.interface';
@@ -38,7 +38,7 @@ export interface ActivityInvitationSeedItem {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: LocationCoordinates;
-  policies?: EventPolicyItem[];
+  policies?: EventPolicyDTO[];
 }
 
 export interface ActivityEventSeedItem {
@@ -74,17 +74,19 @@ export interface ActivityEventSeedItem {
   frequency?: string;
   pricing?: PricingConfig | null;
   slotsEnabled?: boolean;
-  slotTemplates?: EventSlotTemplate[];
+  slotTemplates?: EventSlotTemplateDTO[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
   eventType?: EventRecordKind;
-  nextSlot?: EventSlotOccurrence | null;
-  upcomingSlots?: EventSlotOccurrence[];
+  nextSlot?: EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventSlotOccurrenceDTO[];
   topics?: string[];
-  subEvents?: SubEventFormItem[];
-  subEventsDisplayMode?: SubEventsDisplayMode;
-  policies?: EventPolicyItem[];
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+  subEvents?: SubEventDTO[];
+  mode?: EventMode;
+  policies?: EventPolicyDTO[];
   rating?: number;
   boost?: number;
   affinity?: number;

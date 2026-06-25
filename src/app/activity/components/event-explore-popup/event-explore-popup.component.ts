@@ -17,6 +17,7 @@ import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type * as ContractTypes from '../../../shared/core/contracts';
+import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import {
   ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventExploreBuilder, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
@@ -985,10 +986,10 @@ export class EventExplorePopupComponent {
       const nextMembers = this.sortMembersByActionTimeDesc(
         existingMembers.filter(member => member.userId !== activeUserId)
       );
-      const payload = this.buildActivityEventSaveDTO(record, nextMembers);
+      const eventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers);
       const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
       this.checkoutDraftClearSaveSourceIds.add(sourceId);
-      const persistence = this.activitiesContext.emitActivityEventSave(payload);
+      const persistence = this.activitiesContext.emitActivityEventSave(eventDetailDTO);
       this.restoreVisibleEventExploreRecord(nextRecord);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
@@ -1115,7 +1116,7 @@ export class EventExplorePopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrence): void {
+  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrenceDTO): void {
     const record = this.slotPickerRecord;
     if (!record) {
       return;
@@ -1146,7 +1147,7 @@ export class EventExplorePopupComponent {
     });
   }
 
-  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrence): string {
+  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrenceDTO): string {
     return `${slot.acceptedMembers} / ${slot.capacityTotal}`;
   }
 
@@ -1234,11 +1235,8 @@ export class EventExplorePopupComponent {
           endAtIso: nextEndIso,
           distanceKm: dto.distanceKm,
           visibility: dto.visibility ?? existing.visibility,
-          blindMode: dto.blindMode ?? existing.blindMode,
           imageUrl: dto.imageUrl.trim() || existing.imageUrl,
-          sourceLink: dto.sourceLink?.trim() || existing.sourceLink,
           location: dto.location?.trim() || existing.location,
-          locationCoordinates: dto.locationCoordinates ?? existing.locationCoordinates,
           acceptedMembers,
           pendingMembers: Number.isFinite(Number(dto.pendingMembers))
             ? Math.max(0, Math.trunc(Number(dto.pendingMembers)))
@@ -1249,22 +1247,7 @@ export class EventExplorePopupComponent {
             acceptedMembers,
             dto.capacityMax ?? dto.capacityTotal ?? existing.capacityTotal
           ),
-          autoInviter: dto.autoInviter ?? existing.autoInviter,
-          frequency: dto.frequency ?? existing.frequency,
-          slotsEnabled: dto.slotsEnabled ?? existing.slotsEnabled,
-          slotTemplates: Array.isArray(dto.slotTemplates)
-            ? dto.slotTemplates.map(item => ({ ...item }))
-            : (existing.slotTemplates ?? []).map(item => ({ ...item })),
-          parentEventId: dto.parentEventId ?? existing.parentEventId,
-          slotTemplateId: dto.slotTemplateId ?? existing.slotTemplateId,
-          generated: dto.generated ?? existing.generated,
           eventType: dto.eventType ?? existing.eventType,
-          nextSlot: dto.nextSlot ? { ...dto.nextSlot } : (existing.nextSlot ? { ...existing.nextSlot } : null),
-          upcomingSlots: Array.isArray(dto.upcomingSlots)
-            ? dto.upcomingSlots.map(item => ({ ...item }))
-            : (existing.upcomingSlots ?? []).map(item => ({ ...item })),
-          topics: Array.isArray(dto.topics) ? [...dto.topics] : [...existing.topics],
-          ticketing: dto.ticketing ?? existing.ticketing,
           status: dto.status ?? existing.status
         };
         this.eventExploreSmartList.replaceVisibleItems(currentItems);
@@ -1567,10 +1550,10 @@ export class EventExplorePopupComponent {
       ...existingMembers,
       this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
-    const rollbackPayload = this.buildActivityEventSaveDTO(record, existingMembers);
-    const nextPayload = this.buildActivityEventSaveDTO(record, nextMembers, selection?.paymentSessionId ?? null);
+    const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
+    const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
     this.locallyTrackedMembershipSourceIds.add(record.id);
-    this.activitiesContext.emitActivityEventSave(nextPayload);
+    this.activitiesContext.emitActivityEventSave(nextEventDetailDTO);
 
     try {
       const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1591,7 +1574,7 @@ export class EventExplorePopupComponent {
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
       this.activitiesContext.emitActivityEventSave(
-        this.buildActivityEventSaveDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+        this.buildActivityEventDetailDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = joinedRecord;
@@ -1602,7 +1585,7 @@ export class EventExplorePopupComponent {
       await exitPromise;
       this.locallyTrackedMembershipSourceIds.delete(record.id);
       this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
-      this.activitiesContext.emitActivityEventSave(rollbackPayload);
+      this.activitiesContext.emitActivityEventSave(rollbackEventDetailDTO);
       throw error;
     }
   }
@@ -1909,7 +1892,7 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrence): boolean {
+  private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     if (capacityTotal <= 0) {
       return false;
@@ -1917,24 +1900,25 @@ export class EventExplorePopupComponent {
     return Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
   }
 
-  private buildActivityEventSaveDTO(
+  private buildActivityEventDetailDTO(
     record: ActivityEventRecord,
     members: readonly ActivityContracts.ActivityMemberEntry[],
     paymentSessionId: string | null = null
-  ): ContractTypes.ActivityEventSaveDTO {
+  ): ActivityEventDetailDTO {
     const summary = ActivityMembersBuilder.buildActivityMembersSummary(
       this.eventMembersOwner(record),
       members,
       record.capacityTotal
     );
-    return {
+    return new ActivityEventDetailDTO().apply({
       id: record.id,
+      type: 'events',
       title: record.title,
-      shortDescription: record.subtitle,
+      subtitle: record.subtitle,
       timeframe: record.timeframe,
       activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
-      startAt: record.startAtIso,
-      endAt: record.endAtIso,
+      startAtIso: record.startAtIso,
+      endAtIso: record.endAtIso,
       distanceKm: record.distanceKm,
       imageUrl: record.imageUrl,
       acceptedMembers: summary.acceptedMembers,
@@ -1954,7 +1938,7 @@ export class EventExplorePopupComponent {
       creatorGender: record.creatorGender,
       creatorCity: record.creatorCity,
       location: record.location,
-      locationCoordinates: record.locationCoordinates ?? undefined,
+      locationCoordinates: record.locationCoordinates ?? null,
       sourceLink: record.sourceLink,
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
@@ -1965,9 +1949,9 @@ export class EventExplorePopupComponent {
               : []
           }))
         : undefined,
-      subEventsDisplayMode: record.subEventsDisplayMode,
+      mode: record.mode,
       paymentSessionId
-    };
+    });
   }
 
   private withEventExploreMemberSummary(

@@ -43,14 +43,26 @@ export type AppMenuPalette =
   | 'muted'
   | 'danger'
   | 'warning'
-  | 'success';
+  | 'success'
+  | 'aquarius'
+  | 'aries'
+  | 'cancer'
+  | 'capricorn'
+  | 'gemini'
+  | 'leo'
+  | 'libra'
+  | 'pisces'
+  | 'sagittarius'
+  | 'scorpio'
+  | 'taurus'
+  | 'virgo';
 
 export type AppMenuTriggerLayout = 'default' | 'field' | 'pill' | 'icon';
 export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuLayout = 'row' | 'grid' | 'list' | 'tabs';
-export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big';
+export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big' | 'image';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
 export type AppMenuSummaryCounter = 'overflow' | 'count' | 'none';
@@ -108,6 +120,9 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   description?: AppMenuLiveValue<string | null | undefined>;
   detail?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
+  imageUrl?: AppMenuLiveValue<string | null | undefined>;
+  imageAlt?: AppMenuLiveValue<string | null | undefined>;
+  imageFallback?: AppMenuLiveValue<string | null | undefined>;
   openIcon?: AppMenuLiveValue<string | null | undefined>;
   closeIcon?: AppMenuLiveValue<string | null | undefined>;
   kind?: AppMenuItemKind;

@@ -346,6 +346,31 @@
   width: 100%;
 }
 
+.subevent-duration-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 240px));
+  align-items: end;
+  gap: 0.72rem;
+}
+
+.subevent-duration-field {
+  width: 100%;
+}
+
+.subevent-duration-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.subevent-duration-control span {
+  color: rgba(31, 56, 89, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
 .subevent-capacity-range {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);

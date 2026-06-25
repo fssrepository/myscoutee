@@ -14,7 +14,7 @@ import {
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
   type CardMenuAction
-} from '../../../shared/ui/components/card';
+} from '../../../shared/ui/components/smart-list/card';
 import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
 import {
   AppMenuDispatcher,

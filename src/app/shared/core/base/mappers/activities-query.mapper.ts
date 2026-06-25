@@ -1,5 +1,5 @@
 import type * as ContractTypes from '../../contracts';
-import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
+import type { ActivitiesFeedFilters, ActivitiesPageRequest, ActivityEventActivitiesQuery } from '../../contracts';
 import type { ListQuery } from '../../../ui';
 
 type ActivityChatContextFilterSource = Pick<ContractTypes.ChatRecord, 'channelType' | 'serviceContext'>;
@@ -30,6 +30,25 @@ export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>)
     anchorDate: query.anchorDate,
     rangeStart: query.rangeStart,
     rangeEnd: query.rangeEnd
+  };
+}
+
+export function toActivityEventActivitiesQuery(
+  request: ActivitiesPageRequest,
+  userId: string
+): ActivityEventActivitiesQuery {
+  return {
+    userId,
+    filter: request.eventScopeFilter ?? 'active-events',
+    hostingPublicationFilter: request.hostingPublicationFilter,
+    secondaryFilter: request.secondaryFilter,
+    sort: normalizeActivityEventActivitiesSort(request.sort),
+    view: request.view,
+    limit: request.pageSize,
+    cursor: request.cursor ?? null,
+    anchorDate: request.anchorDate,
+    rangeStart: request.rangeStart,
+    rangeEnd: request.rangeEnd
   };
 }
 
@@ -162,4 +181,8 @@ function resolveActivitiesPageSortDirection(
   }
 
   return view === 'distance' ? 'asc' : 'desc';
+}
+
+function normalizeActivityEventActivitiesSort(value: string | undefined): ContractTypes.ActivityEventActivitiesSort {
+  return value === 'distance' || value === 'relevance' ? value : 'date';
 }

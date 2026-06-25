@@ -1,5 +1,5 @@
 import type { AssetType, SubEventResourceFilter } from '../../common/constants';
-import type { SubEventFormItem } from '../../contracts/event.interface';
+import type { SubEventDTO } from '../../contracts/event.interface';
 
 export type MenuSection = 'game' | 'chat' | 'invitations' | 'events' | 'hosting';
 
@@ -45,7 +45,7 @@ export interface SupplyContext {
 }
 
 export interface SubEventBadgeContext {
-  subEvent: SubEventFormItem;
+  subEvent: SubEventDTO;
   type: SubEventResourceFilter;
   groupId?: string;
   groupName?: string;

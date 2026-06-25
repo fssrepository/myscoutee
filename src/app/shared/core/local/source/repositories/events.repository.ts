@@ -7,22 +7,23 @@ import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
-import type {
-  ActivityEventActivitiesListQueryResult,
-  ActivityEventActivitiesQuery,
-  ActivityEventExploreQuery,
-  ActivityEventExploreQueryResult,
-  ActivityEventRecord,
-  ActivityEventScopeFilter,
-  ActivityEventRepositoryItemType
+import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from '../mappers/event.mapper';
+import {
+  ActivityEventDetailDTO,
+  type ActivityEventActivitiesListQueryResult,
+  type ActivityEventActivitiesQuery,
+  type ActivityEventExploreQuery,
+  type ActivityEventExploreQueryResult,
+  type ActivityEventRecord,
+  type ActivityEventSubEventRuntimeDTO,
+  type ActivityEventSubEventsQueryDTO,
+  type ActivityEventSubEventsResultDTO,
+  type ActivityEventScopeFilter,
+  type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
-import type { ActivityEventSaveDTO } from '../../../contracts';
-import { EventEditorBuilder } from '../../../base/builders';
-import { PricingBuilder } from '../../../base/builders/pricing.builder';
 
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
@@ -47,6 +48,7 @@ interface ActivityEventExploreCursor {
 })
 export class LocalEventsRepository {
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
+  private static readonly SLOT_READ_MODEL_USER_ID = '__slot_read_model__';
   private readonly memoryDb = inject(LocalMemoryDb);
 
   async flushToIndexedDb(): Promise<void> {
@@ -54,7 +56,6 @@ export class LocalEventsRepository {
   }
 
   queryItemsByUser(userId: string): ActivityEventRecord[] {
-    this.materializeSlotRecords();
     return this.queryUserRecords(userId);
   }
 
@@ -69,7 +70,6 @@ export class LocalEventsRepository {
   }
 
   queryItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
-    this.materializeSlotRecords();
     return this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
   }
 
@@ -98,7 +98,6 @@ export class LocalEventsRepository {
     filter: ActivityEventScopeFilter,
     hostingPublicationFilter: 'all' | 'drafts' = 'all'
   ): ActivityEventRecord[] {
-    this.materializeSlotRecords();
     const userItems = this.queryUserRecords(userId);
     const memberEventItems = userItems
       .filter(record => !this.isEventAdminRecord(record, userId))
@@ -223,7 +222,7 @@ export class LocalEventsRepository {
     }
   }
 
-  private canApplyStageAction(action: string, stages: readonly ContractTypes.SubEventFormItem[], stageIndex: number): boolean {
+  private canApplyStageAction(action: string, stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
     const stage = stages[stageIndex];
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
@@ -244,7 +243,7 @@ export class LocalEventsRepository {
     }
   }
 
-  private canReopenScores(stages: readonly ContractTypes.SubEventFormItem[], stageIndex: number): boolean {
+  private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
     const nextStage = stages[stageIndex + 1];
     if (!nextStage) {
       return true;
@@ -257,7 +256,7 @@ export class LocalEventsRepository {
   }
 
   private resolveStageIndex(
-    stages: readonly ContractTypes.SubEventFormItem[],
+    stages: readonly ContractTypes.SubEventDTO[],
     subEventId: string | null | undefined,
     fallbackIndex: number | null | undefined
   ): number {
@@ -289,7 +288,6 @@ export class LocalEventsRepository {
   }
 
   queryActivitiesEventListPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesListQueryResult {
-    this.materializeSlotRecords();
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -313,7 +311,7 @@ export class LocalEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords.map(record => ActivityEventDtoMapper.toDto(record)),
+        records: normalizedRecords.map(record => LocalActivityEventsMapper.toDto(record)),
         total,
         nextCursor: null
       };
@@ -330,14 +328,13 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records: records.map(record => ActivityEventDtoMapper.toDto(record)),
+      records: records.map(record => LocalActivityEventsMapper.toDto(record)),
       total,
       nextCursor
     };
   }
 
   queryExploreItems(userId: string): ActivityEventRecord[] {
-    this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -357,6 +354,158 @@ export class LocalEventsRepository {
     }
 
     return [...byEventId.values()].map(record => ActivityEventRecordBuilder.cloneRecord(record));
+  }
+
+  queryEventRecordById(userId: string, eventId: string): ActivityEventRecord | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const record = this.computePreferredEventRecords(table)
+      .find(item => item.id === normalizedEventId);
+    if (!record) {
+      return null;
+    }
+    const viewerCoordinates = this.queryUserLocationCoordinates(userId);
+    return this.withResolvedDistance(
+      this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table),
+      viewerCoordinates
+    );
+  }
+
+  querySubEventsByEventId(
+    userId: string,
+    eventId: string,
+    query?: ActivityEventSubEventsQueryDTO
+  ): ActivityEventSubEventsResultDTO | null {
+    const normalizedEventId = eventId.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const preferredRecords = this.computePreferredEventRecords(table);
+    const selectedRecord = preferredRecords.find(item => item.id === normalizedEventId) ?? null;
+    if (!selectedRecord) {
+      return null;
+    }
+    const parentEventId = this.isGeneratedSlotRecord(selectedRecord)
+      ? `${selectedRecord.parentEventId ?? ''}`.trim() || selectedRecord.id
+      : selectedRecord.id;
+    const parentRecord = preferredRecords.find(item => item.id === parentEventId && !this.isGeneratedSlotRecord(item))
+      ?? selectedRecord;
+    const viewerCoordinates = this.queryUserLocationCoordinates(userId);
+    const event = LocalActivityEventDetailsMapper.toDto(
+      this.withResolvedDistance(
+        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(parentRecord), table),
+        viewerCoordinates
+      )
+    );
+    const allGeneratedSlots = preferredRecords
+      .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => this.generatedSlotFitsParentRange(record, parentRecord))
+      .sort((left, right) => this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso));
+    const nowMs = Date.now();
+    const generatedSlots = allGeneratedSlots
+      .filter(record => this.recordMatchesSubEventsOrder(record, query, nowMs))
+      .filter(record => this.recordOverlapsSubEventsQueryRange(record, query));
+    const fallbackRecords = !this.isGeneratedSlotRecord(selectedRecord)
+      && allGeneratedSlots.length === 0
+      && this.recordMatchesSubEventsOrder(selectedRecord, query, nowMs)
+      && this.generatedSlotFitsParentRange(selectedRecord, parentRecord)
+      && this.recordOverlapsSubEventsQueryRange(selectedRecord, query)
+      ? [selectedRecord]
+      : [];
+    const sourceRecords = allGeneratedSlots.length > 0 ? generatedSlots : fallbackRecords;
+    const items = sourceRecords.flatMap(record => this.runtimeSubEventsForRecord(parentEventId, record));
+    const direction = query?.order === 'past' ? -1 : 1;
+    return {
+      event,
+      items: items.sort((left, right) => direction * (this.toDateMs(left.startAt) - this.toDateMs(right.startAt)))
+    };
+  }
+
+  private recordMatchesSubEventsOrder(
+    record: ActivityEventRecord,
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
+  ): boolean {
+    const recordEnd = this.subEventsRecordEndMs(record);
+    if (!Number.isFinite(recordEnd) || recordEnd <= 0) {
+      return false;
+    }
+    const isPast = recordEnd < nowMs;
+    return query?.order === 'past' ? isPast : !isPast;
+  }
+
+  private recordOverlapsSubEventsQueryRange(
+    record: ActivityEventRecord,
+    query: ActivityEventSubEventsQueryDTO | null | undefined
+  ): boolean {
+    const rangeStart = this.subEventsQueryRangeStartMs(query);
+    const rangeEnd = this.subEventsQueryRangeEndMs(query);
+    if (rangeStart === null && rangeEnd === null) {
+      return true;
+    }
+    const recordStart = this.subEventsRecordStartMs(record);
+    const recordEnd = this.subEventsRecordEndMs(record);
+    if (rangeStart !== null && recordEnd < rangeStart) {
+      return false;
+    }
+    if (rangeEnd !== null && recordStart > rangeEnd) {
+      return false;
+    }
+    return true;
+  }
+
+  private subEventsRecordStartMs(record: ActivityEventRecord): number {
+    return this.toDateMs(record.startAtIso);
+  }
+
+  private subEventsRecordEndMs(record: ActivityEventRecord): number {
+    const start = this.subEventsRecordStartMs(record);
+    const end = this.toDateMs(record.endAtIso);
+    return Number.isFinite(end) && end > 0 ? end : start;
+  }
+
+  private subEventsQueryRangeStartMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
+    const value = `${query?.rangeStart ?? ''}`.trim();
+    const parsed = AppUtils.parseDateOnly(value);
+    return parsed ? AppUtils.dateOnly(parsed).getTime() : null;
+  }
+
+  private subEventsQueryRangeEndMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
+    const value = `${query?.rangeEnd ?? ''}`.trim();
+    const parsed = AppUtils.parseDateOnly(value);
+    if (!parsed) {
+      return null;
+    }
+    const end = AppUtils.dateOnly(parsed);
+    end.setHours(23, 59, 59, 999);
+    return end.getTime();
+  }
+
+  private runtimeSubEventsForRecord(
+    parentEventId: string,
+    record: ActivityEventRecord
+  ): ActivityEventSubEventRuntimeDTO[] {
+    const subEvents = this.cloneSubEvents(record.subEvents) ?? [];
+    return subEvents.map((item, index) => ({
+      ...item,
+      runtimeId: this.runtimeSubEventId(record, item, index),
+      parentEventId,
+      slotSourceId: this.isGeneratedSlotRecord(record) ? record.id : null,
+      slotTemplateId: record.slotTemplateId ?? null,
+      slotTitle: this.isGeneratedSlotRecord(record) ? record.title : null,
+      slotTimeframe: this.isGeneratedSlotRecord(record) ? record.timeframe : null
+    }));
+  }
+
+  private runtimeSubEventId(record: ActivityEventRecord, item: ContractTypes.SubEventDTO, index: number): string {
+    const subEventId = `${item.id ?? ''}`.trim() || `subevent-${index + 1}`;
+    const recordId = `${record.id ?? ''}`.trim() || 'event';
+    return `${recordId}:${subEventId}`;
   }
 
   peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
@@ -411,7 +560,7 @@ export class LocalEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: ActivityEventSaveDTO): ActivityEventRecord | null {
+  syncEventSnapshot(payload: ActivityEventDetailDTO): ActivityEventRecord | null {
     const normalizedId = payload.id.trim();
     const creatorUserId = payload.creatorUserId?.trim() ?? '';
     if (!normalizedId || !creatorUserId) {
@@ -420,32 +569,51 @@ export class LocalEventsRepository {
 
     const creatorName = payload.creatorName?.trim() || 'Unknown Host';
     const creatorInitials = payload.creatorInitials?.trim() || AppUtils.initialsFromText(creatorName);
-    const startAtIso = payload.startAt?.trim() || new Date().toISOString();
-    const endAtIso = payload.endAt?.trim()
+    const startAtIso = payload.startAtIso?.trim() || new Date().toISOString();
+    const endAtIso = payload.endAtIso?.trim()
       || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
-    const acceptedMembers = this.normalizeCount(payload.acceptedMembers)
+    const normalizedPayload = payload.clone().apply({
+      id: normalizedId,
+      creatorUserId
+    });
+    const acceptedMembers = this.normalizeCount(normalizedPayload.acceptedMembers)
       ?? this.eventMemberUserIdsByStatus(normalizedId, 'accepted').length;
-    const pendingMembers = this.normalizeCount(payload.pendingMembers)
+    const pendingMembers = this.normalizeCount(normalizedPayload.pendingMembers)
       ?? this.eventMemberUserIdsByStatus(normalizedId, 'pending').length;
     const capacityTotal = Math.max(
       acceptedMembers,
-      this.normalizeCount(payload.capacityTotal)
-        ?? this.normalizeCount(payload.capacityMax)
+      this.normalizeCount(normalizedPayload.capacityTotal)
+        ?? this.normalizeCount(normalizedPayload.capacityMax)
         ?? acceptedMembers
     );
-    const baseRecord = this.buildSyncedRecord(
-      payload,
-      {
-        userId: creatorUserId,
-        creatorName,
-        creatorInitials,
-        startAtIso,
-        endAtIso,
-        acceptedMembers,
-        pendingMembers,
-        capacityTotal
-      }
+    const existing = this.findItem(creatorUserId, normalizedId);
+    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'accepted');
+    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'pending');
+    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
+      member.status === 'pending' && this.isInvitationMember(member)
     );
+    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
+      member.status === 'pending' && !this.isInvitationMember(member)
+    );
+    const baseRecord = LocalActivityEventDetailsMapper.toRecord(normalizedPayload, {
+      existing,
+      userId: creatorUserId,
+      creatorName,
+      creatorInitials,
+      startAtIso,
+      endAtIso,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      creator: usersTable.byId[creatorUserId] ?? null,
+      acceptedUsers: acceptedMemberUserIds.map(userId => usersTable.byId[userId] ?? null)
+    });
 
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
@@ -644,7 +812,6 @@ export class LocalEventsRepository {
     accepted = false,
     waitingList = false
   ): ActivityEventRecord | null {
-    this.materializeSlotRecords();
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     const normalizedSlotSourceId = slotSourceId?.trim() || '';
@@ -1429,124 +1596,6 @@ export class LocalEventsRepository {
     return next.activity >= current.activity;
   }
 
-  private buildSyncedRecord(
-    payload: ActivityEventSaveDTO,
-    context: {
-      userId: string;
-      creatorName: string;
-      creatorInitials: string;
-      startAtIso: string;
-      endAtIso: string;
-      acceptedMembers: number;
-      pendingMembers: number;
-      capacityTotal: number;
-    }
-  ): ActivityEventRecord {
-    const existing = this.findItem(context.userId, payload.id);
-    const visibility = payload.visibility ?? existing?.visibility ?? 'Public';
-    const blindMode = payload.blindMode ?? existing?.blindMode ?? 'Open Event';
-    const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
-    const subEvents = this.cloneSubEvents(payload.subEvents ?? existing?.subEvents);
-    const policies = EventEditorBuilder.cloneEventEditorPolicies(payload.policies ?? existing?.policies ?? []);
-    const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
-    const pricing = PricingBuilder.syncSlotOverrides(
-      PricingBuilder.normalizePricingConfig(payload.pricing ?? existing?.pricing, {
-        context: 'event',
-        slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
-      }),
-      PricingBuilder.slotCatalogFromEventSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? [])
-    );
-    const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${payload.id}:${payload.title}`) % 35) / 10));
-    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${payload.id}:${payload.title}`) % 51));
-    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
-    const creator = usersTable.byId[context.userId] ?? null;
-    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, payload.id, 'accepted');
-    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, payload.id, 'pending');
-    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, payload.id, member =>
-      member.status === 'pending' && this.isInvitationMember(member)
-    );
-    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, payload.id, member =>
-      member.status === 'pending' && !this.isInvitationMember(member)
-    );
-    const acceptedUsers = acceptedMemberUserIds
-      .map(userId => usersTable.byId[userId] ?? null);
-    const affinity = ActivityEventRecordBuilder.resolveEventAffinity({
-      id: payload.id,
-      title: payload.title,
-      subtitle: payload.shortDescription,
-      topics,
-      visibility,
-      blindMode,
-      creator,
-      acceptedUsers,
-      rating,
-      acceptedMembers: context.acceptedMembers,
-      capacityTotal: context.capacityTotal
-    });
-    return {
-      id: payload.id,
-      userId: context.userId,
-      type: 'events',
-      status: this.normalizeEventStatus(payload.status ?? existing?.status) as ActivityEventRecord['status'],
-      avatar: context.creatorInitials,
-      title: payload.title,
-      subtitle: payload.shortDescription,
-      timeframe: payload.timeframe,
-      inviter: null,
-      unread: 0,
-      activity: Math.max(0, Math.trunc(Number(payload.activity) || 0)),
-      trashedAtIso: existing?.trashedAtIso ?? null,
-      creatorUserId: context.userId,
-      creatorName: context.creatorName,
-      creatorInitials: context.creatorInitials,
-      creatorGender: payload.creatorGender ?? existing?.creatorGender ?? 'man',
-      creatorCity: payload.creatorCity ?? existing?.creatorCity ?? '',
-      visibility,
-      blindMode,
-      startAtIso: context.startAtIso,
-      endAtIso: context.endAtIso,
-      distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
-      imageUrl: payload.imageUrl?.trim() || existing?.imageUrl || `https://picsum.photos/seed/event-explore-${payload.id}/1200/700`,
-      sourceLink: payload.sourceLink?.trim() || existing?.sourceLink || '',
-      location: payload.location?.trim() || existing?.location || '',
-      locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates)
-        ?? this.normalizeLocationCoordinates(existing?.locationCoordinates),
-      capacityMin: this.normalizeCount(payload.capacityMin) ?? existing?.capacityMin ?? 0,
-      capacityMax: this.normalizeCount(payload.capacityMax) ?? existing?.capacityMax ?? context.capacityTotal,
-      capacityTotal: context.capacityTotal,
-      autoInviter: typeof payload.autoInviter === 'boolean'
-        ? payload.autoInviter
-        : (typeof existing?.autoInviter === 'boolean' ? existing.autoInviter : false),
-      frequency: payload.frequency?.trim() || existing?.frequency || 'One-time',
-      ticketing,
-      pricing,
-      policies,
-      slotsEnabled: payload.slotsEnabled ?? existing?.slotsEnabled ?? false,
-      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []),
-      parentEventId: payload.parentEventId ?? existing?.parentEventId ?? null,
-      slotTemplateId: payload.slotTemplateId ?? existing?.slotTemplateId ?? null,
-      generated: payload.generated ?? existing?.generated ?? false,
-      eventType: payload.eventType ?? existing?.eventType ?? 'main',
-      nextSlot: payload.nextSlot ? { ...payload.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
-      upcomingSlots: (payload.upcomingSlots ?? existing?.upcomingSlots ?? []).map(item => ({ ...item })),
-      acceptedMembers: context.acceptedMembers,
-      pendingMembers: context.pendingMembers,
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      invitedMemberUserIds,
-      pendingRequestMemberUserIds,
-      topics,
-      subEvents,
-      subEventsDisplayMode: payload.subEventsDisplayMode
-        ?? existing?.subEventsDisplayMode
-        ?? (subEvents ? ActivityEventRecordBuilder.inferredSubEventsDisplayMode(subEvents) : 'Casual'),
-      rating,
-      boost,
-      affinity
-    };
-  }
-
   private upsertRecord(
     byId: Record<string, ActivityEventRecord>,
     ids: string[],
@@ -1578,10 +1627,12 @@ export class LocalEventsRepository {
       pendingMemberUserIds: this.normalizeUserIds(record.pendingMemberUserIds),
       invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
       pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
-      policies: EventEditorBuilder.cloneEventEditorPolicies(record.policies ?? []),
-      slotTemplates: EventEditorBuilder.cloneEventEditorSlotTemplates(record.slotTemplates ?? []),
+      policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
+      slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       topics: this.normalizeTopics(record.topics ?? []),
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(record.subEventDefinitions ?? []),
       subEvents: this.cloneSubEvents(record.subEvents)
     };
   }
@@ -1788,20 +1839,14 @@ export class LocalEventsRepository {
       .slice(0, 5)));
   }
 
-  private cloneSubEvents(items: readonly ContractTypes.SubEventFormItem[] | undefined): ContractTypes.SubEventFormItem[] | undefined {
+  private cloneSubEvents(items: readonly ContractTypes.SubEventDTO[] | undefined): ContractTypes.SubEventDTO[] | undefined {
     if (!Array.isArray(items)) {
       return undefined;
     }
-    return items.map(item => ({
-      ...item,
-      location: typeof item.location === 'string' ? item.location : '',
-      groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupItem) => ({ ...group }))
-        : []
-    }));
+    return ActivityEventDetailDTO.normalizeSubEvents(items);
   }
 
-  private localGeneratedGroups(stage: ContractTypes.SubEventFormItem): ContractTypes.SubEventGroupItem[] {
+  private localGeneratedGroups(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {
     const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
     const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
     const max = Math.max(min, Math.trunc(Number(stage.tournamentGroupCapacityMax ?? stage.capacityMax) || min));
@@ -1818,10 +1863,10 @@ export class LocalEventsRepository {
   }
 
   private materializeSubEventsForSlotOccurrence(
-    items: readonly ContractTypes.SubEventFormItem[] | undefined,
+    items: readonly ContractTypes.SubEventDTO[] | undefined,
     occurrenceStart: Date,
     occurrenceEnd: Date
-  ): ContractTypes.SubEventFormItem[] | undefined {
+  ): ContractTypes.SubEventDTO[] | undefined {
     const subEvents = this.cloneSubEvents(items);
     if (!subEvents?.length) {
       return subEvents;
@@ -1870,6 +1915,83 @@ export class LocalEventsRepository {
     });
   }
 
+  private subEventDefinitionTimeline(
+    items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined
+  ): Array<{ item: ActivityContracts.SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    const definitions = items ?? [];
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    return definitions.map(item => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      hasPrevious = true;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
+  }
+
+  private subEventDefinitionsDurationMinutes(items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined): number {
+    return this.subEventDefinitionTimeline(items)
+      .reduce((total, entry) => Math.max(total, entry.startOffsetMinutes + entry.durationMinutes), 0);
+  }
+
+  private slotTemplateSubEventDefinitions(
+    parent: ActivityContracts.ActivityEventRecord,
+    template: ContractTypes.EventSlotTemplateDTO
+  ): ActivityContracts.SubEventDefinitionDTO[] {
+    if (parent.subEventsEnabled !== true) {
+      return [];
+    }
+    const overrideDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(template.subEventDefinitions ?? []);
+    return overrideDefinitions.length > 0
+      ? overrideDefinitions
+      : ActivityEventDetailDTO.normalizeSubEventDefinitions(parent.subEventDefinitions ?? []);
+  }
+
+  private materializeSubEventDefinitionsForSlotOccurrence(
+    items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined,
+    occurrenceStart: Date
+  ): ContractTypes.SubEventDTO[] {
+    return this.subEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+      const startAt = new Date(occurrenceStart.getTime() + (startOffsetMinutes * 60 * 1000));
+      const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
+      const subEvent: ContractTypes.SubEventDTO = {
+        id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        startAt: AppUtils.toIsoDateTimeLocal(startAt),
+        endAt: AppUtils.toIsoDateTimeLocal(endAt),
+        location: item.location ?? '',
+        groups: item.groups?.map(group => ({ ...group })) ?? [],
+        tournamentGroupCount: item.tournamentGroupCount,
+        tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
+        tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
+        tournamentLeaderboardType: item.tournamentLeaderboardType,
+        tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
+        optional: item.optional,
+        pricing: item.pricing ? { ...item.pricing } : item.pricing,
+        capacityMin: item.capacityMin,
+        capacityMax: item.capacityMax,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
+        slotStartOffsetMinutes: startOffsetMinutes,
+        slotDurationMinutes: durationMinutes
+      };
+      return subEvent;
+    });
+  }
+
   private materializeSlotRecords(): void {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const preferredParents = this.computePreferredEventRecords(table)
@@ -1884,10 +2006,26 @@ export class LocalEventsRepository {
 
     for (const parent of preferredParents) {
       const generatedRecords = this.buildGeneratedSlotRecordsForParent(parent, table);
+      const generatedBySourceId = new Map(generatedRecords.map(record => [record.id, record]));
+      const staleRecordKeys = nextIds.filter(recordKey => {
+        const current = nextById[recordKey];
+        if (!this.isGeneratedSlotRecord(current) || current?.parentEventId !== parent.id) {
+          return false;
+        }
+        const desired = generatedBySourceId.get(current.id);
+        if (!desired) {
+          return true;
+        }
+        return recordKey !== ActivityEventRecordBuilder.buildRecordKey(desired.userId, desired.type, desired.id);
+      });
+      for (const recordKey of staleRecordKeys) {
+        delete nextById[recordKey];
+        changed = true;
+      }
       for (const record of generatedRecords) {
         const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
         const current = nextById[recordKey];
-        if (!current) {
+        if (!current || JSON.stringify(current) !== JSON.stringify(record)) {
           nextById[recordKey] = record;
           if (!nextIds.includes(recordKey)) {
             nextIds.push(recordKey);
@@ -1905,7 +2043,7 @@ export class LocalEventsRepository {
       ...currentState,
       [EVENTS_TABLE_NAME]: {
         byId: nextById,
-        ids: nextIds
+        ids: nextIds.filter(id => Boolean(nextById[id]))
       }
     }));
   }
@@ -1940,18 +2078,18 @@ export class LocalEventsRepository {
         continue;
       }
       const templateStart = this.parseEventDate(template.startAt);
-      const templateEnd = this.parseEventDate(template.endAt);
-      if (!templateStart || !templateEnd) {
+      if (!templateStart) {
         continue;
       }
-      const durationMs = Math.max(60 * 60 * 1000, templateEnd.getTime() - templateStart.getTime());
+      const definitions = this.slotTemplateSubEventDefinitions(parent, template);
+      const definitionDurationMs = Math.max(0, this.subEventDefinitionsDurationMinutes(definitions)) * 60 * 1000;
       const starts = this.generateSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, horizonStart, horizonEnd);
       for (const startAt of starts) {
         const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
         if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
           continue;
         }
-        const endAt = new Date(startAt.getTime() + durationMs);
+        const endAt = new Date(startAt.getTime() + definitionDurationMs);
         if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
           continue;
         }
@@ -1959,13 +2097,12 @@ export class LocalEventsRepository {
         const existing = this.computePreferredEventRecords(table)
           .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
           ?? null;
-        if (existing) {
-          continue;
-        }
         const capacityTotal = Math.max(0, parent.capacityTotal);
+        const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
+        const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
         records.push({
           id: sourceId,
-          userId: parent.creatorUserId || parent.userId,
+          userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
           type: 'events',
           status: parent.status,
           avatar: parent.avatar,
@@ -1976,7 +2113,7 @@ export class LocalEventsRepository {
           unread: 0,
           activity: 0,
           trashedAtIso: null,
-          creatorUserId: parent.creatorUserId,
+          creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
           creatorName: parent.creatorName,
           creatorInitials: parent.creatorInitials,
           creatorGender: parent.creatorGender,
@@ -2004,11 +2141,18 @@ export class LocalEventsRepository {
           eventType: 'slot',
           nextSlot: null,
           upcomingSlots: [],
-          acceptedMembers: 0,
-          pendingMembers: 0,
+          acceptedMembers,
+          pendingMembers,
+          acceptedMemberUserIds: [],
+          pendingMemberUserIds: [],
+          invitedMemberUserIds: [],
+          pendingRequestMemberUserIds: [],
           topics: [...parent.topics],
-          subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
-          subEventsDisplayMode: parent.subEventsDisplayMode,
+          subEventsEnabled: false,
+          subEvents: parent.subEventsEnabled === true && definitions.length > 0
+            ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
+            : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
+          mode: parent.mode,
           rating: parent.rating,
           boost: parent.boost,
           affinity: parent.affinity
@@ -2024,15 +2168,13 @@ export class LocalEventsRepository {
         continue;
       }
       const templateStart = this.parseEventDate(template.startAt);
-      const templateEnd = this.parseEventDate(template.endAt);
-      if (!templateStart || !templateEnd) {
+      if (!templateStart) {
         continue;
       }
+      const definitions = this.slotTemplateSubEventDefinitions(parent, template);
+      const definitionDurationMs = Math.max(0, this.subEventDefinitionsDurationMinutes(definitions)) * 60 * 1000;
       const startAt = new Date(templateStart);
-      const endAt = new Date(templateEnd);
-      if (endAt.getTime() <= startAt.getTime()) {
-        endAt.setTime(startAt.getTime() + (60 * 60 * 1000));
-      }
+      const endAt = new Date(startAt.getTime() + definitionDurationMs);
       if (startAt.getTime() < horizonStart.getTime() || startAt.getTime() > horizonEnd.getTime()) {
         continue;
       }
@@ -2043,13 +2185,12 @@ export class LocalEventsRepository {
       const existing = this.computePreferredEventRecords(table)
         .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
         ?? null;
-      if (existing) {
-        continue;
-      }
       const capacityTotal = Math.max(0, parent.capacityTotal);
+      const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
+      const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
       records.push({
         id: sourceId,
-        userId: parent.creatorUserId || parent.userId,
+        userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
         type: 'events',
         status: parent.status,
         avatar: parent.avatar,
@@ -2060,7 +2201,7 @@ export class LocalEventsRepository {
         unread: 0,
         activity: 0,
         trashedAtIso: null,
-        creatorUserId: parent.creatorUserId,
+        creatorUserId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
         creatorName: parent.creatorName,
         creatorInitials: parent.creatorInitials,
         creatorGender: parent.creatorGender,
@@ -2088,11 +2229,18 @@ export class LocalEventsRepository {
         eventType: 'slot',
         nextSlot: null,
         upcomingSlots: [],
-        acceptedMembers: 0,
-        pendingMembers: 0,
+        acceptedMembers,
+        pendingMembers,
+        acceptedMemberUserIds: [],
+        pendingMemberUserIds: [],
+        invitedMemberUserIds: [],
+        pendingRequestMemberUserIds: [],
         topics: [...parent.topics],
-        subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
-        subEventsDisplayMode: parent.subEventsDisplayMode,
+        subEventsEnabled: false,
+        subEvents: parent.subEventsEnabled === true && definitions.length > 0
+          ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
+          : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
+        mode: parent.mode,
         rating: parent.rating,
         boost: parent.boost,
         affinity: parent.affinity
@@ -2109,7 +2257,7 @@ export class LocalEventsRepository {
         upcomingSlots: []
       };
     }
-    const upcomingSlots = this.resolveUpcomingSlotOccurrences(record.id, table);
+    const upcomingSlots = this.resolveUpcomingSlotOccurrences(record, table);
     return {
       ...record,
       nextSlot: upcomingSlots[0] ?? null,
@@ -2118,15 +2266,17 @@ export class LocalEventsRepository {
   }
 
   private resolveUpcomingSlotOccurrences(
-    parentEventId: string,
+    parent: ActivityEventRecord,
     table: ActivityEventRecordCollection
-  ): ContractTypes.EventSlotOccurrence[] {
+  ): ContractTypes.EventSlotOccurrenceDTO[] {
+    const parentEventId = parent.id;
     const nowMs = Date.now() - (60 * 60 * 1000);
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
       .filter(record => !this.isTrashStatus(record))
+      .filter(record => this.generatedSlotFitsParentRange(record, parent))
       .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
       .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
       .map(record => ({
@@ -2141,6 +2291,18 @@ export class LocalEventsRepository {
         acceptedMembers: record.acceptedMembers,
         pendingMembers: record.pendingMembers
       }));
+  }
+
+  private generatedSlotFitsParentRange(record: ActivityEventRecord, parent: ActivityEventRecord): boolean {
+    const parentStart = this.parseEventDate(parent.startAtIso);
+    const parentEnd = this.parseEventDate(parent.endAtIso);
+    const recordStart = this.parseEventDate(record.startAtIso);
+    const recordEnd = this.parseEventDate(record.endAtIso);
+    if (!parentStart || !parentEnd || !recordStart || !recordEnd) {
+      return false;
+    }
+    return recordStart.getTime() >= parentStart.getTime()
+      && recordEnd.getTime() <= parentEnd.getTime();
   }
 
   private isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
@@ -2169,7 +2331,7 @@ export class LocalEventsRepository {
     horizonEnd: Date
   ): Date[] {
     const normalizedFrequency = `${frequency ?? ''}`.trim().toLowerCase();
-    if (normalizedFrequency === 'one-time' || !normalizedFrequency) {
+    if (normalizedFrequency === 'one-time' || normalizedFrequency === 'custom' || !normalizedFrequency) {
       return templateStart.getTime() >= horizonStart.getTime() && templateStart.getTime() <= horizonEnd.getTime()
         ? [new Date(templateStart)]
         : [];
@@ -2228,6 +2390,10 @@ export class LocalEventsRepository {
     }
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private toDateMs(value: string | null | undefined): number {
+    return this.parseEventDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
   private slotOverrideDateKey(value: string | null | undefined): string | null {

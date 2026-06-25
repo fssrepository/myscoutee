@@ -524,12 +524,6 @@ export class OwnedAssetsPopupFacadeService {
     this.assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(this.assetForm.type, routes);
   }
 
-  openAssetFormRouteStopMap(index: number, event?: Event): void {
-    event?.stopPropagation();
-    const value = this.assetFormRouteStops()[index] ?? '';
-    this.openGoogleMapsSearch(value);
-  }
-
   async refreshAssetFromSourceLink(): Promise<void> {
     if (this.isAssetFormLoading) {
       return;

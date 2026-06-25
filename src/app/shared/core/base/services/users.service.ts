@@ -21,7 +21,6 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import type { ExperienceEntry } from '../../contracts/profile.interface';
 import { UserRealtimeSnapshotMapper } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -182,6 +181,65 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
+  async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtDto | null> {
+    const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+
+    if (this.isLocalRouteEnabled('/auth/me/profile-ext') && !normalizedUserId) {
+      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
+      return null;
+    }
+
+    this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'loading');
+
+    try {
+      const response = await this.userService.loadProfileExtById(normalizedUserId || undefined, requestTimeoutMs);
+      const profileExt = response.profileExt;
+      const user = profileExt?.profile ?? null;
+
+      if (!profileExt || !user) {
+        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'User profile not found.');
+        return null;
+      }
+
+      const resolvedUserId = user.id.trim() || normalizedUserId;
+      const previousActiveUserId = this.appCtx.getActiveUserId().trim();
+      if (user.profileStatus === 'deleted') {
+        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+        return profileExt;
+      }
+
+      this.appCtx.setProfileExt(profileExt);
+      if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
+        this.appCtx.setActiveUserId(resolvedUserId);
+      }
+      if (resolvedUserId) {
+        this.appCtx.clearUserCounterOverrides(resolvedUserId);
+        if (response.counterOverrides) {
+          this.appCtx.patchUserCounterOverrides(
+            resolvedUserId,
+            this.normalizeCounterOverrides(response.counterOverrides, user.activities)
+          );
+        }
+        if (response.filterPreferences) {
+          this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
+        } else {
+          this.appCtx.clearUserFilterPreferences(resolvedUserId);
+        }
+      }
+
+      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+      return this.appCtx.getProfileExt(resolvedUserId) ?? profileExt;
+    } catch (error) {
+      if (this.isTimeoutError(error, 'User profile request timeout.')) {
+        this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User profile request timeout.');
+        return null;
+      }
+
+      this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Unable to load user profile.');
+      return null;
+    }
+  }
+
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -218,23 +276,23 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  async saveUserProfileExt(profile: UserDto, experienceEntries: readonly ExperienceEntry[]): Promise<UserDto | null> {
+  async saveUserProfileExt(request: ProfileExtDto): Promise<UserDto | null> {
+    const profile = request?.profile;
     if (!profile?.id?.trim()) {
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Missing user id.');
       return null;
     }
 
-    const request: ProfileExtDto = {
-      profile,
-      experienceEntries: experienceEntries.map(entry => ({ ...entry }))
-    };
-    this.appCtx.setUserProfile(profile);
+    this.appCtx.setProfileExt(request);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
       const savedUser = await this.userService.saveUserProfileExt(request);
       if (savedUser) {
-        this.appCtx.setUserProfile(savedUser);
+        this.appCtx.setProfileExt({
+          profile: savedUser,
+          experienceEntries: request.experienceEntries
+        });
       }
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
       return savedUser;

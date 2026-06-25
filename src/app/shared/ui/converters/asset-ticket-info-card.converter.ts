@@ -2,7 +2,7 @@ import { AppUtils } from '../../app-utils';
 import { AssetTicketMapper } from '../../core/base/mappers';
 import type * as AssetContracts from '../../core/contracts/asset.interface';
 import type * as AppConstants from '../../core/common/constants';
-import type { InfoCardData } from '../components/card';
+import type { InfoCardData } from '../components/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export type AssetTicketInfoCardModel = InfoCardData;

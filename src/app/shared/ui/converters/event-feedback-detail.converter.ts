@@ -5,7 +5,7 @@ import type {
   EventFeedbackCardDto,
   EventFeedbackDetailDto
 } from '../../core/contracts/activity.interface';
-import type { ImageCardData, InfoCardData } from '../components/card';
+import type { ImageCardData, InfoCardData } from '../components/smart-list/card';
 import type { UiConverter } from './converter.types';
 
 export class EventFeedbackDetailConverter {

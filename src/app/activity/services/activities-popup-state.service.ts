@@ -3,10 +3,9 @@ import { computed, Injectable, inject, signal } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import type * as AppTypes from '../../shared/core/base/models';
 import type * as ContractTypes from '../../shared/core/contracts';
-import { ActivitiesService, ChatsService } from '../../shared/core';
-import type { ActivityEventSaveDTO } from '../../shared/core/contracts';
+import { ChatsService, EventsService } from '../../shared/core';
 import type { EventChatSession } from '../../shared/core/base/models';
-import type { ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
+import type { ActivityEventDetailDTO, ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
 import type { ChatRecord } from '../../shared/core/contracts/chat.interface';
 
 interface ActivitiesUiState {
@@ -57,7 +56,7 @@ const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStateService {
-  private readonly activitiesService = inject(ActivitiesService);
+  private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
 
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
@@ -296,7 +295,7 @@ export class ActivitiesPopupStateService {
     this.patchUiState({ selectedRateId: rateId });
   }
 
-  emitActivityEventSave(payload: ActivityEventSaveDTO): Promise<void> {
+  emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
     return this.runDeferredEventPersistence(payload);
   }
 
@@ -304,8 +303,8 @@ export class ActivitiesPopupStateService {
     this._activityEventSave.set(sync);
   }
 
-  private runDeferredEventPersistence(payload: ActivityEventSaveDTO): Promise<void> {
-    return this.activitiesService.saveActivityEvent(payload)
+  private runDeferredEventPersistence(payload: ActivityEventDetailDTO): Promise<void> {
+    return this.eventsService.saveActivityEvent(payload)
       .then(displaySync => {
         if (displaySync) {
           this._activityEventSave.set(displaySync);

@@ -2,7 +2,6 @@ export * from './builders';
 export * from './dto';
 export * from './mappers';
 export * from './models';
-export * from './normalizers';
 export { RateOutboxRepository } from './repositories/rate-outbox.repository';
 export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
 export type { UserGameCardsStackSnapshot } from '../contracts/activity.interface';
@@ -13,7 +12,6 @@ export {
   UsersService
 } from './services/users.service';
 export { EventsService } from './services/events.service';
-export { EventEditorDataService } from './services/event-editor-data.service';
 export { GameService } from './services/game.service';
 export { HelpCenterService, HELP_CENTER_LOAD_CONTEXT_KEY } from './services/help-center.service';
 export { PrivacyPolicyService, type PrivacyPolicyOpenOptions } from './services/privacy-policy.service';

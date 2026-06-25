@@ -28,7 +28,7 @@ type ActivityEventSourceLike = {
   sourceLink?: string;
   location?: string;
   locationCoordinates?: unknown;
-  policies?: readonly ContractTypes.EventPolicyItem[];
+  policies?: readonly ContractTypes.EventPolicyDTO[];
 };
 
 export class ActivityEventBuilder {

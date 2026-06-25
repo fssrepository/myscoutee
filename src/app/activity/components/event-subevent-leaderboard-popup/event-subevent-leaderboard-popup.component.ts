@@ -120,22 +120,7 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   private readonly detailMemberByGroupKey: Record<string, string | null> = {};
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['groups']) {
-      this.syncGroupsState();
-    }
-
-    if (changes['open']) {
-      if (this.open) {
-        this.resetGroupVisibilityToFirst();
-      } else {
-        this.showEntryForm = false;
-        this.editingGroupKey = null;
-      }
-    }
-
-    if ((changes['open'] || changes['mode']) && this.showEntryForm) {
-      this.syncEntryFormForCurrentGroup();
-    }
+    this.syncInputState(Boolean(changes['groups']), Boolean(changes['open']), Boolean(changes['mode']));
   }
 
   protected get resolvedGroups(): readonly EventSubeventLeaderboardGroup[] {
@@ -662,6 +647,25 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
     this.form.homeScore = null;
     this.form.awayScore = null;
     this.form.note = '';
+  }
+
+  private syncInputState(groupsChanged: boolean, openChanged: boolean, modeChanged: boolean): void {
+    if (groupsChanged) {
+      this.syncGroupsState();
+    }
+
+    if (openChanged) {
+      if (this.open) {
+        this.resetGroupVisibilityToFirst();
+      } else {
+        this.showEntryForm = false;
+        this.editingGroupKey = null;
+      }
+    }
+
+    if ((openChanged || modeChanged) && this.showEntryForm) {
+      this.syncEntryFormForCurrentGroup();
+    }
   }
 
   private syncGroupsState(): void {

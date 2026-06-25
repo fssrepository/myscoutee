@@ -4,10 +4,9 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
-import type { ActivityEventSaveDTO } from '../../contracts';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { SubEventLeaderboardState } from '../../contracts/event.interface';
-import { ActivityEventDTO } from '../../contracts/activity.interface';
+import { ActivityEventDetailDTO, type ActivityEventDTO } from '../../contracts/activity.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -27,6 +26,9 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  ActivityEventSubEventsQueryDTO,
+  ActivityEventSubEventRuntimeDTO,
+  ActivityEventSubEventsResultDTO,
   ActivityEventScopeFilter
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
@@ -44,12 +46,6 @@ interface HttpEventsFilterRequest {
   rangeStart?: string;
   rangeEnd?: string;
 }
-
-type HttpActivityEventPolicyDTO = NonNullable<ActivityEventDTO['policies']>[number];
-type HttpActivityEventSlotTemplateDTO = NonNullable<ActivityEventDTO['slotTemplates']>[number];
-type HttpActivityEventSlotOccurrenceDTO = NonNullable<ActivityEventDTO['upcomingSlots']>[number];
-type HttpActivityEventSubEventDTO = NonNullable<ActivityEventDTO['subEvents']>[number];
-type HttpActivityEventSubEventGroupDTO = NonNullable<HttpActivityEventSubEventDTO['groups']>[number];
 
 @Injectable({
   providedIn: 'root'
@@ -191,6 +187,59 @@ export class HttpEventsService implements IEventsService {
         total: 0,
         nextCursor: null
       };
+    }
+  }
+
+  async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<Partial<ActivityEventDetailDTO> | null>(`${this.apiBaseUrl}/activities/events/detail`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('eventId', normalizedEventId)
+        })
+        .toPromise();
+      return response ? new ActivityEventDetailDTO().apply(response) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async loadSubEventsById(
+    userId: string,
+    eventId: string,
+    query?: ActivityEventSubEventsQueryDTO
+  ): Promise<ActivityEventSubEventsResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<{ event?: Partial<ActivityEventDetailDTO> | null; items?: ActivityEventSubEventRuntimeDTO[] } | null>(
+          `${this.apiBaseUrl}/activities/events/sub-events`,
+          {
+            ...(query ?? {}),
+            userId: normalizedUserId,
+            eventId: normalizedEventId
+          }
+        )
+        .toPromise();
+      if (!response?.event) {
+        return null;
+      }
+      return {
+        event: new ActivityEventDetailDTO().apply(response.event),
+        items: [...(response.items ?? [])].sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt))
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -569,7 +618,7 @@ export class HttpEventsService implements IEventsService {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
   }
 
-  async syncEventSnapshot(payload: ActivityEventSaveDTO): Promise<ActivityEventRecord | null> {
+  async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     try {
       const response = await this.http
         .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
@@ -580,7 +629,7 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
-  async saveActivityEvent(payload: ActivityEventSaveDTO): Promise<ActivityEventDTO | null> {
+  async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     try {
       const response = await this.http
         .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
@@ -747,7 +796,7 @@ export class HttpEventsService implements IEventsService {
           groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
         })),
-        subEventsDisplayMode: record.subEventsDisplayMode ?? 'Casual',
+        mode: ActivityEventDetailDTO.normalizeMode(record.mode),
         rating: Math.max(0, Number(record.rating) || 0),
         boost: Math.max(0, Number(record.boost) || 0),
         affinity: Math.max(0, Number(record.affinity) || 0)
@@ -760,20 +809,13 @@ export class HttpEventsService implements IEventsService {
     if (!Array.isArray(items)) {
       return [];
     }
-    return items.map(item => new ActivityEventDTO({
+    return items.map(item => ({
       ...item,
-      locationCoordinates: item.locationCoordinates ? { ...item.locationCoordinates } : item.locationCoordinates,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
-      policies: (item.policies ?? []).map((policy: HttpActivityEventPolicyDTO) => ({ ...policy })),
-      slotTemplates: (item.slotTemplates ?? []).map((template: HttpActivityEventSlotTemplateDTO) => ({ ...template })),
-      nextSlot: item.nextSlot ? { ...item.nextSlot } : item.nextSlot,
-      upcomingSlots: (item.upcomingSlots ?? []).map((slot: HttpActivityEventSlotOccurrenceDTO) => ({ ...slot })),
-      topics: [...(item.topics ?? [])],
-      subEvents: (item.subEvents ?? []).map((subEvent: HttpActivityEventSubEventDTO) => ({
-        ...subEvent,
-        groups: (subEvent.groups ?? []).map((group: HttpActivityEventSubEventGroupDTO) => ({ ...group })),
-        pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : subEvent.pricing
-      }))
+      adminIds: [...(item.adminIds ?? [])],
+      acceptedMemberUserIds: [...(item.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])]
     }));
   }
 
@@ -801,6 +843,14 @@ export class HttpEventsService implements IEventsService {
       };
     }
     return next;
+  }
+
+  private toDateMs(value: string | null | undefined): number {
+    if (!value?.trim()) {
+      return Number.POSITIVE_INFINITY;
+    }
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
   }
 
   private normalizeSourceIds(sourceIds: readonly string[] | null | undefined): string[] {

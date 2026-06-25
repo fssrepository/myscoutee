@@ -1,0 +1,25 @@
+<label class="location-input" [class.location-input--readonly]="readOnly" [class.location-input--disabled]="inputDisabled()">
+  <span class="location-input__label">
+    <span>{{ label() }}</span>
+    @if (required()) {
+      <span class="location-input__required">*</span>
+    }
+  </span>
+  <span class="location-input__row">
+    <input
+      type="text"
+      [ngModel]="value"
+      (ngModelChange)="updateValue($event)"
+      (blur)="markTouched()"
+      [readonly]="readOnly"
+      [disabled]="inputDisabled()"
+      [placeholder]="placeholder()"
+      />
+    <app-menu
+      class="location-input__map-menu"
+      kind="inline"
+      [items]="mapMenuItems()"
+      (itemSelect)="markTouched()"
+    ></app-menu>
+  </span>
+</label>

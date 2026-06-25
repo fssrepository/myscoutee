@@ -95,7 +95,7 @@ interface SelectedChatNavigationState {
   eventTarget: ContractTypes.EventEditorTarget;
   eventTitle: string | null;
   eventPendingMembers: number;
-  subEvent: ContractTypes.SubEventFormItem | null;
+  subEvent: ContractTypes.SubEventDTO | null;
   group: SelectedChatGroupState | null;
   assetAssignmentIds: AppTypes.SubEventAssetAssignmentIds;
   assetCardsByType: AppTypes.SubEventAssetCardsByType;
@@ -3749,7 +3749,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     const assetControls = (['Car', 'Accommodation', 'Supplies'] as const)
-      .map(type => this.buildResourceControl(state.subEvent as ContractTypes.SubEventFormItem, state, type));
+      .map(type => this.buildResourceControl(state.subEvent as ContractTypes.SubEventDTO, state, type));
     return {
       title: state.group?.label ?? state.subEvent.name,
       groups: [
@@ -3771,7 +3771,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildResourceControl(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     state: SelectedChatNavigationState,
     type: SelectedChatResourceType
   ): AppTypes.PopupHeaderControl {
@@ -3861,7 +3861,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolveSelectedChatSubEvent(
     chat: ChatRecord,
     eventRecord: ActivityEventRecord | null
-  ): ContractTypes.SubEventFormItem | null {
+  ): ContractTypes.SubEventDTO | null {
     const subEventId = `${chat.subEventId ?? ''}`.trim();
     if (!subEventId) {
       return null;
@@ -3871,7 +3871,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private resolveSelectedChatGroup(
     chat: ChatRecord,
-    subEvent: ContractTypes.SubEventFormItem | null
+    subEvent: ContractTypes.SubEventDTO | null
   ): SelectedChatGroupState | null {
     const groupId = `${chat.groupId ?? ''}`.trim();
     if (!groupId || !subEvent?.groups?.length) {
@@ -3900,10 +3900,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private syncSubEventResourceCounts(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null,
     assetCards: readonly AppDTOs.AssetCardDTO[]
-  ): ContractTypes.SubEventFormItem {
+  ): ContractTypes.SubEventDTO {
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assetCards);
       const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assetCards);
@@ -3928,7 +3928,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return subEvent;
   }
 
-  private cloneSubEvent(subEvent: ContractTypes.SubEventFormItem): ContractTypes.SubEventFormItem {
+  private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
       ...subEvent,
       groups: subEvent.groups?.map(group => ({ ...group })) ?? []
@@ -3999,7 +3999,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return eventPending + subEventPending;
   }
 
-  private subEventPendingTotal(subEvent: ContractTypes.SubEventFormItem): number {
+  private subEventPendingTotal(subEvent: ContractTypes.SubEventDTO): number {
     return this.chatCountValue(subEvent.membersPending)
       + this.chatCountValue(subEvent.carsPending)
       + this.chatCountValue(subEvent.accommodationPending)
@@ -4011,7 +4011,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private resourceSummary(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     state: SelectedChatNavigationState,
     type: SelectedChatResourceType
   ): string {
@@ -4035,7 +4035,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private resourceAcceptedCount(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     state: SelectedChatNavigationState,
     type: AppConstants.AssetType
   ): number {
@@ -4048,7 +4048,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private resourcePendingCount(
-    subEvent: ContractTypes.SubEventFormItem,
+    subEvent: ContractTypes.SubEventDTO,
     state: SelectedChatNavigationState,
     type: SelectedChatResourceType
   ): number {

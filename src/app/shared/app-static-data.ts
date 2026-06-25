@@ -6,7 +6,7 @@ import type {
   EventBlindMode,
   EventExploreOrder,
   RateFilterKey,
-  SubEventsDisplayMode,
+  EventMode,
   TournamentLeaderboardType
 } from './core/contracts';
 import type {
@@ -979,7 +979,7 @@ const SUB_EVENT_RESOURCE_FILTER_LABELS: Record<SubEventResourceFilter, string> =
   Accommodation: 'Property',
   Supplies: 'Supplies'
 };
-const SUB_EVENTS_DISPLAY_MODE_OPTIONS: SubEventsDisplayMode[] = ['Casual', 'Tournament'];
+const EVENT_MODE_OPTIONS: EventMode[] = ['Casual', 'Tournament'];
 const TOURNAMENT_LEADERBOARD_TYPE_OPTIONS: TournamentLeaderboardType[] = ['Score', 'Fifa'];
 const ACTIVITY_GROUP_LABELS = {
   dateUnavailable: 'Date unavailable',
@@ -2755,7 +2755,7 @@ export const APP_STATIC_DATA = {
   eventBlindModeOptions: EVENT_BLIND_MODE_OPTIONS,
   subEventResourceFilterOptions: SUB_EVENT_RESOURCE_FILTER_OPTIONS,
   subEventResourceFilterLabels: SUB_EVENT_RESOURCE_FILTER_LABELS,
-  subEventsDisplayModeOptions: SUB_EVENTS_DISPLAY_MODE_OPTIONS,
+  modeOptions: EVENT_MODE_OPTIONS,
   tournamentLeaderboardTypeOptions: TOURNAMENT_LEADERBOARD_TYPE_OPTIONS,
   activityGroupLabels: ACTIVITY_GROUP_LABELS,
   activityMemberMetPlaces: ACTIVITY_MEMBER_MET_PLACES,

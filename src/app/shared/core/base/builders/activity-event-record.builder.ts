@@ -13,7 +13,14 @@ export class ActivityEventRecordBuilder {
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
-      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      slotTemplates: (record.slotTemplates ?? []).map(item => ({
+        ...item,
+        subEventDefinitions: (item.subEventDefinitions ?? []).map(definition => ({
+          ...definition,
+          groups: (definition.groups ?? []).map(group => ({ ...group })),
+          pricing: definition.pricing ? PricingBuilder.clonePricingConfig(definition.pricing) : definition.pricing
+        }))
+      })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
@@ -21,6 +28,12 @@ export class ActivityEventRecordBuilder {
       invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group })),
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
       subEvents: (record.subEvents ?? []).map(item => ({
         ...item,
         pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
@@ -36,11 +49,15 @@ export class ActivityEventRecordBuilder {
     return `${userId}:${type}:${sourceId}`;
   }
 
-  static inferredSubEventsDisplayMode(items: readonly { optional?: boolean; groups?: readonly unknown[] }[]): 'Casual' | 'Tournament' {
+  static inferredEventMode(items: readonly { optional?: boolean; groups?: readonly unknown[] }[]): 'Casual' | 'Tournament' {
     if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
       return 'Tournament';
     }
     return 'Casual';
+  }
+
+  static normalizeEventMode(value: unknown): 'Casual' | 'Tournament' {
+    return `${value ?? ''}`.trim().toLowerCase() === 'tournament' ? 'Tournament' : 'Casual';
   }
 
   static resolveEventAffinity(options: {

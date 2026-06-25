@@ -50,7 +50,6 @@ export {
 export { EventsService } from './base/services/events.service';
 export { RouteDelayService } from './base/services/route-delay.service';
 export { RouteIntervalSchedulerService } from './base/services/route-interval-scheduler.service';
-export { EventEditorDataService } from './base/services/event-editor-data.service';
 export { ActivityMembersService } from './base/services/activity-members.service';
 export { ActivityResourcesService } from './base/services/activity-resources.service';
 export { AssetsService } from './base/services/assets.service';
@@ -64,13 +63,6 @@ export {
   UserExperiencesService,
   type UserExperiencesRouteConfig
 } from './base/services/user-experiences.service';
-export {
-  ProfileOnboardingService,
-  type ProfileOnboardingAssessment,
-  type ProfileOnboardingDraft,
-  type ProfileOnboardingForm,
-  type ProfileOnboardingStepId
-} from './base/services/profile-onboarding.service';
 export {
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
@@ -87,5 +79,4 @@ export * from './base/builders';
 export * from './base/mappers';
 export type * from './contracts';
 export * from './base/models';
-export * from './base/normalizers';
 export * from './local/seed';
