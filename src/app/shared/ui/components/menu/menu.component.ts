@@ -548,6 +548,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${configuredIcon ?? 'more_vert'}`.trim();
   }
 
+  protected isSymbolIcon(icon: string | null | undefined): boolean {
+    return `${icon ?? ''}`.trim().length === 1;
+  }
+
   private shouldResolveTriggerIconToClose(icon: string): boolean {
     if (this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true) {
       return false;
@@ -708,6 +712,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.setOpen(true);
       return;
     }
+    if (this.openActionRowHref(item, event)) {
+      return;
+    }
     const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
@@ -719,6 +726,38 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       action: 'select'
     });
     this.setOpen(false);
+  }
+
+  private openActionRowHref(item: AppMenuItem<TId, TContext>, event: Event): boolean {
+    const href = this.itemHref(item);
+    if (!href) {
+      return false;
+    }
+    this.itemSelect.emit({
+      id: item.id,
+      item,
+      context: item.context,
+      sourceEvent: event,
+      value: item.value,
+      controlValue: this.currentControlEventValue(),
+      action: 'select'
+    });
+    this.openHref(href, this.itemTarget(item), this.itemRel(item));
+    if (this.shouldCloseOnSelect(item)) {
+      this.setOpen(false);
+    }
+    return true;
+  }
+
+  private openHref(href: string, target: string | null, rel: string | null): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!target || target === '_self') {
+      window.location.href = href;
+      return;
+    }
+    window.open(href, target, rel || 'noopener,noreferrer');
   }
 
   protected selectBranchHeaderAction(item: AppMenuItem<TId, TContext>, event: Event): void {
@@ -867,6 +906,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.itemVisualLayout(item) === 'action';
   }
 
+  protected isImageLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return this.itemVisualLayout(item) === 'image';
+  }
+
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
     if (this.isActionRowItemOpen(item)) {
       const openIcon = `${this.resolveLiveValue(item.closeIcon ?? item.openIcon) ?? ''}`.trim();
@@ -878,6 +921,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       }
     }
     return this.itemIcon(item);
+  }
+
+  protected actionRowItemImageUrl(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageUrl) ?? ''}`.trim();
+  }
+
+  protected actionRowItemImageAlt(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageAlt) ?? this.actionRowItemAriaLabel(item) ?? ''}`.trim();
+  }
+
+  protected actionRowItemImageFallback(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
   }
 
   protected actionRowItemLabel(item: AppMenuItem<TId, TContext>): string {

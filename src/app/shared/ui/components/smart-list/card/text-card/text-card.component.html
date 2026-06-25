@@ -1,0 +1,35 @@
+<article [ngClass]="rootClassList()">
+  <div class="ui-text-card__main">
+    @if (resolvedIcon()) {
+      <span class="ui-text-card__icon" aria-hidden="true">
+        <mat-icon>{{ resolvedIcon() }}</mat-icon>
+      </span>
+    }
+    <span class="ui-text-card__copy">
+      <strong class="ui-text-card__title">{{ resolvedTitle() }}</strong>
+      @if (resolvedSubtitle()) {
+        <span class="ui-text-card__subtitle">{{ resolvedSubtitle() }}</span>
+      }
+      @if (resolvedMeta()) {
+        <span class="ui-text-card__meta">{{ resolvedMeta() }}</span>
+      }
+      @if (resolvedDetail()) {
+        <span class="ui-text-card__detail">{{ resolvedDetail() }}</span>
+      }
+    </span>
+  </div>
+
+  @if (hasMenu()) {
+    <app-menu
+      class="ui-text-card__menu"
+      kind="select"
+      layout="list"
+      [title]="resolvedMenuTitle()"
+      [trigger]="menuTrigger()"
+      [items]="menuItems"
+      [panelAlign]="'auto'"
+      [mobileBreakpointPx]="900"
+      (itemSelect)="menuSelect.emit($event)"
+    ></app-menu>
+  }
+</article>

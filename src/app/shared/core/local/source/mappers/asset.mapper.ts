@@ -1,5 +1,5 @@
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
-import { ActivityEventDtoMapper } from '../../../base/mappers/activity-event.mapper';
+import { LocalActivityEventsMapper } from './event.mapper';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type * as AssetContracts from '../../../contracts/asset.interface';
 import type { AssetRecord } from '../entity/asset.entity';
@@ -182,7 +182,7 @@ export class LocalAssetTicketsMapper {
       .filter(record => record.type !== 'invitations')
       .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => this.toTicketDTO(ActivityEventDtoMapper.toDto(record))));
+      .map(record => this.toTicketDTO(LocalActivityEventsMapper.toDto(record))));
   }
 
   static pageRows(

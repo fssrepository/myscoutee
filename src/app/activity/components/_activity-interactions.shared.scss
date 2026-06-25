@@ -143,9 +143,20 @@
     box-shadow: 0 2px 8px rgba(31, 79, 132, 0.12);
   }
 
+  .popup-header-add-btn.form-save-invalid,
   .popup-header-add-btn.form-save-invalid:disabled {
+    border-color: rgba(147, 31, 31, 0.86);
+    background: linear-gradient(180deg, #ef5c5c 0%, #cb2f2f 100%);
+    color: #fff;
     opacity: 1;
     box-shadow: 0 2px 8px rgba(122, 25, 25, 0.22);
+    transform: none;
+  }
+
+  .popup-header-add-btn.form-save-invalid:hover {
+    border-color: rgba(147, 31, 31, 0.86);
+    background: linear-gradient(180deg, #e64f4f 0%, #bd2929 100%);
+    color: #fff;
   }
 }
 

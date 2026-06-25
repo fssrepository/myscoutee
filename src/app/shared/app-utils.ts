@@ -117,8 +117,23 @@ export class AppUtils {
     return `${words[0][0] ?? ''}${words[1][0] ?? ''}`.toUpperCase();
   }
 
-  static hasText(value: string | null | undefined, minLength = 1): boolean {
-    return (value?.trim().length ?? 0) >= Math.max(0, Math.trunc(minLength));
+  static hasText(value: unknown, minLength = 1): boolean {
+    return `${value ?? ''}`.trim().length >= Math.max(0, Math.trunc(minLength));
+  }
+
+  static positiveInteger(value: unknown, fallback = 0): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  static normalizeRoutePath(url: string | null | undefined): string {
+    const [pathWithQuery] = `${url ?? '/'}`.split('?');
+    const [path] = (pathWithQuery || '').split('#');
+    const normalized = path.trim();
+    if (!normalized || normalized === '/') {
+      return '/';
+    }
+    return normalized.startsWith('/') ? normalized : `/${normalized}`;
   }
 
   static hashText(value: string): number {
@@ -274,12 +289,37 @@ export class AppUtils {
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
-  static parseDate(value: string | number | Date | null | undefined): Date | null {
+  static isIsoDate(value: string | null | undefined): boolean {
+    const normalized = `${value ?? ''}`.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+      return false;
+    }
+    return Number.isFinite(Date.parse(`${normalized}T00:00:00Z`));
+  }
+
+  static parseDate(value: unknown): Date | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }
-    const parsed = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+    if (value instanceof Date) {
+      const parsedDate = new Date(value.getTime());
+      return Number.isFinite(parsedDate.getTime()) ? parsedDate : null;
+    }
+    if (typeof value === 'number') {
+      const parsedNumber = new Date(value);
+      return Number.isFinite(parsedNumber.getTime()) ? parsedNumber : null;
+    }
+    const raw = `${value}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const parsed = new Date(raw.replace(/\//g, '-'));
     return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  static parseDateOnly(value: unknown): Date | null {
+    const parsed = this.parseDate(value);
+    return parsed ? this.dateOnly(parsed) : null;
   }
 
   static dateTimeMs(value: string | number | Date | null | undefined): number | null {
@@ -330,6 +370,17 @@ export class AppUtils {
     const month = `${value.getMonth() + 1}`.padStart(2, '0');
     const day = `${value.getDate()}`.padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  static dateKey(value: Date): string {
+    return this.toIsoDate(this.dateOnly(value));
+  }
+
+  static monthKey(value: Date): string {
+    const copy = this.startOfMonth(value);
+    const year = copy.getFullYear();
+    const month = `${copy.getMonth() + 1}`.padStart(2, '0');
+    return `${year}-${month}`;
   }
 
   static toIsoDateTime(value: Date): string {

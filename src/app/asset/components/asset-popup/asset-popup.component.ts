@@ -121,8 +121,6 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   protected readonly saveOwnedAssetCard = (): void => { void this.ownedAssets.saveAssetCard(); };
   protected readonly setOwnedAssetFormRouteStop = (index: number, value: string): void =>
     this.ownedAssets.setAssetFormRouteStop(index, value);
-  protected readonly openOwnedAssetFormRouteStopMap = (index: number, event?: Event): void =>
-    this.ownedAssets.openAssetFormRouteStopMap(index, event);
   protected readonly refreshOwnedAssetFromSourceLink = (): void => { void this.ownedAssets.refreshAssetFromSourceLink(); };
   protected readonly onOwnedAssetImageFileSelected = (file: File): void => this.ownedAssets.applyAssetImageFile(file);
   protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssets.cancelAssetDelete();

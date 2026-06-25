@@ -23,6 +23,7 @@ export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListOrientation = 'vertical' | 'horizontal';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
+export type SmartListPaginationStep = 'item' | 'page';
 export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
 export type SmartListHeaderProgressState = 'active' | 'inactive';
 export type SmartListFilters = object;
@@ -185,6 +186,7 @@ export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = 
   weekStartHour?: number;
   weekEndHour?: number;
   anchorRadius?: number;
+  initialAnchor?: SmartListConfigValue<string | Date | null | undefined, TFilters>;
   resolveDateRange: (item: T, query: ListQuery<TFilters>) => SmartListCalendarDateRange | null;
   badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
   badgeToneClass?: (item: T, query: ListQuery<TFilters>) => SmartListClassValue;
@@ -282,6 +284,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);
+    step?: SmartListConfigValue<SmartListPaginationStep, TFilters>;
+    headerControls?: SmartListConfigValue<boolean, TFilters>;
     autoplayMs?: SmartListConfigValue<number | null, TFilters>;
     ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => RatingStarBarConfig | null;
     ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;

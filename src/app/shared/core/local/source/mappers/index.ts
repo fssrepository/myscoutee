@@ -7,7 +7,7 @@ export {
   type LocalActivityInviteCandidateRecord
 } from './activity.mapper';
 export { LocalContactsMapper } from './contacts.mapper';
-export { LocalActivityEventsMapper } from './event.mapper';
+export { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
 export { LocalHelpCenterMapper } from './help-center.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
 export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';

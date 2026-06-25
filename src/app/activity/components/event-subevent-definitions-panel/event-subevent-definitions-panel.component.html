@@ -1,0 +1,86 @@
+<section class="subevent-definition-panel">
+  <header class="subevent-definition-panel__header">
+    <div class="subevent-definition-panel__title">
+      <mat-icon>inventory_2</mat-icon>
+      <div>
+        <h3>Sub Events</h3>
+        <p>{{ panelSubtitle() }}</p>
+      </div>
+    </div>
+    <div class="subevent-definition-panel__toggle-wrap">
+      @if (showEnableToggle) {
+      <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
+        [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
+        <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>{{ enabled ? 'On' : 'Off' }}</span>
+      </button>
+      }
+    </div>
+    <div class="subevent-definition-panel__actions">
+      @if (enabled) {
+      @if (modeControl === 'badge') {
+      <app-menu
+        class="subevent-definition-panel__mode-menu"
+        kind="select"
+        [trigger]="modeBadgeTrigger()"
+        [items]="[]"
+      ></app-menu>
+      } @else {
+      <app-menu
+        class="subevent-definition-panel__mode-menu"
+        kind="select"
+        [trigger]="modeMenuTrigger()"
+        [items]="modeMenuItems()"
+        (itemSelect)="onModeMenuSelect($event)"
+      ></app-menu>
+      }
+      @if (canConfigureDefinitions()) {
+      <app-menu
+        class="subevent-definition-panel__add-menu"
+        kind="inline"
+        [items]="addMenuItems()"
+        (itemSelect)="onAddMenuSelect($event)"
+      ></app-menu>
+      }
+      }
+    </div>
+  </header>
+
+  @if (enabled) {
+  <app-smart-list
+    class="subevent-definition-panel__list"
+    [config]="smartListConfig"
+    [loadPage]="loadDefinitionsPage"
+    [itemTemplate]="definitionTemplate"
+    [query]="smartListQuery"
+    (menuItemSelect)="onDefinitionMenuSelect($event)"
+  ></app-smart-list>
+
+  <ng-template #definitionTemplate let-definition let-index="index">
+    <app-info-card
+      [card]="definitionCard(definition, index)"
+      [useSharedMenuTrigger]="true"
+      [sharedMenuContext]="definitionMenuContext(definition)"
+      (menuAction)="onCardMenuAction(definition, $event)"
+    ></app-info-card>
+  </ng-template>
+  }
+
+  @if (enabled && definitionForm) {
+    <app-event-subevent-stage-form-popup
+      [view]="definitionFormView"
+      [model]="definitionFormModelValue"
+      (save)="saveDefinitionForm($event)"
+      (cancel)="cancelDefinitionForm($event)"
+      (selectOptional)="selectDefinitionOptional($event)"
+      (selectInsertPlacement)="selectDefinitionInsertPlacement($event)"
+      (insertTargetChange)="onDefinitionInsertTargetChange($event)"
+      (capacityMinChange)="onDefinitionCapacityMinChange($event)"
+      (capacityMaxChange)="onDefinitionCapacityMaxChange($event)"
+      (tournamentGroupCapacityMinChange)="onDefinitionTournamentGroupCapacityMinChange($event)"
+      (tournamentGroupCapacityMaxChange)="onDefinitionTournamentGroupCapacityMaxChange($event)"
+      (tournamentLeaderboardTypeChange)="onDefinitionTournamentLeaderboardTypeChange($event)"
+      (tournamentAdvancePerGroupChange)="onDefinitionTournamentAdvancePerGroupChange($event)"
+    ></app-event-subevent-stage-form-popup>
+  }
+</section>

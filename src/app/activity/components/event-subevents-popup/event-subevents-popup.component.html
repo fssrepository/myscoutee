@@ -13,16 +13,6 @@
           }
         </div>
         <div class="subevents-actions">
-          @if (canOpenTournamentResults()) {
-            <button
-              type="button"
-              class="subevents-add-btn subevents-results-btn"
-              (click)="openTournamentResults($event)"
-              aria-label="Open tournament results"
-              >
-              <mat-icon>emoji_events</mat-icon>
-            </button>
-          }
           <button
             type="button"
             class="subevents-add-btn"
@@ -33,13 +23,6 @@
             >
             <mat-icon>add</mat-icon>
           </button>
-          <app-menu
-            class="subevents-mode-picker"
-            kind="select"
-            [trigger]="displayModeMenuTrigger()"
-            [items]="displayModeMenuItems()"
-            (itemSelect)="onSubeventMenuSelect($event)"
-          ></app-menu>
         </div>
         @if (showHeaderTimeBadge()) {
           <span class="subevents-slot-preview-chip">{{ headerTimeBadgeLabel() }}</span>
@@ -47,7 +30,7 @@
       </header>
       <div class="subevents-body">
         @if (sortedSubEvents.length > 0) {
-          @if (displayMode === 'Tournament') {
+          @if (mode === 'Tournament') {
             <div class="subevents-period-head">
               <span class="subevents-period-nav subevents-period-nav-left">
                 <button
@@ -214,7 +197,6 @@
       (capacityMaxChange)="onSubEventCapacityMaxChange($event)"
       (selectInsertPlacement)="selectSubEventStageInsertPlacement($event)"
       (insertTargetChange)="onSubEventStageInsertTargetChange($event)"
-      (openLocationMap)="openSubEventLocationMap($event)"
       (tournamentGroupCapacityMinChange)="onTournamentGroupCapacityMinChange($event)"
       (tournamentGroupCapacityMaxChange)="onTournamentGroupCapacityMaxChange($event)"
       (tournamentLeaderboardTypeChange)="onTournamentLeaderboardTypeChange($event)"

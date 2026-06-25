@@ -1,5 +1,6 @@
 import type * as AppConstants from '../common/constants';
 import type * as ChatContracts from './chat.interface';
+import type { DateRangeDto } from './date.interface';
 import type * as EventContracts from './event.interface';
 import type * as PricingContracts from './pricing.interface';
 import type * as UserContracts from './user.interface';
@@ -51,6 +52,12 @@ export interface IEventsService {
     query: ActivityEventActivitiesQuery,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
+  loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null>;
+  loadSubEventsById(
+    userId: string,
+    eventId: string,
+    query?: ActivityEventSubEventsQueryDTO
+  ): Promise<ActivityEventSubEventsResultDTO | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
@@ -62,7 +69,7 @@ export interface IEventsService {
   removeEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
   restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
   saveActivityEvent(
-    payload: ActivityEventSaveDTO
+    payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
 }
 
@@ -103,51 +110,6 @@ export interface EventExploreFeedFilters {
   openSpotsOnly: boolean;
   topic: string;
   excludedSourceIds?: string[];
-}
-
-export interface ActivityEventSaveDTO {
-  id: string;
-  title: string;
-  shortDescription: string;
-  timeframe: string;
-  activity: number;
-  startAt: string;
-  endAt?: string;
-  distanceKm: number;
-  imageUrl: string;
-  acceptedMembers?: number;
-  pendingMembers?: number;
-  capacityTotal?: number;
-  capacityMin?: number | null;
-  capacityMax?: number | null;
-  autoInviter?: boolean;
-  frequency?: string;
-  ticketing?: boolean;
-  pricing?: PricingContracts.PricingConfig | null;
-  slotsEnabled?: boolean;
-  slotTemplates?: EventContracts.EventSlotTemplate[];
-  parentEventId?: string | null;
-  slotTemplateId?: string | null;
-  generated?: boolean;
-  eventType?: EventContracts.EventRecordKind;
-  nextSlot?: EventContracts.EventSlotOccurrence | null;
-  upcomingSlots?: EventContracts.EventSlotOccurrence[];
-  visibility?: AppConstants.EventVisibility;
-  blindMode?: EventContracts.EventBlindMode;
-  status?: ActivityEventStatus;
-  creatorUserId?: string;
-  creatorName?: string;
-  creatorInitials?: string;
-  creatorGender?: AppConstants.UserGender;
-  creatorCity?: string;
-  location?: string;
-  locationCoordinates?: UserContracts.LocationCoordinates;
-  sourceLink?: string;
-  policies?: EventContracts.EventPolicyItem[];
-  topics?: string[];
-  subEvents?: EventContracts.SubEventFormItem[];
-  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
-  paymentSessionId?: string | null;
 }
 
 export interface ActivitiesPageRequest {
@@ -220,15 +182,15 @@ export interface ActivityEventRecord {
   frequency?: string;
   ticketing: boolean;
   pricing?: PricingContracts.PricingConfig | null;
-  policies?: EventContracts.EventPolicyItem[];
+  policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
-  slotTemplates?: EventContracts.EventSlotTemplate[];
+  slotTemplates?: EventContracts.EventSlotTemplateDTO[];
   parentEventId?: string | null;
   slotTemplateId?: string | null;
   generated?: boolean;
   eventType?: EventContracts.EventRecordKind;
-  nextSlot?: EventContracts.EventSlotOccurrence | null;
-  upcomingSlots?: EventContracts.EventSlotOccurrence[];
+  nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
+  upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -237,131 +199,593 @@ export interface ActivityEventRecord {
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
-  subEvents?: EventContracts.SubEventFormItem[];
-  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+  subEvents?: EventContracts.SubEventDTO[];
+  mode?: EventContracts.EventMode;
   rating: number;
   boost: number;
   affinity: number;
 }
 
-export type ActivityEventDTOStatus = ActivityEventStatus;
-
-export type ActivityEventDTOApplyInput = Partial<Omit<ActivityEventDTO, 'apply'>> & Pick<ActivityEventDTO, 'id'>;
-
-export class ActivityEventDTO {
-  id!: string;
-  userId!: string;
-  type!: ActivityEventRepositoryItemType;
-  status?: ActivityEventDTOStatus;
-  statusBeforeSuppression?: ActivityEventDTOStatus | null;
-  adminIds!: string[];
-  avatar!: string;
-  title!: string;
-  subtitle!: string;
-  timeframe!: string;
-  inviter!: string | null;
-  unread!: number;
-  activity!: number;
-  trashedAtIso?: string | null;
-  creatorUserId!: string;
-  creatorName!: string;
-  creatorInitials!: string;
-  creatorGender?: AppConstants.UserGender;
-  creatorCity!: string;
-  visibility!: AppConstants.EventVisibility;
-  blindMode?: EventContracts.EventBlindMode;
-  startAtIso!: string;
-  endAtIso!: string;
-  distanceKm!: number;
-  imageUrl!: string;
-  sourceLink?: string;
-  location!: string;
-  locationCoordinates?: UserContracts.LocationCoordinates | null;
-  capacityMin!: number | null;
-  capacityMax!: number | null;
-  capacityTotal!: number;
-  autoInviter?: boolean;
-  frequency?: string;
-  ticketing!: boolean;
-  pricing?: PricingContracts.PricingConfig | null;
-  policies?: EventContracts.EventPolicyItem[];
-  slotsEnabled?: boolean;
-  slotTemplates?: EventContracts.EventSlotTemplate[];
-  parentEventId?: string | null;
-  slotTemplateId?: string | null;
-  generated?: boolean;
+export interface ActivityEventDTO {
+  id: string;
+  userId: string;
+  type: ActivityEventRepositoryItemType;
+  status?: ActivityEventStatus;
+  adminIds: string[];
+  title: string;
+  subtitle: string;
+  timeframe: string;
+  inviter: string | null;
+  activity: number;
+  creatorUserId: string;
+  creatorName: string;
+  creatorInitials: string;
+  creatorCity: string;
+  visibility: AppConstants.EventVisibility;
+  startAtIso: string;
+  endAtIso: string;
+  distanceKm: number;
+  imageUrl: string;
+  location: string;
+  capacityTotal: number;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
-  nextSlot?: EventContracts.EventSlotOccurrence | null;
-  upcomingSlots?: EventContracts.EventSlotOccurrence[];
-  acceptedMembers!: number;
-  pendingMembers!: number;
+  acceptedMembers: number;
+  pendingMembers: number;
   acceptedMemberUserIds?: string[];
   pendingMemberUserIds?: string[];
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
-  topics!: string[];
-  subEvents?: EventContracts.SubEventFormItem[];
-  subEventsDisplayMode?: EventContracts.SubEventsDisplayMode;
-  rating!: number;
-  boost!: number;
-  affinity!: number;
+  boost: number;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+}
 
-  constructor(data: Omit<ActivityEventDTO, 'apply'>) {
-    Object.assign(this, ActivityEventDTO.copyDefined(data));
+export interface ActivityEventSubEventRuntimeDTO extends EventContracts.SubEventDTO {
+  runtimeId: string;
+  parentEventId?: string | null;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  slotTitle?: string | null;
+  slotTimeframe?: string | null;
+}
+
+export interface ActivityEventSubEventsQueryDTO {
+  userId: string;
+  eventId: string;
+  order?: 'upcoming' | 'past' | string;
+  view?: ActivitiesView | 'day' | 'week' | 'month' | string;
+  anchorDate?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+}
+
+export interface ActivityEventSubEventsResultDTO {
+  event: ActivityEventDetailDTO;
+  items: ActivityEventSubEventRuntimeDTO[];
+}
+
+export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';
+
+export interface SubEventDefinitionDTO {
+  id: string;
+  name: string;
+  description: string;
+  timing: SubEventDefinitionTiming;
+  offsetMinutes: number;
+  durationMinutes: number;
+  location?: string;
+  groups?: EventContracts.SubEventGroupDTO[];
+  tournamentGroupCount?: number;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: EventContracts.TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
+  optional: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  capacityMin: number;
+  capacityMax: number;
+  icon?: string | null;
+}
+
+export class ActivityEventDetailDTO {
+  id = '';
+  userId = '';
+  type: ActivityEventRepositoryItemType = 'events';
+  status?: ActivityEventStatus = 'DR';
+  statusBeforeSuppression?: ActivityEventStatus | null = null;
+  adminIds: string[] = [];
+  avatar = '';
+  title = '';
+  subtitle = '';
+  timeframe = '';
+  inviter: string | null = null;
+  unread = 0;
+  activity = 0;
+  trashedAtIso?: string | null = null;
+  creatorUserId = '';
+  creatorName = '';
+  creatorInitials = '';
+  creatorGender?: AppConstants.UserGender;
+  creatorCity = '';
+  visibility: AppConstants.EventVisibility = 'Public';
+  blindMode: EventContracts.EventBlindMode = 'Open Event';
+  startAtIso = '';
+  endAtIso = '';
+  dateRange: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
+  distanceKm = 0;
+  imageUrl = '';
+  sourceLink = '';
+  location = '';
+  locationCoordinates: UserContracts.LocationCoordinates | null = null;
+  capacityMin: number | null = 0;
+  capacityMax: number | null = 0;
+  capacityTotal = 0;
+  autoInviter = false;
+  frequency = 'One-time';
+  ticketing = false;
+  pricing: PricingContracts.PricingConfig | null = null;
+  policies: EventContracts.EventPolicyDTO[] = [];
+  slotsEnabled = false;
+  slotTemplates: EventContracts.EventSlotTemplateDTO[] = [];
+  parentEventId: string | null = null;
+  slotTemplateId: string | null = null;
+  generated = false;
+  eventType: EventContracts.EventRecordKind = 'main';
+  nextSlot: EventContracts.EventSlotOccurrenceDTO | null = null;
+  upcomingSlots: EventContracts.EventSlotOccurrenceDTO[] = [];
+  acceptedMembers = 0;
+  pendingMembers = 0;
+  acceptedMemberUserIds: string[] = [];
+  pendingMemberUserIds: string[] = [];
+  invitedMemberUserIds: string[] = [];
+  pendingRequestMemberUserIds: string[] = [];
+  pendingReason?: AppConstants.ActivityPendingReason;
+  topics: string[] = [];
+  subEventsEnabled = true;
+  subEventDefinitions: SubEventDefinitionDTO[] = [];
+  subEvents: EventContracts.SubEventDTO[] = [];
+  mode: EventContracts.EventMode = 'Casual';
+  rating = 0;
+  boost = 0;
+  affinity = 0;
+  paymentSessionId: string | null = null;
+
+  apply(update: Partial<ActivityEventDetailDTO> | null | undefined): this {
+    if (!update) {
+      return this;
+    }
+
+    this.id = update.id ?? this.id;
+    this.userId = update.userId ?? this.userId;
+    this.type = update.type ?? this.type;
+    this.status = update.status ?? this.status;
+    this.statusBeforeSuppression = update.statusBeforeSuppression ?? this.statusBeforeSuppression;
+    this.adminIds = [...(update.adminIds ?? this.adminIds)];
+    this.avatar = update.avatar ?? this.avatar;
+    this.title = update.title ?? this.title;
+    this.subtitle = update.subtitle ?? this.subtitle;
+    this.timeframe = update.timeframe ?? this.timeframe;
+    this.inviter = update.inviter ?? this.inviter;
+    this.unread = ActivityEventDetailDTO.nonNegativeInteger(update.unread ?? this.unread);
+    this.activity = ActivityEventDetailDTO.nonNegativeInteger(update.activity ?? this.activity);
+    this.trashedAtIso = update.trashedAtIso ?? this.trashedAtIso;
+    this.creatorUserId = update.creatorUserId ?? this.creatorUserId;
+    this.creatorName = update.creatorName ?? this.creatorName;
+    this.creatorInitials = update.creatorInitials ?? this.creatorInitials;
+    this.creatorGender = update.creatorGender ?? this.creatorGender;
+    this.creatorCity = update.creatorCity ?? this.creatorCity;
+    this.visibility = update.visibility ?? this.visibility;
+    this.blindMode = update.blindMode ?? this.blindMode;
+    this.dateRange = ActivityEventDetailDTO.normalizeDateRange(update.dateRange ?? {
+      startAt: update.startAtIso ?? this.dateRange.startAt ?? this.startAtIso,
+      endAt: update.endAtIso ?? this.dateRange.endAt ?? this.endAtIso,
+      precision: 'minute'
+    });
+    this.startAtIso = this.dateRange.startAt;
+    this.endAtIso = this.dateRange.endAt;
+    this.distanceKm = Number.isFinite(update.distanceKm) ? Number(update.distanceKm) : this.distanceKm;
+    this.imageUrl = update.imageUrl ?? this.imageUrl;
+    this.sourceLink = update.sourceLink ?? this.sourceLink;
+    this.location = update.location ?? this.location;
+    this.locationCoordinates = update.locationCoordinates ? { ...update.locationCoordinates } : update.locationCoordinates === null ? null : this.locationCoordinates;
+    this.capacityMin = update.capacityMin ?? this.capacityMin;
+    this.capacityMax = update.capacityMax ?? this.capacityMax;
+    this.capacityTotal = ActivityEventDetailDTO.nonNegativeInteger(update.capacityTotal ?? this.capacityTotal);
+    this.autoInviter = update.autoInviter ?? this.autoInviter;
+    this.frequency = update.frequency ?? this.frequency;
+    this.ticketing = update.ticketing ?? this.ticketing;
+    this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
+    this.applyPolicies(update.policies ?? this.policies);
+    this.slotsEnabled = update.slotsEnabled ?? this.slotsEnabled;
+    this.applySlotTemplates(update.slotTemplates ?? this.slotTemplates);
+    this.parentEventId = update.parentEventId ?? this.parentEventId;
+    this.slotTemplateId = update.slotTemplateId ?? this.slotTemplateId;
+    this.generated = update.generated ?? this.generated;
+    this.eventType = update.eventType ?? this.eventType;
+    this.nextSlot = update.nextSlot ? { ...update.nextSlot } : update.nextSlot === null ? null : this.nextSlot;
+    this.upcomingSlots = (update.upcomingSlots ?? this.upcomingSlots).map(item => ({ ...item }));
+    this.acceptedMembers = ActivityEventDetailDTO.nonNegativeInteger(update.acceptedMembers ?? this.acceptedMembers);
+    this.pendingMembers = ActivityEventDetailDTO.nonNegativeInteger(update.pendingMembers ?? this.pendingMembers);
+    this.acceptedMemberUserIds = [...(update.acceptedMemberUserIds ?? this.acceptedMemberUserIds)];
+    this.pendingMemberUserIds = [...(update.pendingMemberUserIds ?? this.pendingMemberUserIds)];
+    this.invitedMemberUserIds = [...(update.invitedMemberUserIds ?? this.invitedMemberUserIds)];
+    this.pendingRequestMemberUserIds = [...(update.pendingRequestMemberUserIds ?? this.pendingRequestMemberUserIds)];
+    this.pendingReason = update.pendingReason ?? this.pendingReason;
+    this.topics = [...(update.topics ?? this.topics)];
+    this.subEventsEnabled = update.subEventsEnabled ?? this.subEventsEnabled;
+    this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
+    this.applySubEvents(update.subEvents ?? this.subEvents);
+    this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
+    this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
+    this.boost = ActivityEventDetailDTO.nonNegativeInteger(update.boost ?? this.boost);
+    this.affinity = ActivityEventDetailDTO.nonNegativeInteger(update.affinity ?? this.affinity);
+    this.paymentSessionId = update.paymentSessionId ?? this.paymentSessionId;
+    return this;
   }
 
-  apply(update: ActivityEventDTO): ActivityEventDTO;
-  apply(update: ActivityEventDTOApplyInput): ActivityEventDTO;
-  apply(update: ActivityEventDTOApplyInput): ActivityEventDTO {
-    const current = ActivityEventDTO.copyDefined(this);
-    const patch = ActivityEventDTO.copyDefined(update);
-    const acceptedMembers = ActivityEventDTO.countValue(patch.acceptedMembers, current.acceptedMembers);
-    const pendingMembers = ActivityEventDTO.countValue(patch.pendingMembers, current.pendingMembers);
-    const capacityTotal = Math.max(
-      acceptedMembers,
-      ActivityEventDTO.countValue(patch.capacityTotal, current.capacityTotal)
-    );
+  clone(): ActivityEventDetailDTO {
+    return new ActivityEventDetailDTO().apply(this);
+  }
 
-    return new ActivityEventDTO({
-      ...current,
-      ...patch,
-      endAtIso: patch.endAtIso ?? (patch.startAtIso ? patch.startAtIso : current.endAtIso),
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal
+  applyPolicies(items: readonly EventContracts.EventPolicyDTO[]): this {
+    this.policies = ActivityEventDetailDTO.normalizePolicies(items);
+    return this;
+  }
+
+  applySlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): this {
+    this.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(items);
+    return this;
+  }
+
+  applySubEventDefinitions(items: readonly SubEventDefinitionDTO[]): this {
+    this.subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(items);
+    return this;
+  }
+
+  applySubEvents(items: readonly EventContracts.SubEventDTO[]): this {
+    this.subEvents = ActivityEventDetailDTO.normalizeSubEvents(items);
+    return this;
+  }
+
+  normalizeCapacityRange(): EventContracts.EventCapacityRange {
+    const min = ActivityEventDetailDTO.nonNegativeIntegerOrNull(this.capacityMin);
+    const maxCandidate = ActivityEventDetailDTO.nonNegativeIntegerOrNull(this.capacityMax);
+    const max = min !== null && maxCandidate !== null
+      ? Math.max(min, maxCandidate)
+      : (maxCandidate ?? min);
+    this.capacityMin = min;
+    this.capacityMax = max;
+    return { min, max };
+  }
+
+  syncFirstSubEventLocation(location: string): this {
+    if (this.subEvents.length === 0) {
+      return this;
+    }
+    const first = ActivityEventDetailDTO.firstSubEventByOrder(this.subEvents);
+    if (!first?.id) {
+      return this;
+    }
+    const normalizedLocation = ActivityEventDetailDTO.normalizeLocation(location);
+    this.subEvents = this.subEvents.map(item => item.id === first.id
+      ? { ...item, location: normalizedLocation, groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups) }
+      : { ...item, groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups) });
+    return this;
+  }
+
+  static normalizePolicies(items: readonly EventContracts.EventPolicyDTO[]): EventContracts.EventPolicyDTO[] {
+    return items.map((item, index) => ({
+      id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
+      title: `${item.title ?? ''}`.trim() || `Policy ${index + 1}`,
+      description: `${item.description ?? ''}`.trim(),
+      required: item.required !== false
+    })).filter(item => item.id || item.title || item.description);
+  }
+
+  static normalizeSlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): EventContracts.EventSlotTemplateDTO[] {
+    return items.map((item, index) => {
+      if (item.closed === true) {
+        return {
+          id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+          startAt: '',
+          overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
+          closed: true,
+          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
+        };
+      }
+      const normalizedStart = `${item.startAt ?? ''}`.trim();
+      const parsedStart = ActivityEventDetailDTO.parseDate(normalizedStart) ?? new Date();
+      return {
+        id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
+        startAt: ActivityEventDetailDTO.parseDate(normalizedStart) ? normalizedStart : ActivityEventDetailDTO.toIsoDateTimeLocal(parsedStart),
+        overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
+        closed: false,
+        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
+      };
     });
   }
 
-  static from(data: ActivityEventDTO): ActivityEventDTO;
-  static from(data: Omit<ActivityEventDTO, 'apply'>): ActivityEventDTO;
-  static from(data: ActivityEventDTO | Omit<ActivityEventDTO, 'apply'>): ActivityEventDTO {
-    return data instanceof ActivityEventDTO
-      ? data
-      : new ActivityEventDTO(data);
+  static normalizeSubEventDefinitions(items: readonly SubEventDefinitionDTO[]): SubEventDefinitionDTO[] {
+    return items.map((item, index) => {
+      const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
+      const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
+      const durationMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.durationMinutes);
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const offsetMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.offsetMinutes);
+      return {
+        id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
+        description: `${item.description ?? ''}`.trim(),
+        timing,
+        offsetMinutes,
+        durationMinutes,
+        location: ActivityEventDetailDTO.normalizeLocation(item.location),
+        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
+        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
+        tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
+        tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
+        tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+        tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        optional: item.optional === true,
+        pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
+        capacityMin,
+        capacityMax,
+        icon: `${item.icon ?? ''}`.trim() || null
+      };
+    });
   }
 
-  private static copyDefined<T extends object>(value: T): T {
-    const copy = ActivityEventDTO.copyValue(value);
-    for (const key of Object.keys(copy) as (keyof T)[]) {
-      if (copy[key] === undefined) {
-        delete copy[key];
-      }
+  static normalizeSubEventDefinitionTiming(value: unknown): SubEventDefinitionTiming {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'before') {
+      return 'Before';
     }
-    return copy;
+    if (normalized === 'after') {
+      return 'After';
+    }
+    return 'During';
   }
 
-  private static copyValue<T>(value: T): T {
-    return value == null
-      ? value
-      : JSON.parse(JSON.stringify(value)) as T;
+  static normalizeDateRange(value: Partial<DateRangeDto> | null | undefined): DateRangeDto {
+    return {
+      startAt: `${value?.startAt ?? ''}`.trim(),
+      endAt: `${value?.endAt ?? ''}`.trim(),
+      precision: value?.precision === 'date' ? 'date' : 'minute'
+    };
   }
 
-  private static countValue(value: unknown, fallback: number): number {
-    const numeric = Number(value);
-    return Number.isFinite(numeric)
-      ? Math.max(0, Math.trunc(numeric))
-      : Math.max(0, Math.trunc(Number(fallback) || 0));
+  static normalizeSubEvents(items: readonly EventContracts.SubEventDTO[]): EventContracts.SubEventDTO[] {
+    return items.map((item, index) => {
+      const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
+      const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
+      return {
+        id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        startAt: `${item.startAt ?? ''}`.trim(),
+        endAt: `${item.endAt ?? ''}`.trim(),
+        location: ActivityEventDetailDTO.normalizeLocation(item.location),
+        createdByUserId: item.createdByUserId?.trim() || undefined,
+        optional: item.optional === true,
+        pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
+        capacityMin,
+        capacityMax,
+        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
+        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
+        tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
+        tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
+        tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+        tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        membersAccepted: ActivityEventDetailDTO.nonNegativeInteger(item.membersAccepted),
+        membersPending: ActivityEventDetailDTO.nonNegativeInteger(item.membersPending),
+        carsPending: ActivityEventDetailDTO.nonNegativeInteger(item.carsPending),
+        accommodationPending: ActivityEventDetailDTO.nonNegativeInteger(item.accommodationPending),
+        suppliesPending: ActivityEventDetailDTO.nonNegativeInteger(item.suppliesPending),
+        carsAccepted: ActivityEventDetailDTO.optionalNonNegativeInteger(item.carsAccepted),
+        accommodationAccepted: ActivityEventDetailDTO.optionalNonNegativeInteger(item.accommodationAccepted),
+        suppliesAccepted: ActivityEventDetailDTO.optionalNonNegativeInteger(item.suppliesAccepted),
+        carsCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.carsCapacityMin),
+        carsCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.carsCapacityMax),
+        accommodationCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.accommodationCapacityMin),
+        accommodationCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.accommodationCapacityMax),
+        suppliesCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.suppliesCapacityMin),
+        suppliesCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.suppliesCapacityMax),
+        slotStartOffsetMinutes: ActivityEventDetailDTO.optionalNonNegativeInteger(item.slotStartOffsetMinutes),
+        slotDurationMinutes: ActivityEventDetailDTO.optionalNonNegativeInteger(item.slotDurationMinutes),
+        stageStatus: `${item.stageStatus ?? ''}`.trim() || undefined,
+        stageStatusReason: `${item.stageStatusReason ?? ''}`.trim() || undefined,
+        stageStatusUpdatedAt: `${item.stageStatusUpdatedAt ?? ''}`.trim() || undefined,
+        stageFinalizedAt: `${item.stageFinalizedAt ?? ''}`.trim() || undefined,
+        stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined
+      };
+    });
+  }
+
+  static sortSubEventsByStartAsc<T extends Pick<EventContracts.SubEventDTO, 'startAt'>>(items: readonly T[]): T[] {
+    return [...items]
+      .map((item, index) => ({ item, index, startMs: ActivityEventDetailDTO.parseDate(item.startAt)?.getTime() ?? Number.POSITIVE_INFINITY }))
+      .sort((left, right) => left.startMs - right.startMs || left.index - right.index)
+      .map(entry => entry.item);
+  }
+
+  static firstSubEventByOrder<T extends Pick<EventContracts.SubEventDTO, 'startAt'>>(items: readonly T[]): T | null {
+    return ActivityEventDetailDTO.sortSubEventsByStartAsc(items)[0] ?? null;
+  }
+
+  static normalizeSlotOverrideDate(value: unknown): string | null {
+    const parsed = ActivityEventDetailDTO.parseDateOnly(value);
+    return parsed ? ActivityEventDetailDTO.toIsoDate(parsed) : null;
+  }
+
+  static normalizeVisibility(value: unknown): AppConstants.EventVisibility {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'private' || normalized.includes('friend')) {
+      return 'Friends only';
+    }
+    if (normalized.includes('invitation')) {
+      return 'Invitation only';
+    }
+    return 'Public';
+  }
+
+  static normalizeFrequency(value: unknown): string {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'custom') {
+      return 'Custom';
+    }
+    if (normalized === 'daily') {
+      return 'Daily';
+    }
+    if (normalized === 'weekly') {
+      return 'Weekly';
+    }
+    if (normalized.includes('bi-week') || normalized.includes('bi week')) {
+      return 'Bi-weekly';
+    }
+    if (normalized === 'monthly') {
+      return 'Monthly';
+    }
+    if (normalized === 'yearly' || normalized === 'annual' || normalized === 'annually') {
+      return 'Yearly';
+    }
+    return 'One-time';
+  }
+
+  static normalizeBlindMode(value: unknown): EventContracts.EventBlindMode {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized.includes('blind') ? 'Blind Event' : 'Open Event';
+  }
+
+  static normalizeMode(value: unknown): EventContracts.EventMode {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized === 'tournament' ? 'Tournament' : 'Casual';
+  }
+
+  static normalizeTopics(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value
+      .map(item => `${item ?? ''}`.trim().replace(/^#+/, ''))
+      .filter(item => item.length > 0)
+      .slice(0, 5);
+  }
+
+  static normalizeTopicToken(value: unknown): string {
+    return `${value ?? ''}`.trim().replace(/^#+/, '').toLowerCase();
+  }
+
+  static normalizeLocation(value: unknown): string {
+    return `${value ?? ''}`.trim();
+  }
+
+  static buildTimeframeLabel(startAt: string, endAt: string, frequency: string): string {
+    const start = ActivityEventDetailDTO.parseDate(startAt);
+    const end = ActivityEventDetailDTO.parseDate(endAt);
+    if (!start || !end) {
+      return startAt || endAt || '';
+    }
+
+    const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const normalizedFrequency = ActivityEventDetailDTO.normalizeFrequency(frequency);
+
+    if (normalizedFrequency === 'One-time') {
+      return `${dateLabel} · ${startTime} - ${endTime}`;
+    }
+
+    return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
+  }
+
+  private static cloneSubEventGroups(
+    groups: readonly EventContracts.SubEventGroupDTO[] | undefined,
+    subEventIndex = 0
+  ): EventContracts.SubEventGroupDTO[] {
+    return (groups ?? []).map((group, groupIndex) => ({
+      id: `${group.id ?? `group-${subEventIndex + 1}-${groupIndex + 1}`}`.trim() || `group-${subEventIndex + 1}-${groupIndex + 1}`,
+      name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
+      source: group.source === 'manual' ? 'manual' : 'generated',
+      capacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(group.capacityMin),
+      capacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(group.capacityMax)
+    }));
+  }
+
+  private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      ...value,
+      demandRules: (value.demandRules ?? []).map(rule => ({ ...rule, action: { ...rule.action }, slotIds: [...(rule.slotIds ?? [])] })),
+      timeRules: (value.timeRules ?? []).map(rule => ({ ...rule, action: { ...rule.action }, slotIds: [...(rule.slotIds ?? [])] })),
+      cancellationPolicy: {
+        ...value.cancellationPolicy,
+        rules: (value.cancellationPolicy?.rules ?? []).map(rule => ({ ...rule }))
+      },
+      slotOverrides: (value.slotOverrides ?? []).map(slot => ({ ...slot })),
+      audience: {
+        ...value.audience,
+        promoCodes: (value.audience?.promoCodes ?? []).map(code => ({ ...code, action: { ...code.action } }))
+      }
+    };
+  }
+
+  private static nonNegativeInteger(value: unknown): number {
+    return ActivityEventDetailDTO.nonNegativeIntegerOrNull(value) ?? 0;
+  }
+
+  private static optionalNonNegativeInteger(value: unknown): number | undefined {
+    return ActivityEventDetailDTO.nonNegativeIntegerOrNull(value) ?? undefined;
+  }
+
+  private static nonNegativeIntegerOrNull(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : null;
+  }
+
+  private static parseDate(value: unknown): Date | null {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : new Date(value);
+    }
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      const parsedNumber = new Date(value);
+      return Number.isNaN(parsedNumber.getTime()) ? null : parsedNumber;
+    }
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const parsed = new Date(raw.replace(/\//g, '-'));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private static parseDateOnly(value: unknown): Date | null {
+    const parsed = ActivityEventDetailDTO.parseDate(value);
+    return parsed ? new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()) : null;
+  }
+
+  private static toIsoDate(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private static toIsoDateTimeLocal(value: Date): string {
+    const year = value.getFullYear();
+    const month = `${value.getMonth() + 1}`.padStart(2, '0');
+    const day = `${value.getDate()}`.padStart(2, '0');
+    const hours = `${value.getHours()}`.padStart(2, '0');
+    const minutes = `${value.getMinutes()}`.padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   }
 }
 
@@ -704,10 +1128,6 @@ export class EventFeedbackPageResultDto {
   readonly state: EventFeedbackPageStateSnapshotDto;
   readonly counts: EventFeedbackPageCountsDto;
 
-  static normalize(result: Partial<EventFeedbackPageResultDto> | null | undefined): EventFeedbackPageResultDto {
-    return new EventFeedbackPageResultDto(result);
-  }
-
   constructor(result: Partial<EventFeedbackPageResultDto> | null | undefined = null) {
     const allItems = EventFeedbackPageResultDto.clonePageItems(result?.allItems);
     const organizerItems = EventFeedbackPageResultDto.clonePageItems(result?.organizerItems);
@@ -1048,10 +1468,6 @@ export class EventFeedbackDetailDto {
   readonly title: string;
   readonly submittedAtIso: string;
   readonly cards: EventFeedbackCardDto[];
-
-  static normalize(result: Partial<EventFeedbackDetailDto> | null | undefined): EventFeedbackDetailDto {
-    return new EventFeedbackDetailDto(result);
-  }
 
   constructor(result: Partial<EventFeedbackDetailDto> | null | undefined = null) {
     this.eventId = result?.eventId?.trim() ?? '';

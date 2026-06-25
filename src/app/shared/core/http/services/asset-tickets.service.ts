@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import { ActivityEventDtoMapper } from '../../base/mappers/activity-event.mapper';
+import { LocalActivityEventsMapper } from '../../local/source/mappers';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 import type * as AssetContracts from '../../contracts/asset.interface';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
@@ -84,7 +84,7 @@ export class HttpAssetTicketsService {
       .filter(record => record.type !== 'invitations')
       .filter(record => record.status !== 'T')
       .filter(record => record.ticketing === true)
-      .map(record => this.toTicketDTO(ActivityEventDtoMapper.toDto(record))));
+      .map(record => this.toTicketDTO(LocalActivityEventsMapper.toDto(record))));
   }
 
   private pageRows(

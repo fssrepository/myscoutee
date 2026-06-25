@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { EventFeedbackBuilder } from '../../../base/builders/event-feedback.builder';
 import { EventFeedbackDetailDto } from '../../../contracts/activity.interface';
 import type {
   EventFeedbackReceivedEventDto,
@@ -107,7 +108,7 @@ export class LocalEventFeedbackRepository {
   }
 
   submitEventFeedback(userId: string, request: EventFeedbackDetailDto): void {
-    const feedback = EventFeedbackDetailDto.normalize(request);
+    const feedback = EventFeedbackBuilder.cloneDetail(request);
     const normalizedUserId = userId.trim();
     const normalizedEventId = feedback.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {

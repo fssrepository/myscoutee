@@ -43,6 +43,7 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
   @Input() slotCount = 8;
   @Input() disabled = false;
   @Input() compact = false;
+  @Input() autoSize = false;
   @Input() previewMode = false;
   @Input() ariaLabel = 'Image slots';
   @Input() uploadOwnerId = '';
@@ -66,9 +67,19 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
     return this.compact;
   }
 
+  @HostBinding('class.editable-image-carousel-host--auto-size')
+  protected get autoSizeClass(): boolean {
+    return this.autoSize;
+  }
+
   @HostBinding('class.editable-image-carousel-host--preview')
   protected get previewClass(): boolean {
     return this.previewMode;
+  }
+
+  @HostBinding('class.editable-image-carousel-host--single-slot')
+  protected get singleSlotClass(): boolean {
+    return this.normalizedSlotCount() === 1;
   }
 
   ngOnChanges(changes: SimpleChanges): void {

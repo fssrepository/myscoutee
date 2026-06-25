@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
 import { AppContext } from '../../../shared/ui';
-import { FormsModule } from '@angular/forms';
+import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
@@ -10,16 +10,16 @@ import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-fo
 import {
   EventSubeventLeaderboardFifaMatch, EventSubeventLeaderboardFifaRow, EventSubeventLeaderboardGroup, EventSubeventLeaderboardMember, EventSubeventLeaderboardPopupComponent, EventSubeventLeaderboardScoreEntry, EventSubeventLeaderboardScoreRow
 } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
-import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
+import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView, type EventSubeventStageInsertPlacement } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
+import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
 import {
-  AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
@@ -35,11 +35,10 @@ import {
 } from '../../../shared/ui';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
-type SubEventsDisplayMode = 'Casual' | 'Tournament';
+type EventMode = 'Casual' | 'Tournament';
 type StageMenuAction = 'add-group' | 'leaderboard' | 'edit-stage' | 'delete-stage' | 'start-tournament' | 'close-stage' | 'finalize-stage' | 'reopen-scores' | 'suspend-tournament' | 'resume-tournament';
 type GroupMenuAction = 'edit-group' | 'delete-group';
-type DisplayModeMenuItemId = 'display-casual' | 'display-tournament';
-type SubeventActionMenuItemId = DisplayModeMenuItemId | StageMenuAction | GroupMenuAction | 'stage-location' | 'members' | 'car' | 'accommodation' | 'supplies' | 'edit-casual' | 'delete-casual' | 'show-map';
+type SubeventActionMenuItemId = StageMenuAction | GroupMenuAction | 'stage-location' | 'members' | 'car' | 'accommodation' | 'supplies' | 'edit-casual' | 'delete-casual' | 'show-map';
 type StageInsertPlacement = 'before' | 'after';
 type TournamentLeaderboardType = 'Score' | 'Fifa';
 type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
@@ -152,7 +151,6 @@ interface EventSubeventsPreparedItem extends EventSubeventsItem {
 }
 
 type SubeventActionMenuContext =
-  | { scope: 'display-mode'; mode: SubEventsDisplayMode }
   | { scope: 'stage-action'; stage: EventSubeventsStageCard; action: StageMenuAction | 'stage-location' }
   | { scope: 'group-action'; row: EventSubeventsStageRow; action: GroupMenuAction }
   | { scope: 'group-resource'; row: EventSubeventsStageRow; resourceType: EventEditorSubEventResourceType }
@@ -171,6 +169,7 @@ interface SubEventFormModel {
   name: string;
   description: string;
   location: string;
+  dateRange: ContractTypes.DateRangeDto;
   startAt: string;
   endAt: string;
   optional: boolean;
@@ -240,7 +239,6 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
     MatButtonModule,
     MatIconModule,
     SmartListComponent,
-    AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     EventSubeventStageFormPopupComponent,
@@ -249,16 +247,24 @@ type EventSubeventsAssetMetricsByType = Record<Exclude<EventEditorSubEventResour
   ],
   templateUrl: './event-subevents-popup.component.html',
   styleUrl: './event-subevents-popup.component.scss',
-  providers: [AppMenuDispatcher],
+  providers: [
+    AppMenuDispatcher,
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => EventSubeventsPopupComponent),
+      multi: true
+    }
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EventSubeventsPopupComponent implements OnChanges {
+export class EventSubeventsPopupComponent implements OnChanges, ControlValueAccessor {
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   @Input() open = false;
   @Input() readOnly = false;
@@ -266,19 +272,16 @@ export class EventSubeventsPopupComponent implements OnChanges {
   @Input() parentTitle = '';
   @Input() ownerId: string | null = null;
   @Input() subEvents: readonly EventSubeventsItem[] = [];
-  @Input() displayMode: SubEventsDisplayMode = 'Casual';
+  @Input() mode: EventMode = 'Casual';
   @Input() slotsEnabled = false;
-  @Input() slotTemplates: readonly ContractTypes.EventSlotTemplate[] = [];
-  @Input() parentStartAt = '';
-  @Input() parentEndAt = '';
+  @Input() slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = [];
+  @Input() bounds: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
 
   @Output() readonly close = new EventEmitter<void>();
-  @Output() readonly displayModeChange = new EventEmitter<SubEventsDisplayMode>();
   @Output() readonly subEventsChange = new EventEmitter<EventSubeventsItem[]>();
 
   @ViewChild('stageViewport') private stageViewportRef?: ElementRef<HTMLDivElement>;
 
-  protected readonly displayModeOptions: readonly SubEventsDisplayMode[] = ['Casual', 'Tournament'];
   protected stagePageIndex = 0;
   protected isMobileViewport = this.readViewportWidth() <= 920;
 
@@ -325,6 +328,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private localMutationVersion = 0;
   private casualListRevision = 0;
   private lastAppliedActivityResourceSyncMs = 0;
+  private onModelChange: (value: EventSubeventsItem[]) => void = () => {};
+  private onModelTouched: () => void = () => {};
 
   protected casualSmartListQuery: Partial<ListQuery<{ revision: number }>> = {
     filters: { revision: 0 }
@@ -381,15 +386,33 @@ export class EventSubeventsPopupComponent implements OnChanges {
       }
     }
 
-    if ((changes['ownerId'] || changes['slotsEnabled'] || changes['slotTemplates'] || changes['parentStartAt'] || changes['parentEndAt']) && this.open) {
+    if ((changes['ownerId'] || changes['slotsEnabled'] || changes['slotTemplates'] || changes['bounds']) && this.open) {
       this.rebuildRenderModel();
       void this.hydrateOwnerRecord();
     }
 
-    if (changes['displayMode'] && !changes['displayMode'].firstChange) {
+    if (changes['mode'] && !changes['mode'].firstChange) {
       this.stagePageIndex = 0;
       this.clampStagePageIndex();
     }
+  }
+
+  writeValue(value: readonly EventSubeventsItem[] | null | undefined): void {
+    this.applyWorkingSubEvents(value ?? []);
+    this.cdr.markForCheck();
+  }
+
+  registerOnChange(fn: (value: EventSubeventsItem[]) => void): void {
+    this.onModelChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onModelTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.readOnly = isDisabled;
+    this.cdr.markForCheck();
   }
 
   @HostListener('window:resize')
@@ -405,6 +428,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   protected requestClose(): void {
     this.resetTransientUi();
+    this.onModelTouched();
     this.close.emit();
   }
 
@@ -432,7 +456,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
       this.toInputDateTime(new Date(start.getTime() + (2 * 60 * 60 * 1000)))
     );
     const stageNumber = this.workingSubEvents.length + 1;
-    const defaultName = this.displayMode === 'Tournament' ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
+    const defaultName = this.mode === 'Tournament' ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     this.resetSubEventStageInsertControls();
     const fallbackGroupMin = this.defaultTournamentGroupCapacityMin();
     const fallbackGroupMax = this.defaultTournamentGroupCapacityMax(fallbackGroupMin);
@@ -444,9 +468,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
       name: defaultName,
       description: '',
       location: '',
+      dateRange: initialRange,
       startAt: initialRange.startAt,
       endAt: initialRange.endAt,
-      optional: this.displayMode !== 'Tournament',
+      optional: this.mode !== 'Tournament',
       pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: fallbackStageMin,
       capacityMax: fallbackStageMax,
@@ -462,23 +487,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     this.applySubEventInsertTargetDateRangeToForm();
     this.showSubEventForm = true;
-  }
-
-  protected selectDisplayMode(mode: SubEventsDisplayMode, event: Event): void {
-    event.stopPropagation();
-    if (this.subEventStructureReadOnly()) {
-      return;
-    }
-    if (this.displayMode === mode) {
-      return;
-    }
-    this.localMutationVersion += 1;
-    this.displayModeChange.emit(mode);
-    this.stagePageIndex = 0;
-  }
-
-  protected currentDisplayModeIcon(mode: SubEventsDisplayMode = this.displayMode): string {
-    return mode === 'Tournament' ? 'emoji_events' : 'groups';
   }
 
   protected canScrollStagePages(direction: -1 | 1): boolean {
@@ -497,7 +505,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected onStageViewportScroll(): void {
-    if (!this.isMobileViewport || this.displayMode !== 'Tournament') {
+    if (!this.isMobileViewport || this.mode !== 'Tournament') {
       return;
     }
     const viewport = this.stageViewportRef?.nativeElement;
@@ -730,31 +738,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     });
   }
 
-  protected displayModeMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.displayMode,
-      icon: this.currentDisplayModeIcon(),
-      ariaLabel: 'Change sub events mode',
-      palette: this.displayModePalette(this.displayMode),
-      disabled: this.subEventStructureReadOnly(),
-      layout: 'pill'
-    };
-  }
-
-  protected displayModeMenuItems(): readonly AppMenuItem<SubeventActionMenuItemId, SubeventActionMenuContext>[] {
-    return this.displayModeOptions.map(mode => ({
-      id: this.displayModeMenuItemId(mode),
-      label: mode,
-      icon: this.currentDisplayModeIcon(mode),
-      kind: 'radio',
-      active: this.displayMode === mode,
-      checked: this.displayMode === mode,
-      palette: this.displayModePalette(mode),
-      surface: 'tinted',
-      context: { scope: 'display-mode', mode }
-    }));
-  }
-
   protected stageActionMenuTrigger(stage: EventSubeventsStageCard): AppMenuTrigger {
     return this.actionMenuTrigger(`Open actions for ${stage.title}`);
   }
@@ -980,9 +963,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
     switch (context.scope) {
-      case 'display-mode':
-        this.selectDisplayMode(context.mode, menuEvent.sourceEvent);
-        return;
       case 'stage-action':
         if (context.action === 'stage-location') {
           this.openStageLocation(context.stage, menuEvent.sourceEvent);
@@ -1009,14 +989,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       default:
         return;
     }
-  }
-
-  private displayModeMenuItemId(mode: SubEventsDisplayMode): DisplayModeMenuItemId {
-    return mode === 'Tournament' ? 'display-tournament' : 'display-casual';
-  }
-
-  private displayModePalette(mode: SubEventsDisplayMode): AppMenuPalette {
-    return mode === 'Tournament' ? 'amber' : 'green';
   }
 
   private stageActionMenuItem(
@@ -1298,7 +1270,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected selectSubEventOptional(optional: boolean): void {
-    if (this.displayMode === 'Tournament') {
+    if (this.mode === 'Tournament') {
       this.subEventForm.optional = false;
       return;
     }
@@ -1327,7 +1299,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected showSubEventOptionalToggle(): boolean {
-    return this.displayMode !== 'Tournament';
+    return this.mode !== 'Tournament';
   }
 
   protected showSubEventInsertControls(): boolean {
@@ -1335,14 +1307,14 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected subEventInsertFieldLabel(): string {
-    return this.displayMode === 'Tournament' ? 'Insert Stage' : 'Insert Sub Event';
+    return this.mode === 'Tournament' ? 'Insert Stage' : 'Insert Sub Event';
   }
 
   protected get subEventStageInsertOptions(): Array<{ id: string; label: string }> {
     const source = this.subEventInsertTargetSource();
     return source.map((item, index) => ({
       id: item.id ?? `subevent-option-${index}`,
-      label: this.displayMode === 'Tournament'
+      label: this.mode === 'Tournament'
         ? `Stage ${this.resolveStageNumberById(item.id) ?? (index + 1)} · ${item.name ?? item.title ?? 'Untitled'}`
         : `${item.name ?? item.title ?? `Sub Event ${index + 1}`}`
     }));
@@ -1352,7 +1324,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return option.id;
   }
 
-  protected selectSubEventStageInsertPlacement(placement: StageInsertPlacement): void {
+  protected selectSubEventStageInsertPlacement(placement: EventSubeventStageInsertPlacement): void {
+    if (placement === 'during') {
+      return;
+    }
     if (this.subEventStageInsertPlacement === placement) {
       return;
     }
@@ -1370,7 +1345,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected showTournamentStageConfigFields(): boolean {
-    return this.displayMode === 'Tournament';
+    return this.mode === 'Tournament';
   }
 
   protected onTournamentGroupCapacityMinChange(value: number | string): void {
@@ -1431,8 +1406,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const timingSummaryText = this.subEventTimingSummaryText();
     const timingSummaryMeta = this.subEventTimingSummaryMeta();
     const timingBounds = this.subEventTimingBounds();
-    const startFieldLabel = 'Start';
-    const endFieldLabel = 'End';
     const title = this.subEventFormTitle();
     const canSave = this.canSaveSubEventForm();
     const invalidName = this.subEventFieldInvalid('name');
@@ -1471,8 +1444,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
       timingSummaryTitle,
       timingSummaryText,
       timingSummaryMeta,
-      startFieldLabel,
-      endFieldLabel,
       timingBounds?.start ? AppUtils.toIsoDateTimeLocal(timingBounds.start) : '',
       timingBounds?.end ? AppUtils.toIsoDateTimeLocal(timingBounds.end) : '',
       showTournamentFields ? '1' : '0',
@@ -1501,11 +1472,23 @@ export class EventSubeventsPopupComponent implements OnChanges {
       timingSummaryTitle,
       timingSummaryText,
       timingSummaryMeta,
-      startFieldLabel,
-      endFieldLabel,
-      timingBoundStartAt: timingBounds?.start ? AppUtils.toIsoDateTimeLocal(timingBounds.start) : '',
-      timingBoundEndAt: timingBounds?.end ? AppUtils.toIsoDateTimeLocal(timingBounds.end) : '',
+      dateInput: {
+        mode: 'range',
+        precision: 'minute',
+        range: {
+          start: { label: 'Start' },
+          end: { label: 'End' },
+          bounds: timingBounds
+            ? {
+              start: AppUtils.toIsoDateTimeLocal(timingBounds.start),
+              end: AppUtils.toIsoDateTimeLocal(timingBounds.end)
+            }
+            : null
+        },
+        readOnly: this.subEventStructureReadOnly()
+      },
       showInsertControls,
+      showDuringInsertPlacement: false,
       insertFieldLabel,
       insertPlacement: this.subEventStageInsertPlacement,
       insertTargetId: this.subEventStageInsertTargetId,
@@ -1533,15 +1516,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return `${estimateMin} - ${estimateMax}`;
   }
 
-  protected openSubEventLocationMap(event?: Event): void {
-    event?.stopPropagation();
-    const query = `${this.subEventForm.location ?? ''}`.trim();
-    if (!query || typeof window === 'undefined') {
-      return;
-    }
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
-  }
-
   protected canOpenSubEventLocation(item: EventSubeventsItem | null | undefined): boolean {
     return `${item?.location ?? ''}`.trim().length > 0;
   }
@@ -1562,8 +1536,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return Boolean(
       this.subEventForm.name.trim()
       && this.subEventForm.description.trim()
-      && this.subEventForm.startAt
-      && this.subEventForm.endAt
+      && this.subEventForm.dateRange.startAt
+      && this.subEventForm.dateRange.endAt
     );
   }
 
@@ -1573,12 +1547,15 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return;
     }
     this.normalizeSubEventCapacityRange();
-    const forceMandatoryTournament = this.displayMode === 'Tournament';
+    const forceMandatoryTournament = this.mode === 'Tournament';
     if (forceMandatoryTournament) {
       this.normalizeTournamentStageConfigOnForm();
     }
 
-    const dateRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
+    const dateRange = this.normalizedInputDateRange(this.subEventForm.dateRange.startAt, this.subEventForm.dateRange.endAt);
+    this.subEventForm.startAt = dateRange.startAt;
+    this.subEventForm.endAt = dateRange.endAt;
+    this.subEventForm.dateRange = dateRange;
     const slotRelativeTiming = this.slotRelativeTimingFromDateRange(dateRange);
     const existingId = this.editingSubEventId();
     const existingItem = existingId
@@ -1995,7 +1972,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected subEventFormTitle(): string {
-    if (this.displayMode === 'Tournament') {
+    if (this.mode === 'Tournament') {
       let stageNumber = this.subEventFormMode === 'edit'
         ? this.resolveStageNumberById(this.editingSubEventId())
         : this.subEventInsertStageNumberPreview();
@@ -2171,27 +2148,6 @@ export class EventSubeventsPopupComponent implements OnChanges {
         goalDiff: Math.trunc(Number(row.goalDiff) || 0)
       }))
       .filter(row => row.memberId);
-  }
-
-  protected finalTournamentResultsStage(): EventSubeventsStageCard | null {
-    if (this.displayMode !== 'Tournament' || this.stageCards.length === 0) {
-      return null;
-    }
-    const finalStage = this.stageCards[this.stageCards.length - 1] ?? null;
-    return finalStage?.status === 'F' ? finalStage : null;
-  }
-
-  protected canOpenTournamentResults(): boolean {
-    return this.finalTournamentResultsStage() !== null;
-  }
-
-  protected openTournamentResults(event: Event): void {
-    event.stopPropagation();
-    const finalStage = this.finalTournamentResultsStage();
-    if (!finalStage) {
-      return;
-    }
-    this.openLeaderboardPopup(finalStage, event, true);
   }
 
   protected trackByStageRowKey(_: number, row: EventSubeventsStageRow): string {
@@ -2480,16 +2436,19 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     this.subEventFormMode = 'edit';
     this.subEventFormSourceIndex = sourceIndex;
-    const fallbackName = this.displayMode === 'Tournament'
+    const fallbackName = this.mode === 'Tournament'
       ? `Stage ${sourceIndex + 1}`
       : `Sub Event ${sourceIndex + 1}`;
+    const dateRange = this.subEventDraftDateRange(sourceItem);
     this.subEventForm = {
       id: sourceItem.id,
       name: `${sourceItem.name ?? sourceItem.title ?? fallbackName}`.trim(),
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
-      ...this.subEventDraftDateRange(sourceItem),
-      optional: sourceItem.optional ?? (this.displayMode !== 'Tournament'),
+      dateRange,
+      startAt: dateRange.startAt,
+      endAt: dateRange.endAt,
+      optional: sourceItem.optional ?? (this.mode !== 'Tournament'),
       pricing: PricingBuilder.clonePricingConfig(sourceItem.pricing ?? PricingBuilder.createDefaultPricingConfig('subevent')),
       capacityMin: Math.max(0, Number(sourceItem.capacityMin) || 0),
       capacityMax: Math.max(
@@ -2601,7 +2560,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     sourceIndex: number | null,
     draft: SubEventFormModel
   ): EventSubeventsGroupItem[] {
-    if (this.displayMode !== 'Tournament') {
+    if (this.mode !== 'Tournament') {
       return [];
     }
 
@@ -2619,7 +2578,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return [];
   }
 
-  private normalizedInputDateRange(startInput: string, endInput: string): { startAt: string; endAt: string } {
+  private normalizedInputDateRange(startInput: string, endInput: string): ContractTypes.DateRangeDto {
     const bounds = this.subEventTimingBounds();
     const fallbackStart = bounds?.start ?? new Date();
     const defaultDurationMs = bounds
@@ -2657,7 +2616,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
     return {
       startAt: AppUtils.toIsoDateTimeLocal(new Date(nextStartMs)),
-      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextEndMs))
+      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextEndMs)),
+      precision: 'minute'
     };
   }
 
@@ -2669,13 +2629,13 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const templates = (this.slotTemplates ?? [])
       .map(template => {
         const start = this.parseDateValue(template?.startAt);
-        const rawEnd = this.parseDateValue(template?.endAt);
         if (!template || template.closed === true || !start) {
           return null;
         }
-        const end = rawEnd && rawEnd.getTime() > start.getTime()
-          ? rawEnd
-          : new Date(start.getTime() + (60 * 60 * 1000));
+        const parentEnd = this.parseDateValue(this.bounds.endAt);
+        const end = parentEnd && parentEnd.getTime() >= start.getTime()
+          ? parentEnd
+          : new Date(start);
         return { start, end };
       })
       .filter((value): value is { start: Date; end: Date } => Boolean(value))
@@ -2702,8 +2662,8 @@ export class EventSubeventsPopupComponent implements OnChanges {
       return { start: slotPreview.start, end: slotPreview.end };
     }
 
-    const parentStart = this.parseDateValue(this.parentStartAt);
-    const parentEnd = this.parseDateValue(this.parentEndAt);
+    const parentStart = this.parseDateValue(this.bounds.startAt);
+    const parentEnd = this.parseDateValue(this.bounds.endAt);
     if (!parentStart || !parentEnd || parentEnd.getTime() <= parentStart.getTime()) {
       return null;
     }
@@ -2755,7 +2715,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
   }
 
-  private buildAnchoredSlotDateRange(offsetMinutes: number, durationMinutes: number): { startAt: string; endAt: string } {
+  private buildAnchoredSlotDateRange(offsetMinutes: number, durationMinutes: number): ContractTypes.DateRangeDto {
     const preview = this.slotTimingPreview();
     if (!preview) {
       return this.normalizedInputDateRange('', '');
@@ -2771,7 +2731,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     return this.normalizedInputDateRange(AppUtils.toIsoDateTimeLocal(start), AppUtils.toIsoDateTimeLocal(end));
   }
 
-  private subEventDraftDateRange(sourceItem: EventSubeventsItem | null | undefined): { startAt: string; endAt: string } {
+  private subEventDraftDateRange(sourceItem: EventSubeventsItem | null | undefined): ContractTypes.DateRangeDto {
     const relative = this.resolveSlotRelativeTiming(sourceItem);
     if (relative) {
       return this.buildAnchoredSlotDateRange(relative.offsetMinutes, relative.durationMinutes);
@@ -2789,7 +2749,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private slotRelativeTimingFromDateRange(
-    range: { startAt: string; endAt: string }
+    range: ContractTypes.DateRangeDto
   ): { slotStartOffsetMinutes: number; slotDurationMinutes: number } | null {
     const preview = this.slotTimingPreview();
     const start = this.parseDateValue(range.startAt);
@@ -2878,7 +2838,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private subEventTimingSummaryMeta(): string {
     const preview = this.slotTimingPreview();
     if (preview) {
-      const currentRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
+      const currentRange = this.normalizedInputDateRange(this.subEventForm.dateRange.startAt, this.subEventForm.dateRange.endAt);
       const currentStart = this.parseDateValue(currentRange.startAt);
       const currentEnd = this.parseDateValue(currentRange.endAt);
       const repeatLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots configured` : '';
@@ -2964,7 +2924,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private preparedAssetMetricsForItem(
     item: EventSubeventsItem,
     type: Exclude<EventEditorSubEventResourceType, 'Members'>,
-    fallbackSubEvent: ContractTypes.SubEventFormItem | null = this.toSubEventResourceItem(item)
+    fallbackSubEvent: ContractTypes.SubEventDTO | null = this.toSubEventResourceItem(item)
   ): EventSubeventsAssetMetrics {
     const prepared = (item as EventSubeventsPreparedItem).resourceMetrics?.[type];
     if (prepared) {
@@ -3004,7 +2964,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
 
   private buildAssetMetricsForType(
     item: EventSubeventsItem,
-    subEvent: ContractTypes.SubEventFormItem | null,
+    subEvent: ContractTypes.SubEventDTO | null,
     type: Exclude<EventEditorSubEventResourceType, 'Members'>
   ): EventSubeventsAssetMetrics {
     if (!subEvent) {
@@ -3061,7 +3021,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     };
   }
 
-  private toSubEventResourceItem(item: EventSubeventsItem): ContractTypes.SubEventFormItem | null {
+  private toSubEventResourceItem(item: EventSubeventsItem): ContractTypes.SubEventDTO | null {
     const subEventId = `${item.id ?? ''}`.trim();
     if (!subEventId) {
       return null;
@@ -3231,7 +3191,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private queueMobileStageViewportSync(behavior: ScrollBehavior): void {
-    if (!this.isMobileViewport || this.displayMode !== 'Tournament') {
+    if (!this.isMobileViewport || this.mode !== 'Tournament') {
       this.clearMobileStageScrollLock();
       return;
     }
@@ -3330,7 +3290,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   protected stageGridTransform(): string {
-    if (this.stageCards.length === 0 || this.displayMode !== 'Tournament') {
+    if (this.stageCards.length === 0 || this.mode !== 'Tournament') {
       return '';
     }
     const startIndex = this.stagePageStartIndexesCache[this.stagePageIndex] ?? 0;
@@ -3352,7 +3312,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
   }
 
   private alignPageToCurrentStage(): void {
-    if (this.displayMode !== 'Tournament') {
+    if (this.mode !== 'Tournament') {
       this.stagePageIndex = 0;
       this.syncVisibleStageCards();
       return;
@@ -3489,7 +3449,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
   private emitWorkingSubEvents(): void {
     this.localMutationVersion += 1;
     this.rebuildRenderModel();
-    this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
+    const nextSubEvents = this.cloneSubEvents(this.workingSubEvents);
+    this.onModelTouched();
+    this.onModelChange(nextSubEvents);
+    this.subEventsChange.emit(nextSubEvents);
     this.bumpCasualSmartListRevision();
   }
 
@@ -3553,11 +3516,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
     this.bumpCasualSmartListRevision();
     this.alignPageToCurrentStage();
 
-    const nextDisplayMode = record.subEventsDisplayMode === 'Tournament' ? 'Tournament' : 'Casual';
-    if (nextDisplayMode !== this.displayMode) {
-      this.displayModeChange.emit(nextDisplayMode);
-    }
-    this.subEventsChange.emit(this.cloneSubEvents(this.workingSubEvents));
+    const hydratedSubEvents = this.cloneSubEvents(this.workingSubEvents);
+    this.onModelTouched();
+    this.onModelChange(hydratedSubEvents);
+    this.subEventsChange.emit(hydratedSubEvents);
   }
 
   private activeUserId(): string {
@@ -3702,6 +3664,7 @@ export class EventSubeventsPopupComponent implements OnChanges {
     const normalized = this.normalizedInputDateRange(draftStartAt, draftEndAt);
     this.subEventForm = {
       ...this.subEventForm,
+      dateRange: normalized,
       startAt: normalized.startAt,
       endAt: normalized.endAt
     };
@@ -3905,9 +3868,10 @@ export class EventSubeventsPopupComponent implements OnChanges {
       name: '',
       description: '',
       location: '',
+      dateRange: { startAt: '', endAt: '', precision: 'minute' },
       startAt: '',
       endAt: '',
-      optional: this.displayMode !== 'Tournament',
+      optional: this.mode !== 'Tournament',
       pricing: PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: 4,
       capacityMax: 7,

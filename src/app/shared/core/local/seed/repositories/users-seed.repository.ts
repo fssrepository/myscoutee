@@ -404,15 +404,47 @@ export class SeedUsersRepository {
       return [];
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
-    return table.ids
+    const records = table.ids
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
+      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record =>
         this.isEventAdminRecord(record, normalizedUserId)
         || this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)
         || this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId)
         || this.eventInvitedMemberUserIds(record).includes(normalizedUserId)
       );
+    return this.aggregateUserEventRecords(records, normalizedUserId);
+  }
+
+  private aggregateUserEventRecords(
+    records: readonly ActivityEventRecord[],
+    userId: string
+  ): ActivityEventRecord[] {
+    const byEventId = new Map<string, ActivityEventRecord>();
+    for (const record of records) {
+      const eventId = `${record.id ?? ''}`.trim();
+      if (!eventId) {
+        continue;
+      }
+      const existing = byEventId.get(eventId);
+      if (!existing || this.eventRecordPreference(record, userId) > this.eventRecordPreference(existing, userId)) {
+        byEventId.set(eventId, record);
+      }
+    }
+    return [...byEventId.values()];
+  }
+
+  private eventRecordPreference(record: ActivityEventRecord, userId: string): number {
+    return (this.isEventAdminRecord(record, userId) ? 40 : 0)
+      + (this.eventInvitedMemberUserIds(record).includes(userId) ? 30 : 0)
+      + (this.eventPendingRequestMemberUserIds(record).includes(userId) ? 20 : 0)
+      + (this.eventAcceptedMemberUserIds(record).includes(userId) ? 10 : 0)
+      + (this.isPublishedEventStatus(record.status) ? 1 : 0);
+  }
+
+  private isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return Boolean(record?.generated) || record?.eventType === 'slot' || Boolean(record?.parentEventId);
   }
 
   private isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {

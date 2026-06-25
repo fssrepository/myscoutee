@@ -3,7 +3,8 @@ import {
   EventFeedbackDetailDto,
   type UserGameFilterPreferencesDto
 } from '../../core/contracts/activity.interface';
-import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
+import { EventFeedbackBuilder } from '../../core/base/builders';
+import type { ProfileExtDto, UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../core/contracts/user.interface';
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../core/contracts';
 
 export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
@@ -147,6 +148,7 @@ function detectInitialConnectivityState(): ConnectivityState {
 export class AppContext {
   private readonly _loadingState = signal<Record<string, LoadState>>({});
   private readonly _userProfilesByUserId = signal<Record<string, UserDto>>({});
+  private readonly _profileExtByUserId = signal<Record<string, ProfileExtDto>>({});
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _filterCountByUserId = signal<Record<string, number>>({});
   private readonly _filterPreferencesByUserId = signal<Record<string, UserGameFilterPreferencesDto>>({});
@@ -161,6 +163,7 @@ export class AppContext {
 
   readonly loadingState = this._loadingState.asReadonly();
   readonly userProfilesByUserId = this._userProfilesByUserId.asReadonly();
+  readonly profileExtByUserId = this._profileExtByUserId.asReadonly();
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly filterCountByUserId = this._filterCountByUserId.asReadonly();
   readonly filterPreferencesByUserId = this._filterPreferencesByUserId.asReadonly();
@@ -185,7 +188,19 @@ export class AppContext {
     const user = this._userProfilesByUserId()[normalizedUserId];
     return user ? this.cloneUserProfile(user) : null;
   });
-  readonly activeAdminUser = computed(() => this.adminUserFromProfile(this.activeUserProfile()));
+  readonly activeUserProfileExt = computed(() => {
+    const normalizedUserId = this._activeUserId().trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this._profileExtByUserId()[normalizedUserId] ?? null;
+  });
+  readonly activeUserIsAdmin = computed(() =>
+    this.isAdminUserProfile(this.activeUserProfile(), this._activeUserId())
+  );
+  readonly activeAdminUser = computed(() =>
+    this.activeUserIsAdmin() ? this.adminUserFromProfile(this.activeUserProfile()) : null
+  );
 
   selectLoadingState(contextKey: string) {
     return computed(() => this._loadingState()[contextKey] ?? DEFAULT_LOAD_STATE);
@@ -261,6 +276,34 @@ export class AppContext {
     }));
   }
 
+  getProfileExt(userId: string): ProfileExtDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const profileExt = this._profileExtByUserId()[normalizedUserId];
+    return profileExt ? this.cloneProfileExt(profileExt) : null;
+  }
+
+  setProfileExt(profileExt: ProfileExtDto): void {
+    const normalizedUserId = profileExt.profile.id.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedProfileExt = this.cloneProfileExt({
+      ...profileExt,
+      profile: {
+        ...profileExt.profile,
+        id: normalizedUserId
+      }
+    });
+    this._profileExtByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: normalizedProfileExt
+    }));
+    this.setUserProfile(normalizedProfileExt.profile);
+  }
+
   patchActiveUserProfile(
     patch: Partial<Omit<UserDto, 'id'>> | ((current: UserDto) => Partial<Omit<UserDto, 'id'>>)
   ): UserDto | null {
@@ -280,6 +323,15 @@ export class AppContext {
 
   getActiveAdminUser(): AppContextAdminUserDto | null {
     return this.activeAdminUser();
+  }
+
+  isAdminUserProfile(user: UserDto | null | undefined, fallbackUserId = ''): boolean {
+    const normalizedUserId = `${user?.id ?? fallbackUserId ?? ''}`.trim();
+    return user?.admin === true
+      || user?.hostTier === 'Admin'
+      || user?.statusText === 'Admin workspace'
+      || normalizedUserId === 'admin'
+      || normalizedUserId.startsWith('admin-');
   }
 
   clearUserProfile(userId: string): void {
@@ -625,7 +677,7 @@ export class AppContext {
     }
     this._activityEventFeedbackSubmitSync.set({
       updatedMs: Date.now(),
-      dto: EventFeedbackDetailDto.normalize({
+      dto: EventFeedbackBuilder.cloneDetail({
         ...dto,
         eventId
       })
@@ -778,6 +830,13 @@ export class AppContext {
       personalityBadges: [...(section.personalityBadges ?? [])],
       personalityTraits: (section.personalityTraits ?? []).map(trait => ({ ...trait })),
       categoryBadges: [...(section.categoryBadges ?? [])]
+    };
+  }
+
+  private cloneProfileExt(profileExt: ProfileExtDto): ProfileExtDto {
+    return {
+      profile: this.cloneUserProfile(profileExt.profile),
+      experienceEntries: (profileExt.experienceEntries ?? []).map(entry => ({ ...entry }))
     };
   }
 

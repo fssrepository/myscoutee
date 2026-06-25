@@ -17,7 +17,7 @@
       (click)="toggleMenu($event)"
       >
       @if (triggerIcon()) {
-        <mat-icon>{{ triggerIcon() }}</mat-icon>
+        <mat-icon [class.app-menu__trigger-icon--symbol]="isSymbolIcon(triggerIcon())">{{ triggerIcon() }}</mat-icon>
       }
       @if (!trigger?.hideLabel && triggerLabel()) {
         <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
@@ -54,6 +54,7 @@
             [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
             [class.app-menu__button-row-item--action]="isActionLayoutItem(item)"
+            [class.app-menu__button-row-item--image]="isImageLayoutItem(item)"
             [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
             [class.app-menu__button-row-item--progress]="itemProgressState(item) !== null"
             [class.app-menu__button-row-item--progress-loading]="itemProgressState(item) === 'loading'"
@@ -79,7 +80,17 @@
                 ></app-progress-indicator>
               </span>
             }
-            @if (actionRowItemIcon(item)) {
+            @if (isImageLayoutItem(item)) {
+              <span class="app-menu__button-row-image">
+                @if (actionRowItemImageUrl(item); as imageUrl) {
+                  <img [src]="imageUrl" [alt]="actionRowItemImageAlt(item)" />
+                } @else if (actionRowItemImageFallback(item)) {
+                  <span>{{ actionRowItemImageFallback(item) }}</span>
+                } @else if (actionRowItemIcon(item)) {
+                  <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
+                }
+              </span>
+            } @else if (actionRowItemIcon(item)) {
               <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
             }
             @if (isInlineRowBig) {
@@ -477,7 +488,7 @@
                 (click)="selectLinkItem(item, $event)"
                 >
                 @if (itemIcon(item)) {
-                  <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                  <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                 }
                 <span class="app-menu__item-main">
                   <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
@@ -528,7 +539,7 @@
                     (click)="selectItem(item, $event)"
                     >
                     @if (itemIcon(item)) {
-                      <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                      <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                     }
                     <span class="app-menu__item-main">
                       <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
@@ -582,9 +593,9 @@
                   [attr.aria-checked]="isItemChecked(item)"
                   [attr.aria-label]="itemAriaLabel(item)"
                   (click)="selectItem(item, $event)"
-                  >
+                >
                   @if (itemIcon(item)) {
-                    <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                    <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                   }
                   <span class="app-menu__item-main">
                     <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
