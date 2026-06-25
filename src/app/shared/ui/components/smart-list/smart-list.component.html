@@ -13,53 +13,49 @@
           [class.smart-list__calendar-shell--presentation-list]="resolvedPresentation() === 'list'"
           [class.smart-list__calendar-shell--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
         >
-          @if (hasCalendarItems()) {
-            <app-calendar-card
-              #scrollHost
-              class="smart-list smart-list--calendar"
-              [class.smart-list--month]="isMonthMode()"
-              [class.smart-list--week]="isWeekMode()"
-              [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
-              [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
-              [class.smart-list--calendar-touching]="isTouchingSurface"
-              [model]="calendarCardModel()"
-              (scroll)="onCalendarScroll($event)"
-              (scrollend)="onCalendarScrollEnd($event)"
-              (touchstart)="onSurfaceTouchStart()"
-              (touchend)="onSurfaceTouchEnd()"
-              (touchcancel)="onSurfaceTouchEnd()"
-            >
-              @if (shouldShowStickyHeader()) {
-                <div
-                  calendar-card-header
-                  class="smart-list__sticky smart-list__sticky--calendar"
-                  [ngClass]="resolvedStickyHeaderClass()"
-                >
-                  <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
-                  <span class="smart-list__sticky-actions">
-                    <button
-                      type="button"
-                      class="smart-list__sticky-action-btn"
-                      (click)="navigateCalendarHeader(-1, $event)"
-                      aria-label="Previous period"
-                    >
-                      <mat-icon>chevron_left</mat-icon>
-                    </button>
-                    <button
-                      type="button"
-                      class="smart-list__sticky-action-btn"
-                      (click)="navigateCalendarHeader(1, $event)"
-                      aria-label="Next period"
-                    >
-                      <mat-icon>chevron_right</mat-icon>
-                    </button>
-                  </span>
-                </div>
-              }
-            </app-calendar-card>
-          } @else {
-            <ng-container [ngTemplateOutlet]="emptyState"></ng-container>
-          }
+          <app-calendar-card
+            #scrollHost
+            class="smart-list smart-list--calendar"
+            [class.smart-list--month]="isMonthMode()"
+            [class.smart-list--week]="isWeekMode()"
+            [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
+            [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
+            [class.smart-list--calendar-touching]="isTouchingSurface"
+            [model]="calendarCardModel()"
+            (scroll)="onCalendarScroll($event)"
+            (scrollend)="onCalendarScrollEnd($event)"
+            (touchstart)="onSurfaceTouchStart()"
+            (touchend)="onSurfaceTouchEnd()"
+            (touchcancel)="onSurfaceTouchEnd()"
+          >
+            @if (shouldShowStickyHeader()) {
+              <div
+                calendar-card-header
+                class="smart-list__sticky smart-list__sticky--calendar"
+                [ngClass]="resolvedStickyHeaderClass()"
+              >
+                <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
+                <span class="smart-list__sticky-actions">
+                  <button
+                    type="button"
+                    class="smart-list__sticky-action-btn"
+                    (click)="navigateCalendarHeader(-1, $event)"
+                    aria-label="Previous period"
+                  >
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="smart-list__sticky-action-btn"
+                    (click)="navigateCalendarHeader(1, $event)"
+                    aria-label="Next period"
+                  >
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </span>
+              </div>
+            }
+          </app-calendar-card>
         </div>
       } @else {
         @if (shouldRenderListHeaderOutsideScroll()) {

@@ -3610,6 +3610,15 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private currentQuery(page = this.pageIndex): ListQuery<TFilters> {
+    const query = this.currentBaseQuery(page);
+    if (!this.isCalendarMode()) {
+      return query;
+    }
+    const anchor = this.currentVisibleCalendarAnchor() ?? this.currentCalendarQueryAnchor();
+    return anchor ? this.calendarQueryForAnchor(anchor) : query;
+  }
+
+  private currentBaseQuery(page = this.pageIndex): ListQuery<TFilters> {
     const activeView = this.activeViewConfig();
     const baseQuery = this.query ?? {};
     const nextFilters = {
@@ -3630,12 +3639,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         : undefined,
       view: this.currentViewKey ?? baseQuery.view ?? undefined
     };
-
-    if (!this.isCalendarMode()) {
-      return query;
-    }
-    const anchor = this.currentVisibleCalendarAnchor() ?? this.currentCalendarQueryAnchor();
-    return anchor ? this.calendarQueryForAnchor(anchor) : query;
+    return query;
   }
 
   private loadQuery(page = this.pageIndex, isInitial = false): ListQuery<TFilters> {
@@ -3811,15 +3815,23 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private calendarInitialAnchorDate(): Date | null {
-    const value = this.resolveConfigValue(this.calendarConfig()?.initialAnchor, null);
+    const value = this.resolveCalendarInitialAnchorValue();
     const parsed = AppUtils.parseDate(value);
     return parsed ? AppUtils.dateOnly(parsed) : null;
   }
 
   private calendarInitialAnchorKeyValue(): string {
-    const value = this.resolveConfigValue(this.calendarConfig()?.initialAnchor, null);
+    const value = this.resolveCalendarInitialAnchorValue();
     const parsed = AppUtils.parseDate(value);
     return parsed ? AppUtils.dateKey(parsed) : '';
+  }
+
+  private resolveCalendarInitialAnchorValue(): string | Date | null | undefined {
+    const value = this.calendarConfig()?.initialAnchor;
+    if (typeof value === 'function') {
+      return value(this.currentBaseQuery());
+    }
+    return value ?? null;
   }
 
   private calendarWeekStartHour(): number {

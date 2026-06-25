@@ -445,13 +445,13 @@ export class LocalEventsRepository {
 
   private subEventsQueryRangeStartMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
     const value = `${query?.rangeStart ?? ''}`.trim();
-    const parsed = AppUtils.parseDate(value);
+    const parsed = AppUtils.parseDateOnly(value);
     return parsed ? AppUtils.dateOnly(parsed).getTime() : null;
   }
 
   private subEventsQueryRangeEndMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
     const value = `${query?.rangeEnd ?? ''}`.trim();
-    const parsed = AppUtils.parseDate(value);
+    const parsed = AppUtils.parseDateOnly(value);
     if (!parsed) {
       return null;
     }
