@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import type * as AppTypes from '../../../shared/core/base/models';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';
 import {
@@ -22,7 +23,8 @@ import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
 } from '../../../shared/ui/components/menu';
 import {
   FormFlowComponent,
@@ -31,7 +33,6 @@ import {
   type FormFlowModel
 } from '../../../shared/ui/components/form/flow';
 import {
-  ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
@@ -96,8 +97,9 @@ export class ProfileEditorComponent {
   constructor() {
     effect(() => {
       const isOpen = this.navigatorService.profileEditorOpen();
-      const activeUser = this.appCtx.activeUserProfile();
-      const activeUserId = activeUser?.id ?? '';
+      const activeProfileExt = this.appCtx.activeUserProfileExt();
+      const activeUser = activeProfileExt?.profile ?? this.appCtx.activeUserProfile();
+      const activeUserId = activeUser?.id.trim() ?? '';
 
       if (!isOpen) {
         this.lastLoadedUserId = '';
@@ -110,7 +112,7 @@ export class ProfileEditorComponent {
       }
 
       this.lastLoadedUserId = activeUserId;
-      void this.loadProfileEditorState(activeUser);
+      this.loadProfileEditorState(activeUserId, activeProfileExt);
     });
   }
 
@@ -189,7 +191,6 @@ export class ProfileEditorComponent {
     if (this.panel !== 'profile' || this.isProfileSaving()) {
       return;
     }
-    this.applyProfileEditorDataToEditorState();
     await this.commitProfileForm(false);
     this.navigatorService.closeProfileEditor();
     this.resetTransientUiState();
@@ -218,6 +219,32 @@ export class ProfileEditorComponent {
       }
     };
     this.refreshProfileEditorFlowModel();
+  }
+
+  protected profileHeaderStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId>[] {
+    const status = this.profileEditorData.profile.profileStatus ?? 'public';
+    return [{
+      id: 'profile-status-trigger',
+      label: status,
+      icon: this.profileStatusIcon(status),
+      kind: 'select-trigger',
+      layout: 'pill',
+      palette: this.profileStatusPalette(status),
+      ariaLabel: 'Open profile status selector',
+      items: this.profileStatusMenuItems()
+    }];
+  }
+
+  private profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId>[] {
+    return APP_STATIC_DATA.profileStatusOptions.map(option => ({
+      id: `profile-status-${option.value}`,
+      label: option.value,
+      icon: option.icon,
+      kind: 'radio',
+      value: option.value,
+      palette: this.profileStatusPalette(option.value),
+      surface: 'tinted'
+    }));
   }
 
   protected profileHeaderActionMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
@@ -262,6 +289,29 @@ export class ProfileEditorComponent {
     this.handleProfileFormFlowMenuContext(context as ProfileFormFlowMenuContext | undefined);
   }
 
+  private profileStatusIcon(status: AppConstants.ProfileStatus): string {
+    return APP_STATIC_DATA.profileStatusOptions.find(option => option.value === status)?.icon
+      ?? (status === 'blocked' ? 'block' : status === 'deleted' ? 'delete' : 'public');
+  }
+
+  private profileStatusPalette(status: AppConstants.ProfileStatus): AppMenuPalette {
+    switch (status) {
+      case 'public':
+        return 'green';
+      case 'friends only':
+        return 'blue';
+      case 'host only':
+        return 'brown';
+      case 'inactive':
+        return 'muted';
+      case 'blocked':
+      case 'deleted':
+        return 'red';
+      default:
+        return 'neutral';
+    }
+  }
+
   protected onExperienceEntriesChange(entries: readonly ProfileContracts.ExperienceEntry[]): void {
     this.setExperienceEntries(entries);
   }
@@ -282,26 +332,19 @@ export class ProfileEditorComponent {
     });
   }
 
-  private async loadProfileEditorState(user: UserDto): Promise<void> {
+  private loadProfileEditorState(userId: string, activeProfileExt: ProfileExtDto | null): void {
     this.resetTransientUiState();
-    const normalizedUserId = user.id.trim();
-    const profileExt = this.appCtx.getProfileExt(normalizedUserId)
-      ?? await this.usersService.loadProfileExtById(normalizedUserId);
+    const normalizedUserId = userId.trim();
     if (!this.isOpen() || this.lastLoadedUserId !== normalizedUserId) {
       return;
     }
-    const data = profileExt ?? {
-      profile: this.cloneUser(user),
-      experienceEntries: []
-    };
-    this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(data.profile.completion) || 0)));
-    this.profileEditorData = this.normalizeProfileEditorData(data);
+    if (!activeProfileExt) {
+      return;
+    }
+    this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(activeProfileExt.profile.completion) || 0)));
+    this.profileEditorData = activeProfileExt;
     this.refreshProfileEditorFlowModel();
     this.panel = 'profile';
-  }
-
-  private normalizeProfileEditorData(value: ProfileExtDto): ProfileExtDto {
-    return ProfileFormFlowDataConverter.convert(this.profileEditorDraft(value)).data;
   }
 
   private profileEditorDraft(data: ProfileExtDto): FormFlowDraft<ProfileExtDto> {
@@ -345,11 +388,6 @@ export class ProfileEditorComponent {
     );
   }
 
-  private applyProfileEditorDataToEditorState(): void {
-    this.profileEditorData = this.normalizeProfileEditorData(this.profileEditorData);
-  }
-
-
   private profileDetailRowByKey(labelKey: string): ProfileContracts.ProfileDetailFormRow | null {
     const target = AppUtils.normalizeText(labelKey);
     for (const group of this.profileEditorData.profile.profileDetails ?? []) {
@@ -391,57 +429,13 @@ export class ProfileEditorComponent {
     if (!this.profileEditorData.profile.id) {
       return;
     }
-    this.applyProfileEditorDataToEditorState();
-    const request = this.normalizeProfileEditorData(this.profileEditorData);
-    request.profile.completion = this.activeUserIsAdmin() ? 100 : this.profileCompletionPercent;
-    this.profileEditorData = request;
-    await this.usersService.saveUserProfileExt(request);
+    await this.usersService.saveUserProfileExt(this.profileEditorData);
     if (showAlert) {
       this.confirmationDialogService.openInfo('Profile saved', {
         title: 'Profile updated',
         confirmTone: 'neutral'
       });
     }
-  }
-
-  private cloneUser(user: UserDto): UserDto {
-    return {
-      ...user,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      profileDetails: user.profileDetails ? this.cloneProfileDetailsForm(user.profileDetails) : undefined,
-      activities: {
-        game: user.activities?.game ?? 0,
-        chat: user.activities?.chat ?? 0,
-        invitations: user.activities?.invitations ?? 0,
-        events: user.activities?.events ?? 0,
-        hosting: user.activities?.hosting ?? 0,
-        cars: user.activities?.cars ?? 0,
-        accommodation: user.activities?.accommodation ?? 0,
-        supplies: user.activities?.supplies ?? 0,
-        tickets: user.activities?.tickets ?? 0,
-        contacts: user.activities?.contacts ?? 0,
-        feedback: user.activities?.feedback ?? 0
-      },
-      impressions: user.impressions
-        ? {
-            host: user.impressions.host ? { ...user.impressions.host } : undefined,
-            member: user.impressions.member ? { ...user.impressions.member } : undefined
-          }
-        : undefined
-    };
-  }
-
-  private cloneProfileDetailsForm(groups: ProfileContracts.ProfileDetailFormGroup[]): ProfileContracts.ProfileDetailFormGroup[] {
-    return groups.map(group => ({
-      title: group.title,
-      rows: group.rows.map(row => ({
-        labelKey: row.labelKey,
-        value: row.value,
-        privacy: row.privacy,
-        options: [...row.options]
-      }))
-    }));
   }
 
   private resetTransientUiState(): void {

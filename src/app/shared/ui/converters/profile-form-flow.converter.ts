@@ -559,13 +559,6 @@ export class ProfileFormFlowConverter {
         )
       },
       {
-        id: 'visibility',
-        kind: 'menu',
-        label: 'Láthatóság',
-        bind: 'profile.profileStatus',
-        config: this.profileStatusMenuConfig()
-      },
-      {
         id: 'workspace',
         kind: 'menu',
         layout: 'half',
@@ -622,7 +615,6 @@ export class ProfileFormFlowConverter {
       { id: 'city', bind: 'profile.city' },
       { id: 'height', bind: 'profile.height', metric: 'positiveNumber' },
       { id: 'physique', bind: 'profile.physique' },
-      { id: 'profile-status', bind: 'profile.profileStatus' },
       { id: 'languages', bind: 'profile.languages', metric: 'count', thresholds: [1, 2, 3] },
       { id: 'about', bind: 'profile.about', metric: 'length', thresholds: [20, 80, 140] },
       { ...detailItem('values', 'profile.details.values'), valueFormat: 'csv', metric: 'count', thresholds: [1, 3] },
@@ -801,24 +793,6 @@ export class ProfileFormFlowConverter {
       option => this.paletteFromTone(this.physiqueToneClass(option)),
       'Testalkat kiválasztása'
     );
-  }
-
-  private static profileStatusMenuConfig(): FormFlowMenuControlConfig {
-    return {
-      kind: 'select',
-      title: 'Láthatóság',
-      trigger: this.trigger('Láthatóság', 'public', this.profileStatusPalette('public'), 'Láthatóság'),
-      items: APP_STATIC_DATA.profileStatusOptions.map(option => ({
-        id: `profile-status-${option.value}`,
-        label: option.value,
-        icon: option.icon,
-        kind: 'radio',
-        value: option.value,
-        palette: this.profileStatusPalette(option.value),
-        surface: 'tinted',
-        context: { menu: 'field', field: 'profileStatus', value: option.value }
-      }))
-    };
   }
 
   private static selectMenuConfig(
@@ -1052,24 +1026,6 @@ export class ProfileFormFlowConverter {
       return value;
     }
     return 'public';
-  }
-
-  private static profileStatusPalette(status: ProfileStatus): AppMenuPalette {
-    switch (status) {
-      case 'public':
-        return 'green';
-      case 'friends only':
-        return 'blue';
-      case 'host only':
-        return 'brown';
-      case 'inactive':
-        return 'muted';
-      case 'blocked':
-      case 'deleted':
-        return 'red';
-      default:
-        return 'neutral';
-    }
   }
 
   private static physiqueIcon(value: string): string {

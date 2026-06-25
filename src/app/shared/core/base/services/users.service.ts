@@ -283,19 +283,15 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
 
-    const payload: ProfileExtDto = {
-      profile,
-      experienceEntries: (request.experienceEntries ?? []).map(entry => ({ ...entry }))
-    };
-    this.appCtx.setProfileExt(payload);
+    this.appCtx.setProfileExt(request);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
-      const savedUser = await this.userService.saveUserProfileExt(payload);
+      const savedUser = await this.userService.saveUserProfileExt(request);
       if (savedUser) {
         this.appCtx.setProfileExt({
           profile: savedUser,
-          experienceEntries: payload.experienceEntries
+          experienceEntries: request.experienceEntries
         });
       }
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');

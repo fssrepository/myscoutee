@@ -188,6 +188,13 @@ export class AppContext {
     const user = this._userProfilesByUserId()[normalizedUserId];
     return user ? this.cloneUserProfile(user) : null;
   });
+  readonly activeUserProfileExt = computed(() => {
+    const normalizedUserId = this._activeUserId().trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this._profileExtByUserId()[normalizedUserId] ?? null;
+  });
   readonly activeUserIsAdmin = computed(() =>
     this.isAdminUserProfile(this.activeUserProfile(), this._activeUserId())
   );

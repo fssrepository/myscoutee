@@ -23,6 +23,13 @@
           </div>
           @if (panel === 'profile') {
             <div class="profile-header-actions">
+              @if (!activeUserIsAdmin()) {
+                <app-menu
+                  kind="inline"
+                  [items]="profileHeaderStatusMenuItems()"
+                  [(ngModel)]="profileEditorData.profile.profileStatus"
+                ></app-menu>
+              }
               <app-menu
                 kind="inline"
                 [items]="profileHeaderActionMenuItems()"
