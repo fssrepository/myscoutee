@@ -9,7 +9,7 @@
         </span>
       </span>
       @if (!readOnly) {
-      <p class="event-slots-panel-subtitle">{{ resolvedConfig.subtitle }}</p>
+      <p class="event-slots-panel-subtitle">{{ slotsPanelSubtitle() }}</p>
       }
     </div>
     <div class="event-slots-panel-actions">
@@ -21,6 +21,7 @@
       </button>
     </div>
   </div>
+  @if (slotsEnabled()) {
   <div class="event-slots-panel-body">
     <div class="event-slots-summary">
       <section class="event-slots-summary-block">
@@ -80,6 +81,7 @@
       </section>
     </div>
   </div>
+  }
 </section>
 }
 

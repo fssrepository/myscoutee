@@ -1,12 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DoCheck, forwardRef, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatTimepickerModule } from '@angular/material/timepicker';
 
 import { AppUtils } from '../../../../../app-utils';
 import { ActivityEventDetailDTO } from '../../../../../core/contracts/activity.interface';
@@ -57,12 +52,7 @@ interface EventSlotScheduleFormValue {
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
-    MatTimepickerModule,
     AppMenuComponent,
     TextCardComponent,
     FormFlowComponent
@@ -83,17 +73,14 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   @Input() readOnly = false;
 
   protected slotTemplates: ContractTypes.EventSlotTemplateDTO[] = [];
-  protected slotEditorMode: EventSlotsInputEditorMode = 'base';
   protected showSchedulePopup = false;
   protected schedulePopupMode: 'create' | 'edit' = 'create';
-  protected slotOverrideDateValue: Date | null = null;
   protected resolvedConfig: ResolvedEventSlotsInputConfig = this.resolveConfig();
   protected scheduleFlowValue: EventSlotScheduleFormValue = this.createScheduleFlowValue();
 
   private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
   private scheduleFlowModelCache: { signature: string; model: FormFlowModel } | null = null;
   private scheduleEditIndex: number | null = null;
-  private readonly slotDateControlValueCache = new Map<string, Date | null>();
   private onModelChange: (value: ContractTypes.EventSlotTemplateDTO[]) => void = () => {};
   private onModelTouched: () => void = () => {};
 
@@ -112,7 +99,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   writeValue(value: readonly ContractTypes.EventSlotTemplateDTO[] | null | undefined): void {
     this.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(value ?? []);
-    this.normalizeSlotOverrideDateSelection();
     this.normalizeSlotTemplatesForConfig(false);
     this.cdr.markForCheck();
   }
@@ -152,6 +138,12 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   protected slotsEnabled(): boolean {
     return this.resolvedConfig.enabled;
+  }
+
+  protected slotsPanelSubtitle(): string {
+    return this.slotsEnabled()
+      ? this.resolvedConfig.subtitle
+      : 'Use the main event date range without slot schedules.';
   }
 
   protected toggleSlotsEnabled(event?: Event): void {
@@ -321,7 +313,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     if (!this.canConfigureSlotsSeries()) {
       return;
     }
-    this.slotEditorMode = 'base';
     this.openSchedulePopup();
     this.cdr.markForCheck();
   }
@@ -329,7 +320,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   private openBaseSlotEditor(index: number, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.slotEditorMode = 'base';
     this.openSchedulePopup(index);
   }
 
@@ -433,10 +423,10 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   protected scheduleConfirmMenuItems(): readonly AppMenuItem<string, unknown>[] {
     return [{
-      id: 'add-schedule',
+      id: this.schedulePopupMode === 'edit' ? 'save-schedule' : 'add-schedule',
       icon: 'check',
       layout: 'action',
-      ariaLabel: 'Add schedule',
+      ariaLabel: this.schedulePopupMode === 'edit' ? 'Save schedule' : 'Add schedule',
       palette: 'success',
       disabled: !this.canConfigureSlotsSeries()
     }];
@@ -460,7 +450,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     const startAt = this.buildScheduleDraftStartAt(frequency, draft);
     const currentTemplates = this.baseSlotTemplates();
     const editIndex = this.scheduleEditIndex;
-    this.slotEditorMode = 'base';
     if (editIndex !== null && editIndex >= 0 && editIndex < currentTemplates.length) {
       this.setActiveSlotTemplates(currentTemplates.map((item, index) => index === editIndex
         ? {
@@ -491,8 +480,14 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     if (!this.canConfigureSlotsSeries() || index < 0) {
       return;
     }
-    this.slotEditorMode = 'base';
-    this.removeSlotTemplate(index);
+    this.setActiveSlotTemplates(this.baseSlotTemplates()
+      .filter((_, currentIndex) => currentIndex !== index)
+      .map((item, currentIndex) => ({
+        ...item,
+        id: item.id?.trim() || this.buildSlotTemplateId(currentIndex + 1),
+        overrideDate: null,
+        closed: false
+      })));
     this.cdr.markForCheck();
   }
 
@@ -547,179 +542,12 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     });
   }
 
-  protected selectSlotEditorMode(mode: EventSlotsInputEditorMode, event?: Event): void {
-    event?.preventDefault();
-    if (!this.canConfigureSlotsSeries()) {
-      return;
-    }
-    if (this.slotEditorMode === mode) {
-      return;
-    }
-    this.slotEditorMode = mode;
-    if (mode === 'date' && !this.slotOverrideDateValue) {
-      this.slotOverrideDateValue = this.defaultSlotOverrideDate();
-    }
-    this.normalizeSlotOverrideDateSelection();
-    this.cdr.markForCheck();
-  }
-
-  protected showSlotOverrideDatePicker(): boolean {
-    return this.slotEditorMode === 'date';
-  }
-
-  protected isSlotOverrideDateFieldLocked(): boolean {
-    return false;
-  }
-
-  protected slotEditorModeButtonClass(mode: EventSlotsInputEditorMode): string {
-    if (this.slotEditorMode !== mode) {
-      return '';
-    }
-    return mode === 'date' ? 'event-slot-mode-btn-active-date' : 'event-slot-mode-btn-active-base';
-  }
-
-  protected activeSlotTemplates(): ContractTypes.EventSlotTemplateDTO[] {
-    if (this.slotEditorMode === 'base') {
-      return ActivityEventDetailDTO.normalizeSlotTemplates(this.baseSlotTemplates());
-    }
-    const dateKey = this.selectedSlotOverrideDateKey();
-    if (!dateKey) {
-      return [];
-    }
-    const explicit = this.overrideSlotTemplatesForDate(dateKey);
-    if (explicit.length > 0) {
-      if (explicit.some(item => item.closed === true)) {
-        return [];
-      }
-      return ActivityEventDetailDTO.normalizeSlotTemplates(explicit);
-    }
-    return this.projectBaseSlotTemplatesToDate(dateKey);
-  }
-
-  protected slotEditorModeDescription(): string {
-    if (this.slotEditorMode === 'date') {
-      if (this.isSpecificDateClosed()) {
-        return 'This date has its own override and currently has no slots.';
-      }
-      return this.hasExplicitSlotOverride()
-        ? 'Editing one recurring slot window. The preview date chooses the occurrence, and the slot rows stay editable inside that cycle and the overall event range.'
-        : 'This occurrence starts as a shifted copy of the base schedule. Pick the preview date above, then adjust the slot rows directly inside that cycle.';
-    }
-    return 'Base slots can start anywhere inside the main event range. Each slot still respects the selected frequency boundary and cannot overlap the others.';
-  }
-
-  protected slotOverrideDateMin(): Date | null {
-    const start = AppUtils.isoLocalDateTimeToDate(this.resolvedConfig.startAtIso);
-    return start ? new Date(start.getFullYear(), start.getMonth(), start.getDate()) : null;
-  }
-
-  protected slotOverrideDateMax(): Date | null {
-    const end = AppUtils.isoLocalDateTimeToDate(this.resolvedConfig.endAtIso);
-    return end ? new Date(end.getFullYear(), end.getMonth(), end.getDate()) : null;
-  }
-
-  protected onSlotOverrideDateChange(value: Date | null): void {
-    this.slotOverrideDateValue = value;
-    this.normalizeSlotOverrideDateSelection();
-    this.cdr.markForCheck();
-  }
-
   protected slotTrackId(index: number, slot: ContractTypes.EventSlotTemplateDTO): string {
     return `${slot.overrideDate ?? 'base'}:${slot.id || `slot-${index + 1}`}:${slot.startAt}`;
   }
 
-  protected addSlotTemplate(): void {
-    if (!this.canConfigureSlotsSeries()) {
-      return;
-    }
-    this.ensureSpecificDateOverrideSeeded();
-    const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
-    const nextIndex = currentTemplates.length + 1;
-    const previousStart = this.parseDateValue(currentTemplates[currentTemplates.length - 1]?.startAt);
-    const startAt = (previousStart
-      ? AppUtils.toIsoDateTimeLocal(new Date(previousStart.getTime() + (60 * 60 * 1000)))
-      : '')
-      || this.defaultSlotStartForActiveScope()
-      || this.resolvedConfig.startAtIso
-      || AppUtils.toIsoDateTimeLocal(new Date());
-    const startDate = this.parseDateValue(startAt) ?? new Date();
-    this.setActiveSlotTemplates([
-      ...currentTemplates,
-      {
-        id: this.buildSlotTemplateId(nextIndex),
-        startAt: AppUtils.toIsoDateTimeLocal(startDate),
-        overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
-        closed: false
-      }
-    ]);
-  }
-
-  protected removeSlotTemplate(index: number): void {
-    if (!this.canConfigureSlotsSeries()) {
-      return;
-    }
-    this.ensureSpecificDateOverrideSeeded();
-    const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
-    this.setActiveSlotTemplates(currentTemplates
-      .filter((_, currentIndex) => currentIndex !== index)
-      .map((item, currentIndex) => ({
-        ...item,
-        id: item.id?.trim() || this.buildSlotTemplateId(currentIndex + 1),
-        overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
-        closed: false
-      })));
-  }
-
   protected slotTemplateLabel(index: number): string {
     return `Slot ${index + 1}`;
-  }
-
-  protected slotTemplateStartDateValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    return this.slotControlDateValue(slot.startAt);
-  }
-
-  protected slotTemplateStartTimeValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    return this.slotControlDateValue(slot.startAt);
-  }
-
-  protected slotTemplateDateMin(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    const window = this.slotWindowForEditing(slot.overrideDate);
-    if (!window) {
-      return null;
-    }
-    return new Date(window.start.getFullYear(), window.start.getMonth(), window.start.getDate());
-  }
-
-  protected slotTemplateDateMax(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    const window = this.slotWindowForEditing(slot.overrideDate);
-    if (!window) {
-      return null;
-    }
-    return new Date(window.end.getFullYear(), window.end.getMonth(), window.end.getDate());
-  }
-
-  protected onSlotTemplateStartDateChange(index: number, value: Date | null): void {
-    if (!this.canConfigureSlotsSeries() || this.isSlotOverrideDateFieldLocked()) {
-      return;
-    }
-    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
-      ...item,
-      startAt: AppUtils.applyDatePartToIsoLocal(item.startAt, value),
-      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
-      closed: false
-    }));
-  }
-
-  protected onSlotTemplateStartTimeChange(index: number, value: Date | null): void {
-    if (!this.canConfigureSlotsSeries()) {
-      return;
-    }
-    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
-      ...item,
-      startAt: AppUtils.applyTimePartFromDateToIsoLocal(item.startAt, value),
-      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
-      closed: false
-    }));
   }
 
   private syncResolvedConfig(): void {
@@ -730,10 +558,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     }
     this.resolvedConfig = nextConfig;
     this.resolvedConfigSignature = nextSignature;
-    if (!this.resolvedConfig.enabled) {
-      this.slotEditorMode = 'base';
-    }
-    this.normalizeSlotOverrideDateSelection();
     this.normalizeSlotTemplatesForConfig(true);
     this.cdr.markForCheck();
   }
@@ -1286,7 +1110,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   }
 
   private emitSlots(): void {
-    this.slotDateControlValueCache.clear();
     const nextSlots = ActivityEventDetailDTO.normalizeSlotTemplates(this.slotTemplates);
     this.slotTemplates = nextSlots;
     this.onModelChange(nextSlots.map(item => ({ ...item })));
@@ -1314,173 +1137,25 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       }));
   }
 
-  private overrideSlotTemplatesForDate(dateKey: string): ContractTypes.EventSlotTemplateDTO[] {
-    if (!dateKey) {
-      return [];
-    }
-    return this.slotTemplates
-      .filter(item => ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) === dateKey)
-      .map(item => ({
-        ...item,
-        overrideDate: dateKey,
-        closed: item.closed === true
-      }));
-  }
-
-  private selectedSlotOverrideDateKey(): string {
-    return ActivityEventDetailDTO.normalizeSlotOverrideDate(this.slotOverrideDateValue) ?? '';
-  }
-
-  private defaultSlotOverrideDate(): Date | null {
-    const firstOverrideDate = this.slotTemplates
-      .map(item => this.parseOverrideDate(item.overrideDate))
-      .find((value): value is Date => Boolean(value));
-    if (firstOverrideDate) {
-      return new Date(firstOverrideDate.getFullYear(), firstOverrideDate.getMonth(), firstOverrideDate.getDate());
-    }
-    const eventStart = AppUtils.isoLocalDateTimeToDate(this.resolvedConfig.startAtIso);
-    return eventStart
-      ? new Date(eventStart.getFullYear(), eventStart.getMonth(), eventStart.getDate())
-      : null;
-  }
-
-  private normalizeSlotOverrideDateSelection(): void {
-    let next = this.slotOverrideDateValue ?? this.defaultSlotOverrideDate();
-    if (!next) {
-      this.slotOverrideDateValue = null;
-      return;
-    }
-    const min = this.slotOverrideDateMin();
-    const max = this.slotOverrideDateMax();
-    let nextMs = new Date(next.getFullYear(), next.getMonth(), next.getDate()).getTime();
-    if (min && nextMs < min.getTime()) {
-      nextMs = min.getTime();
-    }
-    if (max && nextMs > max.getTime()) {
-      nextMs = max.getTime();
-    }
-    const normalized = new Date(nextMs);
-    this.slotOverrideDateValue = new Date(normalized.getFullYear(), normalized.getMonth(), normalized.getDate());
-  }
-
   private buildSlotTemplateId(index: number): string {
-    if (this.slotEditorMode === 'date') {
-      const dateKey = this.selectedSlotOverrideDateKey() || 'date';
-      return `override-${dateKey}-slot-${index}`;
-    }
     return `slot-${index}`;
-  }
-
-  private projectBaseSlotTemplatesToDate(dateKey: string): ContractTypes.EventSlotTemplateDTO[] {
-    const window = this.slotWindowForOverrideDate(dateKey);
-    const baseStart = AppUtils.isoLocalDateTimeToDate(this.resolvedConfig.startAtIso);
-    if (!window || !baseStart) {
-      return [];
-    }
-    const shiftMs = window.start.getTime() - baseStart.getTime();
-    return this.baseSlotTemplates().map((item, index) => ({
-      id: item.id?.trim()
-        ? `override-${dateKey}-${item.id.trim()}`
-        : this.buildSlotTemplateId(index + 1),
-      startAt: this.shiftSlotDateTimeByMs(item.startAt, shiftMs),
-      overrideDate: dateKey,
-      closed: false
-    }));
-  }
-
-  private resolveActiveSlotTemplatesForEditing(): ContractTypes.EventSlotTemplateDTO[] {
-    return ActivityEventDetailDTO.normalizeSlotTemplates(this.activeSlotTemplates());
-  }
-
-  private updateSlotTemplate(
-    index: number,
-    updater: (item: ContractTypes.EventSlotTemplateDTO) => ContractTypes.EventSlotTemplateDTO
-  ): void {
-    this.ensureSpecificDateOverrideSeeded();
-    const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
-    this.setActiveSlotTemplates(currentTemplates.map((item, currentIndex) => (
-      currentIndex !== index ? { ...item } : updater({ ...item })
-    )));
-  }
-
-  private ensureSpecificDateOverrideSeeded(): void {
-    if (this.slotEditorMode !== 'date') {
-      return;
-    }
-    const dateKey = this.selectedSlotOverrideDateKey();
-    if (!dateKey || this.overrideSlotTemplatesForDate(dateKey).length > 0) {
-      return;
-    }
-    const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null }));
-    const otherOverrides = this.slotTemplates
-      .filter(item => {
-        const overrideDate = ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate);
-        return overrideDate && overrideDate !== dateKey;
-      })
-      .map(item => ({ ...item }));
-    this.slotTemplates = [
-      ...base,
-      ...otherOverrides,
-      ...this.projectBaseSlotTemplatesToDate(dateKey)
-    ];
   }
 
   private setActiveSlotTemplates(nextTemplates: ContractTypes.EventSlotTemplateDTO[]): void {
     const normalizedTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(
       this.normalizeEditableSlotTemplates(nextTemplates)
     );
-    if (this.slotEditorMode === 'base') {
-      const overrides = this.slotTemplates
-        .filter(item => ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate))
-        .map(item => ({ ...item }));
-      this.slotTemplates = [
-        ...normalizedTemplates.map(item => ({ ...item, overrideDate: null, closed: false })),
-        ...overrides
-      ];
-      this.emitSlots();
-      return;
-    }
-
-    const dateKey = this.selectedSlotOverrideDateKey();
-    const base = this.baseSlotTemplates().map(item => ({ ...item, overrideDate: null, closed: false }));
-    const otherOverrides = this.slotTemplates
+    const overrides = this.slotTemplates
       .filter(item => {
         const overrideDate = ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate);
-        return overrideDate && overrideDate !== dateKey;
+        return Boolean(overrideDate);
       })
       .map(item => ({ ...item }));
-    const currentOverride = normalizedTemplates.length > 0
-      ? normalizedTemplates.map(item => ({ ...item, overrideDate: dateKey || null, closed: false }))
-      : (dateKey ? [this.buildClosedDateOverridePlaceholder(dateKey)] : []);
     this.slotTemplates = [
-      ...base,
-      ...otherOverrides,
-      ...currentOverride
+      ...normalizedTemplates.map(item => ({ ...item, overrideDate: null, closed: false })),
+      ...overrides
     ];
     this.emitSlots();
-  }
-
-  private buildClosedDateOverridePlaceholder(dateKey: string): ContractTypes.EventSlotTemplateDTO {
-    return {
-      id: `override-${dateKey}-closed`,
-      startAt: '',
-      overrideDate: dateKey,
-      closed: true
-    };
-  }
-
-  private isSpecificDateClosed(): boolean {
-    const dateKey = this.selectedSlotOverrideDateKey();
-    return !!dateKey && this.overrideSlotTemplatesForDate(dateKey).some(item => item.closed === true);
-  }
-
-  private hasExplicitSlotOverride(): boolean {
-    const dateKey = this.selectedSlotOverrideDateKey();
-    return !!dateKey && this.overrideSlotTemplatesForDate(dateKey).length > 0;
-  }
-
-  private defaultSlotStartForActiveScope(): string {
-    return this.slotWindowForEditing()?.startAt ?? this.resolvedConfig.startAtIso;
   }
 
   private normalizeSlotTemplateBounds(slot: ContractTypes.EventSlotTemplateDTO): ContractTypes.EventSlotTemplateDTO {
@@ -1509,7 +1184,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       .map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }));
   }
 
-  private slotWindowForEditing(overrideDate = this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null): {
+  private slotWindowForEditing(overrideDate: string | null | undefined = null): {
     start: Date;
     end: Date;
     startAt: string;
@@ -1592,27 +1267,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       return null;
     }
     return new Date(boundaryDate.getFullYear(), boundaryDate.getMonth(), boundaryDate.getDate(), 23, 59, 0, 0);
-  }
-
-  private shiftSlotDateTimeByMs(value: string, shiftMs: number): string {
-    const parsed = this.parseDateValue(value);
-    if (!parsed) {
-      return value;
-    }
-    return AppUtils.toIsoDateTimeLocal(new Date(parsed.getTime() + shiftMs));
-  }
-
-  private slotControlDateValue(value: string): Date | null {
-    const normalizedValue = `${value ?? ''}`.trim();
-    if (!normalizedValue) {
-      return null;
-    }
-    if (this.slotDateControlValueCache.has(normalizedValue)) {
-      return this.slotDateControlValueCache.get(normalizedValue) ?? null;
-    }
-    const parsed = this.parseDateValue(normalizedValue);
-    this.slotDateControlValueCache.set(normalizedValue, parsed);
-    return parsed;
   }
 
   private slotOverrideDateLabel(dateKey: string): string {

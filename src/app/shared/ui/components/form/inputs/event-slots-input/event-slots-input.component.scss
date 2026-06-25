@@ -146,13 +146,15 @@
 }
 
 .event-slots-summary-list {
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
   gap: 0.56rem;
   min-width: 0;
 }
 
 .event-slots-summary-card {
+  display: block;
+  height: 100%;
   min-width: 0;
 }
 
@@ -236,6 +238,10 @@
   .event-slots-panel-head {
     grid-template-columns: minmax(0, 1fr);
     align-items: start;
+  }
+
+  .event-slots-summary-list {
+    grid-template-columns: 1fr;
   }
 
   .event-slots-panel-actions {
