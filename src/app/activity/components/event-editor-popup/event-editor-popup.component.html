@@ -145,7 +145,8 @@
               </section>
               <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
                 [config]="eventSlotsInputConfig"
-                [readOnly]="eventStructureReadOnly()"></app-event-slots-input>
+                [readOnly]="eventStructureReadOnly()"
+                (overrideSelect)="openSlotOverrideEditor($event)"></app-event-slots-input>
             </section>
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor-input>
@@ -170,6 +171,61 @@
       </section>
       }
     </div>
+    @if (slotOverrideEditor; as overrideEditor) {
+    <div class="slot-override-popup-backdrop" (click)="closeSlotOverrideEditor($event)"></div>
+    <section class="slot-override-popup" role="dialog" aria-modal="true" aria-label="Override slot">
+      <header class="slot-override-popup__head">
+        <div class="slot-override-popup__copy">
+          <span class="slot-override-popup__title">{{ slotOverridePopupTitle() }}</span>
+          <span class="slot-override-popup__subtitle">{{ slotOverridePopupSubtitle() }}</span>
+        </div>
+        <div class="slot-override-popup__head-actions">
+          <button type="button" class="popup-close slot-override-popup__close"
+            (click)="closeSlotOverrideEditor($event)" aria-label="Close override editor">
+            <mat-icon>close</mat-icon>
+          </button>
+          <div class="slot-override-popup__picker-actions">
+            <app-menu
+              class="slot-override-popup__pager"
+              kind="inline"
+              [items]="slotOverridePrevPagerItems()"
+              (pointerdown)="$event.stopPropagation()"
+              (itemSelect)="onSlotOverridePagerSelect($event)"
+            ></app-menu>
+            <app-menu
+              class="slot-override-popup__date-menu"
+              kind="select"
+              [open]="slotOverrideOccurrenceMenuOpen"
+              (openChange)="slotOverrideOccurrenceMenuOpen = $event"
+              [trigger]="slotOverrideOccurrenceMenuTrigger()"
+              [items]="slotOverrideOccurrenceMenuItems()"
+              (itemSelect)="onSlotOverrideOccurrenceSelect($event)"
+            ></app-menu>
+            <app-menu
+              class="slot-override-popup__pager"
+              kind="inline"
+              [items]="slotOverrideNextPagerItems()"
+              (pointerdown)="$event.stopPropagation()"
+              (itemSelect)="onSlotOverridePagerSelect($event)"
+            ></app-menu>
+          </div>
+        </div>
+      </header>
+      <div class="slot-override-popup__body">
+        <app-event-subevent-definitions-panel
+          class="slot-override-popup__definitions"
+          [ngModel]="overrideEditor.definitions"
+          (ngModelChange)="onSlotOverrideDefinitionsChange($event)"
+          [(mode)]="eventDetailDTO.mode"
+          modeControl="badge"
+          [showEnableToggle]="false"
+          [enabled]="true"
+          [bounds]="eventDetailDTO.dateRange"
+          [readOnly]="eventStructureReadOnly()"
+        ></app-event-subevent-definitions-panel>
+      </div>
+    </section>
+    }
   </div>
 </div>
 }

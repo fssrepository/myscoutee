@@ -80,6 +80,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   @Input() mode: EventContracts.EventMode = 'Casual';
   @Input() enabled = false;
+  @Input() modeControl: 'menu' | 'badge' = 'menu';
+  @Input() showEnableToggle = true;
   @Input() readOnly = false;
   @Output() readonly enabledChange = new EventEmitter<boolean>();
   @Output() readonly modeChange = new EventEmitter<EventContracts.EventMode>();
@@ -176,6 +178,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       palette: tournamentMode ? 'cyan' : 'slate',
       layout: 'pill',
       disabled: !this.canConfigureDefinitions()
+    };
+  }
+
+  protected modeBadgeTrigger(): AppMenuTrigger {
+    return {
+      ...this.modeMenuTrigger(),
+      trailingIcon: '',
+      disabled: true
     };
   }
 

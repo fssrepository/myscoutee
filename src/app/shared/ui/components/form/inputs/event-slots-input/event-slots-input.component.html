@@ -32,32 +32,20 @@
   @if (slotsEnabled()) {
   <div class="event-slots-panel-body">
     <div class="event-slots-summary">
-      @if (slotSummaryBaseItems().length > 0 || slotSummaryOverrideItems().length > 0) {
+      @if (slotSummaryBaseItems().length > 0) {
         <div class="event-slots-summary-list">
           @for (slot of slotSummaryBaseItems(); track slotTrackId($index, slot); let i = $index) {
           <app-text-card
             class="event-slots-summary-card"
-            tone="amber"
+            [tone]="slotSummaryCardTone(slot)"
             icon="schedule"
             [title]="slotTemplateLabel(i)"
             [meta]="slotSummaryWindowLabel(slot)"
             [menuTitle]="slotTemplateLabel(i)"
-            menuPalette="amber"
-            [menuItems]="slotSummaryMenuItems()"
+            [menuPalette]="slotSummaryMenuPalette(slot)"
+            [menuCounter]="slotOverrideCount(slot) || null"
+            [menuItems]="slotSummaryMenuItems(slot)"
             (menuSelect)="onBaseSlotSummaryMenuSelect(i, $event)"
-          ></app-text-card>
-          }
-          @for (override of slotSummaryOverrideItems(); track override.dateKey) {
-          <app-text-card
-            class="event-slots-summary-card"
-            tone="amber"
-            icon="event_repeat"
-            [title]="override.label"
-            [meta]="override.detail"
-            [menuTitle]="override.label"
-            menuPalette="amber"
-            [menuItems]="slotSummaryOverrideMenuItems()"
-            (menuSelect)="onOverrideSlotSummaryMenuSelect(override.dateKey, $event)"
           ></app-text-card>
           }
         </div>

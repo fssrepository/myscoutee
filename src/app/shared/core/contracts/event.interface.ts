@@ -1,4 +1,5 @@
 import type * as PricingContracts from './pricing.interface';
+import type { SubEventDefinitionDTO } from './activity.interface';
 
 export interface EventPolicyDTO {
   id: string;
@@ -20,6 +21,7 @@ export interface EventSlotTemplateDTO {
   startAt: string;
   overrideDate?: string | null;
   closed?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
 }
 
 export interface EventSlotOccurrenceDTO {

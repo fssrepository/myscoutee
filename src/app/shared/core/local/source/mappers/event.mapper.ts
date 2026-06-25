@@ -367,7 +367,8 @@ export class LocalActivityEventDetailsMapper {
           id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
           startAt: '',
           overrideDate: this.normalizeSlotOverrideDate(item.overrideDate),
-          closed: true
+          closed: true,
+          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
         };
       }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
@@ -376,7 +377,8 @@ export class LocalActivityEventDetailsMapper {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
         startAt: this.parseDate(normalizedStart) ? normalizedStart : this.toIsoDateTimeLocal(parsedStart),
         overrideDate: this.normalizeSlotOverrideDate(item.overrideDate),
-        closed: false
+        closed: false,
+        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
       };
     });
   }

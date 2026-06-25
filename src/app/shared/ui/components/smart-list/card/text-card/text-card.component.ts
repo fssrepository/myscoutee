@@ -6,6 +6,8 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuCounter,
+  type AppMenuCounterValue,
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../../menu';
@@ -14,9 +16,13 @@ export type TextCardTone =
   | 'neutral'
   | 'blue'
   | 'cyan'
+  | 'teal'
   | 'green'
   | 'violet'
+  | 'pink'
+  | 'orange'
   | 'amber'
+  | 'gold'
   | 'danger'
   | 'muted';
 
@@ -41,6 +47,7 @@ export class TextCardComponent {
   @Input() tone: TextCardTone = 'neutral';
   @Input() menuTitle: string | null = null;
   @Input() menuPalette: AppMenuPalette = 'default';
+  @Input() menuCounter: AppMenuCounter | AppMenuCounterValue | null = null;
   @Input() menuItems: readonly AppMenuItem<string, unknown>[] = [];
 
   @Output() menuSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
@@ -88,6 +95,7 @@ export class TextCardComponent {
       hideLabel: true,
       layout: 'icon',
       palette: this.menuPalette,
+      counter: this.menuCounter,
       ariaLabel: 'Open card menu'
     };
   }

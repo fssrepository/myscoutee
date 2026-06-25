@@ -33,6 +33,7 @@ import {
   EventPoliciesInputComponent,
   EventSlotsInputComponent,
   type EventSlotsInputConfig,
+  type EventSlotOverrideRequest,
   LocationInputComponent,
   type LocationInputConfig,
   PricingEditorInputComponent,
@@ -50,6 +51,14 @@ type EventEditorMenuContext =
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
   | { menu: 'save' };
+
+interface SlotOverrideEditorState {
+  slot: ContractTypes.EventSlotTemplateDTO;
+  slotIndex: number;
+  selectedStartAt: string;
+  definitions: ActivityContracts.SubEventDefinitionDTO[];
+  page: number;
+}
 
 @Component({
   selector: 'app-event-editor-popup',
@@ -129,6 +138,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       if (!isOpen) {
         this.showSubEventsPopup = false;
+        this.slotOverrideEditor = null;
         this.resetDraftAutosaveTracking();
         return;
       }
@@ -186,10 +196,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
       this.showSubEventsPopup = false;
+      this.slotOverrideEditor = null;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.showSubEventsPopup = false;
+      this.slotOverrideEditor = null;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
@@ -208,6 +220,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   eventDetailDTO: ActivityEventDetailDTO = this.createEmptyEventDetailDTO();
 
   showSubEventsPopup = false;
+  protected slotOverrideEditor: SlotOverrideEditorState | null = null;
+  protected slotOverrideOccurrenceMenuOpen = false;
   isSavePending = false;
 
   readonly visibilityOptions: AppConstants.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
@@ -850,6 +864,164 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
   }
 
+  protected openSlotOverrideEditor(request: EventSlotOverrideRequest): void {
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    const candidates = this.slotOverrideOccurrenceCandidates(request.slot);
+    const selected = candidates[0] ?? this.parseEventEditorDateValue(request.slot.startAt);
+    if (!selected) {
+      return;
+    }
+    const selectedStartAt = AppUtils.toIsoDateTimeLocal(selected);
+    this.slotOverrideEditor = {
+      slot: { ...request.slot },
+      slotIndex: request.slotIndex,
+      selectedStartAt,
+      definitions: this.slotOverrideDefinitionsForStart(request.slot, selectedStartAt),
+      page: 0
+    };
+    this.slotOverrideOccurrenceMenuOpen = false;
+  }
+
+  protected closeSlotOverrideEditor(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.slotOverrideEditor = null;
+    this.slotOverrideOccurrenceMenuOpen = false;
+  }
+
+  protected slotOverridePopupTitle(): string {
+    const editor = this.slotOverrideEditor;
+    return editor ? `Override ${this.slotOverrideSlotLabel(editor)}` : 'Override Slot';
+  }
+
+  protected slotOverridePopupSubtitle(): string {
+    const editor = this.slotOverrideEditor;
+    if (!editor) {
+      return '';
+    }
+    return this.slotOverrideSummaryLabel(editor.selectedStartAt);
+  }
+
+  protected slotOverrideOccurrenceMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    const editor = this.slotOverrideEditor;
+    if (!editor) {
+      return [];
+    }
+    return this.slotOverrideVisibleCandidates(editor).map(startAt => {
+      const startAtIso = AppUtils.toIsoDateTimeLocal(startAt);
+      return {
+        id: startAtIso,
+        label: this.slotOverrideSummaryLabel(startAtIso),
+        icon: 'event_available',
+        kind: 'radio',
+        palette: startAtIso === editor.selectedStartAt ? 'violet' : 'blue',
+        surface: 'tinted',
+        active: startAtIso === editor.selectedStartAt,
+        checked: startAtIso === editor.selectedStartAt
+      };
+    });
+  }
+
+  protected slotOverrideOccurrenceMenuTrigger(): AppMenuTrigger {
+    const editor = this.slotOverrideEditor;
+    return {
+      label: editor ? this.slotOverrideSummaryLabel(editor.selectedStartAt) : 'Select slot date',
+      icon: 'event_available',
+      palette: 'violet',
+      layout: 'field',
+      disabled: !editor
+    };
+  }
+
+  protected onSlotOverrideOccurrenceSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (!this.slotOverrideEditor) {
+      return;
+    }
+    const selected = this.parseEventEditorDateValue(event.id);
+    if (!selected) {
+      return;
+    }
+    const selectedStartAt = AppUtils.toIsoDateTimeLocal(selected);
+    this.slotOverrideEditor = {
+      ...this.slotOverrideEditor,
+      selectedStartAt,
+      definitions: this.slotOverrideDefinitionsForStart(this.slotOverrideEditor.slot, selectedStartAt)
+    };
+    this.slotOverrideOccurrenceMenuOpen = false;
+  }
+
+  protected slotOverridePrevPagerItems(): readonly AppMenuItem<string, unknown>[] {
+    const editor = this.slotOverrideEditor;
+    if (!editor) {
+      return [];
+    }
+    return [
+      {
+        id: 'prev',
+        icon: 'chevron_left',
+        ariaLabel: 'Previous slot dates',
+        palette: 'blue',
+        disabled: editor.page <= 0
+      }
+    ];
+  }
+
+  protected slotOverrideNextPagerItems(): readonly AppMenuItem<string, unknown>[] {
+    const editor = this.slotOverrideEditor;
+    if (!editor) {
+      return [];
+    }
+    const pageCount = this.slotOverridePageCount(editor);
+    return [
+      {
+        id: 'next',
+        icon: 'chevron_right',
+        ariaLabel: 'Next slot dates',
+        palette: 'blue',
+        disabled: editor.page >= pageCount - 1
+      }
+    ];
+  }
+
+  protected onSlotOverridePagerSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (!this.slotOverrideEditor) {
+      return;
+    }
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    const keepMenuOpen = this.slotOverrideOccurrenceMenuOpen;
+    const pageCount = this.slotOverridePageCount(this.slotOverrideEditor);
+    const delta = event.id === 'prev' ? -1 : event.id === 'next' ? 1 : 0;
+    if (delta === 0) {
+      return;
+    }
+    const page = Math.min(Math.max(this.slotOverrideEditor.page + delta, 0), Math.max(pageCount - 1, 0));
+    const pageEditor = { ...this.slotOverrideEditor, page };
+    const selected = this.slotOverrideVisibleCandidates(pageEditor)[0];
+    const selectedStartAt = selected
+      ? AppUtils.toIsoDateTimeLocal(selected)
+      : this.slotOverrideEditor.selectedStartAt;
+    this.slotOverrideEditor = {
+      ...this.slotOverrideEditor,
+      page,
+      selectedStartAt,
+      definitions: this.slotOverrideDefinitionsForStart(this.slotOverrideEditor.slot, selectedStartAt)
+    };
+    this.slotOverrideOccurrenceMenuOpen = keepMenuOpen;
+  }
+
+  protected onSlotOverrideDefinitionsChange(value: readonly ActivityContracts.SubEventDefinitionDTO[]): void {
+    const editor = this.slotOverrideEditor;
+    if (!editor || this.eventStructureReadOnly()) {
+      return;
+    }
+    const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(value);
+    this.slotOverrideEditor = { ...editor, definitions };
+    this.upsertSlotOverrideTemplate(editor, definitions);
+  }
+
   protected onSubEventsEnabledChange(enabled: boolean): void {
     if (this.eventStructureReadOnly()) {
       return;
@@ -859,6 +1031,161 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventFrequencyUsesSlots(): boolean {
     return this.eventDetailDTO.slotsEnabled === true;
+  }
+
+  private slotOverrideSlotLabel(editor: SlotOverrideEditorState): string {
+    return `Slot ${editor.slotIndex + 1}`;
+  }
+
+  private slotOverrideSummaryLabel(startAtIso: string): string {
+    const startAt = this.parseEventEditorDateValue(startAtIso);
+    if (!startAt) {
+      return 'Slot date pending';
+    }
+    return startAt.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  private slotOverrideVisibleCandidates(editor: SlotOverrideEditorState): Date[] {
+    const pageSize = 5;
+    const start = Math.max(0, editor.page) * pageSize;
+    return this.slotOverrideOccurrenceCandidates(editor.slot).slice(start, start + pageSize);
+  }
+
+  private slotOverridePageCount(editor: SlotOverrideEditorState): number {
+    return Math.max(1, Math.ceil(this.slotOverrideOccurrenceCandidates(editor.slot).length / 5));
+  }
+
+  private slotOverrideOccurrenceCandidates(slot: ContractTypes.EventSlotTemplateDTO): Date[] {
+    const parentStart = this.parseEventEditorDateValue(this.eventDetailDTO.dateRange.startAt);
+    const parentEnd = this.parseEventEditorDateValue(this.eventDetailDTO.dateRange.endAt);
+    const templateStart = this.parseEventEditorDateValue(slot.startAt);
+    if (!parentStart || !parentEnd || !templateStart) {
+      return [];
+    }
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency);
+    if (frequency === 'One-time' || frequency === 'Custom') {
+      return templateStart.getTime() >= parentStart.getTime() && templateStart.getTime() <= parentEnd.getTime()
+        ? [templateStart]
+        : [];
+    }
+
+    const candidates: Date[] = [];
+    let cursor = new Date(templateStart);
+    let guard = 0;
+    while (cursor.getTime() < parentStart.getTime() && guard < 500) {
+      cursor = this.nextSlotOverrideOccurrenceDate(cursor, frequency);
+      guard += 1;
+    }
+    while (cursor.getTime() <= parentEnd.getTime() && guard < 1000) {
+      candidates.push(new Date(cursor));
+      cursor = this.nextSlotOverrideOccurrenceDate(cursor, frequency);
+      guard += 1;
+    }
+    return candidates;
+  }
+
+  private nextSlotOverrideOccurrenceDate(value: Date, frequency: string): Date {
+    const next = new Date(value);
+    switch (frequency) {
+      case 'Daily':
+        next.setDate(next.getDate() + 1);
+        break;
+      case 'Weekly':
+        next.setDate(next.getDate() + 7);
+        break;
+      case 'Bi-weekly':
+        next.setDate(next.getDate() + 14);
+        break;
+      case 'Monthly':
+        next.setMonth(next.getMonth() + 1);
+        break;
+      case 'Yearly':
+        next.setFullYear(next.getFullYear() + 1);
+        break;
+      default:
+        next.setDate(next.getDate() + 1);
+        break;
+    }
+    return next;
+  }
+
+  private slotOverrideDefinitionsForStart(
+    slot: ContractTypes.EventSlotTemplateDTO,
+    selectedStartAt: string
+  ): ActivityContracts.SubEventDefinitionDTO[] {
+    const existing = this.findSlotOverrideTemplate(slot, selectedStartAt);
+    const source = existing?.subEventDefinitions?.length
+      ? existing.subEventDefinitions
+      : this.eventDetailDTO.subEventDefinitions;
+    return ActivityEventDetailDTO.normalizeSubEventDefinitions(source ?? []);
+  }
+
+  private findSlotOverrideTemplate(
+    slot: ContractTypes.EventSlotTemplateDTO,
+    selectedStartAt: string
+  ): ContractTypes.EventSlotTemplateDTO | null {
+    const selectedDateKey = this.slotOverrideDateKey(selectedStartAt);
+    if (!selectedDateKey) {
+      return null;
+    }
+    const expectedId = this.slotOverrideTemplateId(slot, selectedDateKey);
+    return this.eventDetailDTO.slotTemplates.find(item =>
+      ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) === selectedDateKey
+      && (`${item.id ?? ''}`.trim() === expectedId || `${item.id ?? ''}`.trim() === `${slot.id ?? ''}`.trim())
+    ) ?? null;
+  }
+
+  private upsertSlotOverrideTemplate(
+    editor: SlotOverrideEditorState,
+    definitions: readonly ActivityContracts.SubEventDefinitionDTO[]
+  ): void {
+    const selectedDateKey = this.slotOverrideDateKey(editor.selectedStartAt);
+    if (!selectedDateKey) {
+      return;
+    }
+    const selectedStart = this.parseEventEditorDateValue(editor.selectedStartAt);
+    if (!selectedStart) {
+      return;
+    }
+    const normalizedDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions);
+    const overrideId = this.slotOverrideTemplateId(editor.slot, selectedDateKey);
+    const overrideTemplate: ContractTypes.EventSlotTemplateDTO = {
+      id: overrideId,
+      startAt: AppUtils.toIsoDateTimeLocal(selectedStart),
+      overrideDate: selectedDateKey,
+      closed: false,
+      subEventDefinitions: normalizedDefinitions
+    };
+    const slotId = `${editor.slot.id ?? ''}`.trim();
+    this.eventDetailDTO.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates([
+      ...this.eventDetailDTO.slotTemplates.filter(item => {
+        const itemDateKey = ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate);
+        const itemId = `${item.id ?? ''}`.trim();
+        return !(itemDateKey === selectedDateKey && (itemId === overrideId || itemId === slotId));
+      }),
+      overrideTemplate
+    ]);
+  }
+
+  private slotOverrideTemplateId(slot: ContractTypes.EventSlotTemplateDTO, selectedDateKey: string): string {
+    const slotId = `${slot.id ?? ''}`.trim() || 'slot';
+    return `${slotId}-override-${selectedDateKey}`;
+  }
+
+  private slotOverrideDateKey(value: string): string {
+    const parsed = this.parseEventEditorDateValue(value);
+    if (!parsed) {
+      return '';
+    }
+    const year = parsed.getFullYear();
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+    const day = `${parsed.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   eventTopicLabel(topic: string): string {

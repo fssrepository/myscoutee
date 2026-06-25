@@ -9,6 +9,14 @@
     </div>
     <div class="subevent-definition-panel__actions">
       @if (enabled) {
+      @if (modeControl === 'badge') {
+      <app-menu
+        class="subevent-definition-panel__mode-menu"
+        kind="select"
+        [trigger]="modeBadgeTrigger()"
+        [items]="[]"
+      ></app-menu>
+      } @else {
       <app-menu
         class="subevent-definition-panel__mode-menu"
         kind="select"
@@ -16,6 +24,7 @@
         [items]="modeMenuItems()"
         (itemSelect)="onModeMenuSelect($event)"
       ></app-menu>
+      }
       @if (canConfigureDefinitions()) {
       <app-menu
         class="subevent-definition-panel__add-menu"
@@ -25,11 +34,13 @@
       ></app-menu>
       }
       }
+      @if (showEnableToggle) {
       <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
         [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
         <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
         <span>{{ enabled ? 'On' : 'Off' }}</span>
       </button>
+      }
     </div>
   </header>
 

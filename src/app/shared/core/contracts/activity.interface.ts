@@ -464,7 +464,8 @@ export class ActivityEventDetailDTO {
           id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
           startAt: '',
           overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
-          closed: true
+          closed: true,
+          subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
         };
       }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
@@ -473,7 +474,8 @@ export class ActivityEventDetailDTO {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
         startAt: ActivityEventDetailDTO.parseDate(normalizedStart) ? normalizedStart : ActivityEventDetailDTO.toIsoDateTimeLocal(parsedStart),
         overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
-        closed: false
+        closed: false,
+        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(item.subEventDefinitions ?? [])
       };
     });
   }

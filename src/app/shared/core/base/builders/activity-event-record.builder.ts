@@ -13,7 +13,14 @@ export class ActivityEventRecordBuilder {
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
-      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      slotTemplates: (record.slotTemplates ?? []).map(item => ({
+        ...item,
+        subEventDefinitions: (item.subEventDefinitions ?? []).map(definition => ({
+          ...definition,
+          groups: (definition.groups ?? []).map(group => ({ ...group })),
+          pricing: definition.pricing ? PricingBuilder.clonePricingConfig(definition.pricing) : definition.pricing
+        }))
+      })),
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],

@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DoCheck, forwardRef, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DoCheck, EventEmitter, forwardRef, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../app-utils';
 import { ActivityEventDetailDTO } from '../../../../../core/contracts/activity.interface';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger } from '../../../menu';
-import { TextCardComponent } from '../../../smart-list/card';
+import { TextCardComponent, type TextCardTone } from '../../../smart-list/card';
 import { FormFlowComponent, type FormFlowControlModel, type FormFlowModel } from '../../flow';
 import type * as ContractTypes from '../../../../../core/contracts';
 
@@ -24,6 +24,11 @@ export interface EventSlotsInputConfig {
   generated?: EventSlotsInputConfigValue<boolean | null | undefined>;
   title?: EventSlotsInputConfigValue<string>;
   subtitle?: EventSlotsInputConfigValue<string>;
+}
+
+export interface EventSlotOverrideRequest {
+  slot: ContractTypes.EventSlotTemplateDTO;
+  slotIndex: number;
 }
 
 interface ResolvedEventSlotsInputConfig {
@@ -71,6 +76,7 @@ interface EventSlotScheduleFormValue {
 export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
   @Input() config: EventSlotsInputConfig = {};
   @Input() readOnly = false;
+  @Output() readonly overrideSelect = new EventEmitter<EventSlotOverrideRequest>();
 
   protected slotTemplates: ContractTypes.EventSlotTemplateDTO[] = [];
   protected showSchedulePopup = false;
@@ -159,47 +165,56 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return this.baseSlotTemplates();
   }
 
-  protected slotSummaryOverrideItems(): Array<{ dateKey: string; label: string; detail: string }> {
-    const grouped = new Map<string, ContractTypes.EventSlotTemplateDTO[]>();
-    for (const slot of this.slotTemplates) {
-      const dateKey = ActivityEventDetailDTO.normalizeSlotOverrideDate(slot.overrideDate);
-      if (!dateKey) {
-        continue;
-      }
-      const current = grouped.get(dateKey) ?? [];
-      current.push({ ...slot });
-      grouped.set(dateKey, current);
-    }
-
-    return [...grouped.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([dateKey, items]) => {
-        const visibleSlots = items.filter(item => item.closed !== true);
-        if (items.some(item => item.closed === true) && visibleSlots.length === 0) {
-          return {
-            dateKey,
-            label: this.slotOverrideDateLabel(dateKey),
-            detail: 'Closed for this date'
-          };
-        }
-        const count = visibleSlots.length;
-        return {
-          dateKey,
-          label: this.slotOverrideDateLabel(dateKey),
-          detail: count === 1 ? '1 custom slot' : `${count} custom slots`
-        };
-      });
-  }
-
   protected slotSummaryWindowLabel(slot: ContractTypes.EventSlotTemplateDTO): string {
     const start = this.parseDateValue(slot.startAt);
     if (!start) {
       return 'Time pending';
     }
+    const overrideCount = this.slotOverrideCount(slot);
+    const overrideSuffix = overrideCount > 0
+      ? ` · ${overrideCount} ${overrideCount === 1 ? 'override' : 'overrides'}`
+      : '';
     if (ActivityEventDetailDTO.normalizeSlotOverrideDate(slot.overrideDate)) {
-      return `Starts ${this.formatSlotDateTimeLabel(start)}`;
+      return `Starts ${this.formatSlotDateTimeLabel(start)}${overrideSuffix}`;
     }
-    return this.formatRecurringSlotLabel(start);
+    return `${this.formatRecurringSlotLabel(start)}${overrideSuffix}`;
+  }
+
+  protected slotSummaryCardTone(slot: ContractTypes.EventSlotTemplateDTO): TextCardTone {
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
+    if (frequency === 'Daily') {
+      return 'green';
+    }
+    if (frequency === 'Weekly' || frequency === 'Bi-weekly') {
+      return frequency === 'Bi-weekly' ? 'violet' : 'cyan';
+    }
+    if (frequency === 'Monthly') {
+      return 'amber';
+    }
+    if (frequency === 'Yearly') {
+      return 'gold';
+    }
+    return 'blue';
+  }
+
+  protected slotSummaryMenuPalette(slot: ContractTypes.EventSlotTemplateDTO): AppMenuPalette {
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
+    return this.scheduleFrequencyPalette(frequency);
+  }
+
+  protected slotOverrideCount(slot: ContractTypes.EventSlotTemplateDTO): number {
+    const slotId = `${slot.id ?? ''}`.trim();
+    if (!slotId) {
+      return 0;
+    }
+    const overridePrefix = `${slotId}-override-`;
+    return this.slotTemplates.filter(item => {
+      if (!ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate)) {
+        return false;
+      }
+      const itemId = `${item.id ?? ''}`.trim();
+      return itemId === slotId || itemId.startsWith(overridePrefix);
+    }).length;
   }
 
   protected slotSummaryAddMenuItems(): readonly AppMenuItem<string, unknown>[] {
@@ -221,10 +236,11 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     this.addBaseSlotFromPanel(event.sourceEvent);
   }
 
-  protected slotSummaryMenuItems(): readonly AppMenuItem<string, unknown>[] {
+  protected slotSummaryMenuItems(slot?: ContractTypes.EventSlotTemplateDTO): readonly AppMenuItem<string, unknown>[] {
     if (!this.canConfigureSlotsSeries()) {
       return [];
     }
+    const overrideCount = slot ? this.slotOverrideCount(slot) : 0;
     return [
       {
         id: 'edit',
@@ -239,30 +255,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
         icon: 'published_with_changes',
         palette: 'violet',
         surface: 'tinted',
-        disabled: true
-      },
-      {
-        id: 'delete',
-        label: 'Delete',
-        icon: 'delete',
-        palette: 'danger',
-        surface: 'tinted'
-      }
-    ];
-  }
-
-  protected slotSummaryOverrideMenuItems(): readonly AppMenuItem<string, unknown>[] {
-    if (!this.canConfigureSlotsSeries()) {
-      return [];
-    }
-    return [
-      {
-        id: 'override',
-        label: 'Override',
-        icon: 'published_with_changes',
-        palette: 'violet',
-        surface: 'tinted',
-        disabled: true
+        counter: overrideCount > 0 ? { value: overrideCount, max: 9 } : null
       },
       {
         id: 'delete',
@@ -284,23 +277,11 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       case 'edit':
         this.openBaseSlotEditor(index, event.sourceEvent);
         break;
+      case 'override':
+        this.openBaseSlotOverride(index, event.sourceEvent);
+        break;
       case 'delete':
         this.removeBaseSlotFromPanel(index, event.sourceEvent);
-        break;
-      default:
-        break;
-    }
-  }
-
-  protected onOverrideSlotSummaryMenuSelect(
-    dateKey: string,
-    event: AppMenuItemSelectEvent<string, unknown>
-  ): void {
-    event.sourceEvent.preventDefault();
-    event.sourceEvent.stopPropagation();
-    switch (event.id) {
-      case 'delete':
-        this.removeOverrideDateFromPanel(dateKey, event.sourceEvent);
         break;
       default:
         break;
@@ -321,6 +302,19 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     event?.preventDefault();
     event?.stopPropagation();
     this.openSchedulePopup(index);
+  }
+
+  private openBaseSlotOverride(index: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    const slot = this.baseSlotTemplates()[index];
+    if (!slot) {
+      return;
+    }
+    this.overrideSelect.emit({ slot: { ...slot }, slotIndex: index });
   }
 
   protected schedulePopupTitle(): string {
@@ -489,19 +483,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
         closed: false
       })));
     this.cdr.markForCheck();
-  }
-
-  protected removeOverrideDateFromPanel(dateKey: string, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    const normalizedDateKey = ActivityEventDetailDTO.normalizeSlotOverrideDate(dateKey);
-    if (!this.canConfigureSlotsSeries() || !normalizedDateKey) {
-      return;
-    }
-    this.slotTemplates = this.slotTemplates
-      .filter(item => ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) !== normalizedDateKey)
-      .map(item => ({ ...item }));
-    this.emitSlots();
   }
 
   private formatRecurringSlotLabel(start: Date): string {
@@ -836,10 +817,52 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       value,
       kind: 'radio',
       label,
-      icon: 'calendar_view_week',
-      palette: 'cyan',
+      icon: this.scheduleWeekdayIcon(Number(value)),
+      palette: this.scheduleWeekdayPalette(Number(value)),
       surface: 'tinted'
     }));
+  }
+
+  private scheduleWeekdayIcon(weekday: number): string {
+    switch (weekday) {
+      case 0:
+        return 'wb_sunny';
+      case 1:
+        return 'work_history';
+      case 2:
+        return 'bolt';
+      case 3:
+        return 'calendar_view_week';
+      case 4:
+        return 'explore';
+      case 5:
+        return 'celebration';
+      case 6:
+        return 'weekend';
+      default:
+        return 'calendar_view_week';
+    }
+  }
+
+  private scheduleWeekdayPalette(weekday: number): AppMenuPalette {
+    switch (weekday) {
+      case 0:
+        return 'gold';
+      case 1:
+        return 'blue';
+      case 2:
+        return 'orange';
+      case 3:
+        return 'cyan';
+      case 4:
+        return 'violet';
+      case 5:
+        return 'pink';
+      case 6:
+        return 'teal';
+      default:
+        return 'cyan';
+    }
   }
 
   private scheduleMonthMenuItems(): readonly AppMenuItem<string, unknown>[] {
@@ -1267,18 +1290,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       return null;
     }
     return new Date(boundaryDate.getFullYear(), boundaryDate.getMonth(), boundaryDate.getDate(), 23, 59, 0, 0);
-  }
-
-  private slotOverrideDateLabel(dateKey: string): string {
-    const parsed = this.parseOverrideDate(dateKey);
-    if (!parsed) {
-      return dateKey;
-    }
-    return parsed.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
   }
 
   private formatSlotDateTimeLabel(value: Date | null | undefined): string {

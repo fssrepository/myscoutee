@@ -727,7 +727,7 @@ export class SeedEventsBuilder {
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
-          slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
           subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
@@ -797,7 +797,7 @@ export class SeedEventsBuilder {
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
-          slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
           subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
@@ -1072,7 +1072,7 @@ export class SeedEventsBuilder {
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policies: (record.policies ?? []).map(item => ({ ...item })),
-      slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),
+      slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       topics: [...(record.topics ?? [])],
@@ -1869,7 +1869,10 @@ export class SeedEventsBuilder {
     if (!Array.isArray(items)) {
       return undefined;
     }
-    return items.map(item => ({ ...item }));
+    return items.map(item => ({
+      ...item,
+      subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions
+    }));
   }
 
   static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
@@ -1947,7 +1950,8 @@ export class SeedEventsBuilder {
     return items.map(item => ({
       ...item,
       startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
-      overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate
+      overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate,
+      subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions
     }));
   }
 

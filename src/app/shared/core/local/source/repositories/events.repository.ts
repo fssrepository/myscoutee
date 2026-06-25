@@ -1812,6 +1812,19 @@ export class LocalEventsRepository {
       .reduce((total, entry) => Math.max(total, entry.startOffsetMinutes + entry.durationMinutes), 0);
   }
 
+  private slotTemplateSubEventDefinitions(
+    parent: ActivityContracts.ActivityEventRecord,
+    template: ContractTypes.EventSlotTemplateDTO
+  ): ActivityContracts.SubEventDefinitionDTO[] {
+    if (parent.subEventsEnabled !== true) {
+      return [];
+    }
+    const overrideDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(template.subEventDefinitions ?? []);
+    return overrideDefinitions.length > 0
+      ? overrideDefinitions
+      : ActivityEventDetailDTO.normalizeSubEventDefinitions(parent.subEventDefinitions ?? []);
+  }
+
   private materializeSubEventDefinitionsForSlotOccurrence(
     items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined,
     occurrenceStart: Date
@@ -1908,10 +1921,6 @@ export class LocalEventsRepository {
 
     const records: ActivityEventRecord[] = [];
     const templates = parent.slotTemplates ?? [];
-    const definitionDurationMinutes = parent.subEventsEnabled === true
-      ? this.subEventDefinitionsDurationMinutes(parent.subEventDefinitions)
-      : 0;
-    const definitionDurationMs = Math.max(0, definitionDurationMinutes) * 60 * 1000;
     const overrideDates = new Set(
       templates
         .map(template => this.slotOverrideDateKey(template.overrideDate))
@@ -1925,6 +1934,8 @@ export class LocalEventsRepository {
       if (!templateStart) {
         continue;
       }
+      const definitions = this.slotTemplateSubEventDefinitions(parent, template);
+      const definitionDurationMs = Math.max(0, this.subEventDefinitionsDurationMinutes(definitions)) * 60 * 1000;
       const starts = this.generateSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, horizonStart, horizonEnd);
       for (const startAt of starts) {
         const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
@@ -1988,8 +1999,8 @@ export class LocalEventsRepository {
           pendingMembers: 0,
           topics: [...parent.topics],
           subEventsEnabled: false,
-          subEvents: parent.subEventsEnabled === true && (parent.subEventDefinitions?.length ?? 0) > 0
-            ? this.materializeSubEventDefinitionsForSlotOccurrence(parent.subEventDefinitions, startAt)
+          subEvents: parent.subEventsEnabled === true && definitions.length > 0
+            ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
             : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
           mode: parent.mode,
           rating: parent.rating,
@@ -2010,6 +2021,8 @@ export class LocalEventsRepository {
       if (!templateStart) {
         continue;
       }
+      const definitions = this.slotTemplateSubEventDefinitions(parent, template);
+      const definitionDurationMs = Math.max(0, this.subEventDefinitionsDurationMinutes(definitions)) * 60 * 1000;
       const startAt = new Date(templateStart);
       const endAt = new Date(startAt.getTime() + definitionDurationMs);
       if (startAt.getTime() < horizonStart.getTime() || startAt.getTime() > horizonEnd.getTime()) {
@@ -2071,8 +2084,8 @@ export class LocalEventsRepository {
         pendingMembers: 0,
         topics: [...parent.topics],
         subEventsEnabled: false,
-        subEvents: parent.subEventsEnabled === true && (parent.subEventDefinitions?.length ?? 0) > 0
-          ? this.materializeSubEventDefinitionsForSlotOccurrence(parent.subEventDefinitions, startAt)
+        subEvents: parent.subEventsEnabled === true && definitions.length > 0
+          ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
           : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
         mode: parent.mode,
         rating: parent.rating,

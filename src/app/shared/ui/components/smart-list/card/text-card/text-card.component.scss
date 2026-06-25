@@ -35,6 +35,13 @@
     linear-gradient(180deg, #f3fcff 0%, #e1f5f8 100%);
 }
 
+.ui-text-card--tone-teal {
+  border-color: rgba(32, 137, 124, 0.3);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.82), transparent 35%),
+    linear-gradient(180deg, #f2fffb 0%, #dcf5ee 100%);
+}
+
 .ui-text-card--tone-green {
   border-color: rgba(48, 142, 86, 0.28);
   background: linear-gradient(180deg, #f5fcf8 0%, #e7f5ec 100%);
@@ -45,9 +52,24 @@
   background: linear-gradient(180deg, #fbf7ff 0%, #efe7ff 100%);
 }
 
+.ui-text-card--tone-pink {
+  border-color: rgba(190, 83, 142, 0.3);
+  background: linear-gradient(180deg, #fff7fb 0%, #f8e6f0 100%);
+}
+
+.ui-text-card--tone-orange {
+  border-color: rgba(203, 112, 42, 0.32);
+  background: linear-gradient(180deg, #fff8f1 0%, #fde8d4 100%);
+}
+
 .ui-text-card--tone-amber {
   border-color: rgba(194, 137, 44, 0.32);
   background: linear-gradient(180deg, #fffaf0 0%, #fff0d5 100%);
+}
+
+.ui-text-card--tone-gold {
+  border-color: rgba(196, 151, 35, 0.34);
+  background: linear-gradient(180deg, #fffcee 0%, #faefbd 100%);
 }
 
 .ui-text-card--tone-danger {

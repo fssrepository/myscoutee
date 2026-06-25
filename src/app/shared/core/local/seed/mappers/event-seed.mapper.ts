@@ -37,7 +37,13 @@ export class ActivityEventSeedMapper {
       pricing: record.pricing,
       policies: record.policies ? [...record.policies] : undefined,
       slotsEnabled: record.slotsEnabled,
-      slotTemplates: record.slotTemplates ? [...record.slotTemplates] : undefined,
+      slotTemplates: record.slotTemplates ? record.slotTemplates.map(slot => ({
+        ...slot,
+        subEventDefinitions: slot.subEventDefinitions ? slot.subEventDefinitions.map(item => ({
+          ...item,
+          groups: (item.groups ?? []).map(group => ({ ...group }))
+        })) : undefined
+      })) : undefined,
       parentEventId: record.parentEventId,
       slotTemplateId: record.slotTemplateId,
       generated: record.generated,
