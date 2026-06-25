@@ -26,6 +26,7 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  ActivityEventSubEventsQueryDTO,
   ActivityEventSubEventRuntimeDTO,
   ActivityEventSubEventsResultDTO,
   ActivityEventScopeFilter
@@ -209,29 +210,37 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
-  async loadSubEventsById(userId: string, eventId: string): Promise<ActivityEventSubEventsResultDTO | null> {
-    const detail = await this.loadEventDetailById(userId, eventId);
-    if (!detail) {
+  async loadSubEventsById(
+    userId: string,
+    eventId: string,
+    query?: ActivityEventSubEventsQueryDTO
+  ): Promise<ActivityEventSubEventsResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
       return null;
     }
-    return {
-      event: detail,
-      items: this.runtimeSubEventsFromDetail(detail)
-    };
-  }
-
-  private runtimeSubEventsFromDetail(detail: ActivityEventDetailDTO): ActivityEventSubEventRuntimeDTO[] {
-    return ActivityEventDetailDTO.normalizeSubEvents(detail.subEvents ?? [])
-      .map((item, index) => ({
-        ...item,
-        runtimeId: `${detail.id || 'event'}:${item.id || `subevent-${index + 1}`}`,
-        parentEventId: detail.parentEventId || detail.id,
-        slotSourceId: detail.generated ? detail.id : null,
-        slotTemplateId: detail.slotTemplateId ?? null,
-        slotTitle: detail.generated ? detail.title : null,
-        slotTimeframe: detail.generated ? detail.timeframe : null
-      }))
-      .sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt));
+    try {
+      const response = await this.http
+        .post<{ event?: Partial<ActivityEventDetailDTO> | null; items?: ActivityEventSubEventRuntimeDTO[] } | null>(
+          `${this.apiBaseUrl}/activities/events/sub-events`,
+          {
+            ...(query ?? {}),
+            userId: normalizedUserId,
+            eventId: normalizedEventId
+          }
+        )
+        .toPromise();
+      if (!response?.event) {
+        return null;
+      }
+      return {
+        event: new ActivityEventDetailDTO().apply(response.event),
+        items: [...(response.items ?? [])].sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt))
+      };
+    } catch {
+      return null;
+    }
   }
 
   private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {

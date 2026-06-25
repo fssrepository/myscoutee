@@ -186,6 +186,7 @@ export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = 
   weekStartHour?: number;
   weekEndHour?: number;
   anchorRadius?: number;
+  initialAnchor?: SmartListConfigValue<string | Date | null | undefined, TFilters>;
   resolveDateRange: (item: T, query: ListQuery<TFilters>) => SmartListCalendarDateRange | null;
   badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
   badgeToneClass?: (item: T, query: ListQuery<TFilters>) => SmartListClassValue;

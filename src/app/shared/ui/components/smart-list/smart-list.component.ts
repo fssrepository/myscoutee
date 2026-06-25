@@ -307,6 +307,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private awaitScrollResetBaselineReverseDistance: number | null = null;
   private calendarMonthFocusDate: Date | null = null;
   private calendarWeekFocusDate: Date | null = null;
+  private calendarInitialAnchorKey = '';
   private calendarEdgeSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private calendarPostSettleTimer: ReturnType<typeof setTimeout> | null = null;
   private calendarInitialPageIndexOverride: number | null = null;
@@ -449,16 +450,23 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.clearCalendarPageCache();
     }
 
-    if (changes['view'] && previousViewKey !== this.currentViewKey) {
+    const nextCalendarInitialAnchorKey = this.calendarInitialAnchorKeyValue();
+    const calendarInitialAnchorChanged = nextCalendarInitialAnchorKey !== this.calendarInitialAnchorKey;
+    this.calendarInitialAnchorKey = nextCalendarInitialAnchorKey;
+
+    if (
+      (changes['view'] && previousViewKey !== this.currentViewKey)
+      || (calendarInitialAnchorChanged && this.isCalendarMode())
+    ) {
       this.clearCalendarSettleTimers();
       this.suppressCalendarEdgeSettle = false;
-      const today = AppUtils.dateOnly(new Date());
+      const anchor = this.calendarInitialAnchorDate() ?? AppUtils.dateOnly(new Date());
       if (this.currentViewKey === 'month') {
-        this.calendarMonthFocusDate = AppUtils.startOfMonth(today);
+        this.calendarMonthFocusDate = AppUtils.startOfMonth(anchor);
         this.calendarMonthAnchorPages = null;
         this.calendarInitialPageIndexOverride = this.calendarAnchorRadius();
       } else if (this.currentViewKey === 'week') {
-        this.calendarWeekFocusDate = AppUtils.startOfWeekMonday(today);
+        this.calendarWeekFocusDate = AppUtils.startOfWeekMonday(anchor);
         this.calendarWeekAnchorPages = null;
         this.calendarInitialPageIndexOverride = this.calendarAnchorRadius();
       } else {
@@ -3802,6 +3810,18 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     return Math.max(0, Math.trunc(this.calendarConfig()?.anchorRadius ?? 1));
   }
 
+  private calendarInitialAnchorDate(): Date | null {
+    const value = this.resolveConfigValue(this.calendarConfig()?.initialAnchor, null);
+    const parsed = AppUtils.parseDate(value);
+    return parsed ? AppUtils.dateOnly(parsed) : null;
+  }
+
+  private calendarInitialAnchorKeyValue(): string {
+    const value = this.resolveConfigValue(this.calendarConfig()?.initialAnchor, null);
+    const parsed = AppUtils.parseDate(value);
+    return parsed ? AppUtils.dateKey(parsed) : '';
+  }
+
   private calendarWeekStartHour(): number {
     return Math.max(0, Math.min(23, Math.trunc(this.calendarConfig()?.weekStartHour ?? 0)));
   }
@@ -3847,13 +3867,13 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private monthFocusDate(): Date {
     const today = AppUtils.dateOnly(new Date());
-    const base = this.calendarMonthFocusDate ?? today;
+    const base = this.calendarMonthFocusDate ?? this.calendarInitialAnchorDate() ?? today;
     return AppUtils.startOfMonth(base);
   }
 
   private weekFocusDate(): Date {
     const today = AppUtils.dateOnly(new Date());
-    const base = this.calendarWeekFocusDate ?? today;
+    const base = this.calendarWeekFocusDate ?? this.calendarInitialAnchorDate() ?? today;
     return AppUtils.startOfWeekMonday(base);
   }
 

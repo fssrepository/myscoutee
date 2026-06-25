@@ -16,6 +16,7 @@ import {
   type ActivityEventExploreQueryResult,
   type ActivityEventRecord,
   type ActivityEventSubEventRuntimeDTO,
+  type ActivityEventSubEventsQueryDTO,
   type ActivityEventSubEventsResultDTO,
   type ActivityEventScopeFilter,
   type ActivityEventRepositoryItemType
@@ -373,7 +374,11 @@ export class LocalEventsRepository {
     );
   }
 
-  querySubEventsByEventId(userId: string, eventId: string): ActivityEventSubEventsResultDTO | null {
+  querySubEventsByEventId(
+    userId: string,
+    eventId: string,
+    query?: ActivityEventSubEventsQueryDTO
+  ): ActivityEventSubEventsResultDTO | null {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -396,21 +401,63 @@ export class LocalEventsRepository {
         viewerCoordinates
       )
     );
-    const generatedSlots = preferredRecords
+    const allGeneratedSlots = preferredRecords
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
       .filter(record => !this.isTrashStatus(record))
       .filter(record => this.generatedSlotFitsParentRange(record, parentRecord))
       .sort((left, right) => this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso));
+    const generatedSlots = allGeneratedSlots
+      .filter(record => this.recordOverlapsSubEventsQueryRange(record, query));
     const fallbackRecords = !this.isGeneratedSlotRecord(selectedRecord)
-      || this.generatedSlotFitsParentRange(selectedRecord, parentRecord)
+      && allGeneratedSlots.length === 0
+      && this.generatedSlotFitsParentRange(selectedRecord, parentRecord)
+      && this.recordOverlapsSubEventsQueryRange(selectedRecord, query)
       ? [selectedRecord]
       : [];
-    const sourceRecords = generatedSlots.length > 0 ? generatedSlots : fallbackRecords;
+    const sourceRecords = allGeneratedSlots.length > 0 ? generatedSlots : fallbackRecords;
     const items = sourceRecords.flatMap(record => this.runtimeSubEventsForRecord(parentEventId, record));
+    const direction = query?.order === 'past' ? -1 : 1;
     return {
       event,
-      items: items.sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt))
+      items: items.sort((left, right) => direction * (this.toDateMs(left.startAt) - this.toDateMs(right.startAt)))
     };
+  }
+
+  private recordOverlapsSubEventsQueryRange(
+    record: ActivityEventRecord,
+    query: ActivityEventSubEventsQueryDTO | null | undefined
+  ): boolean {
+    const rangeStart = this.subEventsQueryRangeStartMs(query);
+    const rangeEnd = this.subEventsQueryRangeEndMs(query);
+    if (rangeStart === null && rangeEnd === null) {
+      return true;
+    }
+    const recordStart = this.toDateMs(record.startAtIso);
+    const recordEnd = this.toDateMs(record.endAtIso) || recordStart;
+    if (rangeStart !== null && recordEnd < rangeStart) {
+      return false;
+    }
+    if (rangeEnd !== null && recordStart > rangeEnd) {
+      return false;
+    }
+    return true;
+  }
+
+  private subEventsQueryRangeStartMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
+    const value = `${query?.rangeStart ?? ''}`.trim();
+    const parsed = AppUtils.parseDate(value);
+    return parsed ? AppUtils.dateOnly(parsed).getTime() : null;
+  }
+
+  private subEventsQueryRangeEndMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
+    const value = `${query?.rangeEnd ?? ''}`.trim();
+    const parsed = AppUtils.parseDate(value);
+    if (!parsed) {
+      return null;
+    }
+    const end = AppUtils.dateOnly(parsed);
+    end.setHours(23, 59, 59, 999);
+    return end.getTime();
   }
 
   private runtimeSubEventsForRecord(

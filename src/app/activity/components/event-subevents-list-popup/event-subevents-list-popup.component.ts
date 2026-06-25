@@ -4,8 +4,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
 import { AppUtils } from '../../../shared/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   ActivityEventDetailDTO,
+  type ActivityEventSubEventsQueryDTO,
   type ActivityEventSubEventRuntimeDTO
 } from '../../../shared/core/contracts/activity.interface';
 import {
@@ -40,6 +42,7 @@ interface EventSubeventsSlotSection {
   title: string;
   subtitle: string;
   startAt: string | null;
+  endAt: string | null;
   tone: EventSubeventsSlotTone;
   items: ActivityEventSubEventRuntimeDTO[];
 }
@@ -81,6 +84,8 @@ export class EventSubeventsListPopupComponent {
   private lastLoadedEventId = '';
   private loadedEventId = '';
   private loadingEventId = '';
+  private loadedQueryKey = '';
+  private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
 
   private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters>>();
@@ -89,6 +94,21 @@ export class EventSubeventsListPopupComponent {
   protected readonly smartListConfig: SmartListConfig<EventSubeventsSlotSection, EventSubeventsListFilters> = {
     pageSize: 12,
     defaultView: 'day',
+    views: [
+      { key: 'day', label: 'Day', mode: 'list', pageSize: 12 },
+      { key: 'week', label: 'Week', mode: 'week', pageSize: 240 },
+      { key: 'month', label: 'Month', mode: 'month', pageSize: 240 }
+    ],
+    calendar: {
+      weekdayLabels: APP_STATIC_DATA.calendarWeekdayLabels,
+      weekStartHour: 0,
+      weekEndHour: 23,
+      anchorRadius: 2,
+      initialAnchor: () => this.calendarInitialAnchor(),
+      resolveDateRange: section => this.slotSectionCalendarRange(section),
+      badgeLabel: section => section.title,
+      badgeToneClass: section => `event-subevents-calendar-badge--${section.tone}`
+    },
     showStickyHeader: true,
     emptyLabel: 'No sub events yet',
     emptyDescription: '',
@@ -136,6 +156,8 @@ export class EventSubeventsListPopupComponent {
         this.lastLoadedEventId = '';
         this.loadedEventId = '';
         this.loadingEventId = '';
+        this.loadedQueryKey = '';
+        this.loadingQueryKey = '';
         this.loadingPromise = null;
         this.event = null;
         this.items = [];
@@ -150,6 +172,8 @@ export class EventSubeventsListPopupComponent {
       this.lastLoadedEventId = request.eventId;
       this.loadedEventId = '';
       this.loadingEventId = '';
+      this.loadedQueryKey = '';
+      this.loadingQueryKey = '';
       this.loadingPromise = null;
       this.event = null;
       this.items = [];
@@ -364,7 +388,7 @@ export class EventSubeventsListPopupComponent {
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
-    await this.ensureSubEventsLoaded(eventId);
+    await this.ensureSubEventsLoaded(eventId, query);
     const sorted = this.buildSlotSections();
     this.slotSections = sorted;
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
@@ -377,11 +401,15 @@ export class EventSubeventsListPopupComponent {
     };
   }
 
-  private async ensureSubEventsLoaded(eventId: string): Promise<void> {
-    if (this.loadedEventId === eventId) {
+  private async ensureSubEventsLoaded(
+    eventId: string,
+    query: ListQuery<EventSubeventsListFilters>
+  ): Promise<void> {
+    const queryKey = this.subEventsLoadQueryKey(eventId, query);
+    if (this.loadedEventId === eventId && this.loadedQueryKey === queryKey) {
       return;
     }
-    if (this.loadingEventId === eventId && this.loadingPromise) {
+    if (this.loadingEventId === eventId && this.loadingQueryKey === queryKey && this.loadingPromise) {
       return this.loadingPromise;
     }
     const userId = this.appCtx.activeUserProfile()?.id?.trim() ?? '';
@@ -391,13 +419,15 @@ export class EventSubeventsListPopupComponent {
       this.slotSections = [];
       this.slotSectionHeaderLabels.clear();
       this.loadedEventId = eventId;
+      this.loadedQueryKey = queryKey;
       return;
     }
     this.loadingEventId = eventId;
+    this.loadingQueryKey = queryKey;
     this.isLoading = true;
     this.cdr.markForCheck();
     this.loadingPromise = (async () => {
-      const result = await this.eventsService.loadSubEventsById(userId, eventId);
+      const result = await this.eventsService.loadSubEventsById(userId, eventId, this.subEventsLoadQuery(eventId, query));
       if (this.state.request()?.eventId !== eventId) {
         return;
       }
@@ -405,9 +435,11 @@ export class EventSubeventsListPopupComponent {
       this.items = [...(result?.items ?? [])];
       this.slotSections = this.buildSlotSections();
       this.loadedEventId = eventId;
+      this.loadedQueryKey = queryKey;
     })().finally(() => {
-      if (this.loadingEventId === eventId) {
+      if (this.loadingEventId === eventId && this.loadingQueryKey === queryKey) {
         this.loadingEventId = '';
+        this.loadingQueryKey = '';
         this.loadingPromise = null;
         this.isLoading = false;
         this.cdr.markForCheck();
@@ -442,6 +474,9 @@ export class EventSubeventsListPopupComponent {
         if (!existing.startAt || this.dateMs(item.startAt) < this.dateMs(existing.startAt)) {
           existing.startAt = item.startAt ?? existing.startAt;
         }
+        if (!existing.endAt || this.dateMs(item.endAt) > this.dateMs(existing.endAt)) {
+          existing.endAt = item.endAt ?? existing.endAt;
+        }
         return;
       }
       sections.set(key, {
@@ -449,6 +484,7 @@ export class EventSubeventsListPopupComponent {
         title: this.slotSectionTitle(item, sections.size + 1),
         subtitle: this.slotSectionSubtitle(item),
         startAt: item.startAt ?? null,
+        endAt: item.endAt ?? item.startAt ?? null,
         tone: this.slotSectionTone(item),
         items: [item]
       });
@@ -625,11 +661,61 @@ export class EventSubeventsListPopupComponent {
     return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
+  private slotSectionCalendarRange(section: EventSubeventsSlotSection) {
+    const start = AppUtils.parseDate(section.startAt);
+    const end = AppUtils.parseDate(section.endAt) ?? start;
+    if (!start || !end) {
+      return null;
+    }
+    return {
+      start,
+      end: end.getTime() >= start.getTime() ? end : start
+    };
+  }
+
+  private calendarInitialAnchor(): string | Date | null {
+    const event = this.event;
+    if (!event) {
+      return null;
+    }
+    return this.order === 'past'
+      ? (event.endAtIso || event.startAtIso || null)
+      : (event.startAtIso || event.endAtIso || null);
+  }
+
+  private subEventsLoadQueryKey(eventId: string, query: ListQuery<EventSubeventsListFilters>): string {
+    const loadQuery = this.subEventsLoadQuery(eventId, query);
+    return [
+      loadQuery.eventId,
+      loadQuery.order ?? '',
+      loadQuery.view ?? '',
+      loadQuery.anchorDate ?? '',
+      loadQuery.rangeStart ?? '',
+      loadQuery.rangeEnd ?? ''
+    ].join('|');
+  }
+
+  private subEventsLoadQuery(
+    eventId: string,
+    query: ListQuery<EventSubeventsListFilters>
+  ): ActivityEventSubEventsQueryDTO {
+    return {
+      userId: this.appCtx.activeUserProfile()?.id?.trim() ?? '',
+      eventId,
+      order: this.order,
+      view: (query.view as EventSubeventsListView | undefined) ?? this.view,
+      anchorDate: query.anchorDate ?? null,
+      rangeStart: query.rangeStart ?? null,
+      rangeEnd: query.rangeEnd ?? null
+    };
+  }
+
   private bumpQuery(): void {
     this.revision += 1;
     this.query = {
       ...this.query,
       view: this.view,
+      direction: this.order === 'past' ? 'desc' : 'asc',
       filters: { revision: this.revision }
     };
   }
