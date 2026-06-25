@@ -11,6 +11,8 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   event?: ActivityEventDetailDTO | null;
   mode?: EventMode | null;
   groupLabel?: string | null;
+  sequenceNumber?: number | null;
+  sequenceTotal?: number | null;
 }
 
 export class EventSubeventRuntimeInfoCardConverter
@@ -21,14 +23,17 @@ export class EventSubeventRuntimeInfoCardConverter
   ): InfoCardData {
     const mode = options.mode ?? options.event?.mode ?? 'Casual';
     const accepted = Math.max(0, Math.trunc(Number(item.membersAccepted) || 0));
-    const pending = Math.max(0, Math.trunc(Number(item.membersPending) || 0));
     const max = Math.max(accepted, Math.trunc(Number(item.capacityMax) || 0));
     const capacity = max > 0 ? `${accepted} / ${max}` : `${accepted}`;
-    const pendingTotal = this.pendingTotal(item);
     const dateLabel = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, item.slotTimeframe ?? 'Date unavailable');
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
     const slotLine = `${item.slotTimeframe ?? ''}`.trim();
-    const runtimeIcon = mode === 'Tournament' ? 'emoji_events' : 'event_note';
+    const isTournament = mode === 'Tournament';
+    const sequenceNumber = Math.max(1, Math.trunc(Number(options.sequenceNumber) || 1));
+    const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
+    const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
+    const status = this.definitionStatus(item);
+    const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
 
     return {
       id: item.runtimeId,
@@ -38,8 +43,8 @@ export class EventSubeventRuntimeInfoCardConverter
       mediaMode: 'title',
       mediaTone: 'neutral',
       mediaIcon: runtimeIcon,
-      mediaTitle: item.name,
-      mediaSubtitle: mode === 'Tournament' ? 'Tournament stage' : 'Sub event',
+      mediaTitle: sequenceLabel,
+      mediaSubtitle: mode,
       metaRows: [
         dateLabel,
         ...(location ? [location] : []),
@@ -47,25 +52,32 @@ export class EventSubeventRuntimeInfoCardConverter
       ],
       description: item.description || 'No description',
       detailRows: [
-        `Capacity ${capacity}`,
-        pendingTotal > 0 ? `${pendingTotal} pending` : ''
+        `Capacity ${capacity}`
       ].filter(Boolean),
-      surfaceTone: mode === 'Tournament' ? 'stage' : 'default',
+      surfaceTone: isTournament ? 'stage' : 'draft',
+      accentHue: isTournament ? this.stageAccentHue(sequenceNumber, sequenceTotal) : null,
       leadingIcon: {
-        icon: runtimeIcon,
-        tone: 'stage'
+        icon: isTournament ? 'emoji_events' : status.icon,
+        tone: isTournament ? 'stage' : status.leadingTone
+      },
+      mediaStart: {
+        variant: 'avatar',
+        tone: 'default',
+        icon: 'location_on',
+        interactive: false
       },
       mediaEnd: {
         variant: 'badge',
-        tone: pendingTotal > 0 ? 'review' : 'neutral',
-        icon: pendingTotal > 0 ? 'pending_actions' : 'groups',
-        label: pendingTotal > 0 ? `${pendingTotal}` : capacity,
-        ariaLabel: pendingTotal > 0 ? 'Pending items' : 'Capacity',
-        interactive: false
+        layout: isTournament ? 'default' : 'badge-with-leading-accessory',
+        tone: isTournament ? 'stage' : status.overlayTone,
+        label: isTournament ? sequenceLabel : status.label,
+        icon: isTournament ? 'emoji_events' : undefined,
+        interactive: false,
+        leadingAccessory: isTournament ? null : {
+          icon: status.icon,
+          tone: status.accessoryTone
+        }
       },
-      footerChips: item.optional
-        ? [{ icon: 'toggle_on', label: 'Optional' }]
-        : [{ icon: 'block', label: 'Mandatory' }],
       hasMenuOptions: false,
       clickable: false
     };
@@ -92,13 +104,37 @@ export class EventSubeventRuntimeInfoCardConverter
     return EventSubeventRuntimeInfoCardConverter.convertList(input, options);
   }
 
-  private static pendingTotal(item: ActivityEventSubEventRuntimeDTO): number {
-    return [
-      item.membersPending,
-      item.carsPending,
-      item.accommodationPending,
-      item.suppliesPending
-    ].reduce((sum, value) => sum + Math.max(0, Math.trunc(Number(value) || 0)), 0);
+  private static definitionStatus(item: ActivityEventSubEventRuntimeDTO): {
+    label: string;
+    icon: string;
+    overlayTone: 'public' | 'blocked';
+    leadingTone: 'public' | 'invitation';
+    accessoryTone: 'positive' | 'negative';
+  } {
+    if (item.optional) {
+      return {
+        label: 'Optional',
+        icon: 'toggle_on',
+        overlayTone: 'public',
+        leadingTone: 'public',
+        accessoryTone: 'positive'
+      };
+    }
+    return {
+      label: 'Mandatory',
+      icon: 'block',
+      overlayTone: 'blocked',
+      leadingTone: 'invitation',
+      accessoryTone: 'negative'
+    };
+  }
+
+  private static stageAccentHue(stageNumber: number, totalStages: number): number {
+    if (totalStages <= 1) {
+      return 210;
+    }
+    const ratio = AppUtils.clampNumber((stageNumber - 1) / (totalStages - 1), 0, 1);
+    return Math.round(210 - (210 * ratio));
   }
 }
 

@@ -73,12 +73,10 @@ function buildCheckoutDemoPricing(
   return pricing;
 }
 
-function buildCheckoutDemoSubEvents(options: {
+function buildCheckoutDemoSubEventDefinitions(options: {
   sourceId: string;
-  firstSlotStartAt: string;
-  firstSlotEndAt: string;
   includePaidOptional: boolean;
-}): ContractTypes.SubEventDTO[] {
+}): ContractTypes.SubEventDefinitionDTO[] {
   const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   paidAddOnPricing.enabled = options.includePaidOptional;
@@ -101,19 +99,13 @@ function buildCheckoutDemoSubEvents(options: {
       id: `${options.sourceId}-main-session`,
       name: 'Main Session',
       description: 'Included in the base event price and aligned to the selected slot.',
-      startAt: options.firstSlotStartAt,
-      endAt: options.firstSlotEndAt,
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: 75,
       optional: false,
       capacityMin: 0,
       capacityMax: 24,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      pricing: includedPricing,
-      slotStartOffsetMinutes: 0,
-      slotDurationMinutes: 75
+      pricing: includedPricing
     },
     {
       id: `${options.sourceId}-vip-lounge`,
@@ -121,41 +113,25 @@ function buildCheckoutDemoSubEvents(options: {
       description: options.includePaidOptional
         ? 'Optional add-on with a separate basket line and accommodation request support.'
         : 'Optional free add-on for the slot-based join flow.',
-      startAt: options.firstSlotStartAt,
-      endAt: options.firstSlotEndAt,
+      timing: 'During',
+      offsetMinutes: 20,
+      durationMinutes: 45,
       optional: true,
       capacityMin: 0,
       capacityMax: 10,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      accommodationCapacityMin: 0,
-      accommodationCapacityMax: options.includePaidOptional ? 4 : 0,
-      pricing: paidAddOnPricing,
-      slotStartOffsetMinutes: 20,
-      slotDurationMinutes: 45
+      pricing: paidAddOnPricing
     },
     {
       id: `${options.sourceId}-ride-share`,
       name: 'Ride-share Pickup',
       description: 'Optional transport-style add-on so checkout can show an asset request path too.',
-      startAt: options.firstSlotStartAt,
-      endAt: options.firstSlotEndAt,
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: 20,
       optional: true,
       capacityMin: 0,
       capacityMax: 12,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      carsCapacityMin: 0,
-      carsCapacityMax: 3,
-      pricing: transportPricing,
-      slotStartOffsetMinutes: 0,
-      slotDurationMinutes: 20
+      pricing: transportPricing
     }
   ];
 }
@@ -435,10 +411,8 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
         }
       ]),
       policies: buildCheckoutDemoPolicies(),
-      subEvents: buildCheckoutDemoSubEvents({
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-paid-slots',
-        firstSlotStartAt: '2026-04-12T18:30:00',
-        firstSlotEndAt: '2026-04-12T20:00:00',
         includePaidOptional: true
       }),
       rating: 9.2,
@@ -518,10 +492,8 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       pendingMemberUserIds: ['u45'],
       pricing: buildCheckoutDemoPricing(22),
       policies: buildCheckoutDemoPolicies(),
-      subEvents: buildCheckoutDemoSubEvents({
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-paid-policy',
-        firstSlotStartAt: '2026-04-13T19:10:00',
-        firstSlotEndAt: '2026-04-13T20:30:00',
         includePaidOptional: true
       }),
       rating: 9.1,
@@ -559,10 +531,8 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
         }
       ],
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
-      subEvents: buildCheckoutDemoSubEvents({
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-free-slots',
-        firstSlotStartAt: '2026-04-14T13:00:00',
-        firstSlotEndAt: '2026-04-14T14:15:00',
         includePaidOptional: false
       }),
       rating: 8.9,
@@ -1635,9 +1605,16 @@ export class SeedEventsBuilder {
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
-    const subEvents = this.cloneRebasedSubEvents(record.seed?.subEvents)
-      ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
-    const subEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
+    const explicitSubEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
+    const subEventDefinitions = explicitSubEventDefinitions.length > 0
+      ? explicitSubEventDefinitions
+      : this.buildSeededSubEventDefinitions(record, startAtIso, endAtIso, capacityRange);
+    const subEvents = subEventDefinitions.length > 0
+      ? this.materializeSeedSubEventDefinitionsForSlotOccurrence(
+        subEventDefinitions,
+        this.parseSeedDateTime(startAtIso) ?? new Date(startAtIso)
+      )
+      : [];
     const subEventsEnabled = record.seed?.subEventsEnabled ?? subEventDefinitions.length > 0;
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
@@ -1688,7 +1665,7 @@ export class SeedEventsBuilder {
       subEventsEnabled,
       subEventDefinitions,
       subEvents,
-      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventMode(subEvents),
+      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventModeFromDefinitions(subEventDefinitions),
       rating,
       boost: Number.isFinite(record.seed?.boost)
         ? Number(record.seed?.boost)
@@ -2088,13 +2065,12 @@ export class SeedEventsBuilder {
     return topics;
   }
 
-  private static buildSeededSubEvents(
+  private static buildSeededSubEventDefinitions(
     record: Pick<ActivityEventRecord, 'id' | 'title' | 'subtitle' | 'activity' | 'type' | 'userId' | 'creatorUserId' | 'adminIds'> & { timeframe?: string },
     startAtIso: string,
     endAtIso: string,
-    activeUserId: string,
     capacityRange: { min: number; max: number }
-  ): ContractTypes.SubEventDTO[] {
+  ): ContractTypes.SubEventDefinitionDTO[] {
     const source = {
       id: record.id,
       avatar: AppUtils.initialsFromText(record.title),
@@ -2105,7 +2081,7 @@ export class SeedEventsBuilder {
       ...(record.type === 'events' ? { isAdmin: this.isRecordAdmin(record) } : {})
     } as ActivityEventSeedItem | ActivityHostingSeedItem;
 
-    return SeedEventBuilder.buildSeededSubEventsForEvent(source, {
+    return SeedEventBuilder.buildSeededSubEventDefinitionsForEvent(source, {
       isHosting: record.type === 'hosting',
       activityDateTimeRangeById: {
         [record.id]: {
@@ -2123,8 +2099,7 @@ export class SeedEventsBuilder {
         [record.id]: capacityRange
       },
       activityCapacityById: {},
-      defaultStartIso: startAtIso,
-      activeUserId
+      defaultStartIso: startAtIso
     });
   }
 

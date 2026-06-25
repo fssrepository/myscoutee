@@ -361,10 +361,13 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected cardFor(item: ActivityEventSubEventRuntimeDTO, groupLabel: string | null): InfoCardData {
+    const sequence = this.runtimeSequence(item);
     return EventSubeventRuntimeInfoCardConverter.convert(item, {
       event: this.event,
       mode: this.event?.mode,
-      groupLabel
+      groupLabel,
+      sequenceNumber: sequence.number,
+      sequenceTotal: sequence.total
     });
   }
 
@@ -475,6 +478,18 @@ export class EventSubeventsListPopupComponent {
       items: items.slice(start, start + pageSize),
       total: items.length,
       nextCursor: start + pageSize < items.length ? `${page + 1}` : null
+    };
+  }
+
+  private runtimeSequence(item: ActivityEventSubEventRuntimeDTO): { number: number; total: number } {
+    const section = this.slotSections.find(candidate =>
+      candidate.items.some(sectionItem => sectionItem.runtimeId === item.runtimeId)
+    );
+    const items = section?.items ?? this.items;
+    const index = items.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    return {
+      number: index >= 0 ? index + 1 : 1,
+      total: Math.max(items.length, 1)
     };
   }
 
