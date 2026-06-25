@@ -548,6 +548,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${configuredIcon ?? 'more_vert'}`.trim();
   }
 
+  protected isSymbolIcon(icon: string | null | undefined): boolean {
+    return `${icon ?? ''}`.trim().length === 1;
+  }
+
   private shouldResolveTriggerIconToClose(icon: string): boolean {
     if (this.triggerLayout() !== 'icon' && this.trigger?.hideLabel !== true) {
       return false;

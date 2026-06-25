@@ -43,7 +43,19 @@ export type AppMenuPalette =
   | 'muted'
   | 'danger'
   | 'warning'
-  | 'success';
+  | 'success'
+  | 'aquarius'
+  | 'aries'
+  | 'cancer'
+  | 'capricorn'
+  | 'gemini'
+  | 'leo'
+  | 'libra'
+  | 'pisces'
+  | 'sagittarius'
+  | 'scorpio'
+  | 'taurus'
+  | 'virgo';
 
 export type AppMenuTriggerLayout = 'default' | 'field' | 'pill' | 'icon';
 export type AppMenuTriggerAction = 'menu' | 'custom';

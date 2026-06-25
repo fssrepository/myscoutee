@@ -46,7 +46,6 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'frequency'; frequency: string }
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-event-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
@@ -213,6 +212,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   readonly visibilityOptions: AppConstants.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
   readonly eventFrequencyOptions = ['One-time', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'];
+  readonly slotFrequencyOptions = ['Custom', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'];
 
   protected readonly eventPricingEditorConfig: PricingEditorConfig = {
     context: 'event',
@@ -224,6 +224,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     startAtIso: () => this.eventDetailDTO.dateRange.startAt,
     endAtIso: () => this.eventDetailDTO.dateRange.endAt,
     frequency: () => this.eventDetailDTO.frequency,
+    frequencyOptions: () => this.slotFrequencyOptions,
+    frequencyChange: frequency => this.onEventFrequencyChange(frequency),
+    enabled: () => this.eventDetailDTO.slotsEnabled,
+    enabledChange: enabled => this.onEventSlotsEnabledChange(enabled),
     generated: () => this.isGeneratedSlotInstance()
   };
 
@@ -690,52 +694,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : 'No QR check-in scanning.';
   }
 
-  eventFrequencyIcon(frequency: string): string {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
-      case 'Daily':
-        return 'today';
-      case 'Weekly':
-        return 'view_week';
-      case 'Bi-weekly':
-        return 'date_range';
-      case 'Monthly':
-        return 'calendar_month';
-      case 'Yearly':
-        return 'calendar_today';
-      default:
-        return 'event';
-    }
-  }
-
-  protected eventFrequencyMenuTrigger(): AppMenuTrigger {
-    return {
-      label: this.eventDetailDTO.frequency,
-      icon: this.eventFrequencyIcon(this.eventDetailDTO.frequency),
-      ariaLabel: 'Open event frequency',
-      palette: this.eventFrequencyPalette(this.eventDetailDTO.frequency),
-      disabled: this.eventStructureReadOnly(),
-      layout: 'field'
-    };
-  }
-
-  protected eventFrequencyMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
-    const current = ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency);
-    return this.eventFrequencyOptions.map(option => {
-      const normalized = ActivityEventDetailDTO.normalizeFrequency(option);
-      return {
-        id: `frequency-${normalized}`,
-        label: normalized,
-        icon: this.eventFrequencyIcon(normalized),
-        kind: 'radio',
-        active: current === normalized,
-        checked: current === normalized,
-        palette: this.eventFrequencyPalette(normalized),
-        surface: 'tinted',
-        context: { menu: 'frequency', frequency: normalized }
-      };
-    });
-  }
-
   protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
     this.eventCheckoutDraftService.drafts();
     if (!this.eventEditorService.readOnly()) {
@@ -781,11 +739,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     if (event.context.menu === 'save') {
       this.saveEventDetailDTO();
-      return;
-    }
-    if (event.context.menu === 'frequency') {
-      event.sourceEvent.stopPropagation();
-      this.onEventFrequencyChange(event.context.frequency);
       return;
     }
     if (event.context.menu === 'event-intel') {
@@ -903,37 +856,33 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
   }
 
-  private eventFrequencyPalette(frequency: string): AppMenuPalette {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
-      case 'Daily':
-        return 'sky';
-      case 'Weekly':
-        return 'blue';
-      case 'Bi-weekly':
-        return 'teal';
-      case 'Monthly':
-        return 'violet';
-      case 'Yearly':
-        return 'gold';
-      default:
-        return 'slate';
-    }
-  }
-
   protected onEventFrequencyChange(value: string): void {
     if (this.eventStructureReadOnly()) {
       return;
     }
     this.eventDetailDTO.frequency = ActivityEventDetailDTO.normalizeFrequency(value);
-    this.eventDetailDTO.slotsEnabled = this.eventFrequencyUsesSlots();
-    if (!this.eventDetailDTO.slotsEnabled) {
+    this.eventDetailDTO.slotsEnabled = true;
+    this.normalizeEventSlotTemplates();
+  }
+
+  protected onEventSlotsEnabledChange(enabled: boolean): void {
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    this.eventDetailDTO.slotsEnabled = enabled;
+    if (!enabled) {
+      this.eventDetailDTO.frequency = 'One-time';
       this.eventDetailDTO.slotTemplates = [];
+      return;
+    }
+    if (ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency) === 'One-time') {
+      this.eventDetailDTO.frequency = 'Custom';
     }
     this.normalizeEventSlotTemplates();
   }
 
   protected eventFrequencyUsesSlots(): boolean {
-    return ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency) !== 'One-time';
+    return this.eventDetailDTO.slotsEnabled === true;
   }
 
   eventTopicLabel(topic: string): string {
@@ -1319,9 +1268,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editingEventId = dto.id.trim() || this.editingEventId;
     this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && dto.status === 'A';
     this.publishedCapacityMaxFloor = Math.max(0, Number(dto.capacityMax ?? 0) || 0);
-    this.eventDetailDTO = dto.apply({
-      slotsEnabled: ActivityEventDetailDTO.normalizeFrequency(dto.frequency) !== 'One-time'
-    });
+    this.eventDetailDTO = dto;
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange();
     this.seedDraftAutosaveSignature();
@@ -1370,8 +1317,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.eventFrequencyOptions.includes(this.eventDetailDTO.frequency)) {
-      this.eventDetailDTO.frequency = this.eventFrequencyOptions[0] ?? 'One-time';
+    if (!this.eventDetailDTO.slotsEnabled && this.eventDetailDTO.frequency !== 'One-time') {
+      this.eventDetailDTO.frequency = 'One-time';
+    }
+    if (this.eventDetailDTO.slotsEnabled && !this.slotFrequencyOptions.includes(this.eventDetailDTO.frequency)) {
+      this.eventDetailDTO.frequency = this.slotFrequencyOptions[0] ?? 'Custom';
     }
 
     if (end.getTime() <= start.getTime()) {
@@ -1385,15 +1335,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
     this.eventDetailDTO.startAtIso = this.eventDetailDTO.dateRange.startAt;
     this.eventDetailDTO.endAtIso = this.eventDetailDTO.dateRange.endAt;
-    this.eventDetailDTO.slotsEnabled = this.eventFrequencyUsesSlots();
-    if (!this.eventDetailDTO.slotsEnabled) {
-      this.eventDetailDTO.slotTemplates = [];
-    }
     this.normalizeEventSlotTemplates();
   }
 
   private normalizeEventSlotTemplates(): void {
-    if (!this.eventFrequencyUsesSlots()) {
+    if (!this.eventDetailDTO.slotsEnabled) {
       this.eventDetailDTO.slotsEnabled = false;
       this.eventDetailDTO.slotTemplates = [];
       return;

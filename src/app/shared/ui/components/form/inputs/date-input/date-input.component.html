@@ -1,4 +1,43 @@
-@if (isRange()) {
+@if (isTimeOnly()) {
+  <div class="date-input date-input--time">
+    <label class="date-input__field">
+      @if (label) {
+        <span class="date-input__label">{{ label }}@if (required) { <strong>*</strong> }</span>
+      }
+      <div class="date-input__row">
+        <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
+          <input
+            matInput
+            [matTimepicker]="timeOnlyPicker"
+            [matTimepickerOpenOnClick]="true"
+            [ngModel]="singleTimeValue"
+            (ngModelChange)="onTimeOnlyChange($event)"
+            (blur)="markTouched()"
+            [disabled]="inputDisabled()"
+          />
+          <button
+            matSuffix
+            type="button"
+            class="date-input__toggle"
+            [class.date-input__toggle--open]="isPickerOpen('time')"
+            [attr.aria-pressed]="isPickerOpen('time')"
+            [disabled]="inputDisabled()"
+            (mousedown)="$event.preventDefault()"
+            (click)="toggleTimePicker(timeOnlyPicker, 'time', $event)"
+            aria-label="Toggle time picker"
+          >
+            <mat-icon>{{ pickerIcon('time', 'schedule') }}</mat-icon>
+          </button>
+          <mat-timepicker
+            #timeOnlyPicker
+            (opened)="setPickerOpen('time', true)"
+            (closed)="setPickerOpen('time', false)"
+          ></mat-timepicker>
+        </mat-form-field>
+      </div>
+    </label>
+  </div>
+} @else if (isRange()) {
   <div class="date-input date-input--range" [class.date-input--with-time]="hasTime()">
     <label class="date-input__field">
       <span class="date-input__label">{{ startLabel }}@if (startRequired) { <strong>*</strong> }</span>

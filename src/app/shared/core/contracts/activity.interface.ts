@@ -600,6 +600,9 @@ export class ActivityEventDetailDTO {
 
   static normalizeFrequency(value: unknown): string {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'custom') {
+      return 'Custom';
+    }
     if (normalized === 'daily') {
       return 'Daily';
     }

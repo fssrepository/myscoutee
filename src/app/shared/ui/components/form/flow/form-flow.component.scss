@@ -34,6 +34,7 @@
   border: 0;
   border-radius: 0;
   background: #ffffff;
+  overflow: visible;
 }
 
 .form-flow__header {
@@ -215,7 +216,7 @@
 }
 
 .form-flow--grouped .form-flow__body {
-  overflow: auto;
+  overflow: visible;
   scrollbar-width: thin;
   scrollbar-color: #8aa0b8 #eaf1fa;
 }

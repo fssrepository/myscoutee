@@ -123,10 +123,10 @@
               [attr.data-step-id]="step.id"
               [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
               [attr.inert]="isPageActive(stepIndex) ? null : ''"
-              [attr.aria-labelledby]="'form-flow-step-' + step.id"
+              [attr.aria-labelledby]="(step.title || step.header) ? 'form-flow-step-' + step.id : null"
             >
               <div class="form-flow__slide-inner">
-              @if (isGroupedLayout()) {
+              @if (isGroupedLayout() && (step.title || step.icon)) {
                 <div class="form-flow__group-header">
                   @if (step.icon) {
                     <mat-icon>{{ step.icon }}</mat-icon>

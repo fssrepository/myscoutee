@@ -332,6 +332,138 @@
   --app-menu-shadow: rgba(34, 118, 72, 0.2);
 }
 
+.app-menu__palette--aries {
+  --app-menu-bg: linear-gradient(180deg, #fff5f2 0%, #ffe9e4 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fff9f7 0%, #ffdfd7 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #cf624c 0%, #9b3f2c 100%);
+  --app-menu-border: rgba(155, 63, 44, 0.34);
+  --app-menu-fg: #9b3f2c;
+  --app-menu-icon: #b34f39;
+  --app-menu-line: rgba(155, 63, 44, 0.32);
+  --app-menu-shadow: rgba(155, 63, 44, 0.16);
+}
+
+.app-menu__palette--taurus {
+  --app-menu-bg: linear-gradient(180deg, #f5fbf2 0%, #e6f5e1 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fbfef9 0%, #ddefd7 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #64a857 0%, #3d7a31 100%);
+  --app-menu-border: rgba(61, 122, 49, 0.32);
+  --app-menu-fg: #3d7a31;
+  --app-menu-icon: #4f8f42;
+  --app-menu-line: rgba(61, 122, 49, 0.3);
+  --app-menu-shadow: rgba(61, 122, 49, 0.16);
+}
+
+.app-menu__palette--gemini {
+  --app-menu-bg: linear-gradient(180deg, #fffbed 0%, #fff3c4 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fffef6 0%, #ffedb2 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #c9a733 0%, #806219 100%);
+  --app-menu-border: rgba(128, 98, 25, 0.34);
+  --app-menu-fg: #806219;
+  --app-menu-icon: #9f7b20;
+  --app-menu-line: rgba(128, 98, 25, 0.32);
+  --app-menu-shadow: rgba(128, 98, 25, 0.16);
+}
+
+.app-menu__palette--cancer {
+  --app-menu-bg: linear-gradient(180deg, #f3fcff 0%, #e1f6fb 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #f9feff 0%, #d5f0f8 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #49a8bd 0%, #237083 100%);
+  --app-menu-border: rgba(35, 112, 131, 0.32);
+  --app-menu-fg: #237083;
+  --app-menu-icon: #32899f;
+  --app-menu-line: rgba(35, 112, 131, 0.32);
+  --app-menu-shadow: rgba(35, 112, 131, 0.16);
+}
+
+.app-menu__palette--leo {
+  --app-menu-bg: linear-gradient(180deg, #fff9eb 0%, #ffedbd 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fffdf5 0%, #ffe6a7 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #d8942d 0%, #975d12 100%);
+  --app-menu-border: rgba(151, 93, 18, 0.36);
+  --app-menu-fg: #975d12;
+  --app-menu-icon: #b47118;
+  --app-menu-line: rgba(151, 93, 18, 0.32);
+  --app-menu-shadow: rgba(151, 93, 18, 0.16);
+}
+
+.app-menu__palette--virgo {
+  --app-menu-bg: linear-gradient(180deg, #fbfdec 0%, #eef5cf 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fefff6 0%, #e7efc1 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #91a74a 0%, #62752b 100%);
+  --app-menu-border: rgba(98, 117, 43, 0.32);
+  --app-menu-fg: #62752b;
+  --app-menu-icon: #778c37;
+  --app-menu-line: rgba(98, 117, 43, 0.32);
+  --app-menu-shadow: rgba(98, 117, 43, 0.16);
+}
+
+.app-menu__palette--libra {
+  --app-menu-bg: linear-gradient(180deg, #fff5fa 0%, #fde4f0 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fffafd 0%, #fad9ea 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #d76d9d 0%, #9a3f70 100%);
+  --app-menu-border: rgba(154, 63, 112, 0.34);
+  --app-menu-fg: #9a3f70;
+  --app-menu-icon: #b55183;
+  --app-menu-line: rgba(154, 63, 112, 0.32);
+  --app-menu-shadow: rgba(154, 63, 112, 0.16);
+}
+
+.app-menu__palette--scorpio {
+  --app-menu-bg: linear-gradient(180deg, #fbf4ff 0%, #f0e0fa 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fefaff 0%, #ead5f7 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #9257b0 0%, #663285 100%);
+  --app-menu-border: rgba(102, 50, 133, 0.34);
+  --app-menu-fg: #663285;
+  --app-menu-icon: #7b419d;
+  --app-menu-line: rgba(102, 50, 133, 0.32);
+  --app-menu-shadow: rgba(102, 50, 133, 0.16);
+}
+
+.app-menu__palette--sagittarius {
+  --app-menu-bg: linear-gradient(180deg, #f7f4ff 0%, #ebe3ff 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fcfaff 0%, #e4d8ff 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #7f63d4 0%, #553ca0 100%);
+  --app-menu-border: rgba(85, 60, 160, 0.34);
+  --app-menu-fg: #553ca0;
+  --app-menu-icon: #674db8;
+  --app-menu-line: rgba(85, 60, 160, 0.32);
+  --app-menu-shadow: rgba(85, 60, 160, 0.16);
+}
+
+.app-menu__palette--capricorn {
+  --app-menu-bg: linear-gradient(180deg, #fcf6f0 0%, #f3e6d8 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fffbf7 0%, #eedcc9 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #9b7657 0%, #705032 100%);
+  --app-menu-border: rgba(112, 80, 50, 0.34);
+  --app-menu-fg: #705032;
+  --app-menu-icon: #866340;
+  --app-menu-line: rgba(112, 80, 50, 0.32);
+  --app-menu-shadow: rgba(112, 80, 50, 0.16);
+}
+
+.app-menu__palette--aquarius {
+  --app-menu-bg: linear-gradient(180deg, #f4f9ff 0%, #e3f0ff 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fbfdff 0%, #d8eaff 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #4f86c8 0%, #2c5f9f 100%);
+  --app-menu-border: rgba(44, 95, 159, 0.34);
+  --app-menu-fg: #2c5f9f;
+  --app-menu-icon: #3d74b3;
+  --app-menu-line: rgba(44, 95, 159, 0.32);
+  --app-menu-shadow: rgba(44, 95, 159, 0.16);
+}
+
+.app-menu__palette--pisces {
+  --app-menu-bg: linear-gradient(180deg, #f3fcfa 0%, #def3ef 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #f9fffd 0%, #d3eee9 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #45a99b 0%, #277268 100%);
+  --app-menu-border: rgba(39, 114, 104, 0.34);
+  --app-menu-fg: #277268;
+  --app-menu-icon: #348a7f;
+  --app-menu-line: rgba(39, 114, 104, 0.32);
+  --app-menu-shadow: rgba(39, 114, 104, 0.16);
+}
+
 .app-menu__trigger {
   appearance: none;
   -webkit-appearance: none;
@@ -454,6 +586,12 @@
   font-size: 1.14rem;
   line-height: 1.14rem;
   color: var(--app-menu-icon);
+}
+
+.app-menu__trigger-icon--symbol,
+.app-menu__item-icon--symbol {
+  font-family: "Noto Sans Symbols 2", "Noto Sans Symbols", "Segoe UI Symbol", sans-serif;
+  font-weight: 700;
 }
 
 .app-menu__trigger--layout-icon > .mat-icon:not(.app-menu__trigger-caret) {
@@ -2048,7 +2186,7 @@ a.app-menu__item {
   height: 17px;
   font-size: 17px;
   line-height: 17px;
-  color: #416c9f;
+  color: var(--app-menu-icon);
 }
 
 .app-menu__panel--dropdown-list .app-menu__item.app-menu__palette--danger .app-menu__item-icon,

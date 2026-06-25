@@ -11,7 +11,7 @@ import { MatTimepicker, MatTimepickerModule } from '@angular/material/timepicker
 import { AppUtils } from '../../../../../app-utils';
 import type { DateRangeDto } from '../../../../../core/contracts/date.interface';
 
-export type DateInputMode = 'single' | 'range';
+export type DateInputMode = 'single' | 'range' | 'time';
 export type DateInputPrecision = 'date' | 'minute';
 export type DateInputValueFormat = 'iso-date' | 'iso-date-time';
 export type DateInputRangeValue = DateRangeDto;
@@ -38,7 +38,7 @@ export type DateInputMetaPalette =
   | 'teal'
   | 'violet'
   | 'virgo';
-type DateInputPickerKey = 'single-date' | 'single-time' | 'start-date' | 'start-time' | 'end-date' | 'end-time';
+type DateInputPickerKey = 'single-date' | 'single-time' | 'start-date' | 'start-time' | 'end-date' | 'end-time' | 'time';
 
 export type DateInputValue = string | DateInputRangeValue | null;
 export type DateInputBoundary = string | Date | null | undefined;
@@ -167,6 +167,10 @@ export class DateInputComponent implements ControlValueAccessor {
     return this.mode === 'range';
   }
 
+  protected isTimeOnly(): boolean {
+    return this.mode === 'time';
+  }
+
   protected hasTime(): boolean {
     return this.precision === 'minute';
   }
@@ -289,6 +293,11 @@ export class DateInputComponent implements ControlValueAccessor {
     this.emitSingleValue();
   }
 
+  protected onTimeOnlyChange(value: Date | null): void {
+    this.singleTimeValue = value;
+    this.emitTimeOnlyValue();
+  }
+
   protected onStartDateChange(value: Date | null): void {
     this.startDateValue = value;
     this.emitRangeValue();
@@ -390,6 +399,16 @@ export class DateInputComponent implements ControlValueAccessor {
     this.onTouched();
   }
 
+  private emitTimeOnlyValue(): void {
+    if (this.inputDisabled()) {
+      return;
+    }
+    const value = this.timeToValue(this.singleTimeValue);
+    this.currentValue = value;
+    this.onValueChange(value);
+    this.onTouched();
+  }
+
   private emitRangeValue(): void {
     if (this.inputDisabled()) {
       return;
@@ -407,6 +426,13 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   private syncControlsFromValue(): void {
+    if (this.mode === 'time') {
+      const time = typeof this.currentValue === 'string' ? this.toTimeDate(this.currentValue) : null;
+      this.singleDateValue = null;
+      this.singleTimeValue = time;
+      return;
+    }
+
     if (this.mode === 'range') {
       const range = this.isRangeValue(this.currentValue) ? this.currentValue : { startAt: '', endAt: '', precision: this.precision };
       const start = this.toDate(range.startAt);
@@ -421,6 +447,32 @@ export class DateInputComponent implements ControlValueAccessor {
     const date = typeof this.currentValue === 'string' ? this.toDate(this.currentValue) : null;
     this.singleDateValue = date;
     this.singleTimeValue = date;
+  }
+
+  private timeToValue(value: Date | null): string {
+    if (!value) {
+      return '';
+    }
+    return `${value.getHours()}`.padStart(2, '0') + ':' + `${value.getMinutes()}`.padStart(2, '0');
+  }
+
+  private toTimeDate(value: string | Date | null | undefined): Date | null {
+    if (value instanceof Date) {
+      return Number.isFinite(value.getTime()) ? new Date(value) : null;
+    }
+    const normalized = `${value ?? ''}`.trim();
+    const match = normalized.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+    const date = new Date();
+    date.setHours(hours, minutes, 0, 0);
+    return date;
   }
 
   private datePartsToValue(dateValue: Date | null, timeValue: Date | null): string {

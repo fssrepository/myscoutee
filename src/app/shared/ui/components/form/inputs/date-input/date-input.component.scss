@@ -22,6 +22,10 @@
   align-items: end;
 }
 
+.date-input--time {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .date-input__field {
   display: grid;
   gap: 0.34rem;

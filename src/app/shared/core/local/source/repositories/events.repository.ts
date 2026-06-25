@@ -2145,7 +2145,7 @@ export class LocalEventsRepository {
     horizonEnd: Date
   ): Date[] {
     const normalizedFrequency = `${frequency ?? ''}`.trim().toLowerCase();
-    if (normalizedFrequency === 'one-time' || !normalizedFrequency) {
+    if (normalizedFrequency === 'one-time' || normalizedFrequency === 'custom' || !normalizedFrequency) {
       return templateStart.getTime() >= horizonStart.getTime() && templateStart.getTime() <= horizonEnd.getTime()
         ? [new Date(templateStart)]
         : [];

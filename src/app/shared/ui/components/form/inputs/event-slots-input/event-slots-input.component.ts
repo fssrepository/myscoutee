@@ -10,15 +10,22 @@ import { MatTimepickerModule } from '@angular/material/timepicker';
 
 import { AppUtils } from '../../../../../app-utils';
 import { ActivityEventDetailDTO } from '../../../../../core/contracts/activity.interface';
+import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger } from '../../../menu';
+import { TextCardComponent } from '../../../smart-list/card';
+import { FormFlowComponent, type FormFlowControlModel, type FormFlowModel } from '../../flow';
 import type * as ContractTypes from '../../../../../core/contracts';
 
 export type EventSlotsInputConfigValue<TValue> = TValue | (() => TValue);
 export type EventSlotsInputEditorMode = 'base' | 'date';
 
 export interface EventSlotsInputConfig {
+  enabled?: EventSlotsInputConfigValue<boolean | null | undefined>;
+  enabledChange?: (enabled: boolean) => void;
   startAtIso?: EventSlotsInputConfigValue<string | null | undefined>;
   endAtIso?: EventSlotsInputConfigValue<string | null | undefined>;
   frequency?: EventSlotsInputConfigValue<string | null | undefined>;
+  frequencyOptions?: EventSlotsInputConfigValue<readonly string[] | null | undefined>;
+  frequencyChange?: (frequency: string) => void;
   generated?: EventSlotsInputConfigValue<boolean | null | undefined>;
   title?: EventSlotsInputConfigValue<string>;
   subtitle?: EventSlotsInputConfigValue<string>;
@@ -28,10 +35,20 @@ interface ResolvedEventSlotsInputConfig {
   startAtIso: string;
   endAtIso: string;
   frequency: string;
+  frequencyOptions: readonly string[];
   enabled: boolean;
   generated: boolean;
   title: string;
   subtitle: string;
+}
+
+interface EventSlotScheduleFormValue {
+  frequency: string;
+  startAt: string;
+  time: string;
+  weekday: string;
+  day: number;
+  month: string;
 }
 
 @Component({
@@ -45,7 +62,10 @@ interface ResolvedEventSlotsInputConfig {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatTimepickerModule
+    MatTimepickerModule,
+    AppMenuComponent,
+    TextCardComponent,
+    FormFlowComponent
   ],
   templateUrl: './event-slots-input.component.html',
   styleUrl: './event-slots-input.component.scss',
@@ -64,11 +84,15 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   protected slotTemplates: ContractTypes.EventSlotTemplateDTO[] = [];
   protected slotEditorMode: EventSlotsInputEditorMode = 'base';
-  protected showSlotsPopup = false;
+  protected showSchedulePopup = false;
+  protected schedulePopupMode: 'create' | 'edit' = 'create';
   protected slotOverrideDateValue: Date | null = null;
   protected resolvedConfig: ResolvedEventSlotsInputConfig = this.resolveConfig();
+  protected scheduleFlowValue: EventSlotScheduleFormValue = this.createScheduleFlowValue();
 
   private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
+  private scheduleFlowModelCache: { signature: string; model: FormFlowModel } | null = null;
+  private scheduleEditIndex: number | null = null;
   private readonly slotDateControlValueCache = new Map<string, Date | null>();
   private onModelChange: (value: ContractTypes.EventSlotTemplateDTO[]) => void = () => {};
   private onModelTouched: () => void = () => {};
@@ -108,34 +132,35 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   @HostListener('document:keydown.escape', ['$event'])
   protected handleEscape(event: Event): void {
-    if (!this.showSlotsPopup) {
-      return;
+    if (this.showSchedulePopup) {
+      event.preventDefault();
+      this.closeSchedulePopup();
     }
-    event.preventDefault();
-    this.closeSlotsPopup();
   }
 
   protected shouldShowPanel(): boolean {
-    return this.resolvedConfig.enabled || this.slotTemplates.length > 0;
+    return true;
+  }
+
+  protected canUpdateSlotsConfig(): boolean {
+    return !this.readOnly && !this.resolvedConfig.generated;
   }
 
   protected canConfigureSlotsSeries(): boolean {
-    return !this.readOnly && this.resolvedConfig.enabled && !this.resolvedConfig.generated;
+    return this.canUpdateSlotsConfig() && this.resolvedConfig.enabled;
   }
 
-  protected openSlotsPopup(event?: Event): void {
+  protected slotsEnabled(): boolean {
+    return this.resolvedConfig.enabled;
+  }
+
+  protected toggleSlotsEnabled(event?: Event): void {
     event?.preventDefault();
-    if (!this.resolvedConfig.enabled) {
+    event?.stopPropagation();
+    if (!this.canUpdateSlotsConfig()) {
       return;
     }
-    this.showSlotsPopup = true;
-    this.onModelTouched();
-    this.cdr.markForCheck();
-  }
-
-  protected closeSlotsPopup(): void {
-    this.showSlotsPopup = false;
-    this.cdr.markForCheck();
+    this.setSlotsEnabled(!this.resolvedConfig.enabled);
   }
 
   protected slotSummaryBaseItems(): ContractTypes.EventSlotTemplateDTO[] {
@@ -179,7 +204,347 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     if (!start) {
       return 'Time pending';
     }
-    return `Starts ${this.formatSlotDateTimeLabel(start)}`;
+    if (ActivityEventDetailDTO.normalizeSlotOverrideDate(slot.overrideDate)) {
+      return `Starts ${this.formatSlotDateTimeLabel(start)}`;
+    }
+    return this.formatRecurringSlotLabel(start);
+  }
+
+  protected slotSummaryAddMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    if (!this.canConfigureSlotsSeries()) {
+      return [];
+    }
+    return [{
+      id: 'add',
+      icon: 'add',
+      ariaLabel: 'Add base slot',
+      palette: 'amber'
+    }];
+  }
+
+  protected onSlotSummaryAddSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (event.id !== 'add') {
+      return;
+    }
+    this.addBaseSlotFromPanel(event.sourceEvent);
+  }
+
+  protected slotSummaryMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    if (!this.canConfigureSlotsSeries()) {
+      return [];
+    }
+    return [
+      {
+        id: 'edit',
+        label: 'Edit',
+        icon: 'edit',
+        palette: 'blue',
+        surface: 'tinted'
+      },
+      {
+        id: 'override',
+        label: 'Override',
+        icon: 'published_with_changes',
+        palette: 'violet',
+        surface: 'tinted',
+        disabled: true
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: 'delete',
+        palette: 'danger',
+        surface: 'tinted'
+      }
+    ];
+  }
+
+  protected slotSummaryOverrideMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    if (!this.canConfigureSlotsSeries()) {
+      return [];
+    }
+    return [
+      {
+        id: 'override',
+        label: 'Override',
+        icon: 'published_with_changes',
+        palette: 'violet',
+        surface: 'tinted',
+        disabled: true
+      },
+      {
+        id: 'delete',
+        label: 'Delete',
+        icon: 'delete',
+        palette: 'danger',
+        surface: 'tinted'
+      }
+    ];
+  }
+
+  protected onBaseSlotSummaryMenuSelect(
+    index: number,
+    event: AppMenuItemSelectEvent<string, unknown>
+  ): void {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    switch (event.id) {
+      case 'edit':
+        this.openBaseSlotEditor(index, event.sourceEvent);
+        break;
+      case 'delete':
+        this.removeBaseSlotFromPanel(index, event.sourceEvent);
+        break;
+      default:
+        break;
+    }
+  }
+
+  protected onOverrideSlotSummaryMenuSelect(
+    dateKey: string,
+    event: AppMenuItemSelectEvent<string, unknown>
+  ): void {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    switch (event.id) {
+      case 'delete':
+        this.removeOverrideDateFromPanel(dateKey, event.sourceEvent);
+        break;
+      default:
+        break;
+    }
+  }
+
+  protected addBaseSlotFromPanel(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    this.slotEditorMode = 'base';
+    this.openSchedulePopup();
+    this.cdr.markForCheck();
+  }
+
+  private openBaseSlotEditor(index: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.slotEditorMode = 'base';
+    this.openSchedulePopup(index);
+  }
+
+  protected schedulePopupTitle(): string {
+    return this.schedulePopupMode === 'edit' ? 'Edit Schedule' : 'Add Schedule';
+  }
+
+  protected schedulePopupSubtitle(): string {
+    return this.schedulePopupMode === 'edit'
+      ? 'Update the selected base slot start rule.'
+      : 'Create a base slot start rule.';
+  }
+
+  protected closeSchedulePopup(): void {
+    this.showSchedulePopup = false;
+    this.schedulePopupMode = 'create';
+    this.scheduleEditIndex = null;
+    this.cdr.markForCheck();
+  }
+
+  protected scheduleFrequencyLocked(): boolean {
+    return this.baseSlotTemplates().length > 0;
+  }
+
+  protected scheduleFlowModel(): FormFlowModel {
+    const signature = this.scheduleFlowModelSignature();
+    if (this.scheduleFlowModelCache?.signature === signature) {
+      return this.scheduleFlowModelCache.model;
+    }
+    const model: FormFlowModel = {
+      title: 'Add Schedule',
+      header: false,
+      layout: 'grouped',
+      summary: { enabled: false },
+      save: null,
+      completion: { controls: 'none' },
+      steps: [
+        {
+          id: 'schedule',
+          title: '',
+          controls: [
+            {
+              id: 'frequency',
+              bind: 'frequency',
+              kind: 'menu',
+              layout: 'wide',
+              label: 'Gyakoriság',
+              disabled: this.scheduleFrequencyLocked(),
+              config: {
+                kind: 'select',
+                layout: 'row',
+                panelMode: 'auto',
+                closeOnSelect: true,
+                trigger: this.scheduleFrequencyMenuTrigger(),
+                items: this.scheduleFrequencyMenuItems()
+              }
+            },
+            ...this.scheduleTimeControls()
+          ]
+        }
+      ]
+    };
+    this.scheduleFlowModelCache = { signature, model };
+    return model;
+  }
+
+  private scheduleFlowModelSignature(): string {
+    return JSON.stringify({
+      frequency: ActivityEventDetailDTO.normalizeFrequency(this.scheduleFlowValue.frequency),
+      month: this.scheduleFlowValue.month,
+      locked: this.scheduleFrequencyLocked(),
+      startAtIso: this.resolvedConfig.startAtIso,
+      endAtIso: this.resolvedConfig.endAtIso,
+      options: this.scheduleFrequencyOptions()
+    });
+  }
+
+  protected onScheduleFlowValueChange(value: unknown): void {
+    const previousFrequency = ActivityEventDetailDTO.normalizeFrequency(this.scheduleFlowValue.frequency);
+    const nextValue = this.normalizeScheduleFlowValue(value);
+    if (this.scheduleFrequencyLocked()) {
+      nextValue.frequency = this.scheduleFlowValue.frequency;
+    }
+    const nextFrequency = ActivityEventDetailDTO.normalizeFrequency(nextValue.frequency);
+    if (nextFrequency !== previousFrequency) {
+      const nextStartAt = this.buildScheduleDraftStartAt(nextFrequency, nextValue);
+      this.scheduleFlowValue = this.scheduleFlowValueFromDate(nextFrequency, this.parseDateValue(nextStartAt) ?? new Date());
+      this.cdr.markForCheck();
+      return;
+    }
+    this.scheduleFlowValue = nextValue;
+    this.cdr.markForCheck();
+  }
+
+  protected confirmSchedulePopup(event?: Event | AppMenuItemSelectEvent<string, unknown>): void {
+    const sourceEvent = event && 'sourceEvent' in event ? event.sourceEvent : event;
+    sourceEvent?.preventDefault();
+    sourceEvent?.stopPropagation();
+    this.createScheduleFromPopup();
+  }
+
+  protected scheduleConfirmMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    return [{
+      id: 'add-schedule',
+      icon: 'check',
+      layout: 'action',
+      ariaLabel: 'Add schedule',
+      palette: 'success',
+      disabled: !this.canConfigureSlotsSeries()
+    }];
+  }
+
+  protected scheduleFrequencyOptions(): readonly string[] {
+    return this.resolvedConfig.frequencyOptions.filter(item => ActivityEventDetailDTO.normalizeFrequency(item) !== 'One-time');
+  }
+
+  private createScheduleFromPopup(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canConfigureSlotsSeries()) {
+      return;
+    }
+    const draft = this.normalizeScheduleFlowValue(this.scheduleFlowValue);
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(draft.frequency);
+    if (!this.scheduleFrequencyLocked()) {
+      this.setFrequency(frequency);
+    }
+    const startAt = this.buildScheduleDraftStartAt(frequency, draft);
+    const currentTemplates = this.baseSlotTemplates();
+    const editIndex = this.scheduleEditIndex;
+    this.slotEditorMode = 'base';
+    if (editIndex !== null && editIndex >= 0 && editIndex < currentTemplates.length) {
+      this.setActiveSlotTemplates(currentTemplates.map((item, index) => index === editIndex
+        ? {
+          ...item,
+          startAt,
+          overrideDate: null,
+          closed: false
+        }
+        : item));
+    } else {
+      const nextIndex = currentTemplates.length + 1;
+      this.setActiveSlotTemplates([
+        ...currentTemplates,
+        {
+          id: this.buildSlotTemplateId(nextIndex),
+          startAt,
+          overrideDate: null,
+          closed: false
+        }
+      ]);
+    }
+    this.closeSchedulePopup();
+  }
+
+  protected removeBaseSlotFromPanel(index: number, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canConfigureSlotsSeries() || index < 0) {
+      return;
+    }
+    this.slotEditorMode = 'base';
+    this.removeSlotTemplate(index);
+    this.cdr.markForCheck();
+  }
+
+  protected removeOverrideDateFromPanel(dateKey: string, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const normalizedDateKey = ActivityEventDetailDTO.normalizeSlotOverrideDate(dateKey);
+    if (!this.canConfigureSlotsSeries() || !normalizedDateKey) {
+      return;
+    }
+    this.slotTemplates = this.slotTemplates
+      .filter(item => ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) !== normalizedDateKey)
+      .map(item => ({ ...item }));
+    this.emitSlots();
+  }
+
+  private formatRecurringSlotLabel(start: Date): string {
+    const time = this.formatSlotTimeLabel(start);
+    switch (this.resolvedConfig.frequency) {
+      case 'Daily':
+        return `Every day at ${time}`;
+      case 'Weekly':
+        return `Every ${this.formatSlotWeekday(start)} at ${time}`;
+      case 'Bi-weekly':
+        return `Every second ${this.formatSlotWeekday(start)} at ${time}`;
+      case 'Monthly':
+        return `Every month on day ${start.getDate()} at ${time}`;
+      case 'Yearly':
+        return `Every year on ${this.formatSlotMonthDay(start)} at ${time}`;
+      default:
+        return `Starts ${this.formatSlotDateTimeLabel(start)}`;
+    }
+  }
+
+  private formatSlotTimeLabel(value: Date): string {
+    return value.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  private formatSlotWeekday(value: Date): string {
+    return value.toLocaleDateString('en-US', {
+      weekday: 'long'
+    });
+  }
+
+  private formatSlotMonthDay(value: Date): string {
+    return value.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
   }
 
   protected selectSlotEditorMode(mode: EventSlotsInputEditorMode, event?: Event): void {
@@ -366,7 +731,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     this.resolvedConfig = nextConfig;
     this.resolvedConfigSignature = nextSignature;
     if (!this.resolvedConfig.enabled) {
-      this.showSlotsPopup = false;
       this.slotEditorMode = 'base';
     }
     this.normalizeSlotOverrideDateSelection();
@@ -376,11 +740,14 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   private resolveConfig(): ResolvedEventSlotsInputConfig {
     const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolveConfigValue(this.config.frequency, 'One-time'));
+    const frequencyOptions = this.resolveFrequencyOptions(this.resolveConfigValue(this.config.frequencyOptions, null));
+    const configuredEnabled = this.resolveConfigValue(this.config.enabled, null);
     return {
       startAtIso: `${this.resolveConfigValue(this.config.startAtIso, '') ?? ''}`.trim(),
       endAtIso: `${this.resolveConfigValue(this.config.endAtIso, '') ?? ''}`.trim(),
       frequency,
-      enabled: frequency !== 'One-time',
+      frequencyOptions,
+      enabled: configuredEnabled === null || configuredEnabled === undefined ? frequency !== 'One-time' : configuredEnabled === true,
       generated: this.resolveConfigValue(this.config.generated, false) === true,
       title: this.resolveConfigValue(this.config.title, 'Slots'),
       subtitle: this.resolveConfigValue(this.config.subtitle, 'Base schedule and date-specific overrides.')
@@ -397,8 +764,511 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return value ?? fallback;
   }
 
+  private resolveFrequencyOptions(value: readonly string[] | null | undefined): readonly string[] {
+    const options = (value?.length ? value : ['Custom', 'Daily', 'Weekly', 'Bi-weekly', 'Monthly', 'Yearly'])
+      .map(item => ActivityEventDetailDTO.normalizeFrequency(item));
+    return Array.from(new Set(options));
+  }
+
   private buildResolvedConfigSignature(config: ResolvedEventSlotsInputConfig): string {
     return JSON.stringify(config);
+  }
+
+  private setFrequency(value: string): void {
+    if (!this.canUpdateSlotsConfig()) {
+      return;
+    }
+    const normalized = ActivityEventDetailDTO.normalizeFrequency(value);
+    this.config.frequencyChange?.(normalized);
+    this.onModelTouched();
+    this.syncResolvedConfig();
+  }
+
+  private setSlotsEnabled(value: boolean): void {
+    if (!this.canUpdateSlotsConfig()) {
+      return;
+    }
+    this.config.enabledChange?.(value);
+    if (!value) {
+      this.showSchedulePopup = false;
+    }
+    this.onModelTouched();
+    this.syncResolvedConfig();
+  }
+
+  private defaultEnabledFrequency(): string {
+    return this.scheduleFrequencyOptions()[0] ?? 'Custom';
+  }
+
+  private openSchedulePopup(index: number | null = null): void {
+    const currentTemplates = this.baseSlotTemplates();
+    const editSlot = index !== null ? currentTemplates[index] : null;
+    const seedDate = this.parseDateValue(editSlot?.startAt) ?? this.defaultScheduleDraftDate();
+    const currentFrequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
+    this.scheduleEditIndex = editSlot ? index : null;
+    this.schedulePopupMode = editSlot ? 'edit' : 'create';
+    this.scheduleFlowValue = this.scheduleFlowValueFromDate(
+      currentFrequency === 'One-time' ? this.defaultEnabledFrequency() : currentFrequency,
+      seedDate
+    );
+    this.showSchedulePopup = true;
+    this.onModelTouched();
+  }
+
+  private createScheduleFlowValue(): EventSlotScheduleFormValue {
+    return this.scheduleFlowValueFromDate(
+      this.defaultEnabledFrequency(),
+      this.parseDateValue(this.resolvedConfig.startAtIso) ?? new Date()
+    );
+  }
+
+  private normalizeScheduleFlowValue(value: unknown): EventSlotScheduleFormValue {
+    const record = value && typeof value === 'object' ? value as Record<string, unknown> : {};
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(record['frequency']);
+    const startAt = `${record['startAt'] ?? ''}`.trim()
+      || AppUtils.toIsoDateTimeLocal(this.defaultScheduleDraftDate());
+    const baseDate = this.parseDateValue(startAt) ?? this.defaultScheduleDraftDate();
+    const normalizedFrequency = frequency === 'One-time' ? this.defaultEnabledFrequency() : frequency;
+    const month = this.normalizeScheduleMonth(record['month'], baseDate);
+    const day = this.normalizeScheduleDay(record['day'], normalizedFrequency, month, baseDate);
+    return {
+      frequency: normalizedFrequency,
+      startAt,
+      time: this.normalizeScheduleTime(record['time'], baseDate),
+      weekday: this.normalizeScheduleWeekday(record['weekday'], baseDate),
+      day,
+      month
+    };
+  }
+
+  private scheduleFlowValueFromDate(frequency: string, date: Date): EventSlotScheduleFormValue {
+    const normalizedFrequency = ActivityEventDetailDTO.normalizeFrequency(frequency);
+    const month = `${date.getMonth() + 1}`;
+    return {
+      frequency: normalizedFrequency === 'One-time' ? this.defaultEnabledFrequency() : normalizedFrequency,
+      startAt: AppUtils.toIsoDateTimeLocal(date),
+      time: this.formatScheduleTimeInput(date),
+      weekday: `${date.getDay()}`,
+      day: date.getDate(),
+      month
+    };
+  }
+
+  private scheduleFrequencyMenuTrigger(): AppMenuTrigger {
+    return {
+      id: 'schedule-frequency',
+      label: 'Gyakoriság',
+      icon: 'event',
+      trailingIcon: 'expand_more',
+      layout: 'field',
+      disabled: this.scheduleFrequencyLocked()
+    };
+  }
+
+  private scheduleTimeControls(): FormFlowControlModel[] {
+    switch (ActivityEventDetailDTO.normalizeFrequency(this.scheduleFlowValue.frequency)) {
+      case 'Custom':
+        return [{
+          id: 'startAt',
+          bind: 'startAt',
+          kind: 'date',
+          layout: 'wide',
+          label: 'Start',
+          required: true,
+          config: {
+            model: {
+              mode: 'single',
+              precision: 'minute',
+              valueFormat: 'iso-date-time',
+              field: {
+                label: 'Start',
+                required: true,
+                min: this.resolvedConfig.startAtIso || null,
+                max: this.resolvedConfig.endAtIso || null
+              }
+            }
+          }
+        }];
+      case 'Daily':
+        return [this.scheduleTimeControl('time', 'Start time', 'wide')];
+      case 'Weekly':
+      case 'Bi-weekly':
+        return [
+          this.scheduleWeekdayControl(),
+          this.scheduleTimeControl('time', 'Start time')
+        ];
+      case 'Monthly':
+        return [
+          this.scheduleDayControl(),
+          this.scheduleTimeControl('time', 'Start time')
+        ];
+      case 'Yearly':
+        return [
+          this.scheduleMonthControl(),
+          this.scheduleDayControl(),
+          this.scheduleTimeControl('time', 'Start time', 'wide')
+        ];
+      default:
+        return [this.scheduleTimeControl('time', 'Start time', 'wide')];
+    }
+  }
+
+  private scheduleTimeControl(id: string, label: string, layout: FormFlowControlModel['layout'] = 'half'): FormFlowControlModel {
+    return {
+      id,
+      bind: id,
+      kind: 'date',
+      layout,
+      label,
+      required: true,
+      config: {
+        model: {
+          mode: 'time',
+          precision: 'minute',
+          field: {
+            label,
+            required: true
+          }
+        }
+      }
+    };
+  }
+
+  private scheduleWeekdayControl(): FormFlowControlModel {
+    return {
+      id: 'weekday',
+      bind: 'weekday',
+      kind: 'menu',
+      layout: 'half',
+      label: 'Day',
+      required: true,
+      config: {
+        kind: 'select',
+        layout: 'row',
+        panelMode: 'auto',
+        closeOnSelect: true,
+        trigger: {
+          id: 'schedule-weekday',
+          label: 'Day',
+          icon: 'calendar_view_week',
+          trailingIcon: 'expand_more',
+          layout: 'field'
+        },
+        items: this.scheduleWeekdayMenuItems()
+      }
+    };
+  }
+
+  private scheduleDayControl(): FormFlowControlModel {
+    return {
+      id: 'day',
+      bind: 'day',
+      kind: 'number',
+      layout: 'half',
+      label: 'Day',
+      required: true,
+      min: 1,
+      max: this.scheduleDayMax(),
+      step: 1
+    };
+  }
+
+  private scheduleMonthControl(): FormFlowControlModel {
+    return {
+      id: 'month',
+      bind: 'month',
+      kind: 'menu',
+      layout: 'half',
+      label: 'Month',
+      required: true,
+      config: {
+        kind: 'select',
+        layout: 'row',
+        panelMode: 'auto',
+        closeOnSelect: true,
+        trigger: {
+          id: 'schedule-month',
+          label: 'Month',
+          icon: 'calendar_month',
+          trailingIcon: 'expand_more',
+          layout: 'field'
+        },
+        items: this.scheduleMonthMenuItems()
+      }
+    };
+  }
+
+  private scheduleWeekdayMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    return [
+      ['0', 'Sunday'],
+      ['1', 'Monday'],
+      ['2', 'Tuesday'],
+      ['3', 'Wednesday'],
+      ['4', 'Thursday'],
+      ['5', 'Friday'],
+      ['6', 'Saturday']
+    ].map(([value, label]) => ({
+      id: value,
+      value,
+      kind: 'radio',
+      label,
+      icon: 'calendar_view_week',
+      palette: 'cyan',
+      surface: 'tinted'
+    }));
+  }
+
+  private scheduleMonthMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    return [
+      ['1', 'January'],
+      ['2', 'February'],
+      ['3', 'March'],
+      ['4', 'April'],
+      ['5', 'May'],
+      ['6', 'June'],
+      ['7', 'July'],
+      ['8', 'August'],
+      ['9', 'September'],
+      ['10', 'October'],
+      ['11', 'November'],
+      ['12', 'December']
+    ].map(([value, label]) => {
+      const zodiac = this.scheduleMonthZodiac(value);
+      return {
+        id: value,
+        value,
+        kind: 'radio',
+        label,
+        icon: zodiac.icon,
+        palette: zodiac.palette,
+        surface: 'tinted'
+      };
+    });
+  }
+
+  private scheduleMonthZodiac(value: string): { icon: string; palette: AppMenuPalette } {
+    switch (value) {
+      case '1':
+        return { icon: '♑', palette: 'capricorn' };
+      case '2':
+        return { icon: '♒', palette: 'aquarius' };
+      case '3':
+        return { icon: '♓', palette: 'pisces' };
+      case '4':
+        return { icon: '♈', palette: 'aries' };
+      case '5':
+        return { icon: '♉', palette: 'taurus' };
+      case '6':
+        return { icon: '♊', palette: 'gemini' };
+      case '7':
+        return { icon: '♋', palette: 'cancer' };
+      case '8':
+        return { icon: '♌', palette: 'leo' };
+      case '9':
+        return { icon: '♍', palette: 'virgo' };
+      case '10':
+        return { icon: '♎', palette: 'libra' };
+      case '11':
+        return { icon: '♏', palette: 'scorpio' };
+      case '12':
+        return { icon: '♐', palette: 'sagittarius' };
+      default:
+        return { icon: 'calendar_month', palette: 'amber' };
+    }
+  }
+
+  private scheduleFrequencyMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    return this.scheduleFrequencyOptions().map(frequency => {
+      const normalized = ActivityEventDetailDTO.normalizeFrequency(frequency);
+      return {
+        id: normalized,
+        value: normalized,
+        kind: 'radio',
+        label: this.scheduleFrequencyLabel(normalized),
+        icon: this.scheduleFrequencyIcon(normalized),
+        palette: this.scheduleFrequencyPalette(normalized),
+        surface: 'tinted'
+      };
+    });
+  }
+
+  private scheduleFrequencyLabel(frequency: string): string {
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Custom':
+        return 'Custom';
+      case 'Daily':
+        return 'Naponta';
+      case 'Weekly':
+        return 'Hetente';
+      case 'Bi-weekly':
+        return 'Kéthetente';
+      case 'Monthly':
+        return 'Havonta';
+      case 'Yearly':
+        return 'Évente';
+      default:
+        return 'Custom';
+    }
+  }
+
+  private scheduleFrequencyIcon(frequency: string): string {
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Custom':
+        return 'event';
+      case 'Daily':
+        return 'today';
+      case 'Weekly':
+        return 'calendar_view_week';
+      case 'Bi-weekly':
+        return 'date_range';
+      case 'Monthly':
+        return 'calendar_month';
+      case 'Yearly':
+        return 'event_available';
+      default:
+        return 'event';
+    }
+  }
+
+  private scheduleFrequencyPalette(frequency: string): AppMenuPalette {
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Custom':
+        return 'blue';
+      case 'Daily':
+        return 'green';
+      case 'Weekly':
+        return 'cyan';
+      case 'Bi-weekly':
+        return 'violet';
+      case 'Monthly':
+        return 'amber';
+      case 'Yearly':
+        return 'gold';
+      default:
+        return 'blue';
+    }
+  }
+
+  private defaultScheduleDraftDate(): Date {
+    const baseSlots = this.baseSlotTemplates();
+    const previousStart = this.parseDateValue(baseSlots[baseSlots.length - 1]?.startAt);
+    if (previousStart) {
+      return new Date(previousStart.getTime() + (60 * 60 * 1000));
+    }
+    return this.parseDateValue(this.resolvedConfig.startAtIso) ?? new Date();
+  }
+
+  private buildScheduleDraftStartAt(frequency: string, draft: EventSlotScheduleFormValue): string {
+    const eventStart = this.parseDateValue(this.resolvedConfig.startAtIso) ?? new Date();
+    const draftStart = this.parseDateValue(draft.startAt) ?? eventStart;
+    const timeSource = this.parseScheduleTimeInput(draft.time, draftStart);
+    let start = new Date(eventStart);
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Custom':
+        start = new Date(draftStart);
+        break;
+      case 'Weekly':
+      case 'Bi-weekly':
+        start = this.nextWeekdayDate(eventStart, this.scheduleInteger(draft.weekday, draftStart.getDay(), 0, 6));
+        break;
+      case 'Monthly':
+        start = this.nextMonthlyDate(eventStart, this.scheduleInteger(draft.day, draftStart.getDate(), 1, 31));
+        break;
+      case 'Yearly':
+        start = this.nextYearlyDate(
+          eventStart,
+          this.scheduleInteger(draft.month, draftStart.getMonth() + 1, 1, 12),
+          this.scheduleInteger(draft.day, draftStart.getDate(), 1, 31)
+        );
+        break;
+      default:
+        start = new Date(eventStart);
+        break;
+    }
+    return AppUtils.toIsoDateTimeLocal(this.applyDraftTime(start, timeSource));
+  }
+
+  private normalizeScheduleTime(value: unknown, fallbackDate: Date): string {
+    const normalized = `${value ?? ''}`.trim();
+    return /^\d{2}:\d{2}$/.test(normalized) ? normalized : this.formatScheduleTimeInput(fallbackDate);
+  }
+
+  private normalizeScheduleWeekday(value: unknown, fallbackDate: Date): string {
+    return `${this.scheduleInteger(value, fallbackDate.getDay(), 0, 6)}`;
+  }
+
+  private normalizeScheduleMonth(value: unknown, fallbackDate: Date): string {
+    return `${this.scheduleInteger(value, fallbackDate.getMonth() + 1, 1, 12)}`;
+  }
+
+  private normalizeScheduleDay(value: unknown, frequency: string, month: string, fallbackDate: Date): number {
+    const max = this.scheduleDayMaxFor(frequency, month);
+    return this.scheduleInteger(value, Math.min(fallbackDate.getDate(), max), 1, max);
+  }
+
+  private scheduleDayMax(): number {
+    return this.scheduleDayMaxFor(this.scheduleFlowValue.frequency, this.scheduleFlowValue.month);
+  }
+
+  private scheduleDayMaxFor(frequency: string, month: string): number {
+    if (ActivityEventDetailDTO.normalizeFrequency(frequency) !== 'Yearly') {
+      return 31;
+    }
+    const monthIndex = this.scheduleInteger(month, 1, 1, 12) - 1;
+    return new Date(2026, monthIndex + 1, 0).getDate();
+  }
+
+  private scheduleInteger(value: unknown, fallback: number, min: number, max: number): number {
+    const parsed = Math.trunc(Number(value));
+    const normalized = Number.isFinite(parsed) ? parsed : fallback;
+    return Math.min(max, Math.max(min, normalized));
+  }
+
+  private formatScheduleTimeInput(value: Date): string {
+    return `${value.getHours()}`.padStart(2, '0') + ':' + `${value.getMinutes()}`.padStart(2, '0');
+  }
+
+  private parseScheduleTimeInput(value: string, fallbackDate: Date): Date {
+    const normalized = this.normalizeScheduleTime(value, fallbackDate);
+    const [hours, minutes] = normalized.split(':').map(item => Number(item));
+    const next = new Date(fallbackDate);
+    next.setHours(hours, minutes, 0, 0);
+    return next;
+  }
+
+  private applyDraftTime(date: Date, timeSource: Date): Date {
+    const next = new Date(date);
+    next.setHours(timeSource.getHours(), timeSource.getMinutes(), 0, 0);
+    return next;
+  }
+
+  private nextWeekdayDate(start: Date, weekday: number): Date {
+    const next = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const delta = (weekday - next.getDay() + 7) % 7;
+    next.setDate(next.getDate() + delta);
+    return next;
+  }
+
+  private nextMonthlyDate(start: Date, day: number): Date {
+    const next = this.monthlyDate(start.getFullYear(), start.getMonth(), day);
+    if (next.getTime() >= new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()) {
+      return next;
+    }
+    return this.monthlyDate(start.getFullYear(), start.getMonth() + 1, day);
+  }
+
+  private monthlyDate(year: number, monthIndex: number, day: number): Date {
+    const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+    return new Date(year, monthIndex, Math.min(Math.max(1, day), lastDay));
+  }
+
+  private nextYearlyDate(start: Date, month: number, day: number): Date {
+    const monthIndex = Math.min(11, Math.max(0, month - 1));
+    const next = this.monthlyDate(start.getFullYear(), monthIndex, day);
+    if (next.getTime() >= new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime()) {
+      return next;
+    }
+    return this.monthlyDate(start.getFullYear() + 1, monthIndex, day);
   }
 
   private normalizeSlotTemplatesForConfig(emitChanges: boolean): void {
@@ -409,11 +1279,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
       this.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(
         this.slotTemplates.map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }))
       );
-      if (this.canConfigureSlotsSeries() && this.baseSlotTemplates().length === 0) {
-        this.slotEditorMode = 'base';
-        this.addSlotTemplate();
-        return;
-      }
     }
     if (emitChanges && before !== this.slotTemplatesSignature(this.slotTemplates)) {
       this.emitSlots();

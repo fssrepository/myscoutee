@@ -127,17 +127,6 @@
                     <mat-icon>calendar_month</mat-icon>
                     <span>Date</span>
                   </span>
-                  <div class="event-schedule-panel-actions">
-                    <label class="event-frequency-label">
-                      <app-menu
-                        class="event-frequency-menu"
-                        kind="select"
-                        [trigger]="eventFrequencyMenuTrigger()"
-                        [items]="eventFrequencyMenuItems()"
-                        (itemSelect)="onEventEditorMenuSelect($event)"
-                      ></app-menu>
-                    </label>
-                  </div>
                 </div>
                 <app-date-input
                   class="event-date-input"

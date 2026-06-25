@@ -92,7 +92,7 @@ export class LocalActivityEventDetailsMapper {
     const visibility = this.normalizeVisibility(payload.visibility ?? existing?.visibility);
     const blindMode = this.normalizeBlindMode(payload.blindMode ?? existing?.blindMode);
     const frequency = this.normalizeFrequency(payload.frequency ?? existing?.frequency);
-    const hasSlots = frequency !== 'One-time';
+    const hasSlots = payload.slotsEnabled ?? existing?.slotsEnabled ?? false;
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const slotTemplates = hasSlots ? this.normalizeSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []) : [];
     const subEvents = this.normalizeSubEvents(payload.subEvents ?? existing?.subEvents ?? []);
@@ -307,6 +307,9 @@ export class LocalActivityEventDetailsMapper {
 
   private static normalizeFrequency(value: unknown): string {
     const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'custom') {
+      return 'Custom';
+    }
     if (normalized === 'daily') {
       return 'Daily';
     }

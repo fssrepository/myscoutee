@@ -1092,21 +1092,6 @@ button.event-slots-enable-btn:disabled {
   gap: 0.5rem;
 }
 
-.event-schedule-panel-actions {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  flex-wrap: nowrap;
-}
-
-.event-frequency-label {
-  margin: 0;
-  display: inline-flex;
-  justify-self: end;
-  align-self: center;
-}
-
 .event-location-field {
   grid-column: 1 / -1;
 }
@@ -1384,8 +1369,7 @@ button.event-slots-enable-btn:disabled {
     grid-template-columns: minmax(0, 1fr) minmax(114px, 126px);
   }
 
-  .event-schedule-panel .event-datetime-label,
-  .event-frequency-label {
+  .event-schedule-panel .event-datetime-label {
     grid-column: 1 / -1;
   }
 

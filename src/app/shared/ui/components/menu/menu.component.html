@@ -17,7 +17,7 @@
       (click)="toggleMenu($event)"
       >
       @if (triggerIcon()) {
-        <mat-icon>{{ triggerIcon() }}</mat-icon>
+        <mat-icon [class.app-menu__trigger-icon--symbol]="isSymbolIcon(triggerIcon())">{{ triggerIcon() }}</mat-icon>
       }
       @if (!trigger?.hideLabel && triggerLabel()) {
         <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
@@ -488,7 +488,7 @@
                 (click)="selectLinkItem(item, $event)"
                 >
                 @if (itemIcon(item)) {
-                  <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                  <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                 }
                 <span class="app-menu__item-main">
                   <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
@@ -539,7 +539,7 @@
                     (click)="selectItem(item, $event)"
                     >
                     @if (itemIcon(item)) {
-                      <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                      <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                     }
                     <span class="app-menu__item-main">
                       <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
@@ -593,9 +593,9 @@
                   [attr.aria-checked]="isItemChecked(item)"
                   [attr.aria-label]="itemAriaLabel(item)"
                   (click)="selectItem(item, $event)"
-                  >
+                >
                   @if (itemIcon(item)) {
-                    <mat-icon class="app-menu__item-icon">{{ itemIcon(item) }}</mat-icon>
+                    <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                   }
                   <span class="app-menu__item-main">
                     <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
