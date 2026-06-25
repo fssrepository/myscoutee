@@ -1482,7 +1482,7 @@ export class EventExplorePopupComponent {
     if ((record.upcomingSlots?.length ?? 0) > 0) {
       return true;
     }
-    if ((record.policies?.length ?? 0) > 0) {
+    if (record.policiesEnabled === true && (record.policies?.length ?? 0) > 0) {
       return true;
     }
     if ((record.subEvents ?? []).some(item => item.optional)) {

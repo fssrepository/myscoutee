@@ -98,6 +98,7 @@ export class LocalActivityEventDetailsMapper {
     const subEventsEnabled = payload.subEventsEnabled ?? existing?.subEventsEnabled ?? true;
     const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions ?? existing?.subEventDefinitions ?? []);
     const subEvents = this.normalizeSubEvents(payload.subEvents ?? existing?.subEvents ?? []);
+    const policiesEnabled = payload.policiesEnabled === true;
     const policies = this.normalizePolicies(payload.policies ?? existing?.policies ?? []);
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
     const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
@@ -161,6 +162,7 @@ export class LocalActivityEventDetailsMapper {
       frequency,
       ticketing,
       pricing,
+      policiesEnabled,
       policies,
       slotsEnabled: hasSlots,
       slotTemplates,
@@ -228,6 +230,7 @@ export class LocalActivityEventDetailsMapper {
       frequency: record.frequency ?? 'One-time',
       ticketing: record.ticketing,
       pricing: record.pricing ?? null,
+      policiesEnabled: record.policiesEnabled === true,
       policies: record.policies ?? [],
       slotsEnabled: record.slotsEnabled === true,
       slotTemplates: record.slotTemplates ?? [],

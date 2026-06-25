@@ -289,7 +289,8 @@ export class EventCheckoutPopupComponent {
   }
 
   protected policies(): ContractTypes.EventPolicyDTO[] {
-    return this.dialog()?.record.policies ?? [];
+    const record = this.dialog()?.record ?? null;
+    return record?.policiesEnabled === true ? record.policies ?? [] : [];
   }
 
   protected requiredPolicyIds(): string[] {
@@ -706,7 +707,7 @@ export class EventCheckoutPopupComponent {
     const firstSlot = dialog.record.upcomingSlots?.[0] ?? null;
     const draft = this.checkoutDraftService.read(dialog.userId, dialog.record.id);
     const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
-    const validPolicyIds = new Set((dialog.record.policies ?? []).map(item => item.id));
+    const validPolicyIds = new Set(this.policies().map(item => item.id));
     const validSlotIds = new Set(this.availableSlots().map(item => item.id));
     this.selectedSlotSourceId = draft?.slotSourceId && validSlotIds.has(draft.slotSourceId)
       ? draft.slotSourceId

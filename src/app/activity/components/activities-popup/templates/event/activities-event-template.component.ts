@@ -787,6 +787,7 @@ export class ActivitiesEventsController {
 
   private shouldUseCheckoutFlow(record: {
     upcomingSlots?: ContractTypes.EventSlotOccurrenceDTO[] | null;
+    policiesEnabled?: boolean | null;
     policies?: ContractTypes.EventPolicyDTO[] | null;
     subEvents?: ContractTypes.SubEventDTO[] | null;
     pricing?: ContractTypes.PricingConfig | null;
@@ -794,7 +795,7 @@ export class ActivitiesEventsController {
     if ((record?.upcomingSlots?.length ?? 0) > 0) {
       return true;
     }
-    if ((record?.policies?.length ?? 0) > 0) {
+    if (record?.policiesEnabled === true && (record?.policies?.length ?? 0) > 0) {
       return true;
     }
     if ((record?.subEvents ?? []).some((item: ContractTypes.SubEventDTO) => item.optional)) {
@@ -918,6 +919,7 @@ export class ActivitiesEventsController {
         frequency: record?.frequency ?? relatedSource.frequency,
         ticketing: record?.ticketing ?? relatedSource.ticketing,
         pricing: record?.pricing ?? relatedSource.pricing,
+        policiesEnabled: record?.policiesEnabled ?? relatedSource.policiesEnabled ?? false,
         policies: Array.isArray(record?.policies)
           ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
           : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),
@@ -1127,6 +1129,7 @@ export class ActivitiesEventsController {
       frequency: record?.frequency ?? source.frequency,
       ticketing: record?.ticketing ?? source.ticketing,
       pricing: record?.pricing ?? source.pricing,
+      policiesEnabled: record?.policiesEnabled ?? source.policiesEnabled ?? false,
       policies: Array.isArray(record?.policies)
         ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
         : (Array.isArray(source.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),

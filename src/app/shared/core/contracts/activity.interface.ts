@@ -182,6 +182,7 @@ export interface ActivityEventRecord {
   frequency?: string;
   ticketing: boolean;
   pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
   slotTemplates?: EventContracts.EventSlotTemplateDTO[];
@@ -328,6 +329,7 @@ export class ActivityEventDetailDTO {
   frequency = 'One-time';
   ticketing = false;
   pricing: PricingContracts.PricingConfig | null = null;
+  policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
   slotsEnabled = false;
   slotTemplates: EventContracts.EventSlotTemplateDTO[] = [];
@@ -399,6 +401,7 @@ export class ActivityEventDetailDTO {
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
+    this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);
     this.slotsEnabled = update.slotsEnabled ?? this.slotsEnabled;
     this.applySlotTemplates(update.slotTemplates ?? this.slotTemplates);

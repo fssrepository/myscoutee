@@ -1627,6 +1627,7 @@ export class LocalEventsRepository {
       pendingMemberUserIds: this.normalizeUserIds(record.pendingMemberUserIds),
       invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
       pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
+      policiesEnabled: record.policiesEnabled === true,
       policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
       slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),

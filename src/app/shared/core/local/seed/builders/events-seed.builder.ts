@@ -364,6 +364,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       acceptedMemberUserIds: ['u2', 'u20', 'u21', 'u22'],
       pendingMemberUserIds: [],
       pricing: buildCheckoutDemoPricing(32),
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
       topics: ['Food', 'Small Group', 'Waitlist'],
       rating: 9.4,
@@ -410,6 +411,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
           startAt: '2026-04-12T20:15:00'
         }
       ]),
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
       subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-paid-slots',
@@ -465,6 +467,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       capacityTotal: 4,
       acceptedMemberUserIds: ['u3', 'u23', 'u24', 'u25'],
       pendingMemberUserIds: [],
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
       topics: ['Music', 'Culture', 'Waitlist'],
       rating: 9.0,
@@ -491,6 +494,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       acceptedMemberUserIds: ['u43', 'u44'],
       pendingMemberUserIds: ['u45'],
       pricing: buildCheckoutDemoPricing(22),
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
       subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-paid-policy',
@@ -665,6 +669,7 @@ interface ActivityEventSeedOverrides {
   pendingMemberUserIds?: string[];
   topics?: string[];
   pricing?: ContractTypes.PricingConfig | null;
+  policiesEnabled?: boolean;
   policies?: ContractTypes.EventPolicyDTO[];
   slotsEnabled?: boolean;
   slotTemplates?: ContractTypes.EventSlotTemplateDTO[];
@@ -687,6 +692,7 @@ export class SeedEventsBuilder {
         ...item,
         acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
         pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
+        policiesEnabled: item.policiesEnabled === true,
         policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies
       }))])
     );
@@ -702,6 +708,7 @@ export class SeedEventsBuilder {
         items.map(item => ({
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          policiesEnabled: item.policiesEnabled === true,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
@@ -772,6 +779,7 @@ export class SeedEventsBuilder {
         items.map(item => ({
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          policiesEnabled: item.policiesEnabled === true,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
@@ -1400,6 +1408,7 @@ export class SeedEventsBuilder {
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
@@ -1652,6 +1661,7 @@ export class SeedEventsBuilder {
       pricing: record.seed?.pricing
         ? this.rebasePricingConfig(record.seed.pricing)
         : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
+      policiesEnabled: record.seed?.policiesEnabled === true,
       policies: this.clonePolicies(record.seed?.policies) ?? [],
       slotsEnabled,
       slotTemplates,
@@ -2135,6 +2145,7 @@ export class SeedEventsBuilder {
       acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
       pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
       pricing: 'pricing' in item && item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : ('pricing' in item ? item.pricing : undefined),
+      policiesEnabled: item.policiesEnabled === true,
       policies: this.clonePolicies(item.policies) ?? undefined,
       slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
       slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,

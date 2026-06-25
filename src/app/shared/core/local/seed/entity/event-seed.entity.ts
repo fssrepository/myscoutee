@@ -39,6 +39,7 @@ export interface ActivityInvitationSeedItem {
   location?: string;
   locationCoordinates?: LocationCoordinates;
   policies?: EventPolicyDTO[];
+  policiesEnabled?: boolean;
 }
 
 export interface ActivityEventSeedItem {
@@ -87,6 +88,7 @@ export interface ActivityEventSeedItem {
   subEvents?: SubEventDTO[];
   mode?: EventMode;
   policies?: EventPolicyDTO[];
+  policiesEnabled?: boolean;
   rating?: number;
   boost?: number;
   affinity?: number;

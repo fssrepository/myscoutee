@@ -138,6 +138,7 @@
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
+              [(enabled)]="eventDetailDTO.policiesEnabled"
               [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
             <app-event-subevents-input
               [open]="showSubEventsPopup"
