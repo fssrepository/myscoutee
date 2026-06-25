@@ -1714,9 +1714,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return true;
     }
 
-    const itemElements = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-index]')
-    );
+    const itemElements = this.ownedListElements<HTMLElement>(scrollElement, '[data-smart-list-index]');
     if (itemElements.length === 0) {
       return false;
     }
@@ -1753,6 +1751,21 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return Math.max(0, Number(this.config.prependRevealPx) || 0);
   }
 
+  private ownedListElements<TElement extends HTMLElement>(
+    scrollElement: HTMLElement,
+    selector: string
+  ): TElement[] {
+    return Array.from(scrollElement.querySelectorAll<TElement>(selector))
+      .filter(element => element.closest('.smart-list') === scrollElement);
+  }
+
+  private ownedListElement<TElement extends HTMLElement>(
+    scrollElement: HTMLElement,
+    selector: string
+  ): TElement | null {
+    return this.ownedListElements<TElement>(scrollElement, selector)[0] ?? null;
+  }
+
   private listTopInset(
     scrollElement: HTMLElement,
     options: {
@@ -1763,7 +1776,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const styles = getComputedStyle(scrollElement);
     const scrollPaddingTop = Number.parseFloat(styles.scrollPaddingTop || '0') || 0;
     const stickyHeaderHeight = this.shouldShowStickyHeader()
-      ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
+      ? this.ownedListElement<HTMLElement>(scrollElement, '.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
     const includeStickyGroupMarker = options.includeStickyGroupMarker !== false;
     const baseInset = Math.max(stickyHeaderHeight, scrollPaddingTop);
@@ -1772,9 +1785,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return baseInset;
     }
 
-    const stickyGroupMarker = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__group-marker')
-    ).find(marker => {
+    const stickyGroupMarker = this.ownedListElements<HTMLElement>(scrollElement, '.smart-list__group-marker')
+      .find(marker => {
       const rect = marker.getBoundingClientRect();
       return rect.top <= threadRect.top + 1 && rect.bottom > threadRect.top + 1;
     }) ?? null;
@@ -1807,9 +1819,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
       includeStickyGroupMarker: false
     });
-    const anchors = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
-    );
+    const anchors = this.ownedListElements<HTMLElement>(scrollElement, '.smart-list__item-shell[data-smart-list-anchor]');
     const anchorElement = anchors.find(element => element.getBoundingClientRect().bottom > threadRect.top + 1)
       ?? anchors.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
       ?? anchors.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
@@ -1876,9 +1886,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     scrollElement: HTMLDivElement,
     visibleTop = scrollElement.getBoundingClientRect().top + this.listTopInset(scrollElement)
   ): HTMLElement | null {
-    const itemShells = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
-    ).sort((first, second) => first.getBoundingClientRect().top - second.getBoundingClientRect().top);
+    const itemShells = this.ownedListElements<HTMLElement>(scrollElement, '.smart-list__item-shell[data-smart-list-anchor]')
+      .sort((first, second) => first.getBoundingClientRect().top - second.getBoundingClientRect().top);
     return itemShells.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
       ?? itemShells.find(element => element.getBoundingClientRect().top >= visibleTop - 1)
       ?? itemShells.find(element => element.getBoundingClientRect().bottom > scrollElement.getBoundingClientRect().top + 1)
@@ -1906,7 +1915,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'start' && this.isReversedListFlow()) {
         scrollElement.scrollTop = 0;
       } else if (applyInitialAnchor && this.initialListScrollAnchor() === 'first-item' && this.groups.length > 0) {
-        const firstBoundary = scrollElement.querySelector<HTMLElement>('.smart-list__group-marker, .smart-list__item-shell');
+        const firstBoundary = this.ownedListElement<HTMLElement>(scrollElement, '.smart-list__group-marker, .smart-list__item-shell');
         if (firstBoundary) {
           scrollElement.scrollTop = firstBoundary.offsetTop;
         }
@@ -1969,9 +1978,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const visibleTop = threadRect.top + this.listTopInset(scrollElement, {
       includeStickyGroupMarker: false
     });
-    const anchorElement = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-anchor]')
-    ).find(element => (element.dataset['smartListAnchor'] ?? '') === restoreContext.anchorKey) ?? null;
+    const anchorElement = this.ownedListElements<HTMLElement>(scrollElement, '.smart-list__item-shell[data-smart-list-anchor]')
+      .find(element => (element.dataset['smartListAnchor'] ?? '') === restoreContext.anchorKey) ?? null;
     if (!anchorElement) {
       return;
     }
@@ -2419,12 +2427,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
       return;
     }
-    const stickyHeader = scrollElement.querySelector<HTMLElement>('.smart-list__sticky');
+    const stickyHeader = this.ownedListElement<HTMLElement>(scrollElement, '.smart-list__sticky');
     const stickyHeaderHeight = stickyHeader?.offsetHeight ?? 0;
     this.stickyHeaderHeightPx = stickyHeaderHeight;
     const targetTop = scrollTop + stickyHeaderHeight;
-    const boundaries = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-group-label], .smart-list__group-marker[data-group-label]')
+    const boundaries = this.ownedListElements<HTMLElement>(
+      scrollElement,
+      '.smart-list__item-shell[data-group-label], .smart-list__group-marker[data-group-label]'
     );
     if (boundaries.length === 0) {
       this.stickyLabel = this.groups[0]?.label ?? this.resolveEmptyStickyLabel();
@@ -2503,7 +2512,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     this.stickyHeaderHeightPx = this.shouldShowStickyHeader()
-      ? target.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
+      ? this.ownedListElement<HTMLElement>(target, '.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
     this.scrollable = pages.length > 1;
     if (this.calendarPendingVisualKey && this.calendarFrozenProgress !== null) {
@@ -2872,7 +2881,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (itemIndex < 0) {
       return;
     }
-    const itemElement = scrollElement.querySelector<HTMLElement>(`.smart-list__item-shell[data-smart-list-index="${itemIndex}"]`);
+    const itemElement = this.ownedListElement<HTMLElement>(
+      scrollElement,
+      `.smart-list__item-shell[data-smart-list-index="${itemIndex}"]`
+    );
     if (!itemElement) {
       return;
     }
@@ -2899,13 +2911,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private listCardSnapTargets(scrollElement: HTMLDivElement): HTMLElement[] {
     if (this.isHorizontalList()) {
-      return Array.from(
-        scrollElement.querySelectorAll<HTMLElement>('.smart-list__item-shell[data-smart-list-index]')
-      );
+      return this.ownedListElements<HTMLElement>(scrollElement, '.smart-list__item-shell[data-smart-list-index]');
     }
-    return Array.from(
-      scrollElement.querySelectorAll<HTMLElement>(SmartListComponent.LIST_CARD_SNAP_TARGET_SELECTOR)
-    );
+    return this.ownedListElements<HTMLElement>(scrollElement, SmartListComponent.LIST_CARD_SNAP_TARGET_SELECTOR);
   }
 
 private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null): void {
@@ -2999,7 +3007,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       || '';
     const parsedScrollPadding = Number.parseFloat(rawScrollPadding);
     const stickyHeaderHeight = this.shouldShowStickyHeader()
-      ? scrollElement.querySelector<HTMLElement>('.smart-list__sticky')?.offsetHeight ?? 0
+      ? this.ownedListElement<HTMLElement>(scrollElement, '.smart-list__sticky')?.offsetHeight ?? 0
       : 0;
     if (Number.isFinite(parsedScrollPadding)) {
       return parsedScrollPadding;
@@ -3316,7 +3324,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   private firstVisibleHorizontalListItemIndex(scrollElement: HTMLDivElement): number | null {
     const listRect = scrollElement.getBoundingClientRect();
     const visibleLeft = listRect.left + 1;
-    const itemElements = Array.from(scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-index]'));
+    const itemElements = this.ownedListElements<HTMLElement>(scrollElement, '[data-smart-list-index]');
     const anchorElement =
       itemElements.find(element => element.getBoundingClientRect().right > visibleLeft)
       ?? itemElements.find(element => element.getBoundingClientRect().left >= listRect.left - 1)
@@ -3338,7 +3346,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       if (!scrollElement || !this.isHorizontalList()) {
         return;
       }
-      const itemElement = scrollElement.querySelector<HTMLElement>(`.smart-list__item-shell[data-smart-list-index="${index}"]`);
+      const itemElement = this.ownedListElement<HTMLElement>(
+        scrollElement,
+        `.smart-list__item-shell[data-smart-list-index="${index}"]`
+      );
       if (!itemElement) {
         return;
       }
@@ -3402,7 +3413,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   private firstVisibleListItemIndex(scrollElement: HTMLDivElement): number | null {
     const threadRect = scrollElement.getBoundingClientRect();
     const visibleTop = threadRect.top + this.listTopInset(scrollElement);
-    const itemElements = Array.from(scrollElement.querySelectorAll<HTMLElement>('[data-smart-list-index]'));
+    const itemElements = this.ownedListElements<HTMLElement>(scrollElement, '[data-smart-list-index]');
     const anchorElement =
       itemElements.find(element => element.getBoundingClientRect().bottom > visibleTop + 1)
       ?? itemElements.find(element => element.getBoundingClientRect().top >= visibleTop - 1)

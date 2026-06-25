@@ -7,6 +7,12 @@
         <h2>{{ popupTitle() }}</h2>
         <p class="popup-subtitle-activities">{{ popupSubtitle() }}</p>
       </div>
+      @if (eventRangeLabel()) {
+      <span class="event-subevents-list-range-badge">
+        <mat-icon>calendar_month</mat-icon>
+        <span>{{ eventRangeLabel() }}</span>
+      </span>
+      }
       <div class="event-subevents-list-header-actions">
         <app-menu
           class="event-subevents-list-order-menu"
@@ -27,12 +33,6 @@
         <mat-icon>close</mat-icon>
       </button>
       <div class="event-subevents-list-context-row">
-        @if (eventRangeLabel()) {
-        <span class="event-subevents-list-range-badge">
-          <mat-icon>calendar_month</mat-icon>
-          <span>{{ eventRangeLabel() }}</span>
-        </span>
-        }
         <div class="event-subevents-list-context-actions">
           <app-menu
             class="event-subevents-list-context-menu"

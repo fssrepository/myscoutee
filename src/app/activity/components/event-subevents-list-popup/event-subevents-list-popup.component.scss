@@ -28,10 +28,10 @@
 
 .event-subevents-list-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   grid-template-areas:
-    "title actions close"
-    "context context context";
+    "title range actions close"
+    "context context context context";
   align-items: center;
   gap: 0.64rem;
   padding: 0.8rem 1rem;
@@ -58,18 +58,19 @@
   grid-area: context;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 0.65rem;
   min-width: 0;
   flex-wrap: wrap;
 }
 
 .event-subevents-list-range-badge {
+  grid-area: range;
   display: inline-flex;
   align-items: center;
   gap: 0.36rem;
   min-width: 0;
-  max-width: min(540px, 100%);
+  max-width: min(360px, 32vw);
   padding: 0.38rem 0.72rem;
   border-radius: 999px;
   border: 1px solid rgba(47, 122, 184, 0.24);
@@ -218,6 +219,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
     grid-template-areas:
       "title close"
+      "range range"
       "actions actions"
       "context context";
     align-items: start;
@@ -240,8 +242,8 @@
   }
 
   .event-subevents-list-range-badge {
-    flex: 1 1 auto;
     max-width: none;
+    justify-self: stretch;
   }
 
   .event-subevents-list-context-actions {

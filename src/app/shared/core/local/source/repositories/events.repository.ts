@@ -405,8 +405,13 @@ export class LocalEventsRepository {
     const generatedSlots = preferredRecords
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
       .filter(record => !this.isTrashStatus(record))
+      .filter(record => this.generatedSlotFitsParentRange(record, parentRecord))
       .sort((left, right) => this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso));
-    const sourceRecords = generatedSlots.length > 0 ? generatedSlots : [selectedRecord];
+    const fallbackRecords = !this.isGeneratedSlotRecord(selectedRecord)
+      || this.generatedSlotFitsParentRange(selectedRecord, parentRecord)
+      ? [selectedRecord]
+      : [];
+    const sourceRecords = generatedSlots.length > 0 ? generatedSlots : fallbackRecords;
     const items = sourceRecords.flatMap(record => this.runtimeSubEventsForRecord(parentEventId, record));
     return {
       event,
@@ -1000,11 +1005,13 @@ export class LocalEventsRepository {
     const directRecords = table.ids
       .map(id => this.normalizePersistedEventRecord(table.byId[id]))
       .filter((record): record is ActivityEventRecord => Boolean(record))
+      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
       .map(record => this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
+      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record => record.creatorUserId !== normalizedUserId)
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
@@ -1038,7 +1045,7 @@ export class LocalEventsRepository {
     for (const id of table.ids) {
       const record = this.normalizePersistedEventRecord(table.byId[id]);
       const recordUserId = record?.userId?.trim() ?? '';
-      if (!record || !userIdSet.has(recordUserId)) {
+      if (!record || this.isGeneratedSlotRecord(record) || !userIdSet.has(recordUserId)) {
         continue;
       }
       if (!this.shouldIncludeUserDirectRecord(record, recordUserId, preferredRecordByEventId.get(record.id))) {
@@ -1055,6 +1062,7 @@ export class LocalEventsRepository {
     for (const userId of normalizedUserIds) {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
+        .filter(record => !this.isGeneratedSlotRecord(record))
         .filter(record => record.creatorUserId !== userId)
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
@@ -2164,7 +2172,7 @@ export class LocalEventsRepository {
         upcomingSlots: []
       };
     }
-    const upcomingSlots = this.resolveUpcomingSlotOccurrences(record.id, table);
+    const upcomingSlots = this.resolveUpcomingSlotOccurrences(record, table);
     return {
       ...record,
       nextSlot: upcomingSlots[0] ?? null,
@@ -2173,15 +2181,17 @@ export class LocalEventsRepository {
   }
 
   private resolveUpcomingSlotOccurrences(
-    parentEventId: string,
+    parent: ActivityEventRecord,
     table: ActivityEventRecordCollection
   ): ContractTypes.EventSlotOccurrenceDTO[] {
+    const parentEventId = parent.id;
     const nowMs = Date.now() - (60 * 60 * 1000);
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
       .filter(record => !this.isTrashStatus(record))
+      .filter(record => this.generatedSlotFitsParentRange(record, parent))
       .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
       .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
       .map(record => ({
@@ -2196,6 +2206,18 @@ export class LocalEventsRepository {
         acceptedMembers: record.acceptedMembers,
         pendingMembers: record.pendingMembers
       }));
+  }
+
+  private generatedSlotFitsParentRange(record: ActivityEventRecord, parent: ActivityEventRecord): boolean {
+    const parentStart = this.parseEventDate(parent.startAtIso);
+    const parentEnd = this.parseEventDate(parent.endAtIso);
+    const recordStart = this.parseEventDate(record.startAtIso);
+    const recordEnd = this.parseEventDate(record.endAtIso);
+    if (!parentStart || !parentEnd || !recordStart || !recordEnd) {
+      return false;
+    }
+    return recordStart.getTime() >= parentStart.getTime()
+      && recordEnd.getTime() <= parentEnd.getTime();
   }
 
   private isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
