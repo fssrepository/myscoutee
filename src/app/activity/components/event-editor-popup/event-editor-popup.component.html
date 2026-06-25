@@ -177,13 +177,14 @@
       <header class="slot-override-popup__head">
         <div class="slot-override-popup__copy">
           <span class="slot-override-popup__title">{{ slotOverridePopupTitle() }}</span>
-          <span class="slot-override-popup__subtitle">{{ slotOverridePopupSubtitle() }}</span>
+          <app-menu
+            class="slot-override-popup__rule-badge"
+            kind="select"
+            [trigger]="slotOverrideRuleBadgeTrigger()"
+            [items]="[]"
+          ></app-menu>
         </div>
         <div class="slot-override-popup__head-actions">
-          <button type="button" class="popup-close slot-override-popup__close"
-            (click)="closeSlotOverrideEditor($event)" aria-label="Close override editor">
-            <mat-icon>close</mat-icon>
-          </button>
           <div class="slot-override-popup__picker-actions">
             <app-menu
               class="slot-override-popup__pager"
@@ -209,6 +210,10 @@
               (itemSelect)="onSlotOverridePagerSelect($event)"
             ></app-menu>
           </div>
+          <button type="button" class="popup-close slot-override-popup__close"
+            (click)="closeSlotOverrideEditor($event)" aria-label="Close override editor">
+            <mat-icon>close</mat-icon>
+          </button>
         </div>
       </header>
       <div class="slot-override-popup__body">

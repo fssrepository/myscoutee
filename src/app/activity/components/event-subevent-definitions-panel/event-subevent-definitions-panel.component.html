@@ -7,6 +7,15 @@
         <p>{{ panelSubtitle() }}</p>
       </div>
     </div>
+    <div class="subevent-definition-panel__toggle-wrap">
+      @if (showEnableToggle) {
+      <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
+        [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
+        <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>{{ enabled ? 'On' : 'Off' }}</span>
+      </button>
+      }
+    </div>
     <div class="subevent-definition-panel__actions">
       @if (enabled) {
       @if (modeControl === 'badge') {
@@ -33,13 +42,6 @@
         (itemSelect)="onAddMenuSelect($event)"
       ></app-menu>
       }
-      }
-      @if (showEnableToggle) {
-      <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
-        [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
-        <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-        <span>{{ enabled ? 'On' : 'Off' }}</span>
-      </button>
       }
     </div>
   </header>

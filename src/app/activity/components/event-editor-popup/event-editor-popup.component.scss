@@ -1099,9 +1099,11 @@ button.event-slots-enable-btn:disabled {
 }
 
 .slot-override-popup__head-actions {
-  display: grid;
-  justify-items: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.58rem;
+  min-width: 0;
 }
 
 .slot-override-popup__copy {
@@ -1118,6 +1120,12 @@ button.event-slots-enable-btn:disabled {
 .slot-override-popup__subtitle {
   color: rgba(61, 83, 114, 0.84);
   font-size: 0.84rem;
+}
+
+.slot-override-popup__rule-badge {
+  justify-self: start;
+  max-width: 100%;
+  pointer-events: none;
 }
 
 .slot-override-popup__body {
@@ -1588,6 +1596,15 @@ button.event-slots-enable-btn:disabled {
   .slot-override-popup__picker-actions {
     width: 100%;
     justify-content: stretch;
+  }
+
+  .slot-override-popup__head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .slot-override-popup__head-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 
   .slot-override-popup__date-menu {

@@ -13,14 +13,6 @@
       }
     </div>
     <div class="event-slots-panel-actions">
-      @if (canConfigureSlotsSeries()) {
-      <app-menu
-        class="event-slots-summary-add-menu"
-        kind="inline"
-        [items]="slotSummaryAddMenuItems()"
-        (itemSelect)="onSlotSummaryAddSelect($event)"
-      ></app-menu>
-      }
       <button type="button" class="event-slots-enable-btn" [class.event-slots-enable-btn-on]="slotsEnabled()"
         [class.event-slots-enable-btn-off]="!slotsEnabled()" [disabled]="!canUpdateSlotsConfig()"
         (click)="toggleSlotsEnabled($event)" aria-label="Toggle slots">
@@ -28,6 +20,16 @@
         <span>{{ slotsEnabled() ? 'On' : 'Off' }}</span>
       </button>
     </div>
+    @if (canConfigureSlotsSeries()) {
+    <div class="event-slots-panel-secondary-actions">
+      <app-menu
+        class="event-slots-summary-add-menu"
+        kind="inline"
+        [items]="slotSummaryAddMenuItems()"
+        (itemSelect)="onSlotSummaryAddSelect($event)"
+      ></app-menu>
+    </div>
+    }
   </div>
   @if (slotsEnabled()) {
   <div class="event-slots-panel-body">
@@ -50,7 +52,7 @@
           }
         </div>
         } @else {
-        <p class="event-slots-summary-note">No slots yet. Use + to create the first one.</p>
+        <div class="event-slots-summary-empty">No slots yet. Use + to create the first one.</div>
         }
     </div>
   </div>

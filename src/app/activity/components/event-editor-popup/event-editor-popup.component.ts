@@ -935,6 +935,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     };
   }
 
+  protected slotOverrideRuleBadgeTrigger(): AppMenuTrigger {
+    const editor = this.slotOverrideEditor;
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency);
+    return {
+      label: editor ? this.slotOverrideRuleBadgeLabel(editor) : 'Slot rule',
+      icon: this.slotOverrideFrequencyIcon(frequency),
+      palette: this.slotOverrideFrequencyPalette(frequency),
+      layout: 'pill',
+      trailingIcon: '',
+      action: 'custom'
+    };
+  }
+
   protected onSlotOverrideOccurrenceSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     if (!this.slotOverrideEditor) {
       return;
@@ -1045,9 +1058,82 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return startAt.toLocaleString('en-US', {
       month: 'short',
       day: 'numeric',
+      year: 'numeric',
       hour: 'numeric',
       minute: '2-digit'
     });
+  }
+
+  private slotOverrideRuleBadgeLabel(editor: SlotOverrideEditorState): string {
+    const startAt = this.parseEventEditorDateValue(editor.slot.startAt);
+    if (!startAt) {
+      return 'Slot rule pending';
+    }
+    const time = startAt.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    const fromDate = startAt.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    switch (ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency)) {
+      case 'Daily':
+        return `Every day at ${time} from ${fromDate}`;
+      case 'Weekly':
+        return `Every ${this.slotOverrideWeekdayLabel(startAt)} at ${time} from ${fromDate}`;
+      case 'Bi-weekly':
+        return `Every second ${this.slotOverrideWeekdayLabel(startAt)} at ${time} from ${fromDate}`;
+      case 'Monthly':
+        return `Every month on day ${startAt.getDate()} at ${time} from ${fromDate}`;
+      case 'Yearly':
+        return `Every year on ${startAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${time} from ${fromDate}`;
+      default:
+        return `Custom at ${this.slotOverrideSummaryLabel(editor.slot.startAt)}`;
+    }
+  }
+
+  private slotOverrideWeekdayLabel(value: Date): string {
+    return value.toLocaleDateString('en-US', { weekday: 'long' });
+  }
+
+  private slotOverrideFrequencyIcon(frequency: string): string {
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Custom':
+        return 'event';
+      case 'Daily':
+        return 'today';
+      case 'Weekly':
+        return 'calendar_view_week';
+      case 'Bi-weekly':
+        return 'date_range';
+      case 'Monthly':
+        return 'calendar_month';
+      case 'Yearly':
+        return 'event_available';
+      default:
+        return 'event';
+    }
+  }
+
+  private slotOverrideFrequencyPalette(frequency: string): AppMenuPalette {
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Custom':
+        return 'blue';
+      case 'Daily':
+        return 'green';
+      case 'Weekly':
+        return 'cyan';
+      case 'Bi-weekly':
+        return 'violet';
+      case 'Monthly':
+        return 'amber';
+      case 'Yearly':
+        return 'gold';
+      default:
+        return 'blue';
+    }
   }
 
   private slotOverrideVisibleCandidates(editor: SlotOverrideEditorState): Date[] {

@@ -20,14 +20,18 @@
 }
 
 .subevent-definition-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title toggle"
+    "title actions";
+  align-items: start;
   gap: 12px;
   min-width: 0;
 }
 
 .subevent-definition-panel__title {
+  grid-area: title;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -57,11 +61,21 @@
   color: #8a6c43;
 }
 
+.subevent-definition-panel__toggle-wrap {
+  grid-area: toggle;
+  display: inline-flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .subevent-definition-panel__actions {
+  grid-area: actions;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
-  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .subevent-definition-panel__add-menu {
@@ -123,6 +137,9 @@
   }
 
   .subevent-definition-panel__header {
-    align-items: flex-start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title toggle"
+      "actions actions";
   }
 }

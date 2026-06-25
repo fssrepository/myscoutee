@@ -23,11 +23,15 @@
 .event-slots-panel-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title actions"
+    "title secondary";
   align-items: start;
   gap: 0.75rem;
 }
 
 .event-slots-panel-title-wrap {
+  grid-area: title;
   display: grid;
   gap: 0.26rem;
 }
@@ -60,9 +64,20 @@
 }
 
 .event-slots-panel-actions {
+  grid-area: actions;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.event-slots-panel-secondary-actions {
+  grid-area: secondary;
+  display: inline-flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.4rem;
   min-width: 0;
 }
@@ -137,14 +152,18 @@
   min-width: 0;
 }
 
-.event-slots-summary-note {
-  color: rgba(37, 58, 88, 0.72);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.event-slots-summary-note {
-  margin: 0;
+.event-slots-summary-empty {
+  justify-self: start;
+  min-width: min(100%, 252px);
+  padding: 1rem 1.2rem;
+  border: 1px dashed rgba(128, 149, 176, 0.36);
+  border-radius: 14px;
+  color: #102a4a;
+  background: rgba(255, 255, 255, 0.58);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  font-weight: 800;
+  box-sizing: border-box;
 }
 
 .event-slots-popup-backdrop {
@@ -215,7 +234,10 @@
 
 @media (max-width: 760px) {
   .event-slots-panel-head {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title actions"
+      "title secondary";
     align-items: start;
   }
 
@@ -224,17 +246,26 @@
   }
 
   .event-slots-panel-actions {
-    justify-self: start;
-    justify-content: flex-start;
+    justify-self: end;
+    justify-content: flex-end;
+  }
+
+  .event-slots-panel-secondary-actions {
+    justify-self: end;
+    justify-content: flex-end;
   }
 
   .event-slots-schedule-popup {
-    top: 0;
+    top: auto;
+    bottom: 0;
     left: 0;
     transform: none;
     width: 100vw;
     max-width: 100vw;
-    border-radius: 0;
+    max-height: min(86dvh, 680px);
+    overflow: auto;
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
   }
 
   .event-slots-popup-head {
