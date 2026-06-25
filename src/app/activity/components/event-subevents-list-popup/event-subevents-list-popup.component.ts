@@ -44,6 +44,7 @@ interface EventSubeventsSlotSection {
   startAt: string | null;
   endAt: string | null;
   tone: EventSubeventsSlotTone;
+  isSlot: boolean;
   items: ActivityEventSubEventRuntimeDTO[];
 }
 
@@ -142,6 +143,19 @@ export class EventSubeventsListPopupComponent {
       headerControls: true
     },
     groupBy: item => this.slotHeaderLabel(item),
+    trackBy: (_index, item) => item.runtimeId
+  };
+
+  private readonly flatSubEventsSmartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
+    pageSize: 120,
+    defaultView: 'list',
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    emptyLabel: 'No sub events in this event',
+    emptyDescription: '',
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'proximity',
     trackBy: (_index, item) => item.runtimeId
   };
 
@@ -393,7 +407,9 @@ export class EventSubeventsListPopupComponent {
     if (existing) {
       return existing;
     }
-    const config: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = { ...this.baseSlotSectionSmartListConfig };
+    const config: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = section.isSlot
+      ? { ...this.baseSlotSectionSmartListConfig }
+      : { ...this.flatSubEventsSmartListConfig };
     this.slotSectionConfigs.set(sectionId, config);
     return config;
   }
@@ -515,6 +531,7 @@ export class EventSubeventsListPopupComponent {
         startAt: item.startAt ?? null,
         endAt: item.endAt ?? item.startAt ?? null,
         tone: this.slotSectionTone(item),
+        isSlot: this.runtimeItemHasSlot(item),
         items: [item]
       });
     });
@@ -568,6 +585,7 @@ export class EventSubeventsListPopupComponent {
       section.title = firstItem ? this.slotSectionTitle(firstItem, index + 1) : `Slot ${index + 1}`;
       section.subtitle = firstItem ? this.slotSectionSubtitle(firstItem) : section.subtitle;
       section.tone = firstItem ? this.slotSectionTone(firstItem) : section.tone;
+      section.isSlot = firstItem ? this.runtimeItemHasSlot(firstItem) : section.isSlot;
       const label = this.joinSlotHeaderLabel(section.title, section.subtitle);
       section.items.forEach(item => this.slotSectionHeaderLabels.set(item.runtimeId, label));
     });
@@ -575,7 +593,8 @@ export class EventSubeventsListPopupComponent {
 
   protected slotSectionToneClass(section: EventSubeventsSlotSection): Record<string, boolean> {
     return {
-      [`event-subevents-slot-section--${section.tone}`]: true
+      [`event-subevents-slot-section--${section.tone}`]: true,
+      'event-subevents-slot-section--flat': !section.isSlot
     };
   }
 
@@ -600,6 +619,10 @@ export class EventSubeventsListPopupComponent {
       return null;
     }
     return (this.event?.slotTemplates ?? []).find(template => `${template.id ?? ''}`.trim() === templateId) ?? null;
+  }
+
+  private runtimeItemHasSlot(item: ActivityEventSubEventRuntimeDTO): boolean {
+    return Boolean(`${item.slotSourceId ?? ''}`.trim() || `${item.slotTemplateId ?? ''}`.trim());
   }
 
   private slotSectionTone(_item: ActivityEventSubEventRuntimeDTO): EventSubeventsSlotTone {

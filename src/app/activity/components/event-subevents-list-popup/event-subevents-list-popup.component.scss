@@ -212,6 +212,15 @@
   --smart-list-slot-header-action-color: #765915;
 }
 
+.event-subevents-slot-section--flat {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .event-subevents-slot-section-list {
   flex: 1 1 auto;
   min-width: 0;
@@ -274,7 +283,7 @@
     padding: 0.6rem;
   }
 
-  .event-subevents-slot-section {
+  .event-subevents-slot-section:not(.event-subevents-slot-section--flat) {
     min-height: 25rem;
   }
 }

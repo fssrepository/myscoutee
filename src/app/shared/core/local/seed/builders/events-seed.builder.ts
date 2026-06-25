@@ -1556,7 +1556,7 @@ export class SeedEventsBuilder {
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
-    const frequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
+    const requestedFrequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
     const isGeneratedSeed = record.seed?.generated === true;
     const startAtIso = isGeneratedSeed
       ? (this.normalizeGeneratedSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record))
@@ -1602,6 +1602,8 @@ export class SeedEventsBuilder {
       this.normalizeCount(record.seed?.capacityTotal) ?? compactCapacityTotal ?? capacityMax ?? acceptedMembers
     );
     const slotTemplates = this.cloneRebasedSlotTemplates(record.seed?.slotTemplates) ?? [];
+    const slotsEnabled = record.seed?.slotsEnabled === true && slotTemplates.length > 0;
+    const frequency = slotsEnabled ? requestedFrequency : 'One-time';
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
@@ -1651,7 +1653,7 @@ export class SeedEventsBuilder {
         ? this.rebasePricingConfig(record.seed.pricing)
         : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
       policies: this.clonePolicies(record.seed?.policies) ?? [],
-      slotsEnabled: record.seed?.slotsEnabled === true,
+      slotsEnabled,
       slotTemplates,
       parentEventId: null,
       slotTemplateId: null,
