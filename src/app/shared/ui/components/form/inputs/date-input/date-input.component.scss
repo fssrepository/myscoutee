@@ -17,6 +17,11 @@
   gap: 0.72rem;
 }
 
+.date-input--single.date-input--with-meta {
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
+  align-items: end;
+}
+
 .date-input__field {
   display: grid;
   gap: 0.34rem;
@@ -186,6 +191,198 @@
   transform: rotate(90deg);
 }
 
+.date-input__meta {
+  display: grid;
+  gap: 0.34rem;
+  min-width: 0;
+}
+
+.date-input__meta-label {
+  color: #203a5d;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.date-input__meta-badge {
+  min-height: 38px;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0 14px;
+  border: 1px solid #b9cce5;
+  border-radius: 999px;
+  background: #f3f8ff;
+  color: #27568e;
+  box-shadow: 0 8px 18px rgba(41, 84, 135, 0.08);
+  font-size: 0.88rem;
+  font-weight: 900;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.date-input__meta-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Noto Sans Symbols 2", "Noto Sans Symbols", "Segoe UI Symbol", sans-serif;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.date-input__meta-badge--purple {
+  border-color: #c8b7f2;
+  background: #f5efff;
+  color: #6941a6;
+  box-shadow: 0 8px 18px rgba(105, 65, 166, 0.1);
+}
+
+.date-input__meta-badge--blue {
+  border-color: #b9cce5;
+  background: #f3f8ff;
+  color: #27568e;
+  box-shadow: 0 8px 18px rgba(41, 84, 135, 0.08);
+}
+
+.date-input__meta-badge--green {
+  border-color: #a8dcb8;
+  background: #f0fbf3;
+  color: #2f7b47;
+  box-shadow: 0 8px 18px rgba(47, 123, 71, 0.1);
+}
+
+.date-input__meta-badge--violet {
+  border-color: #c9b7e8;
+  background: #f7f1ff;
+  color: #65409b;
+  box-shadow: 0 8px 18px rgba(101, 64, 155, 0.1);
+}
+
+.date-input__meta-badge--pink {
+  border-color: #efb7d3;
+  background: #fff0f7;
+  color: #9a3f70;
+  box-shadow: 0 8px 18px rgba(154, 63, 112, 0.1);
+}
+
+.date-input__meta-badge--orange {
+  border-color: #efc19d;
+  background: #fff5ec;
+  color: #93551e;
+  box-shadow: 0 8px 18px rgba(147, 85, 30, 0.1);
+}
+
+.date-input__meta-badge--brown {
+  border-color: #d7bd9c;
+  background: #fbf4ec;
+  color: #77502b;
+  box-shadow: 0 8px 18px rgba(119, 80, 43, 0.1);
+}
+
+.date-input__meta-badge--teal {
+  border-color: #a8d7d5;
+  background: #effafa;
+  color: #286f72;
+  box-shadow: 0 8px 18px rgba(40, 111, 114, 0.1);
+}
+
+.date-input__meta-badge--muted {
+  border-color: #c7d0dc;
+  background: #f5f7fa;
+  color: #536274;
+  box-shadow: 0 8px 18px rgba(83, 98, 116, 0.08);
+}
+
+.date-input__meta-badge--aries {
+  border-color: #efb2a5;
+  background: #fff1ed;
+  color: #9b3f2c;
+  box-shadow: 0 8px 18px rgba(155, 63, 44, 0.1);
+}
+
+.date-input__meta-badge--taurus {
+  border-color: #a7d69f;
+  background: #f0faee;
+  color: #3d7a31;
+  box-shadow: 0 8px 18px rgba(61, 122, 49, 0.1);
+}
+
+.date-input__meta-badge--gemini {
+  border-color: #e6ce77;
+  background: #fff9dc;
+  color: #806219;
+  box-shadow: 0 8px 18px rgba(128, 98, 25, 0.1);
+}
+
+.date-input__meta-badge--cancer {
+  border-color: #9fd8e6;
+  background: #effbff;
+  color: #237083;
+  box-shadow: 0 8px 18px rgba(35, 112, 131, 0.1);
+}
+
+.date-input__meta-badge--leo {
+  border-color: #efc061;
+  background: #fff5d9;
+  color: #975d12;
+  box-shadow: 0 8px 18px rgba(151, 93, 18, 0.1);
+}
+
+.date-input__meta-badge--virgo {
+  border-color: #bfd28d;
+  background: #f8fbe9;
+  color: #62752b;
+  box-shadow: 0 8px 18px rgba(98, 117, 43, 0.1);
+}
+
+.date-input__meta-badge--libra {
+  border-color: #efb7d3;
+  background: #fff0f7;
+  color: #9a3f70;
+  box-shadow: 0 8px 18px rgba(154, 63, 112, 0.1);
+}
+
+.date-input__meta-badge--scorpio {
+  border-color: #c0a3d9;
+  background: #f7effc;
+  color: #663285;
+  box-shadow: 0 8px 18px rgba(102, 50, 133, 0.1);
+}
+
+.date-input__meta-badge--sagittarius {
+  border-color: #b9a8ee;
+  background: #f4f0ff;
+  color: #553ca0;
+  box-shadow: 0 8px 18px rgba(85, 60, 160, 0.1);
+}
+
+.date-input__meta-badge--capricorn {
+  border-color: #cdb497;
+  background: #fbf2e9;
+  color: #705032;
+  box-shadow: 0 8px 18px rgba(112, 80, 50, 0.1);
+}
+
+.date-input__meta-badge--aquarius {
+  border-color: #a8c8ef;
+  background: #f0f7ff;
+  color: #2c5f9f;
+  box-shadow: 0 8px 18px rgba(44, 95, 159, 0.1);
+}
+
+.date-input__meta-badge--pisces {
+  border-color: #9cd5cf;
+  background: #effaf8;
+  color: #277268;
+  box-shadow: 0 8px 18px rgba(39, 114, 104, 0.1);
+}
+
 :host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-mdc-text-field-wrapper {
   background: rgba(238, 244, 251, 0.72);
   border-color: rgba(148, 167, 192, 0.45);
@@ -198,6 +395,10 @@
 
 @media (max-width: 760px) {
   .date-input--range {
+    grid-template-columns: 1fr;
+  }
+
+  .date-input--single.date-input--with-meta {
     grid-template-columns: 1fr;
   }
 

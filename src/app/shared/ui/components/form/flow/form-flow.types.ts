@@ -7,6 +7,7 @@ import type {
   AppMenuPanelMode,
   AppMenuTrigger
 } from '../../menu';
+import type { DateInputMetaModel, DateInputModel } from '../inputs/date-input';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
 
 export interface FormFlowDraft<TData> {
@@ -61,42 +62,10 @@ export interface FormFlowImageCarouselControlConfig {
   uploadEntityId?: string;
 }
 
-export interface FormFlowDateMetaConfig {
-  label?: string;
-  icon?: string;
-  palette?:
-    | 'aquarius'
-    | 'aries'
-    | 'blue'
-    | 'brown'
-    | 'cancer'
-    | 'capricorn'
-    | 'gemini'
-    | 'green'
-    | 'leo'
-    | 'libra'
-    | 'muted'
-    | 'orange'
-    | 'pink'
-    | 'pisces'
-    | 'purple'
-    | 'sagittarius'
-    | 'scorpio'
-    | 'taurus'
-    | 'teal'
-    | 'violet'
-    | 'virgo';
-  emptyLabel?: string;
-  value?: (formValue: unknown, control: FormFlowControlModel) => unknown;
-}
-
-export interface FormFlowDateMetaValue {
-  label?: string | null;
-  icon?: string | null;
-  palette?: FormFlowDateMetaConfig['palette'];
-}
+export type FormFlowDateMetaConfig = DateInputMetaModel;
 
 export interface FormFlowDateControlConfig {
+  model?: DateInputModel | null;
   meta?: FormFlowDateMetaConfig | null;
 }
 

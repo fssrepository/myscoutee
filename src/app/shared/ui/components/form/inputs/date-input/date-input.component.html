@@ -137,73 +137,88 @@
     </label>
   </div>
 } @else {
-  <label class="date-input date-input--single" [class.date-input--with-time]="hasTime()">
-    @if (label) {
-      <span class="date-input__label">{{ label }}@if (required) { <strong>*</strong> }</span>
-    }
-    <div class="date-input__row">
-      <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
-        <input
-          matInput
-          [matDatepicker]="singlePicker"
-          [ngModel]="singleDateValue"
-          (ngModelChange)="onSingleDateChange($event)"
-          (blur)="markTouched()"
-          [min]="resolvedSingleMin()"
-          [max]="resolvedSingleMax()"
-          [disabled]="inputDisabled()"
-          [placeholder]="placeholder"
-        />
-        <button
-          matSuffix
-          type="button"
-          class="date-input__toggle"
-          [class.date-input__toggle--open]="isPickerOpen('single-date')"
-          [attr.aria-pressed]="isPickerOpen('single-date')"
-          [disabled]="inputDisabled()"
-          (mousedown)="$event.preventDefault()"
-          (click)="toggleDatePicker(singlePicker, 'single-date', $event)"
-          aria-label="Toggle date picker"
-        >
-          <mat-icon>{{ pickerIcon('single-date', 'calendar_month') }}</mat-icon>
-        </button>
-        <mat-datepicker
-          #singlePicker
-          (opened)="setPickerOpen('single-date', true)"
-          (closed)="setPickerOpen('single-date', false)"
-        ></mat-datepicker>
-      </mat-form-field>
-      @if (hasTime()) {
-        <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
+  <div class="date-input date-input--single" [class.date-input--with-time]="hasTime()" [class.date-input--with-meta]="hasMeta()">
+    <label class="date-input__field">
+      @if (label) {
+        <span class="date-input__label">{{ label }}@if (required) { <strong>*</strong> }</span>
+      }
+      <div class="date-input__row">
+        <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
           <input
             matInput
-            [matTimepicker]="singleTimePicker"
-            [matTimepickerOpenOnClick]="true"
-            [ngModel]="singleTimeValue"
-            (ngModelChange)="onSingleTimeChange($event)"
+            [matDatepicker]="singlePicker"
+            [ngModel]="singleDateValue"
+            (ngModelChange)="onSingleDateChange($event)"
             (blur)="markTouched()"
+            [min]="resolvedSingleMin()"
+            [max]="resolvedSingleMax()"
             [disabled]="inputDisabled()"
+            [placeholder]="placeholder"
           />
           <button
             matSuffix
             type="button"
             class="date-input__toggle"
-            [class.date-input__toggle--open]="isPickerOpen('single-time')"
-            [attr.aria-pressed]="isPickerOpen('single-time')"
+            [class.date-input__toggle--open]="isPickerOpen('single-date')"
+            [attr.aria-pressed]="isPickerOpen('single-date')"
             [disabled]="inputDisabled()"
             (mousedown)="$event.preventDefault()"
-            (click)="toggleTimePicker(singleTimePicker, 'single-time', $event)"
-            aria-label="Toggle time picker"
+            (click)="toggleDatePicker(singlePicker, 'single-date', $event)"
+            aria-label="Toggle date picker"
           >
-            <mat-icon>{{ pickerIcon('single-time', 'schedule') }}</mat-icon>
+            <mat-icon>{{ pickerIcon('single-date', 'calendar_month') }}</mat-icon>
           </button>
-          <mat-timepicker
-            #singleTimePicker
-            (opened)="setPickerOpen('single-time', true)"
-            (closed)="setPickerOpen('single-time', false)"
-          ></mat-timepicker>
+          <mat-datepicker
+            #singlePicker
+            (opened)="setPickerOpen('single-date', true)"
+            (closed)="setPickerOpen('single-date', false)"
+          ></mat-datepicker>
         </mat-form-field>
-      }
-    </div>
-  </label>
+        @if (hasTime()) {
+          <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
+            <input
+              matInput
+              [matTimepicker]="singleTimePicker"
+              [matTimepickerOpenOnClick]="true"
+              [ngModel]="singleTimeValue"
+              (ngModelChange)="onSingleTimeChange($event)"
+              (blur)="markTouched()"
+              [disabled]="inputDisabled()"
+            />
+            <button
+              matSuffix
+              type="button"
+              class="date-input__toggle"
+              [class.date-input__toggle--open]="isPickerOpen('single-time')"
+              [attr.aria-pressed]="isPickerOpen('single-time')"
+              [disabled]="inputDisabled()"
+              (mousedown)="$event.preventDefault()"
+              (click)="toggleTimePicker(singleTimePicker, 'single-time', $event)"
+              aria-label="Toggle time picker"
+            >
+              <mat-icon>{{ pickerIcon('single-time', 'schedule') }}</mat-icon>
+            </button>
+            <mat-timepicker
+              #singleTimePicker
+              (opened)="setPickerOpen('single-time', true)"
+              (closed)="setPickerOpen('single-time', false)"
+            ></mat-timepicker>
+          </mat-form-field>
+        }
+      </div>
+    </label>
+    @if (hasMeta()) {
+      <div class="date-input__meta">
+        @if (metaLabel()) {
+          <span class="date-input__meta-label">{{ metaLabel() }}</span>
+        }
+        <span class="date-input__meta-badge" [ngClass]="'date-input__meta-badge--' + metaPalette()">
+          @if (metaIcon()) {
+            <span class="date-input__meta-icon">{{ metaIcon() }}</span>
+          }
+          <span>{{ metaValue() }}</span>
+        </span>
+      </div>
+    }
+  </div>
 }

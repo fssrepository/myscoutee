@@ -12,7 +12,6 @@ import { buildTabbedMenuModel } from '../components/menu/menu-option-groups';
 import type {
   FormFlowCompletionItemConfig,
   FormFlowControlModel,
-  FormFlowDateMetaValue,
   FormFlowDraft,
   FormFlowMenuControlConfig,
   FormFlowModel,
@@ -307,21 +306,6 @@ export class ProfileFormFlowDataConverter {
 }
 
 export class ProfileFormFlowConverter {
-  private static readonly horoscopeBadgeMetaBySign: Record<string, FormFlowDateMetaValue> = {
-    Aries: { label: 'Kos', icon: '♈', palette: 'aries' },
-    Taurus: { label: 'Bika', icon: '♉', palette: 'taurus' },
-    Gemini: { label: 'Ikrek', icon: '♊', palette: 'gemini' },
-    Cancer: { label: 'Rák', icon: '♋', palette: 'cancer' },
-    Leo: { label: 'Oroszlán', icon: '♌', palette: 'leo' },
-    Virgo: { label: 'Szűz', icon: '♍', palette: 'virgo' },
-    Libra: { label: 'Mérleg', icon: '♎', palette: 'libra' },
-    Scorpio: { label: 'Skorpió', icon: '♏', palette: 'scorpio' },
-    Sagittarius: { label: 'Nyilas', icon: '♐', palette: 'sagittarius' },
-    Capricorn: { label: 'Bak', icon: '♑', palette: 'capricorn' },
-    Aquarius: { label: 'Vízöntő', icon: '♒', palette: 'aquarius' },
-    Pisces: { label: 'Halak', icon: '♓', palette: 'pisces' }
-  };
-
   static completionPercent(data: ProfileExtDto): number {
     const profile = data.profile;
     const model = this.convert({
@@ -520,9 +504,9 @@ export class ProfileFormFlowConverter {
         placeholder: 'dd/mm/yyyy',
         config: {
           meta: {
+            kind: 'horoscope',
             label: 'Horoszkóp',
-            emptyLabel: 'Nincs beállítva',
-            value: value => this.horoscopeBadge(value)
+            emptyLabel: 'Nincs beállítva'
           }
         }
       },
@@ -787,16 +771,6 @@ export class ProfileFormFlowConverter {
       default:
         return 'muted';
     }
-  }
-
-  private static horoscopeBadge(value: unknown): FormFlowDateMetaValue | string {
-    const birthday = `${(value as Partial<ProfileExtDto> | null | undefined)?.profile?.birthday ?? ''}`.trim();
-    const parsed = AppUtils.fromIsoDate(birthday);
-    if (!parsed) {
-      return 'Nincs beállítva';
-    }
-    const horoscope = AppUtils.horoscopeByDate(parsed);
-    return this.horoscopeBadgeMetaBySign[horoscope] ?? this.horoscopeBadgeMetaBySign['Pisces'];
   }
 
   private static detailSelectMenuConfig(

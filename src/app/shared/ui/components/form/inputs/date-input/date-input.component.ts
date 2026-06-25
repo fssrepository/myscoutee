@@ -15,6 +15,29 @@ export type DateInputMode = 'single' | 'range';
 export type DateInputPrecision = 'date' | 'minute';
 export type DateInputValueFormat = 'iso-date' | 'iso-date-time';
 export type DateInputRangeValue = DateRangeDto;
+export type DateInputMetaKind = 'horoscope';
+export type DateInputMetaPalette =
+  | 'aquarius'
+  | 'aries'
+  | 'blue'
+  | 'brown'
+  | 'cancer'
+  | 'capricorn'
+  | 'gemini'
+  | 'green'
+  | 'leo'
+  | 'libra'
+  | 'muted'
+  | 'orange'
+  | 'pink'
+  | 'pisces'
+  | 'purple'
+  | 'sagittarius'
+  | 'scorpio'
+  | 'taurus'
+  | 'teal'
+  | 'violet'
+  | 'virgo';
 type DateInputPickerKey = 'single-date' | 'single-time' | 'start-date' | 'start-time' | 'end-date' | 'end-time';
 
 export type DateInputValue = string | DateInputRangeValue | null;
@@ -39,12 +62,27 @@ export interface DateInputRangeModel {
   bounds?: DateInputRangeBoundsModel | null;
 }
 
+export interface DateInputMetaModel {
+  kind?: DateInputMetaKind;
+  label?: string;
+  icon?: string;
+  palette?: DateInputMetaPalette;
+  emptyLabel?: string;
+}
+
+export interface DateInputMetaValue {
+  label?: string | null;
+  icon?: string | null;
+  palette?: DateInputMetaPalette;
+}
+
 export interface DateInputModel {
   mode?: DateInputMode;
   precision?: DateInputPrecision;
   valueFormat?: DateInputValueFormat;
   field?: DateInputFieldModel;
   range?: DateInputRangeModel;
+  meta?: DateInputMetaModel | null;
   readOnly?: boolean;
   disabled?: boolean;
 }
@@ -75,6 +113,21 @@ export interface DateInputModel {
 })
 export class DateInputComponent implements ControlValueAccessor {
   @Input() model: DateInputModel | null = null;
+
+  private static readonly horoscopeMetaBySign: Record<string, DateInputMetaValue> = {
+    Aries: { label: 'Kos', icon: '♈', palette: 'aries' },
+    Taurus: { label: 'Bika', icon: '♉', palette: 'taurus' },
+    Gemini: { label: 'Ikrek', icon: '♊', palette: 'gemini' },
+    Cancer: { label: 'Rák', icon: '♋', palette: 'cancer' },
+    Leo: { label: 'Oroszlán', icon: '♌', palette: 'leo' },
+    Virgo: { label: 'Szűz', icon: '♍', palette: 'virgo' },
+    Libra: { label: 'Mérleg', icon: '♎', palette: 'libra' },
+    Scorpio: { label: 'Skorpió', icon: '♏', palette: 'scorpio' },
+    Sagittarius: { label: 'Nyilas', icon: '♐', palette: 'sagittarius' },
+    Capricorn: { label: 'Bak', icon: '♑', palette: 'capricorn' },
+    Aquarius: { label: 'Vízöntő', icon: '♒', palette: 'aquarius' },
+    Pisces: { label: 'Halak', icon: '♓', palette: 'pisces' }
+  };
 
   protected singleDateValue: Date | null = null;
   protected singleTimeValue: Date | null = null;
@@ -198,6 +251,10 @@ export class DateInputComponent implements ControlValueAccessor {
     return this.range.bounds;
   }
 
+  private get meta(): DateInputMetaModel | null | undefined {
+    return this.model?.meta;
+  }
+
   protected resolvedSingleMin(): Date | null {
     return this.toDatePickerBoundary(this.singleField.min);
   }
@@ -262,6 +319,30 @@ export class DateInputComponent implements ControlValueAccessor {
 
   protected pickerIcon(key: DateInputPickerKey, closedIcon: string): string {
     return this.isPickerOpen(key) ? 'close' : closedIcon;
+  }
+
+  protected hasMeta(): boolean {
+    return this.meta !== null && this.meta !== undefined;
+  }
+
+  protected metaLabel(): string {
+    return `${this.meta?.label ?? ''}`.trim();
+  }
+
+  protected metaIcon(): string {
+    return this.resolvedMetaValue()?.icon?.trim()
+      || `${this.meta?.icon ?? ''}`.trim();
+  }
+
+  protected metaValue(): string {
+    const value = this.resolvedMetaValue();
+    return `${value?.label ?? ''}`.trim() || `${this.meta?.emptyLabel ?? ''}`.trim();
+  }
+
+  protected metaPalette(): string {
+    return this.resolvedMetaValue()?.palette?.trim()
+      || `${this.meta?.palette ?? 'blue'}`.trim()
+      || 'blue';
   }
 
   protected setPickerOpen(key: DateInputPickerKey, open: boolean): void {
@@ -439,5 +520,28 @@ export class DateInputComponent implements ControlValueAccessor {
       && typeof value === 'object'
       && 'startAt' in value
       && 'endAt' in value;
+  }
+
+  private resolvedMetaValue(): DateInputMetaValue | null {
+    if (!this.meta) {
+      return null;
+    }
+    if (this.meta.kind === 'horoscope') {
+      return this.horoscopeMetaValue();
+    }
+    return {
+      label: this.meta.emptyLabel ?? '',
+      icon: this.meta.icon ?? '',
+      palette: this.meta.palette ?? 'blue'
+    };
+  }
+
+  private horoscopeMetaValue(): DateInputMetaValue | null {
+    const date = this.singleDateValue ?? (typeof this.currentValue === 'string' ? this.toDate(this.currentValue) : null);
+    if (!date) {
+      return null;
+    }
+    const horoscope = AppUtils.horoscopeByDate(date);
+    return DateInputComponent.horoscopeMetaBySign[horoscope] ?? DateInputComponent.horoscopeMetaBySign['Pisces'];
   }
 }

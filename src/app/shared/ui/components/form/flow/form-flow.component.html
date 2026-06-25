@@ -251,50 +251,12 @@
                         <p>{{ summaryValue(control) }}</p>
                       </article>
                     } @else if (control.kind === 'date') {
-                      <div class="form-flow__date-control" [class.form-flow__date-control--with-meta]="hasDateMeta(control)">
-                        <div class="form-flow__date-field">
-                          <label class="form-flow__label">
-                            <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
-                          </label>
-                          <div class="form-flow__date-wrap">
-                            <input
-                              matInput
-                              class="form-flow__date-input"
-                              [matDatepicker]="formFlowDatePicker"
-                              [disabled]="isControlDisabled(control)"
-                              [placeholder]="control.placeholder || 'dd/mm/yyyy'"
-                              [value]="controlDateValue(control)"
-                              (dateChange)="updateDateControlValue(control, $event.value)"
-                            />
-                            <button
-                              type="button"
-                              class="form-flow__date-button"
-                              [disabled]="isControlDisabled(control)"
-                              (click)="formFlowDatePicker.open()"
-                              [attr.aria-label]="control.label || 'Select date'"
-                            >
-                              <mat-icon>calendar_month</mat-icon>
-                            </button>
-                            <mat-datepicker #formFlowDatePicker xPosition="end" yPosition="below"></mat-datepicker>
-                          </div>
-                        </div>
-                        @if (hasDateMeta(control)) {
-                          <div class="form-flow__date-meta">
-                            @if (dateMetaLabel(control)) {
-                              <span class="form-flow__date-meta-label">{{ dateMetaLabel(control) }}</span>
-                            }
-                            <span
-                              class="form-flow__date-meta-badge"
-                              [ngClass]="'form-flow__date-meta-badge--' + dateMetaPalette(control)"
-                            >
-                              @if (dateMetaIcon(control)) {
-                                <span class="form-flow__date-meta-icon">{{ dateMetaIcon(control) }}</span>
-                              }
-                              <span>{{ dateMetaValue(control) }}</span>
-                            </span>
-                          </div>
-                        }
-                      </div>
+                      <app-date-input
+                        class="form-flow__date-input"
+                        [model]="dateInputModel(control)"
+                        [ngModel]="controlTextValue(control)"
+                        (ngModelChange)="updateDateControlValue(control, $event)"
+                      ></app-date-input>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

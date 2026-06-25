@@ -16,10 +16,7 @@ import {
   inject
 } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 
 import { AppMenuComponent } from '../../menu/menu.component';
 import type {
@@ -35,11 +32,11 @@ import type {
 import { EditableImageCarouselComponent } from '../../editable-image-carousel';
 import { ProgressIndicatorComponent } from '../../progress-indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
+import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
 import type {
   FormFlowActionEvent,
   FormFlowControlModel,
   FormFlowDateControlConfig,
-  FormFlowDateMetaValue,
   FormFlowImageCarouselControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
@@ -63,11 +60,9 @@ interface FormFlowSelectedMenuItem {
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
     AppMenuComponent,
+    DateInputComponent,
     EditableImageCarouselComponent,
     ProgressIndicatorComponent,
     ImageCardComponent,
@@ -109,7 +104,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private readonly emptyStringArray: readonly string[] = [];
   private readonly stringArrayValueCache = new WeakMap<readonly unknown[], readonly string[]>();
   private readonly csvStringArrayValueCache = new Map<string, readonly string[]>();
-  private readonly dateValueCache = new Map<string, Date>();
   private readonly menuTriggerCache = new WeakMap<FormFlowControlModel, { signature: string; trigger: AppMenuTrigger | null }>();
   private onControlChange: (value: unknown) => void = () => undefined;
   private onControlTouched: () => void = () => undefined;
@@ -342,39 +336,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return Number.isFinite(numberValue) ? numberValue : null;
   }
 
-  protected controlDateValue(control: FormFlowControlModel): Date | null {
-    const value = this.controlTextValue(control).trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return null;
-    }
-    const cached = this.dateValueCache.get(value);
-    if (cached) {
-      return cached;
-    }
-    const [year, month, day] = value.split('-').map(part => Number(part));
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
-      return null;
-    }
-    const parsed = new Date(year, month - 1, day);
-    if (!Number.isFinite(parsed.getTime())) {
-      return null;
-    }
-    this.dateValueCache.set(value, parsed);
-    return parsed;
-  }
-
-  protected controlDateLabel(control: FormFlowControlModel): string {
-    const value = this.controlDateValue(control);
-    if (!value) {
-      return control.placeholder || 'Select date';
-    }
-    return value.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  }
-
   protected controlStringArrayValue(control: FormFlowControlModel): readonly string[] {
     const value = this.controlValue(control);
     if (!Array.isArray(value)) {
@@ -404,15 +365,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     this.cdr.markForCheck();
   }
 
-  protected updateDateControlValue(control: FormFlowControlModel, value: Date | string | null): void {
-    if (value instanceof Date && Number.isFinite(value.getTime())) {
-      const year = value.getFullYear();
-      const month = `${value.getMonth() + 1}`.padStart(2, '0');
-      const day = `${value.getDate()}`.padStart(2, '0');
-      this.updateControlValue(control, `${year}-${month}-${day}`);
-      return;
-    }
-    this.updateControlValue(control, '');
+  protected updateDateControlValue(control: FormFlowControlModel, value: DateInputValue): void {
+    this.updateControlValue(control, typeof value === 'string' ? value : '');
   }
 
   protected isControlDisabled(control: FormFlowControlModel): boolean {
@@ -541,41 +495,23 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isDateControlConfig(control.config) ? control.config : {};
   }
 
-  protected hasDateMeta(control: FormFlowControlModel): boolean {
-    return this.dateConfig(control).meta !== undefined && this.dateConfig(control).meta !== null;
-  }
-
-  protected dateMetaLabel(control: FormFlowControlModel): string {
-    return this.dateConfig(control).meta?.label?.trim() || '';
-  }
-
-  protected dateMetaIcon(control: FormFlowControlModel): string {
-    return this.dateMetaValueObject(control)?.icon?.trim()
-      || this.dateConfig(control).meta?.icon?.trim()
-      || '';
-  }
-
-  protected dateMetaPalette(control: FormFlowControlModel): string {
-    return this.dateMetaValueObject(control)?.palette?.trim()
-      || this.dateConfig(control).meta?.palette?.trim()
-      || 'blue';
-  }
-
-  protected dateMetaValue(control: FormFlowControlModel): string {
-    const meta = this.dateConfig(control).meta;
-    const value = meta?.value?.(this.formValue, control);
-    if (this.isDateMetaValue(value)) {
-      return `${value.label ?? ''}`.trim() || meta?.emptyLabel?.trim() || '';
-    }
-    if (value === null || value === undefined || `${value}`.trim().length === 0) {
-      return meta?.emptyLabel?.trim() || '';
-    }
-    return `${value}`;
-  }
-
-  private dateMetaValueObject(control: FormFlowControlModel): FormFlowDateMetaValue | null {
-    const value = this.dateConfig(control).meta?.value?.(this.formValue, control);
-    return this.isDateMetaValue(value) ? value : null;
+  protected dateInputModel(control: FormFlowControlModel): DateInputModel {
+    const config = this.dateConfig(control);
+    const model = config.model ?? {};
+    return {
+      ...model,
+      mode: model.mode ?? 'single',
+      precision: model.precision ?? 'date',
+      valueFormat: model.valueFormat ?? 'iso-date',
+      field: {
+        ...(model.field ?? {}),
+        label: model.field?.label ?? control.label ?? '',
+        placeholder: model.field?.placeholder ?? control.placeholder ?? 'dd/mm/yyyy',
+        required: model.field?.required ?? control.required === true
+      },
+      meta: model.meta ?? config.meta ?? null,
+      disabled: this.isControlDisabled(control) || model.disabled === true
+    };
   }
 
   protected summaryTitle(): string {
@@ -1054,10 +990,6 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
-  private isDateMetaValue(value: unknown): value is FormFlowDateMetaValue {
-    return this.isRecord(value) && ('label' in value || 'icon' in value || 'palette' in value);
-  }
-
   private isMenuControlConfig(config: FormFlowControlModel['config']): config is FormFlowMenuControlConfig {
     return this.isRecord(config) && ('model' in config || 'items' in config || 'trigger' in config || 'filterable' in config);
   }
@@ -1067,7 +999,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   private isDateControlConfig(config: FormFlowControlModel['config']): config is FormFlowDateControlConfig {
-    return this.isRecord(config) && 'meta' in config;
+    return this.isRecord(config) && ('meta' in config || 'model' in config);
   }
 
   private queueViewportSync(behavior: ScrollBehavior, targetIndex = this.visiblePageIndex()): void {
