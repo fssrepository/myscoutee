@@ -527,7 +527,7 @@
   align-items: stretch;
   gap: var(--smart-list-horizontal-gap);
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   padding-bottom: 0.52rem;
   scroll-padding-left: 0;
   scrollbar-width: thin;

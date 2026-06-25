@@ -1,17 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatTimepickerModule } from '@angular/material/timepicker';
 import { AppUtils } from '../../../shared/app-utils';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
+  DateInputComponent,
+  type DateInputRangeValue,
   LocationInputComponent,
   type LocationInputConfig,
   type AppMenuItem,
@@ -73,6 +72,7 @@ export interface EventSubeventStageFormModel {
   pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
+  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: EventSubeventTournamentLeaderboardType;
@@ -88,10 +88,8 @@ export interface EventSubeventStageFormModel {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
-    MatTimepickerModule,
-    MatNativeDateModule,
     AppMenuComponent,
+    DateInputComponent,
     LocationInputComponent,
     PricingEditorInputComponent
   ],
@@ -124,10 +122,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   @Output() readonly tournamentLeaderboardTypeChange = new EventEmitter<EventSubeventTournamentLeaderboardType | string | null | undefined>();
   @Output() readonly tournamentAdvancePerGroupChange = new EventEmitter<number | string>();
 
-  protected subEventStartDateValue: Date | null = null;
-  protected subEventStartTimeValue: Date | null = null;
-  protected subEventEndDateValue: Date | null = null;
-  protected subEventEndTimeValue: Date | null = null;
+  private subEventDateRangeValueState: DateInputRangeValue = { startAt: '', endAt: '' };
   protected readonly subeventPricingEditorConfig: PricingEditorConfig = {
     context: 'subevent',
     presentation: 'popup-summary',
@@ -143,40 +138,38 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model'] || changes['view']) {
-      this.syncDateTimeControlsFromModel();
+      this.syncDateRangeValueFromModel();
     }
   }
 
-  protected onStartDateChange(value: Date | null): void {
-    this.subEventStartDateValue = value;
-    this.model.startAt = AppUtils.applyDatePartToIsoLocal(this.ensureIsoLocal(this.model.startAt), value);
-    this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
+  protected get subEventDateRangeValue(): DateInputRangeValue {
+    return this.subEventDateRangeValueState;
   }
 
-  protected onStartTimeChange(value: Date | null): void {
-    this.subEventStartTimeValue = value;
-    this.model.startAt = AppUtils.applyTimePartFromDateToIsoLocal(this.ensureIsoLocal(this.model.startAt), value);
+  protected set subEventDateRangeValue(value: DateInputRangeValue | string | null) {
+    if (!this.isDateInputRangeValue(value)) {
+      return;
+    }
+    this.model.startAt = value.startAt;
+    this.model.endAt = value.endAt;
     this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
-  }
-
-  protected onEndDateChange(value: Date | null): void {
-    this.subEventEndDateValue = value;
-    this.model.endAt = AppUtils.applyDatePartToIsoLocal(this.ensureIsoLocal(this.model.endAt), value);
-    this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
-  }
-
-  protected onEndTimeChange(value: Date | null): void {
-    this.subEventEndTimeValue = value;
-    this.model.endAt = AppUtils.applyTimePartFromDateToIsoLocal(this.ensureIsoLocal(this.model.endAt), value);
-    this.normalizeDateRange();
-    this.syncDateTimeControlsFromModel();
+    this.syncDateRangeValueFromModel();
   }
 
   protected trackByInsertOption(_: number, option: { id: string }): string {
     return option.id;
+  }
+
+  protected canSaveCurrentModel(): boolean {
+    return !this.view.readOnly
+      && this.hasText(this.model.name)
+      && this.hasText(this.model.description)
+      && this.hasText(this.model.startAt)
+      && this.hasText(this.model.endAt);
+  }
+
+  protected fieldInvalid(field: 'name' | 'description'): boolean {
+    return !this.hasText(this.model[field]);
   }
 
   protected optionalMenuTrigger(): AppMenuTrigger {
@@ -291,11 +284,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return option === 'Fifa' ? 'orange' : 'blue';
   }
 
-  private ensureIsoLocal(value: string): string {
-    const parsed = this.parseDateTime(value) ?? new Date();
-    return AppUtils.toIsoDateTimeLocal(parsed);
-  }
-
   private normalizeDateRange(): void {
     const boundStart = this.parseDateTime(this.view.timingBoundStartAt);
     const boundEnd = this.parseDateTime(this.view.timingBoundEndAt);
@@ -337,11 +325,18 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     this.model.endAt = AppUtils.toIsoDateTimeLocal(safeEnd);
   }
 
-  private syncDateTimeControlsFromModel(): void {
-    this.subEventStartDateValue = this.parseDateTime(this.model.startAt);
-    this.subEventStartTimeValue = this.parseDateTime(this.model.startAt);
-    this.subEventEndDateValue = this.parseDateTime(this.model.endAt);
-    this.subEventEndTimeValue = this.parseDateTime(this.model.endAt);
+  private syncDateRangeValueFromModel(): void {
+    this.subEventDateRangeValueState = {
+      startAt: this.model.startAt,
+      endAt: this.model.endAt
+    };
+  }
+
+  private isDateInputRangeValue(value: DateInputRangeValue | string | null): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
   }
 
   private defaultView(): EventSubeventStageFormPopupView {
@@ -412,5 +407,9 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     const normalized = raw.replace(/\//g, '-');
     const parsed = new Date(normalized);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private hasText(value: unknown): boolean {
+    return `${value ?? ''}`.trim().length > 0;
   }
 }

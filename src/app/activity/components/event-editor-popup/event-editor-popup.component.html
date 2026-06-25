@@ -113,6 +113,14 @@
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventEditorService.readOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
+            <app-event-subevent-definitions-panel
+              class="experience-description-field"
+              [(ngModel)]="eventDetailDTO.subEventDefinitions"
+              [mode]="eventDetailDTO.mode"
+              [parentStartAt]="eventDetailDTO.startAtIso"
+              [parentEndAt]="eventDetailDTO.endAtIso"
+              [readOnly]="eventStructureReadOnly()"
+            ></app-event-subevent-definitions-panel>
             <section class="event-scheduling-stack">
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -132,47 +140,16 @@
                     </label>
                   </div>
                 </div>
-                <label class="event-datetime-label">
-                  <span>Start</span>
-                  <div class="event-datetime-row">
-                    <mat-form-field appearance="outline" class="event-date-field event-date-field-start"
-                      subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventStartPicker" [ngModel]="eventStartDateValue"
-                        (ngModelChange)="onEventStartDateChange($event)" [disabled]="eventStructureReadOnly()" />
-                      <mat-datepicker-toggle matSuffix [for]="eventStartPicker"></mat-datepicker-toggle>
-                      <mat-datepicker #eventStartPicker></mat-datepicker>
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="event-time-field event-time-field-start"
-                      subscriptSizing="dynamic">
-                      <input matInput [matTimepicker]="eventStartTimePicker" [matTimepickerOpenOnClick]="true"
-                        [ngModel]="eventStartTimeValue" (ngModelChange)="onEventStartTimeChange($event)"
-                        [disabled]="eventStructureReadOnly()" />
-                      <mat-timepicker-toggle matSuffix [for]="eventStartTimePicker"></mat-timepicker-toggle>
-                      <mat-timepicker #eventStartTimePicker></mat-timepicker>
-                    </mat-form-field>
-                  </div>
-                </label>
-                <label class="event-datetime-label">
-                  <span>End</span>
-                  <div class="event-datetime-row">
-                    <mat-form-field appearance="outline" class="event-date-field event-date-field-end"
-                      subscriptSizing="dynamic">
-                      <input matInput [matDatepicker]="eventEndPicker" [ngModel]="eventEndDateValue"
-                        (ngModelChange)="onEventEndDateChange($event)" [min]="eventEndDateMin()"
-                        [disabled]="eventStructureReadOnly()" />
-                      <mat-datepicker-toggle matSuffix [for]="eventEndPicker"></mat-datepicker-toggle>
-                      <mat-datepicker #eventEndPicker></mat-datepicker>
-                    </mat-form-field>
-                    <mat-form-field appearance="outline" class="event-time-field event-time-field-end"
-                      subscriptSizing="dynamic">
-                      <input matInput [matTimepicker]="eventEndTimePicker" [matTimepickerOpenOnClick]="true"
-                        [ngModel]="eventEndTimeValue" (ngModelChange)="onEventEndTimeChange($event)"
-                        [disabled]="eventStructureReadOnly()" />
-                      <mat-timepicker-toggle matSuffix [for]="eventEndTimePicker"></mat-timepicker-toggle>
-                      <mat-timepicker #eventEndTimePicker></mat-timepicker>
-                    </mat-form-field>
-                  </div>
-                </label>
+                <app-date-input
+                  class="event-date-input"
+                  mode="range"
+                  precision="minute"
+                  startLabel="Start"
+                  endLabel="End"
+                  [(ngModel)]="eventDateRangeValue"
+                  [endMin]="eventDateRangeEndMin()"
+                  [readOnly]="eventStructureReadOnly()"
+                ></app-date-input>
               </section>
               <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
                 [config]="eventSlotsInputConfig"

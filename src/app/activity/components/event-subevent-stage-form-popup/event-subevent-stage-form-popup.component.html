@@ -31,8 +31,8 @@
             <button
               type="button"
               class="popup-header-add-btn subevent-leaderboard-save-btn"
-              [class.form-save-invalid]="!view.canSave"
-              [disabled]="!view.canSave"
+              [class.form-save-invalid]="!canSaveCurrentModel()"
+              [disabled]="!canSaveCurrentModel()"
               (click)="save.emit($event)"
               aria-label="Save sub event"
               >
@@ -54,7 +54,7 @@
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
           <label class="experience-title-field subevent-name-field">
             <span>Name <span class="required-star">*</span></span>
-            <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="view.invalidName" placeholder="Stage name" />
+            <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="fieldInvalid('name')" placeholder="Stage name" />
           </label>
           @if (model.optional) {
             <label class="subevent-capacity-range-field">
@@ -117,7 +117,7 @@
           }
           <label class="experience-description-field">
             <span>Description <span class="required-star">*</span></span>
-            <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="view.invalidDescription" placeholder="Describe this stage"></textarea>
+            <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="fieldInvalid('description')" placeholder="Describe this stage"></textarea>
           </label>
           <label class="event-datetime-label">
             <span>{{ view.startFieldLabel }}</span>

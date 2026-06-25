@@ -5,9 +5,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatTimepickerModule } from '@angular/material/timepicker';
-import { MatNativeDateModule } from '@angular/material/core';
 import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { Subscription } from 'rxjs';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
@@ -30,6 +27,8 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger,
   CounterBadgePipe,
+  DateInputComponent,
+  type DateInputRangeValue,
   EditableImageCarouselComponent,
   EventPoliciesInputComponent,
   EventSlotsInputComponent,
@@ -40,6 +39,7 @@ import {
   type PricingEditorConfig,
   ProgressIndicatorComponent
 } from '../../../shared/ui';
+import { EventSubeventDefinitionsPanelComponent } from '../event-subevent-definitions-panel';
 import { EventSubeventsInputComponent } from '../event-subevents-input';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
@@ -62,14 +62,13 @@ type EventEditorMenuContext =
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatDatepickerModule,
-    MatTimepickerModule,
-    MatNativeDateModule,
     AppMenuComponent,
+    DateInputComponent,
     EditableImageCarouselComponent,
     EventPoliciesInputComponent,
     EventSlotsInputComponent,
     LocationInputComponent,
+    EventSubeventDefinitionsPanelComponent,
     EventSubeventsInputComponent,
     PricingEditorInputComponent,
     ProgressIndicatorComponent,
@@ -209,10 +208,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventDetailDTO: ActivityEventDetailDTO = this.createEmptyEventDetailDTO();
 
-  eventStartDateValue: Date | null = null;
-  eventStartTimeValue: Date | null = null;
-  eventEndDateValue: Date | null = null;
-  eventEndTimeValue: Date | null = null;
+  private eventDateRangeValueState: DateInputRangeValue = { startAt: '', endAt: '' };
   showSubEventsPopup = false;
   isSavePending = false;
 
@@ -302,7 +298,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   handleSubEventsChange(subEvents: readonly ContractTypes.SubEventDTO[]): void {
     this.eventDetailDTO.applySubEvents(subEvents);
     this.syncMainEventBoundsFromSubEvents();
-    this.syncDateTimeControlsFromDTO();
+    this.syncEventDateRangeValueFromDTO();
   }
 
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
@@ -369,6 +365,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       invitedMemberUserIds: [],
       pendingRequestMemberUserIds: [],
       topics: [],
+      subEventDefinitions: [],
       subEvents: [],
       mode: 'Casual',
       rating: 0,
@@ -447,7 +444,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   saveEventDetailDTO(): void {
-    this.syncEventDetailDTOFromDateTimeControls();
     if (!this.canSaveEventDetailDTO() || this.isSavePending) {
       return;
     }
@@ -546,7 +542,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         layout: 'big',
         active: this.eventDetailDTO.mode === 'Tournament',
         checked: this.eventDetailDTO.mode === 'Tournament',
-        palette: this.eventDetailDTO.mode === 'Tournament' ? 'orange' : 'green',
+        palette: this.eventDetailDTO.mode === 'Tournament' ? 'cyan' : 'slate',
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-event-mode' }
@@ -927,12 +923,22 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
   }
 
-  protected eventEndDateMin(): Date | null {
-    const start = this.eventStartDateValue ?? AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.startAtIso);
-    if (!start) {
-      return null;
+  protected eventDateRangeEndMin(): string {
+    return this.eventDetailDTO.startAtIso;
+  }
+
+  protected get eventDateRangeValue(): DateInputRangeValue {
+    return this.eventDateRangeValueState;
+  }
+
+  protected set eventDateRangeValue(value: DateInputRangeValue | string | null) {
+    if (this.eventStructureReadOnly() || !this.isDateInputRangeValue(value)) {
+      return;
     }
-    return new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    this.eventDetailDTO.startAtIso = value.startAt;
+    this.eventDetailDTO.endAtIso = value.endAt;
+    this.normalizeEventDateRange();
+    this.syncEventDateRangeValueFromDTO();
   }
 
   protected eventFrequencyUsesSlots(): boolean {
@@ -1011,7 +1017,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.eventDetailDTO.mode = this.eventDetailDTO.mode === 'Tournament' ? 'Casual' : 'Tournament';
     this.syncMainEventBoundsFromSubEvents();
-    this.syncDateTimeControlsFromDTO();
+    this.syncEventDateRangeValueFromDTO();
   }
 
   toggleEventAutoInviter(event: Event): void {
@@ -1033,46 +1039,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   onEventLocationChange(value: string): void {
     this.eventDetailDTO.location = ActivityEventDetailDTO.normalizeLocation(value);
     this.syncFirstSubEventLocationFromMainEvent();
-  }
-
-  onEventStartDateChange(value: Date | null): void {
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    this.eventStartDateValue = value;
-    this.syncEventDetailDTOFromDateTimeControls();
-    this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromDTO();
-  }
-
-  onEventStartTimeChange(value: Date | null): void {
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    this.eventStartTimeValue = value;
-    this.syncEventDetailDTOFromDateTimeControls();
-    this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromDTO();
-  }
-
-  onEventEndDateChange(value: Date | null): void {
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    this.eventEndDateValue = value;
-    this.syncEventDetailDTOFromDateTimeControls();
-    this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromDTO();
-  }
-
-  onEventEndTimeChange(value: Date | null): void {
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    this.eventEndTimeValue = value;
-    this.syncEventDetailDTOFromDateTimeControls();
-    this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromDTO();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -1145,7 +1111,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    this.syncEventDetailDTOFromDateTimeControls();
     this.normalizeEventDateRange();
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
@@ -1261,6 +1226,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         pricing: PricingBuilder.clonePricingConfig(this.eventDetailDTO.pricing),
         policies: ActivityEventDetailDTO.normalizePolicies(this.eventDetailDTO.policies),
         slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates),
+        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(this.eventDetailDTO.subEventDefinitions),
         subEvents: ActivityEventDetailDTO.normalizeSubEvents(this.eventDetailDTO.subEvents)
       }
     });
@@ -1368,7 +1334,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange();
-    this.syncDateTimeControlsFromDTO();
+    this.syncEventDateRangeValueFromDTO();
     this.seedDraftAutosaveSignature();
   }
 
@@ -1402,22 +1368,22 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     this.eventDetailDTO.mode = 'Casual';
-    this.syncDateTimeControlsFromDTO();
+    this.syncEventDateRangeValueFromDTO();
     this.seedDraftAutosaveSignature();
   }
 
-  private syncDateTimeControlsFromDTO(): void {
-    this.eventStartDateValue = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.startAtIso);
-    this.eventEndDateValue = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.endAtIso);
-    this.eventStartTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.startAtIso);
-    this.eventEndTimeValue = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.endAtIso);
+  private syncEventDateRangeValueFromDTO(): void {
+    this.eventDateRangeValueState = {
+      startAt: this.eventDetailDTO.startAtIso,
+      endAt: this.eventDetailDTO.endAtIso
+    };
   }
 
-  private syncEventDetailDTOFromDateTimeControls(): void {
-    this.eventDetailDTO.startAtIso = AppUtils.applyDatePartToIsoLocal(this.eventDetailDTO.startAtIso, this.eventStartDateValue);
-    this.eventDetailDTO.startAtIso = AppUtils.applyTimePartFromDateToIsoLocal(this.eventDetailDTO.startAtIso, this.eventStartTimeValue);
-    this.eventDetailDTO.endAtIso = AppUtils.applyDatePartToIsoLocal(this.eventDetailDTO.endAtIso, this.eventEndDateValue);
-    this.eventDetailDTO.endAtIso = AppUtils.applyTimePartFromDateToIsoLocal(this.eventDetailDTO.endAtIso, this.eventEndTimeValue);
+  private isDateInputRangeValue(value: DateInputRangeValue | string | null): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
   }
 
   private normalizeEventDateRange(): void {
@@ -1496,7 +1462,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (minStartMs !== null && maxEndMs !== null) {
       this.eventDetailDTO.startAtIso = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
       this.eventDetailDTO.endAtIso = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
-      this.syncDateTimeControlsFromDTO();
+      this.syncEventDateRangeValueFromDTO();
     }
     if (minCapacity !== null) {
       this.eventDetailDTO.capacityMin = minCapacity;

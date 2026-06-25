@@ -1,0 +1,63 @@
+<section class="subevent-definition-panel">
+  <header class="subevent-definition-panel__header">
+    <div class="subevent-definition-panel__title">
+      <mat-icon>inventory_2</mat-icon>
+      <div>
+        <h3>Sub Events</h3>
+        <p>{{ countLabel() }}</p>
+      </div>
+    </div>
+    <div class="subevent-definition-panel__actions">
+      <span class="subevent-definition-panel__mode" [class.is-tournament]="mode === 'Tournament'">
+        <mat-icon>{{ mode === 'Tournament' ? 'emoji_events' : 'groups' }}</mat-icon>
+        {{ modeLabel() }}
+      </span>
+      @if (canEdit()) {
+        <button
+          type="button"
+          class="subevent-definition-panel__add"
+          (click)="openCreateDefinitionForm($event)"
+          aria-label="Add sub event definition"
+          >
+          <mat-icon>add</mat-icon>
+        </button>
+      }
+    </div>
+  </header>
+
+  <app-smart-list
+    class="subevent-definition-panel__list"
+    [config]="smartListConfig"
+    [loadPage]="loadDefinitionsPage"
+    [itemTemplate]="definitionTemplate"
+    [query]="smartListQuery"
+    (menuItemSelect)="onDefinitionMenuSelect($event)"
+  ></app-smart-list>
+
+  <ng-template #definitionTemplate let-definition let-index="index">
+    <app-info-card
+      [card]="definitionCard(definition, index)"
+      [useSharedMenuTrigger]="true"
+      [sharedMenuContext]="definitionMenuContext(definition)"
+      (menuAction)="onCardMenuAction(definition, $event)"
+    ></app-info-card>
+  </ng-template>
+
+  @if (definitionForm) {
+    <app-event-subevent-stage-form-popup
+      [view]="definitionFormView"
+      [model]="definitionFormModelValue"
+      (save)="saveDefinitionForm($event)"
+      (cancel)="cancelDefinitionForm($event)"
+      (selectOptional)="selectDefinitionOptional($event)"
+      (selectInsertPlacement)="selectDefinitionInsertPlacement($event)"
+      (insertTargetChange)="onDefinitionInsertTargetChange($event)"
+      (capacityMinChange)="onDefinitionCapacityMinChange($event)"
+      (capacityMaxChange)="onDefinitionCapacityMaxChange($event)"
+      (tournamentGroupCapacityMinChange)="onDefinitionTournamentGroupCapacityMinChange($event)"
+      (tournamentGroupCapacityMaxChange)="onDefinitionTournamentGroupCapacityMaxChange($event)"
+      (tournamentLeaderboardTypeChange)="onDefinitionTournamentLeaderboardTypeChange($event)"
+      (tournamentAdvancePerGroupChange)="onDefinitionTournamentAdvancePerGroupChange($event)"
+    ></app-event-subevent-stage-form-popup>
+  }
+</section>

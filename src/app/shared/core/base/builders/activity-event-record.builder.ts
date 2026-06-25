@@ -21,6 +21,11 @@ export class ActivityEventRecordBuilder {
       invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
+      subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group })),
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
       subEvents: (record.subEvents ?? []).map(item => ({
         ...item,
         pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing

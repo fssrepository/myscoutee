@@ -1,3 +1,4 @@
+export * from './date-input';
 export * from './event-policies-input';
 export * from './event-slots-input';
 export * from './location-input';

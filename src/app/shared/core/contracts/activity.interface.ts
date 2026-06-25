@@ -193,6 +193,7 @@ export interface ActivityEventRecord {
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
+  subEventDefinitions?: SubEventDefinitionDTO[];
   subEvents?: EventContracts.SubEventDTO[];
   mode?: EventContracts.EventMode;
   rating: number;
@@ -233,6 +234,27 @@ export interface ActivityEventDTO {
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
   boost: number;
+  subEventDefinitions?: SubEventDefinitionDTO[];
+}
+
+export interface SubEventDefinitionDTO {
+  id: string;
+  name: string;
+  description: string;
+  startAt?: string;
+  endAt?: string;
+  location?: string;
+  groups?: EventContracts.SubEventGroupDTO[];
+  tournamentGroupCount?: number;
+  tournamentGroupCapacityMin?: number;
+  tournamentGroupCapacityMax?: number;
+  tournamentLeaderboardType?: EventContracts.TournamentLeaderboardType;
+  tournamentAdvancePerGroup?: number;
+  optional: boolean;
+  pricing?: PricingContracts.PricingConfig | null;
+  capacityMin: number;
+  capacityMax: number;
+  icon?: string | null;
 }
 
 export class ActivityEventDetailDTO {
@@ -288,6 +310,7 @@ export class ActivityEventDetailDTO {
   pendingRequestMemberUserIds: string[] = [];
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[] = [];
+  subEventDefinitions: SubEventDefinitionDTO[] = [];
   subEvents: EventContracts.SubEventDTO[] = [];
   mode: EventContracts.EventMode = 'Casual';
   rating = 0;
@@ -352,6 +375,7 @@ export class ActivityEventDetailDTO {
     this.pendingRequestMemberUserIds = [...(update.pendingRequestMemberUserIds ?? this.pendingRequestMemberUserIds)];
     this.pendingReason = update.pendingReason ?? this.pendingReason;
     this.topics = [...(update.topics ?? this.topics)];
+    this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
     this.applySubEvents(update.subEvents ?? this.subEvents);
     this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);
     this.rating = ActivityEventDetailDTO.nonNegativeInteger(update.rating ?? this.rating);
@@ -372,6 +396,11 @@ export class ActivityEventDetailDTO {
 
   applySlotTemplates(items: readonly EventContracts.EventSlotTemplateDTO[]): this {
     this.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(items);
+    return this;
+  }
+
+  applySubEventDefinitions(items: readonly SubEventDefinitionDTO[]): this {
+    this.subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(items);
     return this;
   }
 
@@ -439,6 +468,32 @@ export class ActivityEventDetailDTO {
         endAt: ActivityEventDetailDTO.parseDate(normalizedEnd) ? normalizedEnd : ActivityEventDetailDTO.toIsoDateTimeLocal(parsedEnd),
         overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
         closed: false
+      };
+    });
+  }
+
+  static normalizeSubEventDefinitions(items: readonly SubEventDefinitionDTO[]): SubEventDefinitionDTO[] {
+    return items.map((item, index) => {
+      const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
+      const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
+      return {
+        id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
+        description: `${item.description ?? ''}`.trim(),
+        startAt: `${item.startAt ?? ''}`.trim(),
+        endAt: `${item.endAt ?? ''}`.trim(),
+        location: ActivityEventDetailDTO.normalizeLocation(item.location),
+        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
+        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
+        tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
+        tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
+        tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+        tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        optional: item.optional === true,
+        pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
+        capacityMin,
+        capacityMax,
+        icon: `${item.icon ?? ''}`.trim() || null
       };
     });
   }

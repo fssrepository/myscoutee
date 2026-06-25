@@ -7,15 +7,28 @@
   >
   <div
     class="ui-info-card__media"
-    [class.ui-info-card__media--placeholder]="!card?.imageUrl"
+    [class.ui-info-card__media--placeholder]="!card?.imageUrl && !isTitleMedia()"
+    [class.ui-info-card__media--title]="isTitleMedia()"
+    [class.ui-info-card__media--tone-neutral]="mediaTone() === 'neutral'"
     [appLazyBgImage]="cardImageUrl()"
     >
-      @if (card?.imageUrl) {
+      @if (isTitleMedia()) {
+        <span class="ui-info-card__media-title-content">
+          @if (mediaIcon()) {
+            <mat-icon>{{ mediaIcon() }}</mat-icon>
+          }
+          <strong>{{ mediaTitle() }}</strong>
+          @if (mediaSubtitle()) {
+            <small>{{ mediaSubtitle() }}</small>
+          }
+        </span>
+      }
+      @if (card?.imageUrl && !isTitleMedia()) {
         <span class="ui-info-card__image-loader" aria-hidden="true">
           <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
         </span>
       }
-      @if (!card?.imageUrl) {
+      @if (!card?.imageUrl && !isTitleMedia()) {
         <mat-icon class="ui-info-card__placeholder-icon">image_not_supported</mat-icon>
       }
       @if (card?.mediaStart; as mediaStart) {

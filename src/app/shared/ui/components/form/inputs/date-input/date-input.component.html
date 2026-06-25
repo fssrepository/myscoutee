@@ -1,0 +1,113 @@
+@if (isRange()) {
+  <div class="date-input date-input--range" [class.date-input--with-time]="hasTime()">
+    <label class="date-input__field">
+      <span class="date-input__label">{{ startLabel }}@if (required) { <strong>*</strong> }</span>
+      <div class="date-input__row">
+        <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
+          <input
+            matInput
+            [matDatepicker]="startPicker"
+            [ngModel]="startDateValue"
+            (ngModelChange)="onStartDateChange($event)"
+            (blur)="markTouched()"
+            [min]="resolvedStartMin()"
+            [max]="resolvedStartMax()"
+            [disabled]="inputDisabled()"
+            [placeholder]="placeholder"
+          />
+          <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+        </mat-form-field>
+        @if (hasTime()) {
+          <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
+            <input
+              matInput
+              [matTimepicker]="startTimePicker"
+              [matTimepickerOpenOnClick]="true"
+              [ngModel]="startTimeValue"
+              (ngModelChange)="onStartTimeChange($event)"
+              (blur)="markTouched()"
+              [disabled]="inputDisabled()"
+            />
+            <mat-timepicker-toggle matSuffix [for]="startTimePicker"></mat-timepicker-toggle>
+            <mat-timepicker #startTimePicker></mat-timepicker>
+          </mat-form-field>
+        }
+      </div>
+    </label>
+
+    <label class="date-input__field">
+      <span class="date-input__label">{{ endLabel }}@if (required) { <strong>*</strong> }</span>
+      <div class="date-input__row">
+        <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
+          <input
+            matInput
+            [matDatepicker]="endPicker"
+            [ngModel]="endDateValue"
+            (ngModelChange)="onEndDateChange($event)"
+            (blur)="markTouched()"
+            [min]="resolvedEndMin()"
+            [max]="resolvedEndMax()"
+            [disabled]="inputDisabled()"
+            [placeholder]="placeholder"
+          />
+          <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+        </mat-form-field>
+        @if (hasTime()) {
+          <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
+            <input
+              matInput
+              [matTimepicker]="endTimePicker"
+              [matTimepickerOpenOnClick]="true"
+              [ngModel]="endTimeValue"
+              (ngModelChange)="onEndTimeChange($event)"
+              (blur)="markTouched()"
+              [disabled]="inputDisabled()"
+            />
+            <mat-timepicker-toggle matSuffix [for]="endTimePicker"></mat-timepicker-toggle>
+            <mat-timepicker #endTimePicker></mat-timepicker>
+          </mat-form-field>
+        }
+      </div>
+    </label>
+  </div>
+} @else {
+  <label class="date-input date-input--single" [class.date-input--with-time]="hasTime()">
+    @if (label) {
+      <span class="date-input__label">{{ label }}@if (required) { <strong>*</strong> }</span>
+    }
+    <div class="date-input__row">
+      <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
+        <input
+          matInput
+          [matDatepicker]="singlePicker"
+          [ngModel]="singleDateValue"
+          (ngModelChange)="onSingleDateChange($event)"
+          (blur)="markTouched()"
+          [min]="resolvedSingleMin()"
+          [max]="resolvedSingleMax()"
+          [disabled]="inputDisabled()"
+          [placeholder]="placeholder"
+        />
+        <mat-datepicker-toggle matSuffix [for]="singlePicker"></mat-datepicker-toggle>
+        <mat-datepicker #singlePicker></mat-datepicker>
+      </mat-form-field>
+      @if (hasTime()) {
+        <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
+          <input
+            matInput
+            [matTimepicker]="singleTimePicker"
+            [matTimepickerOpenOnClick]="true"
+            [ngModel]="singleTimeValue"
+            (ngModelChange)="onSingleTimeChange($event)"
+            (blur)="markTouched()"
+            [disabled]="inputDisabled()"
+          />
+          <mat-timepicker-toggle matSuffix [for]="singleTimePicker"></mat-timepicker-toggle>
+          <mat-timepicker #singleTimePicker></mat-timepicker>
+        </mat-form-field>
+      }
+    </div>
+  </label>
+}

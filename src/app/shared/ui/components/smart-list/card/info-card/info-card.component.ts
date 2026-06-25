@@ -39,6 +39,7 @@ import type {
   InfoCardOverlayAction,
   InfoCardOverlayShape,
   InfoCardDetailStyle,
+  InfoCardMediaTone,
   InfoCardOverlayTone,
   InfoCardOverlayVariant
 } from '../card.types';
@@ -128,8 +129,31 @@ export class InfoCardComponent implements OnDestroy {
   }
 
   protected cardImageUrl(): string | null {
+    if (this.isTitleMedia()) {
+      return null;
+    }
     const imageUrl = AppUtils.mediaImageVariantUrl(this.card?.imageUrl, 'medium');
     return imageUrl || null;
+  }
+
+  protected isTitleMedia(): boolean {
+    return this.card?.mediaMode === 'title';
+  }
+
+  protected mediaTitle(): string {
+    return `${this.card?.mediaTitle ?? this.card?.title ?? ''}`.trim();
+  }
+
+  protected mediaSubtitle(): string {
+    return `${this.card?.mediaSubtitle ?? ''}`.trim();
+  }
+
+  protected mediaIcon(): string {
+    return `${this.card?.mediaIcon ?? this.card?.leadingIcon?.icon ?? ''}`.trim();
+  }
+
+  protected mediaTone(): InfoCardMediaTone {
+    return this.card?.mediaTone ?? 'default';
   }
 
   protected onMediaStartActivated(event: Event): void {

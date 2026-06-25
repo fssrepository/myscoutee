@@ -1,0 +1,164 @@
+:host {
+  display: block;
+  width: 100%;
+}
+
+.date-input {
+  display: grid;
+  gap: 0.62rem;
+  width: 100%;
+}
+
+.date-input--range {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.date-input__field {
+  display: grid;
+  gap: 0.34rem;
+  min-width: 0;
+}
+
+.date-input__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  color: #203a5d;
+  font-weight: 700;
+  font-size: 0.84rem;
+  line-height: 1.2;
+}
+
+.date-input__label strong {
+  color: #cf283f;
+  font-weight: 800;
+}
+
+.date-input__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  gap: 0.58rem;
+  min-width: 0;
+}
+
+.date-input--with-time .date-input__row {
+  grid-template-columns: minmax(150px, 1fr) minmax(92px, 118px);
+}
+
+.date-input__material {
+  width: 100%;
+  min-width: 0;
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-text-field-wrapper {
+  min-height: 38px;
+  height: 38px;
+  padding: 0 0.48rem 0 0.72rem;
+  border: 1px solid rgba(112, 143, 184, 0.56);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+
+:host ::ng-deep .date-input__material.mat-focused .mat-mdc-text-field-wrapper {
+  border-color: rgba(56, 114, 190, 0.82);
+  box-shadow: 0 0 0 3px rgba(56, 114, 190, 0.1);
+}
+
+:host ::ng-deep .date-input__material .mdc-text-field,
+:host ::ng-deep .date-input__material .mdc-text-field--filled {
+  background: transparent;
+}
+
+:host ::ng-deep .date-input__material .mdc-notched-outline__leading,
+:host ::ng-deep .date-input__material .mdc-notched-outline__notch,
+:host ::ng-deep .date-input__material .mdc-notched-outline__trailing {
+  border: 0;
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-form-field-flex {
+  min-height: 36px;
+  align-items: center;
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-form-field-infix {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-input-element {
+  color: #183358;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  min-width: 0;
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-input-element::placeholder {
+  color: rgba(45, 68, 97, 0.52);
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-form-field-subscript-wrapper,
+:host ::ng-deep .date-input__material .mat-mdc-form-field-bottom-align,
+:host ::ng-deep .date-input__material .mdc-line-ripple,
+:host ::ng-deep .date-input__material .mat-mdc-form-field-line-ripple,
+:host ::ng-deep .date-input__material .mdc-line-ripple--deactivating,
+:host ::ng-deep .date-input__material .mdc-line-ripple--active {
+  display: none;
+}
+
+:host ::ng-deep .date-input__material .mat-mdc-form-field-icon-suffix {
+  align-self: center;
+  padding: 0;
+}
+
+:host ::ng-deep .date-input__material .mat-datepicker-toggle,
+:host ::ng-deep .date-input__material .mat-timepicker-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+:host ::ng-deep .date-input__material .mat-datepicker-toggle .mat-mdc-icon-button,
+:host ::ng-deep .date-input__material .mat-timepicker-toggle .mat-mdc-icon-button {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  color: #315a86;
+  --mdc-icon-button-state-layer-size: 28px;
+}
+
+:host ::ng-deep .date-input__material .mat-datepicker-toggle .mat-mdc-icon-button:hover,
+:host ::ng-deep .date-input__material .mat-timepicker-toggle .mat-mdc-icon-button:hover {
+  background: rgba(59, 104, 164, 0.1);
+  color: #224a74;
+}
+
+:host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-mdc-text-field-wrapper {
+  background: rgba(238, 244, 251, 0.72);
+  border-color: rgba(148, 167, 192, 0.45);
+}
+
+:host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-mdc-input-element,
+:host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-icon {
+  color: rgba(38, 59, 83, 0.54);
+}
+
+@media (max-width: 760px) {
+  .date-input--range {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .date-input--with-time .date-input__row {
+    grid-template-columns: minmax(0, 1fr) minmax(86px, 104px);
+    gap: 0.42rem;
+  }
+}

@@ -60,6 +60,8 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-8';
 export type CardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
+export type InfoCardMediaMode = 'image' | 'title';
+export type InfoCardMediaTone = 'default' | 'neutral';
 
 export interface CardBadgeConfig {
   label: string;
@@ -274,6 +276,11 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   status?: string | null;
   groupLabel?: string | null;
   title: string;
+  mediaMode?: InfoCardMediaMode | null;
+  mediaTone?: InfoCardMediaTone | null;
+  mediaTitle?: string | null;
+  mediaSubtitle?: string | null;
+  mediaIcon?: string | null;
   imageUrl?: string | null;
   placeholderLabel?: string | null;
   metaRows?: readonly string[];
