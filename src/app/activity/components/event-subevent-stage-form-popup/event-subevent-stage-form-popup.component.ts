@@ -21,7 +21,7 @@ import {
 } from '../../../shared/ui';
 
 export type EventSubeventStageFormModeClass = 'subevent-mode-mandatory' | 'subevent-mode-optional';
-export type EventSubeventStageInsertPlacement = 'before' | 'after';
+export type EventSubeventStageInsertPlacement = 'before' | 'during' | 'after';
 export type EventSubeventTournamentLeaderboardType = 'Score' | 'Fifa';
 export type EventSubeventStageTimingInputMode = 'range' | 'duration';
 
@@ -48,6 +48,7 @@ export interface EventSubeventStageFormPopupView {
   timingInputMode?: EventSubeventStageTimingInputMode;
   dateInput?: DateInputModel;
   showInsertControls: boolean;
+  showDuringInsertPlacement: boolean;
   insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
   insertTargetId: string | null;
@@ -65,6 +66,7 @@ export interface EventSubeventStageFormModel {
   description: string;
   location: string;
   dateRange?: ContractTypes.DateRangeDto;
+  offsetMinutes?: number;
   durationMinutes?: number;
   optional: boolean;
   pricing?: ContractTypes.PricingConfig | null;
@@ -101,6 +103,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     description: '',
     location: '',
     dateRange: { startAt: '', endAt: '', precision: 'minute' },
+    offsetMinutes: 0,
     durationMinutes: 60,
     optional: false,
     pricing: null,
@@ -132,7 +135,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     mapMode: 'search',
     mapAriaLabel: 'Open sub event location on map'
   };
-
   ngOnChanges(): void {
     if (this.usesDurationInput()) {
       this.normalizeDuration();
@@ -275,6 +277,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   }
 
   private normalizeDuration(): void {
+    this.model.offsetMinutes = this.positiveInteger(this.model.offsetMinutes);
     this.model.durationMinutes = this.positiveInteger(this.model.durationMinutes) || 60;
   }
 
@@ -355,6 +358,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
         }
       },
       showInsertControls: false,
+      showDuringInsertPlacement: false,
       insertFieldLabel: 'Insert Stage',
       insertPlacement: 'after',
       insertTargetId: null,

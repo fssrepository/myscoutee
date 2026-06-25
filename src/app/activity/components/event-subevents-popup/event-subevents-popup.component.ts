@@ -10,7 +10,7 @@ import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-fo
 import {
   EventSubeventLeaderboardFifaMatch, EventSubeventLeaderboardFifaRow, EventSubeventLeaderboardGroup, EventSubeventLeaderboardMember, EventSubeventLeaderboardPopupComponent, EventSubeventLeaderboardScoreEntry, EventSubeventLeaderboardScoreRow
 } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
-import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
+import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView, type EventSubeventStageInsertPlacement } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -1324,7 +1324,10 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     return option.id;
   }
 
-  protected selectSubEventStageInsertPlacement(placement: StageInsertPlacement): void {
+  protected selectSubEventStageInsertPlacement(placement: EventSubeventStageInsertPlacement): void {
+    if (placement === 'during') {
+      return;
+    }
     if (this.subEventStageInsertPlacement === placement) {
       return;
     }
@@ -1485,6 +1488,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
         readOnly: this.subEventStructureReadOnly()
       },
       showInsertControls,
+      showDuringInsertPlacement: false,
       insertFieldLabel,
       insertPlacement: this.subEventStageInsertPlacement,
       insertTargetId: this.subEventStageInsertTargetId,

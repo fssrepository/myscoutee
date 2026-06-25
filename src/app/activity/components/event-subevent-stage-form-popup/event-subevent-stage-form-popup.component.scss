@@ -346,9 +346,16 @@
   width: 100%;
 }
 
-.subevent-duration-field {
+.subevent-duration-row {
   grid-column: 1 / -1;
-  width: min(240px, 100%);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 240px));
+  align-items: end;
+  gap: 0.72rem;
+}
+
+.subevent-duration-field {
+  width: 100%;
 }
 
 .subevent-duration-control {

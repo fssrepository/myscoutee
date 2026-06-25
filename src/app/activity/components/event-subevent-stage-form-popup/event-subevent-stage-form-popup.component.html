@@ -90,9 +90,19 @@
                     class="subevent-stage-insert-mode-btn"
                     [class.is-active]="view.insertPlacement === 'before'"
                     (click)="selectInsertPlacement.emit('before')"
-                    >
+                  >
                     Before
                   </button>
+                  @if (view.showDuringInsertPlacement) {
+                    <button
+                      type="button"
+                      class="subevent-stage-insert-mode-btn"
+                      [class.is-active]="view.insertPlacement === 'during'"
+                      (click)="selectInsertPlacement.emit('during')"
+                      >
+                      During
+                    </button>
+                  }
                   <button
                     type="button"
                     class="subevent-stage-insert-mode-btn"
@@ -120,19 +130,34 @@
             <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="fieldInvalid('description')" placeholder="Describe this stage"></textarea>
           </label>
           @if (usesDurationInput()) {
-            <label class="subevent-duration-field">
-              <span>Duration <span class="required-star">*</span></span>
-              <div class="subevent-duration-control">
-                <input
-                  type="number"
-                  min="1"
-                  step="5"
-                  [(ngModel)]="model.durationMinutes"
-                  placeholder="60"
-                  />
-                <span>minutes</span>
-              </div>
-            </label>
+            <div class="subevent-duration-row">
+              <label class="subevent-duration-field">
+                <span>Duration <span class="required-star">*</span></span>
+                <div class="subevent-duration-control">
+                  <input
+                    type="number"
+                    min="1"
+                    step="5"
+                    [(ngModel)]="model.durationMinutes"
+                    placeholder="60"
+                    />
+                  <span>minutes</span>
+                </div>
+              </label>
+              <label class="subevent-duration-field subevent-offset-field">
+                <span>Offset</span>
+                <div class="subevent-duration-control">
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    [(ngModel)]="model.offsetMinutes"
+                    placeholder="0"
+                    />
+                  <span>minutes</span>
+                </div>
+              </label>
+            </div>
           } @else {
             <app-date-input
               class="experience-description-field subevent-date-input"

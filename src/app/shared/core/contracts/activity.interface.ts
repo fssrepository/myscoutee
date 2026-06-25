@@ -238,10 +238,14 @@ export interface ActivityEventDTO {
   subEventDefinitions?: SubEventDefinitionDTO[];
 }
 
+export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';
+
 export interface SubEventDefinitionDTO {
   id: string;
   name: string;
   description: string;
+  timing: SubEventDefinitionTiming;
+  offsetMinutes: number;
   durationMinutes: number;
   location?: string;
   groups?: EventContracts.SubEventGroupDTO[];
@@ -476,10 +480,14 @@ export class ActivityEventDetailDTO {
       const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
       const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
       const durationMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.durationMinutes);
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const offsetMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.offsetMinutes);
       return {
         id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
         name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
         description: `${item.description ?? ''}`.trim(),
+        timing,
+        offsetMinutes,
         durationMinutes,
         location: ActivityEventDetailDTO.normalizeLocation(item.location),
         groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
@@ -495,6 +503,17 @@ export class ActivityEventDetailDTO {
         icon: `${item.icon ?? ''}`.trim() || null
       };
     });
+  }
+
+  static normalizeSubEventDefinitionTiming(value: unknown): SubEventDefinitionTiming {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    if (normalized === 'before') {
+      return 'Before';
+    }
+    if (normalized === 'after') {
+      return 'After';
+    }
+    return 'During';
   }
 
   static normalizeDateRange(value: Partial<DateRangeDto> | null | undefined): DateRangeDto {

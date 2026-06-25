@@ -1782,20 +1782,40 @@ export class LocalEventsRepository {
     });
   }
 
+  private subEventDefinitionTimeline(
+    items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined
+  ): Array<{ item: ActivityContracts.SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    const definitions = items ?? [];
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    return definitions.map(item => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      hasPrevious = true;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
+  }
+
   private subEventDefinitionsDurationMinutes(items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined): number {
-    return (items ?? [])
-      .reduce((total, item) => total + Math.max(0, Math.trunc(Number(item.durationMinutes) || 0)), 0);
+    return this.subEventDefinitionTimeline(items)
+      .reduce((total, entry) => Math.max(total, entry.startOffsetMinutes + entry.durationMinutes), 0);
   }
 
   private materializeSubEventDefinitionsForSlotOccurrence(
     items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined,
     occurrenceStart: Date
   ): ContractTypes.SubEventDTO[] {
-    const definitions = items ?? [];
-    let offsetMinutes = 0;
-    return definitions.map((item, index) => {
-      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
-      const startAt = new Date(occurrenceStart.getTime() + (offsetMinutes * 60 * 1000));
+    return this.subEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+      const startAt = new Date(occurrenceStart.getTime() + (startOffsetMinutes * 60 * 1000));
       const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
       const subEvent: ContractTypes.SubEventDTO = {
         id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
@@ -1819,10 +1839,9 @@ export class LocalEventsRepository {
         carsPending: 0,
         accommodationPending: 0,
         suppliesPending: 0,
-        slotStartOffsetMinutes: offsetMinutes,
+        slotStartOffsetMinutes: startOffsetMinutes,
         slotDurationMinutes: durationMinutes
       };
-      offsetMinutes += durationMinutes;
       return subEvent;
     });
   }

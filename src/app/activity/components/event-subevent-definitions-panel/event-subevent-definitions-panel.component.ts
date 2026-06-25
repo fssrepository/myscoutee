@@ -162,7 +162,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       mediaSubtitle: this.mode,
       mediaIcon: item.icon || (isTournament ? 'emoji_events' : 'inventory_2'),
       metaRows: [
-        `Duration ${this.durationLabel(item.durationMinutes)}`,
+        index > 0
+          ? this.definitionTimingLabel(item, index)
+          : `Duration ${this.durationLabel(item.durationMinutes)}`,
         `Capacity ${capacityLabel}`
       ],
       description: item.description || 'No description',
@@ -304,6 +306,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       ? `Main event range ${AppUtils.dateTimeRangeLabel(timingBounds.startAt, timingBounds.endAt, 'Date unavailable')}`
       : (isTournament ? 'Tournament definition' : 'Casual definition');
 
+    const insertPlacement = state?.insertPlacement ?? 'after';
     return {
       open: Boolean(state),
       parentTitle: 'Sub Events',
@@ -321,8 +324,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       timingSummaryMeta,
       timingInputMode: 'duration',
       showInsertControls: state?.index === null && insertOptions.length > 0,
+      showDuringInsertPlacement: !isTournament,
       insertFieldLabel: isTournament ? 'Insert Stage' : 'Insert Sub Event',
-      insertPlacement: state?.insertPlacement ?? 'after',
+      insertPlacement: isTournament && insertPlacement === 'during' ? 'after' : insertPlacement,
       insertTargetId: state?.insertTargetId ?? insertOptions[insertOptions.length - 1]?.id ?? null,
       insertOptions,
       showTournamentFields: isTournament,
@@ -365,6 +369,9 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   protected selectDefinitionInsertPlacement(placement: EventSubeventStageInsertPlacement): void {
     if (!this.definitionForm) {
+      return;
+    }
+    if (this.mode === 'Tournament' && placement === 'during') {
       return;
     }
     this.setDefinitionForm({
@@ -422,7 +429,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       icon: item.icon ?? null,
       groups: (item.groups ?? []).map(group => ({ ...group })),
       model: this.createDefinitionFormModel(item, index + 1),
-      insertPlacement: 'after',
+      insertPlacement: this.insertPlacementFromDefinitionTiming(item.timing),
       insertTargetId: item.id
     });
     this.onTouched();
@@ -460,6 +467,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       name: item?.name?.trim() ?? '',
       description: item?.description?.trim() ?? '',
       location: item?.location?.trim() ?? '',
+      offsetMinutes: this.toNonNegativeInteger(item?.offsetMinutes ?? 0),
       durationMinutes: this.toPositiveInteger(item?.durationMinutes ?? 60),
       optional,
       pricing: item?.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : PricingBuilder.createDefaultPricingConfig('subevent'),
@@ -482,6 +490,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       id: state.id,
       name: model.name,
       description: model.description,
+      timing: this.definitionTimingFromInsertPlacement(state.insertPlacement),
+      offsetMinutes: this.toNonNegativeInteger(model.offsetMinutes ?? 0),
       durationMinutes: this.toPositiveInteger(model.durationMinutes),
       location: `${model.location ?? ''}`.trim(),
       groups: state.groups.map(group => ({ ...group })),
@@ -530,6 +540,26 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return this.mode === 'Tournament'
       ? `Stage ${index + 1}`
       : `Sub Event ${index + 1}`;
+  }
+
+  private definitionTimingFromInsertPlacement(placement: EventSubeventStageInsertPlacement): SubEventDefinitionDTO['timing'] {
+    if (placement === 'before') {
+      return 'Before';
+    }
+    if (placement === 'during') {
+      return this.mode === 'Tournament' ? 'After' : 'During';
+    }
+    return 'After';
+  }
+
+  private insertPlacementFromDefinitionTiming(value: SubEventDefinitionDTO['timing'] | null | undefined): EventSubeventStageInsertPlacement {
+    if (value === 'Before') {
+      return 'before';
+    }
+    if (value === 'During') {
+      return this.mode === 'Tournament' ? 'after' : 'during';
+    }
+    return 'after';
   }
 
   private definitionInsertOptions(): ReadonlyArray<{ id: string; label: string }> {
@@ -639,8 +669,34 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   private durationLabel(totalMinutes: number): string {
     const safeMinutes = this.toPositiveInteger(totalMinutes);
-    const hours = Math.floor(safeMinutes / 60);
-    const minutes = safeMinutes % 60;
+    return this.minutesLabel(safeMinutes);
+  }
+
+  private offsetLabel(totalMinutes: number): string {
+    const safeMinutes = this.toNonNegativeInteger(totalMinutes);
+    return this.minutesLabel(safeMinutes);
+  }
+
+  private definitionTimingLabel(item: SubEventDefinitionDTO, index: number): string {
+    const offsetMinutes = this.toNonNegativeInteger(item.offsetMinutes);
+    const offsetLabel = this.offsetLabel(offsetMinutes);
+    const durationLabel = this.durationLabel(item.durationMinutes);
+    if (index <= 0) {
+      return offsetMinutes > 0
+        ? `Starts ${offsetLabel} after slot start for ${durationLabel}`
+        : `Starts at slot start for ${durationLabel}`;
+    }
+
+    const previousLabel = this.definitionSequenceLabel(index - 1);
+    const anchor = item.timing === 'During' ? 'start' : 'end';
+    return offsetMinutes > 0
+      ? `Starts ${offsetLabel} after ${previousLabel} ${anchor} for ${durationLabel}`
+      : `Starts at ${previousLabel} ${anchor} for ${durationLabel}`;
+  }
+
+  private minutesLabel(totalMinutes: number): string {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
     if (hours <= 0) {
       return `${minutes}m`;
     }
