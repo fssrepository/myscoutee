@@ -62,6 +62,33 @@
           }
         </div>
       } @else {
+        @if (shouldRenderListHeaderOutsideScroll()) {
+          <div class="smart-list__sticky smart-list__sticky--list-header" [ngClass]="resolvedStickyHeaderClass()">
+            <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
+            @if (shouldRenderStickyPaginationActions()) {
+              <span class="smart-list__sticky-actions">
+                <button
+                  type="button"
+                  class="smart-list__sticky-action-btn"
+                  [disabled]="!canMovePagination(-1)"
+                  (click)="onPaginationPrev($event)"
+                  aria-label="Previous page"
+                >
+                  <mat-icon>chevron_left</mat-icon>
+                </button>
+                <button
+                  type="button"
+                  class="smart-list__sticky-action-btn"
+                  [disabled]="!canMovePagination(1)"
+                  (click)="onPaginationNext($event)"
+                  aria-label="Next page"
+                >
+                  <mat-icon>chevron_right</mat-icon>
+                </button>
+              </span>
+            }
+          </div>
+        }
         <div
           #scrollHost
           class="smart-list"
@@ -93,8 +120,36 @@
           (touchend)="onSurfaceTouchEnd()"
           (touchcancel)="onSurfaceTouchEnd()"
         >
-          @if (shouldShowStickyHeader()) {
-            <div class="smart-list__sticky" [ngClass]="resolvedStickyHeaderClass()">{{ stickyLabel }}</div>
+          @if (shouldShowStickyHeader() && !shouldRenderListHeaderOutsideScroll()) {
+            <div
+              class="smart-list__sticky"
+              [class.smart-list__sticky--list-header]="shouldRenderStickyPaginationActions()"
+              [ngClass]="resolvedStickyHeaderClass()"
+            >
+              <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
+              @if (shouldRenderStickyPaginationActions()) {
+                <span class="smart-list__sticky-actions">
+                  <button
+                    type="button"
+                    class="smart-list__sticky-action-btn"
+                    [disabled]="!canMovePagination(-1)"
+                    (click)="onPaginationPrev($event)"
+                    aria-label="Previous page"
+                  >
+                    <mat-icon>chevron_left</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="smart-list__sticky-action-btn"
+                    [disabled]="!canMovePagination(1)"
+                    (click)="onPaginationNext($event)"
+                    aria-label="Next page"
+                  >
+                    <mat-icon>chevron_right</mat-icon>
+                  </button>
+                </span>
+              }
+            </div>
           }
 
           @if (groups.length > 0) {
@@ -247,7 +302,7 @@
       <button
         type="button"
         class="smart-list__pagination-arrow smart-list__pagination-arrow--prev motion-static"
-        [disabled]="!canMoveCursor(-1)"
+        [disabled]="!canMovePagination(-1)"
         (click)="onPaginationPrev($event)"
         aria-label="Previous item"
       >
@@ -256,7 +311,7 @@
       <button
         type="button"
         class="smart-list__pagination-arrow smart-list__pagination-arrow--next motion-static"
-        [disabled]="!canMoveCursor(1)"
+        [disabled]="!canMovePagination(1)"
         (click)="onPaginationNext($event)"
         aria-label="Next item"
       >

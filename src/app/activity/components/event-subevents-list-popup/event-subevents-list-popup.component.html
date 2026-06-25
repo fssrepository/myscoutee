@@ -49,9 +49,20 @@
         class="event-subevents-list-smart-list"
         [config]="smartListConfig"
         [loadPage]="loadSubEventsPage"
-        [itemTemplate]="subEventTemplate"
+        [itemTemplate]="slotSectionTemplate"
         [query]="query"
       ></app-smart-list>
+
+      <ng-template #slotSectionTemplate let-section>
+        <section class="event-subevents-slot-section" [ngClass]="slotSectionToneClass(section)">
+          <app-smart-list
+            class="event-subevents-slot-section-list"
+            [config]="slotSectionSmartListConfig"
+            [loadPage]="slotSectionLoadPage(section)"
+            [itemTemplate]="subEventTemplate"
+          ></app-smart-list>
+        </section>
+      </ng-template>
 
       <ng-template #subEventTemplate let-item let-groupLabel="groupLabel">
         <app-info-card

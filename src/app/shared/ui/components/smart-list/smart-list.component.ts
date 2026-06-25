@@ -73,6 +73,7 @@ import type {
   SmartListMergeStrategy,
   SmartListOrientation,
   SmartListPaginationMode,
+  SmartListPaginationStep,
   SmartListPresentation,
   SmartListPrependRestoreMode,
   SmartListStateChange,
@@ -578,7 +579,24 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected shouldRenderPaginationArrows(): boolean {
-    return this.resolvedPaginationMode() === 'arrows';
+    return this.resolvedPaginationMode() === 'arrows' && !this.shouldRenderStickyPaginationActions();
+  }
+
+  protected shouldRenderStickyPaginationActions(): boolean {
+    return this.resolvedPaginationMode() === 'arrows'
+      && this.resolveConfigValue(this.config.pagination?.headerControls, false)
+      && this.shouldShowStickyHeader();
+  }
+
+  protected shouldRenderListHeaderOutsideScroll(): boolean {
+    return this.currentViewMode === 'list'
+      && this.isHorizontalList()
+      && this.shouldRenderStickyPaginationActions();
+  }
+
+  protected canMovePagination(direction: -1 | 1): boolean {
+    const delta = this.paginationCursorDelta(direction);
+    return delta !== 0 && this.canMoveCursor(delta);
   }
 
   protected shouldRenderHorizontalPaginationDots(): boolean {
@@ -677,7 +695,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       void this.advanceHostedFullscreenPagination(-1);
       return;
     }
-    void this.moveCursor(-1);
+    void this.moveCursor(this.paginationCursorDelta(-1));
   }
 
   protected onPaginationNext(event: Event): void {
@@ -688,7 +706,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       void this.advanceHostedFullscreenPagination(1);
       return;
     }
-    void this.moveCursor(1);
+    void this.moveCursor(this.paginationCursorDelta(1));
   }
 
   protected onPaginationRatingSelect(score: number): void {
@@ -784,6 +802,38 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return false;
     }
     return this.setCursorIndex(this.buildCursorState().index + Math.trunc(delta));
+  }
+
+  private resolvedPaginationStep(): SmartListPaginationStep {
+    return this.resolveConfigValue(this.config.pagination?.step, 'item');
+  }
+
+  private paginationCursorDelta(direction: -1 | 1): number {
+    if (this.resolvedPaginationStep() !== 'page') {
+      return direction;
+    }
+    const cursor = this.buildCursorState();
+    if (cursor.total <= 1) {
+      return 0;
+    }
+    const pageSize = this.paginationPageSize();
+    if (direction < 0) {
+      return Math.max(0, cursor.index - pageSize) - cursor.index;
+    }
+    const maxPageStart = Math.max(0, cursor.total - pageSize);
+    return Math.min(cursor.index + pageSize, maxPageStart) - cursor.index;
+  }
+
+  private paginationPageSize(): number {
+    if (this.isHorizontalList() && this.shouldUseHorizontalMobileStepper()) {
+      return 1;
+    }
+    const columns = Number(this.resolvedDesktopColumns());
+    if (Number.isFinite(columns) && columns > 0) {
+      return Math.max(1, Math.trunc(columns));
+    }
+    const pageSize = Number(this.currentQuery().pageSize);
+    return Number.isFinite(pageSize) && pageSize > 0 ? Math.max(1, Math.trunc(pageSize)) : 1;
   }
 
   public async setCursorIndex(index: number): Promise<boolean> {

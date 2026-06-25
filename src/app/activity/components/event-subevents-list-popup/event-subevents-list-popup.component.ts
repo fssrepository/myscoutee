@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import { from, of } from 'rxjs';
 
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  type ActivityEventDetailDTO,
+  ActivityEventDetailDTO,
   type ActivityEventSubEventRuntimeDTO
 } from '../../../shared/core/contracts/activity.interface';
 import {
@@ -29,9 +29,19 @@ import { EventSubeventsListPopupStateService } from '../../services/event-subeve
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
 type EventSubeventsListContextAction = 'edit' | 'view' | 'members';
+type EventSubeventsSlotTone = 'blue' | 'green' | 'cyan' | 'violet' | 'amber' | 'gold';
 
 interface EventSubeventsListFilters {
   revision: number;
+}
+
+interface EventSubeventsSlotSection {
+  id: string;
+  title: string;
+  subtitle: string;
+  startAt: string | null;
+  tone: EventSubeventsSlotTone;
+  items: ActivityEventSubEventRuntimeDTO[];
 }
 
 @Component({
@@ -58,6 +68,7 @@ export class EventSubeventsListPopupComponent {
   protected isLoading = false;
   protected event: ActivityEventDetailDTO | null = null;
   protected items: ActivityEventSubEventRuntimeDTO[] = [];
+  protected slotSections: EventSubeventsSlotSection[] = [];
   protected view: EventSubeventsListView = 'day';
   protected order: EventSubeventsListOrder = 'upcoming';
   protected query: Partial<ListQuery<EventSubeventsListFilters>> = {
@@ -71,25 +82,48 @@ export class EventSubeventsListPopupComponent {
   private loadingEventId = '';
   private loadingPromise: Promise<void> | null = null;
 
-  protected readonly smartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
-    pageSize: 24,
+  private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters>>();
+  private readonly slotSectionHeaderLabels = new Map<string, string>();
+
+  protected readonly smartListConfig: SmartListConfig<EventSubeventsSlotSection, EventSubeventsListFilters> = {
+    pageSize: 12,
     defaultView: 'day',
     showStickyHeader: true,
     emptyLabel: 'No sub events yet',
     emptyDescription: '',
     listLayout: 'card-grid',
-    desktopColumns: 3,
+    desktopColumns: 1,
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
-    mobileStepper: true,
-    pagination: { mode: 'arrows' },
     headerProgress: { enabled: true, placement: 'inline', tone: 'accent' },
-    groupBy: (item, query) => this.groupLabel(item, query.view as EventSubeventsListView),
+    groupBy: (section, query) => this.groupLabel(section.startAt, query.view as EventSubeventsListView),
     showGroupMarker: ({ groupIndex, scrollable }) => groupIndex > 0 || scrollable,
+    trackBy: (_index, section) => section.id
+  };
+
+  protected readonly slotSectionSmartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
+    pageSize: 120,
+    defaultView: 'list',
+    showStickyHeader: true,
+    showGroupMarker: () => false,
+    emptyLabel: 'No sub events in this slot',
+    emptyDescription: '',
+    listLayout: 'card-grid',
+    orientation: 'horizontal',
+    desktopColumns: 3,
+    snapMode: 'mandatory',
+    mobileStepper: true,
+    stickyHeaderClass: 'smart-list__sticky--slot-section',
+    pagination: {
+      mode: 'arrows',
+      step: 'page',
+      headerControls: true
+    },
+    groupBy: item => this.slotHeaderLabel(item),
     trackBy: (_index, item) => item.runtimeId
   };
 
-  protected readonly loadSubEventsPage: SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = query => {
+  protected readonly loadSubEventsPage: SmartListLoadPage<EventSubeventsSlotSection, EventSubeventsListFilters> = query => {
     return from(this.loadSubEventsPageResult(query));
   };
 
@@ -103,6 +137,9 @@ export class EventSubeventsListPopupComponent {
         this.loadingPromise = null;
         this.event = null;
         this.items = [];
+        this.slotSections = [];
+        this.slotSectionLoaders.clear();
+        this.slotSectionHeaderLabels.clear();
         return;
       }
       if (request.eventId === this.lastLoadedEventId) {
@@ -114,6 +151,9 @@ export class EventSubeventsListPopupComponent {
       this.loadingPromise = null;
       this.event = null;
       this.items = [];
+      this.slotSections = [];
+      this.slotSectionLoaders.clear();
+      this.slotSectionHeaderLabels.clear();
       this.bumpQuery();
     });
   }
@@ -296,17 +336,30 @@ export class EventSubeventsListPopupComponent {
     return item.runtimeId;
   }
 
+  protected slotSectionLoadPage(section: EventSubeventsSlotSection): SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> {
+    const sectionId = section.id;
+    const existing = this.slotSectionLoaders.get(sectionId);
+    if (existing) {
+      return existing;
+    }
+    const loader: SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = query =>
+      of(this.slotSectionPageResult(sectionId, query));
+    this.slotSectionLoaders.set(sectionId, loader);
+    return loader;
+  }
+
   private async loadSubEventsPageResult(
     query: ListQuery<EventSubeventsListFilters>
-  ): Promise<PageResult<ActivityEventSubEventRuntimeDTO>> {
+  ): Promise<PageResult<EventSubeventsSlotSection>> {
     const eventId = this.state.request()?.eventId.trim() ?? '';
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
     await this.ensureSubEventsLoaded(eventId);
-    const sorted = this.sortedItems();
+    const sorted = this.buildSlotSections();
+    this.slotSections = sorted;
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
     const start = page * pageSize;
     return {
       items: sorted.slice(start, start + pageSize),
@@ -326,6 +379,8 @@ export class EventSubeventsListPopupComponent {
     if (!userId) {
       this.event = null;
       this.items = [];
+      this.slotSections = [];
+      this.slotSectionHeaderLabels.clear();
       this.loadedEventId = eventId;
       return;
     }
@@ -339,6 +394,7 @@ export class EventSubeventsListPopupComponent {
       }
       this.event = result?.event ?? null;
       this.items = [...(result?.items ?? [])];
+      this.slotSections = this.buildSlotSections();
       this.loadedEventId = eventId;
     })().finally(() => {
       if (this.loadingEventId === eventId) {
@@ -349,6 +405,173 @@ export class EventSubeventsListPopupComponent {
       }
     });
     return this.loadingPromise;
+  }
+
+  private slotSectionPageResult(
+    sectionId: string,
+    query: ListQuery<EventSubeventsListFilters>
+  ): PageResult<ActivityEventSubEventRuntimeDTO> {
+    const section = this.slotSections.find(candidate => candidate.id === sectionId) ?? null;
+    const items = section?.items ?? [];
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 120));
+    const start = page * pageSize;
+    return {
+      items: items.slice(start, start + pageSize),
+      total: items.length,
+      nextCursor: start + pageSize < items.length ? `${page + 1}` : null
+    };
+  }
+
+  private buildSlotSections(): EventSubeventsSlotSection[] {
+    const sections = new Map<string, EventSubeventsSlotSection>();
+    this.sortedItems().forEach(item => {
+      const key = this.slotSectionKey(item);
+      const existing = sections.get(key);
+      if (existing) {
+        existing.items.push(item);
+        if (!existing.startAt || this.dateMs(item.startAt) < this.dateMs(existing.startAt)) {
+          existing.startAt = item.startAt ?? existing.startAt;
+        }
+        return;
+      }
+      sections.set(key, {
+        id: key,
+        title: this.slotSectionTitle(item, sections.size + 1),
+        subtitle: this.slotSectionSubtitle(item),
+        startAt: item.startAt ?? null,
+        tone: this.slotSectionTone(item),
+        items: [item]
+      });
+    });
+    const sorted = Array.from(sections.values()).sort((left, right) => {
+      const dateCompare = this.order === 'past'
+        ? this.dateMs(right.startAt) - this.dateMs(left.startAt)
+        : this.dateMs(left.startAt) - this.dateMs(right.startAt);
+      if (dateCompare !== 0) {
+        return dateCompare;
+      }
+      return left.id.localeCompare(right.id);
+    });
+    this.syncSlotSectionHeaderLabels(sorted);
+    return sorted;
+  }
+
+  private slotSectionKey(item: ActivityEventSubEventRuntimeDTO): string {
+    return `${item.slotSourceId ?? ''}`.trim()
+      || `${item.parentEventId ?? this.event?.id ?? 'event'}:${item.slotTimeframe ?? 'default'}`;
+  }
+
+  private slotSectionTitle(item: ActivityEventSubEventRuntimeDTO, fallbackIndex: number): string {
+    const templateId = `${item.slotTemplateId ?? ''}`.trim();
+    const templateIndex = templateId
+      ? (this.event?.slotTemplates ?? []).findIndex(template => `${template.id ?? ''}`.trim() === templateId)
+      : -1;
+    return `Slot ${templateIndex >= 0 ? templateIndex + 1 : fallbackIndex}`;
+  }
+
+  private slotSectionSubtitle(item: ActivityEventSubEventRuntimeDTO): string {
+    const templateStart = AppUtils.parseDate(this.slotTemplateForItem(item)?.startAt) ?? AppUtils.parseDate(item.startAt);
+    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.event?.frequency ?? '');
+    if (templateStart && frequency !== 'One-time' && frequency !== 'Custom') {
+      return this.formatRecurringSlotLabel(frequency, templateStart);
+    }
+    return `${item.slotTimeframe ?? ''}`.trim() || AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, '');
+  }
+
+  private slotHeaderLabel(item: ActivityEventSubEventRuntimeDTO): string {
+    const mapped = this.slotSectionHeaderLabels.get(item.runtimeId);
+    if (mapped) {
+      return mapped;
+    }
+    return this.joinSlotHeaderLabel(this.slotSectionTitle(item, 1), this.slotSectionSubtitle(item));
+  }
+
+  private syncSlotSectionHeaderLabels(sections: readonly EventSubeventsSlotSection[]): void {
+    this.slotSectionHeaderLabels.clear();
+    sections.forEach((section, index) => {
+      const firstItem = section.items[0] ?? null;
+      section.title = firstItem ? this.slotSectionTitle(firstItem, index + 1) : `Slot ${index + 1}`;
+      section.subtitle = firstItem ? this.slotSectionSubtitle(firstItem) : section.subtitle;
+      section.tone = firstItem ? this.slotSectionTone(firstItem) : section.tone;
+      const label = this.joinSlotHeaderLabel(section.title, section.subtitle);
+      section.items.forEach(item => this.slotSectionHeaderLabels.set(item.runtimeId, label));
+    });
+  }
+
+  protected slotSectionToneClass(section: EventSubeventsSlotSection): Record<string, boolean> {
+    return {
+      [`event-subevents-slot-section--${section.tone}`]: true
+    };
+  }
+
+  private joinSlotHeaderLabel(title: string, subtitle: string): string {
+    const normalizedTitle = `${title ?? ''}`.trim();
+    const normalizedSubtitle = `${subtitle ?? ''}`.trim();
+    return normalizedSubtitle ? `${normalizedTitle} - ${normalizedSubtitle}` : normalizedTitle;
+  }
+
+  private slotTemplateForItem(item: ActivityEventSubEventRuntimeDTO) {
+    const templateId = `${item.slotTemplateId ?? ''}`.trim();
+    if (!templateId) {
+      return null;
+    }
+    return (this.event?.slotTemplates ?? []).find(template => `${template.id ?? ''}`.trim() === templateId) ?? null;
+  }
+
+  private slotSectionTone(_item: ActivityEventSubEventRuntimeDTO): EventSubeventsSlotTone {
+    switch (ActivityEventDetailDTO.normalizeFrequency(this.event?.frequency ?? '')) {
+      case 'Daily':
+        return 'green';
+      case 'Weekly':
+        return 'cyan';
+      case 'Bi-weekly':
+        return 'violet';
+      case 'Monthly':
+        return 'amber';
+      case 'Yearly':
+        return 'gold';
+      default:
+        return 'blue';
+    }
+  }
+
+  private formatRecurringSlotLabel(frequency: string, start: Date): string {
+    const time = this.formatSlotTimeLabel(start);
+    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
+      case 'Daily':
+        return `Every day at ${time}`;
+      case 'Weekly':
+        return `Every ${this.formatSlotWeekday(start)} at ${time}`;
+      case 'Bi-weekly':
+        return `Every second ${this.formatSlotWeekday(start)} at ${time}`;
+      case 'Monthly':
+        return `Every month on day ${start.getDate()} at ${time}`;
+      case 'Yearly':
+        return `Every year on ${this.formatSlotMonthDay(start)} at ${time}`;
+      default:
+        return AppUtils.dateTimeRangeLabel(start.toISOString(), '', '');
+    }
+  }
+
+  private formatSlotTimeLabel(value: Date): string {
+    return value.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  private formatSlotWeekday(value: Date): string {
+    return value.toLocaleDateString('en-US', {
+      weekday: 'long'
+    });
+  }
+
+  private formatSlotMonthDay(value: Date): string {
+    return value.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric'
+    });
   }
 
   private sortedItems(): ActivityEventSubEventRuntimeDTO[] {
@@ -363,8 +586,8 @@ export class EventSubeventsListPopupComponent {
     });
   }
 
-  private groupLabel(item: ActivityEventSubEventRuntimeDTO, view: EventSubeventsListView): string {
-    const date = AppUtils.parseDate(item.startAt);
+  private groupLabel(value: string | null | undefined, view: EventSubeventsListView): string {
+    const date = AppUtils.parseDate(value);
     if (!date) {
       return 'Date unavailable';
     }

@@ -23,6 +23,7 @@ export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListOrientation = 'vertical' | 'horizontal';
 export type SmartListSnapMode = 'none' | 'proximity' | 'mandatory';
 export type SmartListPaginationMode = 'scroll' | 'arrows' | 'rating-stars';
+export type SmartListPaginationStep = 'item' | 'page';
 export type SmartListItemRenderState = 'list' | 'default' | 'active' | 'leaving';
 export type SmartListHeaderProgressState = 'active' | 'inactive';
 export type SmartListFilters = object;
@@ -282,6 +283,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   };
   pagination?: {
     mode?: SmartListPaginationMode | ((item: T | null, query: ListQuery<TFilters>) => SmartListPaginationMode);
+    step?: SmartListConfigValue<SmartListPaginationStep, TFilters>;
+    headerControls?: SmartListConfigValue<boolean, TFilters>;
     autoplayMs?: SmartListConfigValue<number | null, TFilters>;
     ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => RatingStarBarConfig | null;
     ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;
