@@ -46,7 +46,7 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import type * as AppConstants from '../../../shared/core/common/constants';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-event-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
+  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
   | { menu: 'save' };
@@ -378,6 +378,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       invitedMemberUserIds: [],
       pendingRequestMemberUserIds: [],
       topics: [],
+      subEventsEnabled: true,
       subEventDefinitions: [],
       subEvents: [],
       mode: 'Casual',
@@ -547,20 +548,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         model: this.eventTopicsMenuModel()
       },
       {
-        id: 'event-mode',
-        label: this.eventModeLabel(this.eventDetailDTO.mode),
-        detail: this.eventModeDescription(this.eventDetailDTO.mode),
-        icon: this.eventModeIcon(this.eventDetailDTO.mode),
-        kind: 'toggle',
-        layout: 'big',
-        active: this.eventDetailDTO.mode === 'Tournament',
-        checked: this.eventDetailDTO.mode === 'Tournament',
-        palette: this.eventDetailDTO.mode === 'Tournament' ? 'cyan' : 'slate',
-        disabled: this.eventStructureReadOnly(),
-        closeOnSelect: false,
-        context: { menu: 'event-intel', action: 'toggle-event-mode' }
-      },
-      {
         id: 'event-auto-inviter',
         label: this.eventAutoInviterLabel(this.eventDetailDTO.autoInviter),
         detail: this.eventAutoInviterDescription(this.eventDetailDTO.autoInviter),
@@ -652,20 +639,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : 'Attendees can preview each other before the event.';
   }
 
-  eventModeIcon(mode: ContractTypes.EventMode): string {
-    return mode === 'Tournament' ? 'emoji_events' : 'groups';
-  }
-
-  eventModeLabel(mode: ContractTypes.EventMode): string {
-    return mode === 'Tournament' ? 'Tournament On' : 'Casual Event';
-  }
-
-  eventModeDescription(mode: ContractTypes.EventMode): string {
-    return mode === 'Tournament'
-      ? 'Stages, groups and leaderboard are enabled.'
-      : 'Simple sub-events without tournament brackets.';
-  }
-
   eventAutoInviterIcon(enabled: boolean): string {
     return enabled ? 'group_add' : 'person_off';
   }
@@ -744,10 +717,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (event.context.menu === 'event-intel') {
       if (event.context.action === 'toggle-blind-mode') {
         this.toggleEventBlindMode(event.sourceEvent);
-        return;
-      }
-      if (event.context.action === 'toggle-event-mode') {
-        this.toggleEventMode(event.sourceEvent);
         return;
       }
       if (event.context.action === 'toggle-auto-inviter') {
@@ -881,6 +850,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
   }
 
+  protected onSubEventsEnabledChange(enabled: boolean): void {
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    this.eventDetailDTO.subEventsEnabled = enabled;
+  }
+
   protected eventFrequencyUsesSlots(): boolean {
     return this.eventDetailDTO.slotsEnabled === true;
   }
@@ -948,15 +924,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventDetailDTO.blindMode = this.eventDetailDTO.blindMode === 'Blind Event' ? 'Open Event' : 'Blind Event';
-  }
-
-  toggleEventMode(event: Event): void {
-    event.preventDefault();
-    if (this.eventStructureReadOnly()) {
-      return;
-    }
-    this.eventDetailDTO.mode = this.eventDetailDTO.mode === 'Tournament' ? 'Casual' : 'Tournament';
-    this.syncMainEventBoundsFromSubEvents();
   }
 
   toggleEventAutoInviter(event: Event): void {

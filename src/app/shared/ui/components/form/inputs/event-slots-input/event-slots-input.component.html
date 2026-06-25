@@ -13,6 +13,14 @@
       }
     </div>
     <div class="event-slots-panel-actions">
+      @if (canConfigureSlotsSeries()) {
+      <app-menu
+        class="event-slots-summary-add-menu"
+        kind="inline"
+        [items]="slotSummaryAddMenuItems()"
+        (itemSelect)="onSlotSummaryAddSelect($event)"
+      ></app-menu>
+      }
       <button type="button" class="event-slots-enable-btn" [class.event-slots-enable-btn-on]="slotsEnabled()"
         [class.event-slots-enable-btn-off]="!slotsEnabled()" [disabled]="!canUpdateSlotsConfig()"
         (click)="toggleSlotsEnabled($event)" aria-label="Toggle slots">
@@ -24,61 +32,38 @@
   @if (slotsEnabled()) {
   <div class="event-slots-panel-body">
     <div class="event-slots-summary">
-      <section class="event-slots-summary-block">
-        <div class="event-slots-summary-head">
-          <span class="event-slots-summary-label">Base schedule</span>
-          @if (canConfigureSlotsSeries()) {
-          <app-menu
-            class="event-slots-summary-add-menu"
-            kind="inline"
-            [items]="slotSummaryAddMenuItems()"
-            (itemSelect)="onSlotSummaryAddSelect($event)"
-          ></app-menu>
-          }
-        </div>
-        @if (slotSummaryBaseItems().length > 0) {
+      @if (slotSummaryBaseItems().length > 0 || slotSummaryOverrideItems().length > 0) {
         <div class="event-slots-summary-list">
           @for (slot of slotSummaryBaseItems(); track slotTrackId($index, slot); let i = $index) {
           <app-text-card
             class="event-slots-summary-card"
-            tone="blue"
+            tone="amber"
             icon="schedule"
             [title]="slotTemplateLabel(i)"
             [meta]="slotSummaryWindowLabel(slot)"
             [menuTitle]="slotTemplateLabel(i)"
-            menuPalette="blue"
+            menuPalette="amber"
             [menuItems]="slotSummaryMenuItems()"
             (menuSelect)="onBaseSlotSummaryMenuSelect(i, $event)"
           ></app-text-card>
           }
-        </div>
-        } @else {
-        <p class="event-slots-summary-note">No base slots yet. Use + to create the first one.</p>
-        }
-      </section>
-
-      <section class="event-slots-summary-block">
-        <span class="event-slots-summary-label">Specific date overrides</span>
-        @if (slotSummaryOverrideItems().length > 0) {
-        <div class="event-slots-summary-list">
           @for (override of slotSummaryOverrideItems(); track override.dateKey) {
           <app-text-card
             class="event-slots-summary-card"
-            tone="violet"
+            tone="amber"
             icon="event_repeat"
             [title]="override.label"
             [meta]="override.detail"
             [menuTitle]="override.label"
-            menuPalette="violet"
+            menuPalette="amber"
             [menuItems]="slotSummaryOverrideMenuItems()"
             (menuSelect)="onOverrideSlotSummaryMenuSelect(override.dateKey, $event)"
           ></app-text-card>
           }
         </div>
         } @else {
-        <p class="event-slots-summary-note">No date-specific overrides yet. The event is still using only the base schedule.</p>
+        <p class="event-slots-summary-note">No slots yet. Use + to create the first one.</p>
         }
-      </section>
     </div>
   </div>
   }

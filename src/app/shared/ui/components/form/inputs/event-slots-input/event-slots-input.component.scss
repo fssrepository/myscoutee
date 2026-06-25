@@ -9,10 +9,12 @@
 
 .event-slots-panel {
   grid-column: 1 / -1;
-  border: 1px solid rgba(78, 112, 150, 0.24);
+  border: 1px solid rgba(93, 108, 128, 0.3);
   border-radius: 16px;
-  background: linear-gradient(180deg, #f7fbff 0%, #eef4fb 100%);
-  box-shadow: 0 4px 12px rgba(29, 53, 86, 0.08);
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.76), transparent 34%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2f6 100%);
+  box-shadow: 0 4px 12px rgba(39, 53, 72, 0.08);
   padding: 0.62rem 0.72rem;
   display: grid;
   gap: 0.62rem;
@@ -39,7 +41,7 @@
 }
 
 .event-schedule-panel-title {
-  color: #294f83;
+  color: #526174;
   font-weight: 900;
 }
 
@@ -58,8 +60,9 @@
 }
 
 .event-slots-panel-actions {
-  display: grid;
-  justify-items: end;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 0.4rem;
   min-width: 0;
 }
@@ -115,30 +118,6 @@
 
 .event-slots-summary {
   gap: 0.72rem;
-}
-
-.event-slots-summary-block {
-  display: grid;
-  gap: 0.48rem;
-  padding: 0.88rem;
-  border-radius: 14px;
-  border: 1px solid rgba(78, 112, 150, 0.18);
-  background: rgba(255, 255, 255, 0.74);
-}
-
-.event-slots-summary-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.event-slots-summary-label {
-  color: rgba(29, 48, 75, 0.74);
-  font-size: 0.74rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
 }
 
 .event-slots-summary-add-menu {
@@ -245,8 +224,8 @@
   }
 
   .event-slots-panel-actions {
-    justify-items: start;
     justify-self: start;
+    justify-content: flex-start;
   }
 
   .event-slots-schedule-popup {

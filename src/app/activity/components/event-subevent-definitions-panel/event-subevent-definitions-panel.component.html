@@ -4,27 +4,36 @@
       <mat-icon>inventory_2</mat-icon>
       <div>
         <h3>Sub Events</h3>
-        <p>{{ countLabel() }}</p>
+        <p>{{ panelSubtitle() }}</p>
       </div>
     </div>
     <div class="subevent-definition-panel__actions">
-      <span class="subevent-definition-panel__mode" [class.is-tournament]="mode === 'Tournament'">
-        <mat-icon>{{ mode === 'Tournament' ? 'emoji_events' : 'groups' }}</mat-icon>
-        {{ modeLabel() }}
-      </span>
-      @if (canEdit()) {
-        <button
-          type="button"
-          class="subevent-definition-panel__add"
-          (click)="openCreateDefinitionForm($event)"
-          aria-label="Add sub event definition"
-          >
-          <mat-icon>add</mat-icon>
-        </button>
+      @if (enabled) {
+      <app-menu
+        class="subevent-definition-panel__mode-menu"
+        kind="select"
+        [trigger]="modeMenuTrigger()"
+        [items]="modeMenuItems()"
+        (itemSelect)="onModeMenuSelect($event)"
+      ></app-menu>
+      @if (canConfigureDefinitions()) {
+      <app-menu
+        class="subevent-definition-panel__add-menu"
+        kind="inline"
+        [items]="addMenuItems()"
+        (itemSelect)="onAddMenuSelect($event)"
+      ></app-menu>
       }
+      }
+      <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
+        [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
+        <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>{{ enabled ? 'On' : 'Off' }}</span>
+      </button>
     </div>
   </header>
 
+  @if (enabled) {
   <app-smart-list
     class="subevent-definition-panel__list"
     [config]="smartListConfig"
@@ -42,8 +51,9 @@
       (menuAction)="onCardMenuAction(definition, $event)"
     ></app-info-card>
   </ng-template>
+  }
 
-  @if (definitionForm) {
+  @if (enabled && definitionForm) {
     <app-event-subevent-stage-form-popup
       [view]="definitionFormView"
       [model]="definitionFormModelValue"

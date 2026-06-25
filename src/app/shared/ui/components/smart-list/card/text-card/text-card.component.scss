@@ -28,6 +28,13 @@
     linear-gradient(180deg, #f3f9ff 0%, #e7f2ff 100%);
 }
 
+.ui-text-card--tone-cyan {
+  border-color: rgba(38, 138, 158, 0.3);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.82), transparent 35%),
+    linear-gradient(180deg, #f3fcff 0%, #e1f5f8 100%);
+}
+
 .ui-text-card--tone-green {
   border-color: rgba(48, 142, 86, 0.28);
   background: linear-gradient(180deg, #f5fcf8 0%, #e7f5ec 100%);

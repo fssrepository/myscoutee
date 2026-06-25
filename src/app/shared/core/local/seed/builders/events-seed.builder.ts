@@ -695,6 +695,8 @@ interface ActivityEventSeedOverrides {
   slotsEnabled?: boolean;
   slotTemplates?: ContractTypes.EventSlotTemplateDTO[];
   generated?: boolean;
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: ContractTypes.SubEventDefinitionDTO[];
   subEvents?: ContractTypes.SubEventDTO[];
   mode?: ContractTypes.EventMode;
   rating?: number;
@@ -726,6 +728,8 @@ export class SeedEventsBuilder {
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          subEventsEnabled: item.subEventsEnabled,
+          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics,
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
@@ -775,6 +779,9 @@ export class SeedEventsBuilder {
           visibility: 'Public',
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
           pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
+          subEventsEnabled: item.subEventsEnabled,
+          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
+          subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics
         });
         seedItemsByUser[creatorUserId] = creatorItems;
@@ -791,6 +798,8 @@ export class SeedEventsBuilder {
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: item.slotTemplates ? item.slotTemplates.map(slot => ({ ...slot })) : item.slotTemplates,
+          subEventsEnabled: item.subEventsEnabled,
+          subEventDefinitions: this.cloneSubEventDefinitions(item.subEventDefinitions) ?? item.subEventDefinitions,
           subEvents: this.cloneSubEvents(item.subEvents) ?? item.subEvents,
           topics: item.topics ? [...item.topics] : item.topics,
           acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
@@ -1067,6 +1076,12 @@ export class SeedEventsBuilder {
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       topics: [...(record.topics ?? [])],
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group })),
+        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      })),
       subEvents: this.cloneSubEvents(record.subEvents)
     };
   }
@@ -1263,6 +1278,8 @@ export class SeedEventsBuilder {
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
     const subEvents = this.cloneRebasedSubEvents(record.seed?.subEvents)
       ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
+    const subEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
+    const subEventsEnabled = record.seed?.subEventsEnabled ?? subEventDefinitions.length > 0;
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
       : this.buildSeededRating(record.id, record.title, record.type);
@@ -1309,6 +1326,8 @@ export class SeedEventsBuilder {
       acceptedMembers,
       pendingMembers,
       topics,
+      subEventsEnabled,
+      subEventDefinitions,
       subEvents,
       mode: record.seed?.mode ?? SeedEventBuilder.inferredEventMode(subEvents),
       rating,
@@ -1784,6 +1803,8 @@ export class SeedEventsBuilder {
       slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
       slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,
       topics: 'topics' in item ? item.topics : undefined,
+      subEventsEnabled: 'subEventsEnabled' in item ? item.subEventsEnabled : undefined,
+      subEventDefinitions: 'subEventDefinitions' in item ? this.cloneSubEventDefinitions(item.subEventDefinitions) ?? undefined : undefined,
       subEvents: 'subEvents' in item ? this.cloneSubEvents(item.subEvents) : undefined,
       mode: 'mode' in item ? item.mode : undefined,
       rating: 'rating' in item ? item.rating : undefined,
@@ -1823,6 +1844,21 @@ export class SeedEventsBuilder {
       ...item,
       location: typeof item.location === 'string' ? item.location : '',
       pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined,
+      groups: Array.isArray(item.groups)
+        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
+        : []
+    }));
+  }
+
+  private static cloneSubEventDefinitions(
+    items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined
+  ): ContractTypes.SubEventDefinitionDTO[] | undefined {
+    if (!Array.isArray(items)) {
+      return undefined;
+    }
+    return items.map(item => ({
+      ...item,
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
       groups: Array.isArray(item.groups)
         ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
         : []

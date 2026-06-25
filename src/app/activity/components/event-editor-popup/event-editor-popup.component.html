@@ -116,7 +116,9 @@
             <app-event-subevent-definitions-panel
               class="experience-description-field"
               [(ngModel)]="eventDetailDTO.subEventDefinitions"
-              [mode]="eventDetailDTO.mode"
+              [(mode)]="eventDetailDTO.mode"
+              [enabled]="eventDetailDTO.subEventsEnabled"
+              (enabledChange)="onSubEventsEnabledChange($event)"
               [bounds]="eventDetailDTO.dateRange"
               [readOnly]="eventStructureReadOnly()"
             ></app-event-subevent-definitions-panel>

@@ -1,5 +1,5 @@
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import type { ActivityEventStatus } from '../../../contracts/activity.interface';
+import type { ActivityEventStatus, SubEventDefinitionDTO } from '../../../contracts/activity.interface';
 import type {
   EventBlindMode,
   EventPolicyDTO,
@@ -82,6 +82,8 @@ export interface ActivityEventSeedItem {
   nextSlot?: EventSlotOccurrenceDTO | null;
   upcomingSlots?: EventSlotOccurrenceDTO[];
   topics?: string[];
+  subEventsEnabled?: boolean;
+  subEventDefinitions?: SubEventDefinitionDTO[];
   subEvents?: SubEventDTO[];
   mode?: EventMode;
   policies?: EventPolicyDTO[];

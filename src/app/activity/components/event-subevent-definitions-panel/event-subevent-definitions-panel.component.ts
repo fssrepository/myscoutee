@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, Input, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, forwardRef, Input, Output, inject } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { of } from 'rxjs';
@@ -11,8 +11,11 @@ import type { DateRangeDto } from '../../../shared/core/contracts/date.interface
 import type * as EventContracts from '../../../shared/core/contracts/event.interface';
 import {
   InfoCardComponent,
+  AppMenuComponent,
+  type AppMenuItem,
   SmartListComponent,
   type AppMenuItemSelectEvent,
+  type AppMenuTrigger,
   type CardMenuActionEvent,
   type InfoCardData,
   type ListQuery,
@@ -50,6 +53,7 @@ interface SubEventDefinitionFormState {
     CommonModule,
     FormsModule,
     MatIconModule,
+    AppMenuComponent,
     SmartListComponent,
     InfoCardComponent,
     EventSubeventStageFormPopupComponent
@@ -75,7 +79,10 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private readonly tournamentLeaderboardTypeOptions: readonly EventSubeventTournamentLeaderboardType[] = ['Score', 'Fifa'];
 
   @Input() mode: EventContracts.EventMode = 'Casual';
+  @Input() enabled = false;
   @Input() readOnly = false;
+  @Output() readonly enabledChange = new EventEmitter<boolean>();
+  @Output() readonly modeChange = new EventEmitter<EventContracts.EventMode>();
   @Input()
   set bounds(value: DateRangeDto | null | undefined) {
     this.boundsValue = value ? ActivityEventDetailDTO.normalizeDateRange(value) : null;
@@ -137,8 +144,91 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return !this.readOnly && !this.disabled;
   }
 
+  protected canConfigureDefinitions(): boolean {
+    return this.canEdit() && this.enabled;
+  }
+
+  protected panelSubtitle(): string {
+    return this.enabled
+      ? this.countLabel()
+      : 'Use the main event without sub events.';
+  }
+
+  protected toggleSubEventsEnabled(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canEdit()) {
+      return;
+    }
+    this.enabled = !this.enabled;
+    this.enabledChange.emit(this.enabled);
+  }
+
   protected modeLabel(): string {
     return this.mode === 'Tournament' ? 'Tournament' : 'Casual';
+  }
+
+  protected modeMenuTrigger(): AppMenuTrigger {
+    const tournamentMode = this.mode === 'Tournament';
+    return {
+      label: this.modeLabel(),
+      icon: tournamentMode ? 'emoji_events' : 'groups',
+      palette: tournamentMode ? 'cyan' : 'slate',
+      layout: 'pill',
+      disabled: !this.canConfigureDefinitions()
+    };
+  }
+
+  protected modeMenuItems(): readonly AppMenuItem<EventContracts.EventMode, unknown>[] {
+    return [
+      {
+        id: 'Casual',
+        label: 'Casual',
+        icon: 'groups',
+        kind: 'radio',
+        palette: 'slate',
+        surface: 'tinted',
+        active: this.mode !== 'Tournament',
+        checked: this.mode !== 'Tournament'
+      },
+      {
+        id: 'Tournament',
+        label: 'Tournament',
+        icon: 'emoji_events',
+        kind: 'radio',
+        palette: 'cyan',
+        surface: 'tinted',
+        active: this.mode === 'Tournament',
+        checked: this.mode === 'Tournament'
+      }
+    ];
+  }
+
+  protected onModeMenuSelect(event: AppMenuItemSelectEvent<EventContracts.EventMode, unknown>): void {
+    if (!this.canConfigureDefinitions()) {
+      return;
+    }
+    this.mode = event.id === 'Tournament' ? 'Tournament' : 'Casual';
+    this.modeChange.emit(this.mode);
+  }
+
+  protected addMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    if (!this.canConfigureDefinitions()) {
+      return [];
+    }
+    return [{
+      id: 'add',
+      icon: 'add',
+      ariaLabel: 'Add sub event definition',
+      palette: 'amber'
+    }];
+  }
+
+  protected onAddMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (event.id !== 'add') {
+      return;
+    }
+    this.openCreateDefinitionForm(event.sourceEvent);
   }
 
   protected countLabel(): string {
@@ -193,7 +283,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
           tone: status.accessoryTone
         }
       },
-      menuActions: this.canEdit() ? ['edit', 'delete'] : []
+      menuActions: this.canConfigureDefinitions() ? ['edit', 'delete'] : []
     };
   }
 
@@ -235,7 +325,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected onDefinitionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    if (!this.canEdit()) {
+    if (!this.canConfigureDefinitions()) {
       return;
     }
     const context = event.context as { definitionId?: unknown } | undefined;
@@ -258,7 +348,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   protected openCreateDefinitionForm(event?: Event): void {
     event?.stopPropagation();
-    if (!this.canEdit()) {
+    if (!this.canConfigureDefinitions()) {
       return;
     }
     const nextIndex = this.definitions.length + 1;
@@ -277,7 +367,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected onCardMenuAction(item: SubEventDefinitionDTO, event: CardMenuActionEvent<InfoCardData>): void {
-    if (!this.canEdit()) {
+    if (!this.canConfigureDefinitions()) {
       return;
     }
     const index = this.definitions.findIndex(candidate => candidate.id === item.id);
@@ -311,7 +401,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       open: Boolean(state),
       parentTitle: 'Sub Events',
       title: this.definitionFormTitle(state),
-      readOnly: !this.canEdit(),
+      readOnly: !this.canConfigureDefinitions(),
       canSave: this.canSaveDefinitionForm(model),
       invalidName: !this.hasText(model.name),
       invalidDescription: !this.hasText(model.description),
@@ -341,7 +431,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected saveDefinitionForm(event?: Event): void {
     event?.stopPropagation();
     const state = this.definitionForm;
-    if (!state || !this.canEdit() || !this.canSaveDefinitionForm(state.model)) {
+    if (!state || !this.canConfigureDefinitions() || !this.canSaveDefinitionForm(state.model)) {
       return;
     }
 

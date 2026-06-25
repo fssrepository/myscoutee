@@ -194,6 +194,7 @@ export interface ActivityEventRecord {
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[];
+  subEventsEnabled?: boolean;
   subEventDefinitions?: SubEventDefinitionDTO[];
   subEvents?: EventContracts.SubEventDTO[];
   mode?: EventContracts.EventMode;
@@ -315,6 +316,7 @@ export class ActivityEventDetailDTO {
   pendingRequestMemberUserIds: string[] = [];
   pendingReason?: AppConstants.ActivityPendingReason;
   topics: string[] = [];
+  subEventsEnabled = true;
   subEventDefinitions: SubEventDefinitionDTO[] = [];
   subEvents: EventContracts.SubEventDTO[] = [];
   mode: EventContracts.EventMode = 'Casual';
@@ -385,6 +387,7 @@ export class ActivityEventDetailDTO {
     this.pendingRequestMemberUserIds = [...(update.pendingRequestMemberUserIds ?? this.pendingRequestMemberUserIds)];
     this.pendingReason = update.pendingReason ?? this.pendingReason;
     this.topics = [...(update.topics ?? this.topics)];
+    this.subEventsEnabled = update.subEventsEnabled ?? this.subEventsEnabled;
     this.applySubEventDefinitions(update.subEventDefinitions ?? this.subEventDefinitions);
     this.applySubEvents(update.subEvents ?? this.subEvents);
     this.mode = ActivityEventDetailDTO.normalizeMode(update.mode ?? this.mode);

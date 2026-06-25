@@ -95,6 +95,8 @@ export class LocalActivityEventDetailsMapper {
     const hasSlots = payload.slotsEnabled ?? existing?.slotsEnabled ?? false;
     const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
     const slotTemplates = hasSlots ? this.normalizeSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []) : [];
+    const subEventsEnabled = payload.subEventsEnabled ?? existing?.subEventsEnabled ?? true;
+    const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions ?? existing?.subEventDefinitions ?? []);
     const subEvents = this.normalizeSubEvents(payload.subEvents ?? existing?.subEvents ?? []);
     const policies = this.normalizePolicies(payload.policies ?? existing?.policies ?? []);
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
@@ -175,6 +177,8 @@ export class LocalActivityEventDetailsMapper {
       invitedMemberUserIds: [...context.invitedMemberUserIds],
       pendingRequestMemberUserIds: [...context.pendingRequestMemberUserIds],
       topics,
+      subEventsEnabled,
+      subEventDefinitions,
       subEvents,
       mode: ActivityEventRecordBuilder.normalizeEventMode(
         payload.mode
@@ -241,6 +245,8 @@ export class LocalActivityEventDetailsMapper {
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       pendingReason: record.pendingReason,
       topics: [...(record.topics ?? [])],
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: record.subEventDefinitions ?? [],
       subEvents: record.subEvents ?? [],
       mode: ActivityEventRecordBuilder.normalizeEventMode(record.mode),
       rating: record.rating,

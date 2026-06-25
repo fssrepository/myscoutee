@@ -1500,6 +1500,8 @@ export class LocalEventsRepository {
       slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
       topics: this.normalizeTopics(record.topics ?? []),
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(record.subEventDefinitions ?? []),
       subEvents: this.cloneSubEvents(record.subEvents)
     };
   }
@@ -1906,7 +1908,9 @@ export class LocalEventsRepository {
 
     const records: ActivityEventRecord[] = [];
     const templates = parent.slotTemplates ?? [];
-    const definitionDurationMinutes = this.subEventDefinitionsDurationMinutes(parent.subEventDefinitions);
+    const definitionDurationMinutes = parent.subEventsEnabled === true
+      ? this.subEventDefinitionsDurationMinutes(parent.subEventDefinitions)
+      : 0;
     const definitionDurationMs = Math.max(0, definitionDurationMinutes) * 60 * 1000;
     const overrideDates = new Set(
       templates
@@ -1983,7 +1987,8 @@ export class LocalEventsRepository {
           acceptedMembers: 0,
           pendingMembers: 0,
           topics: [...parent.topics],
-          subEvents: (parent.subEventDefinitions?.length ?? 0) > 0
+          subEventsEnabled: false,
+          subEvents: parent.subEventsEnabled === true && (parent.subEventDefinitions?.length ?? 0) > 0
             ? this.materializeSubEventDefinitionsForSlotOccurrence(parent.subEventDefinitions, startAt)
             : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
           mode: parent.mode,
@@ -2065,7 +2070,8 @@ export class LocalEventsRepository {
         acceptedMembers: 0,
         pendingMembers: 0,
         topics: [...parent.topics],
-        subEvents: (parent.subEventDefinitions?.length ?? 0) > 0
+        subEventsEnabled: false,
+        subEvents: parent.subEventsEnabled === true && (parent.subEventDefinitions?.length ?? 0) > 0
           ? this.materializeSubEventDefinitionsForSlotOccurrence(parent.subEventDefinitions, startAt)
           : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
         mode: parent.mode,

@@ -21,6 +21,7 @@ export class ActivityEventRecordBuilder {
       invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       topics: [...(record.topics ?? [])],
+      subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
         ...item,
         groups: (item.groups ?? []).map(group => ({ ...group })),

@@ -45,6 +45,11 @@ export class ActivityEventSeedMapper {
       nextSlot: record.nextSlot,
       upcomingSlots: record.upcomingSlots ? [...record.upcomingSlots] : undefined,
       topics: [...record.topics],
+      subEventsEnabled: record.subEventsEnabled !== false,
+      subEventDefinitions: record.subEventDefinitions ? record.subEventDefinitions.map(item => ({
+        ...item,
+        groups: (item.groups ?? []).map(group => ({ ...group }))
+      })) : undefined,
       subEvents: record.subEvents ? [...record.subEvents] : undefined,
       mode: record.mode,
       rating: record.rating,

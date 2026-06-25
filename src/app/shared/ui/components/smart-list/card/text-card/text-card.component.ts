@@ -13,6 +13,7 @@ import {
 export type TextCardTone =
   | 'neutral'
   | 'blue'
+  | 'cyan'
   | 'green'
   | 'violet'
   | 'amber'

@@ -60,54 +60,54 @@
 .subevent-definition-panel__actions {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
 }
 
-.subevent-definition-panel__mode {
+.subevent-definition-panel__add-menu {
+  display: inline-flex;
+}
+
+.subevent-definition-panel__mode-menu {
+  display: inline-flex;
+}
+
+.subevent-definition-panel__toggle {
+  min-width: 82px;
+  min-height: 38px;
+  padding: 0.3rem 0.62rem;
+  border-radius: 999px;
+  border: 1px solid rgba(128, 149, 176, 0.24);
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  min-height: 26px;
-  padding: 4px 9px;
-  border: 1px solid rgba(82, 101, 126, 0.32);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f4f6f9 0%, #e7edf4 100%);
-  color: #536174;
-  font-size: 11px;
+  justify-content: center;
+  gap: 0.4rem;
+  color: #5b6e8e;
+  background: linear-gradient(180deg, #f4f7fb 0%, #e9eff7 100%);
+  font-size: 0.76rem;
   font-weight: 800;
-}
-
-.subevent-definition-panel__mode.is-tournament {
-  border-color: rgba(45, 142, 154, 0.5);
-  background: linear-gradient(180deg, #effdff 0%, #d8f3f8 100%);
-  color: #1f7280;
-  box-shadow: 0 6px 14px rgba(28, 118, 130, 0.14);
-}
-
-.subevent-definition-panel__mode mat-icon {
-  width: 15px;
-  height: 15px;
-  font-size: 15px;
-}
-
-.subevent-definition-panel__add {
-  display: inline-grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(49, 112, 178, 0.28);
-  border-radius: 50%;
-  background: #fffaf1;
-  color: #8f5f19;
-  box-shadow: 0 8px 18px rgba(120, 80, 24, 0.14);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  box-shadow: 0 2px 7px rgba(29, 53, 86, 0.08);
   cursor: pointer;
 }
 
-.subevent-definition-panel__add mat-icon {
-  width: 19px;
-  height: 19px;
-  font-size: 19px;
+.subevent-definition-panel__toggle.is-on {
+  background: linear-gradient(180deg, #ecf8ee 0%, #ddf1e2 100%);
+  border-color: rgba(44, 126, 72, 0.32);
+  color: #2d7d47;
+}
+
+.subevent-definition-panel__toggle:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.subevent-definition-panel__toggle mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
 }
 
 .subevent-definition-panel__list {
