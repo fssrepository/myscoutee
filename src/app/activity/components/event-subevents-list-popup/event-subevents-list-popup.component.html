@@ -6,12 +6,15 @@
       <div class="popup-title event-subevents-list-title">
         <h2>{{ popupTitle() }}</h2>
         <p class="popup-subtitle-activities">{{ popupSubtitle() }}</p>
-        @if (eventRangeLabel()) {
-        <span class="event-subevents-list-range-badge">
+        @let rangeLabel = eventRangeLabel();
+        <span
+          class="event-subevents-list-range-badge"
+          [class.event-subevents-list-range-badge--empty]="!rangeLabel"
+          [attr.aria-hidden]="!rangeLabel ? 'true' : null"
+        >
           <mat-icon>calendar_month</mat-icon>
-          <span>{{ eventRangeLabel() }}</span>
+          <span>{{ rangeLabel || 'Jul 26, 9:30 PM - Jul 27, 12:30 AM' }}</span>
         </span>
-        }
       </div>
       <div class="event-subevents-list-header-actions">
         <app-menu
