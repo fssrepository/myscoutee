@@ -28,7 +28,7 @@ import {
   type AppMenuTrigger,
   CounterBadgePipe,
   DateInputComponent,
-  type DateInputRangeValue,
+  type DateInputModel,
   EditableImageCarouselComponent,
   EventPoliciesInputComponent,
   EventSlotsInputComponent,
@@ -139,7 +139,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
-      if (mode === 'create' && this.draftEventId && this.eventDetailDTO.id === this.draftEventId && this.eventDetailDTO.startAtIso) {
+      if (mode === 'create' && this.draftEventId && this.eventDetailDTO.id === this.draftEventId && this.eventDetailDTO.dateRange.startAt) {
         return;
       }
 
@@ -208,7 +208,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventDetailDTO: ActivityEventDetailDTO = this.createEmptyEventDetailDTO();
 
-  private eventDateRangeValueState: DateInputRangeValue = { startAt: '', endAt: '' };
   showSubEventsPopup = false;
   isSavePending = false;
 
@@ -222,11 +221,23 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   };
 
   protected readonly eventSlotsInputConfig: EventSlotsInputConfig = {
-    startAtIso: () => this.eventDetailDTO.startAtIso,
-    endAtIso: () => this.eventDetailDTO.endAtIso,
+    startAtIso: () => this.eventDetailDTO.dateRange.startAt,
+    endAtIso: () => this.eventDetailDTO.dateRange.endAt,
     frequency: () => this.eventDetailDTO.frequency,
     generated: () => this.isGeneratedSlotInstance()
   };
+
+  protected get eventDateInputModel(): DateInputModel {
+    return {
+      mode: 'range',
+      precision: 'minute',
+      range: {
+        start: { label: 'Start' },
+        end: { label: 'End' }
+      },
+      readOnly: this.eventStructureReadOnly()
+    };
+  }
 
   protected readonly eventLocationInputConfig: LocationInputConfig = {
     label: 'Location',
@@ -298,7 +309,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   handleSubEventsChange(subEvents: readonly ContractTypes.SubEventDTO[]): void {
     this.eventDetailDTO.applySubEvents(subEvents);
     this.syncMainEventBoundsFromSubEvents();
-    this.syncEventDateRangeValueFromDTO();
   }
 
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
@@ -335,8 +345,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       creatorCity: '',
       visibility: 'Public',
       blindMode: 'Open Event',
-      startAtIso: '',
-      endAtIso: '',
+      dateRange: { startAt: '', endAt: '', precision: 'minute' },
       distanceKm: 0,
       imageUrl: '',
       sourceLink: '',
@@ -430,8 +439,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       && this.eventDetailDTO.subtitle.trim()
       && this.eventDetailDTO.capacityMin !== null
       && this.eventDetailDTO.capacityMax !== null
-      && this.eventDetailDTO.startAtIso
-      && this.eventDetailDTO.endAtIso
+      && this.eventDetailDTO.dateRange.startAt
+      && this.eventDetailDTO.dateRange.endAt
     );
   }
 
@@ -923,24 +932,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
   }
 
-  protected eventDateRangeEndMin(): string {
-    return this.eventDetailDTO.startAtIso;
-  }
-
-  protected get eventDateRangeValue(): DateInputRangeValue {
-    return this.eventDateRangeValueState;
-  }
-
-  protected set eventDateRangeValue(value: DateInputRangeValue | string | null) {
-    if (this.eventStructureReadOnly() || !this.isDateInputRangeValue(value)) {
-      return;
-    }
-    this.eventDetailDTO.startAtIso = value.startAt;
-    this.eventDetailDTO.endAtIso = value.endAt;
-    this.normalizeEventDateRange();
-    this.syncEventDateRangeValueFromDTO();
-  }
-
   protected eventFrequencyUsesSlots(): boolean {
     return ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency) !== 'One-time';
   }
@@ -1017,7 +1008,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.eventDetailDTO.mode = this.eventDetailDTO.mode === 'Tournament' ? 'Casual' : 'Tournament';
     this.syncMainEventBoundsFromSubEvents();
-    this.syncEventDateRangeValueFromDTO();
   }
 
   toggleEventAutoInviter(event: Event): void {
@@ -1334,7 +1324,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange();
-    this.syncEventDateRangeValueFromDTO();
     this.seedDraftAutosaveSignature();
   }
 
@@ -1363,32 +1352,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       creatorGender: activeUserProfile?.gender,
       creatorCity: activeUserProfile?.city ?? '',
       visibility: target === 'hosting' ? 'Invitation only' : 'Public',
-      startAtIso: AppUtils.toIsoDateTimeLocal(start),
-      endAtIso: AppUtils.toIsoDateTimeLocal(end)
+      dateRange: {
+        startAt: AppUtils.toIsoDateTimeLocal(start),
+        endAt: AppUtils.toIsoDateTimeLocal(end),
+        precision: 'minute'
+      }
     });
 
     this.eventDetailDTO.mode = 'Casual';
-    this.syncEventDateRangeValueFromDTO();
     this.seedDraftAutosaveSignature();
   }
 
-  private syncEventDateRangeValueFromDTO(): void {
-    this.eventDateRangeValueState = {
-      startAt: this.eventDetailDTO.startAtIso,
-      endAt: this.eventDetailDTO.endAtIso
-    };
-  }
-
-  private isDateInputRangeValue(value: DateInputRangeValue | string | null): value is DateInputRangeValue {
-    return !!value
-      && typeof value === 'object'
-      && 'startAt' in value
-      && 'endAt' in value;
-  }
-
   private normalizeEventDateRange(): void {
-    const start = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.startAtIso);
-    let end = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.endAtIso);
+    const start = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.startAt);
+    let end = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.endAt);
     if (!start || !end) {
       return;
     }
@@ -1401,7 +1378,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       end = new Date(start.getTime() + (60 * 60 * 1000));
     }
 
-    this.eventDetailDTO.endAtIso = AppUtils.toIsoDateTimeLocal(end);
+    this.eventDetailDTO.dateRange = {
+      startAt: AppUtils.toIsoDateTimeLocal(start),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
+      precision: 'minute'
+    };
+    this.eventDetailDTO.startAtIso = this.eventDetailDTO.dateRange.startAt;
+    this.eventDetailDTO.endAtIso = this.eventDetailDTO.dateRange.endAt;
     this.eventDetailDTO.slotsEnabled = this.eventFrequencyUsesSlots();
     if (!this.eventDetailDTO.slotsEnabled) {
       this.eventDetailDTO.slotTemplates = [];
@@ -1460,9 +1443,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     if (minStartMs !== null && maxEndMs !== null) {
-      this.eventDetailDTO.startAtIso = AppUtils.toIsoDateTimeLocal(new Date(minStartMs));
-      this.eventDetailDTO.endAtIso = AppUtils.toIsoDateTimeLocal(new Date(maxEndMs));
-      this.syncEventDateRangeValueFromDTO();
+      this.eventDetailDTO.dateRange = {
+        startAt: AppUtils.toIsoDateTimeLocal(new Date(minStartMs)),
+        endAt: AppUtils.toIsoDateTimeLocal(new Date(maxEndMs)),
+        precision: 'minute'
+      };
+      this.eventDetailDTO.startAtIso = this.eventDetailDTO.dateRange.startAt;
+      this.eventDetailDTO.endAtIso = this.eventDetailDTO.dateRange.endAt;
     }
     if (minCapacity !== null) {
       this.eventDetailDTO.capacityMin = minCapacity;

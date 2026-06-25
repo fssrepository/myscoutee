@@ -119,36 +119,11 @@
             <span>Description <span class="required-star">*</span></span>
             <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="fieldInvalid('description')" placeholder="Describe this stage"></textarea>
           </label>
-          <label class="event-datetime-label">
-            <span>{{ view.startFieldLabel }}</span>
-            <div class="event-datetime-row">
-              <mat-form-field appearance="outline" class="event-date-field event-date-field-start" subscriptSizing="dynamic">
-                <input matInput [matDatepicker]="subEventStartPicker" [ngModel]="subEventStartDateValue" (ngModelChange)="onStartDateChange($event)" />
-                <mat-datepicker-toggle matSuffix [for]="subEventStartPicker"></mat-datepicker-toggle>
-                <mat-datepicker #subEventStartPicker></mat-datepicker>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="event-time-field event-time-field-start" subscriptSizing="dynamic">
-                <input matInput [matTimepicker]="subEventStartTimePicker" [matTimepickerOpenOnClick]="true" [ngModel]="subEventStartTimeValue" (ngModelChange)="onStartTimeChange($event)" />
-                <mat-timepicker-toggle matSuffix [for]="subEventStartTimePicker"></mat-timepicker-toggle>
-                <mat-timepicker #subEventStartTimePicker></mat-timepicker>
-              </mat-form-field>
-            </div>
-          </label>
-          <label class="event-datetime-label">
-            <span>{{ view.endFieldLabel }}</span>
-            <div class="event-datetime-row">
-              <mat-form-field appearance="outline" class="event-date-field event-date-field-end" subscriptSizing="dynamic">
-                <input matInput [matDatepicker]="subEventEndPicker" [ngModel]="subEventEndDateValue" (ngModelChange)="onEndDateChange($event)" />
-                <mat-datepicker-toggle matSuffix [for]="subEventEndPicker"></mat-datepicker-toggle>
-                <mat-datepicker #subEventEndPicker></mat-datepicker>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="event-time-field event-time-field-end" subscriptSizing="dynamic">
-                <input matInput [matTimepicker]="subEventEndTimePicker" [matTimepickerOpenOnClick]="true" [ngModel]="subEventEndTimeValue" (ngModelChange)="onEndTimeChange($event)" />
-                <mat-timepicker-toggle matSuffix [for]="subEventEndTimePicker"></mat-timepicker-toggle>
-                <mat-timepicker #subEventEndTimePicker></mat-timepicker>
-              </mat-form-field>
-            </div>
-          </label>
+          <app-date-input
+            class="experience-description-field subevent-date-input"
+            [model]="view.dateInput"
+            [(ngModel)]="model.dateRange"
+          ></app-date-input>
           <app-location-input
             class="experience-description-field subevent-location-field"
             [(ngModel)]="model.location"

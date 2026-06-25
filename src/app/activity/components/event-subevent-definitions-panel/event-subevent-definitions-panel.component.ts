@@ -7,6 +7,7 @@ import { of } from 'rxjs';
 import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../shared/core/contracts/activity.interface';
+import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import type * as EventContracts from '../../../shared/core/contracts/event.interface';
 import {
   InfoCardComponent,
@@ -70,20 +71,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private onChange: (value: SubEventDefinitionDTO[]) => void = () => undefined;
   private onTouched: () => void = () => undefined;
   private revision = 0;
-  private parentStartAtValue = '';
-  private parentEndAtValue = '';
+  private boundsValue: DateRangeDto | null = null;
   private readonly tournamentLeaderboardTypeOptions: readonly EventSubeventTournamentLeaderboardType[] = ['Score', 'Fifa'];
 
   @Input() mode: EventContracts.EventMode = 'Casual';
   @Input() readOnly = false;
   @Input()
-  set parentStartAt(value: string | null | undefined) {
-    this.parentStartAtValue = `${value ?? ''}`.trim();
-    this.refreshDefinitionFormView();
-  }
-  @Input()
-  set parentEndAt(value: string | null | undefined) {
-    this.parentEndAtValue = `${value ?? ''}`.trim();
+  set bounds(value: DateRangeDto | null | undefined) {
+    this.boundsValue = value ? ActivityEventDetailDTO.normalizeDateRange(value) : null;
     this.refreshDefinitionFormView();
   }
 
@@ -309,10 +304,21 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       timingSummaryTitle: timingBounds ? 'Main event range' : 'Definition',
       timingSummaryText: '',
       timingSummaryMeta,
-      startFieldLabel: 'Start',
-      endFieldLabel: 'End',
-      timingBoundStartAt: timingBounds?.startAt ?? '',
-      timingBoundEndAt: timingBounds?.endAt ?? '',
+      dateInput: {
+        mode: 'range',
+        precision: 'minute',
+        range: {
+          start: { label: 'Start' },
+          end: { label: 'End' },
+          bounds: timingBounds
+            ? {
+              start: timingBounds.startAt,
+              end: timingBounds.endAt
+            }
+            : null
+        },
+        readOnly: !this.canEdit()
+      },
       showInsertControls: state?.index === null && insertOptions.length > 0,
       insertFieldLabel: isTournament ? 'Insert Stage' : 'Insert Sub Event',
       insertPlacement: state?.insertPlacement ?? 'after',
@@ -454,8 +460,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       name: item?.name?.trim() || (this.mode === 'Tournament' ? `Stage ${fallbackIndex}` : `Sub Event ${fallbackIndex}`),
       description: item?.description?.trim() ?? '',
       location: item?.location?.trim() ?? '',
-      startAt: range.startAt,
-      endAt: range.endAt,
+      dateRange: range,
       optional,
       pricing: item?.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : PricingBuilder.createDefaultPricingConfig('subevent'),
       capacityMin: this.toNonNegativeInteger(item?.capacityMin ?? 0),
@@ -477,8 +482,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       id: state.id,
       name: model.name,
       description: model.description,
-      startAt: `${model.startAt ?? ''}`.trim(),
-      endAt: `${model.endAt ?? ''}`.trim(),
+      dateRange: ActivityEventDetailDTO.normalizeDateRange(model.dateRange),
       location: `${model.location ?? ''}`.trim(),
       groups: state.groups.map(group => ({ ...group })),
       tournamentGroupCount: this.optionalNonNegativeInteger(model.tournamentGroupCount),
@@ -547,11 +551,11 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return this.hasText(model.name) && this.hasText(model.description);
   }
 
-  private defaultDefinitionRange(item: SubEventDefinitionDTO | null): { startAt: string; endAt: string } {
+  private defaultDefinitionRange(item: SubEventDefinitionDTO | null): DateRangeDto {
     const timingBounds = this.definitionTimingBounds();
     const fallbackStart = timingBounds ? this.parseDate(timingBounds.startAt) ?? new Date() : new Date();
-    const parsedStart = this.parseDate(item?.startAt) ?? fallbackStart;
-    const parsedEndRaw = this.parseDate(item?.endAt)
+    const parsedStart = this.parseDate(item?.dateRange?.startAt) ?? fallbackStart;
+    const parsedEndRaw = this.parseDate(item?.dateRange?.endAt)
       ?? (timingBounds ? this.parseDate(timingBounds.endAt) : null)
       ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
     const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
@@ -559,7 +563,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       : parsedEndRaw;
     return {
       startAt: AppUtils.toIsoDateTimeLocal(parsedStart),
-      endAt: AppUtils.toIsoDateTimeLocal(parsedEnd)
+      endAt: AppUtils.toIsoDateTimeLocal(parsedEnd),
+      precision: 'minute'
     };
   }
 
@@ -577,15 +582,16 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return `${value ?? ''}`.trim() === 'Fifa' ? 'Fifa' : 'Score';
   }
 
-  private definitionTimingBounds(): { startAt: string; endAt: string } | null {
-    const start = this.parseDate(this.parentStartAtValue);
-    const end = this.parseDate(this.parentEndAtValue);
+  private definitionTimingBounds(): DateRangeDto | null {
+    const start = this.parseDate(this.boundsValue?.startAt);
+    const end = this.parseDate(this.boundsValue?.endAt);
     if (!start || !end || end.getTime() <= start.getTime()) {
       return null;
     }
     return {
       startAt: AppUtils.toIsoDateTimeLocal(start),
-      endAt: AppUtils.toIsoDateTimeLocal(end)
+      endAt: AppUtils.toIsoDateTimeLocal(end),
+      precision: 'minute'
     };
   }
 

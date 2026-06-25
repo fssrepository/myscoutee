@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
+import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { EventSubeventsPopupComponent, type EventSubeventsItem } from '../event-subevents-popup/event-subevents-popup.component';
@@ -41,8 +42,7 @@ export class EventSubeventsInputComponent implements ControlValueAccessor {
 
   @Input() slotsEnabled = false;
   @Input() slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = [];
-  @Input() parentStartAt = '';
-  @Input() parentEndAt = '';
+  @Input() bounds: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
 
   protected subEvents: ContractTypes.SubEventDTO[] = [];
 

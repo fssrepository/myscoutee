@@ -1,5 +1,6 @@
 import type * as AppConstants from '../common/constants';
 import type * as ChatContracts from './chat.interface';
+import type { DateRangeDto } from './date.interface';
 import type * as EventContracts from './event.interface';
 import type * as PricingContracts from './pricing.interface';
 import type * as UserContracts from './user.interface';
@@ -241,8 +242,7 @@ export interface SubEventDefinitionDTO {
   id: string;
   name: string;
   description: string;
-  startAt?: string;
-  endAt?: string;
+  dateRange: DateRangeDto;
   location?: string;
   groups?: EventContracts.SubEventGroupDTO[];
   tournamentGroupCount?: number;
@@ -281,6 +281,7 @@ export class ActivityEventDetailDTO {
   blindMode: EventContracts.EventBlindMode = 'Open Event';
   startAtIso = '';
   endAtIso = '';
+  dateRange: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
   distanceKm = 0;
   imageUrl = '';
   sourceLink = '';
@@ -344,8 +345,13 @@ export class ActivityEventDetailDTO {
     this.creatorCity = update.creatorCity ?? this.creatorCity;
     this.visibility = update.visibility ?? this.visibility;
     this.blindMode = update.blindMode ?? this.blindMode;
-    this.startAtIso = update.startAtIso ?? this.startAtIso;
-    this.endAtIso = update.endAtIso ?? this.endAtIso;
+    this.dateRange = ActivityEventDetailDTO.normalizeDateRange(update.dateRange ?? {
+      startAt: update.startAtIso ?? this.dateRange.startAt ?? this.startAtIso,
+      endAt: update.endAtIso ?? this.dateRange.endAt ?? this.endAtIso,
+      precision: 'minute'
+    });
+    this.startAtIso = this.dateRange.startAt;
+    this.endAtIso = this.dateRange.endAt;
     this.distanceKm = Number.isFinite(update.distanceKm) ? Number(update.distanceKm) : this.distanceKm;
     this.imageUrl = update.imageUrl ?? this.imageUrl;
     this.sourceLink = update.sourceLink ?? this.sourceLink;
@@ -480,8 +486,7 @@ export class ActivityEventDetailDTO {
         id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
         name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
         description: `${item.description ?? ''}`.trim(),
-        startAt: `${item.startAt ?? ''}`.trim(),
-        endAt: `${item.endAt ?? ''}`.trim(),
+        dateRange: ActivityEventDetailDTO.normalizeDateRange(item.dateRange),
         location: ActivityEventDetailDTO.normalizeLocation(item.location),
         groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
         tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
@@ -496,6 +501,14 @@ export class ActivityEventDetailDTO {
         icon: `${item.icon ?? ''}`.trim() || null
       };
     });
+  }
+
+  static normalizeDateRange(value: Partial<DateRangeDto> | null | undefined): DateRangeDto {
+    return {
+      startAt: `${value?.startAt ?? ''}`.trim(),
+      endAt: `${value?.endAt ?? ''}`.trim(),
+      precision: value?.precision === 'date' ? 'date' : 'minute'
+    };
   }
 
   static normalizeSubEvents(items: readonly EventContracts.SubEventDTO[]): EventContracts.SubEventDTO[] {

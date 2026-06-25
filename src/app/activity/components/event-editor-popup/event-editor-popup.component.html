@@ -117,8 +117,7 @@
               class="experience-description-field"
               [(ngModel)]="eventDetailDTO.subEventDefinitions"
               [mode]="eventDetailDTO.mode"
-              [parentStartAt]="eventDetailDTO.startAtIso"
-              [parentEndAt]="eventDetailDTO.endAtIso"
+              [bounds]="eventDetailDTO.dateRange"
               [readOnly]="eventStructureReadOnly()"
             ></app-event-subevent-definitions-panel>
             <section class="event-scheduling-stack">
@@ -142,13 +141,8 @@
                 </div>
                 <app-date-input
                   class="event-date-input"
-                  mode="range"
-                  precision="minute"
-                  startLabel="Start"
-                  endLabel="End"
-                  [(ngModel)]="eventDateRangeValue"
-                  [endMin]="eventDateRangeEndMin()"
-                  [readOnly]="eventStructureReadOnly()"
+                  [model]="eventDateInputModel"
+                  [(ngModel)]="eventDetailDTO.dateRange"
                 ></app-date-input>
               </section>
               <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
@@ -178,8 +172,7 @@
               [ownerId]="editingEventId"
               [slotsEnabled]="eventFrequencyUsesSlots()"
               [slotTemplates]="eventDetailDTO.slotTemplates"
-              [parentStartAt]="eventDetailDTO.startAtIso"
-              [parentEndAt]="eventDetailDTO.endAtIso"
+              [bounds]="eventDetailDTO.dateRange"
             ></app-event-subevents-input>
           </div>
         </div>

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,7 +10,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
   DateInputComponent,
-  type DateInputRangeValue,
+  type DateInputModel,
   LocationInputComponent,
   type LocationInputConfig,
   type AppMenuItem,
@@ -45,10 +45,7 @@ export interface EventSubeventStageFormPopupView {
   timingSummaryTitle: string;
   timingSummaryText: string;
   timingSummaryMeta: string;
-  startFieldLabel: string;
-  endFieldLabel: string;
-  timingBoundStartAt: string;
-  timingBoundEndAt: string;
+  dateInput: DateInputModel;
   showInsertControls: boolean;
   insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
@@ -66,8 +63,7 @@ export interface EventSubeventStageFormModel {
   name: string;
   description: string;
   location: string;
-  startAt: string;
-  endAt: string;
+  dateRange: ContractTypes.DateRangeDto;
   optional: boolean;
   pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
@@ -102,8 +98,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     name: '',
     description: '',
     location: '',
-    startAt: '',
-    endAt: '',
+    dateRange: { startAt: '', endAt: '', precision: 'minute' },
     optional: false,
     pricing: null,
     capacityMin: 0,
@@ -122,7 +117,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   @Output() readonly tournamentLeaderboardTypeChange = new EventEmitter<EventSubeventTournamentLeaderboardType | string | null | undefined>();
   @Output() readonly tournamentAdvancePerGroupChange = new EventEmitter<number | string>();
 
-  private subEventDateRangeValueState: DateInputRangeValue = { startAt: '', endAt: '' };
   protected readonly subeventPricingEditorConfig: PricingEditorConfig = {
     context: 'subevent',
     presentation: 'popup-summary',
@@ -136,24 +130,8 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     mapAriaLabel: 'Open sub event location on map'
   };
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['model'] || changes['view']) {
-      this.syncDateRangeValueFromModel();
-    }
-  }
-
-  protected get subEventDateRangeValue(): DateInputRangeValue {
-    return this.subEventDateRangeValueState;
-  }
-
-  protected set subEventDateRangeValue(value: DateInputRangeValue | string | null) {
-    if (!this.isDateInputRangeValue(value)) {
-      return;
-    }
-    this.model.startAt = value.startAt;
-    this.model.endAt = value.endAt;
+  ngOnChanges(): void {
     this.normalizeDateRange();
-    this.syncDateRangeValueFromModel();
   }
 
   protected trackByInsertOption(_: number, option: { id: string }): string {
@@ -164,8 +142,8 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return !this.view.readOnly
       && this.hasText(this.model.name)
       && this.hasText(this.model.description)
-      && this.hasText(this.model.startAt)
-      && this.hasText(this.model.endAt);
+      && this.hasText(this.model.dateRange.startAt)
+      && this.hasText(this.model.dateRange.endAt);
   }
 
   protected fieldInvalid(field: 'name' | 'description'): boolean {
@@ -285,15 +263,15 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   }
 
   private normalizeDateRange(): void {
-    const boundStart = this.parseDateTime(this.view.timingBoundStartAt);
-    const boundEnd = this.parseDateTime(this.view.timingBoundEndAt);
+    const boundStart = this.parseDateTime(this.view.dateInput.range?.bounds?.start);
+    const boundEnd = this.parseDateTime(this.view.dateInput.range?.bounds?.end);
     const defaultStart = boundStart ?? new Date();
     const defaultDurationMs = boundStart && boundEnd && boundEnd.getTime() > boundStart.getTime()
       ? Math.max(15 * 60 * 1000, Math.min(60 * 60 * 1000, boundEnd.getTime() - boundStart.getTime()))
       : (60 * 60 * 1000);
 
-    let start = this.parseDateTime(this.model.startAt) ?? new Date(defaultStart.getTime());
-    let safeEnd = this.parseDateTime(this.model.endAt);
+    let start = this.parseDateTime(this.model.dateRange.startAt) ?? new Date(defaultStart.getTime());
+    let safeEnd = this.parseDateTime(this.model.dateRange.endAt);
     if (!safeEnd || safeEnd.getTime() <= start.getTime()) {
       safeEnd = new Date(start.getTime() + defaultDurationMs);
     }
@@ -321,22 +299,11 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       safeEnd = new Date(endMs);
     }
 
-    this.model.startAt = AppUtils.toIsoDateTimeLocal(start);
-    this.model.endAt = AppUtils.toIsoDateTimeLocal(safeEnd);
-  }
-
-  private syncDateRangeValueFromModel(): void {
-    this.subEventDateRangeValueState = {
-      startAt: this.model.startAt,
-      endAt: this.model.endAt
+    this.model.dateRange = {
+      startAt: AppUtils.toIsoDateTimeLocal(start),
+      endAt: AppUtils.toIsoDateTimeLocal(safeEnd),
+      precision: 'minute'
     };
-  }
-
-  private isDateInputRangeValue(value: DateInputRangeValue | string | null): value is DateInputRangeValue {
-    return !!value
-      && typeof value === 'object'
-      && 'startAt' in value
-      && 'endAt' in value;
   }
 
   private defaultView(): EventSubeventStageFormPopupView {
@@ -355,10 +322,15 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       timingSummaryTitle: '',
       timingSummaryText: '',
       timingSummaryMeta: '',
-      startFieldLabel: 'Start',
-      endFieldLabel: 'End',
-      timingBoundStartAt: '',
-      timingBoundEndAt: '',
+      dateInput: {
+        mode: 'range',
+        precision: 'minute',
+        range: {
+          start: { label: 'Start' },
+          end: { label: 'End' },
+          bounds: null
+        }
+      },
       showInsertControls: false,
       insertFieldLabel: 'Insert Stage',
       insertPlacement: 'after',

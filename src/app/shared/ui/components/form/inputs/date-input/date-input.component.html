@@ -1,7 +1,7 @@
 @if (isRange()) {
   <div class="date-input date-input--range" [class.date-input--with-time]="hasTime()">
     <label class="date-input__field">
-      <span class="date-input__label">{{ startLabel }}@if (required) { <strong>*</strong> }</span>
+      <span class="date-input__label">{{ startLabel }}@if (startRequired) { <strong>*</strong> }</span>
       <div class="date-input__row">
         <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
           <input
@@ -13,10 +13,26 @@
             [min]="resolvedStartMin()"
             [max]="resolvedStartMax()"
             [disabled]="inputDisabled()"
-            [placeholder]="placeholder"
+            [placeholder]="startPlaceholder"
           />
-          <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
-          <mat-datepicker #startPicker></mat-datepicker>
+          <button
+            matSuffix
+            type="button"
+            class="date-input__toggle"
+            [class.date-input__toggle--open]="isPickerOpen('start-date')"
+            [attr.aria-pressed]="isPickerOpen('start-date')"
+            [disabled]="inputDisabled()"
+            (mousedown)="$event.preventDefault()"
+            (click)="toggleDatePicker(startPicker, 'start-date', $event)"
+            aria-label="Toggle start date picker"
+          >
+            <mat-icon>{{ pickerIcon('start-date', 'calendar_month') }}</mat-icon>
+          </button>
+          <mat-datepicker
+            #startPicker
+            (opened)="setPickerOpen('start-date', true)"
+            (closed)="setPickerOpen('start-date', false)"
+          ></mat-datepicker>
         </mat-form-field>
         @if (hasTime()) {
           <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
@@ -29,15 +45,31 @@
               (blur)="markTouched()"
               [disabled]="inputDisabled()"
             />
-            <mat-timepicker-toggle matSuffix [for]="startTimePicker"></mat-timepicker-toggle>
-            <mat-timepicker #startTimePicker></mat-timepicker>
+            <button
+              matSuffix
+              type="button"
+              class="date-input__toggle"
+              [class.date-input__toggle--open]="isPickerOpen('start-time')"
+              [attr.aria-pressed]="isPickerOpen('start-time')"
+              [disabled]="inputDisabled()"
+              (mousedown)="$event.preventDefault()"
+              (click)="toggleTimePicker(startTimePicker, 'start-time', $event)"
+              aria-label="Toggle start time picker"
+            >
+              <mat-icon>{{ pickerIcon('start-time', 'schedule') }}</mat-icon>
+            </button>
+            <mat-timepicker
+              #startTimePicker
+              (opened)="setPickerOpen('start-time', true)"
+              (closed)="setPickerOpen('start-time', false)"
+            ></mat-timepicker>
           </mat-form-field>
         }
       </div>
     </label>
 
     <label class="date-input__field">
-      <span class="date-input__label">{{ endLabel }}@if (required) { <strong>*</strong> }</span>
+      <span class="date-input__label">{{ endLabel }}@if (endRequired) { <strong>*</strong> }</span>
       <div class="date-input__row">
         <mat-form-field appearance="outline" class="date-input__material date-input__material--date" subscriptSizing="dynamic">
           <input
@@ -49,10 +81,26 @@
             [min]="resolvedEndMin()"
             [max]="resolvedEndMax()"
             [disabled]="inputDisabled()"
-            [placeholder]="placeholder"
+            [placeholder]="endPlaceholder"
           />
-          <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
-          <mat-datepicker #endPicker></mat-datepicker>
+          <button
+            matSuffix
+            type="button"
+            class="date-input__toggle"
+            [class.date-input__toggle--open]="isPickerOpen('end-date')"
+            [attr.aria-pressed]="isPickerOpen('end-date')"
+            [disabled]="inputDisabled()"
+            (mousedown)="$event.preventDefault()"
+            (click)="toggleDatePicker(endPicker, 'end-date', $event)"
+            aria-label="Toggle end date picker"
+          >
+            <mat-icon>{{ pickerIcon('end-date', 'calendar_month') }}</mat-icon>
+          </button>
+          <mat-datepicker
+            #endPicker
+            (opened)="setPickerOpen('end-date', true)"
+            (closed)="setPickerOpen('end-date', false)"
+          ></mat-datepicker>
         </mat-form-field>
         @if (hasTime()) {
           <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
@@ -65,8 +113,24 @@
               (blur)="markTouched()"
               [disabled]="inputDisabled()"
             />
-            <mat-timepicker-toggle matSuffix [for]="endTimePicker"></mat-timepicker-toggle>
-            <mat-timepicker #endTimePicker></mat-timepicker>
+            <button
+              matSuffix
+              type="button"
+              class="date-input__toggle"
+              [class.date-input__toggle--open]="isPickerOpen('end-time')"
+              [attr.aria-pressed]="isPickerOpen('end-time')"
+              [disabled]="inputDisabled()"
+              (mousedown)="$event.preventDefault()"
+              (click)="toggleTimePicker(endTimePicker, 'end-time', $event)"
+              aria-label="Toggle end time picker"
+            >
+              <mat-icon>{{ pickerIcon('end-time', 'schedule') }}</mat-icon>
+            </button>
+            <mat-timepicker
+              #endTimePicker
+              (opened)="setPickerOpen('end-time', true)"
+              (closed)="setPickerOpen('end-time', false)"
+            ></mat-timepicker>
           </mat-form-field>
         }
       </div>
@@ -90,8 +154,24 @@
           [disabled]="inputDisabled()"
           [placeholder]="placeholder"
         />
-        <mat-datepicker-toggle matSuffix [for]="singlePicker"></mat-datepicker-toggle>
-        <mat-datepicker #singlePicker></mat-datepicker>
+        <button
+          matSuffix
+          type="button"
+          class="date-input__toggle"
+          [class.date-input__toggle--open]="isPickerOpen('single-date')"
+          [attr.aria-pressed]="isPickerOpen('single-date')"
+          [disabled]="inputDisabled()"
+          (mousedown)="$event.preventDefault()"
+          (click)="toggleDatePicker(singlePicker, 'single-date', $event)"
+          aria-label="Toggle date picker"
+        >
+          <mat-icon>{{ pickerIcon('single-date', 'calendar_month') }}</mat-icon>
+        </button>
+        <mat-datepicker
+          #singlePicker
+          (opened)="setPickerOpen('single-date', true)"
+          (closed)="setPickerOpen('single-date', false)"
+        ></mat-datepicker>
       </mat-form-field>
       @if (hasTime()) {
         <mat-form-field appearance="outline" class="date-input__material date-input__material--time" subscriptSizing="dynamic">
@@ -104,8 +184,24 @@
             (blur)="markTouched()"
             [disabled]="inputDisabled()"
           />
-          <mat-timepicker-toggle matSuffix [for]="singleTimePicker"></mat-timepicker-toggle>
-          <mat-timepicker #singleTimePicker></mat-timepicker>
+          <button
+            matSuffix
+            type="button"
+            class="date-input__toggle"
+            [class.date-input__toggle--open]="isPickerOpen('single-time')"
+            [attr.aria-pressed]="isPickerOpen('single-time')"
+            [disabled]="inputDisabled()"
+            (mousedown)="$event.preventDefault()"
+            (click)="toggleTimePicker(singleTimePicker, 'single-time', $event)"
+            aria-label="Toggle time picker"
+          >
+            <mat-icon>{{ pickerIcon('single-time', 'schedule') }}</mat-icon>
+          </button>
+          <mat-timepicker
+            #singleTimePicker
+            (opened)="setPickerOpen('single-time', true)"
+            (closed)="setPickerOpen('single-time', false)"
+          ></mat-timepicker>
         </mat-form-field>
       }
     </div>

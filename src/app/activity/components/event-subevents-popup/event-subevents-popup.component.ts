@@ -15,6 +15,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
+import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventEditorPopupStateService, EventEditorSubEventResourceType } from '../../services/event-editor-popup-state.service';
@@ -168,6 +169,7 @@ interface SubEventFormModel {
   name: string;
   description: string;
   location: string;
+  dateRange: ContractTypes.DateRangeDto;
   startAt: string;
   endAt: string;
   optional: boolean;
@@ -273,8 +275,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   @Input() mode: EventMode = 'Casual';
   @Input() slotsEnabled = false;
   @Input() slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = [];
-  @Input() parentStartAt = '';
-  @Input() parentEndAt = '';
+  @Input() bounds: DateRangeDto = { startAt: '', endAt: '', precision: 'minute' };
 
   @Output() readonly close = new EventEmitter<void>();
   @Output() readonly subEventsChange = new EventEmitter<EventSubeventsItem[]>();
@@ -385,7 +386,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       }
     }
 
-    if ((changes['ownerId'] || changes['slotsEnabled'] || changes['slotTemplates'] || changes['parentStartAt'] || changes['parentEndAt']) && this.open) {
+    if ((changes['ownerId'] || changes['slotsEnabled'] || changes['slotTemplates'] || changes['bounds']) && this.open) {
       this.rebuildRenderModel();
       void this.hydrateOwnerRecord();
     }
@@ -467,6 +468,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       name: defaultName,
       description: '',
       location: '',
+      dateRange: initialRange,
       startAt: initialRange.startAt,
       endAt: initialRange.endAt,
       optional: this.mode !== 'Tournament',
@@ -1401,8 +1403,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     const timingSummaryText = this.subEventTimingSummaryText();
     const timingSummaryMeta = this.subEventTimingSummaryMeta();
     const timingBounds = this.subEventTimingBounds();
-    const startFieldLabel = 'Start';
-    const endFieldLabel = 'End';
     const title = this.subEventFormTitle();
     const canSave = this.canSaveSubEventForm();
     const invalidName = this.subEventFieldInvalid('name');
@@ -1441,8 +1441,6 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       timingSummaryTitle,
       timingSummaryText,
       timingSummaryMeta,
-      startFieldLabel,
-      endFieldLabel,
       timingBounds?.start ? AppUtils.toIsoDateTimeLocal(timingBounds.start) : '',
       timingBounds?.end ? AppUtils.toIsoDateTimeLocal(timingBounds.end) : '',
       showTournamentFields ? '1' : '0',
@@ -1471,10 +1469,21 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       timingSummaryTitle,
       timingSummaryText,
       timingSummaryMeta,
-      startFieldLabel,
-      endFieldLabel,
-      timingBoundStartAt: timingBounds?.start ? AppUtils.toIsoDateTimeLocal(timingBounds.start) : '',
-      timingBoundEndAt: timingBounds?.end ? AppUtils.toIsoDateTimeLocal(timingBounds.end) : '',
+      dateInput: {
+        mode: 'range',
+        precision: 'minute',
+        range: {
+          start: { label: 'Start' },
+          end: { label: 'End' },
+          bounds: timingBounds
+            ? {
+              start: AppUtils.toIsoDateTimeLocal(timingBounds.start),
+              end: AppUtils.toIsoDateTimeLocal(timingBounds.end)
+            }
+            : null
+        },
+        readOnly: this.subEventStructureReadOnly()
+      },
       showInsertControls,
       insertFieldLabel,
       insertPlacement: this.subEventStageInsertPlacement,
@@ -1523,8 +1532,8 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     return Boolean(
       this.subEventForm.name.trim()
       && this.subEventForm.description.trim()
-      && this.subEventForm.startAt
-      && this.subEventForm.endAt
+      && this.subEventForm.dateRange.startAt
+      && this.subEventForm.dateRange.endAt
     );
   }
 
@@ -1539,7 +1548,10 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       this.normalizeTournamentStageConfigOnForm();
     }
 
-    const dateRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
+    const dateRange = this.normalizedInputDateRange(this.subEventForm.dateRange.startAt, this.subEventForm.dateRange.endAt);
+    this.subEventForm.startAt = dateRange.startAt;
+    this.subEventForm.endAt = dateRange.endAt;
+    this.subEventForm.dateRange = dateRange;
     const slotRelativeTiming = this.slotRelativeTimingFromDateRange(dateRange);
     const existingId = this.editingSubEventId();
     const existingItem = existingId
@@ -2444,12 +2456,15 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     const fallbackName = this.mode === 'Tournament'
       ? `Stage ${sourceIndex + 1}`
       : `Sub Event ${sourceIndex + 1}`;
+    const dateRange = this.subEventDraftDateRange(sourceItem);
     this.subEventForm = {
       id: sourceItem.id,
       name: `${sourceItem.name ?? sourceItem.title ?? fallbackName}`.trim(),
       description: `${sourceItem.description ?? ''}`.trim(),
       location: `${sourceItem.location ?? ''}`.trim(),
-      ...this.subEventDraftDateRange(sourceItem),
+      dateRange,
+      startAt: dateRange.startAt,
+      endAt: dateRange.endAt,
       optional: sourceItem.optional ?? (this.mode !== 'Tournament'),
       pricing: PricingBuilder.clonePricingConfig(sourceItem.pricing ?? PricingBuilder.createDefaultPricingConfig('subevent')),
       capacityMin: Math.max(0, Number(sourceItem.capacityMin) || 0),
@@ -2580,7 +2595,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     return [];
   }
 
-  private normalizedInputDateRange(startInput: string, endInput: string): { startAt: string; endAt: string } {
+  private normalizedInputDateRange(startInput: string, endInput: string): ContractTypes.DateRangeDto {
     const bounds = this.subEventTimingBounds();
     const fallbackStart = bounds?.start ?? new Date();
     const defaultDurationMs = bounds
@@ -2618,7 +2633,8 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
 
     return {
       startAt: AppUtils.toIsoDateTimeLocal(new Date(nextStartMs)),
-      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextEndMs))
+      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextEndMs)),
+      precision: 'minute'
     };
   }
 
@@ -2663,8 +2679,8 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       return { start: slotPreview.start, end: slotPreview.end };
     }
 
-    const parentStart = this.parseDateValue(this.parentStartAt);
-    const parentEnd = this.parseDateValue(this.parentEndAt);
+    const parentStart = this.parseDateValue(this.bounds.startAt);
+    const parentEnd = this.parseDateValue(this.bounds.endAt);
     if (!parentStart || !parentEnd || parentEnd.getTime() <= parentStart.getTime()) {
       return null;
     }
@@ -2716,7 +2732,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     };
   }
 
-  private buildAnchoredSlotDateRange(offsetMinutes: number, durationMinutes: number): { startAt: string; endAt: string } {
+  private buildAnchoredSlotDateRange(offsetMinutes: number, durationMinutes: number): ContractTypes.DateRangeDto {
     const preview = this.slotTimingPreview();
     if (!preview) {
       return this.normalizedInputDateRange('', '');
@@ -2732,7 +2748,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     return this.normalizedInputDateRange(AppUtils.toIsoDateTimeLocal(start), AppUtils.toIsoDateTimeLocal(end));
   }
 
-  private subEventDraftDateRange(sourceItem: EventSubeventsItem | null | undefined): { startAt: string; endAt: string } {
+  private subEventDraftDateRange(sourceItem: EventSubeventsItem | null | undefined): ContractTypes.DateRangeDto {
     const relative = this.resolveSlotRelativeTiming(sourceItem);
     if (relative) {
       return this.buildAnchoredSlotDateRange(relative.offsetMinutes, relative.durationMinutes);
@@ -2750,7 +2766,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   }
 
   private slotRelativeTimingFromDateRange(
-    range: { startAt: string; endAt: string }
+    range: ContractTypes.DateRangeDto
   ): { slotStartOffsetMinutes: number; slotDurationMinutes: number } | null {
     const preview = this.slotTimingPreview();
     const start = this.parseDateValue(range.startAt);
@@ -2839,7 +2855,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   private subEventTimingSummaryMeta(): string {
     const preview = this.slotTimingPreview();
     if (preview) {
-      const currentRange = this.normalizedInputDateRange(this.subEventForm.startAt, this.subEventForm.endAt);
+      const currentRange = this.normalizedInputDateRange(this.subEventForm.dateRange.startAt, this.subEventForm.dateRange.endAt);
       const currentStart = this.parseDateValue(currentRange.startAt);
       const currentEnd = this.parseDateValue(currentRange.endAt);
       const repeatLabel = preview.slotCount > 1 ? ` · ${preview.slotCount} slots configured` : '';
@@ -3665,6 +3681,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     const normalized = this.normalizedInputDateRange(draftStartAt, draftEndAt);
     this.subEventForm = {
       ...this.subEventForm,
+      dateRange: normalized,
       startAt: normalized.startAt,
       endAt: normalized.endAt
     };
@@ -3868,6 +3885,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       name: '',
       description: '',
       location: '',
+      dateRange: { startAt: '', endAt: '', precision: 'minute' },
       startAt: '',
       endAt: '',
       optional: this.mode !== 'Tournament',
