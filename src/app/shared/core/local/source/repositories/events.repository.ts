@@ -1782,6 +1782,51 @@ export class LocalEventsRepository {
     });
   }
 
+  private subEventDefinitionsDurationMinutes(items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined): number {
+    return (items ?? [])
+      .reduce((total, item) => total + Math.max(0, Math.trunc(Number(item.durationMinutes) || 0)), 0);
+  }
+
+  private materializeSubEventDefinitionsForSlotOccurrence(
+    items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined,
+    occurrenceStart: Date
+  ): ContractTypes.SubEventDTO[] {
+    const definitions = items ?? [];
+    let offsetMinutes = 0;
+    return definitions.map((item, index) => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const startAt = new Date(occurrenceStart.getTime() + (offsetMinutes * 60 * 1000));
+      const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
+      const subEvent: ContractTypes.SubEventDTO = {
+        id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        startAt: AppUtils.toIsoDateTimeLocal(startAt),
+        endAt: AppUtils.toIsoDateTimeLocal(endAt),
+        location: item.location ?? '',
+        groups: item.groups?.map(group => ({ ...group })) ?? [],
+        tournamentGroupCount: item.tournamentGroupCount,
+        tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
+        tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
+        tournamentLeaderboardType: item.tournamentLeaderboardType,
+        tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
+        optional: item.optional,
+        pricing: item.pricing ? { ...item.pricing } : item.pricing,
+        capacityMin: item.capacityMin,
+        capacityMax: item.capacityMax,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0,
+        slotStartOffsetMinutes: offsetMinutes,
+        slotDurationMinutes: durationMinutes
+      };
+      offsetMinutes += durationMinutes;
+      return subEvent;
+    });
+  }
+
   private materializeSlotRecords(): void {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const preferredParents = this.computePreferredEventRecords(table)
@@ -1842,6 +1887,8 @@ export class LocalEventsRepository {
 
     const records: ActivityEventRecord[] = [];
     const templates = parent.slotTemplates ?? [];
+    const definitionDurationMinutes = this.subEventDefinitionsDurationMinutes(parent.subEventDefinitions);
+    const definitionDurationMs = Math.max(0, definitionDurationMinutes) * 60 * 1000;
     const overrideDates = new Set(
       templates
         .map(template => this.slotOverrideDateKey(template.overrideDate))
@@ -1852,18 +1899,16 @@ export class LocalEventsRepository {
         continue;
       }
       const templateStart = this.parseEventDate(template.startAt);
-      const templateEnd = this.parseEventDate(template.endAt);
-      if (!templateStart || !templateEnd) {
+      if (!templateStart) {
         continue;
       }
-      const durationMs = Math.max(60 * 60 * 1000, templateEnd.getTime() - templateStart.getTime());
       const starts = this.generateSlotOccurrenceStarts(parent.frequency ?? 'One-time', templateStart, horizonStart, horizonEnd);
       for (const startAt of starts) {
         const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
         if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
           continue;
         }
-        const endAt = new Date(startAt.getTime() + durationMs);
+        const endAt = new Date(startAt.getTime() + definitionDurationMs);
         if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
           continue;
         }
@@ -1919,7 +1964,9 @@ export class LocalEventsRepository {
           acceptedMembers: 0,
           pendingMembers: 0,
           topics: [...parent.topics],
-          subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
+          subEvents: (parent.subEventDefinitions?.length ?? 0) > 0
+            ? this.materializeSubEventDefinitionsForSlotOccurrence(parent.subEventDefinitions, startAt)
+            : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
           mode: parent.mode,
           rating: parent.rating,
           boost: parent.boost,
@@ -1936,15 +1983,11 @@ export class LocalEventsRepository {
         continue;
       }
       const templateStart = this.parseEventDate(template.startAt);
-      const templateEnd = this.parseEventDate(template.endAt);
-      if (!templateStart || !templateEnd) {
+      if (!templateStart) {
         continue;
       }
       const startAt = new Date(templateStart);
-      const endAt = new Date(templateEnd);
-      if (endAt.getTime() <= startAt.getTime()) {
-        endAt.setTime(startAt.getTime() + (60 * 60 * 1000));
-      }
+      const endAt = new Date(startAt.getTime() + definitionDurationMs);
       if (startAt.getTime() < horizonStart.getTime() || startAt.getTime() > horizonEnd.getTime()) {
         continue;
       }
@@ -2003,7 +2046,9 @@ export class LocalEventsRepository {
         acceptedMembers: 0,
         pendingMembers: 0,
         topics: [...parent.topics],
-        subEvents: this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
+        subEvents: (parent.subEventDefinitions?.length ?? 0) > 0
+          ? this.materializeSubEventDefinitionsForSlotOccurrence(parent.subEventDefinitions, startAt)
+          : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
         mode: parent.mode,
         rating: parent.rating,
         boost: parent.boost,

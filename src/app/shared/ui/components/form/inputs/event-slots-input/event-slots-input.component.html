@@ -136,28 +136,6 @@
               </mat-form-field>
             </div>
           </label>
-          <label class="event-slot-field">
-            <span>End</span>
-            <div class="event-datetime-row event-slot-datetime-row">
-              <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field"
-                [class.event-slot-date-field-locked]="isSlotOverrideDateFieldLocked()" subscriptSizing="dynamic">
-                <input matInput [matDatepicker]="slotEndPopupPicker" [ngModel]="slotTemplateEndDateValue(slot)"
-                  (ngModelChange)="onSlotTemplateEndDateChange(i, $event)" [min]="slotTemplateEndDateMin(slot)"
-                  [max]="slotTemplateEndDateMax(i, slot)"
-                  [disabled]="readOnly || !canConfigureSlotsSeries() || isSlotOverrideDateFieldLocked()" />
-                <mat-datepicker-toggle matSuffix [for]="slotEndPopupPicker"></mat-datepicker-toggle>
-                <mat-datepicker #slotEndPopupPicker></mat-datepicker>
-              </mat-form-field>
-              <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field"
-                subscriptSizing="dynamic">
-                <input matInput [matTimepicker]="slotEndPopupTimePicker" [matTimepickerOpenOnClick]="true"
-                  [ngModel]="slotTemplateEndTimeValue(slot)" (ngModelChange)="onSlotTemplateEndTimeChange(i, $event)"
-                  [disabled]="readOnly || !canConfigureSlotsSeries()" />
-                <mat-timepicker-toggle matSuffix [for]="slotEndPopupTimePicker"></mat-timepicker-toggle>
-                <mat-timepicker #slotEndPopupTimePicker></mat-timepicker>
-              </mat-form-field>
-            </div>
-          </label>
         </div>
       </div>
       }

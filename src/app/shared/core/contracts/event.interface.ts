@@ -18,7 +18,6 @@ export type EventRecordKind = 'main' | 'slot';
 export interface EventSlotTemplateDTO {
   id: string;
   startAt: string;
-  endAt: string;
   overrideDate?: string | null;
   closed?: boolean;
 }

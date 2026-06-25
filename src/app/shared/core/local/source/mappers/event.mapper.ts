@@ -357,22 +357,15 @@ export class LocalActivityEventDetailsMapper {
         return {
           id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
           startAt: '',
-          endAt: '',
           overrideDate: this.normalizeSlotOverrideDate(item.overrideDate),
           closed: true
         };
       }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
       const parsedStart = this.parseDate(normalizedStart) ?? new Date();
-      const normalizedEnd = `${item.endAt ?? ''}`.trim();
-      const parsedEndRaw = this.parseDate(normalizedEnd) ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
-      const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
-        ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
-        : parsedEndRaw;
       return {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
         startAt: this.parseDate(normalizedStart) ? normalizedStart : this.toIsoDateTimeLocal(parsedStart),
-        endAt: this.parseDate(normalizedEnd) ? normalizedEnd : this.toIsoDateTimeLocal(parsedEnd),
         overrideDate: this.normalizeSlotOverrideDate(item.overrideDate),
         closed: false
       };

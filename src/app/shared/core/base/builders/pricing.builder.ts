@@ -346,13 +346,13 @@ export class PricingBuilder {
   }
 
   static slotCatalogFromEventSlotTemplates(
-    slots: readonly Pick<ContractTypes.EventSlotTemplateDTO, 'id' | 'startAt' | 'endAt'>[]
+    slots: readonly Pick<ContractTypes.EventSlotTemplateDTO, 'id' | 'startAt'>[]
   ): ContractTypes.PricingSlotReference[] {
     return slots.map((slot, index) => ({
       id: `${slot.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
       label: `Slot ${index + 1}`,
       startAt: `${slot.startAt ?? ''}`.trim() || null,
-      endAt: `${slot.endAt ?? ''}`.trim() || null
+      endAt: null
     }));
   }
 

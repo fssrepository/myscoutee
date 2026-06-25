@@ -314,7 +314,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
     const normalizedSlots = ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates);
     const nextKey = normalizedSlots
-      .map(item => [item.id, item.startAt, item.endAt, item.overrideDate ?? '', item.closed === true ? '1' : '0'].join(':'))
+      .map(item => [item.id, item.startAt, item.overrideDate ?? '', item.closed === true ? '1' : '0'].join(':'))
       .join('|');
     if (nextKey !== this.pricingSlotCatalogCacheKey) {
       this.pricingSlotCatalogCacheKey = nextKey;

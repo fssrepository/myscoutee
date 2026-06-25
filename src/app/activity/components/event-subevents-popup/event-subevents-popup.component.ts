@@ -2646,13 +2646,13 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     const templates = (this.slotTemplates ?? [])
       .map(template => {
         const start = this.parseDateValue(template?.startAt);
-        const rawEnd = this.parseDateValue(template?.endAt);
         if (!template || template.closed === true || !start) {
           return null;
         }
-        const end = rawEnd && rawEnd.getTime() > start.getTime()
-          ? rawEnd
-          : new Date(start.getTime() + (60 * 60 * 1000));
+        const parentEnd = this.parseDateValue(this.bounds.endAt);
+        const end = parentEnd && parentEnd.getTime() >= start.getTime()
+          ? parentEnd
+          : new Date(start);
         return { start, end };
       })
       .filter((value): value is { start: Date; end: Date } => Boolean(value))

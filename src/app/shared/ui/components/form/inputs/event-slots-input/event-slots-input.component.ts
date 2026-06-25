@@ -176,17 +176,10 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
 
   protected slotSummaryWindowLabel(slot: ContractTypes.EventSlotTemplateDTO): string {
     const start = this.parseDateValue(slot.startAt);
-    const end = this.parseDateValue(slot.endAt);
-    if (!start && !end) {
+    if (!start) {
       return 'Time pending';
     }
-    if (!start) {
-      return `Ends ${this.formatSlotDateTimeLabel(end)}`;
-    }
-    if (!end) {
-      return `Starts ${this.formatSlotDateTimeLabel(start)}`;
-    }
-    return `${this.formatSlotDateTimeLabel(start)} - ${this.formatSlotDateTimeLabel(end)}`;
+    return `Starts ${this.formatSlotDateTimeLabel(start)}`;
   }
 
   protected selectSlotEditorMode(mode: EventSlotsInputEditorMode, event?: Event): void {
@@ -267,7 +260,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   }
 
   protected slotTrackId(index: number, slot: ContractTypes.EventSlotTemplateDTO): string {
-    return `${slot.overrideDate ?? 'base'}:${slot.id || `slot-${index + 1}`}:${slot.startAt}:${slot.endAt}`;
+    return `${slot.overrideDate ?? 'base'}:${slot.id || `slot-${index + 1}`}:${slot.startAt}`;
   }
 
   protected addSlotTemplate(): void {
@@ -277,18 +270,19 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     this.ensureSpecificDateOverrideSeeded();
     const currentTemplates = this.resolveActiveSlotTemplatesForEditing();
     const nextIndex = currentTemplates.length + 1;
-    const startAt = currentTemplates[currentTemplates.length - 1]?.endAt
+    const previousStart = this.parseDateValue(currentTemplates[currentTemplates.length - 1]?.startAt);
+    const startAt = (previousStart
+      ? AppUtils.toIsoDateTimeLocal(new Date(previousStart.getTime() + (60 * 60 * 1000)))
+      : '')
       || this.defaultSlotStartForActiveScope()
       || this.resolvedConfig.startAtIso
       || AppUtils.toIsoDateTimeLocal(new Date());
     const startDate = this.parseDateValue(startAt) ?? new Date();
-    const endDate = new Date(startDate.getTime() + (60 * 60 * 1000));
     this.setActiveSlotTemplates([
       ...currentTemplates,
       {
         id: this.buildSlotTemplateId(nextIndex),
         startAt: AppUtils.toIsoDateTimeLocal(startDate),
-        endAt: AppUtils.toIsoDateTimeLocal(endDate),
         overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
         closed: false
       }
@@ -323,14 +317,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return this.slotControlDateValue(slot.startAt);
   }
 
-  protected slotTemplateEndDateValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    return this.slotControlDateValue(slot.endAt);
-  }
-
-  protected slotTemplateEndTimeValue(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    return this.slotControlDateValue(slot.endAt);
-  }
-
   protected slotTemplateDateMin(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
     const window = this.slotWindowForEditing(slot.overrideDate);
     if (!window) {
@@ -347,38 +333,13 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return new Date(window.end.getFullYear(), window.end.getMonth(), window.end.getDate());
   }
 
-  protected slotTemplateEndDateMin(slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    const start = this.parseDateValue(slot.startAt);
-    if (!start) {
-      return this.slotTemplateDateMin(slot);
-    }
-    return new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  }
-
-  protected slotTemplateEndDateMax(index: number, slot: ContractTypes.EventSlotTemplateDTO): Date | null {
-    const start = this.parseDateValue(slot.startAt);
-    const window = this.slotWindowForEditing(slot.overrideDate);
-    if (!start || !window) {
-      return this.slotTemplateDateMax(slot);
-    }
-    const boundaryEnd = this.eventFrequencyBoundaryEnd(start) ?? window.end;
-    const nextSlot = this.activeSlotTemplates()[index + 1] ?? null;
-    const nextStart = nextSlot ? this.parseDateValue(nextSlot.startAt) : null;
-    const maxDate = new Date(Math.min(
-      window.end.getTime(),
-      boundaryEnd.getTime(),
-      nextStart?.getTime() ?? boundaryEnd.getTime()
-    ));
-    return new Date(maxDate.getFullYear(), maxDate.getMonth(), maxDate.getDate());
-  }
-
   protected onSlotTemplateStartDateChange(index: number, value: Date | null): void {
     if (!this.canConfigureSlotsSeries() || this.isSlotOverrideDateFieldLocked()) {
       return;
     }
     this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
       ...item,
-      ...this.shiftSlotByStartChange(item, AppUtils.applyDatePartToIsoLocal(item.startAt, value)),
+      startAt: AppUtils.applyDatePartToIsoLocal(item.startAt, value),
       overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
       closed: false
     }));
@@ -390,31 +351,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     }
     this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
       ...item,
-      ...this.shiftSlotByStartChange(item, AppUtils.applyTimePartFromDateToIsoLocal(item.startAt, value)),
-      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
-      closed: false
-    }));
-  }
-
-  protected onSlotTemplateEndDateChange(index: number, value: Date | null): void {
-    if (!this.canConfigureSlotsSeries() || this.isSlotOverrideDateFieldLocked()) {
-      return;
-    }
-    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
-      ...item,
-      endAt: AppUtils.applyDatePartToIsoLocal(item.endAt, value),
-      overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
-      closed: false
-    }));
-  }
-
-  protected onSlotTemplateEndTimeChange(index: number, value: Date | null): void {
-    if (!this.canConfigureSlotsSeries()) {
-      return;
-    }
-    this.updateSlotTemplate(index, item => this.normalizeSlotTemplateBounds({
-      ...item,
-      endAt: AppUtils.applyTimePartFromDateToIsoLocal(item.endAt, value),
+      startAt: AppUtils.applyTimePartFromDateToIsoLocal(item.startAt, value),
       overrideDate: this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null,
       closed: false
     }));
@@ -496,7 +433,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return JSON.stringify(items.map(item => ({
       id: item.id,
       startAt: item.startAt,
-      endAt: item.endAt,
       overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
       closed: item.closed === true
     })));
@@ -582,7 +518,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
         ? `override-${dateKey}-${item.id.trim()}`
         : this.buildSlotTemplateId(index + 1),
       startAt: this.shiftSlotDateTimeByMs(item.startAt, shiftMs),
-      endAt: this.shiftSlotDateTimeByMs(item.endAt, shiftMs),
       overrideDate: dateKey,
       closed: false
     }));
@@ -664,7 +599,6 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return {
       id: `override-${dateKey}-closed`,
       startAt: '',
-      endAt: '',
       overrideDate: dateKey,
       closed: true
     };
@@ -697,115 +631,17 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     startMs = Math.min(maxStartMs, Math.max(windowStartMs, startMs));
     startDate = new Date(startMs);
 
-    const slotBoundaryEndMs = Math.min(
-      windowEndMs,
-      this.eventFrequencyBoundaryEnd(startDate)?.getTime() ?? windowEndMs
-    );
-
-    const endDate = this.parseDateValue(slot.endAt);
-    let endMs = endDate?.getTime() ?? (startMs + (60 * 60 * 1000));
-    if (endMs <= startMs) {
-      endMs = startMs + (60 * 60 * 1000);
-    }
-    endMs = Math.min(slotBoundaryEndMs, endMs);
-    if (endMs <= startMs) {
-      endMs = Math.min(slotBoundaryEndMs, startMs + (60 * 1000));
-    }
-    if (endMs <= startMs) {
-      startMs = Math.max(windowStartMs, slotBoundaryEndMs - (60 * 1000));
-      endMs = slotBoundaryEndMs;
-      startDate = new Date(startMs);
-    }
-    const normalizedEnd = new Date(endMs);
     return {
       ...slot,
-      startAt: AppUtils.toIsoDateTimeLocal(startDate),
-      endAt: AppUtils.toIsoDateTimeLocal(normalizedEnd)
+      startAt: AppUtils.toIsoDateTimeLocal(startDate)
     };
   }
 
   private normalizeEditableSlotTemplates(
     nextTemplates: readonly ContractTypes.EventSlotTemplateDTO[]
   ): ContractTypes.EventSlotTemplateDTO[] {
-    let normalized = ActivityEventDetailDTO.normalizeSlotTemplates(nextTemplates)
+    return ActivityEventDetailDTO.normalizeSlotTemplates(nextTemplates)
       .map(item => item.closed === true ? { ...item } : this.normalizeSlotTemplateBounds({ ...item }));
-    for (let index = 0; index < normalized.length; index += 1) {
-      normalized = this.normalizeSlotTemplateWithNeighbors(normalized, index);
-    }
-    return normalized;
-  }
-
-  private normalizeSlotTemplateWithNeighbors(
-    items: readonly ContractTypes.EventSlotTemplateDTO[],
-    index: number
-  ): ContractTypes.EventSlotTemplateDTO[] {
-    const current = items[index];
-    if (!current || current.closed === true) {
-      return [...items];
-    }
-
-    const nextItems = items.map(item => ({ ...item }));
-    const scopeKey = ActivityEventDetailDTO.normalizeSlotOverrideDate(current.overrideDate) ?? '';
-    const previous = [...nextItems]
-      .slice(0, index)
-      .reverse()
-      .find(item => (ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
-    const upcoming = nextItems
-      .slice(index + 1)
-      .find(item => (ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate) ?? '') === scopeKey && item.closed !== true);
-    const window = this.slotWindowForEditing(current.overrideDate);
-    const fallbackStart = window?.start ?? this.parseDateValue(this.resolvedConfig.startAtIso) ?? new Date();
-    const fallbackEnd = window?.end ?? this.parseDateValue(this.resolvedConfig.endAtIso) ?? new Date(fallbackStart.getTime() + (60 * 60 * 1000));
-    const previousEnd = previous ? this.parseDateValue(previous.endAt) : null;
-    const upcomingStart = upcoming ? this.parseDateValue(upcoming.startAt) : null;
-    const currentStart = this.parseDateValue(current.startAt) ?? new Date(fallbackStart);
-    const currentEnd = this.parseDateValue(current.endAt) ?? new Date(currentStart.getTime() + (60 * 60 * 1000));
-    const durationMs = Math.max(60 * 1000, currentEnd.getTime() - currentStart.getTime());
-
-    const minStartMs = Math.max(fallbackStart.getTime(), previousEnd?.getTime() ?? fallbackStart.getTime());
-    const slotBoundaryEndMs = Math.min(
-      fallbackEnd.getTime(),
-      this.eventFrequencyBoundaryEnd(currentStart)?.getTime() ?? fallbackEnd.getTime()
-    );
-    const maxEndMs = Math.min(slotBoundaryEndMs, upcomingStart?.getTime() ?? slotBoundaryEndMs);
-    const maxStartMs = Math.max(minStartMs, maxEndMs - (60 * 1000));
-    let startMs = Math.max(minStartMs, Math.min(currentStart.getTime(), maxStartMs));
-    let endMs = Math.min(maxEndMs, startMs + durationMs);
-
-    if (endMs <= startMs) {
-      endMs = Math.min(maxEndMs, startMs + (60 * 1000));
-    }
-    if (endMs <= startMs) {
-      startMs = Math.max(minStartMs, maxEndMs - (60 * 1000));
-      endMs = maxEndMs;
-    }
-
-    nextItems[index] = {
-      ...current,
-      startAt: AppUtils.toIsoDateTimeLocal(new Date(startMs)),
-      endAt: AppUtils.toIsoDateTimeLocal(new Date(endMs))
-    };
-    return nextItems;
-  }
-
-  private shiftSlotByStartChange(
-    slot: ContractTypes.EventSlotTemplateDTO,
-    nextStartAt: string
-  ): Pick<ContractTypes.EventSlotTemplateDTO, 'startAt' | 'endAt'> {
-    const currentStart = this.parseDateValue(slot.startAt);
-    const currentEnd = this.parseDateValue(slot.endAt);
-    const nextStart = this.parseDateValue(nextStartAt);
-    if (!currentStart || !currentEnd || !nextStart) {
-      return {
-        startAt: nextStartAt,
-        endAt: slot.endAt
-      };
-    }
-    const durationMs = Math.max(60 * 1000, currentEnd.getTime() - currentStart.getTime());
-    return {
-      startAt: nextStartAt,
-      endAt: AppUtils.toIsoDateTimeLocal(new Date(nextStart.getTime() + durationMs))
-    };
   }
 
   private slotWindowForEditing(overrideDate = this.slotEditorMode === 'date' ? this.selectedSlotOverrideDateKey() : null): {

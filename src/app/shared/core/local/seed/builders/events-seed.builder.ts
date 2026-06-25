@@ -58,7 +58,7 @@ function buildCheckoutDemoPricing(
       slotId: slot.id,
       label: `Slot ${index + 1}`,
       startAt: slot.startAt,
-      endAt: slot.endAt,
+      endAt: null,
       price: basePrice + (index * 6),
       currency: 'USD'
     }));
@@ -413,25 +413,21 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       slotTemplates: [
         {
           id: 'checkout-paid-slots-slot-1',
-          startAt: '2026-04-12T18:30:00',
-          endAt: '2026-04-12T20:00:00'
+          startAt: '2026-04-12T18:30:00'
         },
         {
           id: 'checkout-paid-slots-slot-2',
-          startAt: '2026-04-12T20:15:00',
-          endAt: '2026-04-12T22:15:00'
+          startAt: '2026-04-12T20:15:00'
         }
       ],
       pricing: buildCheckoutDemoPricing(38, [
         {
           id: 'checkout-paid-slots-slot-1',
-          startAt: '2026-04-12T18:30:00',
-          endAt: '2026-04-12T20:00:00'
+          startAt: '2026-04-12T18:30:00'
         },
         {
           id: 'checkout-paid-slots-slot-2',
-          startAt: '2026-04-12T20:15:00',
-          endAt: '2026-04-12T22:15:00'
+          startAt: '2026-04-12T20:15:00'
         }
       ]),
       policies: buildCheckoutDemoPolicies(),
@@ -551,13 +547,11 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       slotTemplates: [
         {
           id: 'checkout-free-slots-slot-1',
-          startAt: '2026-04-14T13:00:00',
-          endAt: '2026-04-14T14:15:00'
+          startAt: '2026-04-14T13:00:00'
         },
         {
           id: 'checkout-free-slots-slot-2',
-          startAt: '2026-04-14T15:00:00',
-          endAt: '2026-04-14T16:30:00'
+          startAt: '2026-04-14T15:00:00'
         }
       ],
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
@@ -1917,7 +1911,6 @@ export class SeedEventsBuilder {
     return items.map(item => ({
       ...item,
       startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,
-      endAt: this.rebaseSeedDateTime(item.endAt) ?? item.endAt,
       overrideDate: item.overrideDate ? (this.rebaseSeedDateTime(item.overrideDate) ?? item.overrideDate) : item.overrideDate
     }));
   }

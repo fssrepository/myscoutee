@@ -456,22 +456,15 @@ export class ActivityEventDetailDTO {
         return {
           id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
           startAt: '',
-          endAt: '',
           overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
           closed: true
         };
       }
       const normalizedStart = `${item.startAt ?? ''}`.trim();
       const parsedStart = ActivityEventDetailDTO.parseDate(normalizedStart) ?? new Date();
-      const normalizedEnd = `${item.endAt ?? ''}`.trim();
-      const parsedEndRaw = ActivityEventDetailDTO.parseDate(normalizedEnd) ?? new Date(parsedStart.getTime() + (60 * 60 * 1000));
-      const parsedEnd = parsedEndRaw.getTime() <= parsedStart.getTime()
-        ? new Date(parsedStart.getTime() + (60 * 60 * 1000))
-        : parsedEndRaw;
       return {
         id: `${item.id ?? `slot-${index + 1}`}`.trim() || `slot-${index + 1}`,
         startAt: ActivityEventDetailDTO.parseDate(normalizedStart) ? normalizedStart : ActivityEventDetailDTO.toIsoDateTimeLocal(parsedStart),
-        endAt: ActivityEventDetailDTO.parseDate(normalizedEnd) ? normalizedEnd : ActivityEventDetailDTO.toIsoDateTimeLocal(parsedEnd),
         overrideDate: ActivityEventDetailDTO.normalizeSlotOverrideDate(item.overrideDate),
         closed: false
       };
@@ -482,7 +475,7 @@ export class ActivityEventDetailDTO {
     return items.map((item, index) => {
       const capacityMin = ActivityEventDetailDTO.nonNegativeInteger(item.capacityMin);
       const capacityMax = Math.max(capacityMin, ActivityEventDetailDTO.nonNegativeInteger(item.capacityMax));
-      const durationMinutes = Math.max(1, ActivityEventDetailDTO.nonNegativeInteger(item.durationMinutes) || 60);
+      const durationMinutes = ActivityEventDetailDTO.nonNegativeInteger(item.durationMinutes);
       return {
         id: `${item.id ?? `subevent-definition-${index + 1}`}`.trim() || `subevent-definition-${index + 1}`,
         name: `${item.name ?? `Sub Event ${index + 1}`}`.trim() || `Sub Event ${index + 1}`,
