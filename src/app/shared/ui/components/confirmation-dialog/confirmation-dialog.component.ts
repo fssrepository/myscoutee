@@ -174,7 +174,7 @@ export class ConfirmationDialogComponent {
     if (state.confirmTone === 'neutral') {
       return 'slate';
     }
-    return 'blue';
+    return 'slate';
   }
 
   private mapServiceState(state: ConfirmationDialogState): RenderedConfirmationDialogState {

@@ -408,6 +408,7 @@ export class EventSubeventsListPopupComponent {
       groupLabel,
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
+      isStageActive: this.isRuntimeStageActive(item),
       hasMenuOptions: true,
       menuTitle: item.name,
       menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
@@ -432,6 +433,7 @@ export class EventSubeventsListPopupComponent {
       sourceId: this.runtimeActionSourceId(item),
       subEventIndex: this.runtimeSourceIndex(item),
       stageNumber: sequence.number,
+      isStageActive: this.isRuntimeStageActive(item),
       siblingItems: this.runtimeSiblings(item),
       nowMs: Date.now()
     });
@@ -655,6 +657,26 @@ export class EventSubeventsListPopupComponent {
     const siblings = this.runtimeSiblings(item);
     const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
     return index >= 0 ? index : 0;
+  }
+
+  private isRuntimeStageActive(item: ActivityEventSubEventRuntimeDTO): boolean {
+    if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'A') {
+      return false;
+    }
+    const siblings = this.runtimeSiblings(item);
+    const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    if (index <= 0) {
+      return true;
+    }
+    return this.normalizeRuntimeStageStatus(siblings[index - 1]?.stageStatus) === 'F';
+  }
+
+  private normalizeRuntimeStageStatus(status: string | null | undefined): 'A' | 'RS' | 'SR' | 'F' | 'S' {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+      return normalized;
+    }
+    return 'A';
   }
 
   private runtimeSiblings(item: ActivityEventSubEventRuntimeDTO): readonly ActivityEventSubEventRuntimeDTO[] {

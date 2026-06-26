@@ -107,6 +107,12 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px hsl(var(--ui-info-card-accent-hue) 42% 36% / 0.12);
 }
 
+.ui-info-card--tone-stage-runtime {
+  border-color: hsl(var(--ui-info-card-accent-hue) 48% 58% / 0.5);
+  background: linear-gradient(180deg, #fbfcff 0%, #f3f6fb 100%);
+  box-shadow: 0 10px 22px hsl(var(--ui-info-card-accent-hue) 38% 34% / 0.1);
+}
+
 .ui-info-card--tone-published {
   border-color: rgba(50, 132, 90, 0.36);
   background: linear-gradient(180deg, #f4fbf7 0%, #e5f4ec 100%);
@@ -199,7 +205,8 @@ button.asset-occupancy-badge:active::after,
     linear-gradient(135deg, #f4f6fb 0%, #e3e8f2 58%, #eef2f8 100%);
 }
 
-.ui-info-card--tone-stage .ui-info-card__media--title.ui-info-card__media--tone-neutral {
+.ui-info-card--tone-stage .ui-info-card__media--title.ui-info-card__media--tone-neutral,
+.ui-info-card--tone-stage-runtime .ui-info-card__media--title.ui-info-card__media--tone-neutral {
   border-color: hsl(var(--ui-info-card-accent-hue) 48% 58% / 0.36);
   background:
     radial-gradient(circle at 14% 16%, rgba(255, 255, 255, 0.78), transparent 32%),
@@ -819,6 +826,7 @@ button.ui-info-card__overlay-action {
     inset 0 0 0 1px hsl(var(--ui-info-card-accent-hue) 70% 34% / 0.54);
 }
 
+.ui-info-card__overlay-action--tone-stage-active.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-review.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-finalized.ui-info-card__overlay-action--badge,
@@ -828,6 +836,12 @@ button.ui-info-card__overlay-action {
   font-weight: 900;
   text-shadow: none;
   box-shadow: 0 7px 16px rgba(54, 68, 90, 0.16);
+}
+
+.ui-info-card__overlay-action--tone-stage-active.ui-info-card__overlay-action--badge {
+  border-color: rgba(36, 150, 82, 0.34);
+  background: linear-gradient(180deg, #e6f9ed 0%, #cff0dc 100%);
+  color: #17663f;
 }
 
 .ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge {

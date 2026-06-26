@@ -7,6 +7,7 @@ export type InfoCardSurfaceTone =
   | 'default'
   | 'draft'
   | 'stage'
+  | 'stage-runtime'
   | 'full'
   | 'pending'
   | 'published'
@@ -22,6 +23,7 @@ export type InfoCardOverlayShape = 'default' | 'circle';
 export type InfoCardOverlayTone =
   | 'default'
   | 'stage'
+  | 'stage-active'
   | 'stage-start'
   | 'stage-review'
   | 'stage-finalized'

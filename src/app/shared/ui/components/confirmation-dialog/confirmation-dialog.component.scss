@@ -105,10 +105,15 @@
   width: 100%;
 }
 
+.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row {
+  justify-content: stretch;
+}
+
 .confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 1 0 100%;
+  min-width: 100%;
   justify-content: center;
+  padding-inline: 0.9rem;
 }
 
 

@@ -13,6 +13,7 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   groupLabel?: string | null;
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
+  isStageActive?: boolean | null;
   hasMenuOptions?: boolean;
   menuBadgeCount?: number | null;
   menuTitle?: string | null;
@@ -36,7 +37,7 @@ export class EventSubeventRuntimeInfoCardConverter
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
     const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
-    const stageStatus = isTournament ? this.stageStatusBadge(item) : null;
+    const stageStatus = isTournament ? this.stageStatusBadge(item, options.isStageActive === true) : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
 
@@ -60,7 +61,7 @@ export class EventSubeventRuntimeInfoCardConverter
       detailRows: [
         `Capacity ${capacity}`
       ].filter(Boolean),
-      surfaceTone: isTournament ? 'stage' : 'draft',
+      surfaceTone: isTournament ? 'stage-runtime' : 'draft',
       accentHue: isTournament ? this.stageAccentHue(sequenceNumber, sequenceTotal) : null,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : status.icon,
@@ -136,16 +137,21 @@ export class EventSubeventRuntimeInfoCardConverter
     };
   }
 
-  private static stageStatusBadge(item: ActivityEventSubEventRuntimeDTO): InfoCardOverlayAction | null {
+  private static stageStatusBadge(item: ActivityEventSubEventRuntimeDTO, isStageActive: boolean): InfoCardOverlayAction | null {
     const status = this.resolveStageStatus(item.stageStatus);
-    if (status === 'A') {
+    if (status === 'A' && !isStageActive) {
       return null;
     }
-    const map: Record<Exclude<TournamentStageStatus, 'A'>, {
+    const map: Record<TournamentStageStatus, {
       label: string;
       icon: string;
-      tone: Extract<InfoCardOverlayTone, 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
+      tone: Extract<InfoCardOverlayTone, 'stage-active' | 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
     }> = {
+      A: {
+        label: 'active',
+        icon: 'play_circle',
+        tone: 'stage-active'
+      },
       RS: {
         label: 'stage.status.review.to.start',
         icon: 'pending_actions',

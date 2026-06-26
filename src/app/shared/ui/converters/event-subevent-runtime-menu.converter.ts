@@ -56,6 +56,7 @@ export interface EventSubeventRuntimeMenuConverterOptions {
   sourceId?: string | null;
   subEventIndex?: number | null;
   stageNumber?: number | null;
+  isStageActive?: boolean | null;
   siblingItems?: readonly ActivityEventSubEventRuntimeDTO[];
   nowMs?: number;
 }
@@ -103,6 +104,7 @@ export class EventSubeventRuntimeMenuConverter {
         subEventId,
         subEventIndex,
         stageNumber,
+        isStageActive: options.isStageActive === true,
         siblings: options.siblingItems ?? [],
         nowMs: Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now()
       }));
@@ -147,6 +149,7 @@ export class EventSubeventRuntimeMenuConverter {
       subEventId: string | null;
       subEventIndex: number;
       stageNumber: number;
+      isStageActive: boolean;
       siblings: readonly ActivityEventSubEventRuntimeDTO[];
       nowMs: number;
     }
@@ -177,7 +180,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (status === 'A') {
+    if (status === 'A' && options.isStageActive) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'close-stage',
@@ -225,7 +228,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (status !== 'RS' && status !== 'S' && status !== 'F') {
+    if (status !== 'RS' && status !== 'S' && status !== 'F' && options.isStageActive) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'suspend-tournament',
