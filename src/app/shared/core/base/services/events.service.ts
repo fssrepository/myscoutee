@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
-import type { SubEventLeaderboardState } from '../../contracts/event.interface';
+import type {
+  EventTournamentGroupDeleteRequestDTO,
+  EventTournamentGroupsQueryDTO,
+  EventTournamentGroupsStateDTO,
+  EventTournamentGroupUpsertRequestDTO,
+  SubEventLeaderboardEntryUpsertRequestDTO,
+  SubEventLeaderboardState
+} from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
 import type {
@@ -232,6 +239,22 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
     return this.eventsService.querySubEventLeaderboard(eventId, subEventId);
+  }
+
+  queryTournamentGroups(query: EventTournamentGroupsQueryDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    return this.eventsService.queryTournamentGroups(query);
+  }
+
+  saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    return this.eventsService.saveTournamentGroup(request);
+  }
+
+  deleteTournamentGroup(request: EventTournamentGroupDeleteRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    return this.eventsService.deleteTournamentGroup(request);
+  }
+
+  upsertSubEventLeaderboardEntry(request: SubEventLeaderboardEntryUpsertRequestDTO): Promise<SubEventLeaderboardState | null> {
+    return this.eventsService.upsertSubEventLeaderboardEntry(request);
   }
 
   requestJoin(

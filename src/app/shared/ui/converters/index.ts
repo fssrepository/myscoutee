@@ -85,6 +85,14 @@ export {
   type EventSubeventRuntimeStageAction
 } from './event-subevent-runtime-menu.converter';
 export {
+  EventTournamentGroupsPopupConverter,
+  eventTournamentGroupsPopupConverter,
+  type EventTournamentGroupsAccordionContext,
+  type EventTournamentGroupsPopupConverterInput,
+  type EventTournamentGroupsPopupModel,
+  type EventTournamentGroupsStageMenuContext
+} from './event-tournament-groups-popup.converter';
+export {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   profileFormFlowConverter,

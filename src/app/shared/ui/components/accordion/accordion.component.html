@@ -1,0 +1,64 @@
+@if (items().length > 0) {
+  <div class="ui-accordion">
+    @for (item of items(); track trackById($index, item)) {
+      <article
+        class="ui-accordion__item"
+        [class.is-open]="isOpen(item)"
+        [class.is-disabled]="item.disabled"
+        [attr.data-palette]="itemPalette(item)"
+      >
+        <header
+          class="ui-accordion__header"
+          role="button"
+          tabindex="0"
+          [attr.aria-expanded]="isOpen(item)"
+          [attr.aria-label]="(isOpen(item) ? 'Collapse ' : 'Expand ') + item.title"
+          (click)="toggle(item, $event)"
+          (keydown.enter)="toggle(item, $event)"
+          (keydown.space)="toggle(item, $event); $event.preventDefault()"
+        >
+          @if (item.icon) {
+            <span class="ui-accordion__icon">
+              <mat-icon>{{ item.icon }}</mat-icon>
+            </span>
+          }
+          <span class="ui-accordion__copy">
+            <strong>{{ item.title }}</strong>
+            @if (item.subtitle) {
+              <small>{{ item.subtitle }}</small>
+            }
+          </span>
+          @if (item.badge !== null && item.badge !== undefined && item.badge !== '') {
+            <span class="ui-accordion__badge">{{ item.badge }}</span>
+          }
+          @if (actionTemplate) {
+            <span class="ui-accordion__actions" (click)="$event.stopPropagation()">
+              <ng-container
+                [ngTemplateOutlet]="actionTemplate"
+                [ngTemplateOutletContext]="{ $implicit: item, item: item }"
+              ></ng-container>
+            </span>
+          }
+          <mat-icon class="ui-accordion__arrow">{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </header>
+        @if (isOpen(item)) {
+          <section class="ui-accordion__body">
+            @if (itemTemplate) {
+              <ng-container
+                [ngTemplateOutlet]="itemTemplate"
+                [ngTemplateOutletContext]="{ $implicit: item, item: item }"
+              ></ng-container>
+            }
+          </section>
+        }
+      </article>
+    }
+  </div>
+} @else {
+  <div class="ui-accordion__empty">
+    <strong>{{ model?.emptyTitle || 'Nothing here yet' }}</strong>
+    @if (model?.emptyDescription) {
+      <span>{{ model?.emptyDescription }}</span>
+    }
+  </div>
+}

@@ -456,7 +456,7 @@ export class EventSubeventsListPopupComponent {
         this.requestStageStatusAction(context);
         return;
       case 'stage-dashboard':
-        this.openRuntimeLeaderboard(context.item, context.action === 'leaderboard', menuEvent.sourceEvent);
+        this.openTournamentGroupsPopup(context.item, menuEvent.sourceEvent);
         return;
       case 'resource':
         this.openSubEventResourcePopup(context.resourceType, context.item, menuEvent.sourceEvent);
@@ -554,6 +554,19 @@ export class EventSubeventsListPopupComponent {
         ...item,
         id: `${item.id ?? ''}`.trim() || item.runtimeId
       }
+    });
+  }
+
+  private openTournamentGroupsPopup(item: ActivityEventSubEventRuntimeDTO, event: Event): void {
+    event.stopPropagation();
+    const sourceId = this.runtimeActionSourceId(item);
+    if (!sourceId) {
+      return;
+    }
+    this.popupCtx.openEventTournamentGroupsPopup({
+      eventId: sourceId,
+      title: this.popupSubtitle(),
+      selectedStageId: `${item.id ?? ''}`.trim() || null
     });
   }
 

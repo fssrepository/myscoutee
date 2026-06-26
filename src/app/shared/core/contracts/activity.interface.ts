@@ -72,6 +72,10 @@ export interface IEventsService {
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
   applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
+  queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
 }
 
 export interface IChatsService {

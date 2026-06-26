@@ -50,6 +50,8 @@ export class LocalEventsRepository {
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private static readonly SLOT_READ_MODEL_USER_ID = '__slot_read_model__';
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly localScoreEntriesByGroupKey = new Map<string, ContractTypes.SubEventLeaderboardScoreEntry[]>();
+  private readonly localFifaMatchesByGroupKey = new Map<string, ContractTypes.SubEventLeaderboardFifaMatch[]>();
 
   async flushToIndexedDb(): Promise<void> {
     await this.memoryDb.flushToIndexedDb();
@@ -830,17 +832,19 @@ export class LocalEventsRepository {
         id: `${groupId}-member-${memberIndex + 1}`,
         name: `Member ${memberIndex + 1}`
       }));
+      const scoreEntries = this.localScoreEntriesByGroupKey.get(this.leaderboardGroupKey(normalizedEventId, normalizedSubEventId, groupId)) ?? [];
+      const fifaMatches = this.localFifaMatchesByGroupKey.get(this.leaderboardGroupKey(normalizedEventId, normalizedSubEventId, groupId)) ?? [];
       return {
         groupId,
         title: `${group.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
         memberCount,
         advancePerGroup,
-        advancingMemberIds: [],
+        advancingMemberIds: this.localAdvancingMemberIds(stage, members, scoreEntries, fifaMatches).slice(0, advancePerGroup),
         members,
-        scoreEntries: [],
-        fifaMatches: [],
-        scoreRows: [],
-        fifaRows: []
+        scoreEntries: scoreEntries.map(entry => ({ ...entry })),
+        fifaMatches: fifaMatches.map(match => ({ ...match })),
+        scoreRows: this.localScoreRows(members, scoreEntries),
+        fifaRows: this.localFifaRows(members, fifaMatches)
       };
     });
     return {
@@ -850,6 +854,194 @@ export class LocalEventsRepository {
       leaderboardType,
       groups
     };
+  }
+
+  queryTournamentGroups(query: ContractTypes.EventTournamentGroupsQueryDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
+    const normalizedUserId = `${query.userId ?? ''}`.trim();
+    const normalizedEventId = `${query.eventId ?? ''}`.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    const record = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === normalizedEventId) ?? null;
+    return this.buildTournamentGroupsState(normalizedUserId, normalizedEventId, record);
+  }
+
+  saveTournamentGroup(request: ContractTypes.EventTournamentGroupUpsertRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
+    const actorUserId = `${request.actorUserId ?? ''}`.trim();
+    const eventId = `${request.eventId ?? ''}`.trim();
+    const subEventId = `${request.subEventId ?? ''}`.trim();
+    const name = `${request.name ?? ''}`.trim();
+    if (!actorUserId || !eventId || !subEventId || !name) {
+      return this.buildTournamentGroupsState(actorUserId, eventId, null);
+    }
+
+    const preferred = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === eventId) ?? null;
+    if (!preferred || !this.isEventAdminRecord(preferred, actorUserId)) {
+      return this.buildTournamentGroupsState(actorUserId, eventId, preferred);
+    }
+
+    const groupId = `${request.groupId ?? ''}`.trim();
+    const capacityMin = Math.max(0, Math.trunc(Number(request.capacityMin) || 0));
+    const capacityMax = Math.max(capacityMin, Math.trunc(Number(request.capacityMax) || capacityMin));
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const recordKey of table.ids) {
+        const current = table.byId[recordKey];
+        if (!current || current.id !== eventId) {
+          continue;
+        }
+        const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
+        const subEventIndex = subEvents.findIndex(item => `${item.id ?? ''}`.trim() === subEventId);
+        if (subEventIndex < 0 || !subEvents[subEventIndex]) {
+          continue;
+        }
+        const stage = subEvents[subEventIndex];
+        const groups = this.stageGroupsForMutation(stage);
+        const targetIndex = groupId
+          ? groups.findIndex(group => `${group.id ?? ''}`.trim() === groupId)
+          : -1;
+        const nextGroup: ContractTypes.SubEventGroupDTO = {
+          id: groupId || this.nextTournamentGroupId(subEventId),
+          name,
+          source: 'manual',
+          capacityMin,
+          capacityMax
+        };
+        const nextGroups = targetIndex >= 0
+          ? groups.map((group, index) => index === targetIndex ? { ...group, ...nextGroup } : group)
+          : [...groups, nextGroup];
+        subEvents[subEventIndex] = this.stageWithTournamentGroups(stage, nextGroups);
+        nextById[recordKey] = {
+          ...current,
+          subEvents
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId: nextById
+            }
+          }
+        : state;
+    });
+    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === eventId) ?? preferred;
+    this.materializeSlotRecords();
+    return this.buildTournamentGroupsState(actorUserId, eventId, refreshed);
+  }
+
+  deleteTournamentGroup(request: ContractTypes.EventTournamentGroupDeleteRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
+    const actorUserId = `${request.actorUserId ?? ''}`.trim();
+    const eventId = `${request.eventId ?? ''}`.trim();
+    const subEventId = `${request.subEventId ?? ''}`.trim();
+    const groupId = `${request.groupId ?? ''}`.trim();
+    const preferred = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === eventId) ?? null;
+    if (!actorUserId || !eventId || !subEventId || !groupId || !preferred || !this.isEventAdminRecord(preferred, actorUserId)) {
+      return this.buildTournamentGroupsState(actorUserId, eventId, preferred);
+    }
+
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      let changed = false;
+      for (const recordKey of table.ids) {
+        const current = table.byId[recordKey];
+        if (!current || current.id !== eventId) {
+          continue;
+        }
+        const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
+        const subEventIndex = subEvents.findIndex(item => `${item.id ?? ''}`.trim() === subEventId);
+        if (subEventIndex < 0 || !subEvents[subEventIndex]) {
+          continue;
+        }
+        const stage = subEvents[subEventIndex];
+        const groups = this.stageGroupsForMutation(stage).filter(group => `${group.id ?? ''}`.trim() !== groupId);
+        subEvents[subEventIndex] = this.stageWithTournamentGroups(stage, groups);
+        nextById[recordKey] = {
+          ...current,
+          subEvents
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId: nextById
+            }
+          }
+        : state;
+    });
+    this.localScoreEntriesByGroupKey.delete(this.leaderboardGroupKey(eventId, subEventId, groupId));
+    this.localFifaMatchesByGroupKey.delete(this.leaderboardGroupKey(eventId, subEventId, groupId));
+    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(item => item.id === eventId) ?? preferred;
+    this.materializeSlotRecords();
+    return this.buildTournamentGroupsState(actorUserId, eventId, refreshed);
+  }
+
+  upsertSubEventLeaderboardEntry(request: ContractTypes.SubEventLeaderboardEntryUpsertRequestDTO): ContractTypes.SubEventLeaderboardState | null {
+    const eventId = `${request.eventId ?? ''}`.trim();
+    const subEventId = `${request.subEventId ?? ''}`.trim();
+    const groupId = `${request.groupId ?? ''}`.trim();
+    if (!eventId || !subEventId || !groupId) {
+      return null;
+    }
+    const key = this.leaderboardGroupKey(eventId, subEventId, groupId);
+    if (request.mode === 'Fifa') {
+      const homeMemberId = `${request.homeMemberId ?? ''}`.trim();
+      const awayMemberId = `${request.awayMemberId ?? ''}`.trim();
+      if (!homeMemberId || !awayMemberId || homeMemberId === awayMemberId) {
+        return this.querySubEventLeaderboard(eventId, subEventId);
+      }
+      const pairKey = [homeMemberId, awayMemberId].sort().join(':');
+      const matches = [...(this.localFifaMatchesByGroupKey.get(key) ?? [])];
+      const index = matches.findIndex(match => [match.homeMemberId, match.awayMemberId].sort().join(':') === pairKey);
+      const nextMatch: ContractTypes.SubEventLeaderboardFifaMatch = {
+        id: index >= 0 ? matches[index].id : `local-fifa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        stageId: subEventId,
+        groupId,
+        homeMemberId,
+        awayMemberId,
+        homeScore: Math.max(0, Math.trunc(Number(request.homeScore) || 0)),
+        awayScore: Math.max(0, Math.trunc(Number(request.awayScore) || 0)),
+        note: `${request.note ?? ''}`.trim(),
+        createdAtMs: Date.now()
+      };
+      if (index >= 0) {
+        matches[index] = nextMatch;
+      } else {
+        matches.push(nextMatch);
+      }
+      this.localFifaMatchesByGroupKey.set(key, matches);
+      return this.querySubEventLeaderboard(eventId, subEventId);
+    }
+
+    const memberId = `${request.memberId ?? ''}`.trim();
+    if (!memberId || request.scoreValue === null || request.scoreValue === undefined) {
+      return this.querySubEventLeaderboard(eventId, subEventId);
+    }
+    const scoreEntries = [...(this.localScoreEntriesByGroupKey.get(key) ?? [])];
+    scoreEntries.push({
+      id: `local-score-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      stageId: subEventId,
+      groupId,
+      memberId,
+      value: Math.trunc(Number(request.scoreValue) || 0),
+      note: `${request.note ?? ''}`.trim(),
+      createdAtMs: Date.now()
+    });
+    this.localScoreEntriesByGroupKey.set(key, scoreEntries);
+    return this.querySubEventLeaderboard(eventId, subEventId);
   }
 
   requestJoin(
@@ -1894,6 +2086,227 @@ export class LocalEventsRepository {
     return ActivityEventDetailDTO.normalizeSubEvents(items);
   }
 
+  private buildTournamentGroupsState(
+    userId: string,
+    eventId: string,
+    record: ActivityEventRecord | null
+  ): ContractTypes.EventTournamentGroupsStateDTO | null {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId || !record) {
+      return null;
+    }
+    const subEvents = this.cloneSubEvents(record.subEvents) ?? [];
+    const stages = subEvents
+      .map((stage, index) => ({ stage, index }))
+      .filter(entry => this.isGeneratedTournamentStage(entry.stage))
+      .map(({ stage, index }) => this.tournamentStageDto(stage, index));
+    return {
+      eventId: normalizedEventId,
+      title: `${record.title ?? ''}`.trim(),
+      subtitle: `${record.subtitle ?? record.timeframe ?? ''}`.trim(),
+      canManage: this.isEventAdminRecord(record, `${userId ?? ''}`.trim()),
+      stages
+    };
+  }
+
+  private tournamentStageDto(stage: ContractTypes.SubEventDTO, index: number): ContractTypes.EventTournamentStageDTO {
+    const subEventId = `${stage.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`;
+    return {
+      subEventId,
+      title: `${stage.name ?? `Stage ${index + 1}`}`.trim() || `Stage ${index + 1}`,
+      description: `${stage.description ?? ''}`.trim(),
+      location: `${stage.location ?? ''}`.trim(),
+      startAt: `${stage.startAt ?? ''}`.trim(),
+      endAt: `${stage.endAt ?? ''}`.trim(),
+      stageNumber: index + 1,
+      stageStatus: `${stage.stageStatus ?? ''}`.trim(),
+      leaderboardType: stage.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      advancePerGroup: Math.max(0, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 0)),
+      groups: this.stageGroupsForMutation(stage).map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex))
+    };
+  }
+
+  private tournamentGroupDto(
+    stage: ContractTypes.SubEventDTO,
+    group: ContractTypes.SubEventGroupDTO,
+    groupIndex: number
+  ): ContractTypes.EventTournamentGroupDTO {
+    const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
+    const capacityMax = Math.max(capacityMin, Math.trunc(Number(group.capacityMax) || capacityMin));
+    const accepted = 0;
+    return {
+      id: `${group.id ?? `${stage.id ?? 'stage'}-group-${groupIndex + 1}`}`.trim(),
+      name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
+      source: group.source === 'manual' ? 'manual' : 'generated',
+      capacityMin,
+      capacityMax,
+      membersAccepted: accepted,
+      membersPending: Math.max(0, capacityMax - accepted)
+    };
+  }
+
+  private stageGroupsForMutation(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {
+    const groups = stage.groups?.length ? stage.groups : this.localGeneratedGroups(stage);
+    return groups
+      .map((group, index): ContractTypes.SubEventGroupDTO => {
+        const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin ?? stage.tournamentGroupCapacityMin ?? 0) || 0));
+        const capacityMax = Math.max(
+          capacityMin,
+          Math.trunc(Number(group.capacityMax ?? stage.tournamentGroupCapacityMax ?? capacityMin) || capacityMin)
+        );
+        return {
+          id: `${group.id ?? `${stage.id ?? 'stage'}-group-${index + 1}`}`.trim(),
+          name: `${group.name ?? `Group ${String.fromCharCode(65 + (index % 26))}`}`.trim(),
+          source: group.source === 'manual' ? 'manual' : 'generated',
+          capacityMin,
+          capacityMax
+        };
+      })
+      .filter(group => group.id && group.name);
+  }
+
+  private stageWithTournamentGroups(
+    stage: ContractTypes.SubEventDTO,
+    groups: readonly ContractTypes.SubEventGroupDTO[]
+  ): ContractTypes.SubEventDTO {
+    const normalizedGroups = groups.map(group => ({ ...group }));
+    const totals = this.tournamentGroupCapacityTotals(normalizedGroups);
+    return {
+      ...stage,
+      groups: normalizedGroups,
+      tournamentGroupCount: normalizedGroups.length > 0 ? normalizedGroups.length : undefined,
+      capacityMin: normalizedGroups.length > 0 ? totals.min : stage.capacityMin,
+      capacityMax: normalizedGroups.length > 0 ? totals.max : stage.capacityMax,
+      membersPending: Math.max(0, (normalizedGroups.length > 0 ? totals.max : Math.max(0, Number(stage.capacityMax) || 0)) - Math.max(0, Number(stage.membersAccepted) || 0))
+    };
+  }
+
+  private tournamentGroupCapacityTotals(groups: readonly ContractTypes.SubEventGroupDTO[]): { min: number; max: number } {
+    return groups.reduce(
+      (total, group) => {
+        const min = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
+        const max = Math.max(min, Math.trunc(Number(group.capacityMax) || min));
+        return {
+          min: total.min + min,
+          max: total.max + max
+        };
+      },
+      { min: 0, max: 0 }
+    );
+  }
+
+  private nextTournamentGroupId(subEventId: string): string {
+    return `${subEventId || 'stage'}-group-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  }
+
+  private leaderboardGroupKey(eventId: string, subEventId: string, groupId: string): string {
+    return `${eventId.trim()}::${subEventId.trim()}::${groupId.trim()}`;
+  }
+
+  private localScoreRows(
+    members: readonly ContractTypes.SubEventLeaderboardMember[],
+    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[]
+  ): ContractTypes.SubEventLeaderboardScoreStandingRow[] {
+    const rows = new Map<string, ContractTypes.SubEventLeaderboardScoreStandingRow>();
+    for (const member of members) {
+      rows.set(member.id, {
+        memberId: member.id,
+        memberName: member.name,
+        total: 0,
+        updates: 0
+      });
+    }
+    for (const entry of entries) {
+      const row = rows.get(entry.memberId);
+      if (!row) {
+        continue;
+      }
+      row.total += Math.trunc(Number(entry.value) || 0);
+      row.updates += 1;
+    }
+    return [...rows.values()].sort((left, right) => {
+      if (left.total !== right.total) {
+        return right.total - left.total;
+      }
+      return left.memberName.localeCompare(right.memberName);
+    });
+  }
+
+  private localFifaRows(
+    members: readonly ContractTypes.SubEventLeaderboardMember[],
+    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[]
+  ): ContractTypes.SubEventLeaderboardFifaStandingRow[] {
+    const rows = new Map<string, ContractTypes.SubEventLeaderboardFifaStandingRow>();
+    for (const member of members) {
+      rows.set(member.id, {
+        memberId: member.id,
+        memberName: member.name,
+        points: 0,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDiff: 0
+      });
+    }
+    for (const match of matches) {
+      const home = rows.get(match.homeMemberId);
+      const away = rows.get(match.awayMemberId);
+      if (!home || !away) {
+        continue;
+      }
+      home.played += 1;
+      away.played += 1;
+      home.goalsFor += match.homeScore;
+      home.goalsAgainst += match.awayScore;
+      away.goalsFor += match.awayScore;
+      away.goalsAgainst += match.homeScore;
+      if (match.homeScore > match.awayScore) {
+        home.wins += 1;
+        home.points += 3;
+        away.losses += 1;
+      } else if (match.homeScore < match.awayScore) {
+        away.wins += 1;
+        away.points += 3;
+        home.losses += 1;
+      } else {
+        home.draws += 1;
+        away.draws += 1;
+        home.points += 1;
+        away.points += 1;
+      }
+    }
+    for (const row of rows.values()) {
+      row.goalDiff = row.goalsFor - row.goalsAgainst;
+    }
+    return [...rows.values()].sort((left, right) => {
+      if (left.points !== right.points) {
+        return right.points - left.points;
+      }
+      if (left.goalDiff !== right.goalDiff) {
+        return right.goalDiff - left.goalDiff;
+      }
+      if (left.goalsFor !== right.goalsFor) {
+        return right.goalsFor - left.goalsFor;
+      }
+      return left.memberName.localeCompare(right.memberName);
+    });
+  }
+
+  private localAdvancingMemberIds(
+    stage: ContractTypes.SubEventDTO,
+    members: readonly ContractTypes.SubEventLeaderboardMember[],
+    scoreEntries: readonly ContractTypes.SubEventLeaderboardScoreEntry[],
+    fifaMatches: readonly ContractTypes.SubEventLeaderboardFifaMatch[]
+  ): string[] {
+    const rows = stage.tournamentLeaderboardType === 'Fifa'
+      ? this.localFifaRows(members, fifaMatches)
+      : this.localScoreRows(members, scoreEntries);
+    return rows.map(row => row.memberId).filter(Boolean);
+  }
+
   private localGeneratedGroups(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {
     const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
     const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
@@ -2077,7 +2490,13 @@ export class LocalEventsRepository {
   }
 
   private isGeneratedTournamentStage(item: ContractTypes.SubEventDTO): boolean {
-    return !item.optional && ((item.groups?.length ?? 0) > 0 || (item.tournamentGroupCount ?? 0) > 0);
+    return !item.optional
+      && (
+        (item.groups?.length ?? 0) > 0
+        || (item.tournamentGroupCount ?? 0) > 0
+        || item.tournamentLeaderboardType === 'Score'
+        || item.tournamentLeaderboardType === 'Fifa'
+      );
   }
 
   private materializeSlotRecords(): void {

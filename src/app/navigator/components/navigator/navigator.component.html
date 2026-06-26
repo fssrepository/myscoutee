@@ -120,6 +120,9 @@
 @if (eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
   <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
 }
+@if (eventTournamentGroupsPopupComponent(); as tournamentGroupsPopupComponent) {
+  <ng-container *ngComponentOutlet="tournamentGroupsPopupComponent"></ng-container>
+}
 @if (eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
 }

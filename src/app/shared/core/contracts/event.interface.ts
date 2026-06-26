@@ -160,3 +160,72 @@ export interface SubEventLeaderboardState {
   leaderboardType: 'Score' | 'Fifa' | string;
   groups: SubEventLeaderboardGroupState[];
 }
+
+export interface EventTournamentGroupDTO {
+  id: string;
+  name: string;
+  source: 'manual' | 'generated' | string;
+  capacityMin: number;
+  capacityMax: number;
+  membersAccepted: number;
+  membersPending: number;
+}
+
+export interface EventTournamentStageDTO {
+  subEventId: string;
+  title: string;
+  description: string;
+  location: string;
+  startAt: string;
+  endAt: string;
+  stageNumber: number;
+  stageStatus?: TournamentStageStatus | string;
+  leaderboardType: TournamentLeaderboardType | string;
+  advancePerGroup: number;
+  groups: EventTournamentGroupDTO[];
+}
+
+export interface EventTournamentGroupsStateDTO {
+  eventId: string;
+  title: string;
+  subtitle: string;
+  canManage: boolean;
+  stages: EventTournamentStageDTO[];
+}
+
+export interface EventTournamentGroupsQueryDTO {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventTournamentGroupUpsertRequestDTO {
+  actorUserId: string;
+  eventId: string;
+  subEventId: string;
+  groupId?: string | null;
+  name: string;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface EventTournamentGroupDeleteRequestDTO {
+  actorUserId: string;
+  eventId: string;
+  subEventId: string;
+  groupId: string;
+}
+
+export interface SubEventLeaderboardEntryUpsertRequestDTO {
+  actorUserId: string;
+  eventId: string;
+  subEventId: string;
+  groupId: string;
+  mode: TournamentLeaderboardType | string;
+  memberId?: string | null;
+  scoreValue?: number | null;
+  note?: string | null;
+  homeMemberId?: string | null;
+  awayMemberId?: string | null;
+  homeScore?: number | null;
+  awayScore?: number | null;
+}

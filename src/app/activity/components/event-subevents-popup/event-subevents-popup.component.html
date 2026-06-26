@@ -125,9 +125,17 @@
                     </header>
                     <div class="subevents-stage-body">
                       @for (row of stage.rows; track trackByStageRowKey($index, row)) {
-                        <article class="subevents-group-row" [attr.data-tone]="row.toneClass">
+                        <article
+                          class="subevents-group-row"
+                          [attr.data-tone]="row.toneClass"
+                          role="button"
+                          tabindex="0"
+                          (click)="openTournamentGroupsPopupForRow(row, $event)"
+                          (keydown.enter)="openTournamentGroupsPopupForRow(row, $event)"
+                          (keydown.space)="openTournamentGroupsPopupForRow(row, $event); $event.preventDefault()"
+                        >
                           <span class="subevents-group-title">{{ row.label }}</span>
-                          <div class="experience-item-actions subevents-group-actions">
+                          <div class="experience-item-actions subevents-group-actions" (click)="$event.stopPropagation()">
                             <app-menu-trigger
                               class="subevents-shared-action-menu-trigger"
                               [menuId]="'subevent-group-' + row.key"

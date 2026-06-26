@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, forwardRef, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild, effect, inject } from '@angular/core';
-import { AppContext } from '../../../shared/ui';
+import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -262,6 +262,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -1259,6 +1260,21 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     }
 
     this.requestDeleteGroup(row, event);
+  }
+
+  protected openTournamentGroupsPopupForRow(row: EventSubeventsStageRow, event: Event): void {
+    event.stopPropagation();
+    const ownerId = `${this.ownerId ?? ''}`.trim();
+    const stageId = `${row.stageItem.id ?? ''}`.trim();
+    if (!ownerId || !stageId) {
+      return;
+    }
+    this.popupCtx.openEventTournamentGroupsPopup({
+      eventId: ownerId,
+      title: this.parentTitle,
+      selectedStageId: stageId,
+      selectedGroupId: row.groupId
+    });
   }
 
   protected subEventModeClass(optional: boolean): 'subevent-mode-mandatory' | 'subevent-mode-optional' {

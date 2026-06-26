@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 
 import type { ActivityPendingReason } from '../../../common/constants';
-import type { SubEventLeaderboardState } from '../../../contracts/event.interface';
+import type {
+  EventTournamentGroupDeleteRequestDTO,
+  EventTournamentGroupsQueryDTO,
+  EventTournamentGroupsStateDTO,
+  EventTournamentGroupUpsertRequestDTO,
+  SubEventLeaderboardEntryUpsertRequestDTO,
+  SubEventLeaderboardState
+} from '../../../contracts/event.interface';
 import { EventFeedbackBuilder } from '../../../base/builders';
 import type {
   EventCheckoutAssetSelection,
@@ -303,6 +310,30 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventsRepository.querySubEventLeaderboard(eventId, subEventId);
+  }
+
+  async queryTournamentGroups(query: EventTournamentGroupsQueryDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryTournamentGroups(query);
+  }
+
+  async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const state = this.eventsRepository.saveTournamentGroup(request);
+    await this.eventsRepository.flushToIndexedDb();
+    return state;
+  }
+
+  async deleteTournamentGroup(request: EventTournamentGroupDeleteRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const state = this.eventsRepository.deleteTournamentGroup(request);
+    await this.eventsRepository.flushToIndexedDb();
+    return state;
+  }
+
+  async upsertSubEventLeaderboardEntry(request: SubEventLeaderboardEntryUpsertRequestDTO): Promise<SubEventLeaderboardState | null> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.upsertSubEventLeaderboardEntry(request);
   }
 
   async requestJoin(

@@ -1,6 +1,7 @@
 export * from './rating-star-bar';
 export * from './editable-image-carousel';
 export * from './progress-indicator';
+export * from './accordion';
 export * from './document-viewer';
 export * from './menu';
 export * from './smart-list';

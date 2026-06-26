@@ -145,6 +145,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -162,6 +163,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
   protected readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
+  protected readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
   protected readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
   protected readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
@@ -803,6 +805,13 @@ export class NavigatorComponent implements OnDestroy {
       const request = this.popupCtx.eventSubeventsListPopup();
       if (request && !this.eventSubeventsListPopupComponentRef()) {
         void this.ensureEventSubeventsListPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const request = this.popupCtx.eventTournamentGroupsPopup();
+      if (request && !this.eventTournamentGroupsPopupComponentRef()) {
+        void this.ensureEventTournamentGroupsPopupLoaded();
       }
     });
 
@@ -1472,6 +1481,14 @@ export class NavigatorComponent implements OnDestroy {
     }
     const module = await import('../../../activity/components/event-subevents-list-popup/event-subevents-list-popup.component');
     this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
+  }
+
+  private async ensureEventTournamentGroupsPopupLoaded(): Promise<void> {
+    if (this.eventTournamentGroupsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-tournament-groups-popup/event-tournament-groups-popup.component');
+    this.eventTournamentGroupsPopupComponentRef.set(module.EventTournamentGroupsPopupComponent);
   }
 
   private async ensureEventChatPopupLoaded(): Promise<void> {
