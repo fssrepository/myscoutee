@@ -145,6 +145,8 @@ export class NavigatorComponent implements OnDestroy {
   private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -160,6 +162,8 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
   protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
   protected readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
+  protected readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
+  protected readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
   protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
   protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
@@ -819,6 +823,21 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
+      const request = this.popupCtx.activitiesNavigationRequest();
+      if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
+        return;
+      }
+      void this.ensureEventExplorePopupLoaded();
+    });
+
+    effect(() => {
+      const session = this.activitiesContext.eventChatSession();
+      if (session && !this.eventChatPopupComponentRef()) {
+        void this.ensureEventChatPopupLoaded();
+      }
+    });
+
+    effect(() => {
       const isActivitiesOpen = this.activitiesContext.activitiesOpen();
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
@@ -1455,6 +1474,22 @@ export class NavigatorComponent implements OnDestroy {
     this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
   }
 
+  private async ensureEventChatPopupLoaded(): Promise<void> {
+    if (this.eventChatPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-chat-popup/event-chat-popup.component');
+    this.eventChatPopupComponentRef.set(module.EventChatPopupComponent);
+  }
+
+  private async ensureEventExplorePopupLoaded(): Promise<void> {
+    if (this.eventExplorePopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../activity/components/event-explore-popup/event-explore-popup.component');
+    this.eventExplorePopupComponentRef.set(module.EventExplorePopupComponent);
+  }
+
   private async ensureActivitiesPopupLoaded(): Promise<void> {
     if (this.activitiesPopupComponentRef()) {
       return;
@@ -1502,6 +1537,11 @@ export class NavigatorComponent implements OnDestroy {
   @HostListener('window:openFeaturePopup', ['$event'])
   protected onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
+    if (popupEvent.detail?.type === 'eventExplore') {
+      this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore' });
+      void this.ensureEventExplorePopupLoaded();
+      return;
+    }
     if (popupEvent.detail?.type !== 'eventEditor') {
       return;
     }

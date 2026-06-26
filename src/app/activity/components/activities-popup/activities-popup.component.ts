@@ -50,8 +50,6 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { NavigatorService } from '../../../navigator';
-import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
-import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
   ActivitiesChatTemplateComponent, ActivitiesChatsController
@@ -157,9 +155,7 @@ type ActivitiesToolbarMenuContext =
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
-    EventChatPopupComponent,
     EventCheckoutPopupComponent,
-    EventExplorePopupComponent,
     I18nPipe
   ],
   templateUrl: './activities-popup.component.html',

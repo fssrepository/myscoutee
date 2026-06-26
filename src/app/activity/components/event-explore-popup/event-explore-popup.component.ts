@@ -258,15 +258,6 @@ export class EventExplorePopupComponent {
     });
   }
 
-  @HostListener('window:openFeaturePopup', ['$event'])
-  protected onGlobalPopupRequest(event: Event): void {
-    const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
-    if (popupEvent.detail?.type !== 'eventExplore') {
-      return;
-    }
-    this.openEventExplore();
-  }
-
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
