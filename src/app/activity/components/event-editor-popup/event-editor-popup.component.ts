@@ -112,6 +112,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
   private eventDetailLoadSequence = 0;
+  private eventImageUrlsCacheKey = '';
+  private eventImageUrlsCache: string[] = [];
   protected readonly isLoadingEventData = signal(false);
   protected readonly eventVisibilityReady = signal(false);
 
@@ -1236,11 +1238,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventImageUrls(): string[] {
     const imageUrl = `${this.eventDetailDTO.imageUrl ?? ''}`.trim();
-    return imageUrl ? [imageUrl] : [];
+    if (this.eventImageUrlsCacheKey !== imageUrl) {
+      this.eventImageUrlsCacheKey = imageUrl;
+      this.eventImageUrlsCache = imageUrl ? [imageUrl] : [];
+    }
+    return this.eventImageUrlsCache;
   }
 
   protected onEventImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
-    this.eventDetailDTO.imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
+    const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
+    this.eventDetailDTO.imageUrl = imageUrl;
+    this.eventImageUrlsCacheKey = imageUrl;
+    this.eventImageUrlsCache = imageUrl ? [imageUrl] : [];
   }
 
   protected eventImageUploadOwnerId(): string {
