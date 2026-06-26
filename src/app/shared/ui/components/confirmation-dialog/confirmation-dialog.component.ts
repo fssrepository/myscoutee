@@ -106,8 +106,19 @@ export class ConfirmationDialogComponent {
     return state.busy ? 'loading' : 'error';
   }
 
-  protected confirmMenuItems(state: RenderedConfirmationDialogState): readonly AppMenuItem<string>[] {
-    return [{
+  protected dialogActionItems(state: RenderedConfirmationDialogState): readonly AppMenuItem<string>[] {
+    const items: AppMenuItem<string>[] = [];
+    if (state.cancelLabel) {
+      items.push({
+        id: 'cancel',
+        label: state.cancelLabel,
+        layout: 'action',
+        palette: 'slate',
+        disabled: state.busy,
+        ariaLabel: state.cancelLabel
+      });
+    }
+    items.push({
       id: 'confirm',
       label: this.confirmText(state),
       icon: state.busy ? 'hourglass_empty' : undefined,
@@ -122,14 +133,16 @@ export class ConfirmationDialogComponent {
             perimeter: state.ringPerimeter
           }
         : null
-    }];
+    });
+    return items;
   }
 
-  protected onConfirmMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id !== 'confirm') {
-      return;
+  protected onDialogActionSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id === 'cancel') {
+      this.cancel(event.sourceEvent);
+    } else if (event.id === 'confirm') {
+      this.confirm(event.sourceEvent);
     }
-    this.confirm(event.sourceEvent);
   }
 
   protected closeFromBackdrop(event: Event): void {

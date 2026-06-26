@@ -10,6 +10,8 @@ import { ActivityMembersBuilder } from '../../../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
+  type AppMenuPalette,
+  type CardMenuAction,
   type CardMenuActionEvent,
   type CardMenuRequestEvent
 } from '../../../../../shared/ui';
@@ -245,13 +247,13 @@ export class ActivitiesEventsController {
   public onActivityEventCardMenuAction(row: ActivityEventCardData, action: CardMenuActionEvent<InfoCardData>): void {
     switch (action.actionId as ActivityInfoCardActionId) {
       case 'publish':
-        this.runActivityItemPublishAction(row);
+        this.runActivityItemPublishAction(row, undefined, action.action);
         break;
       case 'unpublish':
-        this.runActivityItemUnpublishAction(row);
+        this.runActivityItemUnpublishAction(row, undefined, action.action);
         break;
       case 'takeOver':
-        this.runActivityItemTakeOverAction(row);
+        this.runActivityItemTakeOverAction(row, undefined, action.action);
         break;
       case 'editEvent':
       case 'manageEvent':
@@ -278,10 +280,10 @@ export class ActivitiesEventsController {
       case 'leaveEvent':
       case 'deleteEvent':
       case 'rejectInvitation':
-        this.runActivityItemSecondaryAction(row);
+        this.runActivityItemSecondaryAction(row, undefined, action.action);
         break;
       case 'restore':
-        this.runActivityItemRestoreAction(row);
+        this.runActivityItemRestoreAction(row, undefined, action.action);
         break;
     }
   }
@@ -541,7 +543,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.confirmationDialogService.open({
       title: 'Restore event?',
@@ -550,12 +552,13 @@ export class ActivitiesEventsController {
       confirmLabel: 'Restore',
       busyConfirmLabel: 'Restoring...',
       confirmTone: 'accent',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to restore event.',
       onConfirm: () => this.restoreActivityRow(row)
     });
   }
 
-  public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.confirmationDialogService.open({
       title: this.activitySecondaryConfirmTitle(row),
@@ -564,12 +567,13 @@ export class ActivitiesEventsController {
       confirmLabel: this.activitySecondaryConfirmActionLabel(row),
       busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row),
       confirmTone: 'danger',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: this.activitySecondaryConfirmFailureMessage(row),
       onConfirm: () => this.confirmActivitySecondaryAction(row)
     });
   }
 
-  public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.confirmationDialogService.open({
       title: 'Publish event?',
@@ -578,12 +582,13 @@ export class ActivitiesEventsController {
       confirmLabel: 'Publish',
       busyConfirmLabel: 'Publishing...',
       confirmTone: 'accent',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to publish event.',
       onConfirm: () => this.confirmActivityPublish(row)
     });
   }
 
-  public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.confirmationDialogService.open({
       title: 'Unpublish event?',
@@ -592,12 +597,13 @@ export class ActivitiesEventsController {
       confirmLabel: 'Unpublish',
       busyConfirmLabel: 'Unpublishing...',
       confirmTone: 'neutral',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to unpublish event.',
       onConfirm: () => this.confirmActivityUnpublish(row)
     });
   }
 
-  public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.confirmationDialogService.open({
       title: 'Take over event?',
@@ -606,6 +612,7 @@ export class ActivitiesEventsController {
       confirmLabel: 'Take Over',
       busyConfirmLabel: 'Taking over...',
       confirmTone: 'accent',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to take over event.',
       onConfirm: () => this.confirmActivityTakeOver(row)
     });
@@ -636,6 +643,20 @@ export class ActivitiesEventsController {
 
   private restoredActivityStatus(row: ActivityEventCardData): string {
     return 'A';
+  }
+
+  private confirmationPaletteForCardAction(action: CardMenuAction | null | undefined): AppMenuPalette | null {
+    switch (action?.tone) {
+      case 'accent':
+        return 'brown';
+      case 'warning':
+      case 'review':
+        return 'orange';
+      case 'destructive':
+        return 'danger';
+      default:
+        return null;
+    }
   }
 
   private async confirmActivityPublish(row: ActivityEventCardData): Promise<void> {

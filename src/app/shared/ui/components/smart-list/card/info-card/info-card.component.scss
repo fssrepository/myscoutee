@@ -110,7 +110,7 @@ button.asset-occupancy-badge:active::after,
 .ui-info-card--tone-stage-runtime {
   border-color: hsl(var(--ui-info-card-accent-hue) 48% 58% / 0.5);
   background: linear-gradient(180deg, #fbfcff 0%, #f3f6fb 100%);
-  box-shadow: 0 10px 22px hsl(var(--ui-info-card-accent-hue) 38% 34% / 0.1);
+  box-shadow: 0 8px 18px hsl(var(--ui-info-card-accent-hue) 34% 34% / 0.075);
 }
 
 .ui-info-card--tone-published {

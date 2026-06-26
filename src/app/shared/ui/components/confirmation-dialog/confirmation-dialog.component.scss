@@ -66,56 +66,36 @@
   justify-content: flex-end;
 }
 
-.confirmation-dialog-btn {
-  min-width: 108px;
-  height: 42px;
-  border: 1px solid rgba(23, 33, 54, 0.16);
-  border-radius: 999px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease, border-color 140ms ease;
-}
-
-.confirmation-dialog-btn:hover {
-  transform: translateY(-1px);
-}
-
-.confirmation-dialog-btn:active {
-  transform: translateY(0);
-}
-
-.confirmation-dialog-cancel-btn {
-  background: #fff;
-  color: rgba(34, 50, 74, 0.84);
-}
-
-.confirmation-dialog-confirm-menu {
+.confirmation-dialog-actions-menu {
   position: relative;
   display: inline-flex;
   align-items: stretch;
-  justify-content: center;
-  flex: 0 0 150px;
-  width: 150px;
-  min-width: 150px;
+  justify-content: flex-end;
+  min-width: 260px;
 }
 
-.confirmation-dialog-confirm-menu ::ng-deep .app-menu,
-.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row,
-.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row-item {
+.confirmation-dialog-actions-menu ::ng-deep .app-menu {
   width: 100%;
 }
 
-.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row {
-  justify-content: stretch;
+.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row {
+  justify-content: flex-end;
+  gap: 0.65rem;
 }
 
-.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row-item--action {
-  flex: 1 0 100%;
-  min-width: 100%;
+.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row-item--action.app-menu__button-row-item--labelled,
+.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row-item--action {
+  flex: 0 1 auto;
+  min-width: 108px;
+  min-height: 42px;
+  height: 42px;
   justify-content: center;
-  padding-inline: 0.9rem;
+  padding-inline: 1rem;
 }
 
+.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row-item--action .app-menu__button-row-label {
+  text-align: center;
+}
 
 @media (max-width: 760px) {
   .confirmation-dialog {
@@ -125,5 +105,9 @@
   .confirmation-dialog-panel {
     width: 100%;
     border-radius: 22px;
+  }
+
+  .confirmation-dialog-actions-menu {
+    min-width: min(100%, 260px);
   }
 }
