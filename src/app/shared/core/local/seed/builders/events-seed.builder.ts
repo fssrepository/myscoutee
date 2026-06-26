@@ -136,6 +136,119 @@ function buildCheckoutDemoSubEventDefinitions(options: {
   ];
 }
 
+function buildTournamentDemoGroups(
+  sourceId: string,
+  stageIndex: number,
+  groups: readonly { name: string; min: number; max: number }[]
+): ContractTypes.SubEventGroupDTO[] {
+  return groups.map((group, groupIndex) => ({
+    id: `${sourceId}-stage-${stageIndex + 1}-group-${groupIndex + 1}`,
+    name: group.name,
+    capacityMin: group.min,
+    capacityMax: group.max,
+    source: 'manual'
+  }));
+}
+
+function buildTournamentDemoStageDefinition(options: {
+  sourceId: string;
+  index: number;
+  name: string;
+  description: string;
+  timing: ContractTypes.SubEventDefinitionTiming;
+  offsetMinutes: number;
+  durationMinutes: number;
+  groups: readonly { name: string; min: number; max: number }[];
+  leaderboardType: ContractTypes.TournamentLeaderboardType;
+  advancePerGroup: number;
+}): ContractTypes.SubEventDefinitionDTO {
+  const groups = buildTournamentDemoGroups(options.sourceId, options.index, options.groups);
+  const capacityMin = groups.reduce((total, group) => total + Math.max(0, Number(group.capacityMin) || 0), 0);
+  const capacityMax = groups.reduce((total, group) => total + Math.max(0, Number(group.capacityMax) || 0), 0);
+  return {
+    id: `${options.sourceId}-stage-${options.index + 1}`,
+    name: options.name,
+    description: options.description,
+    timing: options.timing,
+    offsetMinutes: options.offsetMinutes,
+    durationMinutes: options.durationMinutes,
+    location: 'Seattle · Demo Court',
+    groups,
+    tournamentGroupCount: groups.length,
+    tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
+    tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
+    tournamentLeaderboardType: options.leaderboardType,
+    tournamentAdvancePerGroup: options.advancePerGroup,
+    optional: false,
+    capacityMin,
+    capacityMax,
+    icon: 'emoji_events'
+  };
+}
+
+function buildActiveTournamentDemoSubEventDefinitions(
+  sourceId: string,
+  timingPreset: 'default' | 'stage-one-active' | 'stage-two-active' = 'default'
+): ContractTypes.SubEventDefinitionDTO[] {
+  const timings = (() => {
+    switch (timingPreset) {
+      case 'stage-one-active':
+        return { qualifierMinutes: 90, semifinalOffsetMinutes: 10, semifinalMinutes: 60, finalOffsetMinutes: 10, finalMinutes: 45 };
+      case 'stage-two-active':
+        return { qualifierMinutes: 10, semifinalOffsetMinutes: 5, semifinalMinutes: 75, finalOffsetMinutes: 10, finalMinutes: 45 };
+      default:
+        return { qualifierMinutes: 50, semifinalOffsetMinutes: 10, semifinalMinutes: 60, finalOffsetMinutes: 10, finalMinutes: 45 };
+    }
+  })();
+
+  return [
+    buildTournamentDemoStageDefinition({
+      sourceId,
+      index: 0,
+      name: 'Qualifiers',
+      description: 'Two balanced groups collect opening-round scores for the slot.',
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: timings.qualifierMinutes,
+      groups: [
+        { name: 'Group A', min: 2, max: 4 },
+        { name: 'Group B', min: 2, max: 4 }
+      ],
+      leaderboardType: 'Score',
+      advancePerGroup: 2
+    }),
+    buildTournamentDemoStageDefinition({
+      sourceId,
+      index: 1,
+      name: 'Semifinals',
+      description: 'Advancing players split into two shorter knockout groups.',
+      timing: 'After',
+      offsetMinutes: timings.semifinalOffsetMinutes,
+      durationMinutes: timings.semifinalMinutes,
+      groups: [
+        { name: 'Court 1', min: 2, max: 3 },
+        { name: 'Court 2', min: 2, max: 3 }
+      ],
+      leaderboardType: 'Fifa',
+      advancePerGroup: 1
+    }),
+    buildTournamentDemoStageDefinition({
+      sourceId,
+      index: 2,
+      name: 'Final',
+      description: 'The top players finish the slot with a compact final stage.',
+      timing: 'After',
+      offsetMinutes: timings.finalOffsetMinutes,
+      durationMinutes: timings.finalMinutes,
+      groups: [
+        { name: 'Final Table', min: 2, max: 4 }
+      ],
+      leaderboardType: 'Score',
+      advancePerGroup: 0
+    })
+  ];
+}
+
 const SEED_INVITATIONS_BY_USER: Record<string, ActivityInvitationSeedItem[]> = {
   u1: [
     {
@@ -541,6 +654,55 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       }),
       rating: 8.9,
       boost: 97
+    },
+    {
+      id: 'active-tournament-slots',
+      avatar: 'NE',
+      title: 'Tournament Demo · Active Slot Cup',
+      shortDescription: 'Published tournament seed with two playable slots and three staged rounds.',
+      timeframe: 'Feb 20 · multiple slots',
+      activity: 5,
+      status: 'A',
+      isAdmin: true,
+      creatorUserId: 'u3',
+      startAt: '2026-02-18T04:00:00',
+      endAt: '2026-02-18T08:30:00',
+      frequency: 'One-time',
+      ticketing: false,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Seattle · Tournament Demo Court',
+      capacityMin: 4,
+      capacityMax: 16,
+      capacityTotal: 16,
+      acceptedMemberUserIds: ['u3', 'u5', 'u18', 'u19', 'u20', 'u21', 'u22', 'u23'],
+      pendingMemberUserIds: ['u24', 'u25'],
+      slotsEnabled: true,
+      slotTemplates: [
+        {
+          id: 'active-tournament-slots-evening',
+          startAt: '2026-02-18T04:30:00',
+          subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions(
+            'active-tournament-slots-evening',
+            'stage-one-active'
+          )
+        },
+        {
+          id: 'active-tournament-slots-late',
+          startAt: '2026-02-18T05:00:00',
+          subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions(
+            'active-tournament-slots-late',
+            'stage-two-active'
+          )
+        }
+      ],
+      pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      subEventsEnabled: true,
+      subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions('active-tournament-slots'),
+      mode: 'Tournament',
+      topics: ['Tournament', 'Games', 'Competition'],
+      rating: 9.6,
+      boost: 100
     }
   ]
 };
@@ -1148,7 +1310,7 @@ export class SeedEventsBuilder {
     items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined,
     occurrenceStart: Date
   ): ContractTypes.SubEventDTO[] {
-    return this.seedSubEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+    const subEvents = this.seedSubEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
       const startAt = new Date(occurrenceStart.getTime() + (startOffsetMinutes * 60 * 1000));
       const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
       return {
@@ -1177,6 +1339,46 @@ export class SeedEventsBuilder {
         slotDurationMinutes: durationMinutes
       };
     });
+    return this.applySeedTournamentStageLifecycle(subEvents);
+  }
+
+  private static applySeedTournamentStageLifecycle(
+    items: readonly ContractTypes.SubEventDTO[]
+  ): ContractTypes.SubEventDTO[] {
+    const nowMs = Date.now();
+    return items.map((item, index) => {
+      if (!this.isSeedTournamentStage(item)) {
+        return item;
+      }
+      const startMs = Date.parse(`${item.startAt ?? ''}`);
+      const endMs = Date.parse(`${item.endAt ?? ''}`);
+      const stageStatus: ContractTypes.TournamentStageStatus = Number.isFinite(endMs) && endMs <= nowMs
+        ? 'F'
+        : index === 0 && Number.isFinite(startMs) && startMs > nowMs
+          ? 'RS'
+          : 'A';
+      const stageStatusReason = stageStatus === 'F'
+        ? 'stage-finalized'
+        : stageStatus === 'RS'
+          ? 'awaiting-tournament-start'
+          : null;
+      return {
+        ...item,
+        stageStatus,
+        stageStatusReason,
+        stageStatusUpdatedAt: stageStatus === 'F'
+          ? item.endAt
+          : stageStatus === 'A'
+            ? item.startAt
+            : new Date(nowMs).toISOString(),
+        stageFinalizedAt: stageStatus === 'F' ? item.endAt : null,
+        stageFinalizedByUserId: null
+      };
+    });
+  }
+
+  private static isSeedTournamentStage(item: ContractTypes.SubEventDTO): boolean {
+    return !item.optional && ((item.groups?.length ?? 0) > 0 || (item.tournamentGroupCount ?? 0) > 0);
   }
 
   private static materializeSeedSubEventsForSlotOccurrence(

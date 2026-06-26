@@ -2008,7 +2008,7 @@ export class LocalEventsRepository {
     items: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined,
     occurrenceStart: Date
   ): ContractTypes.SubEventDTO[] {
-    return this.subEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+    const subEvents = this.subEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
       const startAt = new Date(occurrenceStart.getTime() + (startOffsetMinutes * 60 * 1000));
       const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
       const subEvent: ContractTypes.SubEventDTO = {
@@ -2038,6 +2038,46 @@ export class LocalEventsRepository {
       };
       return subEvent;
     });
+    return this.applyGeneratedTournamentStageLifecycle(subEvents);
+  }
+
+  private applyGeneratedTournamentStageLifecycle(
+    items: readonly ContractTypes.SubEventDTO[]
+  ): ContractTypes.SubEventDTO[] {
+    const nowMs = Date.now();
+    return items.map((item, index) => {
+      if (!this.isGeneratedTournamentStage(item)) {
+        return item;
+      }
+      const startMs = Date.parse(`${item.startAt ?? ''}`);
+      const endMs = Date.parse(`${item.endAt ?? ''}`);
+      const stageStatus: ContractTypes.TournamentStageStatus = Number.isFinite(endMs) && endMs <= nowMs
+        ? 'F'
+        : index === 0 && Number.isFinite(startMs) && startMs > nowMs
+          ? 'RS'
+          : 'A';
+      const stageStatusReason = stageStatus === 'F'
+        ? 'stage-finalized'
+        : stageStatus === 'RS'
+          ? 'awaiting-tournament-start'
+          : null;
+      return {
+        ...item,
+        stageStatus,
+        stageStatusReason,
+        stageStatusUpdatedAt: stageStatus === 'F'
+          ? item.endAt
+          : stageStatus === 'A'
+            ? item.startAt
+            : new Date(nowMs).toISOString(),
+        stageFinalizedAt: stageStatus === 'F' ? item.endAt : null,
+        stageFinalizedByUserId: null
+      };
+    });
+  }
+
+  private isGeneratedTournamentStage(item: ContractTypes.SubEventDTO): boolean {
+    return !item.optional && ((item.groups?.length ?? 0) > 0 || (item.tournamentGroupCount ?? 0) > 0);
   }
 
   private materializeSlotRecords(): void {
