@@ -130,12 +130,6 @@
   line-height: 1rem;
 }
 
-.event-tournament-group-inline-loading {
-  display: flex;
-  justify-content: center;
-  padding: 0.4rem;
-}
-
 .event-tournament-table-wrap {
   width: 100%;
   min-width: 0;
@@ -184,6 +178,11 @@
 
 .event-tournament-table tr {
   cursor: pointer;
+}
+
+.event-tournament-table tr:active,
+.event-tournament-table tr:hover {
+  transform: none;
 }
 
 .event-tournament-table tr.is-advance td {

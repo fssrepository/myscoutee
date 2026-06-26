@@ -20,6 +20,7 @@ import {
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
 import { AppContext, AppPopupContext } from '../../../shared/ui/context';
+import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/app-popup.context';
 import {
   EventTournamentGroupsPopupConverter,
   type EventTournamentGroupsAccordionContext,
@@ -151,7 +152,10 @@ export class EventTournamentGroupsPopupComponent {
       this.selectedStageId = request.selectedStageId ?? null;
       this.selectedGroupId = request.selectedGroupId ?? null;
       this.openGroupIds = request.selectedGroupId ? [request.selectedGroupId] : [];
-      void this.loadPopupState();
+      this.state = this.contextState(request);
+      this.selectedStageId = this.resolveSelectedStageId(this.selectedStageId);
+      this.leaderboardState = null;
+      void this.loadGroupsForSelectedStage();
     });
   }
 
@@ -223,12 +227,10 @@ export class EventTournamentGroupsPopupComponent {
       return;
     }
     this.selectedStageId = stageId;
-    const stage = this.state?.stages.find(item => item.subEventId === stageId) ?? null;
-    const firstGroupId = stage?.groups[0]?.id ?? null;
-    this.selectedGroupId = firstGroupId;
-    this.openGroupIds = firstGroupId ? [firstGroupId] : [];
+    this.selectedGroupId = null;
+    this.openGroupIds = [];
     this.leaderboardState = null;
-    void this.loadLeaderboardForStage(stageId);
+    void this.loadGroupsForStage(stageId);
     this.cdr.markForCheck();
   }
 
@@ -236,6 +238,9 @@ export class EventTournamentGroupsPopupComponent {
     const groupId = event.item.context?.groupId ?? event.id;
     this.selectedGroupId = groupId;
     this.openGroupIds = event.open ? [groupId] : [];
+    if (event.open && this.selectedStageId && !this.leaderboardState && !this.leaderboardLoading) {
+      void this.loadLeaderboardForStage(this.selectedStageId);
+    }
     this.cdr.markForCheck();
   }
 
@@ -576,7 +581,7 @@ export class EventTournamentGroupsPopupComponent {
         capacityMax: this.groupForm.capacityMax
       });
       if (nextState) {
-        this.state = nextState;
+        this.state = this.mergeGroupsState(this.state, nextState);
         this.selectedStageId = stageId;
         if (this.groupFormGroupId) {
           this.selectedGroupId = this.groupFormGroupId;
@@ -738,35 +743,115 @@ export class EventTournamentGroupsPopupComponent {
     return item.id;
   }
 
-  private async loadPopupState(): Promise<void> {
+  private contextState(request: EventTournamentGroupsPopupRequest): ContractTypes.EventTournamentGroupsStateDTO {
+    const eventId = `${request.slotId ?? request.eventId ?? ''}`.trim();
+    const stages = request.stages.map((stage, index) => ({
+      ...stage,
+      subEventId: `${stage.subEventId ?? ''}`.trim() || `stage-${index + 1}`,
+      title: `${stage.title ?? ''}`.trim() || `Stage ${index + 1}`,
+      description: `${stage.description ?? ''}`.trim(),
+      location: `${stage.location ?? ''}`.trim(),
+      startAt: `${stage.startAt ?? ''}`.trim(),
+      endAt: `${stage.endAt ?? ''}`.trim(),
+      stageNumber: Math.max(1, Math.trunc(Number(stage.stageNumber) || index + 1)),
+      leaderboardType: stage.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      advancePerGroup: Math.max(0, Math.trunc(Number(stage.advancePerGroup) || 0)),
+      groups: []
+    }));
+    return {
+      eventId,
+      title: request.title?.trim() || 'Groups',
+      subtitle: '',
+      canManage: request.canManage === true,
+      stages
+    };
+  }
+
+  private resolveSelectedStageId(stageId: string | null | undefined): string | null {
+    const requestedId = `${stageId ?? ''}`.trim();
+    if (requestedId && this.state?.stages.some(stage => stage.subEventId === requestedId)) {
+      return requestedId;
+    }
+    return this.state?.stages[0]?.subEventId ?? null;
+  }
+
+  private stateWithStageGroups(
+    state: ContractTypes.EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groups: readonly ContractTypes.EventTournamentGroupDTO[]
+  ): ContractTypes.EventTournamentGroupsStateDTO | null {
+    if (!state) {
+      return null;
+    }
+    return {
+      ...state,
+      stages: state.stages.map(stage => stage.subEventId === stageId
+        ? {
+            ...stage,
+            groups: groups.map(group => ({ ...group }))
+          }
+        : stage)
+    };
+  }
+
+  private mergeGroupsState(
+    base: ContractTypes.EventTournamentGroupsStateDTO | null,
+    loaded: ContractTypes.EventTournamentGroupsStateDTO | null
+  ): ContractTypes.EventTournamentGroupsStateDTO | null {
+    if (!base) {
+      return loaded;
+    }
+    if (!loaded) {
+      return base;
+    }
+    const loadedStagesById = new Map(loaded.stages.map(stage => [stage.subEventId, stage]));
+    return {
+      ...base,
+      canManage: loaded.canManage === true,
+      stages: base.stages.map(stage => ({
+        ...stage,
+        groups: loadedStagesById.get(stage.subEventId)?.groups.map(group => ({ ...group })) ?? stage.groups
+      }))
+    };
+  }
+
+  private async loadGroupsForSelectedStage(): Promise<void> {
+    const stageId = this.selectedStageId ?? this.viewModel().selectedStage?.subEventId ?? null;
+    if (!stageId) {
+      return;
+    }
+    await this.loadGroupsForStage(stageId);
+  }
+
+  private async loadGroupsForStage(stageId: string): Promise<void> {
     const request = this.popupCtx.eventTournamentGroupsPopup();
     const eventId = `${request?.eventId ?? ''}`.trim();
-    const userId = this.activeUserId();
-    if (!eventId || !userId) {
+    const normalizedStageId = `${stageId ?? ''}`.trim();
+    if (!eventId || !normalizedStageId) {
       return;
     }
     const sequence = ++this.loadSequence;
     this.isLoading = true;
     this.loadError = '';
-    this.state = null;
     this.leaderboardState = null;
     this.cdr.markForCheck();
     try {
-      const state = await this.eventsService.queryTournamentGroups({ userId, eventId });
+      const groups = await this.eventsService.queryTournamentStageGroups({
+        eventId,
+        slotId: request?.slotId ?? null,
+        stageId: normalizedStageId
+      });
       if (sequence !== this.loadSequence) {
         return;
       }
-      this.state = state;
-      const selectedStage = this.stageById(this.selectedStageId) ?? state?.stages[0] ?? null;
-      this.selectedStageId = selectedStage?.subEventId ?? null;
+      this.state = this.stateWithStageGroups(this.state, normalizedStageId, groups);
+      this.selectedStageId = normalizedStageId;
+      const selectedStage = this.stageById(normalizedStageId);
       if (this.selectedGroupId && selectedStage?.groups.some(group => group.id === this.selectedGroupId)) {
         this.openGroupIds = [this.selectedGroupId];
       } else {
-        this.selectedGroupId = selectedStage?.groups[0]?.id ?? null;
-        this.openGroupIds = this.selectedGroupId ? [this.selectedGroupId] : [];
-      }
-      if (this.selectedStageId) {
-        await this.loadLeaderboardForStage(this.selectedStageId);
+        this.selectedGroupId = null;
+        this.openGroupIds = [];
       }
     } catch {
       this.loadError = 'Groups are not available right now.';
@@ -809,7 +894,8 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private eventId(): string {
-    return `${this.popupCtx.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+    const request = this.popupCtx.eventTournamentGroupsPopup();
+    return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
   }
 
   private stageById(stageId: string | null | undefined): ContractTypes.EventTournamentStageDTO | null {
@@ -935,9 +1021,9 @@ export class EventTournamentGroupsPopupComponent {
             groupId: group.id
           });
           if (nextState) {
-            this.state = nextState;
+            this.state = this.mergeGroupsState(this.state, nextState);
             this.selectedStageId = stage.subEventId;
-            const nextGroup = nextState.stages.find(item => item.subEventId === stage.subEventId)?.groups[0] ?? null;
+            const nextGroup = this.state?.stages.find(item => item.subEventId === stage.subEventId)?.groups[0] ?? null;
             this.selectedGroupId = nextGroup?.id ?? null;
             this.openGroupIds = nextGroup ? [nextGroup.id] : [];
           }
@@ -1065,6 +1151,8 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private resetState(): void {
+    this.loadSequence += 1;
+    this.leaderboardSequence += 1;
     this.state = null;
     this.selectedStageId = null;
     this.selectedGroupId = null;

@@ -5,7 +5,9 @@ import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
   EventTournamentGroupsStateDTO,
+  EventTournamentGroupDTO,
   EventTournamentGroupUpsertRequestDTO,
+  EventTournamentStageGroupsQueryDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../../contracts/event.interface';
@@ -315,6 +317,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async queryTournamentGroups(query: EventTournamentGroupsQueryDTO): Promise<EventTournamentGroupsStateDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return this.eventsRepository.queryTournamentGroups(query);
+  }
+
+  async queryTournamentStageGroups(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentGroupDTO[]> {
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return this.eventsRepository.queryTournamentStageGroups(query);
   }
 
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {

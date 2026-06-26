@@ -867,6 +867,31 @@ export class LocalEventsRepository {
     return this.buildTournamentGroupsState(normalizedUserId, normalizedEventId, record);
   }
 
+  queryTournamentStageGroups(
+    query: ContractTypes.EventTournamentStageGroupsQueryDTO
+  ): ContractTypes.EventTournamentGroupDTO[] {
+    const normalizedEventId = `${query.eventId ?? ''}`.trim();
+    const normalizedSlotId = `${query.slotId ?? ''}`.trim();
+    const ownerSourceId = normalizedSlotId || normalizedEventId;
+    const normalizedStageId = `${query.stageId ?? ''}`.trim();
+    if (!ownerSourceId || !normalizedStageId) {
+      return [];
+    }
+    const records = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
+    const record = records
+      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId)
+      ?? (normalizedSlotId
+        ? records.find(item => item.id === normalizedEventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === normalizedEventId) ?? null
+        : null);
+    const stage = (this.cloneSubEvents(record?.subEvents) ?? [])
+      .find(item => `${item.id ?? ''}`.trim() === normalizedStageId) ?? null;
+    if (!stage) {
+      return [];
+    }
+    return this.stageGroupsForMutation(stage)
+      .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex));
+  }
+
   saveTournamentGroup(request: ContractTypes.EventTournamentGroupUpsertRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
     const actorUserId = `${request.actorUserId ?? ''}`.trim();
     const eventId = `${request.eventId ?? ''}`.trim();

@@ -3,7 +3,7 @@ import type { UserSelectorListItemDto } from '../../core/contracts/user.interfac
 import type { ActivityMemberOwnerType, AssetFilterType } from '../../core/common/constants';
 import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
 import type { ActivitiesNavigationRequest } from '../../core/base/models/activities-ui.model';
-import type { EventEditorTarget } from '../../core/contracts/event.interface';
+import type { EventEditorTarget, EventTournamentStageDTO } from '../../core/contracts/event.interface';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
@@ -43,7 +43,10 @@ export interface EventSubeventsListPopupRequest {
 export interface EventTournamentGroupsPopupRequest {
   updatedMs: number;
   eventId: string;
+  slotId: string | null;
   title: string | null;
+  canManage: boolean;
+  stages: readonly EventTournamentStageDTO[];
   selectedStageId?: string | null;
   selectedGroupId?: string | null;
 }
@@ -220,7 +223,10 @@ export class AppPopupContext {
 
   openEventTournamentGroupsPopup(payload: {
     eventId: string;
+    slotId?: string | null;
     title?: string | null;
+    canManage?: boolean | null;
+    stages?: readonly EventTournamentStageDTO[] | null;
     selectedStageId?: string | null;
     selectedGroupId?: string | null;
   }): void {
@@ -231,7 +237,13 @@ export class AppPopupContext {
     this._eventTournamentGroupsPopup.set({
       updatedMs: Date.now(),
       eventId,
+      slotId: `${payload.slotId ?? ''}`.trim() || null,
       title: `${payload.title ?? ''}`.trim() || null,
+      canManage: payload.canManage === true,
+      stages: (payload.stages ?? []).map(stage => ({
+        ...stage,
+        groups: []
+      })),
       selectedStageId: `${payload.selectedStageId ?? ''}`.trim() || null,
       selectedGroupId: `${payload.selectedGroupId ?? ''}`.trim() || null
     });

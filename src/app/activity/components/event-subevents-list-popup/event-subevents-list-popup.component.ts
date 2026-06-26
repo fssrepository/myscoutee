@@ -11,6 +11,7 @@ import {
   type ActivityEventSubEventsQueryDTO,
   type ActivityEventSubEventRuntimeDTO
 } from '../../../shared/core/contracts/activity.interface';
+import type { EventTournamentStageDTO } from '../../../shared/core/contracts/event.interface';
 import {
   AppMenuComponent,
   InfoCardComponent,
@@ -544,15 +545,36 @@ export class EventSubeventsListPopupComponent {
 
   private openTournamentGroupsPopup(item: ActivityEventSubEventRuntimeDTO, event: Event): void {
     event.stopPropagation();
-    const sourceId = this.runtimeActionSourceId(item);
-    if (!sourceId) {
+    const eventId = `${item.parentEventId ?? this.event?.id ?? this.runtimeActionSourceId(item)}`.trim();
+    const slotId = `${item.slotSourceId ?? ''}`.trim() || null;
+    if (!eventId) {
       return;
     }
     this.popupCtx.openEventTournamentGroupsPopup({
-      eventId: sourceId,
+      eventId,
+      slotId,
       title: this.popupSubtitle(),
+      canManage: this.canManageRuntimeActions(),
+      stages: this.runtimeSiblings(item).map((stage, index) => this.runtimeTournamentStage(stage, index)),
       selectedStageId: `${item.id ?? ''}`.trim() || null
     });
+  }
+
+  private runtimeTournamentStage(item: ActivityEventSubEventRuntimeDTO, index: number): EventTournamentStageDTO {
+    const stageNumber = Math.max(1, index + 1);
+    return {
+      subEventId: `${item.id ?? `stage-${stageNumber}`}`.trim() || `stage-${stageNumber}`,
+      title: `${item.name ?? `Stage ${stageNumber}`}`.trim() || `Stage ${stageNumber}`,
+      description: `${item.description ?? ''}`.trim(),
+      location: `${item.location ?? ''}`.trim(),
+      startAt: `${item.startAt ?? ''}`.trim(),
+      endAt: `${item.endAt ?? ''}`.trim(),
+      stageNumber,
+      stageStatus: `${item.stageStatus ?? ''}`.trim(),
+      leaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      advancePerGroup: Math.max(0, Math.trunc(Number(item.tournamentAdvancePerGroup) || 0)),
+      groups: []
+    };
   }
 
   private runtimeActionSourceId(item: ActivityEventSubEventRuntimeDTO): string {

@@ -9,6 +9,7 @@
       >
         <header
           class="ui-accordion__header"
+          data-motion="none"
           role="button"
           tabindex="0"
           [attr.aria-expanded]="isOpen(item)"
@@ -39,7 +40,9 @@
               ></ng-container>
             </span>
           }
-          <mat-icon class="ui-accordion__arrow">{{ isOpen(item) ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <span class="ui-accordion__caret-btn" aria-hidden="true">
+            <mat-icon class="ui-accordion__arrow">expand_more</mat-icon>
+          </span>
         </header>
         @if (isOpen(item)) {
           <section class="ui-accordion__body">

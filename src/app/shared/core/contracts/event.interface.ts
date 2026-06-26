@@ -198,6 +198,12 @@ export interface EventTournamentGroupsQueryDTO {
   eventId: string;
 }
 
+export interface EventTournamentStageGroupsQueryDTO {
+  eventId: string;
+  slotId?: string | null;
+  stageId: string;
+}
+
 export interface EventTournamentGroupUpsertRequestDTO {
   actorUserId: string;
   eventId: string;

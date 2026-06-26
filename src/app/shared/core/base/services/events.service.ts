@@ -5,7 +5,9 @@ import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
   EventTournamentGroupsStateDTO,
+  EventTournamentGroupDTO,
   EventTournamentGroupUpsertRequestDTO,
+  EventTournamentStageGroupsQueryDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
@@ -243,6 +245,10 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   queryTournamentGroups(query: EventTournamentGroupsQueryDTO): Promise<EventTournamentGroupsStateDTO | null> {
     return this.eventsService.queryTournamentGroups(query);
+  }
+
+  queryTournamentStageGroups(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentGroupDTO[]> {
+    return this.eventsService.queryTournamentStageGroups(query);
   }
 
   saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {

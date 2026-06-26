@@ -70,6 +70,12 @@ export class EventTournamentGroupsPopupConverter
     return palettes[index % palettes.length] ?? 'blue';
   }
 
+  static groupPalette(groupIndex: number): AppMenuPalette {
+    const palettes: AppMenuPalette[] = ['amber', 'green', 'mint', 'teal'];
+    const index = Math.max(0, Math.trunc(Number(groupIndex) || 0));
+    return palettes[index % palettes.length] ?? 'amber';
+  }
+
   private static selectedStage(
     stages: readonly EventTournamentStageDTO[],
     selectedStageId: string | null
@@ -125,7 +131,7 @@ export class EventTournamentGroupsPopupConverter
       subtitle: group.source === 'manual' ? `Manual · ${capacity}` : capacity,
       icon: 'groups',
       badge: `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
-      palette: this.stagePalette(stage.stageNumber),
+      palette: this.groupPalette(index),
       open: openIds.has(group.id),
       context: {
         groupId: group.id,

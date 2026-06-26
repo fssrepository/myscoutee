@@ -9,7 +9,9 @@ import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
   EventTournamentGroupsStateDTO,
+  EventTournamentGroupDTO,
   EventTournamentGroupUpsertRequestDTO,
+  EventTournamentStageGroupsQueryDTO,
   EventTournamentStageDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
@@ -451,6 +453,27 @@ export class HttpEventsService implements IEventsService {
     return this.normalizeTournamentGroupsState(response, normalizedEventId);
   }
 
+  async queryTournamentStageGroups(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentGroupDTO[]> {
+    const normalizedEventId = query.eventId.trim();
+    const normalizedSlotId = `${query.slotId ?? ''}`.trim();
+    const normalizedStageId = query.stageId.trim();
+    if (!normalizedEventId || !normalizedStageId) {
+      return [];
+    }
+    let params = new HttpParams()
+      .set('eventId', normalizedEventId)
+      .set('stageId', normalizedStageId);
+    if (normalizedSlotId) {
+      params = params.set('slotId', normalizedSlotId);
+    }
+    const response = await this.http
+      .get<EventTournamentGroupDTO[] | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/stage-groups`, {
+        params
+      })
+      .toPromise();
+    return this.normalizeTournamentGroupList(response, normalizedStageId);
+  }
+
   async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
     const response = await this.http
       .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group`, {
@@ -850,19 +873,34 @@ export class HttpEventsService implements IEventsService {
       stageStatus: `${stage?.stageStatus ?? ''}`.trim(),
       leaderboardType: stage?.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
       advancePerGroup: Math.max(0, Math.trunc(Number(stage?.advancePerGroup) || 0)),
-      groups: (stage?.groups ?? []).map((group, groupIndex) => {
-        const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
-        const capacityMax = Math.max(capacityMin, Math.trunc(Number(group.capacityMax) || capacityMin));
-        return {
-          id: `${group.id ?? `${subEventId || 'stage'}-group-${groupIndex + 1}`}`.trim(),
-          name: `${group.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
-          source: `${group.source ?? 'generated'}`.trim() || 'generated',
-          capacityMin,
-          capacityMax,
-          membersAccepted: Math.max(0, Math.trunc(Number(group.membersAccepted) || 0)),
-          membersPending: Math.max(0, Math.trunc(Number(group.membersPending) || 0))
-        };
-      }).filter(group => group.id)
+      groups: this.normalizeTournamentGroupList(stage?.groups, subEventId || 'stage')
+    };
+  }
+
+  private normalizeTournamentGroupList(
+    groups: readonly Partial<EventTournamentGroupDTO>[] | null | undefined,
+    fallbackStageId: string
+  ): EventTournamentGroupDTO[] {
+    return (groups ?? [])
+      .map((group, groupIndex) => this.normalizeTournamentGroup(group, groupIndex, fallbackStageId))
+      .filter(group => group.id);
+  }
+
+  private normalizeTournamentGroup(
+    group: Partial<EventTournamentGroupDTO> | null | undefined,
+    groupIndex: number,
+    fallbackStageId: string
+  ): EventTournamentGroupDTO {
+    const capacityMin = Math.max(0, Math.trunc(Number(group?.capacityMin) || 0));
+    const capacityMax = Math.max(capacityMin, Math.trunc(Number(group?.capacityMax) || capacityMin));
+    return {
+      id: `${group?.id ?? `${fallbackStageId || 'stage'}-group-${groupIndex + 1}`}`.trim(),
+      name: `${group?.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
+      source: `${group?.source ?? 'generated'}`.trim() || 'generated',
+      capacityMin,
+      capacityMax,
+      membersAccepted: Math.max(0, Math.trunc(Number(group?.membersAccepted) || 0)),
+      membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0))
     };
   }
 

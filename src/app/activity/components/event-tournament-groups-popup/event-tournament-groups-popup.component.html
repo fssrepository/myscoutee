@@ -33,7 +33,7 @@
       <div class="popup-body event-tournament-groups-body">
         @if (isLoading) {
           <div class="event-tournament-groups-loading">
-            <app-progress-indicator kind="spinner-ring" state="loading" tone="accent"></app-progress-indicator>
+            <app-progress-indicator kind="load-ring" state="loading" tone="accent" [durationMs]="3000"></app-progress-indicator>
           </div>
         } @else if (loadError) {
           <div class="event-tournament-groups-empty">
@@ -84,12 +84,6 @@
                 </button>
               </nav>
 
-              @if (leaderboardLoading) {
-                <div class="event-tournament-group-inline-loading">
-                  <app-progress-indicator kind="spinner-ring" size="sm" state="loading" tone="accent"></app-progress-indicator>
-                </div>
-              }
-
               @if (tabFor(group.id) === 'standings') {
                 @if (selectedStageMode() === 'Score') {
                   <div class="event-tournament-table-wrap">
@@ -107,6 +101,7 @@
                         @for (row of scoreRows(group); track trackByMemberId($index, row); let rowIndex = $index) {
                           <tr
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
+                            data-motion="none"
                             tabindex="0"
                             role="button"
                             (click)="openMemberHistory(group.id, row.memberId, $event)"
@@ -141,6 +136,7 @@
                         @for (row of fifaRows(group); track trackByMemberId($index, row); let rowIndex = $index) {
                           <tr
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
+                            data-motion="none"
                             tabindex="0"
                             role="button"
                             (click)="openMemberHistory(group.id, row.memberId, $event)"
