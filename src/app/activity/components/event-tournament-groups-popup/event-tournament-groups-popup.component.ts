@@ -563,10 +563,12 @@ export class EventTournamentGroupsPopupComponent {
       return;
     }
     this.isMutating = true;
+    let reloadLeaderboardStageId: string | null = null;
     try {
       const nextState = await this.eventsService.saveTournamentGroup({
         actorUserId: this.activeUserId(),
-        eventId: this.eventId(),
+        eventId: this.requestEventId(),
+        slotId: this.requestSlotId(),
         subEventId: stageId,
         groupId: this.groupFormGroupId,
         name: this.groupForm.name,
@@ -587,12 +589,16 @@ export class EventTournamentGroupsPopupComponent {
             this.openGroupIds = [added.id];
           }
         }
+        this.leaderboardState = null;
+        reloadLeaderboardStageId = stageId;
       }
       this.closeGroupForm();
-      await this.loadLeaderboardForStage(stageId);
     } finally {
       this.isMutating = false;
       this.cdr.markForCheck();
+    }
+    if (reloadLeaderboardStageId) {
+      void this.loadLeaderboardForStage(reloadLeaderboardStageId);
     }
   }
 
@@ -878,7 +884,7 @@ export class EventTournamentGroupsPopupComponent {
     const loadedStagesById = new Map(loaded.stages.map(stage => [stage.subEventId, stage]));
     return {
       ...base,
-      canManage: loaded.canManage === true,
+      canManage: base.canManage === true || loaded.canManage === true,
       stages: base.stages.map(stage => ({
         ...stage,
         groups: loadedStagesById.get(stage.subEventId)?.groups.map(group => ({ ...group })) ?? stage.groups
@@ -967,6 +973,15 @@ export class EventTournamentGroupsPopupComponent {
   private eventId(): string {
     const request = this.popupCtx.eventTournamentGroupsPopup();
     return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
+  }
+
+  private requestEventId(): string {
+    return `${this.popupCtx.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+  }
+
+  private requestSlotId(): string | null {
+    const slotId = `${this.popupCtx.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
+    return slotId || null;
   }
 
   private stageById(stageId: string | null | undefined): ContractTypes.EventTournamentStageDTO | null {
@@ -1114,7 +1129,8 @@ export class EventTournamentGroupsPopupComponent {
         try {
           const nextState = await this.eventsService.deleteTournamentGroup({
             actorUserId: this.activeUserId(),
-            eventId: this.eventId(),
+            eventId: this.requestEventId(),
+            slotId: this.requestSlotId(),
             subEventId: stage.subEventId,
             groupId: group.id
           });

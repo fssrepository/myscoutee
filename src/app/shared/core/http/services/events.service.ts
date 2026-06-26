@@ -479,6 +479,7 @@ export class HttpEventsService implements IEventsService {
       .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group`, {
         actorUserId: request.actorUserId.trim(),
         eventId: request.eventId.trim(),
+        slotId: request.slotId?.trim() || null,
         subEventId: request.subEventId.trim(),
         groupId: request.groupId?.trim() || null,
         name: request.name.trim(),
@@ -486,7 +487,7 @@ export class HttpEventsService implements IEventsService {
         capacityMax: Math.max(0, Math.trunc(Number(request.capacityMax) || 0))
       })
       .toPromise();
-    return this.normalizeTournamentGroupsState(response, request.eventId);
+    return this.normalizeTournamentGroupsState(response, request.slotId?.trim() || request.eventId);
   }
 
   async deleteTournamentGroup(request: EventTournamentGroupDeleteRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
@@ -494,11 +495,12 @@ export class HttpEventsService implements IEventsService {
       .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group/delete`, {
         actorUserId: request.actorUserId.trim(),
         eventId: request.eventId.trim(),
+        slotId: request.slotId?.trim() || null,
         subEventId: request.subEventId.trim(),
         groupId: request.groupId.trim()
       })
       .toPromise();
-    return this.normalizeTournamentGroupsState(response, request.eventId);
+    return this.normalizeTournamentGroupsState(response, request.slotId?.trim() || request.eventId);
   }
 
   async upsertSubEventLeaderboardEntry(request: SubEventLeaderboardEntryUpsertRequestDTO): Promise<SubEventLeaderboardState | null> {

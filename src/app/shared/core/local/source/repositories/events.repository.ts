@@ -895,16 +895,21 @@ export class LocalEventsRepository {
   saveTournamentGroup(request: ContractTypes.EventTournamentGroupUpsertRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
     const actorUserId = `${request.actorUserId ?? ''}`.trim();
     const eventId = `${request.eventId ?? ''}`.trim();
+    const slotId = `${request.slotId ?? ''}`.trim();
+    const ownerSourceId = slotId || eventId;
     const subEventId = `${request.subEventId ?? ''}`.trim();
     const name = `${request.name ?? ''}`.trim();
-    if (!actorUserId || !eventId || !subEventId || !name) {
-      return this.buildTournamentGroupsState(actorUserId, eventId, null);
+    if (!actorUserId || !ownerSourceId || !subEventId || !name) {
+      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, null);
     }
 
-    const preferred = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(item => item.id === eventId) ?? null;
-    if (!preferred || !this.isEventAdminRecord(preferred, actorUserId)) {
-      return this.buildTournamentGroupsState(actorUserId, eventId, preferred);
+    const preferredRecords = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
+    const preferred = preferredRecords
+      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? null;
+    const permissionRecord = preferredRecords
+      .find(item => item.id === eventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === eventId) ?? preferred;
+    if (!preferred || !permissionRecord || !this.isEventAdminRecord(permissionRecord, actorUserId)) {
+      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, preferred);
     }
 
     const groupId = `${request.groupId ?? ''}`.trim();
@@ -916,7 +921,7 @@ export class LocalEventsRepository {
       let changed = false;
       for (const recordKey of table.ids) {
         const current = table.byId[recordKey];
-        if (!current || current.id !== eventId) {
+        if (!current || (current.id !== ownerSourceId && `${(current as { sourceId?: string }).sourceId ?? ''}`.trim() !== ownerSourceId)) {
           continue;
         }
         const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
@@ -957,20 +962,25 @@ export class LocalEventsRepository {
         : state;
     });
     const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(item => item.id === eventId) ?? preferred;
+      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? preferred;
     this.materializeSlotRecords();
-    return this.buildTournamentGroupsState(actorUserId, eventId, refreshed);
+    return this.buildTournamentGroupsState(actorUserId, ownerSourceId, refreshed);
   }
 
   deleteTournamentGroup(request: ContractTypes.EventTournamentGroupDeleteRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
     const actorUserId = `${request.actorUserId ?? ''}`.trim();
     const eventId = `${request.eventId ?? ''}`.trim();
+    const slotId = `${request.slotId ?? ''}`.trim();
+    const ownerSourceId = slotId || eventId;
     const subEventId = `${request.subEventId ?? ''}`.trim();
     const groupId = `${request.groupId ?? ''}`.trim();
-    const preferred = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(item => item.id === eventId) ?? null;
-    if (!actorUserId || !eventId || !subEventId || !groupId || !preferred || !this.isEventAdminRecord(preferred, actorUserId)) {
-      return this.buildTournamentGroupsState(actorUserId, eventId, preferred);
+    const preferredRecords = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
+    const preferred = preferredRecords
+      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? null;
+    const permissionRecord = preferredRecords
+      .find(item => item.id === eventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === eventId) ?? preferred;
+    if (!actorUserId || !ownerSourceId || !subEventId || !groupId || !preferred || !permissionRecord || !this.isEventAdminRecord(permissionRecord, actorUserId)) {
+      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, preferred);
     }
 
     this.memoryDb.write(state => {
@@ -979,7 +989,7 @@ export class LocalEventsRepository {
       let changed = false;
       for (const recordKey of table.ids) {
         const current = table.byId[recordKey];
-        if (!current || current.id !== eventId) {
+        if (!current || (current.id !== ownerSourceId && `${(current as { sourceId?: string }).sourceId ?? ''}`.trim() !== ownerSourceId)) {
           continue;
         }
         const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
@@ -1006,12 +1016,12 @@ export class LocalEventsRepository {
           }
         : state;
     });
-    this.localScoreEntriesByGroupKey.delete(this.leaderboardGroupKey(eventId, subEventId, groupId));
-    this.localFifaMatchesByGroupKey.delete(this.leaderboardGroupKey(eventId, subEventId, groupId));
+    this.localScoreEntriesByGroupKey.delete(this.leaderboardGroupKey(ownerSourceId, subEventId, groupId));
+    this.localFifaMatchesByGroupKey.delete(this.leaderboardGroupKey(ownerSourceId, subEventId, groupId));
     const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(item => item.id === eventId) ?? preferred;
+      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? preferred;
     this.materializeSlotRecords();
-    return this.buildTournamentGroupsState(actorUserId, eventId, refreshed);
+    return this.buildTournamentGroupsState(actorUserId, ownerSourceId, refreshed);
   }
 
   upsertSubEventLeaderboardEntry(request: ContractTypes.SubEventLeaderboardEntryUpsertRequestDTO): ContractTypes.SubEventLeaderboardState | null {
@@ -2632,6 +2642,9 @@ export class LocalEventsRepository {
         const capacityTotal = Math.max(0, parent.capacityTotal);
         const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
         const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+        const generatedSubEvents = parent.subEventsEnabled === true && definitions.length > 0
+          ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
+          : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined;
         records.push({
           id: sourceId,
           userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
@@ -2681,9 +2694,7 @@ export class LocalEventsRepository {
           pendingRequestMemberUserIds: [],
           topics: [...parent.topics],
           subEventsEnabled: false,
-          subEvents: parent.subEventsEnabled === true && definitions.length > 0
-            ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
-            : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
+          subEvents: this.withPreservedSlotTournamentGroups(generatedSubEvents, existing?.subEvents),
           mode: parent.mode,
           rating: parent.rating,
           boost: parent.boost,
@@ -2720,6 +2731,9 @@ export class LocalEventsRepository {
       const capacityTotal = Math.max(0, parent.capacityTotal);
       const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
       const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+      const generatedSubEvents = parent.subEventsEnabled === true && definitions.length > 0
+        ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
+        : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined;
       records.push({
         id: sourceId,
         userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
@@ -2769,9 +2783,7 @@ export class LocalEventsRepository {
         pendingRequestMemberUserIds: [],
         topics: [...parent.topics],
         subEventsEnabled: false,
-        subEvents: parent.subEventsEnabled === true && definitions.length > 0
-          ? this.materializeSubEventDefinitionsForSlotOccurrence(definitions, startAt)
-          : this.materializeSubEventsForSlotOccurrence(parent.subEvents, startAt, endAt) ?? undefined,
+        subEvents: this.withPreservedSlotTournamentGroups(generatedSubEvents, existing?.subEvents),
         mode: parent.mode,
         rating: parent.rating,
         boost: parent.boost,
@@ -2779,6 +2791,33 @@ export class LocalEventsRepository {
       });
     }
     return records;
+  }
+
+  private withPreservedSlotTournamentGroups(
+    generatedSubEvents: ContractTypes.SubEventDTO[] | undefined,
+    existingSubEvents: ContractTypes.SubEventDTO[] | undefined
+  ): ContractTypes.SubEventDTO[] | undefined {
+    if (!generatedSubEvents || !existingSubEvents?.length) {
+      return generatedSubEvents;
+    }
+    const existingById = new Map(
+      existingSubEvents
+        .filter(item => `${item.id ?? ''}`.trim().length > 0)
+        .map(item => [`${item.id ?? ''}`.trim(), item])
+    );
+    return generatedSubEvents.map(stage => {
+      const existing = existingById.get(`${stage.id ?? ''}`.trim());
+      if (!existing?.groups?.length) {
+        return stage;
+      }
+      return {
+        ...stage,
+        groups: existing.groups.map(group => ({ ...group })),
+        tournamentGroupCount: existing.tournamentGroupCount,
+        tournamentGroupCapacityMin: existing.tournamentGroupCapacityMin,
+        tournamentGroupCapacityMax: existing.tournamentGroupCapacityMax
+      };
+    });
   }
 
   private withResolvedSlotContext(record: ActivityEventRecord, table: ActivityEventRecordCollection): ActivityEventRecord {

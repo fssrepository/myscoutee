@@ -207,6 +207,7 @@ export interface EventTournamentStageGroupsQueryDTO {
 export interface EventTournamentGroupUpsertRequestDTO {
   actorUserId: string;
   eventId: string;
+  slotId?: string | null;
   subEventId: string;
   groupId?: string | null;
   name: string;
@@ -217,6 +218,7 @@ export interface EventTournamentGroupUpsertRequestDTO {
 export interface EventTournamentGroupDeleteRequestDTO {
   actorUserId: string;
   eventId: string;
+  slotId?: string | null;
   subEventId: string;
   groupId: string;
 }
