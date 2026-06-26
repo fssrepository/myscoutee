@@ -68,56 +68,10 @@
   flex: 0 0 auto;
 }
 
-.subevent-group-popup__save {
-  position: relative;
+.subevent-group-popup__save-menu {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid rgba(45, 141, 81, 0.24);
-  border-radius: 50%;
-  background: linear-gradient(180deg, #effff4 0%, #beeccd 100%);
-  color: #1f8a48;
-  box-shadow: 0 8px 18px rgba(37, 126, 72, 0.16);
-  cursor: pointer;
 }
 
-.subevent-group-popup__save .mat-icon {
-  position: relative;
-  z-index: 3;
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-  line-height: 20px;
-}
-
-.subevent-group-popup__save app-progress-indicator {
-  position: absolute;
-  inset: 0;
-}
-
-.subevent-group-popup__save:disabled {
-  cursor: default;
-  opacity: 0.58;
-  box-shadow: none;
-}
-
-.subevent-group-popup__save.is-saving,
-.subevent-group-popup__save.is-saving:disabled {
-  opacity: 1;
-  cursor: wait;
-  box-shadow: 0 8px 18px rgba(37, 126, 72, 0.12);
-}
-
-.subevent-group-popup__save:not(:disabled):hover {
-  border-color: rgba(45, 141, 81, 0.36);
-  background: linear-gradient(180deg, #ffffff 0%, #c8f2d5 100%);
-}
 
 .subevent-group-flow {
   display: block;

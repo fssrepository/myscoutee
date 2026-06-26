@@ -10,19 +10,12 @@
           }
         </div>
         <div class="subevent-group-popup__actions">
-          <button
-            type="button"
-            class="subevent-group-popup__save"
-            [class.is-saving]="saving"
-            [disabled]="!canSave || saving"
-            (click)="save.emit($event)"
-            aria-label="Save group"
-          >
-            @if (saving) {
-              <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
-            }
-            <mat-icon>done</mat-icon>
-          </button>
+          <app-menu
+            class="subevent-group-popup__save-menu"
+            kind="inline"
+            [items]="saveMenuItems()"
+            (itemSelect)="onSaveMenuSelect($event)"
+          ></app-menu>
           <button type="button" class="subevent-group-popup__close" (click)="cancel.emit($event)" aria-label="Close group form">
             <mat-icon>close</mat-icon>
           </button>

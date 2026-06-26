@@ -753,6 +753,27 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
+  protected entrySaveMenuItems(): readonly AppMenuItem<'save-entry'>[] {
+    return [{
+      id: 'save-entry',
+      icon: 'done',
+      layout: 'action',
+      palette: this.isMutating || this.canSubmitEntry() ? 'success' : 'danger',
+      disabled: !this.canSubmitEntry(),
+      ariaLabel: 'Save leaderboard entry',
+      progress: this.isMutating
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : null
+    }];
+  }
+
+  protected onEntrySaveMenuSelect(event: AppMenuItemSelectEvent<'save-entry'>): void {
+    void this.saveEntryForm(event.sourceEvent);
+  }
+
   protected onEntryFormFlowChange(value: unknown): void {
     const record = this.recordValue(value);
     const members = this.entryMembers();

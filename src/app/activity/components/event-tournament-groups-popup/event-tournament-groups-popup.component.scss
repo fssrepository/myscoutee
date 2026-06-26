@@ -278,42 +278,8 @@
   font-weight: 800;
 }
 
-.experience-form-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--event-tournament-groups-z-index) + 30);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.9rem;
-}
-
-.experience-form-overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 16, 30, 0.54);
-  backdrop-filter: blur(2px);
-}
-
-.experience-form-popup {
-  position: relative;
-  z-index: 1;
-  border-radius: 14px;
-  border: 1px solid rgba(42, 66, 102, 0.28);
-  background: #fff;
-  box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
 .event-tournament-entry-popup {
-  width: min(760px, calc(100vw - 1.8rem));
-  overflow: visible;
-}
-
-.event-tournament-flow-popup {
-  overflow: visible;
+  max-width: 760px;
 }
 
 .event-tournament-flow-header {
@@ -353,61 +319,23 @@
   flex: 0 0 auto;
 }
 
-.event-tournament-flow-save {
-  position: relative;
+.event-tournament-flow-save-menu {
   flex: 0 0 auto;
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  border: 1px solid rgba(45, 141, 81, 0.24);
-  border-radius: 50%;
-  background: linear-gradient(180deg, #effff4 0%, #beeccd 100%);
-  color: #1f8a48;
-  box-shadow: 0 8px 18px rgba(37, 126, 72, 0.16);
-  cursor: pointer;
 }
 
-.event-tournament-flow-save .mat-icon {
-  position: relative;
-  z-index: 3;
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-  line-height: 20px;
-}
-
-.event-tournament-flow-save app-progress-indicator {
-  position: absolute;
-  inset: 0;
-}
-
-.event-tournament-flow-save:disabled {
-  cursor: default;
-  opacity: 0.58;
-  box-shadow: none;
-}
-
-.event-tournament-flow-save.is-saving,
-.event-tournament-flow-save.is-saving:disabled {
-  opacity: 1;
-  cursor: wait;
-  box-shadow: 0 8px 18px rgba(37, 126, 72, 0.12);
-}
-
-.event-tournament-flow-save:not(:disabled):hover {
-  border-color: rgba(45, 141, 81, 0.36);
-  background: linear-gradient(180deg, #ffffff 0%, #c8f2d5 100%);
-}
 
 .event-tournament-entry-flow {
   display: block;
+  flex: 1 1 auto;
   min-height: 13.4rem;
   overflow: visible;
+}
+
+@media (min-width: 761px) {
+  .event-tournament-entry-popup,
+  .event-tournament-flow-popup {
+    overflow: visible;
+  }
 }
 
 @media (max-width: 760px) {

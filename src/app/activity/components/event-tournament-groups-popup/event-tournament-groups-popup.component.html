@@ -221,19 +221,12 @@
               <p>{{ entryFormSubtitle() }}</p>
             </div>
             <div class="event-tournament-flow-actions">
-              <button
-                type="button"
-                class="event-tournament-flow-save"
-                [class.is-saving]="isMutating"
-                [disabled]="!canSubmitEntry()"
-                (click)="saveEntryForm($event)"
-                aria-label="Save leaderboard entry"
-              >
-                @if (isMutating) {
-                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
-                }
-                <mat-icon>done</mat-icon>
-              </button>
+              <app-menu
+                class="event-tournament-flow-save-menu"
+                kind="inline"
+                [items]="entrySaveMenuItems()"
+                (itemSelect)="onEntrySaveMenuSelect($event)"
+              ></app-menu>
               <button type="button" class="popup-close event-tournament-flow-close" (click)="closeEntryForm($event)" aria-label="Close leaderboard editor">
                 <mat-icon>close</mat-icon>
               </button>
