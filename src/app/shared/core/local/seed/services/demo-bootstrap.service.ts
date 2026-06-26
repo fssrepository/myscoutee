@@ -260,7 +260,12 @@ export class SeedDemoBootstrapService {
         this.chatsSeed.seedDefaults();
         await this.flushBootstrapTables([CHATS_TABLE_NAME]);
       });
-      await this.runBootstrapStep('events', () => this.eventsSeed.seedDefaults());
+      await this.runBootstrapStep('events', async () => {
+        const eventsChanged = this.eventsSeed.seedDefaults();
+        if (eventsChanged) {
+          await this.flushBootstrapTables([EVENTS_TABLE_NAME]);
+        }
+      });
       await this.runBootstrapStep('users', async () => {
         seededUsers = this.usersSeed.seedDefaults();
         seededUserIds = seededUsers

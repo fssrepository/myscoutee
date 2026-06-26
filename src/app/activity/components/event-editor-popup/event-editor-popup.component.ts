@@ -16,7 +16,7 @@ import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/bu
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  ActivityMembersService, EventsService, ExplanationGuideService, RouteIntervalSchedulerService } from '../../../shared/core';
+  ActivityMembersService, EventsService, ExplanationGuideService, RouteDelayService, RouteIntervalSchedulerService } from '../../../shared/core';
 import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
@@ -82,6 +82,7 @@ interface SlotOverrideEditorState {
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
+  private static readonly EVENTS_ROUTE = '/activities/events';
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventsService = inject(EventsService);
@@ -90,6 +91,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
@@ -109,6 +111,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private isDraftAutosavePending = false;
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
+  private eventDetailLoadSequence = 0;
   protected readonly isLoadingEventData = signal(false);
   protected readonly eventVisibilityReady = signal(false);
 
@@ -190,6 +193,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
       this.slotOverrideEditor = null;
+      this.eventDetailLoadSequence += 1;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
@@ -254,6 +258,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   close(): void {
     this.isSavePending = false;
+    this.eventDetailLoadSequence += 1;
     this.isLoadingEventData.set(false);
     this.eventVisibilityReady.set(false);
     this.clearEventEditorExplanationContext();
@@ -1337,6 +1342,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async openEditRequest(eventId: string, target: ContractTypes.EventEditorTarget, readOnly: boolean): Promise<void> {
     this.resetEditorContext();
     this.eventVisibilityReady.set(false);
+    const loadSequence = ++this.eventDetailLoadSequence;
     const activeUserId = this.activeUserId();
     if (activeUserId) {
       this.isLoadingEventData.set(true);
@@ -1353,8 +1359,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
 
     try {
-      const eventDetailDTO = await this.eventsService.loadEventDetailById(activeUserId, eventId);
+      const eventDetailDTO = await this.routeDelay.withRequestTimeout(
+        EventEditorPopupComponent.EVENTS_ROUTE,
+        this.eventsService.loadEventDetailById(activeUserId, eventId),
+        'Event editor load timed out.'
+      );
 
+      if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
+        return;
+      }
       this.isLoadingEventData.set(false);
       if (!eventDetailDTO) {
         return;
@@ -1364,8 +1377,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.editingEventId = eventDetailDTO.id;
       this.openEventDetailDTO(eventDetailDTO, readOnly, this.editorTarget);
     } catch {
-      this.isLoadingEventData.set(false);
+      if (this.isCurrentEventDetailLoad(loadSequence, eventId)) {
+        this.isLoadingEventData.set(false);
+      }
     }
+  }
+
+  private isCurrentEventDetailLoad(sequence: number, eventId: string): boolean {
+    return this.eventDetailLoadSequence === sequence
+      && this.eventEditorService.isOpen()
+      && this.editingEventId === eventId;
   }
 
   private openEventDetailDTO(eventDetailDTO: ActivityEventDetailDTO, readOnly: boolean, _target: ContractTypes.EventEditorTarget): void {
