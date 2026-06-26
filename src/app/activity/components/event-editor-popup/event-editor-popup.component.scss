@@ -8,6 +8,7 @@
   --interactive-hover-brightness: 1.02;
   --interactive-press-scale: 0.98;
   --interactive-press-brightness: 0.96;
+  --event-visibility-control-width: 11.25rem;
 }
 
 :where(.popup-header-add-btn,
@@ -160,6 +161,26 @@
 
 .event-visibility-picker {
   margin-left: 0 !important;
+}
+
+.event-visibility-slot {
+  width: var(--event-visibility-control-width);
+  min-width: var(--event-visibility-control-width);
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+:host ::ng-deep .event-visibility-picker .app-menu__trigger {
+  max-width: var(--event-visibility-control-width);
+}
+
+.event-visibility-placeholder {
+  width: var(--event-visibility-control-width);
+  height: 2.25rem;
+  display: inline-block;
+  box-sizing: border-box;
 }
 
 

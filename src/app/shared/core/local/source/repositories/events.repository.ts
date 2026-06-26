@@ -297,10 +297,10 @@ export class LocalEventsRepository {
 
   private normalizeStageStatus(status: string | null | undefined): ContractTypes.TournamentStageStatus {
     const normalized = `${status ?? ''}`.trim().toUpperCase();
-    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+    if (normalized === 'A' || normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
       return normalized;
     }
-    return 'A';
+    return 'RS';
   }
 
   private isAcceptedEventRecord(record: ActivityEventRecord, userId: string): boolean {
@@ -737,10 +737,13 @@ export class LocalEventsRepository {
       const table = state[EVENTS_TABLE_NAME];
       const preferred = this.computePreferredEventRecords(table)
         .find(record => record.id === normalizedSourceId);
+      if (!preferred || !this.isEventAdminRecord(preferred, normalizedUserId)) {
+        return state;
+      }
       const preferredSubEvents = this.cloneSubEvents(preferred?.subEvents) ?? [];
       const preferredIndex = this.resolveStageIndex(preferredSubEvents, request.subEventId, request.subEventIndex);
-      if (!preferred || preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
-        if (preferred && preferredIndex >= 0) {
+      if (preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
+        if (preferredIndex >= 0) {
           result = this.toStageActionResult(
             normalizedSourceId,
             preferredSubEvents[preferredIndex],

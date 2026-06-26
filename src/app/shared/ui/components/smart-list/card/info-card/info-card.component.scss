@@ -819,6 +819,41 @@ button.ui-info-card__overlay-action {
     inset 0 0 0 1px hsl(var(--ui-info-card-accent-hue) 70% 34% / 0.54);
 }
 
+.ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge,
+.ui-info-card__overlay-action--tone-stage-review.ui-info-card__overlay-action--badge,
+.ui-info-card__overlay-action--tone-stage-finalized.ui-info-card__overlay-action--badge,
+.ui-info-card__overlay-action--tone-stage-suspended.ui-info-card__overlay-action--badge {
+  padding: 0.2rem 0.48rem;
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-shadow: none;
+  box-shadow: 0 7px 16px rgba(54, 68, 90, 0.16);
+}
+
+.ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge {
+  border-color: rgba(53, 107, 178, 0.34);
+  background: rgba(232, 242, 255, 0.94);
+  color: #244f8e;
+}
+
+.ui-info-card__overlay-action--tone-stage-review.ui-info-card__overlay-action--badge {
+  border-color: rgba(192, 125, 28, 0.34);
+  background: rgba(255, 247, 226, 0.94);
+  color: #8a5a12;
+}
+
+.ui-info-card__overlay-action--tone-stage-finalized.ui-info-card__overlay-action--badge {
+  border-color: rgba(34, 132, 82, 0.34);
+  background: rgba(231, 250, 239, 0.94);
+  color: #17663f;
+}
+
+.ui-info-card__overlay-action--tone-stage-suspended.ui-info-card__overlay-action--badge {
+  border-color: rgba(150, 82, 82, 0.34);
+  background: rgba(255, 238, 238, 0.94);
+  color: #8a3434;
+}
+
 .ui-info-card__overlay-action--tone-public.ui-info-card__overlay-action--badge {
   border-color: rgba(46, 111, 178, 0.4);
   background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);

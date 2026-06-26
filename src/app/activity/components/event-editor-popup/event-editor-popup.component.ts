@@ -113,6 +113,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
   protected readonly isLoadingEventData = signal(false);
+  protected readonly eventVisibilityReady = signal(false);
 
   constructor() {
     effect(() => {
@@ -147,6 +148,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
 
       if (mode === 'create' && this.draftEventId && this.eventDetailDTO.id === this.draftEventId && this.eventDetailDTO.dateRange.startAt) {
+        return;
+      }
+
+      if (mode === 'edit') {
         return;
       }
 
@@ -267,6 +272,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.showSubEventsPopup = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
+    this.eventVisibilityReady.set(false);
     this.clearEventEditorExplanationContext();
     this.eventEditorService.close();
   }
@@ -1349,13 +1355,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.draftEventId = EventEditorBuilder.buildCreatedEventEditorId(target);
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(this.draftEventId);
     this.resetForm(target);
+    this.eventVisibilityReady.set(true);
     this.eventEditorService.openCreate();
     void this.refreshCurrentMemberSummary(this.draftEventId);
   }
 
   private async openEditRequest(eventId: string, target: ContractTypes.EventEditorTarget, readOnly: boolean): Promise<void> {
     this.resetEditorContext();
+    this.eventVisibilityReady.set(false);
     const activeUserId = this.activeUserId();
+    if (activeUserId) {
+      this.isLoadingEventData.set(true);
+    }
 
     this.editorTarget = target;
     this.editingEventId = eventId;
@@ -1366,8 +1377,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!activeUserId) {
       return;
     }
-
-    this.isLoadingEventData.set(true);
 
     try {
       const eventDetailDTO = await this.eventsService.loadEventDetailById(activeUserId, eventId);
@@ -1528,6 +1537,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.publishedCapacityMaxFloor = 0;
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
+    this.eventVisibilityReady.set(false);
   }
 
   private setEventEditorExplanationContext(contextKey: string | null): void {
@@ -1620,6 +1630,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO = dto;
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange();
+    this.eventVisibilityReady.set(true);
     this.seedDraftAutosaveSignature();
   }
 
@@ -1656,6 +1667,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     this.eventDetailDTO.mode = 'Casual';
+    this.eventVisibilityReady.set(true);
     this.seedDraftAutosaveSignature();
   }
 

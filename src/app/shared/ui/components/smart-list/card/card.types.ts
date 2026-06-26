@@ -22,6 +22,10 @@ export type InfoCardOverlayShape = 'default' | 'circle';
 export type InfoCardOverlayTone =
   | 'default'
   | 'stage'
+  | 'stage-start'
+  | 'stage-review'
+  | 'stage-finalized'
+  | 'stage-suspended'
   | 'full'
   | 'inactive'
   | 'selected'

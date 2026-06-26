@@ -13,13 +13,19 @@
         }
       </div>
       <div class="popup-header-mobile-status-row">
-        <app-menu
-          class="event-visibility-picker"
-          kind="select"
-          [trigger]="eventVisibilityMenuTrigger()"
-          [items]="eventVisibilityMenuItems()"
-          (itemSelect)="onEventEditorMenuSelect($event)"
-        ></app-menu>
+        <div class="event-visibility-slot">
+          @if (eventVisibilityReady()) {
+          <app-menu
+            class="event-visibility-picker"
+            kind="select"
+            [trigger]="eventVisibilityMenuTrigger()"
+            [items]="eventVisibilityMenuItems()"
+            (itemSelect)="onEventEditorMenuSelect($event)"
+          ></app-menu>
+          } @else {
+          <span class="event-visibility-placeholder" aria-hidden="true"></span>
+          }
+        </div>
       </div>
       <div class="popup-header-mobile-actions-row">
         @if (!eventEditorService.readOnly()) {

@@ -3,8 +3,8 @@ import type {
   ActivityEventDetailDTO,
   ActivityEventSubEventRuntimeDTO
 } from '../../core/contracts/activity.interface';
-import type { EventMode } from '../../core/contracts/event.interface';
-import type { InfoCardData } from '../components/smart-list/card';
+import type { EventMode, TournamentStageStatus } from '../../core/contracts/event.interface';
+import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface EventSubeventRuntimeInfoCardConverterOptions {
@@ -36,6 +36,7 @@ export class EventSubeventRuntimeInfoCardConverter
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
     const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
+    const stageStatus = isTournament ? this.stageStatusBadge(item) : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
 
@@ -71,14 +72,13 @@ export class EventSubeventRuntimeInfoCardConverter
         icon: 'location_on',
         interactive: false
       },
-      mediaEnd: {
+      mediaEnd: isTournament ? stageStatus : {
         variant: 'badge',
-        layout: isTournament ? 'default' : 'badge-with-leading-accessory',
-        tone: isTournament ? 'stage' : status.overlayTone,
-        label: isTournament ? sequenceLabel : status.label,
-        icon: isTournament ? 'emoji_events' : undefined,
+        layout: 'badge-with-leading-accessory',
+        tone: status.overlayTone,
+        label: status.label,
         interactive: false,
-        leadingAccessory: isTournament ? null : {
+        leadingAccessory: {
           icon: status.icon,
           tone: status.accessoryTone
         }
@@ -134,6 +134,55 @@ export class EventSubeventRuntimeInfoCardConverter
       leadingTone: 'invitation',
       accessoryTone: 'negative'
     };
+  }
+
+  private static stageStatusBadge(item: ActivityEventSubEventRuntimeDTO): InfoCardOverlayAction | null {
+    const status = this.resolveStageStatus(item.stageStatus);
+    if (status === 'A') {
+      return null;
+    }
+    const map: Record<Exclude<TournamentStageStatus, 'A'>, {
+      label: string;
+      icon: string;
+      tone: Extract<InfoCardOverlayTone, 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
+    }> = {
+      RS: {
+        label: 'stage.status.review.to.start',
+        icon: 'pending_actions',
+        tone: 'stage-start'
+      },
+      SR: {
+        label: 'under.review',
+        icon: 'rate_review',
+        tone: 'stage-review'
+      },
+      F: {
+        label: 'stage.status.finalized',
+        icon: 'verified',
+        tone: 'stage-finalized'
+      },
+      S: {
+        label: 'stage.status.suspended',
+        icon: 'pause_circle',
+        tone: 'stage-suspended'
+      }
+    };
+    const config = map[status];
+    return {
+      variant: 'badge',
+      tone: config.tone,
+      label: config.label,
+      icon: config.icon,
+      interactive: false
+    };
+  }
+
+  private static resolveStageStatus(status: string | null | undefined): TournamentStageStatus {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+      return normalized;
+    }
+    return 'A';
   }
 
   private static stageAccentHue(stageNumber: number, totalStages: number): number {

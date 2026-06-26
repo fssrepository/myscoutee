@@ -310,7 +310,7 @@ export class EventSubeventsListPopupComponent {
         icon: canEdit ? 'edit' : 'visibility',
         palette: canEdit ? 'amber' : 'teal',
         surface: 'tinted',
-        layout: 'pill'
+        layout: 'action'
       },
       {
         id: 'members',
@@ -667,9 +667,6 @@ export class EventSubeventsListPopupComponent {
   }
 
   private canManageRuntimeActions(): boolean {
-    if (this.state.request()?.canEdit === true) {
-      return true;
-    }
     const event = this.event;
     const activeUserId = this.activeUserId();
     if (!event || !activeUserId) {
