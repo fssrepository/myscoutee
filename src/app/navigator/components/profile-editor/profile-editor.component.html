@@ -52,16 +52,18 @@
                 [model]="profileHeaderCardModel()"
                 (edit)="openImageEditor()"
               ></app-header-card>
-              <div class="profile-editor-flow-area">
-                <app-form-flow
-                  class="profile-editor-flow"
-                  [model]="profileEditorFlowModel"
-                  [(ngModel)]="profileEditorData"
-                  [saving]="isProfileSaving()"
-                  [disabled]="isProfileSaving()"
-                  (action)="onProfileEditorFlowAction($event)"
-                  (percent)="onProfileCompletionPercentChange($event)"
-                ></app-form-flow>
+              <div class="profile-editor-scroll-area">
+                <div class="profile-editor-flow-area">
+                  <app-form-flow
+                    class="profile-editor-flow"
+                    [model]="profileEditorFlowModel"
+                    [(ngModel)]="profileEditorData"
+                    [saving]="isProfileSaving()"
+                    [disabled]="isProfileSaving()"
+                    (action)="onProfileEditorFlowAction($event)"
+                    (percent)="onProfileCompletionPercentChange($event)"
+                  ></app-form-flow>
+                </div>
               </div>
             </div>
           }
