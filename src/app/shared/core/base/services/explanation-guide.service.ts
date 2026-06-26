@@ -2,7 +2,6 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type { HelpCenterRevisionDto } from '../../contracts';
 import { HelpCenterService } from './help-center.service';
-import { RouteDelayService } from './route-delay.service';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
 
 @Injectable({
@@ -12,7 +11,6 @@ export class ExplanationGuideService {
   private static readonly STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideEnabled;
   private static readonly DISMISSED_CONTEXTS_STORAGE_KEY = APP_STORAGE_KEYS.explanationGuideDismissedContexts;
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly routeDelay = inject(RouteDelayService);
   private readonly enabledRef = signal(this.readEnabledState());
   private readonly currentContextRef = signal<string | null>(null);
   private readonly popupOpenRef = signal(false);
@@ -89,7 +87,7 @@ export class ExplanationGuideService {
       this.closePopup();
       return;
     }
-    this.popupOpenRef.set(false);
+    this.popupOpenRef.set(true);
     this.visibleRevisionRef.set(null);
     void this.loadForContext(contextKey);
   }
@@ -98,11 +96,7 @@ export class ExplanationGuideService {
     const serial = ++this.loadSerial;
     this.loadingRef.set(true);
     try {
-      const state = await this.routeDelay.withRequestTimeout(
-        '/explanation/active',
-        this.helpCenter.loadExplanationState(contextKey),
-        'Explanation content request timed out.'
-      );
+      const state = await this.helpCenter.loadExplanationState(contextKey);
       if (serial !== this.loadSerial || !this.enabledRef() || this.currentContextRef() !== contextKey || this.isDismissedContext(contextKey)) {
         return;
       }
@@ -113,7 +107,6 @@ export class ExplanationGuideService {
       }
       this.visibleRevisionRef.set(revision);
       this.loadingRef.set(false);
-      this.popupOpenRef.set(true);
     } catch {
       if (serial === this.loadSerial) {
         this.closePopup();

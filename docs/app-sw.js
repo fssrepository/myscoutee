@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-5453d4fcbb6b-20260626105355";
-const BUILD_ID = "5453d4fcbb6b-20260626105355";
+const CACHE_VERSION = "build-3385f69629d7-20260626111024";
+const BUILD_ID = "3385f69629d7-20260626111024";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -21,50 +21,50 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-2G2ZI5MS.js",
-  "./chunk-3DXW256G.js",
-  "./chunk-4H4D7ME6.js",
-  "./chunk-56QBSZ4V.js",
-  "./chunk-5BKLCHDS.js",
-  "./chunk-6YWB5KBQ.js",
-  "./chunk-7D2VWR4J.js",
-  "./chunk-C4JCVOOH.js",
-  "./chunk-D6R2JSME.js",
-  "./chunk-DAE347SL.js",
-  "./chunk-DOEFW6MG.js",
-  "./chunk-EKU5G36N.js",
-  "./chunk-G3OFS3PX.js",
-  "./chunk-G6CJ446O.js",
-  "./chunk-GB6G4JNN.js",
-  "./chunk-GIHEZ2NI.js",
-  "./chunk-IFNKGME5.js",
-  "./chunk-J474IJPO.js",
-  "./chunk-JEKID4WT.js",
-  "./chunk-JMEGPDHB.js",
-  "./chunk-KN3DZLHM.js",
-  "./chunk-L7ZTHHF4.js",
-  "./chunk-LGCF3TN3.js",
-  "./chunk-M3G6E5CB.js",
-  "./chunk-MLQCMR56.js",
-  "./chunk-MY34FTPL.js",
-  "./chunk-NJLXIQZW.js",
-  "./chunk-NP6U2ES5.js",
-  "./chunk-NPMQD2Y6.js",
-  "./chunk-NQF67SHM.js",
-  "./chunk-PBEGLLDW.js",
-  "./chunk-POKK5DTA.js",
-  "./chunk-QP5XLRJX.js",
-  "./chunk-R3JLI276.js",
-  "./chunk-S3KVC7SY.js",
-  "./chunk-TL6MLNG6.js",
-  "./chunk-TW22FAZQ.js",
-  "./chunk-UYDSXPWP.js",
-  "./chunk-UYGTFJIU.js",
-  "./chunk-V6ICEYCJ.js",
-  "./chunk-VLV6WXOL.js",
-  "./chunk-XS4SQUVH.js",
-  "./chunk-Z3JVPIR7.js",
-  "./main-WWHOBJ2W.js",
+  "./chunk-2DXHQQVL.js",
+  "./chunk-2GKUNCTO.js",
+  "./chunk-3IPEPNOD.js",
+  "./chunk-3M4PJLGV.js",
+  "./chunk-53FBF4U6.js",
+  "./chunk-6GNTFCBO.js",
+  "./chunk-74EFBBYA.js",
+  "./chunk-7DWXA4Z6.js",
+  "./chunk-7ZGEKP5I.js",
+  "./chunk-APYBCV3L.js",
+  "./chunk-AXTTAB4M.js",
+  "./chunk-B25RMCIA.js",
+  "./chunk-BYCWHC3E.js",
+  "./chunk-CDP65MBY.js",
+  "./chunk-EIOZWAQP.js",
+  "./chunk-EWTOGACG.js",
+  "./chunk-F76IFJ3Z.js",
+  "./chunk-FBDVIZIN.js",
+  "./chunk-GN4VRWP4.js",
+  "./chunk-H5KFE2YT.js",
+  "./chunk-HDM2LVBD.js",
+  "./chunk-HTLQ2MKW.js",
+  "./chunk-IEOYSPNX.js",
+  "./chunk-J7KKFOML.js",
+  "./chunk-JS3UZCBH.js",
+  "./chunk-KP5KGGPE.js",
+  "./chunk-KWGHNEZN.js",
+  "./chunk-LF3W7UDY.js",
+  "./chunk-MNWWBDVY.js",
+  "./chunk-MRURYR6U.js",
+  "./chunk-NVXBCACY.js",
+  "./chunk-OQFVBM2J.js",
+  "./chunk-R6U543D6.js",
+  "./chunk-RZLVOKCU.js",
+  "./chunk-SY6OCSPV.js",
+  "./chunk-UBPZTSAD.js",
+  "./chunk-V6FTAVYL.js",
+  "./chunk-WIGSNIMF.js",
+  "./chunk-X3YU6RGN.js",
+  "./chunk-X6U35LW4.js",
+  "./chunk-YH2IZ3UO.js",
+  "./chunk-ZPDGJJMT.js",
+  "./chunk-ZWJMSFJY.js",
+  "./main-CBHIPYV3.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -175,6 +175,9 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
+    if (url.origin !== self.location.origin && url.hostname !== 'api.qrserver.com') {
+      return;
+    }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
     return;
   }
