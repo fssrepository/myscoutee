@@ -3,6 +3,7 @@ import type { UserSelectorListItemDto } from '../../core/contracts/user.interfac
 import type { ActivityMemberOwnerType, AssetFilterType } from '../../core/common/constants';
 import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
 import type { ActivitiesNavigationRequest } from '../../core/base/models/activities-ui.model';
+import type { EventEditorTarget } from '../../core/contracts/event.interface';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
@@ -29,6 +30,14 @@ export interface NavigatorAssetRequest {
 
 export interface NavigatorEventFeedbackRequest {
   updatedMs: number;
+}
+
+export interface EventSubeventsListPopupRequest {
+  updatedMs: number;
+  eventId: string;
+  target: EventEditorTarget;
+  title: string | null;
+  canEdit: boolean;
 }
 
 export interface AdminNavigatorRequest {
@@ -59,6 +68,7 @@ export class AppPopupContext {
   private readonly _navigatorActivitiesRequest = signal<NavigatorActivitiesRequest | null>(null);
   private readonly _navigatorAssetRequest = signal<NavigatorAssetRequest | null>(null);
   private readonly _navigatorEventFeedbackRequest = signal<NavigatorEventFeedbackRequest | null>(null);
+  private readonly _eventSubeventsListPopup = signal<EventSubeventsListPopupRequest | null>(null);
   private readonly _adminNavigatorRequest = signal<AdminNavigatorRequest | null>(null);
   private readonly _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
 
@@ -67,6 +77,7 @@ export class AppPopupContext {
   readonly navigatorActivitiesRequest = this._navigatorActivitiesRequest.asReadonly();
   readonly navigatorAssetRequest = this._navigatorAssetRequest.asReadonly();
   readonly navigatorEventFeedbackRequest = this._navigatorEventFeedbackRequest.asReadonly();
+  readonly eventSubeventsListPopup = this._eventSubeventsListPopup.asReadonly();
   readonly adminNavigatorRequest = this._adminNavigatorRequest.asReadonly();
   readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
 
@@ -178,6 +189,25 @@ export class AppPopupContext {
     });
   }
 
+  openEventSubeventsListPopup(payload: {
+    eventId: string;
+    target?: EventEditorTarget;
+    title?: string | null;
+    canEdit?: boolean;
+  }): void {
+    const eventId = `${payload.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    this._eventSubeventsListPopup.set({
+      updatedMs: Date.now(),
+      eventId,
+      target: payload.target ?? 'events',
+      title: `${payload.title ?? ''}`.trim() || null,
+      canEdit: payload.canEdit === true
+    });
+  }
+
   clearNavigatorActivitiesRequest(): void {
     this._navigatorActivitiesRequest.set(null);
   }
@@ -188,6 +218,10 @@ export class AppPopupContext {
 
   clearNavigatorEventFeedbackRequest(): void {
     this._navigatorEventFeedbackRequest.set(null);
+  }
+
+  closeEventSubeventsListPopup(): void {
+    this._eventSubeventsListPopup.set(null);
   }
 
   openAdminNavigatorRequest(popup: AdminNavigatorRequest['popup']): void {

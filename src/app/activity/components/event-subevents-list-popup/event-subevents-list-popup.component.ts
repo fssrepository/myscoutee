@@ -35,7 +35,6 @@ import { EventsService } from '../../../shared/core';
 import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
 import type { SubEventLeaderboardState } from '../../../shared/core/contracts/event.interface';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventSubeventsListPopupStateService } from '../../services/event-subevents-list-popup-state.service';
 import {
   EventSubeventLeaderboardPopupComponent,
   type EventSubeventLeaderboardGroup,
@@ -80,7 +79,6 @@ interface EventSubeventsSlotSection {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsListPopupComponent {
-  protected readonly state = inject(EventSubeventsListPopupStateService);
   private readonly eventsService = inject(EventsService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -192,7 +190,7 @@ export class EventSubeventsListPopupComponent {
   constructor() {
     this.syncMobileViewFromViewport();
     effect(() => {
-      const request = this.state.request();
+      const request = this.popupCtx.eventSubeventsListPopup();
       if (!request) {
         this.lastLoadedEventId = '';
         this.loadedEventId = '';
@@ -232,8 +230,12 @@ export class EventSubeventsListPopupComponent {
     this.syncMobileViewFromViewport();
   }
 
+  protected isOpen(): boolean {
+    return Boolean(this.popupCtx.eventSubeventsListPopup());
+  }
+
   protected close(): void {
-    this.state.close();
+    this.popupCtx.closeEventSubeventsListPopup();
   }
 
   protected popupTitle(): string {
@@ -241,7 +243,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected popupSubtitle(): string {
-    const requestTitle = this.state.request()?.title ?? '';
+    const requestTitle = this.popupCtx.eventSubeventsListPopup()?.title ?? '';
     return this.event?.title || requestTitle || 'Event';
   }
 
@@ -301,7 +303,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected contextMenuItems(): readonly AppMenuItem<EventSubeventsListContextAction>[] {
-    const canEdit = this.state.request()?.canEdit === true;
+    const canEdit = this.popupCtx.eventSubeventsListPopup()?.canEdit === true;
     const memberCount = this.eventMembersCount();
     return [
       {
@@ -334,7 +336,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected openEventEditor(): void {
-    const request = this.state.request();
+    const request = this.popupCtx.eventSubeventsListPopup();
     if (!request) {
       return;
     }
@@ -357,7 +359,7 @@ export class EventSubeventsListPopupComponent {
       ownerId: event.id,
       ownerType: 'event',
       subtitle: event.title,
-      canManage: this.state.request()?.canEdit === true,
+      canManage: this.popupCtx.eventSubeventsListPopup()?.canEdit === true,
       acceptedMembers: event.acceptedMembers,
       pendingMembers: event.pendingMembers,
       capacityTotal: event.capacityTotal
@@ -799,7 +801,7 @@ export class EventSubeventsListPopupComponent {
   private async loadSubEventsPageResult(
     query: ListQuery<EventSubeventsListFilters>
   ): Promise<PageResult<EventSubeventsSlotSection>> {
-    const eventId = this.state.request()?.eventId.trim() ?? '';
+    const eventId = this.popupCtx.eventSubeventsListPopup()?.eventId.trim() ?? '';
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
@@ -843,7 +845,7 @@ export class EventSubeventsListPopupComponent {
     this.cdr.markForCheck();
     this.loadingPromise = (async () => {
       const result = await this.eventsService.loadSubEventsById(userId, eventId, this.subEventsLoadQuery(eventId, query));
-      if (this.state.request()?.eventId !== eventId) {
+      if (this.popupCtx.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
       this.event = result?.event ?? null;

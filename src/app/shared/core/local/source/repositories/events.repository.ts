@@ -216,7 +216,7 @@ export class LocalEventsRepository {
       case 'suspend-tournament':
         return { action: normalizedAction, nextStatus: 'S', reason: normalizedReason || 'manual-suspension' };
       case 'resume-tournament':
-        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'manual-resume' };
+        return { action: normalizedAction, nextStatus: 'A', reason: normalizedReason || 'manual-resume' };
       default:
         return null;
     }

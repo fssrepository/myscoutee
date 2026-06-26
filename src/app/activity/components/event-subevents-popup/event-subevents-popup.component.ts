@@ -761,7 +761,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
         statusItems.push(this.stageActionMenuItem(stage, 'suspend-tournament', 'Suspend Tournament', 'pause_circle', 'warning'));
       }
       if (this.canResumeStage(stage)) {
-        statusItems.push(this.stageActionMenuItem(stage, 'resume-tournament', 'Resume Tournament', 'play_circle', 'success'));
+        statusItems.push(this.stageActionMenuItem(stage, 'resume-tournament', 'Resume Tournament', 'play_circle', 'blue'));
       }
     }
 
@@ -1129,7 +1129,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
         this.requestStageStatusAction(action, stage, 'S', 'manual-suspension', 'Suspend Tournament', `Suspend the tournament at ${stage.subtitle}?`, 'Suspend', 'Suspending...');
         return;
       case 'resume-tournament':
-        this.requestStageStatusAction(action, stage, 'SR', 'manual-resume', 'Resume Tournament', `Resume ${stage.subtitle} into score review?`, 'Resume', 'Resuming...');
+        this.requestStageStatusAction(action, stage, 'A', 'manual-resume', 'Resume Tournament', `Resume ${stage.subtitle} and set it back to active?`, 'Resume', 'Resuming...');
         return;
       case 'add-group':
         this.openCreateGroupForm(stage, event);

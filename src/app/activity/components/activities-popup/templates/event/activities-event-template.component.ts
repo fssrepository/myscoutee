@@ -143,7 +143,6 @@ export class ActivitiesEventsController {
   private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
   private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
   private get eventEditorService() { return this.host.eventEditorService; }
-  private get eventSubeventsListPopupService() { return this.host.eventSubeventsListPopupService; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
@@ -295,7 +294,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.eventSubeventsListPopupService.open({
+    this.popupCtx.openEventSubeventsListPopup({
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
       title: row.title,

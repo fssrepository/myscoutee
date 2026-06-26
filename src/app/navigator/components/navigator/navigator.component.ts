@@ -23,7 +23,6 @@ import { AssetPopupStateService } from '../../../asset/asset-popup-state.service
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
-import { EventSubeventsListPopupStateService } from '../../../activity/services/event-subevents-list-popup-state.service';
 import {
   ExplanationGuideService,
   HelpCenterService,
@@ -126,7 +125,6 @@ export class NavigatorComponent implements OnDestroy {
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
-  private readonly eventSubeventsListPopupService = inject(EventSubeventsListPopupStateService);
   protected readonly subEventResources = inject(SubEventResourcePopupController);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -798,8 +796,8 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isOpen = this.eventSubeventsListPopupService.isOpen();
-      if (isOpen && !this.eventSubeventsListPopupComponentRef()) {
+      const request = this.popupCtx.eventSubeventsListPopup();
+      if (request && !this.eventSubeventsListPopupComponentRef()) {
         void this.ensureEventSubeventsListPopupLoaded();
       }
     });
