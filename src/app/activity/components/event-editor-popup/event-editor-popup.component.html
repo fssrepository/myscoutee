@@ -113,7 +113,7 @@
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventEditorService.readOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
-            <!--<app-event-subevent-definitions-panel
+            <app-event-subevent-definitions-panel
               class="experience-description-field"
               [(ngModel)]="eventDetailDTO.subEventDefinitions"
               [(mode)]="eventDetailDTO.mode"
@@ -121,7 +121,7 @@
               (enabledChange)="onSubEventsEnabledChange($event)"
               [bounds]="eventDetailDTO.dateRange"
               [readOnly]="eventStructureReadOnly()"
-            ></app-event-subevent-definitions-panel>-->
+            ></app-event-subevent-definitions-panel>
             <section class="event-scheduling-stack">
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -197,7 +197,7 @@
         </div>
       </header>
       <div class="slot-override-popup__body">
-        <!--<app-event-subevent-definitions-panel
+        <app-event-subevent-definitions-panel
           class="slot-override-popup__definitions"
           [ngModel]="overrideEditor.definitions"
           (ngModelChange)="onSlotOverrideDefinitionsChange($event)"
@@ -207,7 +207,7 @@
           [enabled]="true"
           [bounds]="eventDetailDTO.dateRange"
           [readOnly]="eventStructureReadOnly()"
-        ></app-event-subevent-definitions-panel>-->
+        ></app-event-subevent-definitions-panel>
       </div>
     </section>
     }
