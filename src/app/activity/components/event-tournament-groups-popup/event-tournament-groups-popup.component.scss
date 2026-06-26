@@ -309,10 +309,11 @@
 
 .event-tournament-entry-popup {
   width: min(760px, calc(100vw - 1.8rem));
+  overflow: visible;
 }
 
 .event-tournament-flow-popup {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .event-tournament-flow-header {
@@ -406,7 +407,7 @@
 .event-tournament-entry-flow {
   display: block;
   min-height: 13.4rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 @media (max-width: 760px) {

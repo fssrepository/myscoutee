@@ -3,10 +3,12 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, ef
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { AppUtils } from '../../../shared/app-utils';
-import { EventsService } from '../../../shared/core';
+import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
+import type * as AppDTOs from '../../../shared/core/base/dto';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
+import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
   AccordionComponent,
   AppMenuComponent,
@@ -45,6 +47,9 @@ type TournamentGroupsAction =
 type TournamentGroupsHeaderAction = 'add-group';
 type TournamentGroupsTab = 'standings' | 'history';
 type TournamentLeaderboardMode = 'Score' | 'Fifa';
+type TournamentResourceMetricsByType = Partial<Record<AssetType, TournamentResourceMetrics>>;
+
+const TOURNAMENT_RESOURCE_TYPES: readonly AssetType[] = ['Car', 'Accommodation', 'Supplies'] as const;
 
 interface TournamentGroupsActionContext {
   action: TournamentGroupsAction;
@@ -54,6 +59,13 @@ interface TournamentGroupsActionContext {
 
 interface TournamentGroupsHeaderActionContext {
   action: TournamentGroupsHeaderAction;
+}
+
+interface TournamentResourceMetrics {
+  joined: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
 }
 
 interface TournamentGroupFormModel {
@@ -116,6 +128,8 @@ export class EventTournamentGroupsPopupComponent {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly appCtx = inject(AppContext);
   private readonly eventsService = inject(EventsService);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -139,8 +153,11 @@ export class EventTournamentGroupsPopupComponent {
   protected entryForm: TournamentEntryFormModel = this.emptyEntryForm();
 
   private handledRequestMs = 0;
+  private handledResourceSyncMs = 0;
   private loadSequence = 0;
   private leaderboardSequence = 0;
+  private resourceCounterSequence = 0;
+  private resourceMetricsByStageId: Record<string, TournamentResourceMetricsByType> = {};
 
   constructor() {
     effect(() => {
@@ -159,7 +176,30 @@ export class EventTournamentGroupsPopupComponent {
       this.state = this.contextState(request);
       this.selectedStageId = this.resolveSelectedStageId(this.selectedStageId);
       this.leaderboardState = null;
+      this.resourceMetricsByStageId = {};
       void this.loadGroupsForSelectedStage();
+    });
+
+    effect(() => {
+      const sync = this.appCtx.activityResourceSync();
+      if (!sync || sync.updatedMs === this.handledResourceSyncMs) {
+        return;
+      }
+      this.handledResourceSyncMs = sync.updatedMs;
+      if (!this.isOpen() || sync.ownerId !== this.eventId()) {
+        return;
+      }
+      this.syncResourceCountersFromCache(sync.subEventId, sync.assetOwnerUserId);
+    });
+
+    effect(() => {
+      this.ownedAssets.assetListRevision();
+      if (!this.isOpen()) {
+        return;
+      }
+      for (const stage of this.state?.stages ?? []) {
+        this.syncResourceCountersFromCache(stage.subEventId);
+      }
     });
   }
 
@@ -312,9 +352,9 @@ export class EventTournamentGroupsPopupComponent {
           id: 'assets',
           label: 'Assets',
           items: [
-            this.resourceMenuItem('car', 'Car', 'directions_car', 'sky', contextBase),
-            this.resourceMenuItem('accommodation', 'Ingatlan', 'apartment', 'green', contextBase),
-            this.resourceMenuItem('supplies', 'Kellékek', 'inventory_2', 'brown', contextBase)
+            this.resourceMenuItem('car', 'Autó', 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, 'Car')),
+            this.resourceMenuItem('accommodation', 'Ingatlan', 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, 'Accommodation')),
+            this.resourceMenuItem('supplies', 'Kellékek', 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, 'Supplies'))
           ]
         }
       ]
@@ -937,6 +977,7 @@ export class EventTournamentGroupsPopupComponent {
         this.selectedGroupId = null;
         this.openGroupIds = [];
       }
+      void this.loadResourceCountersForStage(normalizedStageId);
     } catch {
       this.loadError = 'Groups are not available right now.';
     } finally {
@@ -967,6 +1008,172 @@ export class EventTournamentGroupsPopupComponent {
         this.cdr.markForCheck();
       }
     }
+  }
+
+  private async loadResourceCountersForStage(stageId: string): Promise<void> {
+    const ownerId = this.eventId();
+    const normalizedStageId = this.normalizeId(stageId);
+    const assetOwnerUserId = this.activityResourcesService.activeAssetOwnerUserId();
+    if (!ownerId || !normalizedStageId || !assetOwnerUserId) {
+      return;
+    }
+    const sequence = ++this.resourceCounterSequence;
+    this.applyResourceCounters(
+      ownerId,
+      normalizedStageId,
+      assetOwnerUserId,
+      this.activityResourcesService.peekSubEventResourceState(ownerId, normalizedStageId, assetOwnerUserId)
+    );
+    try {
+      const state = await this.activityResourcesService.querySubEventResourceState(
+        ownerId,
+        normalizedStageId,
+        assetOwnerUserId
+      );
+      if (sequence !== this.resourceCounterSequence) {
+        return;
+      }
+      this.applyResourceCounters(ownerId, normalizedStageId, assetOwnerUserId, state);
+    } catch {
+      if (sequence === this.resourceCounterSequence) {
+        this.applyResourceCounters(ownerId, normalizedStageId, assetOwnerUserId, null);
+      }
+    }
+  }
+
+  private syncResourceCountersFromCache(stageId: string | null | undefined, assetOwnerUserId?: string | null): void {
+    const ownerId = this.eventId();
+    const normalizedStageId = this.normalizeId(stageId);
+    const normalizedAssetOwnerUserId = this.normalizeId(assetOwnerUserId)
+      || this.activityResourcesService.activeAssetOwnerUserId();
+    if (!ownerId || !normalizedStageId || !normalizedAssetOwnerUserId) {
+      return;
+    }
+    this.applyResourceCounters(
+      ownerId,
+      normalizedStageId,
+      normalizedAssetOwnerUserId,
+      this.activityResourcesService.peekSubEventResourceState(ownerId, normalizedStageId, normalizedAssetOwnerUserId)
+    );
+  }
+
+  private applyResourceCounters(
+    ownerId: string,
+    stageId: string,
+    assetOwnerUserId: string,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null
+  ): void {
+    if (ownerId !== this.eventId() || assetOwnerUserId !== this.activityResourcesService.activeAssetOwnerUserId()) {
+      return;
+    }
+    const stage = this.stageById(stageId);
+    if (!stage) {
+      return;
+    }
+    this.resourceMetricsByStageId = {
+      ...this.resourceMetricsByStageId,
+      [stageId]: this.resourceMetricsForStage(stage, state)
+    };
+    this.cdr.markForCheck();
+  }
+
+  private resourceMetricsForStage(
+    stage: ContractTypes.EventTournamentStageDTO,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null
+  ): TournamentResourceMetricsByType {
+    const subEvent = this.resourceSubEventForStage(stage);
+    const assets = this.ownedAssets.assetCards;
+    return Object.fromEntries(TOURNAMENT_RESOURCE_TYPES.map(type => {
+      const joined = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assets);
+      const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assets);
+      const bounds = this.resourceCapacityBounds(subEvent, type, state, assets, joined, pending);
+      return [
+        type,
+        {
+          joined,
+          pending,
+          capacityMin: bounds.capacityMin,
+          capacityMax: bounds.capacityMax
+        }
+      ];
+    })) as TournamentResourceMetricsByType;
+  }
+
+  private resourceSubEventForStage(stage: ContractTypes.EventTournamentStageDTO): ContractTypes.SubEventDTO {
+    const capacityMin = stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.capacityMin) || 0)), 0);
+    const capacityMax = stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.capacityMax) || 0)), 0);
+    return {
+      id: stage.subEventId,
+      name: stage.title,
+      description: stage.description,
+      location: stage.location,
+      startAt: stage.startAt,
+      endAt: stage.endAt,
+      groups: this.subEventGroupsForStage(stage),
+      optional: false,
+      capacityMin,
+      capacityMax,
+      membersAccepted: stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.membersAccepted) || 0)), 0),
+      membersPending: stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.membersPending) || 0)), 0),
+      carsAccepted: 0,
+      accommodationAccepted: 0,
+      suppliesAccepted: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsCapacityMin: 0,
+      carsCapacityMax: 0,
+      accommodationCapacityMin: 0,
+      accommodationCapacityMax: 0,
+      suppliesCapacityMin: 0,
+      suppliesCapacityMax: 0,
+      tournamentGroupCount: stage.groups.length,
+      tournamentGroupCapacityMin: capacityMin,
+      tournamentGroupCapacityMax: capacityMax,
+      tournamentLeaderboardType: stage.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      tournamentAdvancePerGroup: Math.max(0, Math.trunc(Number(stage.advancePerGroup) || 0)),
+      stageStatus: stage.stageStatus
+    };
+  }
+
+  private resourceCapacityBounds(
+    subEvent: ContractTypes.SubEventDTO,
+    type: AssetType,
+    state: AppDTOs.ActivitySubEventResourceStateDTO | null,
+    assets: readonly AppDTOs.AssetCardDTO[],
+    joined: number,
+    pending: number
+  ): { capacityMin: number; capacityMax: number } {
+    const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, assets, joined, pending);
+    const assignedIds = ActivityResourceBuilder.resolveAssignedAssetIds(state, type, assets);
+    if (assignedIds.length === 0) {
+      return bounds;
+    }
+    const settings = ActivityResourceBuilder.resolveAssignedAssetSettings(state, type);
+    return {
+      capacityMin: assignedIds.reduce((sum, assetId) => (
+        sum + Math.max(0, Math.trunc(Number(settings[assetId]?.capacityMin) || 0))
+      ), 0),
+      capacityMax: bounds.capacityMax
+    };
+  }
+
+  private subEventGroupsForStage(stage: ContractTypes.EventTournamentStageDTO): ContractTypes.SubEventGroupDTO[] {
+    return stage.groups.map(group => ({
+      id: group.id,
+      name: group.name,
+      capacityMin: group.capacityMin,
+      capacityMax: group.capacityMax,
+      source: group.source === 'manual' || group.source === 'generated' ? group.source : undefined
+    }));
+  }
+
+  private resourceMetricLabel(stageId: string, type: AssetType): string {
+    const metrics = this.resourceMetricsByStageId[stageId]?.[type] ?? null;
+    if (!metrics) {
+      return '0 / 0 - 0';
+    }
+    return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
   }
 
   protected canManageGroups(): boolean {
@@ -1085,6 +1292,10 @@ export class EventTournamentGroupsPopupComponent {
     return nonNegative ? Math.max(0, integer) : integer;
   }
 
+  private normalizeId(value: string | null | undefined): string {
+    return `${value ?? ''}`.trim();
+  }
+
   private openCreateGroupForm(stage: ContractTypes.EventTournamentStageDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.canManageGroups()) {
@@ -1185,7 +1396,7 @@ export class EventTournamentGroupsPopupComponent {
         location: stage.location,
         startAt: stage.startAt,
         endAt: stage.endAt,
-        groups: stage.groups
+        groups: this.subEventGroupsForStage(stage)
       },
       group: {
         id: group.id,
@@ -1444,6 +1655,7 @@ export class EventTournamentGroupsPopupComponent {
   private resetState(): void {
     this.loadSequence += 1;
     this.leaderboardSequence += 1;
+    this.resourceCounterSequence += 1;
     this.state = null;
     this.selectedStageId = null;
     this.selectedGroupId = null;
@@ -1455,6 +1667,7 @@ export class EventTournamentGroupsPopupComponent {
     this.leaderboardLoading = false;
     this.groupTabs = {};
     this.detailMemberByGroupId = {};
+    this.resourceMetricsByStageId = {};
     this.showGroupForm = false;
     this.showEntryForm = false;
   }
