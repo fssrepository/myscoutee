@@ -63,17 +63,28 @@
             [config]="slotSectionSmartListConfigFor(section)"
             [loadPage]="slotSectionLoadPage(section)"
             [itemTemplate]="subEventTemplate"
+            (menuItemSelect)="onSubEventMenuSelect($event)"
           ></app-smart-list>
         </section>
       </ng-template>
 
-      <ng-template #subEventTemplate let-item let-groupLabel="groupLabel">
+      <ng-template #subEventTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
         <app-info-card
           [card]="cardFor(item, groupLabel)"
+          [useSharedMenu]="true"
           [useSharedMenuTrigger]="false"
+          [sharedMenuContext]="subEventMenuContext(item)"
+          (menuRequest)="openMenu($event)"
         ></app-info-card>
       </ng-template>
     </div>
   </article>
+
+  @if (leaderboardPopup.open) {
+    <app-event-subevent-leaderboard-popup
+      [model]="leaderboardPopup"
+      (close)="closeLeaderboardPopup($event)"
+    ></app-event-subevent-leaderboard-popup>
+  }
 </section>
 }

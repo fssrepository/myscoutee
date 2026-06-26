@@ -13,6 +13,9 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   groupLabel?: string | null;
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
+  hasMenuOptions?: boolean;
+  menuBadgeCount?: number | null;
+  menuTitle?: string | null;
 }
 
 export class EventSubeventRuntimeInfoCardConverter
@@ -34,6 +37,7 @@ export class EventSubeventRuntimeInfoCardConverter
     const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
+    const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
 
     return {
       id: item.runtimeId,
@@ -50,6 +54,7 @@ export class EventSubeventRuntimeInfoCardConverter
         ...(location ? [location] : []),
         ...(slotLine ? [slotLine] : [])
       ],
+      descriptionLines: 2,
       description: item.description || 'No description',
       detailRows: [
         `Capacity ${capacity}`
@@ -78,7 +83,9 @@ export class EventSubeventRuntimeInfoCardConverter
           tone: status.accessoryTone
         }
       },
-      hasMenuOptions: false,
+      hasMenuOptions: options.hasMenuOptions === true,
+      menuTitle: options.menuTitle ?? item.name,
+      menuBadgeCount: menuBadgeCount > 0 ? menuBadgeCount : null,
       clickable: false
     };
   }

@@ -215,13 +215,7 @@
       (capacityMaxChange)="onGroupCapacityMaxChange($event)"
     ></app-event-subevent-group-form-popup>
     <app-event-subevent-leaderboard-popup
-      [open]="showLeaderboardPopup"
-      [title]="leaderboardPopupTitle()"
-      [subtitle]="leaderboardPopupResultsMode ? leaderboardPopupStageTitle : 'Stage standings and results'"
-      [readOnly]="readOnly || leaderboardPopupResultsMode"
-      [mode]="leaderboardPopupMode"
-      [groups]="leaderboardPopupGroups"
-      [resultsMode]="leaderboardPopupResultsMode"
+      [model]="leaderboardPopupModel()"
       (close)="closeLeaderboardPopup($event)"
     ></app-event-subevent-leaderboard-popup>
   </section>

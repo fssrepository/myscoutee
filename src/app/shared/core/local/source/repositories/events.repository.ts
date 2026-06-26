@@ -255,6 +255,30 @@ export class LocalEventsRepository {
     return !Number.isFinite(nextStartMs) || nextStartMs > Date.now();
   }
 
+  private toStageActionResult(
+    sourceId: string,
+    stage: ContractTypes.SubEventDTO | null | undefined,
+    stageIndex: number,
+    action: string,
+    autoInviter?: boolean | null
+  ): ActivityContracts.ActivityEventStageActionResultDTO | null {
+    if (!stage) {
+      return null;
+    }
+    return {
+      sourceId,
+      subEventId: `${stage.id ?? ''}`.trim() || null,
+      subEventIndex: Math.max(0, Math.trunc(Number(stageIndex) || 0)),
+      action,
+      stageStatus: `${stage.stageStatus ?? ''}`.trim() || 'RS',
+      stageStatusReason: `${stage.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${stage.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${stage.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${stage.stageFinalizedByUserId ?? ''}`.trim() || null,
+      autoInviter: autoInviter ?? null
+    };
+  }
+
   private resolveStageIndex(
     stages: readonly ContractTypes.SubEventDTO[],
     subEventId: string | null | undefined,
@@ -701,13 +725,14 @@ export class LocalEventsRepository {
     subEventIndex?: number | null;
     action: string;
     reason?: string | null;
-  }): ActivityEventRecord | null {
+  }): ActivityContracts.ActivityEventStageActionResultDTO | null {
     const normalizedUserId = request.userId.trim();
     const normalizedSourceId = request.sourceId.trim();
     const actionTarget = this.resolveStageActionTarget(request.action, request.reason);
     if (!normalizedUserId || !normalizedSourceId || !actionTarget) {
       return null;
     }
+    let result: ActivityContracts.ActivityEventStageActionResultDTO | null = null;
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
       const preferred = this.computePreferredEventRecords(table)
@@ -715,6 +740,15 @@ export class LocalEventsRepository {
       const preferredSubEvents = this.cloneSubEvents(preferred?.subEvents) ?? [];
       const preferredIndex = this.resolveStageIndex(preferredSubEvents, request.subEventId, request.subEventIndex);
       if (!preferred || preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
+        if (preferred && preferredIndex >= 0) {
+          result = this.toStageActionResult(
+            normalizedSourceId,
+            preferredSubEvents[preferredIndex],
+            preferredIndex,
+            actionTarget.action,
+            preferred.autoInviter
+          );
+        }
         return state;
       }
 
@@ -732,7 +766,7 @@ export class LocalEventsRepository {
         if (stageIndex < 0 || !subEvents[stageIndex]) {
           continue;
         }
-        subEvents[stageIndex] = {
+        const updatedStage = {
           ...subEvents[stageIndex],
           stageStatus: actionTarget.nextStatus,
           stageStatusReason: actionTarget.reason,
@@ -740,6 +774,16 @@ export class LocalEventsRepository {
           stageFinalizedAt: actionTarget.nextStatus === 'F' ? nowIso : null,
           stageFinalizedByUserId: actionTarget.nextStatus === 'F' ? normalizedUserId : null
         };
+        subEvents[stageIndex] = updatedStage;
+        if (!result) {
+          result = this.toStageActionResult(
+            normalizedSourceId,
+            updatedStage,
+            stageIndex,
+            actionTarget.action,
+            actionTarget.action === 'start-tournament' ? false : current.autoInviter
+          );
+        }
         nextById[id] = {
           ...current,
           autoInviter: actionTarget.action === 'start-tournament' ? false : current.autoInviter,
@@ -757,7 +801,7 @@ export class LocalEventsRepository {
           }
         : state;
     });
-    return this.peekKnownItemById(normalizedUserId, normalizedSourceId);
+    return result;
   }
 
   querySubEventLeaderboard(eventId: string, subEventId: string): ContractTypes.SubEventLeaderboardState | null {

@@ -71,6 +71,7 @@ export interface IEventsService {
   saveActivityEvent(
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
+  applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
 }
 
 export interface IChatsService {
@@ -207,6 +208,28 @@ export interface ActivityEventRecord {
   rating: number;
   boost: number;
   affinity: number;
+}
+
+export interface ActivityEventStageActionRequestDTO {
+  userId: string;
+  sourceId: string;
+  subEventId?: string | null;
+  subEventIndex?: number | null;
+  action: string;
+  reason?: string | null;
+}
+
+export interface ActivityEventStageActionResultDTO {
+  sourceId: string;
+  subEventId: string | null;
+  subEventIndex: number;
+  action: string;
+  stageStatus: EventContracts.TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  autoInviter?: boolean | null;
 }
 
 export interface ActivityEventDTO {

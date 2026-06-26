@@ -94,9 +94,14 @@
   display: inline-flex;
   align-items: stretch;
   justify-content: center;
-  min-width: 108px;
+  min-width: 132px;
 }
 
+.confirmation-dialog-confirm-menu ::ng-deep .app-menu,
+.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row,
+.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row-item {
+  width: 100%;
+}
 
 
 @media (max-width: 760px) {

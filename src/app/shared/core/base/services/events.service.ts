@@ -23,6 +23,8 @@ import type {
   ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
   ActivityEventDTO,
+  ActivityEventStageActionRequestDTO,
+  ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -224,14 +226,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.waitForEventMutationDelay();
   }
 
-  applyStageAction(request: {
-    userId: string;
-    sourceId: string;
-    subEventId?: string | null;
-    subEventIndex?: number | null;
-    action: string;
-    reason?: string | null;
-  }): Promise<ActivityEventRecord | null> {
+  applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     return this.eventsService.applyStageAction(request);
   }
 

@@ -77,6 +77,14 @@ export {
   type EventSubeventRuntimeInfoCardConverterOptions
 } from './event-subevent-runtime-info-card.converter';
 export {
+  EventSubeventRuntimeMenuConverter,
+  eventSubeventRuntimeMenuConverter,
+  type EventSubeventRuntimeMenuContext,
+  type EventSubeventRuntimeMenuConverterOptions,
+  type EventSubeventRuntimeMenuItemId,
+  type EventSubeventRuntimeStageAction
+} from './event-subevent-runtime-menu.converter';
+export {
   ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   profileFormFlowConverter,

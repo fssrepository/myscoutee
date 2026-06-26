@@ -22,6 +22,8 @@ import type {
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventStageActionRequestDTO,
+  ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -392,17 +394,10 @@ export class HttpEventsService implements IEventsService {
     return Promise.resolve();
   }
 
-  async applyStageAction(request: {
-    userId: string;
-    sourceId: string;
-    subEventId?: string | null;
-    subEventIndex?: number | null;
-    action: string;
-    reason?: string | null;
-  }): Promise<ActivityEventRecord | null> {
+  async applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     const rawSubEventIndex = Number(request.subEventIndex);
     const response = await this.http
-      .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
+      .post<ActivityEventStageActionResultDTO | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
         userId: request.userId.trim(),
         sourceId: request.sourceId.trim(),
         subEventId: request.subEventId?.trim() || null,
@@ -413,7 +408,7 @@ export class HttpEventsService implements IEventsService {
         reason: request.reason?.trim() || null
       })
       .toPromise();
-    return response ? this.cloneRecords([response])[0] ?? null : null;
+    return response ?? null;
   }
 
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {

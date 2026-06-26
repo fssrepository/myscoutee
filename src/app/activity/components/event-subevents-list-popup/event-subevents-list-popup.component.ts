@@ -7,6 +7,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   ActivityEventDetailDTO,
+  type ActivityEventStageActionResultDTO,
   type ActivityEventSubEventsQueryDTO,
   type ActivityEventSubEventRuntimeDTO
 } from '../../../shared/core/contracts/activity.interface';
@@ -24,9 +25,24 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import { AppContext, AppPopupContext } from '../../../shared/ui/context';
-import { EventSubeventRuntimeInfoCardConverter } from '../../../shared/ui/converters';
+import {
+  EventSubeventRuntimeInfoCardConverter,
+  EventSubeventRuntimeMenuConverter,
+  type EventSubeventRuntimeMenuContext,
+  type EventSubeventRuntimeMenuItemId
+} from '../../../shared/ui/converters';
 import { EventsService } from '../../../shared/core';
+import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
+import type { SubEventLeaderboardState } from '../../../shared/core/contracts/event.interface';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventSubeventsListPopupStateService } from '../../services/event-subevents-list-popup-state.service';
+import {
+  EventSubeventLeaderboardPopupComponent,
+  type EventSubeventLeaderboardGroup,
+  type EventSubeventLeaderboardMode,
+  type EventSubeventLeaderboardPopupModel
+} from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
+import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
@@ -56,7 +72,8 @@ interface EventSubeventsSlotSection {
     MatIconModule,
     AppMenuComponent,
     SmartListComponent,
-    InfoCardComponent
+    InfoCardComponent,
+    EventSubeventLeaderboardPopupComponent
   ],
   templateUrl: './event-subevents-list-popup.component.html',
   styleUrl: './event-subevents-list-popup.component.scss',
@@ -65,6 +82,8 @@ interface EventSubeventsSlotSection {
 export class EventSubeventsListPopupComponent {
   protected readonly state = inject(EventSubeventsListPopupStateService);
   private readonly eventsService = inject(EventsService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -76,6 +95,7 @@ export class EventSubeventsListPopupComponent {
   protected view: EventSubeventsListView = 'day';
   protected order: EventSubeventsListOrder = 'upcoming';
   protected isMobileView = false;
+  protected leaderboardPopup: EventSubeventLeaderboardPopupModel = this.emptyLeaderboardPopup();
   protected query: Partial<ListQuery<EventSubeventsListFilters>> = {
     view: 'day',
     filters: { revision: 0 }
@@ -143,6 +163,9 @@ export class EventSubeventsListPopupComponent {
       headerControls: true
     },
     groupBy: item => this.slotHeaderLabel(item),
+    menuItems: context => context.item
+      ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
+      : [],
     trackBy: (_index, item) => item.runtimeId
   };
 
@@ -156,6 +179,9 @@ export class EventSubeventsListPopupComponent {
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'proximity',
+    menuItems: context => context.item
+      ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
+      : [],
     trackBy: (_index, item) => item.runtimeId
   };
 
@@ -381,8 +407,304 @@ export class EventSubeventsListPopupComponent {
       mode: this.event?.mode,
       groupLabel,
       sequenceNumber: sequence.number,
-      sequenceTotal: sequence.total
+      sequenceTotal: sequence.total,
+      hasMenuOptions: true,
+      menuTitle: item.name,
+      menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
+        event: this.event,
+        mode: this.event?.mode
+      })
     });
+  }
+
+  protected subEventMenuContext(item: ActivityEventSubEventRuntimeDTO): { runtimeId: string } {
+    return { runtimeId: item.runtimeId };
+  }
+
+  protected subEventMenuItems(
+    item: ActivityEventSubEventRuntimeDTO
+  ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
+    const sequence = this.runtimeSequence(item);
+    return EventSubeventRuntimeMenuConverter.convert(item, {
+      event: this.event,
+      mode: this.event?.mode,
+      canManageTournament: this.canManageRuntimeActions(),
+      sourceId: this.runtimeActionSourceId(item),
+      subEventIndex: this.runtimeSourceIndex(item),
+      stageNumber: sequence.number,
+      siblingItems: this.runtimeSiblings(item),
+      nowMs: Date.now()
+    });
+  }
+
+  protected onSubEventMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const menuEvent = event as AppMenuItemSelectEvent<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>;
+    const context = menuEvent.context;
+    if (!context) {
+      return;
+    }
+    menuEvent.sourceEvent.stopPropagation();
+    switch (context.scope) {
+      case 'stage-status':
+        this.requestStageStatusAction(context);
+        return;
+      case 'stage-dashboard':
+        this.openRuntimeLeaderboard(context.item, context.action === 'leaderboard', menuEvent.sourceEvent);
+        return;
+      case 'resource':
+        this.openSubEventResourcePopup(context.resourceType, context.item, menuEvent.sourceEvent);
+        return;
+      default:
+        return;
+    }
+  }
+
+  protected closeLeaderboardPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.leaderboardPopup = this.emptyLeaderboardPopup();
+    this.cdr.markForCheck();
+  }
+
+  private requestStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): void {
+    if (!this.canManageRuntimeActions()) {
+      return;
+    }
+    this.confirmationDialogService.open({
+      title: context.title,
+      message: context.description,
+      cancelLabel: 'Cancel',
+      confirmLabel: context.confirmLabel,
+      busyConfirmLabel: context.busyLabel,
+      confirmTone: context.destructive ? 'danger' : 'accent',
+      failureMessage: 'Action failed.',
+      onConfirm: async () => {
+        await this.applyStageStatusAction(context);
+      }
+    });
+  }
+
+  private async applyStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): Promise<void> {
+    const userId = this.activeUserId();
+    const sourceId = `${context.sourceId ?? ''}`.trim();
+    const action = `${context.action ?? ''}`.trim();
+    if (!userId || !sourceId || !action) {
+      throw new Error('Missing stage action target.');
+    }
+    const result = await this.eventsService.applyStageAction({
+      userId,
+      sourceId,
+      subEventId: context.subEventId,
+      subEventIndex: context.subEventIndex,
+      action,
+      reason: context.reason
+    });
+    if (!result) {
+      throw new Error('Stage action was not applied.');
+    }
+    this.patchRuntimeStageActionResult(context.item, result);
+  }
+
+  private patchRuntimeStageActionResult(
+    item: ActivityEventSubEventRuntimeDTO,
+    result: ActivityEventStageActionResultDTO
+  ): void {
+    const resultId = `${result.subEventId ?? ''}`.trim();
+    const itemId = `${item.id ?? ''}`.trim();
+    const index = this.runtimeSourceIndex(item);
+    if (resultId && itemId && resultId !== itemId) {
+      return;
+    }
+    if (!resultId && Number.isFinite(Number(result.subEventIndex)) && Math.trunc(Number(result.subEventIndex)) !== index) {
+      return;
+    }
+    item.stageStatus = `${result.stageStatus ?? ''}`.trim() || item.stageStatus;
+    item.stageStatusReason = `${result.stageStatusReason ?? ''}`.trim() || null;
+    item.stageStatusUpdatedAt = `${result.stageStatusUpdatedAt ?? ''}`.trim() || null;
+    item.stageFinalizedAt = `${result.stageFinalizedAt ?? ''}`.trim() || null;
+    item.stageFinalizedByUserId = `${result.stageFinalizedByUserId ?? ''}`.trim() || null;
+    if (this.event && result.autoInviter !== undefined && result.autoInviter !== null) {
+      this.event.autoInviter = result.autoInviter === true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private openSubEventResourcePopup(
+    type: SubEventResourceFilter,
+    item: ActivityEventSubEventRuntimeDTO,
+    event: Event
+  ): void {
+    event.stopPropagation();
+    const ownerId = this.runtimeActionSourceId(item);
+    if (!ownerId) {
+      return;
+    }
+    this.eventEditorService.requestSubEventResourcePopup({
+      type,
+      ownerId,
+      parentTitle: this.popupSubtitle(),
+      subEvent: {
+        ...item,
+        id: `${item.id ?? ''}`.trim() || item.runtimeId
+      }
+    });
+  }
+
+  private openRuntimeLeaderboard(
+    item: ActivityEventSubEventRuntimeDTO,
+    resultsMode: boolean,
+    event: Event
+  ): void {
+    event.stopPropagation();
+    const sourceId = this.runtimeActionSourceId(item);
+    const subEventId = `${item.id ?? ''}`.trim();
+    this.leaderboardPopup = {
+      open: true,
+      title: item.name || 'Leaderboard',
+      subtitle: this.slotHeaderLabel(item),
+      readOnly: true,
+      mode: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      groups: this.fallbackLeaderboardGroups(item),
+      resultsMode
+    };
+    this.cdr.markForCheck();
+    if (!sourceId || !subEventId) {
+      return;
+    }
+    void this.loadLeaderboardState(sourceId, subEventId, item, resultsMode);
+  }
+
+  private async loadLeaderboardState(
+    sourceId: string,
+    subEventId: string,
+    item: ActivityEventSubEventRuntimeDTO,
+    resultsMode: boolean
+  ): Promise<void> {
+    const state = await this.eventsService.querySubEventLeaderboard(sourceId, subEventId).catch(() => null);
+    if (!this.leaderboardPopup.open || `${item.id ?? ''}`.trim() !== subEventId) {
+      return;
+    }
+    this.leaderboardPopup = {
+      open: true,
+      title: state?.title || item.name || 'Leaderboard',
+      subtitle: this.slotHeaderLabel(item),
+      readOnly: true,
+      mode: this.leaderboardMode(state, item),
+      groups: this.leaderboardGroups(state, item),
+      resultsMode
+    };
+    this.cdr.markForCheck();
+  }
+
+  private leaderboardMode(
+    state: SubEventLeaderboardState | null,
+    item: ActivityEventSubEventRuntimeDTO
+  ): EventSubeventLeaderboardMode {
+    return state?.leaderboardType === 'Fifa' || item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+  }
+
+  private leaderboardGroups(
+    state: SubEventLeaderboardState | null,
+    item: ActivityEventSubEventRuntimeDTO
+  ): readonly EventSubeventLeaderboardGroup[] {
+    if (!state) {
+      return this.fallbackLeaderboardGroups(item);
+    }
+    return state.groups.map(group => ({
+      key: group.groupId,
+      title: group.title,
+      pending: 0,
+      advancePerGroup: Math.max(1, Number(group.advancePerGroup) || 1),
+      memberCount: Math.max(0, Number(group.memberCount) || 0),
+      advancingMemberIds: group.advancingMemberIds,
+      members: group.members,
+      scoreEntries: group.scoreEntries,
+      fifaMatches: group.fifaMatches,
+      scoreRows: group.scoreRows,
+      fifaRows: group.fifaRows
+    }));
+  }
+
+  private fallbackLeaderboardGroups(item: ActivityEventSubEventRuntimeDTO): readonly EventSubeventLeaderboardGroup[] {
+    const sourceGroups = Array.isArray(item.groups) ? item.groups : [];
+    const advancePerGroup = Math.max(1, Number(item.tournamentAdvancePerGroup) || 1);
+    if (sourceGroups.length > 0) {
+      return sourceGroups.map((group, index) => ({
+        key: `${group.id ?? `group-${index + 1}`}`.trim() || `group-${index + 1}`,
+        title: `${group.name ?? `Group ${index + 1}`}`.trim() || `Group ${index + 1}`,
+        pending: 0,
+        advancePerGroup,
+        memberCount: Math.max(0, Number(group.capacityMax ?? item.tournamentGroupCapacityMax ?? item.capacityMax) || 0)
+      }));
+    }
+    const count = Math.max(1, Math.trunc(Number(item.tournamentGroupCount) || 1));
+    const memberCount = Math.max(0, Number(item.tournamentGroupCapacityMax ?? item.capacityMax) || 0);
+    return Array.from({ length: count }, (_, index) => ({
+      key: `group-${index + 1}`,
+      title: `Group ${String.fromCharCode(65 + index)}`,
+      pending: 0,
+      advancePerGroup,
+      memberCount
+    }));
+  }
+
+  private runtimeActionSourceId(item: ActivityEventSubEventRuntimeDTO): string {
+    return `${item.slotSourceId ?? item.parentEventId ?? this.event?.id ?? ''}`.trim();
+  }
+
+  private runtimeSourceIndex(item: ActivityEventSubEventRuntimeDTO): number {
+    const siblings = this.runtimeSiblings(item);
+    const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    return index >= 0 ? index : 0;
+  }
+
+  private runtimeSiblings(item: ActivityEventSubEventRuntimeDTO): readonly ActivityEventSubEventRuntimeDTO[] {
+    const sourceId = this.runtimeActionSourceId(item);
+    const section = this.slotSections.find(candidate =>
+      candidate.items.some(sectionItem => sectionItem.runtimeId === item.runtimeId)
+    );
+    const scoped = section?.items ?? this.items.filter(candidate => this.runtimeActionSourceId(candidate) === sourceId);
+    return [...scoped].sort((left, right) => this.dateMs(left.startAt) - this.dateMs(right.startAt));
+  }
+
+  private canManageRuntimeActions(): boolean {
+    if (this.state.request()?.canEdit === true) {
+      return true;
+    }
+    const event = this.event;
+    const activeUserId = this.activeUserId();
+    if (!event || !activeUserId) {
+      return false;
+    }
+    const creatorId = `${event.creatorUserId ?? event.userId ?? ''}`.trim();
+    const ownerId = `${event.userId ?? ''}`.trim();
+    const adminIds = Array.isArray(event.adminIds) ? event.adminIds.map(id => `${id}`.trim()) : [];
+    return activeUserId === creatorId || activeUserId === ownerId || adminIds.includes(activeUserId);
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private invalidateLoadedRuntime(): void {
+    this.loadedEventId = '';
+    this.loadedQueryKey = '';
+    this.loadingEventId = '';
+    this.loadingQueryKey = '';
+    this.loadingPromise = null;
+    this.bumpQuery();
+    this.cdr.markForCheck();
+  }
+
+  private emptyLeaderboardPopup(): EventSubeventLeaderboardPopupModel {
+    return {
+      open: false,
+      title: 'Leaderboard',
+      subtitle: '',
+      readOnly: true,
+      mode: 'Score',
+      groups: [],
+      resultsMode: false
+    };
   }
 
   protected trackByRuntimeId(_index: number, item: ActivityEventSubEventRuntimeDTO): string {

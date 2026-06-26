@@ -35,6 +35,16 @@ export interface EventSubeventLeaderboardGroup {
   fifaRows?: readonly EventSubeventLeaderboardFifaRow[];
 }
 
+export interface EventSubeventLeaderboardPopupModel {
+  open: boolean;
+  title?: string;
+  subtitle?: string;
+  readOnly?: boolean;
+  mode?: EventSubeventLeaderboardMode;
+  groups?: readonly EventSubeventLeaderboardGroup[];
+  resultsMode?: boolean;
+}
+
 export interface EventSubeventLeaderboardMember {
   id: string;
   name: string;
@@ -99,6 +109,7 @@ export interface EventSubeventLeaderboardFifaRow {
   styleUrls: ['./event-subevent-leaderboard-popup.component.scss']
 })
 export class EventSubeventLeaderboardPopupComponent implements OnChanges {
+  @Input() model: EventSubeventLeaderboardPopupModel | null = null;
   @Input() open = false;
   @Input() title = 'Leaderboard';
   @Input() subtitle = 'Stage standings and results';
@@ -120,7 +131,33 @@ export class EventSubeventLeaderboardPopupComponent implements OnChanges {
   private readonly detailMemberByGroupKey: Record<string, string | null> = {};
 
   ngOnChanges(changes: SimpleChanges): void {
-    this.syncInputState(Boolean(changes['groups']), Boolean(changes['open']), Boolean(changes['mode']));
+    let groupsChanged = Boolean(changes['groups']);
+    let openChanged = Boolean(changes['open']);
+    let modeChanged = Boolean(changes['mode']);
+
+    if (changes['model']) {
+      const previousModel = changes['model'].previousValue as EventSubeventLeaderboardPopupModel | null | undefined;
+      const currentModel = changes['model'].currentValue as EventSubeventLeaderboardPopupModel | null | undefined;
+      this.applyModel(currentModel ?? null);
+      groupsChanged = groupsChanged || previousModel?.groups !== currentModel?.groups;
+      openChanged = openChanged || previousModel?.open !== currentModel?.open;
+      modeChanged = modeChanged || previousModel?.mode !== currentModel?.mode;
+    }
+
+    this.syncInputState(groupsChanged, openChanged, modeChanged);
+  }
+
+  private applyModel(model: EventSubeventLeaderboardPopupModel | null): void {
+    if (!model) {
+      return;
+    }
+    this.open = model.open;
+    this.title = model.title ?? 'Leaderboard';
+    this.subtitle = model.subtitle ?? 'Stage standings and results';
+    this.readOnly = model.readOnly ?? false;
+    this.mode = model.mode ?? 'Score';
+    this.groups = model.groups ?? [];
+    this.resultsMode = model.resultsMode ?? false;
   }
 
   protected get resolvedGroups(): readonly EventSubeventLeaderboardGroup[] {

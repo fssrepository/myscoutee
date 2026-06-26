@@ -8,7 +8,7 @@ import { of } from 'rxjs';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import {
-  EventSubeventLeaderboardFifaMatch, EventSubeventLeaderboardFifaRow, EventSubeventLeaderboardGroup, EventSubeventLeaderboardMember, EventSubeventLeaderboardPopupComponent, EventSubeventLeaderboardScoreEntry, EventSubeventLeaderboardScoreRow
+  EventSubeventLeaderboardFifaMatch, EventSubeventLeaderboardFifaRow, EventSubeventLeaderboardGroup, EventSubeventLeaderboardMember, EventSubeventLeaderboardPopupComponent, EventSubeventLeaderboardScoreEntry, EventSubeventLeaderboardScoreRow, type EventSubeventLeaderboardPopupModel
 } from '../event-subevent-leaderboard-popup/event-subevent-leaderboard-popup.component';
 import { EventSubeventStageFormPopupComponent, type EventSubeventStageFormPopupView, type EventSubeventStageInsertPlacement } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 import { AppUtils } from '../../../shared/app-utils';
@@ -1875,7 +1875,7 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
     const stage = this.workingSubEvents[target.stageSourceIndex] ?? null;
     const action = `${target.action ?? ''}`.trim();
     if (ownerId && activeUserId && action) {
-      const record = await this.eventsService.applyStageAction({
+      const result = await this.eventsService.applyStageAction({
         userId: activeUserId,
         sourceId: ownerId,
         subEventId: `${stage?.id ?? ''}`.trim() || null,
@@ -1883,15 +1883,15 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
         action,
         reason: target.reason
       });
-      const nextSubEvents = this.cloneSubEvents(record?.subEvents ?? []);
-      if (nextSubEvents.length > 0) {
-        this.workingSubEvents = nextSubEvents.map(item => ({
-          ...item,
-          id: item.id ?? this.nextId('subevent')
-        }));
-        this.emitWorkingSubEvents();
+      if (result) {
+        this.updateStageStatusAtIndex(
+          target.stageSourceIndex,
+          this.resolveStageStatus({ stageStatus: result.stageStatus }),
+          `${result.stageStatusReason ?? target.reason}`.trim() || target.reason
+        );
         return;
       }
+      throw new Error('Stage action was not applied.');
     } else {
       await this.waitForSensitiveActionDelay();
     }
@@ -1998,6 +1998,18 @@ export class EventSubeventsPopupComponent implements OnChanges, ControlValueAcce
       return 'Leaderboard';
     }
     return `${this.leaderboardPopupStageTitle} Leaderboard`;
+  }
+
+  protected leaderboardPopupModel(): EventSubeventLeaderboardPopupModel {
+    return {
+      open: this.showLeaderboardPopup,
+      title: this.leaderboardPopupTitle(),
+      subtitle: this.leaderboardPopupResultsMode ? this.leaderboardPopupStageTitle : 'Stage standings and results',
+      readOnly: this.readOnly || this.leaderboardPopupResultsMode,
+      mode: this.leaderboardPopupMode,
+      groups: this.leaderboardPopupGroups,
+      resultsMode: this.leaderboardPopupResultsMode
+    };
   }
 
   private buildLeaderboardGroups(stage: EventSubeventsStageCard | null): EventSubeventLeaderboardGroup[] {

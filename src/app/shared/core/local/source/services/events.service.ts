@@ -25,6 +25,8 @@ import type {
   ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
   ActivityEventDTO,
+  ActivityEventStageActionRequestDTO,
+  ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -291,18 +293,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
-  async applyStageAction(request: {
-    userId: string;
-    sourceId: string;
-    subEventId?: string | null;
-    subEventIndex?: number | null;
-    action: string;
-    reason?: string | null;
-  }): Promise<ActivityEventRecord | null> {
+  async applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     await this.waitForEventMutationDelay();
-    const record = this.eventsRepository.applyStageAction(request);
+    const result = this.eventsRepository.applyStageAction(request);
     await this.eventsRepository.flushToIndexedDb();
-    return record;
+    return result;
   }
 
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
