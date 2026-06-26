@@ -1,5 +1,5 @@
 @if (shouldShowPanel()) {
-<section class="event-policies-panel">
+<section class="event-policies-panel" [class.is-on]="effectivePanelEnabled()" [class.is-off]="!effectivePanelEnabled()">
   <div class="event-policies-panel-head">
     <div class="event-policies-panel-title-wrap">
       <span class="event-policies-panel-title">
@@ -10,7 +10,20 @@
       <p class="event-policies-panel-subtitle">{{ panelSubtitle() }}</p>
       }
     </div>
+    @if (!readOnly) {
+    <button
+      type="button"
+      class="event-policies-toggle"
+      [class.is-on]="effectivePanelEnabled()"
+      [attr.aria-pressed]="effectivePanelEnabled()"
+      (click)="togglePoliciesEnabled($event)"
+    >
+      <mat-icon>{{ effectivePanelEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      <span>{{ effectivePanelEnabled() ? 'On' : 'Off' }}</span>
+    </button>
+    }
   </div>
+  @if (effectivePanelEnabled()) {
   <div class="event-policies-panel-body">
     <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
       <mat-icon>gavel</mat-icon>
@@ -38,6 +51,7 @@
       </section>
     </div>
   </div>
+  }
 </section>
 }
 

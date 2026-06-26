@@ -19,6 +19,7 @@ export interface ConfirmationDialogLocalConfig {
   confirmLabel?: string;
   busyConfirmLabel?: string;
   confirmTone?: ConfirmationDialogTone;
+  confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
   busy?: boolean;
@@ -36,6 +37,7 @@ type RenderedConfirmationDialogState = {
   confirmLabel: string;
   busyConfirmLabel: string;
   confirmTone: ConfirmationDialogTone;
+  confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
   busy: boolean;
@@ -83,6 +85,7 @@ export class ConfirmationDialogComponent {
         confirmLabel,
         busyConfirmLabel: dialog.busyConfirmLabel?.trim() || confirmLabel,
         confirmTone: dialog.confirmTone ?? 'accent',
+        confirmPalette: dialog.confirmPalette ?? null,
         allowBackdropClose: dialog.allowBackdropClose !== false,
         allowEscapeClose: dialog.allowEscapeClose !== false,
         busy: dialog.busy === true,
@@ -103,8 +106,19 @@ export class ConfirmationDialogComponent {
     return state.busy ? 'loading' : 'error';
   }
 
-  protected confirmMenuItems(state: RenderedConfirmationDialogState): readonly AppMenuItem<string>[] {
-    return [{
+  protected dialogActionItems(state: RenderedConfirmationDialogState): readonly AppMenuItem<string>[] {
+    const items: AppMenuItem<string>[] = [];
+    if (state.cancelLabel) {
+      items.push({
+        id: 'cancel',
+        label: state.cancelLabel,
+        layout: 'action',
+        palette: 'slate',
+        disabled: state.busy,
+        ariaLabel: state.cancelLabel
+      });
+    }
+    items.push({
       id: 'confirm',
       label: this.confirmText(state),
       icon: state.busy ? 'hourglass_empty' : undefined,
@@ -119,14 +133,16 @@ export class ConfirmationDialogComponent {
             perimeter: state.ringPerimeter
           }
         : null
-    }];
+    });
+    return items;
   }
 
-  protected onConfirmMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id !== 'confirm') {
-      return;
+  protected onDialogActionSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id === 'cancel') {
+      this.cancel(event.sourceEvent);
+    } else if (event.id === 'confirm') {
+      this.confirm(event.sourceEvent);
     }
-    this.confirm(event.sourceEvent);
   }
 
   protected closeFromBackdrop(event: Event): void {
@@ -168,6 +184,9 @@ export class ConfirmationDialogComponent {
     if (state.errorMessage) {
       return 'danger';
     }
+    if (state.confirmPalette) {
+      return state.confirmPalette;
+    }
     if (state.confirmTone === 'danger') {
       return 'danger';
     }
@@ -186,6 +205,7 @@ export class ConfirmationDialogComponent {
       confirmLabel: state.confirmLabel,
       busyConfirmLabel: state.busyConfirmLabel,
       confirmTone: state.confirmTone,
+      confirmPalette: state.confirmPalette,
       allowBackdropClose: state.allowBackdropClose,
       allowEscapeClose: state.allowEscapeClose,
       busy: state.busy,

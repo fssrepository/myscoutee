@@ -20,7 +20,6 @@ import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
-import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -121,7 +120,6 @@ interface SelectedChatNavigationState {
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesContext = inject(ActivitiesPopupStateService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly chatsService = inject(ChatsService);
@@ -679,8 +677,18 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatSubEvent(event?: Event): void {
     event?.stopPropagation();
-    this.openSelectedChatEvent();
-    this.eventEditorService.requestOpenSubEventsPopup();
+    this.chatThreadSmartList?.closeMenu();
+    const state = this.selectedChatNavigationState;
+    const eventId = `${state?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    this.popupCtx.openEventSubeventsListPopup({
+      eventId,
+      target: state?.eventTarget ?? 'events',
+      title: state?.eventTitle ?? this.session()?.item.title ?? null,
+      canEdit: false
+    });
   }
 
   protected openSelectedChatGroup(event?: Event): void {

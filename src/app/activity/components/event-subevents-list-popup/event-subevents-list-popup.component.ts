@@ -7,9 +7,11 @@ import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import {
   ActivityEventDetailDTO,
+  type ActivityEventStageActionResultDTO,
   type ActivityEventSubEventsQueryDTO,
   type ActivityEventSubEventRuntimeDTO
 } from '../../../shared/core/contracts/activity.interface';
+import type { EventTournamentStageDTO } from '../../../shared/core/contracts/event.interface';
 import {
   AppMenuComponent,
   InfoCardComponent,
@@ -24,9 +26,16 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import { AppContext, AppPopupContext } from '../../../shared/ui/context';
-import { EventSubeventRuntimeInfoCardConverter } from '../../../shared/ui/converters';
+import {
+  EventSubeventRuntimeInfoCardConverter,
+  EventSubeventRuntimeMenuConverter,
+  type EventSubeventRuntimeMenuContext,
+  type EventSubeventRuntimeMenuItemId
+} from '../../../shared/ui/converters';
 import { EventsService } from '../../../shared/core';
-import { EventSubeventsListPopupStateService } from '../../services/event-subevents-list-popup-state.service';
+import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
+import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
@@ -44,6 +53,7 @@ interface EventSubeventsSlotSection {
   startAt: string | null;
   endAt: string | null;
   tone: EventSubeventsSlotTone;
+  isSlot: boolean;
   items: ActivityEventSubEventRuntimeDTO[];
 }
 
@@ -62,8 +72,9 @@ interface EventSubeventsSlotSection {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsListPopupComponent {
-  protected readonly state = inject(EventSubeventsListPopupStateService);
   private readonly eventsService = inject(EventsService);
+  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly confirmationDialogService = inject(ConfirmationDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -142,6 +153,25 @@ export class EventSubeventsListPopupComponent {
       headerControls: true
     },
     groupBy: item => this.slotHeaderLabel(item),
+    menuItems: context => context.item
+      ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
+      : [],
+    trackBy: (_index, item) => item.runtimeId
+  };
+
+  private readonly flatSubEventsSmartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
+    pageSize: 120,
+    defaultView: 'list',
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    emptyLabel: 'No sub events in this event',
+    emptyDescription: '',
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'proximity',
+    menuItems: context => context.item
+      ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
+      : [],
     trackBy: (_index, item) => item.runtimeId
   };
 
@@ -152,7 +182,7 @@ export class EventSubeventsListPopupComponent {
   constructor() {
     this.syncMobileViewFromViewport();
     effect(() => {
-      const request = this.state.request();
+      const request = this.popupCtx.eventSubeventsListPopup();
       if (!request) {
         this.lastLoadedEventId = '';
         this.loadedEventId = '';
@@ -192,8 +222,12 @@ export class EventSubeventsListPopupComponent {
     this.syncMobileViewFromViewport();
   }
 
+  protected isOpen(): boolean {
+    return Boolean(this.popupCtx.eventSubeventsListPopup());
+  }
+
   protected close(): void {
-    this.state.close();
+    this.popupCtx.closeEventSubeventsListPopup();
   }
 
   protected popupTitle(): string {
@@ -201,7 +235,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected popupSubtitle(): string {
-    const requestTitle = this.state.request()?.title ?? '';
+    const requestTitle = this.popupCtx.eventSubeventsListPopup()?.title ?? '';
     return this.event?.title || requestTitle || 'Event';
   }
 
@@ -261,7 +295,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected contextMenuItems(): readonly AppMenuItem<EventSubeventsListContextAction>[] {
-    const canEdit = this.state.request()?.canEdit === true;
+    const canEdit = this.popupCtx.eventSubeventsListPopup()?.canEdit === true;
     const memberCount = this.eventMembersCount();
     return [
       {
@@ -270,7 +304,7 @@ export class EventSubeventsListPopupComponent {
         icon: canEdit ? 'edit' : 'visibility',
         palette: canEdit ? 'amber' : 'teal',
         surface: 'tinted',
-        layout: 'pill'
+        layout: 'action'
       },
       {
         id: 'members',
@@ -294,7 +328,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected openEventEditor(): void {
-    const request = this.state.request();
+    const request = this.popupCtx.eventSubeventsListPopup();
     if (!request) {
       return;
     }
@@ -317,7 +351,7 @@ export class EventSubeventsListPopupComponent {
       ownerId: event.id,
       ownerType: 'event',
       subtitle: event.title,
-      canManage: this.state.request()?.canEdit === true,
+      canManage: this.popupCtx.eventSubeventsListPopup()?.canEdit === true,
       acceptedMembers: event.acceptedMembers,
       pendingMembers: event.pendingMembers,
       capacityTotal: event.capacityTotal
@@ -361,11 +395,288 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected cardFor(item: ActivityEventSubEventRuntimeDTO, groupLabel: string | null): InfoCardData {
+    const sequence = this.runtimeSequence(item);
     return EventSubeventRuntimeInfoCardConverter.convert(item, {
       event: this.event,
       mode: this.event?.mode,
-      groupLabel
+      groupLabel,
+      sequenceNumber: sequence.number,
+      sequenceTotal: sequence.total,
+      isStageActive: this.isRuntimeStageActive(item),
+      isStageScheduled: this.isRuntimeStageScheduled(item),
+      isStageBlocked: this.isRuntimeStageBlocked(item),
+      hasMenuOptions: true,
+      menuTitle: item.name,
+      menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
+        event: this.event,
+        mode: this.event?.mode
+      })
     });
+  }
+
+  protected subEventMenuContext(item: ActivityEventSubEventRuntimeDTO): { runtimeId: string } {
+    return { runtimeId: item.runtimeId };
+  }
+
+  protected subEventMenuItems(
+    item: ActivityEventSubEventRuntimeDTO
+  ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
+    const sequence = this.runtimeSequence(item);
+    return EventSubeventRuntimeMenuConverter.convert(item, {
+      event: this.event,
+      mode: this.event?.mode,
+      canManageTournament: this.canManageRuntimeActions(),
+      sourceId: this.runtimeActionSourceId(item),
+      subEventIndex: this.runtimeSourceIndex(item),
+      stageNumber: sequence.number,
+      isStageActive: this.isRuntimeStageActive(item),
+      canStartStage: this.canStartRuntimeStage(item),
+      siblingItems: this.runtimeSiblings(item),
+      nowMs: Date.now()
+    });
+  }
+
+  protected onSubEventMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const menuEvent = event as AppMenuItemSelectEvent<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>;
+    const context = menuEvent.context;
+    if (!context) {
+      return;
+    }
+    menuEvent.sourceEvent.stopPropagation();
+    switch (context.scope) {
+      case 'stage-status':
+        this.requestStageStatusAction(context);
+        return;
+      case 'stage-dashboard':
+        this.openTournamentGroupsPopup(context.item, menuEvent.sourceEvent);
+        return;
+      case 'resource':
+        this.openSubEventResourcePopup(context.resourceType, context.item, menuEvent.sourceEvent);
+        return;
+      default:
+        return;
+    }
+  }
+
+  private requestStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): void {
+    if (!this.canManageRuntimeActions()) {
+      return;
+    }
+    this.confirmationDialogService.open({
+      title: context.title,
+      message: context.description,
+      cancelLabel: 'Cancel',
+      confirmLabel: context.confirmLabel,
+      busyConfirmLabel: context.busyLabel,
+      confirmTone: context.destructive ? 'danger' : 'accent',
+      confirmPalette: context.confirmPalette,
+      failureMessage: 'Action failed.',
+      onConfirm: async () => {
+        await this.applyStageStatusAction(context);
+      }
+    });
+  }
+
+  private async applyStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): Promise<void> {
+    const userId = this.activeUserId();
+    const sourceId = `${context.sourceId ?? ''}`.trim();
+    const action = `${context.action ?? ''}`.trim();
+    if (!userId || !sourceId || !action) {
+      throw new Error('Missing stage action target.');
+    }
+    const result = await this.eventsService.applyStageAction({
+      userId,
+      sourceId,
+      subEventId: context.subEventId,
+      subEventIndex: context.subEventIndex,
+      action,
+      reason: context.reason
+    });
+    if (!result) {
+      throw new Error('Stage action was not applied.');
+    }
+    this.patchRuntimeStageActionResult(context.item, result);
+  }
+
+  private patchRuntimeStageActionResult(
+    item: ActivityEventSubEventRuntimeDTO,
+    result: ActivityEventStageActionResultDTO
+  ): void {
+    const resultId = `${result.subEventId ?? ''}`.trim();
+    const itemId = `${item.id ?? ''}`.trim();
+    const index = this.runtimeSourceIndex(item);
+    if (resultId && itemId && resultId !== itemId) {
+      return;
+    }
+    if (!resultId && Number.isFinite(Number(result.subEventIndex)) && Math.trunc(Number(result.subEventIndex)) !== index) {
+      return;
+    }
+    item.stageStatus = `${result.stageStatus ?? ''}`.trim() || item.stageStatus;
+    item.stageStatusReason = `${result.stageStatusReason ?? ''}`.trim() || null;
+    item.stageStatusUpdatedAt = `${result.stageStatusUpdatedAt ?? ''}`.trim() || null;
+    item.stageFinalizedAt = `${result.stageFinalizedAt ?? ''}`.trim() || null;
+    item.stageFinalizedByUserId = `${result.stageFinalizedByUserId ?? ''}`.trim() || null;
+    if (this.event && result.autoInviter !== undefined && result.autoInviter !== null) {
+      this.event.autoInviter = result.autoInviter === true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private openSubEventResourcePopup(
+    type: SubEventResourceFilter,
+    item: ActivityEventSubEventRuntimeDTO,
+    event: Event
+  ): void {
+    event.stopPropagation();
+    const ownerId = this.runtimeActionSourceId(item);
+    if (!ownerId) {
+      return;
+    }
+    this.eventEditorService.requestSubEventResourcePopup({
+      type,
+      ownerId,
+      parentTitle: this.popupSubtitle(),
+      subEvent: {
+        ...item,
+        id: `${item.id ?? ''}`.trim() || item.runtimeId
+      }
+    });
+  }
+
+  private openTournamentGroupsPopup(item: ActivityEventSubEventRuntimeDTO, event: Event): void {
+    event.stopPropagation();
+    const eventId = `${item.parentEventId ?? this.event?.id ?? this.runtimeActionSourceId(item)}`.trim();
+    const slotId = `${item.slotSourceId ?? ''}`.trim() || null;
+    if (!eventId) {
+      return;
+    }
+    this.popupCtx.openEventTournamentGroupsPopup({
+      eventId,
+      slotId,
+      title: this.popupSubtitle(),
+      canManage: this.canManageRuntimeActions(),
+      stages: this.runtimeSiblings(item).map((stage, index) => this.runtimeTournamentStage(stage, index)),
+      selectedStageId: `${item.id ?? ''}`.trim() || null
+    });
+  }
+
+  private runtimeTournamentStage(item: ActivityEventSubEventRuntimeDTO, index: number): EventTournamentStageDTO {
+    const stageNumber = Math.max(1, index + 1);
+    return {
+      subEventId: `${item.id ?? `stage-${stageNumber}`}`.trim() || `stage-${stageNumber}`,
+      title: `${item.name ?? `Stage ${stageNumber}`}`.trim() || `Stage ${stageNumber}`,
+      description: `${item.description ?? ''}`.trim(),
+      location: `${item.location ?? ''}`.trim(),
+      startAt: `${item.startAt ?? ''}`.trim(),
+      endAt: `${item.endAt ?? ''}`.trim(),
+      stageNumber,
+      stageStatus: `${item.stageStatus ?? ''}`.trim(),
+      leaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      advancePerGroup: Math.max(0, Math.trunc(Number(item.tournamentAdvancePerGroup) || 0)),
+      groups: []
+    };
+  }
+
+  private runtimeActionSourceId(item: ActivityEventSubEventRuntimeDTO): string {
+    return `${item.slotSourceId ?? item.parentEventId ?? this.event?.id ?? ''}`.trim();
+  }
+
+  private runtimeSourceIndex(item: ActivityEventSubEventRuntimeDTO): number {
+    const siblings = this.runtimeSiblings(item);
+    const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    return index >= 0 ? index : 0;
+  }
+
+  private isRuntimeStageActive(item: ActivityEventSubEventRuntimeDTO): boolean {
+    if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'A') {
+      return false;
+    }
+    if (!this.isRuntimeStageAssignmentOpen(item)) {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return !Number.isFinite(startMs) || startMs <= Date.now();
+  }
+
+  private isRuntimeStageScheduled(item: ActivityEventSubEventRuntimeDTO): boolean {
+    const status = this.normalizeRuntimeStageStatus(item.stageStatus);
+    if (status !== 'A' && status !== 'RS') {
+      return false;
+    }
+    if (!this.isRuntimeStageAssignmentOpen(item)) {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return Number.isFinite(startMs) && startMs > Date.now();
+  }
+
+  private isRuntimeStageBlocked(item: ActivityEventSubEventRuntimeDTO): boolean {
+    if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'RS') {
+      return false;
+    }
+    if (!this.isRuntimeStageAssignmentOpen(item)) {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return Number.isFinite(startMs) && startMs <= Date.now();
+  }
+
+  private canStartRuntimeStage(item: ActivityEventSubEventRuntimeDTO): boolean {
+    return this.normalizeRuntimeStageStatus(item.stageStatus) === 'RS'
+      && this.runtimeSourceIndex(item) === 0
+      && this.isRuntimeStageAssignmentOpen(item);
+  }
+
+  private isRuntimeStageAssignmentOpen(item: ActivityEventSubEventRuntimeDTO): boolean {
+    const siblings = this.runtimeSiblings(item);
+    const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    if (index <= 0) {
+      return true;
+    }
+    return this.normalizeRuntimeStageStatus(siblings[index - 1]?.stageStatus) === 'F';
+  }
+
+  private normalizeRuntimeStageStatus(status: string | null | undefined): 'A' | 'RS' | 'SR' | 'F' | 'S' {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+      return normalized;
+    }
+    return 'A';
+  }
+
+  private runtimeSiblings(item: ActivityEventSubEventRuntimeDTO): readonly ActivityEventSubEventRuntimeDTO[] {
+    const sourceId = this.runtimeActionSourceId(item);
+    const section = this.slotSections.find(candidate =>
+      candidate.items.some(sectionItem => sectionItem.runtimeId === item.runtimeId)
+    );
+    const scoped = section?.items ?? this.items.filter(candidate => this.runtimeActionSourceId(candidate) === sourceId);
+    return [...scoped].sort((left, right) => this.dateMs(left.startAt) - this.dateMs(right.startAt));
+  }
+
+  private canManageRuntimeActions(): boolean {
+    const event = this.event;
+    const activeUserId = this.activeUserId();
+    if (!event || !activeUserId) {
+      return false;
+    }
+    const creatorId = `${event.creatorUserId ?? event.userId ?? ''}`.trim();
+    const ownerId = `${event.userId ?? ''}`.trim();
+    const adminIds = Array.isArray(event.adminIds) ? event.adminIds.map(id => `${id}`.trim()) : [];
+    return activeUserId === creatorId || activeUserId === ownerId || adminIds.includes(activeUserId);
+  }
+
+  private activeUserId(): string {
+    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+  }
+
+  private invalidateLoadedRuntime(): void {
+    this.loadedEventId = '';
+    this.loadedQueryKey = '';
+    this.loadingEventId = '';
+    this.loadingQueryKey = '';
+    this.loadingPromise = null;
+    this.bumpQuery();
+    this.cdr.markForCheck();
   }
 
   protected trackByRuntimeId(_index: number, item: ActivityEventSubEventRuntimeDTO): string {
@@ -390,7 +701,9 @@ export class EventSubeventsListPopupComponent {
     if (existing) {
       return existing;
     }
-    const config: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = { ...this.baseSlotSectionSmartListConfig };
+    const config: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = section.isSlot
+      ? { ...this.baseSlotSectionSmartListConfig }
+      : { ...this.flatSubEventsSmartListConfig };
     this.slotSectionConfigs.set(sectionId, config);
     return config;
   }
@@ -398,7 +711,7 @@ export class EventSubeventsListPopupComponent {
   private async loadSubEventsPageResult(
     query: ListQuery<EventSubeventsListFilters>
   ): Promise<PageResult<EventSubeventsSlotSection>> {
-    const eventId = this.state.request()?.eventId.trim() ?? '';
+    const eventId = this.popupCtx.eventSubeventsListPopup()?.eventId.trim() ?? '';
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
@@ -442,7 +755,7 @@ export class EventSubeventsListPopupComponent {
     this.cdr.markForCheck();
     this.loadingPromise = (async () => {
       const result = await this.eventsService.loadSubEventsById(userId, eventId, this.subEventsLoadQuery(eventId, query));
-      if (this.state.request()?.eventId !== eventId) {
+      if (this.popupCtx.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
       this.event = result?.event ?? null;
@@ -478,6 +791,18 @@ export class EventSubeventsListPopupComponent {
     };
   }
 
+  private runtimeSequence(item: ActivityEventSubEventRuntimeDTO): { number: number; total: number } {
+    const section = this.slotSections.find(candidate =>
+      candidate.items.some(sectionItem => sectionItem.runtimeId === item.runtimeId)
+    );
+    const items = section?.items ?? this.items;
+    const index = items.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    return {
+      number: index >= 0 ? index + 1 : 1,
+      total: Math.max(items.length, 1)
+    };
+  }
+
   private buildSlotSections(): EventSubeventsSlotSection[] {
     const sections = new Map<string, EventSubeventsSlotSection>();
     this.sortedItems().forEach(item => {
@@ -500,6 +825,7 @@ export class EventSubeventsListPopupComponent {
         startAt: item.startAt ?? null,
         endAt: item.endAt ?? item.startAt ?? null,
         tone: this.slotSectionTone(item),
+        isSlot: this.runtimeItemHasSlot(item),
         items: [item]
       });
     });
@@ -553,6 +879,7 @@ export class EventSubeventsListPopupComponent {
       section.title = firstItem ? this.slotSectionTitle(firstItem, index + 1) : `Slot ${index + 1}`;
       section.subtitle = firstItem ? this.slotSectionSubtitle(firstItem) : section.subtitle;
       section.tone = firstItem ? this.slotSectionTone(firstItem) : section.tone;
+      section.isSlot = firstItem ? this.runtimeItemHasSlot(firstItem) : section.isSlot;
       const label = this.joinSlotHeaderLabel(section.title, section.subtitle);
       section.items.forEach(item => this.slotSectionHeaderLabels.set(item.runtimeId, label));
     });
@@ -560,7 +887,8 @@ export class EventSubeventsListPopupComponent {
 
   protected slotSectionToneClass(section: EventSubeventsSlotSection): Record<string, boolean> {
     return {
-      [`event-subevents-slot-section--${section.tone}`]: true
+      [`event-subevents-slot-section--${section.tone}`]: true,
+      'event-subevents-slot-section--flat': !section.isSlot
     };
   }
 
@@ -585,6 +913,10 @@ export class EventSubeventsListPopupComponent {
       return null;
     }
     return (this.event?.slotTemplates ?? []).find(template => `${template.id ?? ''}`.trim() === templateId) ?? null;
+  }
+
+  private runtimeItemHasSlot(item: ActivityEventSubEventRuntimeDTO): boolean {
+    return Boolean(`${item.slotSourceId ?? ''}`.trim() || `${item.slotTemplateId ?? ''}`.trim());
   }
 
   private slotSectionTone(_item: ActivityEventSubEventRuntimeDTO): EventSubeventsSlotTone {

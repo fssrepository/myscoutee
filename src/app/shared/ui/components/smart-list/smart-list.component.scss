@@ -843,7 +843,7 @@
 
 @media (max-width: 760px) {
   .smart-list__surface--fullscreen-with-rating-bar {
-    --smart-list-fullscreen-bottom-offset: calc(4.2rem + env(safe-area-inset-bottom));
+    --smart-list-fullscreen-bottom-offset: calc(5.25rem + env(safe-area-inset-bottom));
   }
 
   .smart-list--calendar.smart-list--month {

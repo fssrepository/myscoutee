@@ -1,6 +1,6 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-cbb5175894be-20260623082853";
-const BUILD_ID = "cbb5175894be-20260623082853";
+const CACHE_VERSION = "build-047f11ea1624-20260626115927";
+const BUILD_ID = "047f11ea1624-20260626115927";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
@@ -21,47 +21,50 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-3TVJSSNF.js",
-  "./chunk-45FFNH2U.js",
-  "./chunk-4LGSEGEM.js",
-  "./chunk-4RVHSQC2.js",
-  "./chunk-4S5GF5US.js",
-  "./chunk-7AC2QLG6.js",
-  "./chunk-7D324M2V.js",
-  "./chunk-7M73AHND.js",
-  "./chunk-APWGMPIO.js",
-  "./chunk-BR6EHVED.js",
-  "./chunk-BVIZ6PAR.js",
-  "./chunk-DFSOZB3L.js",
-  "./chunk-DK5SYN2Y.js",
-  "./chunk-DQ4ZYLIJ.js",
-  "./chunk-DTAQM2H6.js",
-  "./chunk-ETBXR6SE.js",
-  "./chunk-F5DCVTS5.js",
-  "./chunk-F65NU3A4.js",
-  "./chunk-GS2OHDAS.js",
-  "./chunk-H67HLN3U.js",
-  "./chunk-IEZRNP7F.js",
-  "./chunk-LCS3SYDH.js",
-  "./chunk-LOWSJPCK.js",
-  "./chunk-M2NPFT5O.js",
-  "./chunk-MG5NRXDK.js",
-  "./chunk-NKTOHQLP.js",
-  "./chunk-NMIYLXJH.js",
-  "./chunk-OQHUKKED.js",
-  "./chunk-OYME3GD5.js",
-  "./chunk-SI6BGSZQ.js",
-  "./chunk-SLIOCOND.js",
-  "./chunk-TR6QR7WP.js",
-  "./chunk-UKXOLZIM.js",
-  "./chunk-VOOKIX6F.js",
-  "./chunk-WJ3TTZL3.js",
-  "./chunk-XBPAHSPX.js",
-  "./chunk-Z3D7AIEA.js",
-  "./chunk-Z6TNV7MS.js",
-  "./chunk-ZMKKFUAS.js",
-  "./chunk-ZMU35ZMA.js",
-  "./main-ZFJEKV5N.js",
+  "./chunk-47YQUGQL.js",
+  "./chunk-6OKPRQ5V.js",
+  "./chunk-7DWXA4Z6.js",
+  "./chunk-7EFBKIVM.js",
+  "./chunk-AK72JRUA.js",
+  "./chunk-AXTTAB4M.js",
+  "./chunk-B2LV5QTM.js",
+  "./chunk-B3XEMSYU.js",
+  "./chunk-B7MBPQTK.js",
+  "./chunk-BAE4ILXW.js",
+  "./chunk-BRLGFRVE.js",
+  "./chunk-BWNFMSLS.js",
+  "./chunk-CGH5MWL3.js",
+  "./chunk-COA6UXHK.js",
+  "./chunk-EIOZWAQP.js",
+  "./chunk-F6ZCHVTE.js",
+  "./chunk-HAZ23C5R.js",
+  "./chunk-HEW6BU3G.js",
+  "./chunk-HTLQ2MKW.js",
+  "./chunk-HWFI2VUL.js",
+  "./chunk-IEOYSPNX.js",
+  "./chunk-J3TPM2AG.js",
+  "./chunk-JUUF3XTA.js",
+  "./chunk-LF3W7UDY.js",
+  "./chunk-LPG3C3QE.js",
+  "./chunk-PAU5NPSU.js",
+  "./chunk-PBMDWP5L.js",
+  "./chunk-PGSRC43L.js",
+  "./chunk-RFMKCRSG.js",
+  "./chunk-RGID2LAV.js",
+  "./chunk-RZ323KDX.js",
+  "./chunk-T44MON2L.js",
+  "./chunk-TJD54PRC.js",
+  "./chunk-ULNWBPXL.js",
+  "./chunk-VFEO7ULN.js",
+  "./chunk-VPY3J2IZ.js",
+  "./chunk-VQAKDJYP.js",
+  "./chunk-WIGSNIMF.js",
+  "./chunk-Y36IQHJD.js",
+  "./chunk-YH2IZ3UO.js",
+  "./chunk-YKEAUAL2.js",
+  "./chunk-YSOAE34Q.js",
+  "./chunk-ZWJMSFJY.js",
+  "./main-XY34OEIJ.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -172,6 +175,9 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
+    if (url.origin !== self.location.origin && url.hostname !== 'api.qrserver.com') {
+      return;
+    }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
     return;
   }

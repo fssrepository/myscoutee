@@ -260,6 +260,7 @@ export class SubEventResourcePopupController {
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
     resourceTypeLabel: type => APP_STATIC_DATA.subEventResourceFilterLabels[type],
     cards: () => this.resourceCards(),
+    waitForResourceListLoad: () => this.activityResourcesService.waitForResourceRouteDelay(),
     resourceAssetView: () => this.resourceAssetView(),
     standaloneResourceAssetView: () => this.resourceAssetViewReturnToChatRef(),
     assetExploreOnly: () => this.assetExploreOnlyRef(),
@@ -528,10 +529,21 @@ export class SubEventResourcePopupController {
 
   private openFromEventEditorRequest(request: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>): void {
     if (request.type === 'Members') {
+      const group = request.group ?? null;
+      const ownerId = group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim();
+      const groupLabel = group?.groupLabel?.trim() ?? '';
       this.popupCtx.requestActivitiesNavigation({
         type: 'members',
-        ownerId: request.group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim(),
-        ownerType: request.group?.id ? 'group' : 'subEvent'
+        ownerId,
+        ownerType: group?.id ? 'group' : 'subEvent',
+        subtitle: groupLabel || request.subEvent.title?.trim() || request.subEvent.name?.trim() || request.parentTitle?.trim() || 'Event',
+        canManage: group?.canManage === true,
+        viewOnly: group?.id ? group.canManage !== true : undefined,
+        acceptedMembers: Math.max(0, Math.trunc(Number(group?.accepted) || 0)),
+        pendingMembers: Math.max(0, Math.trunc(Number(group?.pending) || 0)),
+        capacityTotal: Math.max(0, Math.trunc(Number(group?.capacityMax) || 0)),
+        members: group?.members,
+        onMembersChanged: group?.onMembersChanged
       });
       return;
     }
@@ -553,7 +565,7 @@ export class SubEventResourcePopupController {
     parentTitle: string,
     type: AppConstants.AssetType,
     rawSubEvent: ContractTypes.SubEventDTO,
-    group: { id?: string | null; groupLabel?: string; pending?: number; capacityMin?: number; capacityMax?: number } | null | undefined,
+    group: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>['group'],
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
   ): ResourcePopupContext {
     const subEvent = this.cloneSubEvent(rawSubEvent);

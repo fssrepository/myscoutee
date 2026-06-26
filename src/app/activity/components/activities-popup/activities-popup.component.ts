@@ -29,7 +29,6 @@ import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, AppPopupContext, type ActivityCounterKey, type ActivityCounters, type ActivityMembersSyncState } from '../../../shared/ui';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { EventSubeventsListPopupStateService } from '../../services/event-subevents-list-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as AppTypes from '../../../shared/core/base/models';
@@ -51,8 +50,6 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { NavigatorService } from '../../../navigator';
-import { EventChatPopupComponent } from '../event-chat-popup/event-chat-popup.component';
-import { EventExplorePopupComponent } from '../event-explore-popup/event-explore-popup.component';
 import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
   ActivitiesChatTemplateComponent, ActivitiesChatsController
@@ -158,9 +155,7 @@ type ActivitiesToolbarMenuContext =
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
-    EventChatPopupComponent,
     EventCheckoutPopupComponent,
-    EventExplorePopupComponent,
     I18nPipe
   ],
   templateUrl: './activities-popup.component.html',
@@ -180,7 +175,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly activitiesService = inject(ActivitiesService);
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
-  protected readonly eventSubeventsListPopupService = inject(EventSubeventsListPopupStateService);
   protected readonly ratesService = inject(RatesService);
   protected readonly activityMembersService = inject(ActivityMembersService);
   protected readonly activityResourcesService = inject(ActivityResourcesService);

@@ -3,6 +3,7 @@ import type { UserSelectorListItemDto } from '../../core/contracts/user.interfac
 import type { ActivityMemberOwnerType, AssetFilterType } from '../../core/common/constants';
 import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
 import type { ActivitiesNavigationRequest } from '../../core/base/models/activities-ui.model';
+import type { EventEditorTarget, EventTournamentStageDTO } from '../../core/contracts/event.interface';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
@@ -29,6 +30,25 @@ export interface NavigatorAssetRequest {
 
 export interface NavigatorEventFeedbackRequest {
   updatedMs: number;
+}
+
+export interface EventSubeventsListPopupRequest {
+  updatedMs: number;
+  eventId: string;
+  target: EventEditorTarget;
+  title: string | null;
+  canEdit: boolean;
+}
+
+export interface EventTournamentGroupsPopupRequest {
+  updatedMs: number;
+  eventId: string;
+  slotId: string | null;
+  title: string | null;
+  canManage: boolean;
+  stages: readonly EventTournamentStageDTO[];
+  selectedStageId?: string | null;
+  selectedGroupId?: string | null;
 }
 
 export interface AdminNavigatorRequest {
@@ -59,6 +79,8 @@ export class AppPopupContext {
   private readonly _navigatorActivitiesRequest = signal<NavigatorActivitiesRequest | null>(null);
   private readonly _navigatorAssetRequest = signal<NavigatorAssetRequest | null>(null);
   private readonly _navigatorEventFeedbackRequest = signal<NavigatorEventFeedbackRequest | null>(null);
+  private readonly _eventSubeventsListPopup = signal<EventSubeventsListPopupRequest | null>(null);
+  private readonly _eventTournamentGroupsPopup = signal<EventTournamentGroupsPopupRequest | null>(null);
   private readonly _adminNavigatorRequest = signal<AdminNavigatorRequest | null>(null);
   private readonly _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
 
@@ -67,6 +89,8 @@ export class AppPopupContext {
   readonly navigatorActivitiesRequest = this._navigatorActivitiesRequest.asReadonly();
   readonly navigatorAssetRequest = this._navigatorAssetRequest.asReadonly();
   readonly navigatorEventFeedbackRequest = this._navigatorEventFeedbackRequest.asReadonly();
+  readonly eventSubeventsListPopup = this._eventSubeventsListPopup.asReadonly();
+  readonly eventTournamentGroupsPopup = this._eventTournamentGroupsPopup.asReadonly();
   readonly adminNavigatorRequest = this._adminNavigatorRequest.asReadonly();
   readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
 
@@ -178,6 +202,53 @@ export class AppPopupContext {
     });
   }
 
+  openEventSubeventsListPopup(payload: {
+    eventId: string;
+    target?: EventEditorTarget;
+    title?: string | null;
+    canEdit?: boolean;
+  }): void {
+    const eventId = `${payload.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    this._eventSubeventsListPopup.set({
+      updatedMs: Date.now(),
+      eventId,
+      target: payload.target ?? 'events',
+      title: `${payload.title ?? ''}`.trim() || null,
+      canEdit: payload.canEdit === true
+    });
+  }
+
+  openEventTournamentGroupsPopup(payload: {
+    eventId: string;
+    slotId?: string | null;
+    title?: string | null;
+    canManage?: boolean | null;
+    stages?: readonly EventTournamentStageDTO[] | null;
+    selectedStageId?: string | null;
+    selectedGroupId?: string | null;
+  }): void {
+    const eventId = `${payload.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    this._eventTournamentGroupsPopup.set({
+      updatedMs: Date.now(),
+      eventId,
+      slotId: `${payload.slotId ?? ''}`.trim() || null,
+      title: `${payload.title ?? ''}`.trim() || null,
+      canManage: payload.canManage === true,
+      stages: (payload.stages ?? []).map(stage => ({
+        ...stage,
+        groups: []
+      })),
+      selectedStageId: `${payload.selectedStageId ?? ''}`.trim() || null,
+      selectedGroupId: `${payload.selectedGroupId ?? ''}`.trim() || null
+    });
+  }
+
   clearNavigatorActivitiesRequest(): void {
     this._navigatorActivitiesRequest.set(null);
   }
@@ -188,6 +259,14 @@ export class AppPopupContext {
 
   clearNavigatorEventFeedbackRequest(): void {
     this._navigatorEventFeedbackRequest.set(null);
+  }
+
+  closeEventSubeventsListPopup(): void {
+    this._eventSubeventsListPopup.set(null);
+  }
+
+  closeEventTournamentGroupsPopup(): void {
+    this._eventTournamentGroupsPopup.set(null);
   }
 
   openAdminNavigatorRequest(popup: AdminNavigatorRequest['popup']): void {

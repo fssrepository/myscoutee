@@ -103,11 +103,145 @@ export class SeedEventBuilder {
     return this.buildSeededCasualSubEvents(source, startMs, endMs, seed, options.activeUserId, eventMax);
   }
 
+  static buildSeededSubEventDefinitionsForEvent(
+    source: ActivityEventSeedItem | ActivityHostingSeedItem,
+    options: {
+      isHosting: boolean;
+      activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
+      hostingDatesById: Record<string, string>;
+      eventDatesById: Record<string, string>;
+      eventCapacityById: Record<string, ContractTypes.EventCapacityRange>;
+      activityCapacityById: Record<string, string>;
+      defaultStartIso: string;
+    }
+  ): ContractTypes.SubEventDefinitionDTO[] {
+    const dateSource = options.activityDateTimeRangeById[source.id];
+    const fallbackStartIso = options.isHosting
+      ? (options.hostingDatesById[source.id] ?? options.defaultStartIso)
+      : (options.eventDatesById[source.id] ?? options.defaultStartIso);
+    const start = new Date(dateSource?.startIso ?? fallbackStartIso);
+    const end = new Date(
+      dateSource?.endIso
+      ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
+    );
+    const startMs = Number.isNaN(start.getTime()) ? SeedScheduleBuilder.anchorDate().getTime() : start.getTime();
+    const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
+      ? (startMs + (4 * 60 * 60 * 1000))
+      : end.getTime();
+    const seed = AppUtils.hashText(`event-subevents:${source.id}:${source.title}:${source.shortDescription}`);
+    const tournamentMode = (seed % 3) === 0;
+    const eventCapacity = options.eventCapacityById[source.id]
+      ?? this.seededEventCapacityRange(source.id, options.activityCapacityById);
+    const eventMax = this.normalizedEventCapacityValue(eventCapacity.max) ?? 0;
+    if (tournamentMode) {
+      return this.buildSeededTournamentSubEventDefinitions(source, startMs, endMs, seed, eventMax);
+    }
+    return this.buildSeededCasualSubEventDefinitions(source, startMs, endMs, seed, eventMax);
+  }
+
   static inferredEventMode(items: readonly ContractTypes.SubEventDTO[]): ContractTypes.EventMode {
     if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
       return 'Tournament';
     }
     return 'Casual';
+  }
+
+  static inferredEventModeFromDefinitions(items: readonly ContractTypes.SubEventDefinitionDTO[]): ContractTypes.EventMode {
+    if (items.some(item => !item.optional && ((item.groups?.length ?? 0) > 0 || (item.tournamentGroupCount ?? 0) > 0))) {
+      return 'Tournament';
+    }
+    return 'Casual';
+  }
+
+  private static buildSeededCasualSubEventDefinitions(
+    source: ActivityEventSeedItem | ActivityHostingSeedItem,
+    startMs: number,
+    endMs: number,
+    seed: number,
+    eventMax: number
+  ): ContractTypes.SubEventDefinitionDTO[] {
+    const count = 2 + (seed % 3);
+    const totalMs = Math.max(2 * 60 * 60 * 1000, endMs - startMs);
+    const slotMs = Math.max(45 * 60 * 1000, Math.floor(totalMs / count));
+    const names = ['Kickoff', 'Main Session', 'Side Activity', 'Wrap-up'];
+    const items: ContractTypes.SubEventDefinitionDTO[] = [];
+    for (let index = 0; index < count; index += 1) {
+      const optional = index > 0 && ((seed + index) % 2 === 0);
+      const stageStartMs = startMs + (index * slotMs);
+      const stageEndMs = index === count - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
+      const slice = 0.45 + (((seed + index) % 4) * 0.12);
+      const capacityMax = Math.max(0, Math.round(eventMax * slice));
+      const capacityMin = optional ? 0 : Math.max(0, Math.min(capacityMax, Math.floor(capacityMax * 0.55)));
+      const durationMinutes = Math.max(30, Math.round((Math.max(stageStartMs + (30 * 60 * 1000), stageEndMs) - stageStartMs) / 60000));
+      items.push({
+        id: `seed-${source.id}-casual-${index + 1}`,
+        name: `${names[index] ?? `Session ${index + 1}`}`,
+        description: `${source.shortDescription} (${index + 1}/${count})`,
+        timing: index === 0 ? 'During' : 'After',
+        offsetMinutes: 0,
+        durationMinutes,
+        groups: [],
+        optional,
+        capacityMin,
+        capacityMax,
+        icon: null
+      });
+    }
+    return items;
+  }
+
+  private static buildSeededTournamentSubEventDefinitions(
+    source: ActivityEventSeedItem | ActivityHostingSeedItem,
+    startMs: number,
+    endMs: number,
+    seed: number,
+    eventMax: number
+  ): ContractTypes.SubEventDefinitionDTO[] {
+    const stageNames = ['Qualifiers', 'Semifinals', 'Finals'];
+    const stageCount = 3;
+    const totalMs = Math.max(3 * 60 * 60 * 1000, endMs - startMs);
+    const slotMs = Math.max(60 * 60 * 1000, Math.floor(totalMs / stageCount));
+    const items: ContractTypes.SubEventDefinitionDTO[] = [];
+
+    for (let index = 0; index < stageCount; index += 1) {
+      const groupCount = Math.max(1, 4 >> index);
+      const basePerGroupMax = Math.max(2, Math.ceil(Math.max(2, eventMax) / Math.max(1, groupCount * (index + 1))));
+      const groups: ContractTypes.SubEventGroupDTO[] = [];
+      for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
+        const groupMax = Math.max(2, basePerGroupMax - (groupIndex % 2));
+        const groupMin = Math.max(0, Math.floor(groupMax * 0.6));
+        groups.push({
+          id: `seed-${source.id}-s${index + 1}-g${groupIndex + 1}`,
+          name: `Group ${String.fromCharCode(65 + groupIndex)}`,
+          capacityMin: groupMin,
+          capacityMax: groupMax,
+          source: 'generated'
+        });
+      }
+      const totals = this.groupCapacityTotals(groups);
+      const stageStartMs = startMs + (index * slotMs);
+      const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
+      const durationMinutes = Math.max(45, Math.round((Math.max(stageStartMs + (45 * 60 * 1000), stageEndMs) - stageStartMs) / 60000));
+      items.push({
+        id: `seed-${source.id}-tournament-${index + 1}`,
+        name: `${stageNames[index]}`,
+        description: `${source.shortDescription} (${stageNames[index]})`,
+        timing: index === 0 ? 'During' : 'After',
+        offsetMinutes: 0,
+        durationMinutes,
+        groups,
+        tournamentGroupCount: groups.length,
+        tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
+        tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
+        tournamentLeaderboardType: (seed + index) % 2 === 0 ? 'Score' : 'Fifa',
+        tournamentAdvancePerGroup: index === stageCount - 1 ? 0 : Math.max(1, 2 - index),
+        optional: false,
+        capacityMin: totals.min,
+        capacityMax: totals.max,
+        icon: 'emoji_events'
+      });
+    }
+    return items;
   }
 
   private static buildSeededCasualSubEvents(

@@ -1,14 +1,16 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
 import type { InfoCardData } from '../../../ui';
 import { AppContext } from '../../../ui/context';
 import { ActivityResourceBuilder, type ActivitySubEventResourceInfoCardOptions } from '../builders';
 import { LocalActivityResourcesService } from '../../local/source/services/activity-resources.service';
 import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { RouteDelayService } from './route-delay.service';
 
 import type * as AppDTOs from '../dto';
+const ACTIVITY_SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -16,10 +18,11 @@ export class ActivityResourcesService extends BaseRouteModeService {
   private readonly localActivityResourcesService = inject(LocalActivityResourcesService);
   private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
   private readonly appCtx = inject(AppContext);
+  private readonly routeDelay = inject(RouteDelayService);
 
   private get activityResourcesService(): LocalActivityResourcesService | HttpActivityResourcesService {
     return this.resolveRouteService(
-      '/activities/events/subevent-resources',
+      ACTIVITY_SUB_EVENT_RESOURCES_ROUTE,
       this.localActivityResourcesService,
       this.httpActivityResourcesService
     );
@@ -27,6 +30,14 @@ export class ActivityResourcesService extends BaseRouteModeService {
 
   activeAssetOwnerUserId(): string {
     return this.normalizeId(this.appCtx.activeUserId());
+  }
+
+  waitForResourceRouteDelay(signal?: AbortSignal): Promise<void> {
+    return this.routeDelay.waitForRouteDelay(
+      ACTIVITY_SUB_EVENT_RESOURCES_ROUTE,
+      signal,
+      'Activity resources request aborted.'
+    );
   }
 
   peekSubEventResourceState(

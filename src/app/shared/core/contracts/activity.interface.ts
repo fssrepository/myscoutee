@@ -71,6 +71,12 @@ export interface IEventsService {
   saveActivityEvent(
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
+  applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
+  queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
+  saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
 }
 
 export interface IChatsService {
@@ -182,6 +188,7 @@ export interface ActivityEventRecord {
   frequency?: string;
   ticketing: boolean;
   pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
   slotTemplates?: EventContracts.EventSlotTemplateDTO[];
@@ -206,6 +213,28 @@ export interface ActivityEventRecord {
   rating: number;
   boost: number;
   affinity: number;
+}
+
+export interface ActivityEventStageActionRequestDTO {
+  userId: string;
+  sourceId: string;
+  subEventId?: string | null;
+  subEventIndex?: number | null;
+  action: string;
+  reason?: string | null;
+}
+
+export interface ActivityEventStageActionResultDTO {
+  sourceId: string;
+  subEventId: string | null;
+  subEventIndex: number;
+  action: string;
+  stageStatus: EventContracts.TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  autoInviter?: boolean | null;
 }
 
 export interface ActivityEventDTO {
@@ -328,6 +357,7 @@ export class ActivityEventDetailDTO {
   frequency = 'One-time';
   ticketing = false;
   pricing: PricingContracts.PricingConfig | null = null;
+  policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
   slotsEnabled = false;
   slotTemplates: EventContracts.EventSlotTemplateDTO[] = [];
@@ -399,6 +429,7 @@ export class ActivityEventDetailDTO {
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
+    this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);
     this.slotsEnabled = update.slotsEnabled ?? this.slotsEnabled;
     this.applySlotTemplates(update.slotTemplates ?? this.slotTemplates);

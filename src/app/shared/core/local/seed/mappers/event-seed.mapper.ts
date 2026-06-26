@@ -35,6 +35,7 @@ export class ActivityEventSeedMapper {
       autoInviter: record.autoInviter,
       frequency: record.frequency,
       pricing: record.pricing,
+      policiesEnabled: record.policiesEnabled,
       policies: record.policies ? [...record.policies] : undefined,
       slotsEnabled: record.slotsEnabled,
       slotTemplates: record.slotTemplates ? record.slotTemplates.map(slot => ({

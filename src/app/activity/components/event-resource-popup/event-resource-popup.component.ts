@@ -9,7 +9,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTimepickerModule } from '@angular/material/timepicker';
-import { of } from 'rxjs';
+import { from } from 'rxjs';
 
 import {
   AppMenuComponent,
@@ -29,11 +29,11 @@ import {
   type CardMenuRequestEvent,
   type CardMenuAction,
   type ListQuery,
+  type PageResult,
   type SmartListConfig,
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
@@ -201,6 +201,7 @@ export interface EventResourcePopupHost {
   resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string;
   resourceTypeLabel(type: AppConstants.SubEventResourceFilter): string;
   cards(): AppDTOs.SubEventResourceCardDTO[];
+  waitForResourceListLoad(): Promise<void>;
   resourceAssetView(): ResourceAssetViewState | null;
   standaloneResourceAssetView(): boolean;
   assetExploreOnly(): boolean;
@@ -388,16 +389,21 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters> = (
     query
-  ) => {
+  ) => from(this.loadResourceSmartListPage(query));
+
+  private async loadResourceSmartListPage(
+    query: ListQuery<ResourceSmartListFilters>
+  ): Promise<PageResult<AppDTOs.SubEventResourceCardDTO>> {
+    await this.host.waitForResourceListLoad();
     const cards = this.host?.cards?.() ?? [];
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const start = page * pageSize;
-    return of({
+    return {
       items: cards.slice(start, start + pageSize),
       total: cards.length
-    });
-  };
+    };
+  }
 
   protected readonly resourceSmartListConfig: SmartListConfig<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters> = {
     pageSize: 18,
@@ -422,7 +428,12 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = (
     query
-  ) => {
+  ) => from(this.loadAssetExploreSmartListPage(query));
+
+  private async loadAssetExploreSmartListPage(
+    query: ListQuery<ResourceSmartListFilters>
+  ): Promise<PageResult<AppDTOs.AssetCardDTO>> {
+    await this.host.waitForResourceListLoad();
     const cards = this.assetExploreCardsForView();
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
@@ -433,11 +444,11 @@ export class EventResourcePopupComponent implements DoCheck {
     const initialPageSize = this.assetExploreInitialPageSize(basePageSize);
     const start = page === 0 ? 0 : initialPageSize + ((page - 1) * basePageSize);
     const size = page === 0 ? Math.max(pageSize, initialPageSize) : pageSize;
-    return of({
+    return {
       items: cards.slice(start, start + size),
       total: cards.length
-    });
-  };
+    };
+  }
 
   protected readonly assetExploreSmartListConfig: SmartListConfig<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = {
     pageSize: 10,

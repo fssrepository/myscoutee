@@ -13,13 +13,19 @@
         }
       </div>
       <div class="popup-header-mobile-status-row">
-        <app-menu
-          class="event-visibility-picker"
-          kind="select"
-          [trigger]="eventVisibilityMenuTrigger()"
-          [items]="eventVisibilityMenuItems()"
-          (itemSelect)="onEventEditorMenuSelect($event)"
-        ></app-menu>
+        <div class="event-visibility-slot">
+          @if (eventVisibilityReady()) {
+          <app-menu
+            class="event-visibility-picker"
+            kind="select"
+            [trigger]="eventVisibilityMenuTrigger()"
+            [items]="eventVisibilityMenuItems()"
+            (itemSelect)="onEventEditorMenuSelect($event)"
+          ></app-menu>
+          } @else {
+          <span class="event-visibility-placeholder" aria-hidden="true"></span>
+          }
+        </div>
       </div>
       <div class="popup-header-mobile-actions-row">
         @if (!eventEditorService.readOnly()) {
@@ -138,21 +144,8 @@
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
+              [(enabled)]="eventDetailDTO.policiesEnabled"
               [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
-            <app-event-subevents-input
-              [open]="showSubEventsPopup"
-              (openChange)="showSubEventsPopup = $event"
-              [ngModel]="eventDetailDTO.subEvents"
-              (ngModelChange)="handleSubEventsChange($event)"
-              [mode]="eventDetailDTO.mode"
-              [readOnly]="eventEditorService.readOnly()"
-              [structureReadOnly]="isPublishedManageMode()"
-              [parentTitle]="eventDetailDTO.title"
-              [ownerId]="editingEventId"
-              [slotsEnabled]="eventFrequencyUsesSlots()"
-              [slotTemplates]="eventDetailDTO.slotTemplates"
-              [bounds]="eventDetailDTO.dateRange"
-            ></app-event-subevents-input>
           </div>
         </div>
       </section>

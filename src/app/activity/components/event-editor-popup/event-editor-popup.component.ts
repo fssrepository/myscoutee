@@ -16,7 +16,7 @@ import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/bu
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  ActivityMembersService, EventsService, ExplanationGuideService, RouteIntervalSchedulerService } from '../../../shared/core';
+  ActivityMembersService, EventsService, ExplanationGuideService, RouteDelayService, RouteIntervalSchedulerService } from '../../../shared/core';
 import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
@@ -40,7 +40,6 @@ import {
   ProgressIndicatorComponent
 } from '../../../shared/ui';
 import { EventSubeventDefinitionsPanelComponent } from '../event-subevent-definitions-panel';
-import { EventSubeventsInputComponent } from '../event-subevents-input';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -76,7 +75,6 @@ interface SlotOverrideEditorState {
     EventSlotsInputComponent,
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
-    EventSubeventsInputComponent,
     PricingEditorInputComponent,
     ProgressIndicatorComponent
   ],
@@ -84,6 +82,7 @@ interface SlotOverrideEditorState {
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
+  private static readonly EVENTS_ROUTE = '/activities/events';
   protected readonly eventEditorService = inject(EventEditorPopupStateService);
   private readonly activitiesContext = inject(ActivitiesPopupStateService);
   private readonly eventsService = inject(EventsService);
@@ -92,13 +91,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   private openSubscription?: Subscription;
   private closeSubscription?: Subscription;
   private editorTarget: ContractTypes.EventEditorTarget = 'events';
-  private lastHandledOpenSubEventsRequest = 0;
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
   private currentSourcePublished = false;
@@ -112,7 +111,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private isDraftAutosavePending = false;
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
+  private eventDetailLoadSequence = 0;
+  private eventImageUrlsCacheKey = '';
+  private eventImageUrlsCache: string[] = [];
   protected readonly isLoadingEventData = signal(false);
+  protected readonly eventVisibilityReady = signal(false);
 
   constructor() {
     effect(() => {
@@ -135,7 +138,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.setEventEditorExplanationContext(isOpen ? 'event.editor' : null);
 
       if (!isOpen) {
-        this.showSubEventsPopup = false;
         this.slotOverrideEditor = null;
         this.resetDraftAutosaveTracking();
         return;
@@ -150,17 +152,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         return;
       }
 
-      this.resetForm(this.editorTarget);
-    });
-
-    effect(() => {
-      const isOpen = this.eventEditorService.isOpen();
-      const openSubEventsRequestNonce = this.eventEditorService.openSubEventsRequestNonce();
-      if (!isOpen || openSubEventsRequestNonce <= this.lastHandledOpenSubEventsRequest) {
+      if (mode === 'edit') {
         return;
       }
-      this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
-      this.showSubEventsPopup = true;
+
+      this.resetForm(this.editorTarget);
     });
 
     effect(() => {
@@ -193,13 +189,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
-      this.showSubEventsPopup = false;
       this.slotOverrideEditor = null;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
-      this.showSubEventsPopup = false;
       this.slotOverrideEditor = null;
+      this.eventDetailLoadSequence += 1;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
       this.resetDraftAutosaveTracking();
@@ -217,7 +212,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventDetailDTO: ActivityEventDetailDTO = this.createEmptyEventDetailDTO();
 
-  showSubEventsPopup = false;
   protected slotOverrideEditor: SlotOverrideEditorState | null = null;
   protected slotOverrideOccurrenceMenuOpen = false;
   isSavePending = false;
@@ -264,9 +258,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   };
 
   close(): void {
-    this.showSubEventsPopup = false;
     this.isSavePending = false;
+    this.eventDetailLoadSequence += 1;
     this.isLoadingEventData.set(false);
+    this.eventVisibilityReady.set(false);
     this.clearEventEditorExplanationContext();
     this.eventEditorService.close();
   }
@@ -309,11 +304,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const capacityMin = this.eventDetailDTO.capacityMin ?? 0;
     const publishedFloor = this.isPublishedManageMode() ? this.publishedCapacityMaxFloor : 0;
     return Math.max(0, capacityMin, publishedFloor);
-  }
-
-  handleSubEventsChange(subEvents: readonly ContractTypes.SubEventDTO[]): void {
-    this.eventDetailDTO.applySubEvents(subEvents);
-    this.syncMainEventBoundsFromSubEvents();
   }
 
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
@@ -363,6 +353,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       frequency: 'One-time',
       ticketing: false,
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      policiesEnabled: false,
       policies: [],
       slotsEnabled: false,
       slotTemplates: [],
@@ -1247,11 +1238,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventImageUrls(): string[] {
     const imageUrl = `${this.eventDetailDTO.imageUrl ?? ''}`.trim();
-    return imageUrl ? [imageUrl] : [];
+    if (this.eventImageUrlsCacheKey !== imageUrl) {
+      this.eventImageUrlsCacheKey = imageUrl;
+      this.eventImageUrlsCache = imageUrl ? [imageUrl] : [];
+    }
+    return this.eventImageUrlsCache;
   }
 
   protected onEventImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
-    this.eventDetailDTO.imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
+    const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
+    this.eventDetailDTO.imageUrl = imageUrl;
+    this.eventImageUrlsCacheKey = imageUrl;
+    this.eventImageUrlsCache = imageUrl ? [imageUrl] : [];
   }
 
   protected eventImageUploadOwnerId(): string {
@@ -1335,10 +1333,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
-    if (this.showSubEventsPopup) {
-      this.showSubEventsPopup = false;
-      return;
-    }
     this.close();
   }
 
@@ -1348,13 +1342,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.draftEventId = EventEditorBuilder.buildCreatedEventEditorId(target);
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(this.draftEventId);
     this.resetForm(target);
+    this.eventVisibilityReady.set(true);
     this.eventEditorService.openCreate();
     void this.refreshCurrentMemberSummary(this.draftEventId);
   }
 
   private async openEditRequest(eventId: string, target: ContractTypes.EventEditorTarget, readOnly: boolean): Promise<void> {
     this.resetEditorContext();
+    this.eventVisibilityReady.set(false);
+    const loadSequence = ++this.eventDetailLoadSequence;
     const activeUserId = this.activeUserId();
+    if (activeUserId) {
+      this.isLoadingEventData.set(true);
+    }
 
     this.editorTarget = target;
     this.editingEventId = eventId;
@@ -1366,11 +1366,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isLoadingEventData.set(true);
-
     try {
-      const eventDetailDTO = await this.eventsService.loadEventDetailById(activeUserId, eventId);
+      const eventDetailDTO = await this.routeDelay.withRequestTimeout(
+        EventEditorPopupComponent.EVENTS_ROUTE,
+        this.eventsService.loadEventDetailById(activeUserId, eventId),
+        'Event editor load timed out.'
+      );
 
+      if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
+        return;
+      }
       this.isLoadingEventData.set(false);
       if (!eventDetailDTO) {
         return;
@@ -1380,8 +1385,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.editingEventId = eventDetailDTO.id;
       this.openEventDetailDTO(eventDetailDTO, readOnly, this.editorTarget);
     } catch {
-      this.isLoadingEventData.set(false);
+      if (this.isCurrentEventDetailLoad(loadSequence, eventId)) {
+        this.isLoadingEventData.set(false);
+      }
     }
+  }
+
+  private isCurrentEventDetailLoad(sequence: number, eventId: string): boolean {
+    return this.eventDetailLoadSequence === sequence
+      && this.eventEditorService.isOpen()
+      && this.editingEventId === eventId;
   }
 
   private openEventDetailDTO(eventDetailDTO: ActivityEventDetailDTO, readOnly: boolean, _target: ContractTypes.EventEditorTarget): void {
@@ -1510,6 +1523,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         ...this.eventDetailDTO,
         topics: [...this.eventDetailDTO.topics],
         pricing: PricingBuilder.clonePricingConfig(this.eventDetailDTO.pricing),
+        policiesEnabled: this.eventDetailDTO.policiesEnabled,
         policies: ActivityEventDetailDTO.normalizePolicies(this.eventDetailDTO.policies),
         slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates),
         subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(this.eventDetailDTO.subEventDefinitions),
@@ -1526,6 +1540,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.publishedCapacityMaxFloor = 0;
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
+    this.eventVisibilityReady.set(false);
   }
 
   private setEventEditorExplanationContext(contextKey: string | null): void {
@@ -1618,6 +1633,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO = dto;
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange();
+    this.eventVisibilityReady.set(true);
     this.seedDraftAutosaveSignature();
   }
 
@@ -1654,6 +1670,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     this.eventDetailDTO.mode = 'Casual';
+    this.eventVisibilityReady.set(true);
     this.seedDraftAutosaveSignature();
   }
 

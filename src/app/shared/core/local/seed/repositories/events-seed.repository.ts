@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import { ActivityEventRecordBuilder } from '../../../base/builders';
 import { SeedEventsBuilder } from '../builders';
 
 @Injectable({
@@ -13,9 +14,9 @@ export class SeedEventsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private initialized = false;
 
-  seedDefaults(): void {
+  seedDefaults(): boolean {
     if (this.initialized) {
-      return;
+      return false;
     }
     const state = this.memoryDb.read();
     const seededRecords = this.buildSeededRecords();
@@ -27,7 +28,7 @@ export class SeedEventsRepository {
         [EVENTS_TABLE_NAME]: seededRecords
       }));
       this.initialized = true;
-      return;
+      return true;
     }
 
     const migration = this.mergeSeededRecords(currentTable, seededRecords);
@@ -38,6 +39,7 @@ export class SeedEventsRepository {
       }));
     }
     this.initialized = true;
+    return migration.changed;
   }
 
   queryItemsByUser(userId: string): ActivityEventRecord[] {
@@ -108,6 +110,16 @@ export class SeedEventsRepository {
     for (const recordKey of seeded.ids) {
       const seededRecord = seeded.byId[recordKey];
       if (!seededRecord || existingIds.has(recordKey)) {
+        if (seededRecord) {
+          const currentRecord = current.byId[recordKey];
+          const migratedRecord = currentRecord
+            ? this.withSeededStructure(currentRecord, seededRecord)
+            : null;
+          if (migratedRecord && !this.sameRecord(currentRecord, migratedRecord)) {
+            nextById[recordKey] = migratedRecord;
+            changed = true;
+          }
+        }
         continue;
       }
       nextById[recordKey] = SeedEventsBuilder.cloneRecord(seededRecord);
@@ -123,5 +135,82 @@ export class SeedEventsRepository {
       },
       changed
     };
+  }
+
+  private withSeededStructure(existing: ActivityEventRecord, seeded: ActivityEventRecord): ActivityEventRecord {
+    const existingSlotTemplates = existing.slotTemplates ?? [];
+    const seededSlotTemplates = seeded.slotTemplates ?? [];
+    const existingDefinitions = existing.subEventDefinitions ?? [];
+    const seededDefinitions = seeded.subEventDefinitions ?? [];
+    const existingSubEvents = existing.subEvents ?? [];
+    const seededSubEvents = seeded.subEvents ?? [];
+    const shouldAdoptSeedDefinitions = existingDefinitions.length === 0 && seededDefinitions.length > 0;
+    const shouldAdoptSeedSubEvents = existingSubEvents.length === 0 && seededSubEvents.length > 0;
+    const shouldAdoptSeedSlots = existingSlotTemplates.length === 0 && seededSlotTemplates.length > 0;
+
+    return ActivityEventRecordBuilder.cloneRecord({
+      ...existing,
+      pricing: existing.pricing ?? seeded.pricing,
+      policiesEnabled: existing.policiesEnabled ?? seeded.policiesEnabled,
+      policies: (existing.policies?.length ?? 0) > 0 ? existing.policies : seeded.policies,
+      slotsEnabled: existing.slotsEnabled ?? seeded.slotsEnabled,
+      slotTemplates: shouldAdoptSeedSlots
+        ? seededSlotTemplates
+        : this.withSeededSlotTemplateDefinitions(existingSlotTemplates, seededSlotTemplates),
+      parentEventId: existing.parentEventId ?? seeded.parentEventId,
+      slotTemplateId: existing.slotTemplateId ?? seeded.slotTemplateId,
+      eventType: existing.eventType ?? seeded.eventType,
+      subEventsEnabled: existing.subEventsEnabled ?? seeded.subEventsEnabled,
+      subEventDefinitions: shouldAdoptSeedDefinitions ? seededDefinitions : existingDefinitions,
+      subEvents: shouldAdoptSeedSubEvents ? seededSubEvents : existingSubEvents,
+      mode: existing.mode ?? seeded.mode
+    });
+  }
+
+  private withSeededSlotTemplateDefinitions(
+    existing: readonly NonNullable<ActivityEventRecord['slotTemplates']>[number][],
+    seeded: readonly NonNullable<ActivityEventRecord['slotTemplates']>[number][]
+  ): ActivityEventRecord['slotTemplates'] {
+    if (existing.length === 0 || seeded.length === 0) {
+      return existing.map(item => ({ ...item }));
+    }
+    const seededById = new Map(seeded.map(item => [item.id, item]));
+    const next = existing.map(item => {
+      const seededItem = seededById.get(item.id);
+      if (!seededItem || (item.subEventDefinitions?.length ?? 0) > 0 || (seededItem.subEventDefinitions?.length ?? 0) === 0) {
+        return { ...item };
+      }
+      return {
+        ...item,
+        subEventDefinitions: seededItem.subEventDefinitions?.map(definition => ({
+          ...definition,
+          groups: (definition.groups ?? []).map(group => ({ ...group }))
+        }))
+      };
+    });
+    const existingIds = new Set(existing.map(item => item.id));
+    for (const seededItem of seeded) {
+      if (!existingIds.has(seededItem.id)) {
+        next.push({
+          ...seededItem,
+          subEventDefinitions: (seededItem.subEventDefinitions ?? []).map(definition => ({
+            ...definition,
+            groups: (definition.groups ?? []).map(group => ({ ...group }))
+          }))
+        });
+      }
+    }
+    return next;
+  }
+
+  private sameRecord(left: ActivityEventRecord, right: ActivityEventRecord): boolean {
+    return JSON.stringify(this.seedMigrationComparableRecord(left)) === JSON.stringify(this.seedMigrationComparableRecord(right));
+  }
+
+  private seedMigrationComparableRecord(record: ActivityEventRecord): ActivityEventRecord {
+    const comparable = ActivityEventRecordBuilder.cloneRecord(record);
+    delete comparable.acceptedMemberUserIds;
+    delete comparable.pendingMemberUserIds;
+    return comparable;
   }
 }

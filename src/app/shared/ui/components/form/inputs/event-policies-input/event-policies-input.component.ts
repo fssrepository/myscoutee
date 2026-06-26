@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, HostListener, Input } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, forwardRef, HostListener, Input, Output } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -35,6 +35,8 @@ export interface EventPoliciesInputConfig {
 export class EventPoliciesInputComponent implements ControlValueAccessor {
   @Input() readOnly = false;
   @Input() config: EventPoliciesInputConfig = {};
+  @Input() enabled = false;
+  @Output() readonly enabledChange = new EventEmitter<boolean>();
 
   protected policies: EventPolicyInputModel[] = [];
   protected workingPolicies: EventPolicyInputModel[] = [];
@@ -85,7 +87,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected shouldShowPanel(): boolean {
-    return !this.readOnly || this.policies.length > 0;
+    return !this.readOnly || this.effectivePanelEnabled();
   }
 
   protected panelTitle(): string {
@@ -93,10 +95,36 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected panelSubtitle(): string {
+    const enabled = this.effectivePanelEnabled();
     return this.resolveConfigValue(
       this.config.subtitle,
-      'Add the rules attendees need to read and approve before joining.'
+      enabled
+        ? 'Add the rules attendees need to read and approve before joining.'
+        : 'Attendees can join without approving event policies.'
     );
+  }
+
+  protected effectivePanelEnabled(): boolean {
+    return this.readOnly ? this.enabled && this.policies.length > 0 : this.enabled;
+  }
+
+  protected togglePoliciesEnabled(event?: Event): void {
+    event?.preventDefault();
+    if (this.readOnly) {
+      return;
+    }
+    const nextEnabled = !this.enabled;
+    this.enabled = nextEnabled;
+    this.enabledChange.emit(nextEnabled);
+    this.onModelTouched();
+    if (!nextEnabled) {
+      this.showPoliciesPopup = false;
+      this.showPolicyEditorPopup = false;
+      this.workingPolicies = [];
+      this.workingPolicyDraft = this.createEmptyPolicyDraft();
+      this.editingPolicyDraftIndex = null;
+    }
+    this.cdr.markForCheck();
   }
 
   protected openPoliciesPopup(event?: Event): void {

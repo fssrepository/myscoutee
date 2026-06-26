@@ -1,4 +1,4 @@
-@if (state.isOpen()) {
+@if (isOpen()) {
 <section class="app-popup event-subevents-list-popup-shell">
   <div class="app-popup-backdrop" (click)="close()"></div>
   <article class="app-popup-panel popup-panel-event-subevents-list" (click)="$event.stopPropagation()">
@@ -63,17 +63,22 @@
             [config]="slotSectionSmartListConfigFor(section)"
             [loadPage]="slotSectionLoadPage(section)"
             [itemTemplate]="subEventTemplate"
+            (menuItemSelect)="onSubEventMenuSelect($event)"
           ></app-smart-list>
         </section>
       </ng-template>
 
-      <ng-template #subEventTemplate let-item let-groupLabel="groupLabel">
+      <ng-template #subEventTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
         <app-info-card
           [card]="cardFor(item, groupLabel)"
+          [useSharedMenu]="true"
           [useSharedMenuTrigger]="false"
+          [sharedMenuContext]="subEventMenuContext(item)"
+          (menuRequest)="openMenu($event)"
         ></app-info-card>
       </ng-template>
     </div>
   </article>
+
 </section>
 }

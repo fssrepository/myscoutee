@@ -73,12 +73,10 @@ function buildCheckoutDemoPricing(
   return pricing;
 }
 
-function buildCheckoutDemoSubEvents(options: {
+function buildCheckoutDemoSubEventDefinitions(options: {
   sourceId: string;
-  firstSlotStartAt: string;
-  firstSlotEndAt: string;
   includePaidOptional: boolean;
-}): ContractTypes.SubEventDTO[] {
+}): ContractTypes.SubEventDefinitionDTO[] {
   const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
   paidAddOnPricing.enabled = options.includePaidOptional;
@@ -101,19 +99,13 @@ function buildCheckoutDemoSubEvents(options: {
       id: `${options.sourceId}-main-session`,
       name: 'Main Session',
       description: 'Included in the base event price and aligned to the selected slot.',
-      startAt: options.firstSlotStartAt,
-      endAt: options.firstSlotEndAt,
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: 75,
       optional: false,
       capacityMin: 0,
       capacityMax: 24,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      pricing: includedPricing,
-      slotStartOffsetMinutes: 0,
-      slotDurationMinutes: 75
+      pricing: includedPricing
     },
     {
       id: `${options.sourceId}-vip-lounge`,
@@ -121,42 +113,139 @@ function buildCheckoutDemoSubEvents(options: {
       description: options.includePaidOptional
         ? 'Optional add-on with a separate basket line and accommodation request support.'
         : 'Optional free add-on for the slot-based join flow.',
-      startAt: options.firstSlotStartAt,
-      endAt: options.firstSlotEndAt,
+      timing: 'During',
+      offsetMinutes: 20,
+      durationMinutes: 45,
       optional: true,
       capacityMin: 0,
       capacityMax: 10,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      accommodationCapacityMin: 0,
-      accommodationCapacityMax: options.includePaidOptional ? 4 : 0,
-      pricing: paidAddOnPricing,
-      slotStartOffsetMinutes: 20,
-      slotDurationMinutes: 45
+      pricing: paidAddOnPricing
     },
     {
       id: `${options.sourceId}-ride-share`,
       name: 'Ride-share Pickup',
       description: 'Optional transport-style add-on so checkout can show an asset request path too.',
-      startAt: options.firstSlotStartAt,
-      endAt: options.firstSlotEndAt,
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: 20,
       optional: true,
       capacityMin: 0,
       capacityMax: 12,
-      membersAccepted: 0,
-      membersPending: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      carsCapacityMin: 0,
-      carsCapacityMax: 3,
-      pricing: transportPricing,
-      slotStartOffsetMinutes: 0,
-      slotDurationMinutes: 20
+      pricing: transportPricing
     }
+  ];
+}
+
+function buildTournamentDemoGroups(
+  sourceId: string,
+  stageIndex: number,
+  groups: readonly { name: string; min: number; max: number }[]
+): ContractTypes.SubEventGroupDTO[] {
+  return groups.map((group, groupIndex) => ({
+    id: `${sourceId}-stage-${stageIndex + 1}-group-${groupIndex + 1}`,
+    name: group.name,
+    capacityMin: group.min,
+    capacityMax: group.max,
+    source: 'manual'
+  }));
+}
+
+function buildTournamentDemoStageDefinition(options: {
+  sourceId: string;
+  index: number;
+  name: string;
+  description: string;
+  timing: ContractTypes.SubEventDefinitionTiming;
+  offsetMinutes: number;
+  durationMinutes: number;
+  groups: readonly { name: string; min: number; max: number }[];
+  leaderboardType: ContractTypes.TournamentLeaderboardType;
+  advancePerGroup: number;
+}): ContractTypes.SubEventDefinitionDTO {
+  const groups = buildTournamentDemoGroups(options.sourceId, options.index, options.groups);
+  const capacityMin = groups.reduce((total, group) => total + Math.max(0, Number(group.capacityMin) || 0), 0);
+  const capacityMax = groups.reduce((total, group) => total + Math.max(0, Number(group.capacityMax) || 0), 0);
+  return {
+    id: `${options.sourceId}-stage-${options.index + 1}`,
+    name: options.name,
+    description: options.description,
+    timing: options.timing,
+    offsetMinutes: options.offsetMinutes,
+    durationMinutes: options.durationMinutes,
+    location: 'Seattle · Demo Court',
+    groups,
+    tournamentGroupCount: groups.length,
+    tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
+    tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
+    tournamentLeaderboardType: options.leaderboardType,
+    tournamentAdvancePerGroup: options.advancePerGroup,
+    optional: false,
+    capacityMin,
+    capacityMax,
+    icon: 'emoji_events'
+  };
+}
+
+function buildActiveTournamentDemoSubEventDefinitions(
+  sourceId: string,
+  timingPreset: 'default' | 'stage-one-active' | 'stage-two-active' = 'default'
+): ContractTypes.SubEventDefinitionDTO[] {
+  const timings = (() => {
+    switch (timingPreset) {
+      case 'stage-one-active':
+        return { qualifierMinutes: 90, semifinalOffsetMinutes: 10, semifinalMinutes: 60, finalOffsetMinutes: 10, finalMinutes: 45 };
+      case 'stage-two-active':
+        return { qualifierMinutes: 10, semifinalOffsetMinutes: 5, semifinalMinutes: 75, finalOffsetMinutes: 10, finalMinutes: 45 };
+      default:
+        return { qualifierMinutes: 50, semifinalOffsetMinutes: 10, semifinalMinutes: 60, finalOffsetMinutes: 10, finalMinutes: 45 };
+    }
+  })();
+
+  return [
+    buildTournamentDemoStageDefinition({
+      sourceId,
+      index: 0,
+      name: 'Qualifiers',
+      description: 'Two balanced groups collect opening-round scores for the slot.',
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: timings.qualifierMinutes,
+      groups: [
+        { name: 'Group A', min: 2, max: 4 },
+        { name: 'Group B', min: 2, max: 4 }
+      ],
+      leaderboardType: 'Score',
+      advancePerGroup: 2
+    }),
+    buildTournamentDemoStageDefinition({
+      sourceId,
+      index: 1,
+      name: 'Semifinals',
+      description: 'Advancing players split into two shorter knockout groups.',
+      timing: 'After',
+      offsetMinutes: timings.semifinalOffsetMinutes,
+      durationMinutes: timings.semifinalMinutes,
+      groups: [
+        { name: 'Court 1', min: 2, max: 3 },
+        { name: 'Court 2', min: 2, max: 3 }
+      ],
+      leaderboardType: 'Fifa',
+      advancePerGroup: 1
+    }),
+    buildTournamentDemoStageDefinition({
+      sourceId,
+      index: 2,
+      name: 'Final',
+      description: 'The top players finish the slot with a compact final stage.',
+      timing: 'After',
+      offsetMinutes: timings.finalOffsetMinutes,
+      durationMinutes: timings.finalMinutes,
+      groups: [
+        { name: 'Final Table', min: 2, max: 4 }
+      ],
+      leaderboardType: 'Score',
+      advancePerGroup: 0
+    })
   ];
 }
 
@@ -388,6 +477,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       acceptedMemberUserIds: ['u2', 'u20', 'u21', 'u22'],
       pendingMemberUserIds: [],
       pricing: buildCheckoutDemoPricing(32),
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
       topics: ['Food', 'Small Group', 'Waitlist'],
       rating: 9.4,
@@ -434,11 +524,10 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
           startAt: '2026-04-12T20:15:00'
         }
       ]),
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
-      subEvents: buildCheckoutDemoSubEvents({
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-paid-slots',
-        firstSlotStartAt: '2026-04-12T18:30:00',
-        firstSlotEndAt: '2026-04-12T20:00:00',
         includePaidOptional: true
       }),
       rating: 9.2,
@@ -491,6 +580,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       capacityTotal: 4,
       acceptedMemberUserIds: ['u3', 'u23', 'u24', 'u25'],
       pendingMemberUserIds: [],
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
       topics: ['Music', 'Culture', 'Waitlist'],
       rating: 9.0,
@@ -517,11 +607,10 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       acceptedMemberUserIds: ['u43', 'u44'],
       pendingMemberUserIds: ['u45'],
       pricing: buildCheckoutDemoPricing(22),
+      policiesEnabled: true,
       policies: buildCheckoutDemoPolicies(),
-      subEvents: buildCheckoutDemoSubEvents({
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-paid-policy',
-        firstSlotStartAt: '2026-04-13T19:10:00',
-        firstSlotEndAt: '2026-04-13T20:30:00',
         includePaidOptional: true
       }),
       rating: 9.1,
@@ -559,14 +648,61 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
         }
       ],
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
-      subEvents: buildCheckoutDemoSubEvents({
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-free-slots',
-        firstSlotStartAt: '2026-04-14T13:00:00',
-        firstSlotEndAt: '2026-04-14T14:15:00',
         includePaidOptional: false
       }),
       rating: 8.9,
       boost: 97
+    },
+    {
+      id: 'active-tournament-slots',
+      avatar: 'NE',
+      title: 'Tournament Demo · Active Slot Cup',
+      shortDescription: 'Published tournament seed with two playable slots and three staged rounds.',
+      timeframe: 'Feb 20 · multiple slots',
+      activity: 5,
+      status: 'A',
+      isAdmin: true,
+      creatorUserId: 'u3',
+      startAt: '2026-02-18T04:00:00',
+      endAt: '2026-02-18T08:30:00',
+      frequency: 'One-time',
+      ticketing: false,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Seattle · Tournament Demo Court',
+      capacityMin: 4,
+      capacityMax: 16,
+      capacityTotal: 16,
+      acceptedMemberUserIds: ['u3', 'u5', 'u18', 'u19', 'u20', 'u21', 'u22', 'u23'],
+      pendingMemberUserIds: ['u24', 'u25'],
+      slotsEnabled: true,
+      slotTemplates: [
+        {
+          id: 'active-tournament-slots-evening',
+          startAt: '2026-02-18T04:30:00',
+          subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions(
+            'active-tournament-slots-evening',
+            'stage-one-active'
+          )
+        },
+        {
+          id: 'active-tournament-slots-late',
+          startAt: '2026-02-18T05:00:00',
+          subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions(
+            'active-tournament-slots-late',
+            'stage-two-active'
+          )
+        }
+      ],
+      pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      subEventsEnabled: true,
+      subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions('active-tournament-slots'),
+      mode: 'Tournament',
+      topics: ['Tournament', 'Games', 'Competition'],
+      rating: 9.6,
+      boost: 100
     }
   ]
 };
@@ -695,6 +831,7 @@ interface ActivityEventSeedOverrides {
   pendingMemberUserIds?: string[];
   topics?: string[];
   pricing?: ContractTypes.PricingConfig | null;
+  policiesEnabled?: boolean;
   policies?: ContractTypes.EventPolicyDTO[];
   slotsEnabled?: boolean;
   slotTemplates?: ContractTypes.EventSlotTemplateDTO[];
@@ -717,6 +854,7 @@ export class SeedEventsBuilder {
         ...item,
         acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
         pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
+        policiesEnabled: item.policiesEnabled === true,
         policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies
       }))])
     );
@@ -732,6 +870,7 @@ export class SeedEventsBuilder {
         items.map(item => ({
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          policiesEnabled: item.policiesEnabled === true,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
@@ -802,6 +941,7 @@ export class SeedEventsBuilder {
         items.map(item => ({
           ...item,
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          policiesEnabled: item.policiesEnabled === true,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
           subEventsEnabled: item.subEventsEnabled,
@@ -1170,7 +1310,7 @@ export class SeedEventsBuilder {
     items: readonly ContractTypes.SubEventDefinitionDTO[] | undefined,
     occurrenceStart: Date
   ): ContractTypes.SubEventDTO[] {
-    return this.seedSubEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+    const subEvents = this.seedSubEventDefinitionTimeline(items).map(({ item, startOffsetMinutes, durationMinutes }, index) => {
       const startAt = new Date(occurrenceStart.getTime() + (startOffsetMinutes * 60 * 1000));
       const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
       return {
@@ -1199,6 +1339,46 @@ export class SeedEventsBuilder {
         slotDurationMinutes: durationMinutes
       };
     });
+    return this.applySeedTournamentStageLifecycle(subEvents);
+  }
+
+  private static applySeedTournamentStageLifecycle(
+    items: readonly ContractTypes.SubEventDTO[]
+  ): ContractTypes.SubEventDTO[] {
+    const nowMs = Date.now();
+    return items.map((item, index) => {
+      if (!this.isSeedTournamentStage(item)) {
+        return item;
+      }
+      const startMs = Date.parse(`${item.startAt ?? ''}`);
+      const endMs = Date.parse(`${item.endAt ?? ''}`);
+      const stageStatus: ContractTypes.TournamentStageStatus = Number.isFinite(endMs) && endMs <= nowMs
+        ? 'F'
+        : index === 0 && Number.isFinite(startMs) && startMs > nowMs
+          ? 'RS'
+          : 'A';
+      const stageStatusReason = stageStatus === 'F'
+        ? 'stage-finalized'
+        : stageStatus === 'RS'
+          ? 'awaiting-tournament-start'
+          : null;
+      return {
+        ...item,
+        stageStatus,
+        stageStatusReason,
+        stageStatusUpdatedAt: stageStatus === 'F'
+          ? item.endAt
+          : stageStatus === 'A'
+            ? item.startAt
+            : new Date(nowMs).toISOString(),
+        stageFinalizedAt: stageStatus === 'F' ? item.endAt : null,
+        stageFinalizedByUserId: null
+      };
+    });
+  }
+
+  private static isSeedTournamentStage(item: ContractTypes.SubEventDTO): boolean {
+    return !item.optional && ((item.groups?.length ?? 0) > 0 || (item.tournamentGroupCount ?? 0) > 0);
   }
 
   private static materializeSeedSubEventsForSlotOccurrence(
@@ -1430,6 +1610,7 @@ export class SeedEventsBuilder {
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
@@ -1586,7 +1767,7 @@ export class SeedEventsBuilder {
     | 'trashedAtIso'
   > {
     const creator = this.resolveCreatorUser(record.creatorUserId, record.title);
-    const frequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
+    const requestedFrequency = record.seed?.frequency?.trim() || this.parseFrequencyFromTimeframe(record.timeframe ?? '');
     const isGeneratedSeed = record.seed?.generated === true;
     const startAtIso = isGeneratedSeed
       ? (this.normalizeGeneratedSeedDateTime(record.seed?.startAt) || this.resolveStartAtIso(record))
@@ -1632,12 +1813,21 @@ export class SeedEventsBuilder {
       this.normalizeCount(record.seed?.capacityTotal) ?? compactCapacityTotal ?? capacityMax ?? acceptedMembers
     );
     const slotTemplates = this.cloneRebasedSlotTemplates(record.seed?.slotTemplates) ?? [];
+    const slotsEnabled = record.seed?.slotsEnabled === true && slotTemplates.length > 0;
+    const frequency = slotsEnabled ? requestedFrequency : 'One-time';
     const topics = this.normalizeTopics(record.seed?.topics).length > 0
       ? this.normalizeTopics(record.seed?.topics)
       : this.buildSeededTopics(record.id, record.title, record.subtitle);
-    const subEvents = this.cloneRebasedSubEvents(record.seed?.subEvents)
-      ?? this.buildSeededSubEvents(record, startAtIso, endAtIso, creator.id, capacityRange);
-    const subEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
+    const explicitSubEventDefinitions = this.cloneSubEventDefinitions(record.seed?.subEventDefinitions) ?? [];
+    const subEventDefinitions = explicitSubEventDefinitions.length > 0
+      ? explicitSubEventDefinitions
+      : this.buildSeededSubEventDefinitions(record, startAtIso, endAtIso, capacityRange);
+    const subEvents = subEventDefinitions.length > 0
+      ? this.materializeSeedSubEventDefinitionsForSlotOccurrence(
+        subEventDefinitions,
+        this.parseSeedDateTime(startAtIso) ?? new Date(startAtIso)
+      )
+      : [];
     const subEventsEnabled = record.seed?.subEventsEnabled ?? subEventDefinitions.length > 0;
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
@@ -1673,8 +1863,9 @@ export class SeedEventsBuilder {
       pricing: record.seed?.pricing
         ? this.rebasePricingConfig(record.seed.pricing)
         : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
+      policiesEnabled: record.seed?.policiesEnabled === true,
       policies: this.clonePolicies(record.seed?.policies) ?? [],
-      slotsEnabled: record.seed?.slotsEnabled === true,
+      slotsEnabled,
       slotTemplates,
       parentEventId: null,
       slotTemplateId: null,
@@ -1688,7 +1879,7 @@ export class SeedEventsBuilder {
       subEventsEnabled,
       subEventDefinitions,
       subEvents,
-      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventMode(subEvents),
+      mode: record.seed?.mode ?? SeedEventBuilder.inferredEventModeFromDefinitions(subEventDefinitions),
       rating,
       boost: Number.isFinite(record.seed?.boost)
         ? Number(record.seed?.boost)
@@ -2088,13 +2279,12 @@ export class SeedEventsBuilder {
     return topics;
   }
 
-  private static buildSeededSubEvents(
+  private static buildSeededSubEventDefinitions(
     record: Pick<ActivityEventRecord, 'id' | 'title' | 'subtitle' | 'activity' | 'type' | 'userId' | 'creatorUserId' | 'adminIds'> & { timeframe?: string },
     startAtIso: string,
     endAtIso: string,
-    activeUserId: string,
     capacityRange: { min: number; max: number }
-  ): ContractTypes.SubEventDTO[] {
+  ): ContractTypes.SubEventDefinitionDTO[] {
     const source = {
       id: record.id,
       avatar: AppUtils.initialsFromText(record.title),
@@ -2105,7 +2295,7 @@ export class SeedEventsBuilder {
       ...(record.type === 'events' ? { isAdmin: this.isRecordAdmin(record) } : {})
     } as ActivityEventSeedItem | ActivityHostingSeedItem;
 
-    return SeedEventBuilder.buildSeededSubEventsForEvent(source, {
+    return SeedEventBuilder.buildSeededSubEventDefinitionsForEvent(source, {
       isHosting: record.type === 'hosting',
       activityDateTimeRangeById: {
         [record.id]: {
@@ -2123,8 +2313,7 @@ export class SeedEventsBuilder {
         [record.id]: capacityRange
       },
       activityCapacityById: {},
-      defaultStartIso: startAtIso,
-      activeUserId
+      defaultStartIso: startAtIso
     });
   }
 
@@ -2158,6 +2347,7 @@ export class SeedEventsBuilder {
       acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
       pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
       pricing: 'pricing' in item && item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : ('pricing' in item ? item.pricing : undefined),
+      policiesEnabled: item.policiesEnabled === true,
       policies: this.clonePolicies(item.policies) ?? undefined,
       slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
       slotTemplates: 'slotTemplates' in item ? this.cloneSlotTemplates(item.slotTemplates) ?? undefined : undefined,

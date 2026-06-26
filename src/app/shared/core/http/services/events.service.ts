@@ -5,7 +5,17 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
 import type { ActivityPendingReason } from '../../common/constants';
-import type { SubEventLeaderboardState } from '../../contracts/event.interface';
+import type {
+  EventTournamentGroupDeleteRequestDTO,
+  EventTournamentGroupsQueryDTO,
+  EventTournamentGroupsStateDTO,
+  EventTournamentGroupDTO,
+  EventTournamentGroupUpsertRequestDTO,
+  EventTournamentStageGroupsQueryDTO,
+  EventTournamentStageDTO,
+  SubEventLeaderboardEntryUpsertRequestDTO,
+  SubEventLeaderboardState
+} from '../../contracts/event.interface';
 import { ActivityEventDetailDTO, type ActivityEventDTO } from '../../contracts/activity.interface';
 import type {
   EventCheckoutAssetSelection,
@@ -22,6 +32,8 @@ import type {
 import type {
   ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
+  ActivityEventStageActionRequestDTO,
+  ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
@@ -392,17 +404,10 @@ export class HttpEventsService implements IEventsService {
     return Promise.resolve();
   }
 
-  async applyStageAction(request: {
-    userId: string;
-    sourceId: string;
-    subEventId?: string | null;
-    subEventIndex?: number | null;
-    action: string;
-    reason?: string | null;
-  }): Promise<ActivityEventRecord | null> {
+  async applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     const rawSubEventIndex = Number(request.subEventIndex);
     const response = await this.http
-      .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
+      .post<ActivityEventStageActionResultDTO | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
         userId: request.userId.trim(),
         sourceId: request.sourceId.trim(),
         subEventId: request.subEventId?.trim() || null,
@@ -413,7 +418,7 @@ export class HttpEventsService implements IEventsService {
         reason: request.reason?.trim() || null
       })
       .toPromise();
-    return response ? this.cloneRecords([response])[0] ?? null : null;
+    return response ?? null;
   }
 
   async querySubEventLeaderboard(eventId: string, subEventId: string): Promise<SubEventLeaderboardState | null> {
@@ -427,6 +432,103 @@ export class HttpEventsService implements IEventsService {
         params: new HttpParams()
           .set('eventId', normalizedEventId)
           .set('subEventId', normalizedSubEventId)
+      })
+      .toPromise();
+    return this.normalizeLeaderboardState(response, normalizedEventId, normalizedSubEventId);
+  }
+
+  async queryTournamentGroups(query: EventTournamentGroupsQueryDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedEventId = query.eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    const response = await this.http
+      .get<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups`, {
+        params: new HttpParams()
+          .set('userId', normalizedUserId)
+          .set('eventId', normalizedEventId)
+      })
+      .toPromise();
+    return this.normalizeTournamentGroupsState(response, normalizedEventId);
+  }
+
+  async queryTournamentStageGroups(query: EventTournamentStageGroupsQueryDTO): Promise<EventTournamentGroupDTO[]> {
+    const normalizedEventId = query.eventId.trim();
+    const normalizedSlotId = `${query.slotId ?? ''}`.trim();
+    const normalizedStageId = query.stageId.trim();
+    if (!normalizedEventId || !normalizedStageId) {
+      return [];
+    }
+    let params = new HttpParams()
+      .set('eventId', normalizedEventId)
+      .set('stageId', normalizedStageId);
+    if (normalizedSlotId) {
+      params = params.set('slotId', normalizedSlotId);
+    }
+    const response = await this.http
+      .get<EventTournamentGroupDTO[] | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/stage-groups`, {
+        params
+      })
+      .toPromise();
+    return this.normalizeTournamentGroupList(response, normalizedStageId);
+  }
+
+  async saveTournamentGroup(request: EventTournamentGroupUpsertRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    const response = await this.http
+      .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group`, {
+        actorUserId: request.actorUserId.trim(),
+        eventId: request.eventId.trim(),
+        slotId: request.slotId?.trim() || null,
+        subEventId: request.subEventId.trim(),
+        groupId: request.groupId?.trim() || null,
+        name: request.name.trim(),
+        capacityMin: Math.max(0, Math.trunc(Number(request.capacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(request.capacityMax) || 0))
+      })
+      .toPromise();
+    return this.normalizeTournamentGroupsState(response, request.slotId?.trim() || request.eventId);
+  }
+
+  async deleteTournamentGroup(request: EventTournamentGroupDeleteRequestDTO): Promise<EventTournamentGroupsStateDTO | null> {
+    const response = await this.http
+      .post<EventTournamentGroupsStateDTO | null>(`${this.apiBaseUrl}/activities/events/tournament-groups/group/delete`, {
+        actorUserId: request.actorUserId.trim(),
+        eventId: request.eventId.trim(),
+        slotId: request.slotId?.trim() || null,
+        subEventId: request.subEventId.trim(),
+        groupId: request.groupId.trim()
+      })
+      .toPromise();
+    return this.normalizeTournamentGroupsState(response, request.slotId?.trim() || request.eventId);
+  }
+
+  async upsertSubEventLeaderboardEntry(request: SubEventLeaderboardEntryUpsertRequestDTO): Promise<SubEventLeaderboardState | null> {
+    const normalizedEventId = request.eventId.trim();
+    const normalizedSubEventId = request.subEventId.trim();
+    if (!normalizedEventId || !normalizedSubEventId || !request.groupId.trim()) {
+      return null;
+    }
+    const response = await this.http
+      .post<SubEventLeaderboardState | null>(`${this.apiBaseUrl}/activities/events/leaderboard/entry`, {
+        actorUserId: request.actorUserId.trim(),
+        eventId: normalizedEventId,
+        subEventId: normalizedSubEventId,
+        groupId: request.groupId.trim(),
+        mode: request.mode === 'Fifa' ? 'Fifa' : 'Score',
+        memberId: request.memberId?.trim() || null,
+        scoreValue: request.scoreValue === null || request.scoreValue === undefined
+          ? null
+          : Math.trunc(Number(request.scoreValue) || 0),
+        note: request.note?.trim() || '',
+        homeMemberId: request.homeMemberId?.trim() || null,
+        awayMemberId: request.awayMemberId?.trim() || null,
+        homeScore: request.homeScore === null || request.homeScore === undefined
+          ? null
+          : Math.max(0, Math.trunc(Number(request.homeScore) || 0)),
+        awayScore: request.awayScore === null || request.awayScore === undefined
+          ? null
+          : Math.max(0, Math.trunc(Number(request.awayScore) || 0))
       })
       .toPromise();
     return this.normalizeLeaderboardState(response, normalizedEventId, normalizedSubEventId);
@@ -738,6 +840,72 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
+  private normalizeTournamentGroupsState(
+    state: EventTournamentGroupsStateDTO | null | undefined,
+    fallbackEventId: string
+  ): EventTournamentGroupsStateDTO | null {
+    if (!state) {
+      return null;
+    }
+    const eventId = `${state.eventId ?? fallbackEventId}`.trim() || fallbackEventId.trim();
+    return {
+      eventId,
+      title: `${state.title ?? ''}`.trim(),
+      subtitle: `${state.subtitle ?? ''}`.trim(),
+      canManage: state.canManage === true,
+      stages: (state.stages ?? []).map((stage, index) => this.normalizeTournamentStage(stage, index))
+        .filter(stage => stage.subEventId)
+    };
+  }
+
+  private normalizeTournamentStage(
+    stage: Partial<EventTournamentStageDTO> | null | undefined,
+    index: number
+  ): EventTournamentStageDTO {
+    const subEventId = `${stage?.subEventId ?? ''}`.trim();
+    const stageNumber = Math.max(1, Math.trunc(Number(stage?.stageNumber) || index + 1));
+    return {
+      subEventId,
+      title: `${stage?.title ?? `Stage ${stageNumber}`}`.trim() || `Stage ${stageNumber}`,
+      description: `${stage?.description ?? ''}`.trim(),
+      location: `${stage?.location ?? ''}`.trim(),
+      startAt: `${stage?.startAt ?? ''}`.trim(),
+      endAt: `${stage?.endAt ?? ''}`.trim(),
+      stageNumber,
+      stageStatus: `${stage?.stageStatus ?? ''}`.trim(),
+      leaderboardType: stage?.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
+      advancePerGroup: Math.max(0, Math.trunc(Number(stage?.advancePerGroup) || 0)),
+      groups: this.normalizeTournamentGroupList(stage?.groups, subEventId || 'stage')
+    };
+  }
+
+  private normalizeTournamentGroupList(
+    groups: readonly Partial<EventTournamentGroupDTO>[] | null | undefined,
+    fallbackStageId: string
+  ): EventTournamentGroupDTO[] {
+    return (groups ?? [])
+      .map((group, groupIndex) => this.normalizeTournamentGroup(group, groupIndex, fallbackStageId))
+      .filter(group => group.id);
+  }
+
+  private normalizeTournamentGroup(
+    group: Partial<EventTournamentGroupDTO> | null | undefined,
+    groupIndex: number,
+    fallbackStageId: string
+  ): EventTournamentGroupDTO {
+    const capacityMin = Math.max(0, Math.trunc(Number(group?.capacityMin) || 0));
+    const capacityMax = Math.max(capacityMin, Math.trunc(Number(group?.capacityMax) || capacityMin));
+    return {
+      id: `${group?.id ?? `${fallbackStageId || 'stage'}-group-${groupIndex + 1}`}`.trim(),
+      name: `${group?.name ?? `Group ${groupIndex + 1}`}`.trim() || `Group ${groupIndex + 1}`,
+      source: `${group?.source ?? 'generated'}`.trim() || 'generated',
+      capacityMin,
+      capacityMax,
+      membersAccepted: Math.max(0, Math.trunc(Number(group?.membersAccepted) || 0)),
+      membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0))
+    };
+  }
+
   private cloneRecords(records: ActivityEventRecord[] | null | undefined): ActivityEventRecord[] {
     if (!Array.isArray(records)) {
       return [];
@@ -778,6 +946,7 @@ export class HttpEventsService implements IEventsService {
         frequency: record.frequency ?? '',
         ticketing: record.ticketing === true,
         pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+        policiesEnabled: record.policiesEnabled === true,
         policies: (record.policies ?? []).map(item => ({ ...item })),
         slotsEnabled: record.slotsEnabled === true,
         slotTemplates: (record.slotTemplates ?? []).map(item => ({ ...item })),

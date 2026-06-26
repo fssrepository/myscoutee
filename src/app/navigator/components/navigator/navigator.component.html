@@ -108,11 +108,20 @@
 @if (activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
 }
+@if (eventChatPopupComponent(); as chatComponent) {
+  <ng-container *ngComponentOutlet="chatComponent"></ng-container>
+}
+@if (eventExplorePopupComponent(); as exploreComponent) {
+  <ng-container *ngComponentOutlet="exploreComponent"></ng-container>
+}
 @if (eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
 }
 @if (eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
   <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
+}
+@if (eventTournamentGroupsPopupComponent(); as tournamentGroupsPopupComponent) {
+  <ng-container *ngComponentOutlet="tournamentGroupsPopupComponent"></ng-container>
 }
 @if (eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
