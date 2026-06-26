@@ -827,6 +827,8 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__overlay-action--tone-stage-active.ui-info-card__overlay-action--badge,
+.ui-info-card__overlay-action--tone-stage-scheduled.ui-info-card__overlay-action--badge,
+.ui-info-card__overlay-action--tone-stage-blocked.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-review.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-finalized.ui-info-card__overlay-action--badge,
@@ -842,6 +844,18 @@ button.ui-info-card__overlay-action {
   border-color: rgba(36, 150, 82, 0.34);
   background: linear-gradient(180deg, #e6f9ed 0%, #cff0dc 100%);
   color: #17663f;
+}
+
+.ui-info-card__overlay-action--tone-stage-scheduled.ui-info-card__overlay-action--badge {
+  border-color: rgba(53, 107, 178, 0.34);
+  background: linear-gradient(180deg, #edf6ff 0%, #d8eaff 100%);
+  color: #24548f;
+}
+
+.ui-info-card__overlay-action--tone-stage-blocked.ui-info-card__overlay-action--badge {
+  border-color: rgba(191, 57, 67, 0.38);
+  background: linear-gradient(180deg, #fff0f1 0%, #ffdfe3 100%);
+  color: #9d303b;
 }
 
 .ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge {

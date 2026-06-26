@@ -94,9 +94,9 @@
   display: inline-flex;
   align-items: stretch;
   justify-content: center;
-  flex: 0 0 132px;
-  width: 132px;
-  min-width: 132px;
+  flex: 0 0 150px;
+  width: 150px;
+  min-width: 150px;
 }
 
 .confirmation-dialog-confirm-menu ::ng-deep .app-menu,
@@ -109,7 +109,7 @@
   justify-content: stretch;
 }
 
-.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
+.confirmation-dialog-confirm-menu ::ng-deep .app-menu__button-row-item--action {
   flex: 1 0 100%;
   min-width: 100%;
   justify-content: center;

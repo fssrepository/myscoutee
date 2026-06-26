@@ -14,6 +14,8 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
   isStageActive?: boolean | null;
+  isStageScheduled?: boolean | null;
+  isStageBlocked?: boolean | null;
   hasMenuOptions?: boolean;
   menuBadgeCount?: number | null;
   menuTitle?: string | null;
@@ -37,7 +39,13 @@ export class EventSubeventRuntimeInfoCardConverter
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
     const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
-    const stageStatus = isTournament ? this.stageStatusBadge(item, options.isStageActive === true) : null;
+    const stageStatus = isTournament
+      ? this.stageStatusBadge(item, {
+          isStageActive: options.isStageActive === true,
+          isStageScheduled: options.isStageScheduled === true,
+          isStageBlocked: options.isStageBlocked === true
+        })
+      : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
 
@@ -137,9 +145,34 @@ export class EventSubeventRuntimeInfoCardConverter
     };
   }
 
-  private static stageStatusBadge(item: ActivityEventSubEventRuntimeDTO, isStageActive: boolean): InfoCardOverlayAction | null {
+  private static stageStatusBadge(
+    item: ActivityEventSubEventRuntimeDTO,
+    options: {
+      isStageActive: boolean;
+      isStageScheduled: boolean;
+      isStageBlocked: boolean;
+    }
+  ): InfoCardOverlayAction | null {
     const status = this.resolveStageStatus(item.stageStatus);
-    if (status === 'A' && !isStageActive) {
+    if (options.isStageBlocked) {
+      return {
+        variant: 'badge',
+        tone: 'stage-blocked',
+        label: 'stage.status.blocked',
+        icon: 'lock',
+        interactive: false
+      };
+    }
+    if (options.isStageScheduled) {
+      return {
+        variant: 'badge',
+        tone: 'stage-scheduled',
+        label: 'stage.status.scheduled',
+        icon: 'schedule',
+        interactive: false
+      };
+    }
+    if (status === 'A' && !options.isStageActive) {
       return null;
     }
     const map: Record<TournamentStageStatus, {

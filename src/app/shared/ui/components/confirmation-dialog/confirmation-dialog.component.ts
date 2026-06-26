@@ -19,6 +19,7 @@ export interface ConfirmationDialogLocalConfig {
   confirmLabel?: string;
   busyConfirmLabel?: string;
   confirmTone?: ConfirmationDialogTone;
+  confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
   busy?: boolean;
@@ -36,6 +37,7 @@ type RenderedConfirmationDialogState = {
   confirmLabel: string;
   busyConfirmLabel: string;
   confirmTone: ConfirmationDialogTone;
+  confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
   busy: boolean;
@@ -83,6 +85,7 @@ export class ConfirmationDialogComponent {
         confirmLabel,
         busyConfirmLabel: dialog.busyConfirmLabel?.trim() || confirmLabel,
         confirmTone: dialog.confirmTone ?? 'accent',
+        confirmPalette: dialog.confirmPalette ?? null,
         allowBackdropClose: dialog.allowBackdropClose !== false,
         allowEscapeClose: dialog.allowEscapeClose !== false,
         busy: dialog.busy === true,
@@ -168,13 +171,16 @@ export class ConfirmationDialogComponent {
     if (state.errorMessage) {
       return 'danger';
     }
+    if (state.confirmPalette) {
+      return state.confirmPalette;
+    }
     if (state.confirmTone === 'danger') {
       return 'danger';
     }
     if (state.confirmTone === 'neutral') {
       return 'slate';
     }
-    return 'slate';
+    return 'blue';
   }
 
   private mapServiceState(state: ConfirmationDialogState): RenderedConfirmationDialogState {
@@ -186,6 +192,7 @@ export class ConfirmationDialogComponent {
       confirmLabel: state.confirmLabel,
       busyConfirmLabel: state.busyConfirmLabel,
       confirmTone: state.confirmTone,
+      confirmPalette: state.confirmPalette,
       allowBackdropClose: state.allowBackdropClose,
       allowEscapeClose: state.allowEscapeClose,
       busy: state.busy,

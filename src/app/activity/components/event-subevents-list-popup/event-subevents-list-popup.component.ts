@@ -409,6 +409,8 @@ export class EventSubeventsListPopupComponent {
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
       isStageActive: this.isRuntimeStageActive(item),
+      isStageScheduled: this.isRuntimeStageScheduled(item),
+      isStageBlocked: this.isRuntimeStageBlocked(item),
       hasMenuOptions: true,
       menuTitle: item.name,
       menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
@@ -434,6 +436,7 @@ export class EventSubeventsListPopupComponent {
       subEventIndex: this.runtimeSourceIndex(item),
       stageNumber: sequence.number,
       isStageActive: this.isRuntimeStageActive(item),
+      canStartStage: this.canStartRuntimeStage(item),
       siblingItems: this.runtimeSiblings(item),
       nowMs: Date.now()
     });
@@ -478,6 +481,7 @@ export class EventSubeventsListPopupComponent {
       confirmLabel: context.confirmLabel,
       busyConfirmLabel: context.busyLabel,
       confirmTone: context.destructive ? 'danger' : 'accent',
+      confirmPalette: context.confirmPalette,
       failureMessage: 'Action failed.',
       onConfirm: async () => {
         await this.applyStageStatusAction(context);
@@ -663,6 +667,43 @@ export class EventSubeventsListPopupComponent {
     if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'A') {
       return false;
     }
+    if (!this.isRuntimeStageAssignmentOpen(item)) {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return !Number.isFinite(startMs) || startMs <= Date.now();
+  }
+
+  private isRuntimeStageScheduled(item: ActivityEventSubEventRuntimeDTO): boolean {
+    const status = this.normalizeRuntimeStageStatus(item.stageStatus);
+    if (status !== 'A' && status !== 'RS') {
+      return false;
+    }
+    if (!this.isRuntimeStageAssignmentOpen(item)) {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return Number.isFinite(startMs) && startMs > Date.now();
+  }
+
+  private isRuntimeStageBlocked(item: ActivityEventSubEventRuntimeDTO): boolean {
+    if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'RS') {
+      return false;
+    }
+    if (!this.isRuntimeStageAssignmentOpen(item)) {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return Number.isFinite(startMs) && startMs <= Date.now();
+  }
+
+  private canStartRuntimeStage(item: ActivityEventSubEventRuntimeDTO): boolean {
+    return this.normalizeRuntimeStageStatus(item.stageStatus) === 'RS'
+      && this.runtimeSourceIndex(item) === 0
+      && this.isRuntimeStageAssignmentOpen(item);
+  }
+
+  private isRuntimeStageAssignmentOpen(item: ActivityEventSubEventRuntimeDTO): boolean {
     const siblings = this.runtimeSiblings(item);
     const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
     if (index <= 0) {

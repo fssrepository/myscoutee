@@ -37,6 +37,7 @@ export type EventSubeventRuntimeMenuContext =
       confirmLabel: string;
       busyLabel: string;
       destructive: boolean;
+      confirmPalette: AppMenuPalette;
     }
   | {
       scope: 'stage-dashboard';
@@ -57,6 +58,7 @@ export interface EventSubeventRuntimeMenuConverterOptions {
   subEventIndex?: number | null;
   stageNumber?: number | null;
   isStageActive?: boolean | null;
+  canStartStage?: boolean | null;
   siblingItems?: readonly ActivityEventSubEventRuntimeDTO[];
   nowMs?: number;
 }
@@ -105,6 +107,7 @@ export class EventSubeventRuntimeMenuConverter {
         subEventIndex,
         stageNumber,
         isStageActive: options.isStageActive === true,
+        canStartStage: options.canStartStage === true,
         siblings: options.siblingItems ?? [],
         nowMs: Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now()
       }));
@@ -150,6 +153,7 @@ export class EventSubeventRuntimeMenuConverter {
       subEventIndex: number;
       stageNumber: number;
       isStageActive: boolean;
+      canStartStage: boolean;
       siblings: readonly ActivityEventSubEventRuntimeDTO[];
       nowMs: number;
     }
@@ -164,7 +168,7 @@ export class EventSubeventRuntimeMenuConverter {
       subEventIndex: options.subEventIndex
     };
 
-    if (options.stageNumber === 1 && status === 'RS') {
+    if (options.canStartStage) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
@@ -313,6 +317,8 @@ export class EventSubeventRuntimeMenuConverter {
       label: options.label,
       icon: options.icon,
       palette: options.palette,
+      surface: 'tinted',
+      layout: 'pill',
       context: {
         scope: 'stage-status',
         action: options.action,
@@ -326,7 +332,8 @@ export class EventSubeventRuntimeMenuConverter {
         description: options.description,
         confirmLabel: options.confirmLabel,
         busyLabel: options.busyLabel,
-        destructive: options.destructive
+        destructive: options.destructive,
+        confirmPalette: options.palette
       }
     };
   }

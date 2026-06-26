@@ -1,5 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
+import type { AppMenuPalette } from '../components/menu';
+
 export type ConfirmationDialogTone = 'accent' | 'danger' | 'neutral';
 
 export interface ConfirmationDialogConfig {
@@ -10,6 +12,7 @@ export interface ConfirmationDialogConfig {
   confirmLabel?: string;
   busyConfirmLabel?: string;
   confirmTone?: ConfirmationDialogTone;
+  confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
   failureMessage?: string | null;
@@ -27,6 +30,7 @@ export interface ConfirmationDialogState {
   confirmLabel: string;
   busyConfirmLabel: string;
   confirmTone: ConfirmationDialogTone;
+  confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
   busy: boolean;
@@ -56,6 +60,7 @@ export class ConfirmationDialogService {
       confirmLabel: config.confirmLabel?.trim() || 'OK',
       busyConfirmLabel: config.busyConfirmLabel?.trim() || 'Working...',
       confirmTone: config.confirmTone ?? 'accent',
+      confirmPalette: config.confirmPalette ?? null,
       allowBackdropClose: config.allowBackdropClose !== false,
       allowEscapeClose: config.allowEscapeClose !== false,
       busy: false,
