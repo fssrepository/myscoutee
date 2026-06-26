@@ -14,7 +14,6 @@ export type EventSubeventRuntimeStageAction =
 export type EventSubeventRuntimeMenuItemId =
   | EventSubeventRuntimeStageAction
   | 'groups'
-  | 'leaderboard'
   | 'members'
   | 'car'
   | 'accommodation'
@@ -41,7 +40,7 @@ export type EventSubeventRuntimeMenuContext =
     }
   | {
       scope: 'stage-dashboard';
-      action: 'groups' | 'leaderboard';
+      action: 'groups';
       item: ActivityEventSubEventRuntimeDTO;
     }
   | {
@@ -121,27 +120,16 @@ export class EventSubeventRuntimeMenuConverter {
       });
     }
 
-    items.push(
-      {
-        id: 'groups',
-        label: 'Groups',
-        icon: 'groups',
-        palette: 'green',
-        surface: 'tinted',
-        layout: 'pill',
-        counter: this.groupCount(item) > 0 ? { value: this.groupCount(item), max: 99 } : null,
-        context: { scope: 'stage-dashboard', action: 'groups', item }
-      },
-      {
-        id: 'leaderboard',
-        label: 'Leaderboard',
-        icon: 'leaderboard',
-        palette: 'blue',
-        surface: 'tinted',
-        layout: 'pill',
-        context: { scope: 'stage-dashboard', action: 'leaderboard', item }
-      }
-    );
+    items.push({
+      id: 'groups',
+      label: 'Groups',
+      icon: 'groups',
+      palette: 'green',
+      surface: 'tinted',
+      layout: 'pill',
+      counter: this.groupCount(item) > 0 ? { value: this.groupCount(item), max: 99 } : null,
+      context: { scope: 'stage-dashboard', action: 'groups', item }
+    });
     return items;
   }
 

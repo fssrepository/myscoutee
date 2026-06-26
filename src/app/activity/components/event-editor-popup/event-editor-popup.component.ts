@@ -40,7 +40,6 @@ import {
   ProgressIndicatorComponent
 } from '../../../shared/ui';
 import { EventSubeventDefinitionsPanelComponent } from '../event-subevent-definitions-panel';
-import { EventSubeventsInputComponent } from '../event-subevents-input';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -76,7 +75,6 @@ interface SlotOverrideEditorState {
     EventSlotsInputComponent,
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
-    EventSubeventsInputComponent,
     PricingEditorInputComponent,
     ProgressIndicatorComponent
   ],
@@ -98,7 +96,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private openSubscription?: Subscription;
   private closeSubscription?: Subscription;
   private editorTarget: ContractTypes.EventEditorTarget = 'events';
-  private lastHandledOpenSubEventsRequest = 0;
   protected editingEventId: string | null = null;
   private draftEventId: string | null = null;
   private currentSourcePublished = false;
@@ -136,7 +133,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.setEventEditorExplanationContext(isOpen ? 'event.editor' : null);
 
       if (!isOpen) {
-        this.showSubEventsPopup = false;
         this.slotOverrideEditor = null;
         this.resetDraftAutosaveTracking();
         return;
@@ -156,16 +152,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
 
       this.resetForm(this.editorTarget);
-    });
-
-    effect(() => {
-      const isOpen = this.eventEditorService.isOpen();
-      const openSubEventsRequestNonce = this.eventEditorService.openSubEventsRequestNonce();
-      if (!isOpen || openSubEventsRequestNonce <= this.lastHandledOpenSubEventsRequest) {
-        return;
-      }
-      this.lastHandledOpenSubEventsRequest = openSubEventsRequestNonce;
-      this.showSubEventsPopup = true;
     });
 
     effect(() => {
@@ -198,12 +184,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
-      this.showSubEventsPopup = false;
       this.slotOverrideEditor = null;
     });
 
     this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
-      this.showSubEventsPopup = false;
       this.slotOverrideEditor = null;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
@@ -222,7 +206,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventDetailDTO: ActivityEventDetailDTO = this.createEmptyEventDetailDTO();
 
-  showSubEventsPopup = false;
   protected slotOverrideEditor: SlotOverrideEditorState | null = null;
   protected slotOverrideOccurrenceMenuOpen = false;
   isSavePending = false;
@@ -269,7 +252,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   };
 
   close(): void {
-    this.showSubEventsPopup = false;
     this.isSavePending = false;
     this.isLoadingEventData.set(false);
     this.eventVisibilityReady.set(false);
@@ -315,11 +297,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const capacityMin = this.eventDetailDTO.capacityMin ?? 0;
     const publishedFloor = this.isPublishedManageMode() ? this.publishedCapacityMaxFloor : 0;
     return Math.max(0, capacityMin, publishedFloor);
-  }
-
-  handleSubEventsChange(subEvents: readonly ContractTypes.SubEventDTO[]): void {
-    this.eventDetailDTO.applySubEvents(subEvents);
-    this.syncMainEventBoundsFromSubEvents();
   }
 
   protected pricingSlotCatalog(): readonly ContractTypes.PricingSlotReference[] {
@@ -1342,10 +1319,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
-    if (this.showSubEventsPopup) {
-      this.showSubEventsPopup = false;
-      return;
-    }
     this.close();
   }
 

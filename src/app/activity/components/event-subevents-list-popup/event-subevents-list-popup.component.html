@@ -80,11 +80,5 @@
     </div>
   </article>
 
-  @if (leaderboardPopup.open) {
-    <app-event-subevent-leaderboard-popup
-      [model]="leaderboardPopup"
-      (close)="closeLeaderboardPopup($event)"
-    ></app-event-subevent-leaderboard-popup>
-  }
 </section>
 }

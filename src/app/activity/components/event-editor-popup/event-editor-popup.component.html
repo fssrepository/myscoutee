@@ -146,20 +146,6 @@
             <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
               [(enabled)]="eventDetailDTO.policiesEnabled"
               [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
-            <app-event-subevents-input
-              [open]="showSubEventsPopup"
-              (openChange)="showSubEventsPopup = $event"
-              [ngModel]="eventDetailDTO.subEvents"
-              (ngModelChange)="handleSubEventsChange($event)"
-              [mode]="eventDetailDTO.mode"
-              [readOnly]="eventEditorService.readOnly()"
-              [structureReadOnly]="isPublishedManageMode()"
-              [parentTitle]="eventDetailDTO.title"
-              [ownerId]="editingEventId"
-              [slotsEnabled]="eventFrequencyUsesSlots()"
-              [slotTemplates]="eventDetailDTO.slotTemplates"
-              [bounds]="eventDetailDTO.dateRange"
-            ></app-event-subevents-input>
           </div>
         </div>
       </section>

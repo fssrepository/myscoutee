@@ -34,14 +34,12 @@ export class EventEditorPopupStateService {
   private _sourceEvent = signal<any>(null);
   private _readOnly = signal(false);
   private _subEventResourcePopupRequest = signal<EventEditorSubEventResourcePopupRequest | null>(null);
-  private _openSubEventsRequestNonce = signal(0);
 
   readonly isOpen = this._isOpen.asReadonly();
   readonly mode = this._mode.asReadonly();
   readonly sourceEvent = this._sourceEvent.asReadonly();
   readonly readOnly = this._readOnly.asReadonly();
   readonly subEventResourcePopupRequest = this._subEventResourcePopupRequest.asReadonly();
-  readonly openSubEventsRequestNonce = this._openSubEventsRequestNonce.asReadonly();
 
   readonly isOpenBoolean = computed(() => this._isOpen());
 
@@ -111,7 +109,4 @@ export class EventEditorPopupStateService {
     this._subEventResourcePopupRequest.set(null);
   }
 
-  requestOpenSubEventsPopup(): void {
-    this._openSubEventsRequestNonce.update(value => value + 1);
-  }
 }
