@@ -148,7 +148,7 @@ export class LocalActivityEventDetailsMapper {
       startAtIso: context.startAtIso,
       endAtIso: context.endAtIso,
       distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
-      imageUrl: payload.imageUrl?.trim() || existing?.imageUrl || `https://picsum.photos/seed/event-explore-${id}/1200/700`,
+      imageUrl: payload.imageUrl.trim(),
       sourceLink: payload.sourceLink?.trim() || existing?.sourceLink || '',
       location: this.normalizeLocation(payload.location) || existing?.location || '',
       locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates)
