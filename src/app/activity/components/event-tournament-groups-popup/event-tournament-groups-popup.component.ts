@@ -153,6 +153,7 @@ export class EventTournamentGroupsPopupComponent {
   protected entryForm: TournamentEntryFormModel = this.emptyEntryForm();
 
   private handledRequestMs = 0;
+  private handledMembersSyncMs = 0;
   private handledResourceSyncMs = 0;
   private loadSequence = 0;
   private leaderboardSequence = 0;
@@ -178,6 +179,22 @@ export class EventTournamentGroupsPopupComponent {
       this.leaderboardState = null;
       this.resourceMetricsByStageId = {};
       void this.loadGroupsForSelectedStage();
+    });
+
+    effect(() => {
+      const sync = this.appCtx.activityMembersSync();
+      if (!sync || sync.updatedMs === this.handledMembersSyncMs) {
+        return;
+      }
+      this.handledMembersSyncMs = sync.updatedMs;
+      if (!this.isOpen()) {
+        return;
+      }
+      this.syncGroupMemberSummaryFromSignal(
+        sync.id,
+        sync.acceptedMembers,
+        sync.pendingMembers
+      );
     });
 
     effect(() => {
@@ -1423,6 +1440,25 @@ export class EventTournamentGroupsPopupComponent {
     const pendingMembers = members.filter(member => member.status === 'pending');
     this.state = this.updateGroupCounts(this.state, stageId, groupId, acceptedMembers.length, pendingMembers.length);
     this.syncLeaderboardMembers(groupId, acceptedMembers);
+    this.cdr.markForCheck();
+  }
+
+  private syncGroupMemberSummaryFromSignal(
+    groupId: string,
+    accepted: number,
+    pending: number
+  ): void {
+    const stageId = this.state?.stages.find(stage => stage.groups.some(group => group.id === groupId))?.subEventId ?? '';
+    if (!stageId) {
+      return;
+    }
+    this.state = this.updateGroupCounts(
+      this.state,
+      stageId,
+      groupId,
+      Math.max(0, Math.trunc(Number(accepted) || 0)),
+      Math.max(0, Math.trunc(Number(pending) || 0))
+    );
     this.cdr.markForCheck();
   }
 
