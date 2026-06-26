@@ -260,6 +260,7 @@ export class SubEventResourcePopupController {
     resourceTypeIcon: type => type === 'Members' ? 'groups' : this.ownedAssets.assetTypeIcon(type),
     resourceTypeLabel: type => APP_STATIC_DATA.subEventResourceFilterLabels[type],
     cards: () => this.resourceCards(),
+    waitForResourceListLoad: () => this.activityResourcesService.waitForResourceRouteDelay(),
     resourceAssetView: () => this.resourceAssetView(),
     standaloneResourceAssetView: () => this.resourceAssetViewReturnToChatRef(),
     assetExploreOnly: () => this.assetExploreOnlyRef(),
