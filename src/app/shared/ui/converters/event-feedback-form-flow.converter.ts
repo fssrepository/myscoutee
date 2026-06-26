@@ -29,7 +29,7 @@ export class EventFeedbackFormFlowConverter {
     options: EventFeedbackFormFlowConverterOptions = {}
   ): FormFlowModel {
     const normalizedDetail = EventFeedbackBuilder.cloneDetail(detail);
-    const cards = this.cardsForDetail(normalizedDetail);
+    const cards = EventFeedbackDetailConverter.convert(normalizedDetail);
     return {
       title: 'Event Feedback',
       subtitle: options.eventTitle?.trim() || normalizedDetail.title,
@@ -253,9 +253,5 @@ export class EventFeedbackFormFlowConverter {
       return 'sky';
     }
     return 'blue';
-  }
-
-  private static cardsForDetail(detail: EventFeedbackDetailDto): AppTypes.EventFeedbackCard[] {
-    return EventFeedbackDetailConverter.convert(detail);
   }
 }

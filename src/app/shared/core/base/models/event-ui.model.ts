@@ -40,19 +40,3 @@ export interface EventFeedbackCard {
   answerPrimary: string;
   answerSecondary: string;
 }
-
-export interface EventFeedbackEventCard {
-  eventId: string;
-  title: string;
-  subtitle: string;
-  timeframe: string;
-  imageUrl: string;
-  startAtMs: number;
-  pendingCards: number;
-  totalCards: number;
-  isRemoved: boolean;
-  isFeedbacked: boolean;
-  feedbackedAtMs: number | null;
-  removedAtMs?: number | null;
-  isOwnEvent?: boolean;
-}
