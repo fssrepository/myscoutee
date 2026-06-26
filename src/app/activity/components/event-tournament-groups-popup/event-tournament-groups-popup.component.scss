@@ -1,10 +1,8 @@
 @use '../../../shared/ui/styles' as ui;
-@use '../activity-interactions.shared' as shared;
 
 @include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
-@include shared.interactive-feedback('.popup-header-add-btn, .experience-form-close-btn');
 
 :host {
   --event-tournament-groups-z-index: 2440;
@@ -58,6 +56,7 @@
 .event-tournament-groups-context-row {
   grid-area: context;
   justify-self: end;
+  align-self: start;
   min-width: 0;
 }
 
@@ -308,81 +307,106 @@
   flex-direction: column;
 }
 
-.experience-form-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.82rem 1rem;
-  border-bottom: 1px solid rgba(187, 199, 217, 0.7);
-  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-}
-
-.experience-form-header h3 {
-  margin: 0;
-  color: #1e385a;
-  font-size: 1.02rem;
-  font-weight: 800;
-}
-
-.experience-form-header-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.44rem;
-}
-
-@include shared.popup-header-add-btn-base();
-@include shared.experience-form-close-btn-base();
-
-.event-tournament-save-btn {
-  border-color: rgba(46, 121, 69, 0.46);
-  background: linear-gradient(180deg, #e6faec 0%, #c9f0d5 100%);
-  color: #1f6f39;
-}
-
-.event-tournament-save-btn:disabled {
-  opacity: 0.56;
-  cursor: not-allowed;
-}
-
-.experience-form-panel {
-  padding: 0.82rem;
-  background: linear-gradient(180deg, #f3f9ff 0%, #eaf4ff 100%);
-}
-
 .event-tournament-entry-popup {
   width: min(760px, calc(100vw - 1.8rem));
 }
 
-.event-tournament-entry-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.74rem;
+.event-tournament-flow-popup {
+  overflow: hidden;
 }
 
-.event-tournament-entry-field {
-  display: grid;
-  gap: 0.32rem;
+.event-tournament-flow-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem 0.82rem;
+  border-bottom: 1px solid rgba(67, 103, 146, 0.2);
+  background: #ffffff;
+}
+
+.event-tournament-flow-title {
   min-width: 0;
-  color: #264868;
+}
+
+.event-tournament-flow-title h3 {
+  margin: 0;
+  color: #1d3658;
+  font-size: 1.08rem;
+  line-height: 1.18;
+  font-weight: 900;
+}
+
+.event-tournament-flow-title p {
+  margin: 0.28rem 0 0;
+  color: rgba(32, 55, 88, 0.76);
   font-size: 0.76rem;
+  line-height: 1.2;
   font-weight: 800;
 }
 
-.event-tournament-entry-field input {
-  width: 100%;
-  min-width: 0;
-  height: 2.4rem;
-  border: 1px solid rgba(52, 91, 136, 0.26);
-  border-radius: 8px;
-  padding: 0 0.68rem;
-  box-sizing: border-box;
-  color: #1f3e60;
-  font-weight: 800;
+.event-tournament-flow-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  flex: 0 0 auto;
 }
 
-.event-tournament-entry-note {
-  grid-column: 1 / -1;
+.event-tournament-flow-save {
+  position: relative;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgba(45, 141, 81, 0.24);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #effff4 0%, #beeccd 100%);
+  color: #1f8a48;
+  box-shadow: 0 8px 18px rgba(37, 126, 72, 0.16);
+  cursor: pointer;
+}
+
+.event-tournament-flow-save .mat-icon {
+  position: relative;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.event-tournament-flow-save app-progress-indicator {
+  position: absolute;
+  inset: 0;
+}
+
+.event-tournament-flow-save:disabled {
+  cursor: default;
+  opacity: 0.58;
+  box-shadow: none;
+}
+
+.event-tournament-flow-save.is-saving,
+.event-tournament-flow-save.is-saving:disabled {
+  opacity: 1;
+  cursor: wait;
+  box-shadow: 0 8px 18px rgba(37, 126, 72, 0.12);
+}
+
+.event-tournament-flow-save:not(:disabled):hover {
+  border-color: rgba(45, 141, 81, 0.36);
+  background: linear-gradient(180deg, #ffffff 0%, #c8f2d5 100%);
+}
+
+.event-tournament-entry-flow {
+  display: block;
+  min-height: 13.4rem;
+  overflow: hidden;
 }
 
 @media (max-width: 760px) {
@@ -398,8 +422,8 @@
     grid-template-columns: minmax(0, 1fr) auto auto;
     grid-template-areas:
       "title actions close"
-      "context context context";
-    gap: 0.48rem 0.44rem;
+      "title context context";
+    gap: 0.16rem 0.44rem;
     padding: 0.72rem;
   }
 
@@ -424,7 +448,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .event-tournament-entry-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .event-tournament-flow-header {
+    padding: 0.82rem 0.72rem 0.76rem;
   }
 }

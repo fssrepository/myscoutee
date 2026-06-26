@@ -33,7 +33,7 @@
       <div class="popup-body event-tournament-groups-body">
         @if (isLoading) {
           <div class="event-tournament-groups-loading">
-            <app-progress-indicator kind="load-ring" state="loading" tone="accent" [durationMs]="3000"></app-progress-indicator>
+            <app-progress-indicator kind="load-ring" state="loading" tone="accent"></app-progress-indicator>
           </div>
         } @else if (loadError) {
           <div class="event-tournament-groups-empty">
@@ -205,107 +205,47 @@
       [model]="groupForm"
       [canSave]="canSaveGroupForm()"
       [invalidName]="groupFieldInvalid()"
+      [saving]="isMutating"
+      (modelChange)="onGroupFormModelChange($event)"
       (save)="saveGroupForm($event)"
       (cancel)="closeGroupForm($event)"
-      (capacityMinChange)="onGroupCapacityMinChange($event)"
-      (capacityMaxChange)="onGroupCapacityMaxChange($event)"
     ></app-event-subevent-group-form-popup>
 
     @if (showEntryForm) {
       <section class="experience-form-overlay event-tournament-entry-overlay" (click)="closeEntryForm($event)">
         <div class="experience-form-overlay-backdrop"></div>
-        <article class="experience-form-popup event-tournament-entry-popup" (click)="$event.stopPropagation()">
-          <header class="experience-form-header">
-            <h3>{{ entryGroupLabel() }}</h3>
-            <div class="experience-form-header-controls">
+        <article class="experience-form-popup event-tournament-entry-popup event-tournament-flow-popup" (click)="$event.stopPropagation()">
+          <header class="event-tournament-flow-header">
+            <div class="event-tournament-flow-title">
+              <h3>{{ entryGroupLabel() }}</h3>
+              <p>{{ entryFormSubtitle() }}</p>
+            </div>
+            <div class="event-tournament-flow-actions">
               <button
                 type="button"
-                class="popup-header-add-btn event-tournament-save-btn"
-                [class.form-save-invalid]="!canSubmitEntry()"
+                class="event-tournament-flow-save"
+                [class.is-saving]="isMutating"
                 [disabled]="!canSubmitEntry()"
                 (click)="saveEntryForm($event)"
                 aria-label="Save leaderboard entry"
               >
+                @if (isMutating) {
+                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                }
                 <mat-icon>done</mat-icon>
               </button>
-              <button type="button" class="experience-form-close-btn" (click)="closeEntryForm($event)" aria-label="Close leaderboard editor">
+              <button type="button" class="popup-close event-tournament-flow-close" (click)="closeEntryForm($event)" aria-label="Close leaderboard editor">
                 <mat-icon>close</mat-icon>
               </button>
             </div>
           </header>
-          <section class="experience-form-panel event-tournament-entry-panel">
-            <div class="event-tournament-entry-grid">
-              @if (selectedStageMode() === 'Score') {
-                <label class="event-tournament-entry-field">
-                  <span>Member</span>
-                  <app-menu
-                    kind="select"
-                    [trigger]="entryMemberTrigger('score')"
-                    [items]="entryMemberItems('score')"
-                    panelAlign="start"
-                    (itemSelect)="onEntryMemberSelect($event)"
-                  ></app-menu>
-                </label>
-                <label class="event-tournament-entry-field">
-                  <span>Score</span>
-                  <input
-                    type="number"
-                    step="1"
-                    [ngModel]="entryForm.scoreValue ?? ''"
-                    (ngModelChange)="onScoreValueChange($event)"
-                    placeholder="+3"
-                  />
-                </label>
-              } @else {
-                <label class="event-tournament-entry-field">
-                  <span>Member A</span>
-                  <app-menu
-                    kind="select"
-                    [trigger]="entryMemberTrigger('home')"
-                    [items]="entryMemberItems('home')"
-                    panelAlign="start"
-                    (itemSelect)="onEntryMemberSelect($event)"
-                  ></app-menu>
-                </label>
-                <label class="event-tournament-entry-field">
-                  <span>Member B</span>
-                  <app-menu
-                    kind="select"
-                    [trigger]="entryMemberTrigger('away')"
-                    [items]="entryMemberItems('away')"
-                    panelAlign="start"
-                    (itemSelect)="onEntryMemberSelect($event)"
-                  ></app-menu>
-                </label>
-                <label class="event-tournament-entry-field">
-                  <span>Score A</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    [ngModel]="entryForm.homeScore ?? ''"
-                    (ngModelChange)="onHomeScoreChange($event)"
-                    placeholder="0"
-                  />
-                </label>
-                <label class="event-tournament-entry-field">
-                  <span>Score B</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="1"
-                    [ngModel]="entryForm.awayScore ?? ''"
-                    (ngModelChange)="onAwayScoreChange($event)"
-                    placeholder="0"
-                  />
-                </label>
-              }
-              <label class="event-tournament-entry-field event-tournament-entry-note">
-                <span>Note</span>
-                <input type="text" [(ngModel)]="entryForm.note" placeholder="Reason / context" />
-              </label>
-            </div>
-          </section>
+          <app-form-flow
+            class="event-tournament-entry-flow"
+            [model]="entryFormFlowModel()"
+            [ngModel]="entryForm"
+            (ngModelChange)="onEntryFormFlowChange($event)"
+            [disabled]="!canManageGroups()"
+          ></app-form-flow>
         </article>
       </section>
     }

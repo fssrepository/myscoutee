@@ -1,9 +1,11 @@
-
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-interface GroupFormModel {
+import { ProgressIndicatorComponent } from '../../../shared/ui';
+import { FormFlowComponent, type FormFlowModel } from '../../../shared/ui/components/form/flow';
+
+export interface GroupFormModel {
   name: string;
   capacityMin: number;
   capacityMax: number;
@@ -12,7 +14,7 @@ interface GroupFormModel {
 @Component({
   selector: 'app-event-subevent-group-form-popup',
   standalone: true,
-  imports: [FormsModule, MatIconModule],
+  imports: [FormsModule, MatIconModule, FormFlowComponent, ProgressIndicatorComponent],
   templateUrl: './event-subevent-group-form-popup.component.html',
   styleUrls: ['./event-subevent-group-form-popup.component.scss']
 })
@@ -22,6 +24,7 @@ export class EventSubeventGroupFormPopupComponent {
   @Input() stageTitle = '';
   @Input() canSave = false;
   @Input() invalidName = false;
+  @Input() saving = false;
   @Input() model: GroupFormModel = {
     name: '',
     capacityMin: 4,
@@ -30,6 +33,71 @@ export class EventSubeventGroupFormPopupComponent {
 
   @Output() readonly save = new EventEmitter<Event>();
   @Output() readonly cancel = new EventEmitter<Event>();
-  @Output() readonly capacityMinChange = new EventEmitter<number | string>();
-  @Output() readonly capacityMaxChange = new EventEmitter<number | string>();
+  @Output() readonly modelChange = new EventEmitter<GroupFormModel>();
+
+  protected flowModel(): FormFlowModel {
+    return {
+      title: this.title,
+      subtitle: this.stageTitle,
+      layout: 'grouped',
+      header: false,
+      summary: { enabled: false },
+      completion: { controls: 'required' },
+      save: null,
+      steps: [
+        {
+          id: 'group',
+          title: 'Group',
+          controls: [
+            {
+              id: 'name',
+              bind: 'name',
+              kind: 'text',
+              layout: 'wide',
+              label: 'Név',
+              placeholder: 'Group name',
+              required: true
+            },
+            {
+              id: 'capacityMin',
+              bind: 'capacityMin',
+              kind: 'number',
+              layout: 'half',
+              label: 'Minimum létszám',
+              min: 0,
+              step: 1,
+              required: true
+            },
+            {
+              id: 'capacityMax',
+              bind: 'capacityMax',
+              kind: 'number',
+              layout: 'half',
+              label: 'Maximum létszám',
+              min: Math.max(0, Math.trunc(Number(this.model.capacityMin) || 0)),
+              step: 1,
+              required: true
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  protected onFlowValueChange(value: unknown): void {
+    const record = this.isRecord(value) ? value : {};
+    const capacityMin = Math.max(0, Math.trunc(Number(record['capacityMin']) || 0));
+    const capacityMax = Math.max(capacityMin, Math.trunc(Number(record['capacityMax']) || capacityMin));
+    const nextModel = {
+      name: `${record['name'] ?? ''}`,
+      capacityMin,
+      capacityMax
+    };
+    this.model = nextModel;
+    this.modelChange.emit(nextModel);
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
 }

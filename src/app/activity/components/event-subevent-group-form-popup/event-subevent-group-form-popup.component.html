@@ -1,61 +1,39 @@
 @if (open) {
-  <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay" (click)="cancel.emit($event)">
-    <div class="experience-form-overlay-backdrop"></div>
-    <article class="experience-form-popup subevent-form-popup subevent-group-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header subevent-group-header">
-        <div class="subevent-group-header-main">
+  <section class="subevent-group-form-overlay" (click)="cancel.emit($event)">
+    <div class="subevent-group-form-overlay__backdrop"></div>
+    <article class="subevent-group-popup" (click)="$event.stopPropagation()">
+      <header class="subevent-group-popup__header">
+        <div class="subevent-group-popup__title">
           <h3>{{ title }}</h3>
           @if (stageTitle) {
-            <p class="subevent-group-stage-subtitle">{{ stageTitle }}</p>
+            <p>{{ stageTitle }}</p>
           }
         </div>
-        <div class="experience-form-header-controls">
+        <div class="subevent-group-popup__actions">
           <button
             type="button"
-            class="popup-header-add-btn subevent-leaderboard-save-btn"
-            [class.form-save-invalid]="!canSave"
-            [disabled]="!canSave"
+            class="subevent-group-popup__save"
+            [class.is-saving]="saving"
+            [disabled]="!canSave || saving"
             (click)="save.emit($event)"
             aria-label="Save group"
-            >
+          >
+            @if (saving) {
+              <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+            }
             <mat-icon>done</mat-icon>
           </button>
-          <button type="button" class="experience-form-close-btn" (click)="cancel.emit($event)" aria-label="Close group form">
+          <button type="button" class="subevent-group-popup__close" (click)="cancel.emit($event)" aria-label="Close group form">
             <mat-icon>close</mat-icon>
           </button>
         </div>
-      </div>
-      <section class="experience-form-panel subevent-form-panel subevent-group-form-panel">
-        <div class="experience-form-grid subevent-group-form-grid">
-          <label class="experience-title-field">
-            <span>Name <span class="required-star">*</span></span>
-            <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="invalidName" placeholder="Group name" />
-          </label>
-          <label class="subevent-capacity-range-field">
-            <span>Capacity</span>
-            <div class="subevent-capacity-range">
-              <input
-                type="number"
-                min="0"
-                step="1"
-                [ngModel]="model.capacityMin"
-                (ngModelChange)="capacityMinChange.emit($event)"
-                placeholder="Min"
-                />
-              <span class="subevent-capacity-separator">-</span>
-              <input
-                type="number"
-                [min]="model.capacityMin"
-                step="1"
-                [ngModel]="model.capacityMax"
-                (ngModelChange)="capacityMaxChange.emit($event)"
-                placeholder="Max"
-                />
-            </div>
-          </label>
-        </div>
-      </section>
+      </header>
+      <app-form-flow
+        class="subevent-group-flow"
+        [model]="flowModel()"
+        [ngModel]="model"
+        (ngModelChange)="onFlowValueChange($event)"
+      ></app-form-flow>
     </article>
   </section>
 }
-

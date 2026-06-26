@@ -10,12 +10,15 @@ import type { SubEventResourceFilter } from '../../../shared/core/common/constan
 import {
   AccordionComponent,
   AppMenuComponent,
+  FormFlowComponent,
   ProgressIndicatorComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
+  type FormFlowControlModel,
+  type FormFlowModel,
   type UiAccordionItem,
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
@@ -101,6 +104,7 @@ interface FifaRow {
     MatIconModule,
     AppMenuComponent,
     AccordionComponent,
+    FormFlowComponent,
     ProgressIndicatorComponent,
     EventSubeventGroupFormPopupComponent
   ],
@@ -542,24 +546,13 @@ export class EventTournamentGroupsPopupComponent {
     return !this.groupForm.name.trim();
   }
 
-  protected onGroupCapacityMinChange(value: number | string): void {
-    const parsed = Number(value);
-    const nextMin = Math.max(0, Number.isFinite(parsed) ? Math.trunc(parsed) : this.groupForm.capacityMin);
+  protected onGroupFormModelChange(model: TournamentGroupFormModel): void {
+    const capacityMin = Math.max(0, Math.trunc(Number(model.capacityMin) || 0));
+    const capacityMax = Math.max(capacityMin, Math.trunc(Number(model.capacityMax) || capacityMin));
     this.groupForm = {
-      ...this.groupForm,
-      capacityMin: nextMin,
-      capacityMax: Math.max(nextMin, this.groupForm.capacityMax)
-    };
-  }
-
-  protected onGroupCapacityMaxChange(value: number | string): void {
-    if (value === '' || value === null || value === undefined) {
-      return;
-    }
-    const parsed = Number(value);
-    this.groupForm = {
-      ...this.groupForm,
-      capacityMax: Math.max(this.groupForm.capacityMin, Number.isFinite(parsed) ? Math.trunc(parsed) : this.groupForm.capacityMax)
+      name: `${model.name ?? ''}`,
+      capacityMin,
+      capacityMax
     };
   }
 
@@ -615,6 +608,10 @@ export class EventTournamentGroupsPopupComponent {
     return this.groupById(this.viewModel().selectedStage, this.entryForm.groupId)?.name ?? 'Group';
   }
 
+  protected entryFormSubtitle(): string {
+    return this.selectedStageMode() === 'Fifa' ? 'Match result' : 'Score update';
+  }
+
   protected entryMemberTrigger(menu: 'score' | 'home' | 'away'): AppMenuTrigger {
     return {
       label: this.memberNameForEntry(menu),
@@ -625,56 +622,130 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
-  protected entryMemberItems(menu: 'score' | 'home' | 'away'): readonly AppMenuItem<string, { menu: 'score' | 'home' | 'away'; memberId: string }>[] {
+  protected entryFormFlowModel(): FormFlowModel {
+    const isFifa = this.selectedStageMode() === 'Fifa';
+    return {
+      title: this.entryGroupLabel(),
+      subtitle: this.entryFormSubtitle(),
+      layout: 'grouped',
+      header: false,
+      summary: { enabled: false },
+      completion: { controls: 'required' },
+      save: null,
+      steps: [
+        {
+          id: 'entry',
+          title: 'Entry',
+          controls: isFifa
+            ? [
+                this.entryMemberControl('home', 'Member A'),
+                this.entryMemberControl('away', 'Member B'),
+                {
+                  id: 'homeScore',
+                  bind: 'homeScore',
+                  kind: 'number',
+                  layout: 'half',
+                  label: 'Score A',
+                  min: 0,
+                  step: 1,
+                  placeholder: '0',
+                  required: true
+                },
+                {
+                  id: 'awayScore',
+                  bind: 'awayScore',
+                  kind: 'number',
+                  layout: 'half',
+                  label: 'Score B',
+                  min: 0,
+                  step: 1,
+                  placeholder: '0',
+                  required: true
+                },
+                this.entryNoteControl()
+              ]
+            : [
+                this.entryMemberControl('score', 'Tag'),
+                {
+                  id: 'scoreValue',
+                  bind: 'scoreValue',
+                  kind: 'number',
+                  layout: 'half',
+                  label: 'Score',
+                  step: 1,
+                  placeholder: '+3',
+                  required: true
+                },
+                this.entryNoteControl()
+              ]
+        }
+      ]
+    };
+  }
+
+  protected onEntryFormFlowChange(value: unknown): void {
+    const record = this.recordValue(value);
+    const members = this.entryMembers();
+    const firstMemberId = members[0]?.id ?? '';
+    const secondMemberId = members.find(member => member.id !== firstMemberId)?.id ?? firstMemberId;
+    const homeMemberId = this.entryMemberIdValue(record['homeMemberId'], firstMemberId);
+    let awayMemberId = this.entryMemberIdValue(record['awayMemberId'], secondMemberId);
+    if (homeMemberId && homeMemberId === awayMemberId) {
+      awayMemberId = members.find(member => member.id !== homeMemberId)?.id ?? '';
+    }
+    this.entryForm = {
+      groupId: this.entryForm.groupId,
+      memberId: this.entryMemberIdValue(record['memberId'], firstMemberId),
+      scoreValue: this.integerOrNull(record['scoreValue']),
+      homeMemberId,
+      awayMemberId,
+      homeScore: this.integerOrNull(record['homeScore'], true),
+      awayScore: this.integerOrNull(record['awayScore'], true),
+      note: `${record['note'] ?? ''}`
+    };
+  }
+
+  private entryMemberControl(menu: 'score' | 'home' | 'away', label: string): FormFlowControlModel {
+    const bind = menu === 'score' ? 'memberId' : `${menu}MemberId`;
+    return {
+      id: bind,
+      bind,
+      kind: 'menu',
+      layout: 'half',
+      label,
+      required: true,
+      config: {
+        kind: 'select',
+        layout: 'row',
+        panelMode: 'auto',
+        closeOnSelect: true,
+        trigger: this.entryMemberTrigger(menu),
+        items: this.entryMemberFlowItems(menu)
+      }
+    };
+  }
+
+  private entryNoteControl(): FormFlowControlModel {
+    return {
+      id: 'note',
+      bind: 'note',
+      kind: 'text',
+      layout: 'wide',
+      label: 'Note',
+      placeholder: 'Reason / context'
+    };
+  }
+
+  private entryMemberFlowItems(menu: 'score' | 'home' | 'away'): readonly AppMenuItem<string, { menu: 'score' | 'home' | 'away'; memberId: string }>[] {
     const selectedId = this.entrySelectedMemberId(menu);
     return this.entryMembers().map(member => ({
-      id: `${menu}-${member.id}`,
+      id: member.id,
       label: member.name,
       icon: 'person',
       kind: 'radio',
       active: member.id === selectedId,
       context: { menu, memberId: member.id }
     }));
-  }
-
-  protected onEntryMemberSelect(event: AppMenuItemSelectEvent<string, { menu: 'score' | 'home' | 'away'; memberId: string }>): void {
-    const context = event.context;
-    if (!context) {
-      return;
-    }
-    if (context.menu === 'score') {
-      this.entryForm.memberId = context.memberId;
-      return;
-    }
-    if (context.menu === 'home') {
-      this.entryForm.homeMemberId = context.memberId;
-      if (this.entryForm.awayMemberId === context.memberId) {
-        this.entryForm.awayMemberId = this.entryMembers().find(member => member.id !== context.memberId)?.id ?? '';
-      }
-      return;
-    }
-    this.entryForm.awayMemberId = context.memberId;
-    if (this.entryForm.homeMemberId === context.memberId) {
-      this.entryForm.homeMemberId = this.entryMembers().find(member => member.id !== context.memberId)?.id ?? '';
-    }
-  }
-
-  protected onScoreValueChange(value: number | string | null | undefined): void {
-    this.entryForm.scoreValue = value === '' || value === null || value === undefined
-      ? null
-      : Math.trunc(Number(value) || 0);
-  }
-
-  protected onHomeScoreChange(value: number | string | null | undefined): void {
-    this.entryForm.homeScore = value === '' || value === null || value === undefined
-      ? null
-      : Math.max(0, Math.trunc(Number(value) || 0));
-  }
-
-  protected onAwayScoreChange(value: number | string | null | undefined): void {
-    this.entryForm.awayScore = value === '' || value === null || value === undefined
-      ? null
-      : Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   protected canSubmitEntry(): boolean {
@@ -885,7 +956,7 @@ export class EventTournamentGroupsPopupComponent {
     }
   }
 
-  private canManageGroups(): boolean {
+  protected canManageGroups(): boolean {
     return this.viewModel().canManage === true;
   }
 
@@ -962,6 +1033,32 @@ export class EventTournamentGroupsPopupComponent {
     return this.entryMembers().find(member => member.id === selectedId)?.name ?? 'Select member';
   }
 
+  private recordValue(value: unknown): Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+  }
+
+  private entryMemberIdValue(value: unknown, fallback: string): string {
+    const memberId = `${value ?? ''}`.trim();
+    if (memberId && this.entryMembers().some(member => member.id === memberId)) {
+      return memberId;
+    }
+    return fallback;
+  }
+
+  private integerOrNull(value: unknown, nonNegative = false): number | null {
+    if (value === '' || value === null || value === undefined) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return null;
+    }
+    const integer = Math.trunc(parsed);
+    return nonNegative ? Math.max(0, integer) : integer;
+  }
+
   private openCreateGroupForm(stage: ContractTypes.EventTournamentStageDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.canManageGroups()) {
@@ -1013,6 +1110,7 @@ export class EventTournamentGroupsPopupComponent {
       failureMessage: 'Group delete failed.',
       onConfirm: async () => {
         this.isMutating = true;
+        let reloadLeaderboardStageId: string | null = null;
         try {
           const nextState = await this.eventsService.deleteTournamentGroup({
             actorUserId: this.activeUserId(),
@@ -1026,11 +1124,15 @@ export class EventTournamentGroupsPopupComponent {
             const nextGroup = this.state?.stages.find(item => item.subEventId === stage.subEventId)?.groups[0] ?? null;
             this.selectedGroupId = nextGroup?.id ?? null;
             this.openGroupIds = nextGroup ? [nextGroup.id] : [];
+            this.leaderboardState = null;
+            reloadLeaderboardStageId = nextGroup ? stage.subEventId : null;
           }
-          await this.loadLeaderboardForStage(stage.subEventId);
         } finally {
           this.isMutating = false;
           this.cdr.markForCheck();
+        }
+        if (reloadLeaderboardStageId) {
+          void this.loadLeaderboardForStage(reloadLeaderboardStageId);
         }
       }
     });
