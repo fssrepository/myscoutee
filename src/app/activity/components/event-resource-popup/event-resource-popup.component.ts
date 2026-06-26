@@ -116,6 +116,8 @@ const ASSET_EXPLORE_ORDER_OPTIONS: readonly AssetExploreOrderOption[] = [
   { key: 'fewest-policies', label: 'Fewest policies', icon: 'policy' }
 ] as const;
 
+const RESOURCE_SMART_LIST_LOADING_DELAY_MS = 180;
+
 export interface AssetExplorePopupViewState {
   title: string;
   subtitle: string;
@@ -401,6 +403,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected readonly resourceSmartListConfig: SmartListConfig<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters> = {
     pageSize: 18,
+    loadingDelayMs: RESOURCE_SMART_LIST_LOADING_DELAY_MS,
     defaultView: 'list',
     headerProgress: {
       enabled: true
@@ -442,6 +445,7 @@ export class EventResourcePopupComponent implements DoCheck {
   protected readonly assetExploreSmartListConfig: SmartListConfig<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
+    loadingDelayMs: RESOURCE_SMART_LIST_LOADING_DELAY_MS,
     defaultView: 'list',
     presentation: 'list',
     headerProgress: {

@@ -1,6 +1,7 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import type { SubEventResourceFilter } from '../../shared/core/common/constants';
+import type { ActivityMemberEntry } from '../../shared/core/contracts/activity.interface';
 
 export interface EventEditorState {
   isOpen: boolean;
@@ -19,9 +20,14 @@ export interface EventEditorSubEventResourcePopupRequest {
   group?: {
     id?: string | null;
     groupLabel?: string;
+    source?: string | null;
     pending?: number;
+    accepted?: number;
     capacityMin?: number;
     capacityMax?: number;
+    canManage?: boolean;
+    members?: readonly ActivityMemberEntry[];
+    onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
   } | null;
 }
 

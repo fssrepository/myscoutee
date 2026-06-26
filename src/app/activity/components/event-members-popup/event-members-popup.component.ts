@@ -920,7 +920,7 @@ export class EventMembersPopupComponent {
       }
 
       this.syncMembersSmartListQuery();
-      if (this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset') {
+      if (this.lookupRef?.type !== 'chat' && options?.ownerType !== 'asset' && options?.ownerType !== 'group') {
         void this.resolveOwnerPresentation(normalizedOwnerId, options);
       }
       this.cdr.markForCheck();

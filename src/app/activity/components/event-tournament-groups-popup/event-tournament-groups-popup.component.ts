@@ -298,7 +298,14 @@ export class EventTournamentGroupsPopupComponent {
         {
           id: 'members',
           items: [
-            this.resourceMenuItem('members', 'Members', 'groups', 'blue', contextBase, `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`)
+            this.resourceMenuItem(
+              'members',
+              'Tagok',
+              this.canInviteGroupMembers(group) ? 'group_add' : 'groups',
+              'blue',
+              contextBase,
+              `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`
+            )
           ]
         },
         {
@@ -966,6 +973,10 @@ export class EventTournamentGroupsPopupComponent {
     return this.viewModel().canManage === true;
   }
 
+  private canInviteGroupMembers(group: ContractTypes.EventTournamentGroupDTO): boolean {
+    return this.canManageGroups() && `${group.source ?? ''}`.toLowerCase() === 'manual';
+  }
+
   private activeUserId(): string {
     return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
   }
@@ -1161,6 +1172,7 @@ export class EventTournamentGroupsPopupComponent {
     event?: Event
   ): void {
     event?.stopPropagation();
+    const isMembersPopup = type === 'Members';
     this.eventEditorService.requestSubEventResourcePopup({
       type,
       ownerId: this.eventId(),
@@ -1178,10 +1190,171 @@ export class EventTournamentGroupsPopupComponent {
       group: {
         id: group.id,
         groupLabel: group.name,
-        pending: group.membersPending,
+        source: group.source,
+        accepted: isMembersPopup ? undefined : group.membersAccepted,
+        pending: isMembersPopup ? undefined : group.membersPending,
         capacityMin: group.capacityMin,
-        capacityMax: group.capacityMax
+        capacityMax: group.capacityMax,
+        canManage: isMembersPopup && this.canInviteGroupMembers(group),
+        onMembersChanged: isMembersPopup
+          ? members => this.syncGroupMembersFromPopup(stage.subEventId, group.id, members)
+          : undefined
       }
+    });
+  }
+
+  private syncGroupMembersFromPopup(
+    stageId: string,
+    groupId: string,
+    members: readonly ContractTypes.ActivityMemberEntry[]
+  ): void {
+    const acceptedMembers = members.filter(member => member.status === 'accepted');
+    const pendingMembers = members.filter(member => member.status === 'pending');
+    this.state = this.updateGroupCounts(this.state, stageId, groupId, acceptedMembers.length, pendingMembers.length);
+    this.syncLeaderboardMembers(groupId, acceptedMembers);
+    this.cdr.markForCheck();
+  }
+
+  private updateGroupCounts(
+    state: ContractTypes.EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    accepted: number,
+    pending: number
+  ): ContractTypes.EventTournamentGroupsStateDTO | null {
+    if (!state) {
+      return null;
+    }
+    return {
+      ...state,
+      stages: state.stages.map(stage => stage.subEventId === stageId
+        ? {
+            ...stage,
+            groups: stage.groups.map(group => group.id === groupId
+              ? {
+                  ...group,
+                  membersAccepted: Math.max(0, accepted),
+                  membersPending: Math.max(0, pending)
+                }
+              : group)
+          }
+        : stage)
+    };
+  }
+
+  private syncLeaderboardMembers(
+    groupId: string,
+    acceptedMembers: readonly ContractTypes.ActivityMemberEntry[]
+  ): void {
+    if (!this.leaderboardState) {
+      return;
+    }
+    const nextMembers = acceptedMembers
+      .map(member => ({
+        id: member.userId.trim() || member.id.trim(),
+        name: member.name.trim() || 'Member'
+      }))
+      .filter(member => member.id.length > 0);
+    this.leaderboardState = {
+      ...this.leaderboardState,
+      groups: this.leaderboardState.groups.map(group => group.groupId === groupId
+        ? {
+            ...group,
+            memberCount: nextMembers.length,
+            advancingMemberIds: group.advancingMemberIds.filter(memberId => nextMembers.some(member => member.id === memberId)),
+            members: nextMembers,
+            scoreRows: this.scoreRowsForMembers(nextMembers, group.scoreEntries),
+            fifaRows: this.fifaRowsForMembers(nextMembers, group.fifaMatches)
+          }
+        : group)
+    };
+  }
+
+  private scoreRowsForMembers(
+    members: readonly ContractTypes.SubEventLeaderboardMember[],
+    entries: readonly ContractTypes.SubEventLeaderboardScoreEntry[]
+  ): ContractTypes.SubEventLeaderboardScoreStandingRow[] {
+    const rows = new Map<string, ContractTypes.SubEventLeaderboardScoreStandingRow>();
+    for (const member of members) {
+      rows.set(member.id, {
+        memberId: member.id,
+        memberName: member.name,
+        total: 0,
+        updates: 0
+      });
+    }
+    for (const entry of entries) {
+      const row = rows.get(entry.memberId);
+      if (!row) {
+        continue;
+      }
+      row.total += Math.trunc(Number(entry.value) || 0);
+      row.updates += 1;
+    }
+    return [...rows.values()].sort((left, right) => {
+      if (left.total !== right.total) {
+        return right.total - left.total;
+      }
+      return left.memberName.localeCompare(right.memberName);
+    });
+  }
+
+  private fifaRowsForMembers(
+    members: readonly ContractTypes.SubEventLeaderboardMember[],
+    matches: readonly ContractTypes.SubEventLeaderboardFifaMatch[]
+  ): ContractTypes.SubEventLeaderboardFifaStandingRow[] {
+    const rows = new Map<string, ContractTypes.SubEventLeaderboardFifaStandingRow>();
+    for (const member of members) {
+      rows.set(member.id, {
+        memberId: member.id,
+        memberName: member.name,
+        points: 0,
+        played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+        goalDiff: 0
+      });
+    }
+    for (const match of matches) {
+      const home = rows.get(match.homeMemberId);
+      const away = rows.get(match.awayMemberId);
+      if (!home || !away) {
+        continue;
+      }
+      home.played += 1;
+      away.played += 1;
+      home.goalsFor += match.homeScore;
+      home.goalsAgainst += match.awayScore;
+      away.goalsFor += match.awayScore;
+      away.goalsAgainst += match.homeScore;
+      if (match.homeScore > match.awayScore) {
+        home.wins += 1;
+        home.points += 3;
+        away.losses += 1;
+      } else if (match.homeScore < match.awayScore) {
+        away.wins += 1;
+        away.points += 3;
+        home.losses += 1;
+      } else {
+        home.draws += 1;
+        away.draws += 1;
+        home.points += 1;
+        away.points += 1;
+      }
+      home.goalDiff = home.goalsFor - home.goalsAgainst;
+      away.goalDiff = away.goalsFor - away.goalsAgainst;
+    }
+    return [...rows.values()].sort((left, right) => {
+      if (left.points !== right.points) {
+        return right.points - left.points;
+      }
+      if (left.goalDiff !== right.goalDiff) {
+        return right.goalDiff - left.goalDiff;
+      }
+      return left.memberName.localeCompare(right.memberName);
     });
   }
 
