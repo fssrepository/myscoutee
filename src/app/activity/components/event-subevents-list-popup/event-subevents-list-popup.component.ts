@@ -34,7 +34,7 @@ import {
 } from '../../../shared/ui/converters';
 import { EventsService } from '../../../shared/core';
 import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
@@ -74,7 +74,7 @@ interface EventSubeventsSlotSection {
 export class EventSubeventsListPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -462,7 +462,7 @@ export class EventSubeventsListPopupComponent {
     if (!this.canManageRuntimeActions()) {
       return;
     }
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: context.title,
       message: context.description,
       cancelLabel: 'Cancel',

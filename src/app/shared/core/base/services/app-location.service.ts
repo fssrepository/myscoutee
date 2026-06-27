@@ -8,7 +8,7 @@ import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import { UsersService } from './users.service';
 import { SessionService } from './session.service';
-import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../ui/context/stores/confirmation-dialog.store';
 import { appLocationStorageKey } from '../../common/storage-scope';
 
 @Injectable({
@@ -24,7 +24,7 @@ export class AppLocationService {
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly syncingUserIds = new Set<string>();
   private readonly blockedUserIds = new Set<string>();
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
@@ -365,7 +365,7 @@ export class AppLocationService {
       if (this.isIneligibleRegionError(error)) {
         if (!this.blockedUserIds.has(userId)) {
           this.blockedUserIds.add(userId);
-          this.confirmationDialogService.openInfo(this.resolveIneligibleRegionMessage(error), {
+          this.confirmationDialogStore.openInfo(this.resolveIneligibleRegionMessage(error), {
             title: AppLocationService.ACCESS_RESTRICTED_TITLE,
             confirmLabel: 'OK',
             allowBackdropClose: false,

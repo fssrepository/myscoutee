@@ -6,7 +6,7 @@ import { AppUtils } from '../shared/app-utils';
 import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
 import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
-import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../shared/ui/context/stores/confirmation-dialog.store';
 import { AppPopupContext } from '../shared/ui';
 import { AssetPopupStore } from '../shared/ui/context/stores/asset-popup.store';
 
@@ -69,7 +69,7 @@ export class NavigatorService {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly router = inject(Router);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly currentRouteUrlRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
@@ -268,7 +268,7 @@ export class NavigatorService {
       return;
     }
     this.reactivationPromptUserId = userId;
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Reactivate account?',
       message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
       cancelLabel: 'Cancel',
@@ -614,7 +614,7 @@ export class NavigatorService {
 
   openDeleteAccountConfirm(): void {
     const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Delete account?',
       message: activeUserName,
       warningMessage: 'You can reactivate within 30 days. After that, the account is permanently purged.',
@@ -638,7 +638,7 @@ export class NavigatorService {
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
           if (!result.submitted) {
-            this.confirmationDialogService.openInfo(
+            this.confirmationDialogStore.openInfo(
               result.message ?? 'Unable to delete account.',
               {
                 title: 'Delete account',
@@ -657,7 +657,7 @@ export class NavigatorService {
 
   openLogoutConfirm(): void {
     const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || '';
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Biztosan kilép?',
       message: activeUserName,
       cancelLabel: 'Mégsem',
@@ -674,7 +674,7 @@ export class NavigatorService {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);
             if (!result.submitted) {
-              this.confirmationDialogService.openInfo(
+              this.confirmationDialogStore.openInfo(
                 result.message ?? 'Unable to log out.',
                 {
                   title: 'Logout',
@@ -696,7 +696,7 @@ export class NavigatorService {
         if (activeUserId) {
           const result = await this.usersService.logoutUser(activeUserId);
           if (!result.submitted) {
-            this.confirmationDialogService.openInfo(
+            this.confirmationDialogStore.openInfo(
               result.message ?? 'Unable to log out.',
               {
                 title: 'Logout',

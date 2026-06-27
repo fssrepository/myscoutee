@@ -47,9 +47,9 @@ import {
   type SmartListItemTemplateContext,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
-import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { NavigatorService } from '../../../navigator';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
@@ -99,10 +99,10 @@ export class EventExplorePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
-  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
-  private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
+  private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -240,7 +240,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      this.eventCheckoutDraftService.drafts();
+      this.eventCheckoutDraftStore.drafts();
       const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
       const removedPendingDraftSourceIds = [...this.lastPendingCheckoutDraftSourceIds]
         .filter(sourceId => !nextPendingDraftSourceIds.has(sourceId));
@@ -704,14 +704,14 @@ export class EventExplorePopupComponent {
       return;
     }
     if (record.creatorUserId === activeUserId) {
-      this.confirmationDialogService.openInfo(`You already host ${record.title}.`, {
+      this.confirmationDialogStore.openInfo(`You already host ${record.title}.`, {
         title: 'Already hosting',
         confirmTone: 'neutral'
       });
       return;
     }
     if (this.hasTrackedMembership(record, activeUserId)) {
-      this.confirmationDialogService.openInfo(`A membership entry already exists for ${record.title}.`, {
+      this.confirmationDialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
         title: 'Already requested',
         confirmTone: 'neutral'
       });
@@ -721,7 +721,7 @@ export class EventExplorePopupComponent {
       this.openEventExploreCheckout(record);
       return;
     }
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: record.title,
       cancelLabel: 'Cancel',
@@ -775,7 +775,7 @@ export class EventExplorePopupComponent {
 
   protected checkoutDraftEntries(): CheckoutDraftEntry[] {
     const activeUserId = this.activeUserId.trim();
-    return this.eventCheckoutDraftService.listByUser(activeUserId)
+    return this.eventCheckoutDraftStore.listByUser(activeUserId)
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
@@ -879,8 +879,8 @@ export class EventExplorePopupComponent {
     const record = this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
-      this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
-      this.confirmationDialogService.openInfo('This checkout draft can no longer be restored.', {
+      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
+      this.confirmationDialogStore.openInfo('This checkout draft can no longer be restored.', {
         title: 'Basket unavailable',
         confirmTone: 'neutral'
       });
@@ -902,7 +902,7 @@ export class EventExplorePopupComponent {
       return;
     }
     this.activeUserId = activeUserId;
-    const draft = this.eventCheckoutDraftService.read(activeUserId, normalizedSourceId);
+    const draft = this.eventCheckoutDraftStore.read(activeUserId, normalizedSourceId);
     if (!draft) {
       return;
     }
@@ -927,7 +927,7 @@ export class EventExplorePopupComponent {
       ?? this.eventsService.peekKnownRecordById(this.activeUserId, sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, sourceId);
     if (!record) {
-      this.confirmationDialogService.openInfo('This event can no longer be opened.', {
+      this.confirmationDialogStore.openInfo('This event can no longer be opened.', {
         title: 'Event unavailable',
         confirmTone: 'neutral'
       });
@@ -945,7 +945,7 @@ export class EventExplorePopupComponent {
     const activeUserId = this.activeUserId.trim();
     const sourceId = draft.sourceId.trim();
     if (!activeUserId || !sourceId) {
-      this.eventCheckoutDraftService.clear(activeUserId, sourceId);
+      this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
       this.cdr.markForCheck();
       return;
     }
@@ -954,7 +954,7 @@ export class EventExplorePopupComponent {
     }
 
     this.checkoutDraftReleaseSourceIds.add(sourceId);
-    this.eventCheckoutDraftService.clear(activeUserId, sourceId);
+    this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
       const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId)
@@ -1104,7 +1104,7 @@ export class EventExplorePopupComponent {
   }
 
   private openShareLinkDialog(title: string, shareToken: string): void {
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title,
       message: shareToken,
       confirmLabel: 'Copy link',
@@ -1127,7 +1127,7 @@ export class EventExplorePopupComponent {
     if (!record) {
       return;
     }
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: `${record.title}\n${slot.timeframe}`,
       cancelLabel: 'Cancel',
@@ -1380,7 +1380,7 @@ export class EventExplorePopupComponent {
   }
 
   private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {
-    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftService.read(userId, sourceId));
+    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftStore.read(userId, sourceId));
   }
 
   private pendingCheckoutDraftSourceIds(): Set<string> {
@@ -1389,7 +1389,7 @@ export class EventExplorePopupComponent {
       return new Set<string>();
     }
     return new Set(
-      this.eventCheckoutDraftService.listByUser(activeUserId)
+      this.eventCheckoutDraftStore.listByUser(activeUserId)
         .filter(draft => this.isTrackableCheckoutDraft(draft))
         .map(draft => draft.sourceId.trim())
         .filter(sourceId => sourceId.length > 0)
@@ -1516,7 +1516,7 @@ export class EventExplorePopupComponent {
     const dialogOptions = {
       approvalGranted: options.approvalGranted === true
     };
-    this.eventCheckoutDialogService.open({
+    this.eventCheckoutDialogStore.open({
       mode: 'join',
       userId: this.activeUserId,
       record,

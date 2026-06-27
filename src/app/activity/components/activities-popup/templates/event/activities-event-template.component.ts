@@ -140,9 +140,9 @@ export class ActivitiesEventsController {
   private get activityMembersService() { return this.host.activityMembersService; }
   private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
-  private get confirmationDialogService() { return this.host.confirmationDialogService; }
-  private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
-  private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
+  private get confirmationDialogStore() { return this.host.confirmationDialogStore; }
+  private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
+  private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
@@ -364,7 +364,7 @@ export class ActivitiesEventsController {
       if (!token) {
         return;
       }
-      this.confirmationDialogService.open({
+      this.confirmationDialogStore.open({
         title: 'Share event',
         message: token,
         confirmLabel: 'Copy link',
@@ -527,7 +527,7 @@ export class ActivitiesEventsController {
       record?.creatorUserId ?? relatedSource.creatorUserId
     );
     if (record && this.shouldUseCheckoutFlow(record)) {
-      this.eventCheckoutDialogService.open({
+      this.eventCheckoutDialogStore.open({
         mode: 'invitation',
         userId: activeUserId,
         record,
@@ -541,7 +541,7 @@ export class ActivitiesEventsController {
       });
       return;
     }
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Accept invitation?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -555,7 +555,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Restore event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -570,7 +570,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: this.activitySecondaryConfirmTitle(row),
       message: row.title,
       cancelLabel: 'Cancel',
@@ -585,7 +585,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Publish event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -600,7 +600,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Unpublish event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -615,7 +615,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Take over event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -784,14 +784,14 @@ export class ActivitiesEventsController {
     }
     const eventDetailDTO = await this.buildLeftActivityEventDetailDTO(row);
     if (!eventDetailDTO) {
-      this.eventCheckoutDraftService.clear(activeUserId, row.id);
+      this.eventCheckoutDraftStore.clear(activeUserId, row.id);
       this.removeVisibleActivityRow(row);
       this.refreshSectionBadges();
       this.cdr.markForCheck();
       return;
     }
 
-    this.eventCheckoutDraftService.clear(activeUserId, row.id);
+    this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
     const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberEntry) => member.userId !== activeUserId);
     const capacityTotal = Math.max(

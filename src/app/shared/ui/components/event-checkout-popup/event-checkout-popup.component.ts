@@ -16,8 +16,8 @@ import type * as ContractTypes from '../../../core/contracts';
 import type * as ActivityContracts from '../../../core/contracts/activity.interface';
 import { EventsService } from '../../../core/base/services/events.service';
 import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
-import { EventCheckoutDraftService } from '../../services/event-checkout-draft.service';
-import { EventCheckoutDialogService, type EventCheckoutDialogState } from '../../services/event-checkout-dialog.service';
+import { EventCheckoutDraftStore } from '../../context/stores/event-checkout-draft.store';
+import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../context/stores/event-checkout-dialog.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -56,9 +56,9 @@ type CancellationPreview = {
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
   protected readonly environment = environment;
-  protected readonly dialogService = inject(EventCheckoutDialogService);
+  protected readonly dialogStore = inject(EventCheckoutDialogStore);
   private readonly eventsService = inject(EventsService);
-  private readonly checkoutDraftService = inject(EventCheckoutDraftService);
+  private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
 
   protected selectedSlotSourceId: string | null = null;
   protected selectedSlotDateValue: Date | null = null;
@@ -77,7 +77,7 @@ export class EventCheckoutPopupComponent {
 
   constructor() {
     effect(() => {
-      const dialog = this.dialogService.dialog();
+      const dialog = this.dialogStore.dialog();
       if (!dialog) {
         this.resetDialogState();
         return;
@@ -107,7 +107,7 @@ export class EventCheckoutPopupComponent {
   }
 
   protected dialog(): EventCheckoutDialogState | null {
-    return this.dialogService.dialog();
+    return this.dialogStore.dialog();
   }
 
   protected closeFromBackdrop(event: Event): void {
@@ -124,7 +124,7 @@ export class EventCheckoutPopupComponent {
     if (this.busy) {
       return;
     }
-    this.dialogService.close();
+    this.dialogStore.close();
   }
 
   protected sectionTitle(): string {
@@ -614,7 +614,7 @@ export class EventCheckoutPopupComponent {
       try {
         await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
         this.persistCheckoutDraft();
-        this.dialogService.close();
+        this.dialogStore.close();
       } catch (error) {
         this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
       } finally {
@@ -665,7 +665,7 @@ export class EventCheckoutPopupComponent {
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
       this.clearCheckoutDraft();
-      this.dialogService.close();
+      this.dialogStore.close();
     } catch (error) {
       if (await this.recoverStalePaymentSession(error)) {
         return;
@@ -704,7 +704,7 @@ export class EventCheckoutPopupComponent {
   private initializeDialogState(dialog: EventCheckoutDialogState): void {
     this.rebuildSlotCaches(dialog.record.upcomingSlots ?? []);
     const firstSlot = dialog.record.upcomingSlots?.[0] ?? null;
-    const draft = this.checkoutDraftService.read(dialog.userId, dialog.record.id);
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
     const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
     const validPolicyIds = new Set(this.policies().map(item => item.id));
     const validSlotIds = new Set(this.availableSlots().map(item => item.id));
@@ -1065,7 +1065,7 @@ export class EventCheckoutPopupComponent {
     if (!dialog || (this.totalAmount() <= 0 && !this.isWaitingListSelection())) {
       return;
     }
-    this.checkoutDraftService.save({
+    this.checkoutDraftStore.save({
       userId: dialog.userId,
       sourceId: dialog.record.id,
       eventTitle: dialog.record.title,
@@ -1088,7 +1088,7 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return;
     }
-    this.checkoutDraftService.clear(dialog.userId, dialog.record.id);
+    this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.checkoutSessionId = null;
   }
 

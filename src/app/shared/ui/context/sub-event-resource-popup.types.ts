@@ -55,23 +55,6 @@ export interface SupplyContributionPopupState {
   title: string;
 }
 
-export interface PendingSupplyDeleteState {
-  subEventId: string;
-  assetId: string;
-  entryId: string;
-  label: string;
-  busy: boolean;
-  error: string | null;
-}
-
-export interface PendingResourceDeleteState {
-  assetId: string;
-  type: AppConstants.AssetType;
-  title: string;
-  busy: boolean;
-  error: string | null;
-}
-
 export interface PendingAssignSaveState {
   subEventId: string;
   type: AppConstants.AssetType;

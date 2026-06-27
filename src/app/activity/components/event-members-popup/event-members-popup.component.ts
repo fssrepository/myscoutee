@@ -37,7 +37,7 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { NavigatorService } from '../../../navigator';
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
@@ -79,7 +79,7 @@ type MembersSummaryState = {
 })
 export class EventMembersPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
@@ -214,7 +214,7 @@ export class EventMembersPopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented || this.isSuspendedForAssetInvite()) {
       return;
     }
-    if (this.confirmationDialogService.dialog()) {
+    if (this.confirmationDialogStore.dialog()) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -419,7 +419,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Approve request?',
       message: `Approve ${entry.name} for this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -438,7 +438,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: this.memberRemovalTitle(entry),
       message: this.memberRemovalMessage(entry),
       cancelLabel: 'Cancel',
@@ -457,7 +457,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Disqualify member?',
       message: `Disqualify ${entry.name} from this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -476,7 +476,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Reinstate member?',
       message: `Reinstate ${entry.name} to this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',

@@ -33,7 +33,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 type IdeaEditorMode = 'html' | 'preview';
@@ -110,7 +110,7 @@ export class AdminIdeaEditorPopupComponent {
   protected readonly admin = inject(AdminShellService);
   private readonly appCtx = inject(AppContext);
   private readonly ideaPosts = inject(IdeaPostsService);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly confirmationDialog = inject(ConfirmationDialogStore);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 

@@ -25,7 +25,7 @@ import {
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { AdminShellService } from '../../services/admin-shell.service';
 
 type EditorTab = 'html' | 'preview';
@@ -140,7 +140,7 @@ export class AdminHelpEditorPopupComponent {
   protected readonly admin = inject(AdminShellService);
   private readonly appCtx = inject(AppContext);
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly confirmationDialog = inject(ConfirmationDialogStore);
   private readonly i18n = inject(I18nService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 

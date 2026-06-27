@@ -1,8 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutLineItem } from '../../core/contracts/activity.interface';
-import type { ActivityPendingReason } from '../../core/common/constants';
-import { APP_STORAGE_KEYS } from '../../core/common/storage-scope';
+import type { EventCheckoutLineItem } from '../../../core/contracts/activity.interface';
+import type { ActivityPendingReason } from '../../../core/common/constants';
+import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
 
 export interface EventCheckoutDraft {
   userId: string;
@@ -24,7 +24,7 @@ export interface EventCheckoutDraft {
 @Injectable({
   providedIn: 'root'
 })
-export class EventCheckoutDraftService {
+export class EventCheckoutDraftStore {
   private static readonly STORAGE_KEY = APP_STORAGE_KEYS.eventCheckoutDrafts;
   private readonly draftsRef = signal<Record<string, EventCheckoutDraft>>(this.readInitialDrafts());
 
@@ -114,7 +114,7 @@ export class EventCheckoutDraftService {
       return {};
     }
     try {
-      const raw = window.localStorage.getItem(EventCheckoutDraftService.STORAGE_KEY);
+      const raw = window.localStorage.getItem(EventCheckoutDraftStore.STORAGE_KEY);
       if (!raw) {
         return {};
       }
@@ -137,7 +137,7 @@ export class EventCheckoutDraftService {
       return;
     }
     try {
-      window.localStorage.setItem(EventCheckoutDraftService.STORAGE_KEY, JSON.stringify(drafts));
+      window.localStorage.setItem(EventCheckoutDraftStore.STORAGE_KEY, JSON.stringify(drafts));
     } catch {
       // Ignore storage write failures.
     }

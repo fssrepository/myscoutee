@@ -9,8 +9,6 @@ import type {
   AssignedAssetJoinDialogState,
   CapacityEditorState,
   PendingAssignSaveState,
-  PendingResourceDeleteState,
-  PendingSupplyDeleteState,
   ResourcePopupContext,
   RouteEditorState,
   SupplyContributionPopupState,
@@ -34,8 +32,6 @@ export class SubEventResourcePopupStore {
   readonly routeEditorRef = signal<RouteEditorState | null>(null);
   readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
   readonly bringDialogRef = signal<SupplyBringDialogState | null>(null);
-  readonly pendingSupplyDeleteRef = signal<PendingSupplyDeleteState | null>(null);
-  readonly pendingResourceDeleteRef = signal<PendingResourceDeleteState | null>(null);
   readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
   readonly assetExplorePopupRef = signal<AssetExplorePopupState | null>(null);
   readonly assetExploreOnlyRef = signal(false);
@@ -62,10 +58,8 @@ export class SubEventResourcePopupStore {
     this.resourceAssetViewReturnToChatRef.set(false);
     this.capacityEditorRef.set(null);
     this.routeEditorRef.set(null);
-    this.pendingResourceDeleteRef.set(null);
     this.supplyPopupRef.set(null);
     this.bringDialogRef.set(null);
-    this.pendingSupplyDeleteRef.set(null);
     this.assignedAssetJoinDialogRef.set(null);
     this.assetExploreBorrowDialogRef.set(null);
     this.assetExplorePopupRef.set(null);

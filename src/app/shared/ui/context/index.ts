@@ -44,8 +44,6 @@ export type {
   AssignedAssetJoinPricingPreview,
   CapacityEditorState,
   PendingAssignSaveState,
-  PendingResourceDeleteState,
-  PendingSupplyDeleteState,
   ResourcePopupContext,
   RouteEditorState,
   SupplyBringDialogState,

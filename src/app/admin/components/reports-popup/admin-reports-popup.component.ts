@@ -29,7 +29,7 @@ import {
 } from '../../../shared/ui';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
@@ -91,7 +91,7 @@ export class AdminReportsPopupComponent {
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly moderationData = inject(AdminModerationService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly confirmationDialog = inject(ConfirmationDialogStore);
   private readonly location = inject(Location);
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
   protected reportDetail: AdminReportListItem | null = null;

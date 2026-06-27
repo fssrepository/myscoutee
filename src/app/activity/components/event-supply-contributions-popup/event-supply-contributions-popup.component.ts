@@ -25,6 +25,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { ActivityResourceBuilder, ActivityResourcesService, UsersService, type UserDto } from '../../../shared/core';
 import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import type { ResourcePopupContext } from '../../../shared/ui/context/sub-event-resource-popup.types';
 
 type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
@@ -43,6 +44,12 @@ type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
 interface SupplyContributionListFilters {
   revision?: number;
   contextKey?: string;
+}
+
+interface SupplyContributionRemovalRequest {
+  assetId: string;
+  entryId: string;
+  label: string;
 }
 
 @Component({
@@ -66,8 +73,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly usersService = inject(UsersService);
-  private pendingSupplyDeleteAbortController: AbortController | null = null;
-  private pendingSupplyDeleteRequestVersion = 0;
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private pendingSupplyBringAbortController: AbortController | null = null;
   private pendingSupplyBringRequestVersion = 0;
   private lastRowsSignature = '';
@@ -261,10 +267,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   protected closeSupplyContributionsPopup(): void {
-    this.abortPendingSupplyDeleteRequest();
     this.abortPendingSupplyBringRequest();
     this.resourcePopupStore.supplyPopupRef.set(null);
-    this.resourcePopupStore.pendingSupplyDeleteRef.set(null);
     this.resourcePopupStore.bringDialogRef.set(null);
   }
 
@@ -397,95 +401,49 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return this.resourcePopupStore.bringDialogRef()?.busy === true;
   }
 
-  protected isSupplyDeletePending(): boolean {
-    return this.resourcePopupStore.pendingSupplyDeleteRef()?.busy === true;
-  }
-
-  protected supplyDeleteErrorMessage(): string {
-    return this.resourcePopupStore.pendingSupplyDeleteRef()?.error?.trim() ?? '';
-  }
-
   protected requestDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.supplyPopupRef();
     if (!context || row.userId !== this.activeUser().id) {
       return;
     }
-    this.resourcePopupStore.pendingSupplyDeleteRef.set({
-      subEventId: context.subEventId,
+    const pending: SupplyContributionRemovalRequest = {
       assetId: context.assetId,
       entryId: row.id,
-      label: `${row.name} · ${row.quantity}`,
-      busy: false,
-      error: null
+      label: `${row.name} · ${row.quantity}`
+    };
+    this.confirmationDialogStore.open({
+      title: 'Delete quantity row',
+      message: `Delete "${pending.label}" from supplies?`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      busyConfirmLabel: 'Deleting...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to delete quantity row.',
+      onConfirm: () => this.removeSupplyContribution(pending)
     });
   }
 
-  protected confirmDeleteSupplyContribution(): void {
-    const pending = this.resourcePopupStore.pendingSupplyDeleteRef();
-    if (!pending || pending.busy) {
-      return;
-    }
+  private async removeSupplyContribution(pending: SupplyContributionRemovalRequest): Promise<void> {
     const nextState = this.buildPopupResourceState();
     if (!nextState) {
-      return;
+      throw new Error('Unable to delete quantity row.');
     }
 
     const currentEntries = nextState.supplyContributionEntriesByAssetId[pending.assetId] ?? [];
+    const nextEntries = currentEntries.filter(entry => entry.id !== pending.entryId);
+    if (nextEntries.length === currentEntries.length) {
+      throw new Error('This quantity row is no longer available.');
+    }
     nextState.supplyContributionEntriesByAssetId = {
       ...nextState.supplyContributionEntriesByAssetId,
-      [pending.assetId]: currentEntries.filter(entry => entry.id !== pending.entryId)
+      [pending.assetId]: nextEntries
     };
 
-    const requestVersion = ++this.pendingSupplyDeleteRequestVersion;
-    const abortController = new AbortController();
-    this.pendingSupplyDeleteAbortController = abortController;
-    this.resourcePopupStore.pendingSupplyDeleteRef.set({
-      ...pending,
-      busy: true,
-      error: null
-    });
-
-    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
-      .then(savedState => {
-        if (this.pendingSupplyDeleteAbortController === abortController) {
-          this.pendingSupplyDeleteAbortController = null;
-        }
-        if (abortController.signal.aborted || requestVersion !== this.pendingSupplyDeleteRequestVersion) {
-          return;
-        }
-        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
-        this.applyPersistedPopupState(resolvedState);
-        this.resourcePopupStore.pendingSupplyDeleteRef.set(null);
-        this.syncPopupSubEventMetrics();
-      })
-      .catch(error => {
-        if (this.pendingSupplyDeleteAbortController === abortController) {
-          this.pendingSupplyDeleteAbortController = null;
-        }
-        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingSupplyDeleteRequestVersion) {
-          return;
-        }
-        const currentPending = this.resourcePopupStore.pendingSupplyDeleteRef();
-        if (!currentPending || currentPending.entryId !== pending.entryId) {
-          return;
-        }
-        this.resourcePopupStore.pendingSupplyDeleteRef.set({
-          ...currentPending,
-          busy: false,
-          error: 'Unable to delete quantity row.'
-        });
-      });
-  }
-
-  protected cancelDeleteSupplyContribution(): void {
-    this.abortPendingSupplyDeleteRequest();
-    this.resourcePopupStore.pendingSupplyDeleteRef.set(null);
-  }
-
-  protected pendingDeleteLabel(): string {
-    const pending = this.resourcePopupStore.pendingSupplyDeleteRef();
-    return pending ? `Delete "${pending.label}" from supplies?` : '';
+    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
+    const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+    this.applyPersistedPopupState(resolvedState);
+    this.syncPopupSubEventMetrics();
   }
 
   protected supplyContributionTotalLabel(): string {
@@ -789,13 +747,6 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     this.pendingSupplyBringRequestVersion += 1;
     const controller = this.pendingSupplyBringAbortController;
     this.pendingSupplyBringAbortController = null;
-    controller?.abort();
-  }
-
-  private abortPendingSupplyDeleteRequest(): void {
-    this.pendingSupplyDeleteRequestVersion += 1;
-    const controller = this.pendingSupplyDeleteAbortController;
-    this.pendingSupplyDeleteAbortController = null;
     controller?.abort();
   }
 

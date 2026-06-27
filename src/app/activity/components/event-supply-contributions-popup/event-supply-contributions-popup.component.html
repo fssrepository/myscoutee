@@ -107,45 +107,6 @@
             </div>
           </section>
         }
-
-        @if (resourcePopupStore.pendingSupplyDeleteRef()) {
-          <section class="experience-delete-confirm">
-            <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteSupplyContribution()"></div>
-            <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
-              <h4>Delete quantity row</h4>
-              <p>{{ pendingDeleteLabel() }}</p>
-              @if (supplyDeleteErrorMessage()) {
-                <p class="subevent-supply-delete-error">{{ supplyDeleteErrorMessage() }}</p>
-              }
-              <div class="popup-actions">
-                <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteSupplyContribution()">Cancel</button>
-                <span
-                  class="subevent-supply-delete-btn-shell"
-                  [class.is-loading]="isSupplyDeletePending()"
-                  [class.is-error]="!isSupplyDeletePending() && !!supplyDeleteErrorMessage()"
-                  >
-                  @if (isSupplyDeletePending() || supplyDeleteErrorMessage()) {
-                    <span class="subevent-supply-delete-btn-ring" aria-hidden="true">
-                      <app-progress-indicator
-                        kind="action-ring"
-                        shape="button"
-                        [state]="isSupplyDeletePending() ? 'loading' : 'error'"
-                      ></app-progress-indicator>
-                    </span>
-                  }
-                  <button
-                    type="button"
-                    class="link-btn experience-delete-btn subevent-supply-delete-confirm-btn"
-                    [disabled]="isSupplyDeletePending()"
-                    (click)="confirmDeleteSupplyContribution()"
-                    >
-                    {{ isSupplyDeletePending() ? 'Deleting...' : 'Delete' }}
-                  </button>
-                </span>
-              </div>
-            </div>
-          </section>
-        }
       </div>
     </div>
   </div>

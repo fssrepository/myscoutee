@@ -36,7 +36,6 @@ import {
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { SubEventResourcePopupController } from '../../../activity/services/sub-event-resource-popup.controller';
 import { NavigatorService } from '../../navigator.service';
 import { resolveNavigatorPresentation } from '../../navigator-presenters';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
@@ -126,7 +125,6 @@ export class NavigatorComponent implements OnDestroy {
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
-  protected readonly subEventResources = inject(SubEventResourcePopupController);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -839,6 +837,22 @@ export class NavigatorComponent implements OnDestroy {
         return;
       }
       void this.ensureEventExplorePopupLoaded();
+    });
+
+    effect(() => {
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
+        return;
+      }
+      void this.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      const request = this.eventEditorStore.subEventResourcePopupRequest();
+      if (!request) {
+        return;
+      }
+      void this.ensureEventResourcePopupLoaded();
     });
 
     effect(() => {

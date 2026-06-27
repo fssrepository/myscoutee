@@ -26,7 +26,7 @@ import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../share
 import { CURRENT_PROFILE_FORM_VERSION, type AuthMode } from '../../../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { I18nService } from '../../../shared/core';
 import { SeedStaticContentService } from '../../../shared/core/local/seed';
 import type { InfoCardData } from '../../../shared/ui';
@@ -84,7 +84,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly landingContent = inject(LandingContentService);
   private readonly staticContentSeed = inject(SeedStaticContentService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private loginEligibilityBusy = false;
@@ -419,7 +419,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         return true;
       }
       if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
-        this.confirmationDialogService.openInfo(
+        this.confirmationDialogStore.openInfo(
           this.loginUnavailableMessage(gateState),
           {
             title: 'please.register',
@@ -431,7 +431,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
       return await this.requestLocationAccessFromDialog();
     } catch {
-      this.confirmationDialogService.openInfo(
+      this.confirmationDialogStore.openInfo(
         'We could not complete the region-based check right now. Please try again later.',
         {
           title: 'Check Unavailable',
@@ -857,7 +857,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         setTimeout(() => resolve(allowed), 0);
       };
 
-      this.confirmationDialogService.open({
+      this.confirmationDialogStore.open({
         title: this.uiText('Location Required For Login'),
         message: this.uiText('We need your location before login so we can apply the region-based security check.'),
         cancelLabel: this.uiText('Not now'),
@@ -880,7 +880,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             this.markEntryNetworkUnavailable();
             settle(false);
             setTimeout(() => {
-              this.confirmationDialogService.openInfo(
+              this.confirmationDialogStore.openInfo(
                 this.uiText('The server is not reachable right now. Please try again when the network is back.'),
                 {
                   title: this.uiText('No network'),
@@ -898,7 +898,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
           settle(false);
           setTimeout(() => {
-            this.confirmationDialogService.openInfo(
+            this.confirmationDialogStore.openInfo(
               this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
               {
                 title: this.uiText('please.register'),
@@ -1283,7 +1283,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private openBundledLoginUnavailableInfo(): void {
-    this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
+    this.confirmationDialogStore.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
       title: 'please.register',
       confirmLabel: 'OK'
     });

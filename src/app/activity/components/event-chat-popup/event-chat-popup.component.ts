@@ -40,7 +40,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { NavigatorService } from '../../../navigator';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
@@ -134,7 +134,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly mediaService = inject(MediaService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly location = inject(Location);
@@ -1267,7 +1267,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected openChatAttachment(attachment: ContractTypes.ChatMessageAttachment, event?: Event): void {
     event?.stopPropagation();
     if (this.isAttachmentUnavailable(attachment)) {
-      this.confirmationDialogService.openInfo(this.unavailableAttachmentLabel(attachment), {
+      this.confirmationDialogStore.openInfo(this.unavailableAttachmentLabel(attachment), {
         title: attachment.title || this.chatAttachmentTypeLabel(attachment)
       });
       return;
@@ -2000,7 +2000,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const resolved = await this.shareTokensService.resolveToken(token, this.activeUserId());
     if (!resolved) {
-      this.confirmationDialogService.openInfo('This share token is expired or no longer available.', {
+      this.confirmationDialogStore.openInfo('This share token is expired or no longer available.', {
         title: 'Share link'
       });
       return null;
@@ -2131,7 +2131,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private openExternalAttachmentUrl(attachment: ContractTypes.ChatMessageAttachment): void {
     const url = `${attachment.url ?? ''}`.trim();
     if (!url) {
-      this.confirmationDialogService.openInfo('This shared item is not available from the current chat context.', {
+      this.confirmationDialogStore.openInfo('This shared item is not available from the current chat context.', {
         title: attachment.title || 'Shared item'
       });
       return;
@@ -2165,7 +2165,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private confirmExternalLink(url: string): void {
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: 'Open external link?',
       message: 'This link opens outside MyScoutee. Be vigilant and continue only if you trust it.',
       confirmLabel: 'Continue',
@@ -2182,14 +2182,14 @@ export class EventChatPopupComponent implements OnDestroy {
   private async openSharedEventAttachment(attachment: ContractTypes.ChatMessageAttachment): Promise<void> {
     const eventId = `${attachment.entityId ?? ''}`.trim();
     if (!eventId) {
-      this.confirmationDialogService.openInfo('This event is not available anymore.', {
+      this.confirmationDialogStore.openInfo('This event is not available anymore.', {
         title: attachment.title || 'Shared event'
       });
       return;
     }
     const eventRecord = await this.eventsService.queryKnownRecordById(this.activeUserId(), eventId);
     if (!eventRecord) {
-      this.confirmationDialogService.openInfo('This event is not available anymore.', {
+      this.confirmationDialogStore.openInfo('This event is not available anymore.', {
         title: attachment.title || 'Shared event'
       });
       return;

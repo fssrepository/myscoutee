@@ -1,7 +1,7 @@
 
 import { Component, HostListener, Input, inject } from '@angular/core';
 
-import { ConfirmationDialogService, type ConfirmationDialogState, type ConfirmationDialogTone } from '../../services/confirmation-dialog.service';
+import { ConfirmationDialogStore, type ConfirmationDialogState, type ConfirmationDialogTone } from '../../context/stores/confirmation-dialog.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -53,10 +53,10 @@ type RenderedConfirmationDialogState = {
   styleUrl: './confirmation-dialog.component.scss'
 })
 export class ConfirmationDialogComponent {
-  @Input() useService = true;
+  @Input() useStore = true;
   @Input() dialog: ConfirmationDialogLocalConfig | null = null;
 
-  protected readonly dialogService = inject(ConfirmationDialogService);
+  protected readonly dialogStore = inject(ConfirmationDialogStore);
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
@@ -71,7 +71,7 @@ export class ConfirmationDialogComponent {
   }
 
   protected dialogState(): RenderedConfirmationDialogState | null {
-    if (!this.useService) {
+    if (!this.useStore) {
       const dialog = this.dialog;
       if (!dialog?.visible) {
         return null;
@@ -94,8 +94,8 @@ export class ConfirmationDialogComponent {
       };
     }
 
-    const state = this.dialogService.dialog();
-    return state ? this.mapServiceState(state) : null;
+    const state = this.dialogStore.dialog();
+    return state ? this.mapStoreState(state) : null;
   }
 
   protected confirmText(state: RenderedConfirmationDialogState): string {
@@ -160,11 +160,11 @@ export class ConfirmationDialogComponent {
     if (!dialog || dialog.busy) {
       return;
     }
-    if (!this.useService) {
+    if (!this.useStore) {
       void this.dialog?.cancelAction?.();
       return;
     }
-    this.dialogService.cancel();
+    this.dialogStore.cancel();
   }
 
   protected confirm(event?: Event): void {
@@ -173,11 +173,11 @@ export class ConfirmationDialogComponent {
     if (!dialog || dialog.busy) {
       return;
     }
-    if (!this.useService) {
+    if (!this.useStore) {
       void this.dialog?.confirmAction?.();
       return;
     }
-    void this.dialogService.confirm();
+    void this.dialogStore.confirm();
   }
 
   private confirmPalette(state: RenderedConfirmationDialogState): AppMenuPalette {
@@ -196,7 +196,7 @@ export class ConfirmationDialogComponent {
     return 'blue';
   }
 
-  private mapServiceState(state: ConfirmationDialogState): RenderedConfirmationDialogState {
+  private mapStoreState(state: ConfirmationDialogState): RenderedConfirmationDialogState {
     return {
       title: state.title,
       message: state.message,

@@ -9,7 +9,7 @@ import { AppContext, AppPopupContext } from '../../../shared/ui';
 import { Subscription } from 'rxjs';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
+import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
@@ -86,7 +86,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
+  private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -639,7 +639,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
-    this.eventCheckoutDraftService.drafts();
+    this.eventCheckoutDraftStore.drafts();
     if (!this.eventEditorStore.readOnly()) {
       return null;
     }
@@ -648,7 +648,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!eventId || !activeUserId) {
       return null;
     }
-    return this.eventCheckoutDraftService.read(activeUserId, eventId);
+    return this.eventCheckoutDraftStore.read(activeUserId, eventId);
   }
 
   protected eventEditorCheckoutStatusMenuItems(draft: EventCheckoutDraft): readonly AppMenuItem<string, EventEditorMenuContext>[] {
@@ -786,7 +786,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private continueEventEditorCheckoutDraft(sourceId: string, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    const draft = this.eventCheckoutDraftService.read(this.activeUserId(), sourceId);
+    const draft = this.eventCheckoutDraftStore.read(this.activeUserId(), sourceId);
     if (!draft || !this.eventEditorCanContinueCheckoutDraft(draft)) {
       return;
     }

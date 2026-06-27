@@ -11,7 +11,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import {
   AppMenuComponent, AppMenuTriggerComponent, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type SmartListConfig, type SmartListLoadPage
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { AppContext } from '../../../shared/ui';
 import { ContactsService as ContactsDataService, ExplanationGuideService, UsersService, type ActivityMemberEntry, type ContactFormValue, type ContactListFilters, type ContactListItem, type ContactMethodDraft, type ContactMethodItem, type ContactMethodOption, type ContactMethodType, type StoredContact, type UserDto } from '../../../shared/core';
 import { NavigatorService } from '../../navigator.service';
@@ -155,7 +155,7 @@ type ContactsMenuContext =
 export class ContactsPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly navigatorService = inject(NavigatorService);
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -422,7 +422,7 @@ export class ContactsPopupComponent implements OnDestroy {
   protected confirmDelete(contact: ContactListItem, event?: Event): void {
     event?.stopPropagation();
     this.closeActionMenu();
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: `Delete ${contact.name}?`,
       message: 'This removes the contact and all saved availability methods from your local list.',
       confirmLabel: 'Delete',

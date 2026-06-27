@@ -36,7 +36,7 @@ import {
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { NavigatorService } from '../../navigator.service';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
@@ -70,7 +70,7 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
 export class ProfileEditorComponent {
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly appCtx = inject(AppContext);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly navigatorService = inject(NavigatorService);
@@ -430,7 +430,7 @@ export class ProfileEditorComponent {
     }
     await this.usersService.saveUserProfileExt(this.profileEditorData);
     if (showAlert) {
-      this.confirmationDialogService.openInfo('Profile saved', {
+      this.confirmationDialogStore.openInfo('Profile saved', {
         title: 'Profile updated',
         confirmTone: 'neutral'
       });

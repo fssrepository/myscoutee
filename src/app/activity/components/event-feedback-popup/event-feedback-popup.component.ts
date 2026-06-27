@@ -39,9 +39,9 @@ import * as ActivityContracts from '../../../shared/core/contracts/activity.inte
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
 import { EventsService } from '../../../shared/core/base';
 import {
-  ConfirmationDialogService,
+  ConfirmationDialogStore,
   type ConfirmationDialogConfig
-} from '../../../shared/ui/services/confirmation-dialog.service';
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
@@ -81,7 +81,7 @@ export class EventFeedbackPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly eventsService = inject(EventsService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
   private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
   protected readonly isPopupOpen = signal(false);
@@ -463,7 +463,7 @@ export class EventFeedbackPopupComponent {
     content: EventFeedbackConfirmationDialogContent,
     onConfirm: () => Promise<void>
   ): void {
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       ...content,
       onConfirm
     });

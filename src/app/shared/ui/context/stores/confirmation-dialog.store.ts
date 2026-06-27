@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { AppMenuPalette } from '../components/menu';
+import type { AppMenuPalette } from '../../components/menu';
 
 export type ConfirmationDialogTone = 'accent' | 'danger' | 'neutral';
 
@@ -44,7 +44,7 @@ export interface ConfirmationDialogState {
 @Injectable({
   providedIn: 'root'
 })
-export class ConfirmationDialogService {
+export class ConfirmationDialogStore {
   private readonly stateRef = signal<ConfirmationDialogState | null>(null);
   private nextId = 0;
 

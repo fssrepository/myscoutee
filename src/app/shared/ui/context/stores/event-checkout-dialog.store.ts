@@ -1,8 +1,8 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutSelection } from '../../core/contracts/activity.interface';
-import type { ActivityEventRecord } from '../../core/contracts/activity.interface';
-import type { ActivityPendingReason } from '../../core/common/constants';
+import type { EventCheckoutSelection } from '../../../core/contracts/activity.interface';
+import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
+import type { ActivityPendingReason } from '../../../core/common/constants';
 
 export interface EventCheckoutDialogConfig {
   mode: 'join' | 'invitation';
@@ -42,7 +42,7 @@ export interface EventCheckoutDialogState {
 @Injectable({
   providedIn: 'root'
 })
-export class EventCheckoutDialogService {
+export class EventCheckoutDialogStore {
   private readonly stateRef = signal<EventCheckoutDialogState | null>(null);
   private nextId = 0;
 

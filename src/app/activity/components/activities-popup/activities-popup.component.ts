@@ -45,9 +45,9 @@ import type {
   ActivityEventInfoCardMenuContext,
   ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
-import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { NavigatorService } from '../../../navigator';
 import {
   ActivitiesChatTemplateComponent, ActivitiesChatsController
@@ -174,10 +174,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly popupCtx = inject(AppPopupContext);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly usersService = inject(UsersService);
-  protected readonly confirmationDialogService = inject(ConfirmationDialogService);
-  protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
+  protected readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   protected readonly navigatorService = inject(NavigatorService);
-  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
+  private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
@@ -741,7 +741,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.eventCheckoutDraftService.drafts();
+      this.eventCheckoutDraftStore.drafts();
       const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
       const hadPendingDraftRemoval = [...this.lastPendingCheckoutDraftSourceIds]
         .some(sourceId => !nextPendingDraftSourceIds.has(sourceId));
@@ -788,7 +788,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesStore.activitiesOpen()) {
       return;
     }
-    if (this.confirmationDialogService.dialog()) {
+    if (this.confirmationDialogStore.dialog()) {
       return;
     }
     if (this.eventEditorStore.isOpen()) {
@@ -952,7 +952,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (!this.activitiesStore.activitiesOpen() || !this.isAdminServiceChatMode()) {
         return;
       }
-      if (this.confirmationDialogService.dialog() || this.activitiesStore.eventChatSession()) {
+      if (this.confirmationDialogStore.dialog() || this.activitiesStore.eventChatSession()) {
         return;
       }
       this.activitiesSmartList?.reload();
@@ -1183,7 +1183,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const config = this.supportCaseActionDialogConfig(action);
-    this.confirmationDialogService.open({
+    this.confirmationDialogStore.open({
       title: this.i18n(config.titleKey),
       message: this.i18n(config.messageKey),
       cancelLabel: this.i18n('cancel'),
@@ -1989,7 +1989,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return new Set<string>();
     }
     return new Set(
-      this.eventCheckoutDraftService.listByUser(activeUserId)
+      this.eventCheckoutDraftStore.listByUser(activeUserId)
         .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
         .map(draft => draft.sourceId.trim())
         .filter(sourceId => sourceId.length > 0)

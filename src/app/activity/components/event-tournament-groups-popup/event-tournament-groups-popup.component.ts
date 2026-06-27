@@ -31,7 +31,7 @@ import {
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
@@ -131,7 +131,7 @@ export class EventTournamentGroupsPopupComponent {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly confirmationDialog = inject(ConfirmationDialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected state: ContractTypes.EventTournamentGroupsStateDTO | null = null;

@@ -141,7 +141,7 @@
             }
             @if (!isBasketMode()) {
               <app-confirmation-dialog
-                [useService]="false"
+                [useStore]="false"
             [dialog]="{
               visible: !!ownedAssetsStore.pendingAssetDeleteCardId(),
               title: 'Delete asset',
