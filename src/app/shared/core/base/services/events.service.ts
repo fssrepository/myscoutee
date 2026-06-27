@@ -104,7 +104,17 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       options.signal
     );
     if (this.isCalendarActivitiesView(query.view)) {
-      return this.filterActivityEventDTOsByQueryRange(page.items, query);
+      const items = AppUtils.filterItemsByDateOnlyRange(
+        page.items,
+        query.rangeStart,
+        query.rangeEnd,
+        item => item.startAtIso,
+        item => item.endAtIso
+      );
+      return {
+        items,
+        total: items.length
+      };
     }
     return {
       items: page.items,
@@ -328,20 +338,6 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return session.profile.id.trim();
     }
     return this.usersService.peekCachedUsers()[0]?.id ?? '';
-  }
-
-  private filterActivityEventDTOsByQueryRange(
-    items: readonly ActivityEventDTO[],
-    query: ListQuery<ActivitiesFeedFilters>
-  ): PageResult<ActivityEventDTO> {
-    const range = AppUtils.parseDateOnlyRange(query.rangeStart, query.rangeEnd);
-    const filteredItems = range
-      ? items.filter(item => AppUtils.dateRangeValuesOverlap(item.startAtIso, item.endAtIso, range.start, range.end))
-      : [...items];
-    return {
-      items: filteredItems,
-      total: filteredItems.length
-    };
   }
 
   private isCalendarActivitiesView(view: string | undefined): boolean {

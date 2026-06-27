@@ -7,6 +7,8 @@ interface ActivityGroupableModel {
   distanceMetersExact?: number | null;
 }
 
+export type AppDateValue = string | number | Date | null | undefined;
+
 export interface AppDateRange {
   start: Date;
   end: Date;
@@ -347,8 +349,8 @@ export class AppUtils {
   }
 
   static parseDateOnlyRange(
-    startValue: string | number | Date | null | undefined,
-    endValue: string | number | Date | null | undefined
+    startValue: AppDateValue,
+    endValue: AppDateValue
   ): AppDateRange | null {
     const start = this.parseDateOnlyLocal(startValue);
     const end = this.parseDateOnlyLocal(endValue);
@@ -356,8 +358,8 @@ export class AppUtils {
   }
 
   static parseDateRange(
-    startValue: string | number | Date | null | undefined,
-    endValue: string | number | Date | null | undefined,
+    startValue: AppDateValue,
+    endValue: AppDateValue,
     defaultDurationMs = 2 * 60 * 60 * 1000
   ): AppDateRange | null {
     const start = this.parseDate(startValue);
@@ -377,8 +379,8 @@ export class AppUtils {
   }
 
   static dateRangeValuesOverlap(
-    startValue: string | number | Date | null | undefined,
-    endValue: string | number | Date | null | undefined,
+    startValue: AppDateValue,
+    endValue: AppDateValue,
     rangeStart: Date,
     rangeEnd: Date,
     defaultDurationMs = 2 * 60 * 60 * 1000
@@ -393,6 +395,27 @@ export class AppUtils {
       rangeStart,
       rangeEnd
     );
+  }
+
+  static filterItemsByDateOnlyRange<T>(
+    items: readonly T[],
+    rangeStartValue: AppDateValue,
+    rangeEndValue: AppDateValue,
+    resolveStartValue: (item: T) => AppDateValue,
+    resolveEndValue: (item: T) => AppDateValue,
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): T[] {
+    const range = this.parseDateOnlyRange(rangeStartValue, rangeEndValue);
+    if (!range) {
+      return [...items];
+    }
+    return items.filter(item => this.dateRangeValuesOverlap(
+      resolveStartValue(item),
+      resolveEndValue(item),
+      range.start,
+      range.end,
+      defaultDurationMs
+    ));
   }
 
   static anchorDate(offsetInDays: number | null | undefined = 0, now = new Date(Date.now())): Date {
