@@ -20,7 +20,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventExploreBuilder, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
+  ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import {
   AppMenuDispatcher,
@@ -28,6 +28,7 @@ import {
   AppMenuOutletComponent,
   appMenuPaletteFromToneClass,
   buildTabbedMenuModel,
+  EventExploreInfoCardConverter,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
@@ -160,7 +161,6 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
     from(this.loadEventExplorePage(query));
-  protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<ActivityEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
@@ -189,7 +189,7 @@ export class EventExplorePopupComponent {
       }
       return scrollable;
     },
-    groupBy: (record, query) => EventExploreBuilder.buildGroupLabel(record, query.filters?.view ?? this.eventExploreView)
+    groupBy: (record, query) => this.buildEventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 
   constructor() {
@@ -1025,11 +1025,26 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
-    return EventExploreBuilder.buildInfoCard(record, {
+    return EventExploreInfoCardConverter.convert(record, {
       groupLabel,
       topicToneGroups: this.topicFilterGroups,
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
+  }
+
+  private buildEventExploreGroupLabel(
+    record: ActivityEventRecord,
+    view: ContractTypes.EventExploreView
+  ): string {
+    if (view === 'distance') {
+      const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
+      return `${bucket} km`;
+    }
+    const parsed = new Date(record.startAtIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return AppUtils.smartListDayLabel(parsed);
   }
 
   private runEventExploreServiceChatAction(record: ActivityEventRecord): void {

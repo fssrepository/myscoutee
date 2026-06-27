@@ -6,7 +6,6 @@ export {
 export { ActivityResourceBuilder } from './activity-resource.builder';
 export { AssetCardBuilder } from './asset-card.builder';
 export { AssetDefaultsBuilder } from './asset-defaults.builder';
-export { EventExploreBuilder } from './event-explore.builder';
 export { EventFeedbackBuilder } from './event-feedback.builder';
 export { HelpCenterContentBuilder } from './help-center-content.builder';
 export { PricingBuilder } from './pricing.builder';

@@ -28,6 +28,12 @@ export {
   type ActivityEventInfoCardConverterOptions
 } from './activity-event-info-card.converter';
 export {
+  EventExploreInfoCardConverter,
+  eventExploreInfoCardConverter,
+  type EventExploreInfoCardConverterOptions,
+  type EventExploreTopicToneGroup
+} from './event-explore-info-card.converter';
+export {
   ActivityEventInfoCardMenuConverter,
   activityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuContext,

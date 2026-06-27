@@ -1,22 +1,25 @@
-import { AppUtils } from '../../../app-utils';
-import type * as ContractTypes from '../../contracts';
-import type { CardRenderState, InfoCardData, CardMenuActionId } from '../../../ui';
-import type { ActivityEventRecord } from '../../contracts/activity.interface';
+import { AppUtils } from '../../app-utils';
+import type * as ContractTypes from '../../core/contracts';
+import type * as AppConstants from '../../core/common/constants';
+import type { ActivityEventRecord } from '../../core/contracts/activity.interface';
+import type { CardMenuActionId, CardRenderState, InfoCardData } from '../components/smart-list/card';
+import type { UiListConverter } from './converter.types';
 
-import type * as AppConstants from '../../common/constants';
-type TopicToneGroup = {
+export type EventExploreTopicToneGroup = {
   toneClass: string;
   options: readonly string[];
 };
 
-export class EventExploreBuilder {
-  static buildInfoCard(
+export interface EventExploreInfoCardConverterOptions {
+  groupLabel?: string | null;
+  topicToneGroups?: readonly EventExploreTopicToneGroup[];
+  state?: CardRenderState | null;
+}
+
+export class EventExploreInfoCardConverter {
+  static convert(
     record: ActivityEventRecord,
-    options: {
-      groupLabel?: string | null;
-      topicToneGroups?: readonly TopicToneGroup[];
-      state?: CardRenderState | null;
-    } = {}
+    options: EventExploreInfoCardConverterOptions = {}
   ): InfoCardData {
     const membersPreviewVisible = this.canPreviewMembers(record);
     const full = this.isFull(record);
@@ -84,26 +87,15 @@ export class EventExploreBuilder {
     };
   }
 
-  static buildGroupLabel(
-    record: ActivityEventRecord,
-    view: ContractTypes.EventExploreView
-  ): string {
-    if (view === 'distance') {
-      const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
-      return `${bucket} km`;
-    }
-    const parsed = new Date(record.startAtIso);
-    if (Number.isNaN(parsed.getTime())) {
-      return 'Date unavailable';
-    }
-    return AppUtils.smartListDayLabel(parsed);
+  static convertList(
+    records: readonly ActivityEventRecord[],
+    options: EventExploreInfoCardConverterOptions = {}
+  ): InfoCardData[] {
+    return records.map(record => this.convert(record, options));
   }
 
   private static menuActionsForRecord(record: ActivityEventRecord): readonly CardMenuActionId[] {
-    const full = this.isFull(record);
-    const actions: CardMenuActionId[] = [
-      'view'
-    ];
+    const actions: CardMenuActionId[] = ['view'];
     actions.push(this.joinActionId(record));
     actions.push('contactOrganizer');
     actions.push('shareEvent');
@@ -197,7 +189,7 @@ export class EventExploreBuilder {
     return AppUtils.normalizeText(`${topic}`.replace(/^#+\s*/, '').trim());
   }
 
-  private static resolveTopicToneClass(topic: string, groups: readonly TopicToneGroup[] | undefined): string {
+  private static resolveTopicToneClass(topic: string, groups: readonly EventExploreTopicToneGroup[] | undefined): string {
     if (!groups?.length) {
       return '';
     }
@@ -233,3 +225,10 @@ export class EventExploreBuilder {
     return 'shield';
   }
 }
+
+export const eventExploreInfoCardConverter =
+  EventExploreInfoCardConverter satisfies UiListConverter<
+    ActivityEventRecord,
+    InfoCardData,
+    EventExploreInfoCardConverterOptions
+  >;
