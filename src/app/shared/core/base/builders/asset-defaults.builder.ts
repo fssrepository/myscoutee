@@ -1,5 +1,4 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type * as AppTypes from '../models';
 
 import type * as AppDTOs from '../dto';
 import type * as AppConstants from '../../common/constants';

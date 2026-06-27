@@ -4,8 +4,6 @@ import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { ActivityResourceBuilder } from '../../base/builders';
-import type * as AppTypes from '../../../core/base/models';
-
 import type * as AppDTOs from '../../base/dto';
 @Injectable({
   providedIn: 'root'

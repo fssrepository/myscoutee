@@ -16,11 +16,10 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as AppUiTypes from '../../../shared/ui/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
-import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
+import { ActivitiesPopupStateService, type EventChatSession } from '../../services/activities-popup-state.service';
 import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -78,6 +77,8 @@ type SelectedChatActionTone =
   | 'popup-chat-context-btn-tone-group';
 
 type SelectedChatResourceType = 'Members' | AppConstants.AssetType;
+type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
+type SubEventAssetCardsByType = Partial<Record<AssetType, AppDTOs.AssetCardDTO[]>>;
 
 type ChatMenuContext =
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
@@ -97,8 +98,8 @@ interface SelectedChatNavigationState {
   eventPendingMembers: number;
   subEvent: ContractTypes.SubEventDTO | null;
   group: SelectedChatGroupState | null;
-  assetAssignmentIds: AppTypes.SubEventAssetAssignmentIds;
-  assetCardsByType: AppTypes.SubEventAssetCardsByType;
+  assetAssignmentIds: SubEventAssetAssignmentIds;
+  assetCardsByType: SubEventAssetCardsByType;
 }
 
 @Component({
@@ -363,7 +364,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.activitiesContext.closeEventChat();
   }
 
-  protected chatHeaderTitle(chatSession: AppTypes.EventChatSession): string {
+  protected chatHeaderTitle(chatSession: EventChatSession): string {
     return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
   }
 
@@ -3944,7 +3945,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private flattenAssetCards(assetCardsByType: AppTypes.SubEventAssetCardsByType): AppDTOs.AssetCardDTO[] {
+  private flattenAssetCards(assetCardsByType: SubEventAssetCardsByType): AppDTOs.AssetCardDTO[] {
     return (['Car', 'Accommodation', 'Supplies'] as const)
       .flatMap(type => assetCardsByType[type] ?? []);
   }

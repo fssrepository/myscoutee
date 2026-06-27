@@ -12,7 +12,6 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import { PricingBuilder } from '../../../core/base/builders';
-import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../../core/contracts';
 import type * as ActivityContracts from '../../../core/contracts/activity.interface';
 import { EventsService } from '../../../core/base/services/events.service';

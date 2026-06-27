@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA, type RateFilterEntry } from '../../../shared/app-static-data';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
@@ -31,7 +31,6 @@ import { ActivitiesPopupStateService } from '../../services/activities-popup-sta
 import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent, AppMenuDispatcher, type AppMenuGroup, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
@@ -364,7 +363,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   ];
   protected readonly rateFilters: Array<{ key: ContractTypes.RateFilterKey; label: string }>
     = [...APP_STATIC_DATA.rateFilters];
-  protected readonly rateFilterEntries: AppTypes.RateFilterEntry[]
+  protected readonly rateFilterEntries: RateFilterEntry[]
     = [...APP_STATIC_DATA.rateFilterEntries];
   protected readonly activitiesViewOptions: Array<{ key: ContractTypes.ActivitiesView; label: string; icon: string }>
     = [...APP_STATIC_DATA.activitiesViewOptions];

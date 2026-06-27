@@ -8,7 +8,6 @@ import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';

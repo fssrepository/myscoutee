@@ -3,7 +3,6 @@ import { Component, HostListener, ViewChild, computed, effect, inject } from '@a
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import type * as AppTypes from '../../../shared/core/base/models';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { AppContext } from '../../../shared/ui';

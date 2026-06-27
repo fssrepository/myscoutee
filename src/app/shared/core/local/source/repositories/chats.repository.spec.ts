@@ -2,7 +2,6 @@ import { CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 import { TestBed } from '@angular/core/testing';
 
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ChatPopupMessage } from '../../../contracts/chat.interface';

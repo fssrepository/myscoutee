@@ -1,12 +1,15 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
 
 import { environment } from '../../../environments/environment';
-import type * as AppTypes from '../../shared/core/base/models';
 import type * as ContractTypes from '../../shared/core/contracts';
 import { ChatsService, EventsService } from '../../shared/core';
-import type { EventChatSession } from '../../shared/core/base/models';
 import type { ActivityEventDetailDTO, ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../shared/core/contracts/chat.interface';
+
+export interface EventChatSession {
+  item: ChatDTO;
+  openedAtIso: string;
+}
 
 interface ActivitiesUiState {
   open: boolean;

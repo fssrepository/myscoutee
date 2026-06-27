@@ -4,7 +4,6 @@ import { environment } from '../../environments/environment';
 
 import { APP_STATIC_DATA } from '../shared/app-static-data';
 import { PricingBuilder } from '../shared/core/base/builders';
-import type * as AppTypes from '../shared/core/base/models';
 import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext } from '../shared/ui';
 import { AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService } from '../shared/core';

@@ -4,7 +4,6 @@ import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
 import { AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type * as AppTypes from '../../../base/models';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { UserProfileStateBuilder } from '../../../base/builders';

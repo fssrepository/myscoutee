@@ -5,7 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../core/base/builders';
-import type * as AppTypes from '../../../../../core/base/models';
 import type * as ContractTypes from '../../../../../core/contracts';
 
 @Component({

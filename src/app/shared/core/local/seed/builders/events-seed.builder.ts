@@ -5,7 +5,6 @@ import { PricingBuilder } from '../../../base/builders/pricing.builder';
 import { SeedEventBuilder } from './event-seed.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import type { UserDto } from '../../../contracts/user.interface';

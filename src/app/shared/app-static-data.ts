@@ -15,7 +15,6 @@ import type {
   HelpCenterRevisionDto,
   HelpCenterSectionDto
 } from './core/contracts';
-import type { RateFilterEntry } from './core/base/models';
 import type {
   EventFeedbackOption,
   EventFeedbackTraitOption
@@ -38,6 +37,10 @@ import type {
   InterestOptionGroup,
   ValuesOptionGroup
 } from './core/contracts/profile.interface';
+
+export type RateFilterEntry =
+  | { kind: 'group'; label: string }
+  | { kind: 'item'; key: RateFilterKey; label: string };
 
 interface PersonalityTraitCatalogEntry {
   id: string;

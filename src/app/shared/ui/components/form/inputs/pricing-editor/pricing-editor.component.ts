@@ -9,7 +9,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../core/base/builders';
-import type * as AppTypes from '../../../../../core/base/models';
 import type * as ContractTypes from '../../../../../core/contracts';
 import { PricingSlotPanelComponent } from '../../popups/pricing-slot-panel';
 

@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
 import type { ProfileViewData } from '../../contracts/profile.interface';
 import { LocalContactsService } from '../../local/source/services/contacts.service';
 import { HttpContactsService } from '../../http/services/contacts.service';

@@ -1,7 +1,6 @@
 import { CONTACTS_TABLE_NAME } from '../../source/entity/profile.entity';
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserRecord } from '../../source/entity/user.entity';
 

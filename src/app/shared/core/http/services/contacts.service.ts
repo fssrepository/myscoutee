@@ -2,7 +2,6 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type * as AppTypes from '../../../core/base/models';
 import type { ProfileViewData } from '../../contracts/profile.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type * as ContactContracts from '../../contracts/contact.interface';

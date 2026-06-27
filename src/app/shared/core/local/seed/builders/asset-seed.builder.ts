@@ -1,4 +1,3 @@
-import type * as AppTypes from '../../../base/models';
 import type { UserDto } from '../../../contracts/user.interface';
 import { PricingBuilder } from '../../../base/builders/pricing.builder';
 

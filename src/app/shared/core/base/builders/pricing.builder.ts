@@ -1,4 +1,3 @@
-import type * as AppTypes from '../models';
 import type * as ContractTypes from '../../contracts';
 
 import type * as AppConstants from '../../common/constants';

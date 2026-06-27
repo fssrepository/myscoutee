@@ -1,6 +1,5 @@
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
-import type * as AppTypes from '../../../base/models';
 import type { UserDto } from '../../../contracts/user.interface';
 import type {
   ActivityMemberEntry,

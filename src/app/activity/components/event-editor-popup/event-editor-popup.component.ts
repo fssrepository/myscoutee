@@ -13,7 +13,6 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   ActivityMembersService, EventsService, ExplanationGuideService, RouteDelayService, RouteIntervalSchedulerService } from '../../../shared/core';

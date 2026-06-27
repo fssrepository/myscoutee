@@ -3,7 +3,6 @@ import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import {

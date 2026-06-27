@@ -20,7 +20,6 @@ import {
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 
 import type { LocationCoordinates } from '../../../contracts/user.interface';

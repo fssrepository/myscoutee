@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { AssetDefaultsBuilder } from '../../../base/builders';

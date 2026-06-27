@@ -78,5 +78,4 @@ export {
 export * from './base/builders';
 export * from './base/mappers';
 export type * from './contracts';
-export * from './base/models';
 export * from './local/seed';

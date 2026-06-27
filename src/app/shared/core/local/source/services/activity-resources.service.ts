@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from './route-delay.service';
-import type * as AppTypes from '../../../base/models';
 import type { ActivitySubEventResourceRecord } from '../entity/activity.entity';
 import { LocalActivityResourcesMapper } from '../mappers';
 import { LocalAssetsRepository } from '../repositories/assets.repository';

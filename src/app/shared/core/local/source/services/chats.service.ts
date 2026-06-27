@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivitiesChatPageResultDTO, ChatDTO } from '../../../contracts/chat.interface';
