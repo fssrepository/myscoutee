@@ -12,6 +12,11 @@ import type {
 import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
 import type { PricingConfig } from '../../../contracts/pricing.interface';
 
+export interface SeedActivityDateTimeRange {
+  startIso: string;
+  endIso: string;
+}
+
 export interface ActivityInvitationSeedItem {
   id: string;
   status?: ActivityEventStatus;

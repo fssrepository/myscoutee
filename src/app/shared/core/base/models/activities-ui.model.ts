@@ -10,11 +10,6 @@ export type RateFilterEntry =
 export type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
 export type SubEventAssetCardsByType = Partial<Record<AssetType, AssetCardDTO[]>>;
 
-export interface ActivityDateTimeRange {
-  startIso: string;
-  endIso: string;
-}
-
 export interface EventChatSession {
   item: ChatDTO;
   openedAtIso: string;

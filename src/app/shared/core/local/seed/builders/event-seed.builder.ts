@@ -1,8 +1,11 @@
 import { AppUtils } from '../../../../app-utils';
 import { environment } from '../../../../../../environments/environment';
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
-import type { ActivityEventSeedItem, ActivityHostingSeedItem } from '../entity';
+import type {
+  ActivityEventSeedItem,
+  ActivityHostingSeedItem,
+  SeedActivityDateTimeRange
+} from '../entity';
 import type { UserDto } from '../../../contracts/user.interface';
 import { SeedUserBuilder } from './user-seed.builder';
 
@@ -70,7 +73,7 @@ export class SeedEventBuilder {
     source: ActivityEventSeedItem | ActivityHostingSeedItem,
     options: {
       isHosting: boolean;
-      activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
+      activityDateTimeRangeById: Record<string, SeedActivityDateTimeRange>;
       hostingDatesById: Record<string, string>;
       eventDatesById: Record<string, string>;
       eventCapacityById: Record<string, ContractTypes.EventCapacityRange>;
@@ -107,7 +110,7 @@ export class SeedEventBuilder {
     source: ActivityEventSeedItem | ActivityHostingSeedItem,
     options: {
       isHosting: boolean;
-      activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
+      activityDateTimeRangeById: Record<string, SeedActivityDateTimeRange>;
       hostingDatesById: Record<string, string>;
       eventDatesById: Record<string, string>;
       eventCapacityById: Record<string, ContractTypes.EventCapacityRange>;

@@ -75,6 +75,11 @@ type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 type ActivityPopupEventType = 'events' | 'hosting' | 'invitations';
 type ActivitySmartListDTO = ActivityEventDTO | ChatDTO | ActivityRateDTO;
 
+interface ActivityDateTimeRange {
+  startIso: string;
+  endIso: string;
+}
+
 interface ActivityPopupCardBase {
   id: string;
   type: ContractTypes.ActivitiesPrimaryFilter;
@@ -268,7 +273,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activeHostingIds: ReadonlySet<string> = new Set<string>();
 
-  protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = {};
+  protected activityDateTimeRangeById: Record<string, ActivityDateTimeRange> = {};
 
   protected eventDatesById: Record<string, string> = {};
   protected hostingDatesById: Record<string, string> = {};
