@@ -13,6 +13,7 @@ import type {
   UserLocationEligibilityResponseDto,
   UserDto,
   UserMenuCountersDto,
+  UserRealtimeCountersDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
@@ -21,7 +22,6 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import { UserRealtimeSnapshotMapper } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
@@ -384,10 +384,7 @@ export class UsersService extends BaseRouteModeService {
     }
     try {
       const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
-      if (!snapshot) {
-        return this.buildFallbackRealtimeSnapshot(normalizedUserId, cursor, requestTimeoutMs);
-      }
-      return this.normalizeRealtimeSnapshot(snapshot, normalizedUserId, cursor);
+      return snapshot ? this.normalizeRealtimeSnapshot(snapshot, normalizedUserId, cursor) : null;
     } catch {
       return null;
     }
@@ -486,22 +483,85 @@ export class UsersService extends BaseRouteModeService {
     fallbackUserId: string,
     fallbackCursor: string | null
   ): UserRealtimeLongPollResponseDto {
-    return UserRealtimeSnapshotMapper.snapshot(snapshot, fallbackUserId, fallbackCursor);
+    const normalizedFallbackUserId = fallbackUserId.trim();
+    const normalizedUserId = `${snapshot.userId ?? normalizedFallbackUserId}`.trim() || normalizedFallbackUserId;
+    return {
+      userId: normalizedUserId,
+      counters: this.normalizeRealtimeCounters(snapshot.counters),
+      impressions: snapshot.impressions,
+      cursor: typeof snapshot.cursor === 'string' ? snapshot.cursor.trim() : fallbackCursor,
+      serverTsIso: typeof snapshot.serverTsIso === 'string' && snapshot.serverTsIso.trim()
+        ? snapshot.serverTsIso
+        : new Date().toISOString()
+    };
   }
 
-  private async buildFallbackRealtimeSnapshot(
-    normalizedUserId: string,
-    cursor: string | null,
-    requestTimeoutMs?: number
-  ): Promise<UserRealtimeLongPollResponseDto | null> {
-    const cachedUser = this.peekCachedUserById(normalizedUserId);
-    const user = cachedUser ?? (await this.userService.queryUserById(normalizedUserId, requestTimeoutMs)).user;
-    if (!user) {
-      return null;
+  private normalizeRealtimeCounters(counters: UserRealtimeCountersDto | null | undefined): UserRealtimeCountersDto {
+    const normalized: UserRealtimeCountersDto = {};
+    const setCounter = <Key extends keyof UserRealtimeCountersDto>(key: Key, value: unknown): void => {
+      const counter = this.normalizeCounter(value);
+      if (counter !== undefined) {
+        normalized[key] = counter as UserRealtimeCountersDto[Key];
+      }
+    };
+
+    setCounter('game', counters?.game);
+    setCounter('chat', counters?.chat);
+    setCounter('invitations', counters?.invitations);
+    setCounter('events', counters?.events);
+    setCounter('hosting', counters?.hosting);
+    setCounter('cars', counters?.cars);
+    setCounter('accommodation', counters?.accommodation);
+    setCounter('supplies', counters?.supplies);
+    setCounter('tickets', counters?.tickets);
+    setCounter('contacts', counters?.contacts);
+    setCounter('feedback', counters?.feedback);
+    setCounter('adminJobs', counters?.adminJobs);
+    setCounter('adminMetrics', counters?.adminMetrics);
+
+    if (counters?.event) {
+      normalized.event = {
+        all: this.counterValue(counters.event.all),
+        active: this.counterValue(counters.event.active),
+        pending: this.counterValue(counters.event.pending),
+        invitations: this.counterValue(counters.event.invitations),
+        hosting: this.counterValue(counters.event.hosting),
+        drafts: this.counterValue(counters.event.drafts),
+        trash: this.counterValue(counters.event.trash)
+      };
     }
-    return UserRealtimeSnapshotMapper.snapshotFromUser(user, cursor, {
-      userId: normalizedUserId
-    });
+    if (counters?.asset) {
+      normalized.asset = {
+        cars: this.counterValue(counters.asset.cars),
+        accommodation: this.counterValue(counters.asset.accommodation),
+        supplies: this.counterValue(counters.asset.supplies),
+        tickets: this.counterValue(counters.asset.tickets)
+      };
+    }
+    if (counters?.eventFeedback) {
+      normalized.eventFeedback = {
+        ownEvents: this.counterValue(counters.eventFeedback.ownEvents),
+        pending: this.counterValue(counters.eventFeedback.pending),
+        feedbacked: this.counterValue(counters.eventFeedback.feedbacked),
+        removed: this.counterValue(counters.eventFeedback.removed)
+      };
+    }
+
+    normalized.impressionsHostChanged = counters?.impressionsHostChanged === true;
+    normalized.impressionsMemberChanged = counters?.impressionsMemberChanged === true;
+    return normalized;
+  }
+
+  private counterValue(value: unknown): number {
+    return this.normalizeCounter(value) ?? 0;
+  }
+
+  private normalizeCounter(value: unknown): number | undefined {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+      return undefined;
+    }
+    return Math.max(0, Math.trunc(numericValue));
   }
 
   private normalizeCounterOverrides(
@@ -615,7 +675,6 @@ export class UsersService extends BaseRouteModeService {
       languages: [...(user.languages ?? [])],
       images: [...(user.images ?? [])],
       profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: UserRealtimeSnapshotMapper.impressions(user.impressions),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
         chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
