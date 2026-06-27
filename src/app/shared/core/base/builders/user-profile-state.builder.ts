@@ -5,42 +5,6 @@ export class UserProfileStateBuilder {
   private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
   private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
 
-  static resolveUserAffinity(
-    user: Pick<
-      UserDto,
-      | 'id'
-      | 'name'
-      | 'age'
-      | 'city'
-      | 'height'
-      | 'physique'
-      | 'languages'
-      | 'horoscope'
-      | 'gender'
-      | 'hostTier'
-      | 'traitLabel'
-      | 'completion'
-    >
-  ): number {
-    const tokens = this.uniqueAffinityTokens([
-      user.name,
-      user.city,
-      user.physique,
-      ...(user.languages ?? []),
-      user.horoscope,
-      user.gender,
-      user.hostTier,
-      user.traitLabel
-    ]);
-    const heightCm = this.parseHeightCm(user.height) ?? 170;
-    return (
-      this.resolveAffinityTokenScore(tokens, `user:${user.id}`) * 97
-      + Math.max(18, Math.trunc(Number(user.age) || 30)) * 17
-      + heightCm * 11
-      + Math.max(0, Math.trunc(Number(user.completion) || 0)) * 13
-    );
-  }
-
   static isFriendOfActiveUser(userId: string, activeUserId: string): boolean {
     if (
       !userId
@@ -131,29 +95,6 @@ export class UserProfileStateBuilder {
       .sort((left, right) => right.score - left.score || left.user.id.localeCompare(right.user.id))
       .slice(0, Math.max(0, Math.trunc(limit)))
       .map(entry => entry.user);
-  }
-
-  private static uniqueAffinityTokens(values: readonly string[]): string[] {
-    const seen = new Set<string>();
-    for (const value of values) {
-      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
-      if (normalized) {
-        seen.add(normalized);
-      }
-    }
-    return [...seen];
-  }
-
-  private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
-    return tokens.reduce((total, token) => total + ((AppUtils.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);
-  }
-
-  private static parseHeightCm(value: string): number | null {
-    const parsed = Number.parseInt(value, 10);
-    if (!Number.isFinite(parsed)) {
-      return null;
-    }
-    return Math.max(40, Math.min(250, parsed));
   }
 
   private static friendAffinityScore<T extends Pick<UserDto, 'id' | 'city' | 'gender'>>(

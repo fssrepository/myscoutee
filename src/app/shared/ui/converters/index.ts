@@ -35,6 +35,11 @@ export {
   type ActivityEventInfoCardMenuSubject
 } from './activity-event-info-card-menu.converter';
 export {
+  ActivitySubEventResourceInfoCardConverter,
+  activitySubEventResourceInfoCardConverter,
+  type ActivitySubEventResourceInfoCardConverterOptions
+} from './activity-sub-event-resource-info-card.converter';
+export {
   ActivityRateImageCardConverter,
   activityRateImageCardConverter,
   type ActivityRateImageCardConverterOptions

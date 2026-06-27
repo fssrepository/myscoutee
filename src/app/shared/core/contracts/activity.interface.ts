@@ -975,6 +975,32 @@ export interface UserGameFilterPreferencesDto {
   religions?: string[];
 }
 
+export function defaultUserGameFilterPreferences(): UserGameFilterPreferencesDto {
+  return {
+    ageMin: 18,
+    ageMax: 120,
+    heightMinCm: 40,
+    heightMaxCm: 250,
+    interests: [],
+    values: [],
+    physiques: [],
+    languages: [],
+    genders: [],
+    horoscopes: [],
+    traitLabels: [],
+    smoking: [],
+    drinking: [],
+    workout: [],
+    pets: [],
+    familyPlans: [],
+    children: [],
+    loveStyles: [],
+    communicationStyles: [],
+    sexualOrientations: [],
+    religions: []
+  };
+}
+
 export interface UserGameCardsQueryRequest {
   userId: string;
   mode?: UserGameMode;

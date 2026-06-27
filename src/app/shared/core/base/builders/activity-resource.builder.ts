@@ -1,55 +1,11 @@
 import { AppUtils } from '../../../app-utils';
-import type { InfoCardData, CardMenuActionId } from '../../../ui';
-import type * as AppTypes from '../models';
 import type * as ContractTypes from '../../contracts';
-import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
 import type * as AppDTOs from '../dto';
 import type * as AppConstants from '../../common/constants';
-export interface ActivitySubEventResourceInfoCardOptions {
-  groupLabel?: string | null;
-  canOpenMap?: boolean;
-  occupancyLabel: string;
-  canOpenBadgeDetails?: boolean;
-  canOpenAssetMembers?: boolean;
-  canEditRoute?: boolean;
-  canJoin?: boolean;
-  canLeave?: boolean;
-  canReportResourceManager?: boolean;
-}
 
 export class ActivityResourceBuilder {
-  static buildSubEventResourceInfoCard(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardOptions
-  ): InfoCardData {
-    return {
-      id: card.id,
-      groupLabel: options.groupLabel ?? null,
-      title: card.title,
-      imageUrl: card.imageUrl,
-      metaRows: [`${card.type} · ${card.subtitle} · ${card.city}`],
-      description: card.details,
-      leadingIcon: {
-        icon: this.resourceTypeIcon(card.type)
-      },
-      mediaStart: this.resourceMediaStart(card, options.canOpenMap === true),
-      mediaEnd: {
-        variant: 'badge',
-        tone: 'default',
-        label: options.occupancyLabel,
-        interactive: options.canOpenBadgeDetails === true,
-        pendingCount: card.pending,
-        ariaLabel: options.canOpenAssetMembers === true
-          ? 'Open member requests'
-          : 'Open resource details'
-      },
-      menuActions: this.resourceMenuActions(card, options),
-      clickable: false
-    };
-  }
-
   static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}`;
   }
@@ -447,49 +403,5 @@ export class ActivityResourceBuilder {
     return routes
       .map(route => `${route ?? ''}`.trim())
       .filter(route => route.length > 0);
-  }
-
-  private static resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string {
-    return type === 'Members'
-      ? 'groups'
-      : AssetDefaultsBuilder.assetTypeIcon(type);
-  }
-
-  private static resourceMediaStart(
-    card: AppDTOs.SubEventResourceCardDTO,
-    canOpenMap: boolean
-  ): NonNullable<InfoCardData['mediaStart']> | null {
-    if (!canOpenMap) {
-      return null;
-    }
-    return {
-      variant: 'avatar',
-      tone: 'default',
-      icon: 'location_on',
-      interactive: true,
-      ariaLabel: card.type === 'Car' ? 'Open route map' : 'Open accommodation map'
-    };
-  }
-
-  private static resourceMenuActions(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardOptions
-  ): readonly CardMenuActionId[] {
-    const actions: CardMenuActionId[] = ['viewAsset'];
-    if (options.canEditRoute === true) {
-      actions.push('editAsset');
-    }
-    if (options.canJoin === true) {
-      actions.push('joinResource');
-    } else if (options.canLeave === true) {
-      actions.push('leaveResource');
-    }
-    actions.push('contactOrganizer');
-    actions.push('shareAsset');
-    if (options.canReportResourceManager === true) {
-      actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
-    }
-    actions.push('removeAssignment');
-    return actions;
   }
 }

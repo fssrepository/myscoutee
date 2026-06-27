@@ -1,5 +1,4 @@
 import { AppUtils } from '../../../app-utils';
-import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { UserSelectorListItemDto, UserDto } from '../../contracts/user.interface';
 import { UserMenuCountersBuilder } from './user-menu-counters.builder';
 
@@ -20,16 +19,6 @@ interface UserRecordsActivitySources {
 }
 
 export class UserRecordsBuilder {
-  static buildRecordCollection(users: readonly UserDto[]): { byId: Record<string, UserDto>; ids: string[] } {
-    const byId: Record<string, UserDto> = {};
-    const ids: string[] = [];
-    for (const user of users) {
-      byId[user.id] = this.cloneUser(user);
-      ids.push(user.id);
-    }
-    return { byId, ids };
-  }
-
   static cloneUser(user: UserDto): UserDto {
     return {
       ...user,
@@ -77,29 +66,6 @@ export class UserRecordsBuilder {
       activities: {
         ...user.activities
       }
-    };
-  }
-
-  static cloneFilterPreferences(preferences: UserGameFilterPreferencesDto): UserGameFilterPreferencesDto {
-    return {
-      ...preferences,
-      interests: [...(preferences.interests ?? [])],
-      values: [...(preferences.values ?? [])],
-      physiques: [...(preferences.physiques ?? [])],
-      languages: [...(preferences.languages ?? [])],
-      genders: [...(preferences.genders ?? [])],
-      horoscopes: [...(preferences.horoscopes ?? [])],
-      traitLabels: [...(preferences.traitLabels ?? [])],
-      smoking: [...(preferences.smoking ?? [])],
-      drinking: [...(preferences.drinking ?? [])],
-      workout: [...(preferences.workout ?? [])],
-      pets: [...(preferences.pets ?? [])],
-      familyPlans: [...(preferences.familyPlans ?? [])],
-      children: [...(preferences.children ?? [])],
-      loveStyles: [...(preferences.loveStyles ?? [])],
-      communicationStyles: [...(preferences.communicationStyles ?? [])],
-      sexualOrientations: [...(preferences.sexualOrientations ?? [])],
-      religions: [...(preferences.religions ?? [])]
     };
   }
 

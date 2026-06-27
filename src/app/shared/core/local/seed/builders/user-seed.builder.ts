@@ -1,11 +1,12 @@
 import { AppUtils } from '../../../../app-utils';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { SeedScheduleBuilder } from './seed-schedule.builder';
 
 
 function buildDemoPortraitStack(
-  gender: UserDto['gender'],
+  gender: UserRecord['gender'],
   seedIndex: number,
   count = 3
 ): string[] {
@@ -26,7 +27,7 @@ function buildDemoPortraitStack(
 
 const CURRENT_PROFILE_FORM_VERSION = 2;
 
-const BASE_DEMO_USERS: UserDto[] = [
+const BASE_DEMO_USERS: UserRecord[] = [
   {
     id: 'u1',
     name: 'Farkas Anna',
@@ -309,12 +310,12 @@ export class SeedUserBuilder {
     Portland: { latitude: 45.5152, longitude: -122.6784 }
   };
 
-  static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserDto[] = BASE_DEMO_USERS): UserDto[] {
+  static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
     const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
     if (baseUsers.length >= totalCount) {
       return normalizedBaseUsers.slice(0, totalCount);
     }
-    const expanded: UserDto[] = [...normalizedBaseUsers];
+    const expanded: UserRecord[] = [...normalizedBaseUsers];
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
     const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
     const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
@@ -357,7 +358,7 @@ export class SeedUserBuilder {
   }
 
   private static buildUniquePrimaryPortraitStack(
-    gender: UserDto['gender'],
+    gender: UserRecord['gender'],
     seedIndex: number,
     usedPrimaryPortraitUrls: Set<string>
   ): string[] {
@@ -377,7 +378,7 @@ export class SeedUserBuilder {
     return images;
   }
 
-  private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<UserDto> {
+  private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<UserRecord> {
     if (index === totalCount - 2) {
       return {
         profileStatus: 'blocked',
@@ -535,7 +536,7 @@ export class SeedUserBuilder {
       .map(entry => entry.user);
   }
 
-  private static withResolvedLocationCoordinates(user: UserDto): UserDto {
+  private static withResolvedLocationCoordinates(user: UserRecord): UserRecord {
     const nextUser = {
       ...user,
       profileFormVersion: this.resolveSeedProfileFormVersion(user.profileFormVersion),

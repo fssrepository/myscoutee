@@ -1,10 +1,9 @@
-import { USER_FILTER_PREFERENCES_TABLE_NAME } from '../entity/rate.entity';
-import { USERS_TABLE_NAME } from '../entity/user.entity';
+import { USER_FILTER_PREFERENCES_TABLE_NAME, type UserFilterPreferencesRecord } from '../entity/rate.entity';
+import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
 import { CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { computed, Injectable, inject } from '@angular/core';
 
-import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
 import type { UserSelectorListItemDto, UserSelectorRole, UserDto } from '../../../contracts/user.interface';
 
 import { LocalMemoryDb } from '../../../common/app.db';
@@ -72,38 +71,22 @@ export class LocalUsersRepository {
     return LocalUsersMapper.toDto(user);
   }
 
-  upsertUser(user: UserDto): UserDto {
-    const normalizedUser = LocalUsersMapper.toRecord(user);
-    normalizedUser.images = this.normalizeImages(normalizedUser.images);
-    normalizedUser.affinity = UserProfileStateBuilder.resolveUserAffinity({
-      id: normalizedUser.id,
-      name: normalizedUser.name,
-      age: normalizedUser.age,
-      city: normalizedUser.city,
-      height: normalizedUser.height,
-      physique: normalizedUser.physique,
-      languages: normalizedUser.languages,
-      horoscope: normalizedUser.horoscope,
-      gender: normalizedUser.gender,
-      hostTier: normalizedUser.hostTier,
-      traitLabel: normalizedUser.traitLabel,
-      completion: normalizedUser.completion
-    });
+  upsertUser(user: UserRecord): UserRecord {
     this.memoryDb.write(state => {
       const usersTable = state[USERS_TABLE_NAME];
-      const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, normalizedUser.id);
+      const exists = Object.prototype.hasOwnProperty.call(usersTable.byId, user.id);
       return {
         ...state,
         [USERS_TABLE_NAME]: {
           byId: {
             ...usersTable.byId,
-            [normalizedUser.id]: normalizedUser
+            [user.id]: user
           },
-          ids: exists ? [...usersTable.ids] : [...usersTable.ids, normalizedUser.id]
+          ids: exists ? [...usersTable.ids] : [...usersTable.ids, user.id]
         }
       };
     });
-    return LocalUsersMapper.toDto(normalizedUser);
+    return user;
   }
 
   purgeUser(userId: string): void {
@@ -157,25 +140,20 @@ export class LocalUsersRepository {
     return `D${(hash % 9) + 1}`;
   }
 
-  queryUserFilterPreferences(userId: string): UserGameFilterPreferencesDto | null {
+  queryUserFilterPreferences(userId: string): UserFilterPreferencesRecord | null {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
     }
     const table = this.memoryDb.read()[USER_FILTER_PREFERENCES_TABLE_NAME];
-    const preferences = table.byId[normalizedUserId];
-    if (!preferences) {
-      return null;
-    }
-    return UserRecordsBuilder.cloneFilterPreferences(preferences);
+    return table.byId[normalizedUserId] ?? null;
   }
 
-  upsertUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): void {
+  upsertUserFilterPreferences(userId: string, preferences: UserFilterPreferencesRecord): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
     }
-    const normalizedPreferences = UserRecordsBuilder.cloneFilterPreferences(preferences);
     this.memoryDb.write(state => {
       const table = state[USER_FILTER_PREFERENCES_TABLE_NAME];
       const exists = Object.prototype.hasOwnProperty.call(table.byId, normalizedUserId);
@@ -184,7 +162,7 @@ export class LocalUsersRepository {
         [USER_FILTER_PREFERENCES_TABLE_NAME]: {
           byId: {
             ...table.byId,
-            [normalizedUserId]: normalizedPreferences
+            [normalizedUserId]: preferences
           },
           ids: exists ? [...table.ids] : [...table.ids, normalizedUserId]
         }
@@ -210,14 +188,8 @@ export class LocalUsersRepository {
     const users = this.memoryDb.read()[tableName];
     return users.ids
       .map(id => users.byId[id])
-      .filter((user): user is UserDto => Boolean(user))
+      .filter((user): user is UserRecord => Boolean(user))
       .map(user => LocalUsersMapper.toDto(user));
-  }
-
-  private normalizeImages(images: readonly string[] | undefined): string[] {
-    return (images ?? [])
-      .map(image => image?.trim() ?? '')
-      .filter(image => image.length > 0);
   }
 
 }

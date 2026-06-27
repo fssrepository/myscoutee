@@ -7,6 +7,7 @@ import type { ChatMessageMutation, ChatPopupMessage, ChatRecord } from '../../..
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalShareTokensRepository } from '../repositories/share-tokens.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalUsersMapper } from '../mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -21,7 +22,9 @@ export class LocalAdminSupportSessionService {
   }
 
   async saveUser(user: UserDto): Promise<UserDto> {
-    const saved = this.usersRepository.upsertUser(user);
+    const saved = LocalUsersMapper.toDto(
+      this.usersRepository.upsertUser(LocalUsersMapper.toRecord(user))
+    );
     await this.usersRepository.flushToIndexedDb();
     return saved;
   }

@@ -1,11 +1,11 @@
 import { USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
+import type { UserRecord } from '../../source/entity/user.entity';
 import type { UserRatesRecordCollection } from '../../source/entity/rate.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRateRecord } from '../../source/entity/rate.entity';
 
 import { UserProfileStateBuilder } from '../../../base/builders';
@@ -27,7 +27,7 @@ export class SeedUsersRatingsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private initialized = false;
 
-  seedDefaults(seedUsers?: readonly UserDto[]): void {
+  seedDefaults(seedUsers?: readonly UserRecord[]): void {
     if (this.initialized) {
       return;
     }
@@ -93,12 +93,12 @@ export class SeedUsersRatingsRepository {
     this.initialized = true;
   }
 
-  private querySeedUsers(): UserDto[] {
+  private querySeedUsers(): UserRecord[] {
     const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
     if (usersTable.ids.length > 0) {
       return usersTable.ids
         .map(id => usersTable.byId[id])
-        .filter((user): user is UserDto => Boolean(user?.id?.trim()))
+        .filter((user): user is UserRecord => Boolean(user?.id?.trim()))
         .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id));
     }
     return SeedUserBuilder.buildExpandedDemoUsers(SeedUsersRatingsRepository.DEFAULT_DEMO_USERS_COUNT)

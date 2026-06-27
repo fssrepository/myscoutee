@@ -3,9 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../../app-utils';
 import { AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { UserDto } from '../../../contracts/user.interface';
 import type * as AppTypes from '../../../base/models';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { SeedAssetBuilder, SeedScheduleBuilder } from '../builders';
 
@@ -19,7 +19,7 @@ export class SeedAssetsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private lastSeedToken = '';
 
-  seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserDto[] = []): Map<string, AppDTOs.AssetCardDTO[]> {
+  seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AppDTOs.AssetCardDTO[]> {
     const allUsers = seedUsers
       .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id))
       .filter(user => user.profileStatus === 'public');
@@ -70,7 +70,7 @@ export class SeedAssetsRepository {
   private mergeSeededRecords(
     currentTable: AssetsRecordCollection,
     ownerUserIds: readonly string[],
-    allUsers: readonly UserDto[]
+    allUsers: readonly UserRecord[]
   ): { table: AssetsRecordCollection; changed: boolean } {
     const sampleCards = SeedAssetBuilder.buildSampleAssetCards(allUsers)
       .slice(0, SeedAssetsRepository.DEFAULT_ASSET_LIMIT_PER_OWNER);

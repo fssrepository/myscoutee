@@ -1,8 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { InfoCardData } from '../../../ui';
+import {
+  ActivitySubEventResourceInfoCardConverter,
+  type ActivitySubEventResourceInfoCardConverterOptions,
+  type InfoCardData
+} from '../../../ui';
 import { AppContext } from '../../../ui/context';
-import { ActivityResourceBuilder, type ActivitySubEventResourceInfoCardOptions } from '../builders';
 import { LocalActivityResourcesService } from '../../local/source/services/activity-resources.service';
 import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -97,9 +100,9 @@ export class ActivityResourcesService extends BaseRouteModeService {
 
   subEventResourceInfoCard(
     card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardOptions
+    options: ActivitySubEventResourceInfoCardConverterOptions
   ): InfoCardData {
-    return ActivityResourceBuilder.buildSubEventResourceInfoCard(card, options);
+    return ActivitySubEventResourceInfoCardConverter.convert(card, options);
   }
 
   private normalizeRef(

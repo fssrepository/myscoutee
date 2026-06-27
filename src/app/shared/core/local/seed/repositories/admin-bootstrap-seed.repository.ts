@@ -1,8 +1,8 @@
 import type { ChatThreadRecord } from '../../source/entity/chat.entity';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { Location } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../../contracts/user.interface';
 import type { AdminChatMessageDto, AdminHelpTarget, AdminMonitoringStateDto, AdminModerationStore, AdminNotificationCenterState, AdminUserDto } from '../../../contracts/admin.interface';
 import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
 
@@ -42,11 +42,7 @@ export class SeedAdminBootstrapRepository {
     return await this.ideaPostsSeed.seedDefaults();
   }
 
-  seedUsers(): UserDto[] {
-    return this.usersSeed.seedDefaults();
-  }
-
-  seedUserRatings(seedUsers?: readonly UserDto[]): void {
+  seedUserRatings(seedUsers?: readonly UserRecord[]): void {
     this.usersRatingsSeed.seedDefaults(seedUsers);
   }
 
@@ -250,11 +246,11 @@ export class SeedAdminBootstrapRepository {
     }));
   }
 
-  private findUser(userId: string): UserDto | null {
+  private findUser(userId: string): UserRecord | null {
     return this.usersSeed.queryUserById(userId);
   }
 
-  private async saveUser(user: UserDto): Promise<UserDto> {
+  private async saveUser(user: UserRecord): Promise<UserRecord> {
     return this.usersSeed.upsertUser(user);
   }
 
@@ -319,7 +315,7 @@ export class SeedAdminBootstrapRepository {
     return AdminProfileSeedBuilder.isLegacyDemoAdminImage(imageUrl);
   }
 
-  private firstUserImage(user: UserDto | null | undefined): string | null {
+  private firstUserImage(user: UserRecord | null | undefined): string | null {
     return user?.images?.find(image => image.trim().length > 0) ?? null;
   }
 

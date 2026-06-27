@@ -2693,26 +2693,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }), undefined, row.type as ActivityPopupEventType));
   }
 
-  private async loadActivityMembersForRow(
-    owner: ActivityMemberOwnerRef,
-    row: ActivityPopupEventCard,
-    rowSelectionId: string
-  ): Promise<void> {
-    const members = await this.activityMembersService.queryMembersByOwner(owner);
-    if (this.selectedActivityMembersRowId !== rowSelectionId || this.selectedActivityMembersRow?.id !== row.id) {
-      return;
-    }
-    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(members);
-    this.activityMembersByRowId[rowSelectionId] = [...this.selectedActivityMembers];
-    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
-      owner,
-      members,
-      this.activityCapacityTotal(row, members.filter(member => member.status === 'accepted').length)
-    );
-    this.applyActivityMembersSummary(row, summary);
-    this.cdr.markForCheck();
-  }
-
   protected persistSelectedActivityMembers(): void {
     if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId) {
       return;

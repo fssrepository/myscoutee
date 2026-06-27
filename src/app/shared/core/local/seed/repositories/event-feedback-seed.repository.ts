@@ -6,6 +6,7 @@ import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../../source/entity/activity.entity';
+import type { UserRecord } from '../../source/entity/user.entity';
 import type { ActivityEventSeedItem } from '../entity';
 
 
@@ -23,7 +24,7 @@ export class SeedEventFeedbackRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
   seedDefaults(
-    seedUsers: readonly UserDto[],
+    seedUsers: readonly UserRecord[],
     eventItemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>,
     itemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>
   ): void {
@@ -87,7 +88,7 @@ export class SeedEventFeedbackRepository {
   }
 
   private seedOrganizerFeedbackShowcaseRecords(
-    users: UserDto[],
+    users: UserRecord[],
     nextById: Record<string, EventFeedbackPersistedState>,
     nextIds: string[],
     itemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>
@@ -189,7 +190,7 @@ export class SeedEventFeedbackRepository {
 
   private organizerFeedbackShowcaseViewerUserIds(
     record: ActivityEventRecord,
-    users: readonly UserDto[],
+    users: readonly UserRecord[],
     hostUserId: string,
     usersById: ReadonlyMap<string, UserDto>
   ): string[] {

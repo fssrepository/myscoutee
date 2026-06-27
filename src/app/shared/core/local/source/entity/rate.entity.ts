@@ -1,5 +1,5 @@
-import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
+import type { UserGender } from '../../../common/constants';
 
 export const USER_RATES_TABLE_NAME = APP_INDEXED_DB_KEYS.userRates;
 export const USER_RATES_OUTBOX_TABLE_NAME = APP_INDEXED_DB_KEYS.userRatesOutbox;
@@ -73,8 +73,32 @@ export interface UserRatesOutboxRecordCollection {
   ids: string[];
 }
 
+export interface UserFilterPreferencesRecord {
+  ageMin?: number;
+  ageMax?: number;
+  heightMinCm?: number;
+  heightMaxCm?: number;
+  interests?: string[];
+  values?: string[];
+  physiques?: string[];
+  languages?: string[];
+  genders?: UserGender[];
+  horoscopes?: string[];
+  traitLabels?: string[];
+  smoking?: string[];
+  drinking?: string[];
+  workout?: string[];
+  pets?: string[];
+  familyPlans?: string[];
+  children?: string[];
+  loveStyles?: string[];
+  communicationStyles?: string[];
+  sexualOrientations?: string[];
+  religions?: string[];
+}
+
 export interface UserFilterPreferencesRecordCollection {
-  byId: Record<string, UserGameFilterPreferencesDto>;
+  byId: Record<string, UserFilterPreferencesRecord>;
   ids: string[];
 }
 

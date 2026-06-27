@@ -11,6 +11,7 @@ import {
 } from '../../../base/builders/activity-members.builder';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
@@ -40,7 +41,7 @@ export class SeedActivityMembersRepository {
   seedDefaults(
     ownerUserIds?: readonly string[],
     assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetCardDTO[]>,
-    seedUsers: readonly UserDto[] = []
+    seedUsers: readonly UserRecord[] = []
   ): void {
     const state = this.memoryDb.read();
     const users = this.resolveSeedUsers(seedUsers);
@@ -121,7 +122,7 @@ export class SeedActivityMembersRepository {
     ].join(':');
   }
 
-  private resolveSeedUsers(seedUsers: readonly UserDto[]): UserDto[] {
+  private resolveSeedUsers(seedUsers: readonly UserRecord[]): UserDto[] {
     const source = seedUsers.length > 0
       ? seedUsers
       : this.memoryDb.read()[USERS_TABLE_NAME].ids

@@ -20,14 +20,21 @@ import type {
   UserService,
   UserSubmitActionResponseDto
 } from '../../../contracts/user.interface';
-import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
+import {
+  defaultUserGameFilterPreferences,
+  type UserGameFilterPreferencesDto
+} from '../../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import {
   LocalUserRealtimeSnapshotBuilder,
   type LocalUserRealtimeSnapshotState
 } from '../builders';
-import { UserFilterPreferencesBuilder, UserMenuCountersBuilder } from '../../../base/builders';
-import { LocalProfileExperiencesMapper } from '../mappers';
+import { UserMenuCountersBuilder } from '../../../base/builders';
+import {
+  LocalProfileExperiencesMapper,
+  LocalUserFilterPreferencesMapper,
+  LocalUsersMapper
+} from '../mappers';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
@@ -175,7 +182,11 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       filterCount,
       counterOverrides,
       filterPreferences: user
-        ? (persistedFilterPreferences ?? UserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
+        ? (
+            persistedFilterPreferences
+              ? LocalUserFilterPreferencesMapper.toDto(persistedFilterPreferences)
+              : defaultUserGameFilterPreferences()
+          )
         : null
     };
   }
@@ -293,7 +304,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
-    this.usersRepository.upsertUserFilterPreferences(userId, preferences);
+    this.usersRepository.upsertUserFilterPreferences(
+      userId,
+      LocalUserFilterPreferencesMapper.toRecord(preferences)
+    );
     await this.usersRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalUsersService.USER_FILTER_PREFERENCES_ROUTE);
   }
@@ -302,7 +316,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!user?.id?.trim()) {
       return null;
     }
-    const savedUser = this.usersRepository.upsertUser(user);
+    const savedUser = this.upsertUser(user);
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
@@ -314,7 +328,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!profile?.id?.trim()) {
       return null;
     }
-    const savedUser = this.usersRepository.upsertUser(profile);
+    const savedUser = this.upsertUser(profile);
     this.profileExperiencesRepository.replaceUserExperienceRecords(
       savedUser.id,
       request.experienceEntries ?? []
@@ -405,7 +419,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       const previousProfileStatus = user.profileStatus === 'deleted'
         ? (user.previousProfileStatus ?? 'public')
         : user.profileStatus;
-      this.usersRepository.upsertUser({
+      this.upsertUser({
         ...user,
         profileStatus: 'deleted',
         previousProfileStatus,
@@ -417,6 +431,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       submitted: true,
       message: null
     };
+  }
+
+  private upsertUser(user: UserDto): UserDto {
+    const normalizedUser = LocalUsersMapper.toRecord(user);
+    const savedUser = this.usersRepository.upsertUser(normalizedUser);
+    return LocalUsersMapper.toDto(savedUser);
   }
 
   private buildInitialMenuCounterOverrides(user: UserDto) {

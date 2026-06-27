@@ -5,9 +5,9 @@ import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/enti
 import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
-import type { UserDto } from '../../../contracts/user.interface';
 import type * as AppTypes from '../../../base/models';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
@@ -251,7 +251,7 @@ export class SeedDemoBootstrapService {
   private async seedCommonDemoCollections(): Promise<void> {
     this.registry.clear();
     try {
-      let seededUsers: readonly UserDto[] = [];
+      let seededUsers: readonly UserRecord[] = [];
       let seededUserIds: readonly string[] = [];
       let assetsByUserId: Map<string, AppDTOs.AssetCardDTO[]> = new Map();
       const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;

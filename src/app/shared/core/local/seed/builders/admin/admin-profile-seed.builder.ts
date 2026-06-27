@@ -1,8 +1,8 @@
-import type { UserDto } from '../../../../contracts/user.interface';
+import type { UserRecord } from '../../../source/entity/user.entity';
 import type { AdminSeedUserDto } from './admin-seed.models';
 
 export class AdminProfileSeedBuilder {
-  static buildDemoAdminUser(admin: AdminSeedUserDto): UserDto {
+  static buildDemoAdminUser(admin: AdminSeedUserDto): UserRecord {
     return {
       id: admin.id,
       name: admin.name,
