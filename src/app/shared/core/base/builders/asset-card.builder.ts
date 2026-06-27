@@ -37,25 +37,13 @@ export class AssetCardBuilder {
     return cleaned.length > 0 ? cleaned : [''];
   }
 
-  static normalizeAssetImageLink(
-    type: AppConstants.AssetType,
-    imageUrl: string | null | undefined,
-    options: { fallbackImageUrl?: string | null } = {}
+  static normalizeAssetLink(
+    value: string | null | undefined,
+    fallbackLink: string | null | undefined = ''
   ): string {
-    const trimmed = (imageUrl ?? '').trim();
+    const trimmed = (value ?? '').trim();
     if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
-      return `${options.fallbackImageUrl ?? ''}`.trim();
-    }
-    return trimmed;
-  }
-
-  static normalizeAssetSourceLink(
-    sourceLink: string | null | undefined,
-    fallbackImageUrl: string
-  ): string {
-    const trimmed = (sourceLink ?? '').trim();
-    if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
-      return fallbackImageUrl.trim();
+      return `${fallbackLink ?? ''}`.trim();
     }
     return trimmed;
   }
@@ -64,8 +52,8 @@ export class AssetCardBuilder {
     card: AppDTOs.AssetCardDTO,
     options: { fallbackImageUrl?: string | null } = {}
   ): AppDTOs.AssetCardDTO {
-    const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, options);
-    const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
+    const imageUrl = this.normalizeAssetLink(card.imageUrl, options.fallbackImageUrl);
+    const sourceLink = this.normalizeAssetLink(card.sourceLink, imageUrl);
     return {
       ...card,
       imageUrl,

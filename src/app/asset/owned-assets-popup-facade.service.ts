@@ -142,7 +142,7 @@ export class OwnedAssetsPopupFacadeService {
 
   popupTitle(): string {
     const filter = this.activePopupFilter ?? this.assetFilter;
-    return `Assets · ${this.assetTypeLabel(filter)}`;
+    return `Assets · ${AssetDefaultsBuilder.assetTypeLabel(filter)}`;
   }
 
   assetFilterPanelWidth(): string {
@@ -157,7 +157,7 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   assetFormTitle(): string {
-    return `${this.editingAssetId ? 'Edit' : 'Add'} ${this.assetTypeLabel(this.assetForm.type)}`;
+    return `${this.editingAssetId ? 'Edit' : 'Add'} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
   }
 
   assetFormRouteStops(): string[] {
@@ -282,18 +282,6 @@ export class OwnedAssetsPopupFacadeService {
       hooks.onAssetsChanged?.();
     }
     this.touchUiState();
-  }
-
-  assetTypeIcon(type: AppConstants.AssetFilterType): string {
-    return AssetDefaultsBuilder.assetTypeIcon(type);
-  }
-
-  assetTypeClass(type: AppConstants.AssetFilterType): string {
-    return AssetDefaultsBuilder.assetTypeClass(type);
-  }
-
-  assetTypeLabel(type: AppConstants.AssetFilterType): string {
-    return AssetDefaultsBuilder.assetTypeLabel(type);
   }
 
   assetFilterCount(type: AppConstants.AssetFilterType): number {
@@ -466,8 +454,8 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private applyAssetFormFromCard(card: AppDTOs.AssetCardDTO): void {
-    const imageUrl = AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl);
-    const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(card.sourceLink, imageUrl);
+    const imageUrl = AssetCardBuilder.normalizeAssetLink(card.imageUrl);
+    const sourceLink = AssetCardBuilder.normalizeAssetLink(card.sourceLink, imageUrl);
     this.editingAssetId = card.id;
     this.assetFormVisibility = card.visibility === 'Friends only'
       ? 'Friends only'
@@ -599,8 +587,8 @@ export class OwnedAssetsPopupFacadeService {
           && !resolvedImageUrl) {
         throw new Error('Unable to upload asset image.');
       }
-      const imageUrl = AssetCardBuilder.normalizeAssetImageLink(this.assetForm.type, resolvedImageUrl || this.assetForm.imageUrl);
-      const sourceLink = AssetCardBuilder.normalizeAssetSourceLink(this.assetForm.sourceLink, imageUrl);
+      const imageUrl = AssetCardBuilder.normalizeAssetLink(resolvedImageUrl || this.assetForm.imageUrl);
+      const sourceLink = AssetCardBuilder.normalizeAssetLink(this.assetForm.sourceLink, imageUrl);
       const category = AssetDefaultsBuilder.normalizeCategory(this.assetForm.type, this.assetForm.category);
       const payload: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> = {
         type: this.assetForm.type,

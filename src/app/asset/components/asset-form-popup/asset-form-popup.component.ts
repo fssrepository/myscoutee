@@ -55,9 +55,6 @@ export class AssetFormPopupComponent implements OnChanges {
   @Input() assetVisibilityOptions: readonly AppConstants.EventVisibility[] = [];
   @Input() assetFormRouteStops: string[] = [];
   @Input() isEventEditorReadOnly = false;
-  @Input({ required: true }) assetTypeClass!: (type: AppConstants.AssetFilterType) => string;
-  @Input({ required: true }) assetTypeIcon!: (type: AppConstants.AssetFilterType) => string;
-  @Input({ required: true }) assetTypeLabel!: (type: AppConstants.AssetFilterType) => string;
   @Input({ required: true }) eventVisibilityClass!: (option: AppConstants.EventVisibility) => string;
   @Input({ required: true }) visibilityIcon!: (option: AppConstants.EventVisibility) => string;
   @Input({ required: true }) close!: () => void;
@@ -151,8 +148,8 @@ export class AssetFormPopupComponent implements OnChanges {
 
   protected assetTypeMenuTrigger(): AppMenuTrigger {
     return {
-      label: this.assetTypeLabel(this.assetForm.type),
-      icon: this.assetTypeIcon(this.assetForm.type),
+      label: AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type),
+      icon: AssetDefaultsBuilder.assetTypeIcon(this.assetForm.type),
       palette: this.assetTypePalette(this.assetForm.type),
       layout: 'field',
       disabled: () => this.isSavePending || this.isLoading,
@@ -163,8 +160,8 @@ export class AssetFormPopupComponent implements OnChanges {
   protected assetTypeMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
     return this.assetTypeOptions.map(option => ({
       id: `asset-type-${option}`,
-      label: this.assetTypeLabel(option),
-      icon: this.assetTypeIcon(option),
+      label: AssetDefaultsBuilder.assetTypeLabel(option),
+      icon: AssetDefaultsBuilder.assetTypeIcon(option),
       kind: 'radio',
       active: option === this.assetForm.type,
       palette: this.assetTypePalette(option),

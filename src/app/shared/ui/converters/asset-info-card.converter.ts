@@ -58,9 +58,7 @@ export class AssetInfoCardConverter {
       ownerUserId: card.ownerUserId ?? null,
       groupLabel: options.groupLabel ?? null,
       title: card.title,
-      imageUrl: AssetCardBuilder.normalizeAssetImageLink(card.type, card.imageUrl, {
-        fallbackImageUrl: options.fallbackImageUrl ?? ''
-      }),
+      imageUrl: AssetCardBuilder.normalizeAssetLink(card.imageUrl, options.fallbackImageUrl ?? ''),
       metaRows: [this.ownedAssetMetaLine(card, options.fallbackSubtitle ?? '')],
       description: card.details,
       surfaceTone: this.assetStatusSurfaceTone(card),

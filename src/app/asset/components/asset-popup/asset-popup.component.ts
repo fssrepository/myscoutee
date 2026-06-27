@@ -7,7 +7,7 @@ import { from } from 'rxjs';
 import { AssetFacadeService } from '../../asset-facade.service';
 import { AssetPopupStateService } from '../../asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
-import { AssetCardBuilder, PricingBuilder } from '../../../shared/core/base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import { AppContext } from '../../../shared/ui';
 import { AssetTicketsService, ShareTokensService } from '../../../shared/core';
 import { AssetFormPopupComponent } from '../asset-form-popup/asset-form-popup.component';
@@ -241,8 +241,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     if (count > 0) {
       items.push({
         id: 'asset-assign-basket',
-        icon: this.ownedAssets.assetTypeIcon(type),
-        openIcon: this.ownedAssets.assetTypeIcon(type),
+        icon: AssetDefaultsBuilder.assetTypeIcon(type),
+        openIcon: AssetDefaultsBuilder.assetTypeIcon(type),
         palette: this.assetFilterPalette(type),
         kind: 'branch',
         counter: count,
@@ -274,7 +274,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       id: `asset-assign-basket-${card.id}`,
       label: card.title,
       description: this.assetAssignBasketItemDescription(card),
-      icon: this.ownedAssets.assetTypeIcon(card.type),
+      icon: AssetDefaultsBuilder.assetTypeIcon(card.type),
       kind: 'action',
       palette: this.assetFilterPalette(card.type),
       surface: 'tinted',
@@ -296,7 +296,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
 
   private assetAssignBasketItemDescription(card: AppDTOs.AssetCardDTO): string {
     return [
-      this.ownedAssets.assetTypeLabel(card.type),
+      AssetDefaultsBuilder.assetTypeLabel(card.type),
       card.subtitle,
       card.city
     ].map(value => `${value ?? ''}`.trim()).filter(Boolean).join(' · ');
@@ -407,8 +407,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     const filter = this.ownedAssets.assetFilter;
     const count = this.ownedAssets.assetFilterCount(filter);
     return {
-      label: this.ownedAssets.assetTypeLabel(filter),
-      icon: this.ownedAssets.assetTypeIcon(filter),
+      label: AssetDefaultsBuilder.assetTypeLabel(filter),
+      icon: AssetDefaultsBuilder.assetTypeIcon(filter),
       palette: this.assetFilterPalette(filter),
       counter: count > 0 ? count : null,
       ariaLabel: 'Open asset filter'
@@ -420,8 +420,8 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
       const count = this.ownedAssets.assetFilterCount(option);
       return {
         id: `asset-filter-${option}`,
-        label: this.ownedAssets.assetTypeLabel(option),
-        icon: this.ownedAssets.assetTypeIcon(option),
+        label: AssetDefaultsBuilder.assetTypeLabel(option),
+        icon: AssetDefaultsBuilder.assetTypeIcon(option),
         kind: 'radio',
         active: option === this.ownedAssets.assetFilter,
         palette: this.assetFilterPalette(option),
