@@ -1,12 +1,11 @@
 import { AppUtils } from '../../../../app-utils';
-import { UserRecordsBuilder } from '../../../base/builders';
 import type { DtoRecordMapper } from '../../../base/mappers/mapper.types';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../entity/user.entity';
 
 export class LocalUsersMapper {
   static toDto(record: UserRecord): UserDto {
-    return UserRecordsBuilder.cloneUser(record as UserDto);
+    return this.cloneUser(record);
   }
 
   static toDtoList(records: readonly UserRecord[]): UserDto[] {
@@ -14,7 +13,7 @@ export class LocalUsersMapper {
   }
 
   static toRecord(dto: UserDto): UserRecord {
-    const record = UserRecordsBuilder.cloneUser(dto) as UserRecord;
+    const record = this.cloneUser(dto) as UserRecord;
     record.images = this.normalizeImages(record.images);
     record.affinity = this.resolveUserAffinity(record);
     return record;
@@ -26,6 +25,56 @@ export class LocalUsersMapper {
 
   static cloneRecord(record: UserRecord): UserRecord {
     return this.toRecord(this.toDto(record));
+  }
+
+  private static cloneUser(user: UserDto | UserRecord): UserDto {
+    return {
+      ...user,
+      locationCoordinates: user.locationCoordinates
+        ? {
+          latitude: user.locationCoordinates.latitude,
+          longitude: user.locationCoordinates.longitude
+        }
+        : undefined,
+      languages: [...(user.languages ?? [])],
+      images: [...(user.images ?? [])],
+      profileDetails: user.profileDetails
+        ? user.profileDetails.map(group => ({
+          title: `${group.title ?? ''}`,
+          rows: (group.rows ?? []).map(row => ({
+            labelKey: `${row.labelKey ?? ''}`,
+            value: `${row.value ?? ''}`,
+            privacy: row.privacy,
+            options: [...(row.options ?? [])]
+          }))
+        }))
+        : undefined,
+      impressions: user.impressions
+        ? {
+          host: user.impressions.host
+            ? {
+              ...user.impressions.host,
+              vibeBadges: [...(user.impressions.host.vibeBadges ?? [])],
+              personalityBadges: [...(user.impressions.host.personalityBadges ?? [])],
+              personalityTraits: (user.impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
+              categoryBadges: [...(user.impressions.host.categoryBadges ?? [])]
+            }
+            : undefined,
+          member: user.impressions.member
+            ? {
+              ...user.impressions.member,
+              vibeBadges: [...(user.impressions.member.vibeBadges ?? [])],
+              personalityBadges: [...(user.impressions.member.personalityBadges ?? [])],
+              personalityTraits: (user.impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
+              categoryBadges: [...(user.impressions.member.categoryBadges ?? [])]
+            }
+            : undefined
+        }
+        : undefined,
+      activities: {
+        ...user.activities
+      }
+    };
   }
 
   private static normalizeImages(images: readonly string[] | undefined): string[] {

@@ -19,56 +19,6 @@ interface UserRecordsActivitySources {
 }
 
 export class UserRecordsBuilder {
-  static cloneUser(user: UserDto): UserDto {
-    return {
-      ...user,
-      locationCoordinates: user.locationCoordinates
-        ? {
-          latitude: user.locationCoordinates.latitude,
-          longitude: user.locationCoordinates.longitude
-        }
-        : undefined,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      profileDetails: user.profileDetails
-        ? user.profileDetails.map(group => ({
-          title: `${group.title ?? ''}`,
-          rows: (group.rows ?? []).map(row => ({
-            labelKey: `${row.labelKey ?? ''}`,
-            value: `${row.value ?? ''}`,
-            privacy: row.privacy,
-            options: [...(row.options ?? [])]
-          }))
-        }))
-        : undefined,
-      impressions: user.impressions
-        ? {
-          host: user.impressions.host
-            ? {
-              ...user.impressions.host,
-              vibeBadges: [...(user.impressions.host.vibeBadges ?? [])],
-              personalityBadges: [...(user.impressions.host.personalityBadges ?? [])],
-              personalityTraits: (user.impressions.host.personalityTraits ?? []).map(trait => ({ ...trait })),
-              categoryBadges: [...(user.impressions.host.categoryBadges ?? [])]
-            }
-            : undefined,
-          member: user.impressions.member
-            ? {
-              ...user.impressions.member,
-              vibeBadges: [...(user.impressions.member.vibeBadges ?? [])],
-              personalityBadges: [...(user.impressions.member.personalityBadges ?? [])],
-              personalityTraits: (user.impressions.member.personalityTraits ?? []).map(trait => ({ ...trait })),
-              categoryBadges: [...(user.impressions.member.categoryBadges ?? [])]
-            }
-            : undefined
-        }
-        : undefined,
-      activities: {
-        ...user.activities
-      }
-    };
-  }
-
   static toDemoUserListItem(user: UserDto): UserSelectorListItemDto {
     return {
       id: user.id,

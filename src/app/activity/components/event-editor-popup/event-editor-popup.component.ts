@@ -12,7 +12,7 @@ import { EventEditorPopupStateService } from '../../services/event-editor-popup-
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
+import { PricingBuilder } from '../../../shared/core/base/builders';
 import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
@@ -1339,7 +1339,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private openCreateRequest(target: ContractTypes.EventEditorTarget): void {
     this.resetEditorContext();
     this.editorTarget = target;
-    this.draftEventId = EventEditorBuilder.buildCreatedEventEditorId(target);
+    this.draftEventId = this.buildCreatedEventEditorId(target);
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(this.draftEventId);
     this.resetForm(target);
     this.eventVisibilityReady.set(true);
@@ -1422,7 +1422,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const eventId = this.eventDetailDTO.id.trim()
       || this.editingEventId
       || this.draftEventId
-      || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
+      || this.buildCreatedEventEditorId(this.editorTarget);
     this.eventDetailDTO.id = eventId;
     this.eventDetailDTO.imageUrl = this.normalizedEventImageUrl();
     const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
@@ -1440,6 +1440,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.activitiesContext.emitActivityEventSaveResult(displaySync);
     return true;
+  }
+
+  private buildCreatedEventEditorId(target: ContractTypes.EventEditorTarget, timestampMs = Date.now()): string {
+    return target === 'hosting' ? `h${timestampMs}` : `e${timestampMs}`;
   }
 
   private async runImmediateSave(): Promise<void> {
