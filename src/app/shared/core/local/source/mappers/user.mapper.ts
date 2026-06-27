@@ -1,6 +1,6 @@
 import { AppUtils } from '../../../../app-utils';
 import type { DtoRecordMapper } from '../../../base/mappers/mapper.types';
-import type { UserDto } from '../../../contracts/user.interface';
+import type { UserDto, UserSelectorListItemDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../entity/user.entity';
 
 export class LocalUsersMapper {
@@ -10,6 +10,25 @@ export class LocalUsersMapper {
 
   static toDtoList(records: readonly UserRecord[]): UserDto[] {
     return records.map(record => this.toDto(record));
+  }
+
+  static toSelectorListItem(record: UserRecord): UserSelectorListItemDto {
+    return {
+      id: record.id,
+      name: record.name,
+      city: record.city,
+      initials: record.initials,
+      gender: record.gender,
+      statusText: record.statusText,
+      completion: record.completion,
+      profileFormVersion: record.profileFormVersion,
+      profileStatus: record.profileStatus,
+      deletedAtIso: record.deletedAtIso ?? null
+    };
+  }
+
+  static toSelectorListItemList(records: readonly UserRecord[]): UserSelectorListItemDto[] {
+    return records.map(record => this.toSelectorListItem(record));
   }
 
   static toRecord(dto: UserDto): UserRecord {

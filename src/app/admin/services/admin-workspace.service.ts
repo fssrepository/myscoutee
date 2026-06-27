@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 
 import { AppContext } from '../../shared/ui';
-import { AdminWorkspaceDataService, HelpCenterService, SessionService, UsersService, UserRecordsBuilder, USER_BY_ID_LOAD_CONTEXT_KEY, type AdminBootstrapProcessState, type AdminDashboardDto, type AdminFeedbackDto, type AdminModerationUserPatch, type AdminReportedUserDto, type AdminUserDto, type UserDto, type UserSelectorListItemDto } from '../../shared/core';
+import { AdminWorkspaceDataService, HelpCenterService, SessionService, USER_BY_ID_LOAD_CONTEXT_KEY, type AdminBootstrapProcessState, type AdminDashboardDto, type AdminFeedbackDto, type AdminModerationUserPatch, type AdminReportedUserDto, type AdminUserDto, type UserDto } from '../../shared/core';
 import { APP_STORAGE_KEYS } from '../../shared/core/common/storage-scope';
 import { AdminShellService } from './admin-shell.service';
 
@@ -16,7 +16,6 @@ export class AdminWorkspaceService {
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly sessionService = inject(SessionService);
-  private readonly usersService = inject(UsersService);
   private readonly shell = inject(AdminShellService);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
@@ -112,15 +111,6 @@ export class AdminWorkspaceService {
       this.clearAdminSession();
       return false;
     }
-  }
-
-  restoreAdminPreview(): UserSelectorListItemDto | null {
-    const adminId = this.readStoredAdminId();
-    if (!adminId) {
-      return null;
-    }
-    const user = this.usersService.peekCachedUserById(adminId);
-    return user ? UserRecordsBuilder.toDemoUserListItem(user) : null;
   }
 
   async bootstrapAdmin(

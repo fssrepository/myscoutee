@@ -11,4 +11,3 @@ export { EventFeedbackBuilder } from './event-feedback.builder';
 export { HelpCenterContentBuilder } from './help-center-content.builder';
 export { PricingBuilder } from './pricing.builder';
 export { UserProfileStateBuilder } from './user-profile-state.builder';
-export { UserRecordsBuilder } from './user-records.builder';

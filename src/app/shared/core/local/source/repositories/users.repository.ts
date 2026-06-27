@@ -4,10 +4,10 @@ import { CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { computed, Injectable, inject } from '@angular/core';
 
-import type { UserSelectorListItemDto, UserSelectorRole, UserDto } from '../../../contracts/user.interface';
+import type { UserSelectorRole, UserDto } from '../../../contracts/user.interface';
 
 import { LocalMemoryDb } from '../../../common/app.db';
-import { UserProfileStateBuilder, UserRecordsBuilder } from '../../../base/builders';
+import { UserProfileStateBuilder } from '../../../base/builders';
 
 
 import { LocalUsersMapper } from '../mappers/user.mapper';
@@ -31,21 +31,20 @@ export class LocalUsersRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): UserSelectorListItemDto[] {
-    return this.queryAllUsers()
+  queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): UserRecord[] {
+    return this.queryUserRecordsFromTable(USERS_TABLE_NAME)
       .filter(user => this.matchesSelectorRole(user, selectorRole))
-      .sort((left, right) => this.compareSelectableDemoUsers(left, right))
-      .map(user => UserRecordsBuilder.toDemoUserListItem(user));
+      .sort((left, right) => this.compareSelectableDemoUsers(left, right));
   }
 
-  private matchesSelectorRole(user: UserDto, selectorRole: UserSelectorRole): boolean {
+  private matchesSelectorRole(user: UserRecord, selectorRole: UserSelectorRole): boolean {
     const adminUser = user.admin === true
       || `${user.id ?? ''}`.trim().startsWith('admin-demo-')
       || `${user.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
     return selectorRole === 'admin' ? adminUser : !adminUser;
   }
 
-  private compareSelectableDemoUsers(left: UserDto, right: UserDto): number {
+  private compareSelectableDemoUsers(left: UserRecord, right: UserRecord): number {
     const nameDelta = this.demoSelectorSortText(left.name, left.id)
       .localeCompare(this.demoSelectorSortText(right.name, right.id), 'en', { sensitivity: 'base' });
     if (nameDelta !== 0) {
@@ -185,11 +184,15 @@ export class LocalUsersRepository {
   }
 
   private queryUsersFromTable(tableName: typeof USERS_TABLE_NAME): UserDto[] {
+    return this.queryUserRecordsFromTable(tableName)
+      .map(user => LocalUsersMapper.toDto(user));
+  }
+
+  private queryUserRecordsFromTable(tableName: typeof USERS_TABLE_NAME): UserRecord[] {
     const users = this.memoryDb.read()[tableName];
     return users.ids
       .map(id => users.byId[id])
-      .filter((user): user is UserRecord => Boolean(user))
-      .map(user => LocalUsersMapper.toDto(user));
+      .filter((user): user is UserRecord => Boolean(user));
   }
 
 }

@@ -64,7 +64,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
 
   async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
-    return this.usersRepository.queryAvailableDemoUsers(selectorRole);
+    return LocalUsersMapper.toSelectorListItemList(
+      this.usersRepository.queryAvailableDemoUsers(selectorRole)
+    );
   }
 
   async prepareUserSession(
