@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AppPopupContext } from '../../../shared/ui';
 import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, type ShareTokenResolvedItem } from '../../../shared/core';
-import type { AssetCardDTO } from '../../../shared/core/base/dto';
+import type { AssetCardDTO } from '../../../shared/core/contracts';
 import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 

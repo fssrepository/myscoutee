@@ -1,4 +1,4 @@
-import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AppDTOs from '../shared/core/contracts';
 
 export interface AssetPopupHost {
   isMobileView(): boolean;

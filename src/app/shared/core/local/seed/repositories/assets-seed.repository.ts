@@ -10,7 +10,7 @@ import { UserProfileStateBuilder } from '../../../base/builders';
 import { SeedAssetBuilder } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
 })

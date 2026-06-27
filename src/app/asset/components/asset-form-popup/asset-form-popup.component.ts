@@ -18,7 +18,7 @@ import {
   type PricingEditorConfig
 } from '../../../shared/ui';
 
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 type AssetFormMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }

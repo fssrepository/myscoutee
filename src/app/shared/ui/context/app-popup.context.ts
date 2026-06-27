@@ -9,7 +9,7 @@ import type {
 import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../core/contracts/chat.interface';
 import type { EventEditorTarget, EventTournamentStageDTO, SubEventDTO } from '../../core/contracts/event.interface';
-import type { AssetCardDTO } from '../../core/base/dto';
+import type { AssetCardDTO } from '../../core/contracts';
 import type { PopupHeaderLookup } from '../models';
 
 export interface ActivityInvitePopupState {

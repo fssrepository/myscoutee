@@ -6,7 +6,7 @@ import { LocalActivityResourcesMapper } from '../mappers';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
 })

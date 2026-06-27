@@ -41,7 +41,7 @@ import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { ShareTokensService } from '../../../shared/core';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 interface CapacityEditorState {
   title: string;

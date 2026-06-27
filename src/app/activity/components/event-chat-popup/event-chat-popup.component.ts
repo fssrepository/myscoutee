@@ -42,7 +42,7 @@ import {
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { NavigatorService } from '../../../navigator';
 
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 interface ChatThreadFilters {
   revision?: number;

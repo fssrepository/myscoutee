@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {

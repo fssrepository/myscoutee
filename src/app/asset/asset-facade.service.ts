@@ -11,7 +11,7 @@ import {
 import type { InfoCardData } from '../shared/ui';
 
 import type * as AssetContracts from '../shared/core/contracts/asset.interface';
-import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AppDTOs from '../shared/core/contracts';
 import type * as AppConstants from '../shared/core/common/constants';
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
 

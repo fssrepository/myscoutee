@@ -8,7 +8,7 @@ import { AssetPopupStateService } from './asset-popup-state.service';
 import { AppContext } from '../shared/ui';
 import { AssetCardBuilder, AssetDefaultsBuilder, AssetsService, ExplanationGuideService, MediaService } from '../shared/core';
 
-import type * as AppDTOs from '../shared/core/base/dto';
+import type * as AppDTOs from '../shared/core/contracts';
 import type * as AppConstants from '../shared/core/common/constants';
 export interface OwnedAssetsRuntimeHooks {
   onAssetsChanged?(): void;

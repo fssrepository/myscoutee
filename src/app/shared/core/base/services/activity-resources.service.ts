@@ -11,7 +11,7 @@ import { HttpActivityResourcesService } from '../../http/services/activity-resou
 import { BaseRouteModeService } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 
-import type * as AppDTOs from '../dto';
+import type * as AppDTOs from '../../contracts';
 const ACTIVITY_SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
 
 @Injectable({

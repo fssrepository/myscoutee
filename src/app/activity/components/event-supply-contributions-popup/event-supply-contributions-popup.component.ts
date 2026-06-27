@@ -1,4 +1,4 @@
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 
 import { Component, DoCheck, Input, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';

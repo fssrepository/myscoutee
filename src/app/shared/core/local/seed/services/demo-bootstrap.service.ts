@@ -34,7 +34,7 @@ import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.r
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
 import { SeedBootstrapRegistryService } from './bootstrap-registry.service';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 export type SeedDemoBootstrapMode = 'member' | 'admin';
 
 @Injectable({

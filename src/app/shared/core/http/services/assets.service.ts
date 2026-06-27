@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
-import type * as AppDTOs from '../../base/dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'

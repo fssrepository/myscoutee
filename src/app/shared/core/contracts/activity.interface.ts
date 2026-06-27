@@ -1,4 +1,5 @@
 import type * as AppConstants from '../common/constants';
+import type * as AssetContracts from './asset.interface';
 import type * as ChatContracts from './chat.interface';
 import type { DateRangeDto } from './date.interface';
 import type * as EventContracts from './event.interface';
@@ -248,6 +249,75 @@ export interface EventParticipationActionResultDTO {
   capacityTotal: number;
   full: boolean;
   paymentSessionId?: string | null;
+}
+
+export interface SubEventResourceCardDTO {
+  id: string;
+  type: AppConstants.SubEventResourceFilter;
+  sourceAssetId: string | null;
+  title: string;
+  subtitle: string;
+  city: string;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  routes: string[];
+  capacityTotal: number;
+  accepted: number;
+  pending: number;
+  isMembers: boolean;
+}
+
+export interface SubEventAssignedAssetSettingsDTO {
+  capacityMin: number;
+  capacityMax: number;
+  addedByUserId: string;
+  routes: string[];
+}
+
+export interface SubEventAssetMembersContextDTO {
+  subEventId: string;
+  assetId: string;
+  type: 'Car' | 'Accommodation';
+  ownerUserId: string | null;
+}
+
+export interface SubEventSupplyContributionEntryDTO {
+  id: string;
+  userId: string;
+  quantity: number;
+  addedAtIso: string;
+}
+
+export interface SubEventSupplyContributionRowDTO {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: AppConstants.UserGender;
+  age: number;
+  city: string;
+  addedAtIso: string;
+  quantity: number;
+}
+
+export type ActivitySubEventAssetAssignmentIdsDTO = Partial<Record<AppConstants.AssetType, string[]>>;
+export type ActivitySubEventAssetSettingsByTypeDTO = Partial<
+  Record<AppConstants.AssetType, Record<string, SubEventAssignedAssetSettingsDTO>>
+>;
+export type ActivitySubEventSupplyContributionsByAssetIdDTO = Record<string, SubEventSupplyContributionEntryDTO[]>;
+
+export interface ActivitySubEventResourceStateRefDTO {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
+export interface ActivitySubEventResourceStateDTO extends ActivitySubEventResourceStateRefDTO {
+  assetAssignmentIds: ActivitySubEventAssetAssignmentIdsDTO;
+  assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
+  supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
+  fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetCardDTO[]>>;
 }
 
 export interface ActivityEventDTO {

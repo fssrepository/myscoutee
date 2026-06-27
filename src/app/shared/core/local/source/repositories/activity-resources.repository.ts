@@ -8,7 +8,7 @@ import {
   type ActivitySubEventResourceRecord
 } from '../entity/activity.entity';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
 })

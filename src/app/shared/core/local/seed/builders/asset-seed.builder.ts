@@ -1,7 +1,7 @@
 import type { UserDto } from '../../../contracts/user.interface';
 import { PricingBuilder } from '../../../base/builders/pricing.builder';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 export class SeedAssetBuilder {
   static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {

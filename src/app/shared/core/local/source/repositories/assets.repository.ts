@@ -17,7 +17,7 @@ import {
   type ActivityMembersRecordCollection
 } from '../entity/activity.entity';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 @Injectable({
   providedIn: 'root'

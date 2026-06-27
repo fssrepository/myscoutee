@@ -4,7 +4,7 @@ import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type * as AssetContracts from '../../../contracts/asset.interface';
 import type { AssetRecord } from '../entity/asset.entity';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 export class LocalAssetsMapper {
   static cloneCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {

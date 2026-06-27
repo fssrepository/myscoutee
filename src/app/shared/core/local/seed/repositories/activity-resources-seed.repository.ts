@@ -11,7 +11,7 @@ import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedUserBuilder } from '../builders';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
 })

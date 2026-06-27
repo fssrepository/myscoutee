@@ -2,7 +2,7 @@ import { AppUtils } from '../../../app-utils';
 import type * as ContractTypes from '../../contracts';
 import { PricingBuilder } from './pricing.builder';
 
-import type * as AppDTOs from '../dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 
 export class ActivityResourceBuilder {

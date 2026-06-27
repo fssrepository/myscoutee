@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
-import type { AssetCardDTO } from '../../../base/dto';
+import type { AssetCardDTO } from '../../../contracts';
 
 @Injectable({
   providedIn: 'root'

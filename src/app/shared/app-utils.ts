@@ -1,5 +1,5 @@
 import type { ActivitiesView } from './core/contracts';
-import type { AssetMemberRequestDTO } from './core/base/dto';
+import type { AssetMemberRequestDTO } from './core/contracts';
 import type { UserDto } from './core/contracts/user.interface';
 
 interface ActivityGroupableModel {

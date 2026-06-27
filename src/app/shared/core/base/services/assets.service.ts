@@ -4,7 +4,7 @@ import { LocalAssetsService } from '../../local/source/services/assets.service';
 import { HttpAssetsService } from '../../http/services/assets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
-import type * as AppDTOs from '../dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'

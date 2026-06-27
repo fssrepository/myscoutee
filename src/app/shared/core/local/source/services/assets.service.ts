@@ -4,7 +4,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { AssetDefaultsBuilder } from '../../../base/builders';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 @Injectable({
   providedIn: 'root'

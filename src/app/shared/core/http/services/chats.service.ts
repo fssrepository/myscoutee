@@ -18,7 +18,7 @@ import { SessionService } from '../../base/services/session.service';
 
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../base/dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 interface HttpChatSummaryDto {
   id: string;

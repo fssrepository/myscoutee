@@ -22,7 +22,7 @@ import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { ActivityMemberOwnerRef } from '../../../contracts/activity.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 interface ExplicitSeedMemberUserIds {
   accepted: string[];

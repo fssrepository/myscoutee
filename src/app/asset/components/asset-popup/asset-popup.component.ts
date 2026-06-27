@@ -38,7 +38,7 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { I18nService } from '../../../shared/core';
 import { I18nPipe } from '../../../shared/ui';
 
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 import type * as AppConstants from '../../../shared/core/common/constants';
 interface AssetTicketListFilters {
