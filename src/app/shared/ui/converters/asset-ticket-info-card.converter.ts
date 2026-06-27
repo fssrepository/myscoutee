@@ -1,5 +1,4 @@
 import { AppUtils } from '../../app-utils';
-import { AssetTicketMapper } from '../../core/base/mappers';
 import type * as AssetContracts from '../../core/contracts/asset.interface';
 import type * as AppConstants from '../../core/common/constants';
 import type { InfoCardData } from '../components/smart-list/card';
@@ -59,7 +58,20 @@ export class AssetTicketInfoCardConverter {
   }
 
   private static ticketMetaLine(row: AssetContracts.AssetTicketDTO): string {
-    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketMapper.buildTicketDateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
+    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${this.ticketDateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
+  }
+
+  private static ticketDateLabel(row: AssetContracts.AssetTicketDTO): string {
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return row.detail;
+    }
+    return parsed.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
   }
 
   private static ticketDistanceLabel(distanceMeters: number | null | undefined): string {

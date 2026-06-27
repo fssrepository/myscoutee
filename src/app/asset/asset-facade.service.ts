@@ -1,10 +1,10 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../shared/app-utils';
 import { AppContext, AssetInfoCardConverter, AssetTicketInfoCardConverter } from '../shared/ui';
 import {
   AssetCardBuilder,
   AssetDefaultsBuilder,
-  AssetTicketMapper,
   UsersService,
   type UserDto
 } from '../shared/core';
@@ -57,12 +57,12 @@ export class AssetFacadeService {
   }
 
   ticketGroupLabel(dateIso: string): string {
-    return AssetTicketMapper.groupLabel(dateIso);
+    return this.ticketDateGroupLabel(dateIso);
   }
 
   createTicketScanPayload(row: AssetContracts.AssetTicketDTO): AssetContracts.TicketScanPayloadDTO {
     const activeUser = this.resolveActiveTicketHolder();
-    return AssetTicketMapper.toTicketScanPayload(row, activeUser ?? {
+    return this.buildTicketScanPayload(row, activeUser ?? {
       id: this.currentActiveUserId(),
       name: 'Ticket Holder',
       age: 0,
@@ -71,11 +71,11 @@ export class AssetFacadeService {
   }
 
   ticketPayloadAvatarUrl(payload: AssetContracts.TicketScanPayloadDTO | null): string {
-    return AssetTicketMapper.payloadAvatarUrl(this.ticketPayloadUser(payload));
+    return this.ticketPersonAvatarUrl(this.ticketPayloadUser(payload));
   }
 
   ticketPayloadInitials(payload: AssetContracts.TicketScanPayloadDTO): string {
-    return AssetTicketMapper.payloadInitials(payload, this.ticketPayloadUser(payload));
+    return this.ticketPersonInitials(payload, this.ticketPayloadUser(payload));
   }
 
   private currentActiveUserId(): string {
@@ -102,6 +102,71 @@ export class AssetFacadeService {
       eventDateLabel: '',
       issuedAtIso: ''
     });
+  }
+
+  private buildTicketScanPayload(
+    row: AssetContracts.AssetTicketDTO,
+    holder: Pick<UserDto, 'id' | 'name' | 'age' | 'city'>
+  ): AssetContracts.TicketScanPayloadDTO {
+    const issuedAtIso = `${row.startAt ?? row.dateIso}`.trim() || row.dateIso;
+    const userId = holder.id?.trim() || '';
+    const userName = holder.name?.trim() || 'Ticket Holder';
+    const holderAge = Math.max(0, Math.trunc(Number(holder.age) || 0));
+    const holderCity = holder.city?.trim() || '';
+    const stableKey = `${userId}:${row.id}:${row.type}`;
+    return {
+      code: `TKT-${AppUtils.hashText(stableKey)}-${AppUtils.hashText(`${stableKey}:${issuedAtIso}`)}`,
+      holderUserId: userId,
+      holderName: userName,
+      holderAge,
+      holderCity,
+      holderRole: row.isAdmin ? 'Admin' : 'Member',
+      eventId: row.id,
+      eventTitle: row.title,
+      eventSubtitle: row.subtitle,
+      eventTimeframe: row.detail,
+      eventDateLabel: this.ticketDateLabel(row),
+      issuedAtIso
+    };
+  }
+
+  private ticketDateLabel(row: AssetContracts.AssetTicketDTO): string {
+    const parsed = new Date(row.dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return row.detail;
+    }
+    return parsed.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+  }
+
+  private ticketDateGroupLabel(dateIso: string): string {
+    const parsed = new Date(dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return parsed.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+
+  private ticketPersonAvatarUrl(user: Pick<UserDto, 'images'> | null): string {
+    return user ? AppUtils.firstImageUrl(user.images) : '';
+  }
+
+  private ticketPersonInitials(
+    payload: AssetContracts.TicketScanPayloadDTO,
+    user: Pick<UserDto, 'initials'> | null
+  ): string {
+    if (user?.initials?.trim()) {
+      return user.initials.trim();
+    }
+    return AppUtils.initialsFromText(payload.holderName);
   }
 
   private ticketPayloadUser(payload: AssetContracts.TicketScanPayloadDTO | null): TicketPerson | null {
