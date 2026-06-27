@@ -49,7 +49,6 @@ import { ConfirmationDialogService } from '../../../shared/ui/services/confirmat
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
 import { NavigatorService } from '../../../navigator';
-import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
   ActivitiesChatTemplateComponent, ActivitiesChatsController
 } from './templates/chat/activities-chat-template.component';
@@ -168,7 +167,6 @@ type ActivitiesToolbarMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
-  readonly activitiesToolbar = new ActivitiesPopupToolbarController(this as never);
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
@@ -1102,10 +1100,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesPrimaryMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesPrimaryFilterLabel(),
-      icon: this.activitiesToolbar.activitiesPrimaryFilterIcon(),
+      label: this.activitiesPrimaryFilterLabel(),
+      icon: this.activitiesPrimaryFilterIcon(),
       palette: this.activitiesPrimaryPalette(this.activitiesPrimaryFilter),
-      counter: this.activitiesToolbar.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
+      counter: this.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
     });
   }
 
@@ -1115,7 +1113,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: option.label,
       icon: option.icon,
       palette: this.activitiesPrimaryPalette(option.key),
-      counter: this.activitiesToolbar.activitiesPrimaryFilterCount(option.key),
+      counter: this.activitiesPrimaryFilterCount(option.key),
       active: option.key === this.activitiesPrimaryFilter,
       context: { menu: 'primary', value: option.key }
     }));
@@ -1124,9 +1122,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesEventScopeMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
       label: this.activitiesEventScopeLabel(),
-      icon: this.activitiesToolbar.activitiesEventScopeIcon(),
+      icon: this.activitiesEventScopeIcon(),
       palette: this.activitiesEventScopePalette(this.activitiesEventScope),
-      counter: this.activitiesToolbar.activitiesEventScopeCount()
+      counter: this.activitiesEventScopeCount()
     });
   }
 
@@ -1136,7 +1134,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: option.label,
       icon: option.icon,
       palette: this.activitiesEventScopePalette(option.key),
-      counter: this.activitiesToolbar.activitiesEventScopeCount(option.key),
+      counter: this.activitiesEventScopeCount(option.key),
       active: option.key === this.activitiesEventScope,
       context: { menu: 'event-scope', value: option.key }
     }));
@@ -1144,10 +1142,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesChatContextMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesChatContextFilterLabel(),
-      icon: this.activitiesToolbar.activitiesChatContextFilterIcon(),
+      label: this.activitiesChatContextFilterLabel(),
+      icon: this.activitiesChatContextFilterIcon(),
       palette: this.activitiesChatContextPalette(this.activitiesChatContextFilter),
-      counter: this.activitiesToolbar.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
+      counter: this.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
     });
   }
 
@@ -1157,7 +1155,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       label: option.label,
       icon: option.icon,
       palette: this.activitiesChatContextPalette(option.key),
-      counter: this.activitiesToolbar.activitiesChatContextFilterCount(option.key),
+      counter: this.activitiesChatContextFilterCount(option.key),
       active: option.key === this.activitiesChatContextFilter,
       context: { menu: 'chat-context', value: option.key }
     }));
@@ -1165,10 +1163,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesRateMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesRateFilterLabel(),
-      icon: this.activitiesToolbar.activitiesRateFilterIcon(this.activitiesRateFilter),
+      label: this.activitiesRateFilterLabel(),
+      icon: this.activitiesRateFilterIcon(this.activitiesRateFilter),
       palette: this.activitiesRatePalette(this.activitiesRateFilter),
-      counter: this.activitiesToolbar.selectedRateFilterCount()
+      counter: this.selectedRateFilterCount()
     });
   }
 
@@ -1185,17 +1183,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
         const groupPalette = this.activitiesRateGroupPalette(groupLabel);
         currentNode = {
           id: `rate-group:${groupLabel}`,
-          label: this.activitiesToolbar.rateGroupOptionLabelKey(groupLabel),
-          icon: this.activitiesToolbar.rateSocialBadgeGroupIconForGroup(groupLabel),
+          label: this.rateGroupOptionLabelKey(groupLabel),
+          icon: this.rateSocialBadgeGroupIconForGroup(groupLabel),
           palette: groupPalette,
           items: [],
-          headerActions: this.activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
+          headerActions: this.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
             ? [{
               id: `rate-social:${groupLabel}`,
-              label: this.activitiesToolbar.rateSocialBadgeButtonLabelForGroup(groupLabel),
-              icon: this.activitiesToolbar.rateSocialBadgeToggleIconForGroup(groupLabel),
+              label: this.rateSocialBadgeButtonLabelForGroup(groupLabel),
+              icon: this.rateSocialBadgeToggleIconForGroup(groupLabel),
               kind: 'toggle',
-              active: this.activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(groupLabel),
+              active: this.isRateSocialBadgeToggleActiveForGroup(groupLabel),
               closeOnSelect: false,
               palette: groupPalette,
               context: { menu: 'rate-social', value: groupLabel }
@@ -1217,10 +1215,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       currentNode.items.push(this.activitiesMenuItem({
         id: `rate:${option.key}`,
-        label: this.activitiesToolbar.rateFilterOptionLabel(option.key),
-        icon: this.activitiesToolbar.activitiesRateFilterIcon(option.key),
+        label: this.rateFilterOptionLabel(option.key),
+        icon: this.activitiesRateFilterIcon(option.key),
         palette: this.activitiesRatePalette(option.key),
-        counter: this.activitiesToolbar.rateFilterCount(option.key),
+        counter: this.rateFilterCount(option.key),
         active: option.key === this.activitiesRateFilter,
         context: { menu: 'rate', value: option.key }
       }));
@@ -1231,8 +1229,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesSecondaryMenuTrigger(): AppMenuTrigger {
     const filter = this.effectiveActivitiesSecondaryFilter();
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesSecondaryFilterLabel(),
-      icon: this.activitiesToolbar.activitiesSecondaryFilterIcon(),
+      label: this.activitiesSecondaryFilterLabel(),
+      icon: this.activitiesSecondaryFilterIcon(),
       palette: this.activitiesSecondaryPalette(filter),
       layout: 'pill',
       hideLabel: this.isMobileView
@@ -1240,9 +1238,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesSecondaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesToolbar.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
+    return this.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
       id: `secondary:${option.key}`,
-      label: this.activitiesToolbar.activitiesSecondaryFilterOptionLabel(option.key),
+      label: this.activitiesSecondaryFilterOptionLabel(option.key),
       icon: option.icon,
       palette: this.activitiesSecondaryPalette(option.key),
       active: option.key === this.effectiveActivitiesSecondaryFilter(),
@@ -1252,7 +1250,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activitiesViewMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activityViewLabel(),
+      label: this.activityViewLabel(),
       icon: this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
       palette: this.activitiesViewPalette(this.activitiesView),
       layout: 'pill',
@@ -1310,35 +1308,35 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     switch (context.menu) {
       case 'primary':
-        this.activitiesToolbar.selectActivitiesPrimaryFilter(context.value);
+        this.selectActivitiesPrimaryFilter(context.value);
         return;
       case 'event-scope':
-        this.activitiesToolbar.selectActivitiesEventScope(context.value);
+        this.selectActivitiesEventScope(context.value);
         return;
       case 'chat-context':
-        this.activitiesToolbar.selectActivitiesChatContextFilter(context.value);
+        this.selectActivitiesChatContextFilter(context.value);
         return;
       case 'rate':
-        this.activitiesToolbar.selectActivitiesRateFilter(context.value);
+        this.selectActivitiesRateFilter(context.value);
         return;
       case 'rate-social':
-        this.activitiesToolbar.toggleRateSocialBadgeForGroup(context.value);
+        this.toggleRateSocialBadgeForGroup(context.value);
         return;
       case 'secondary':
-        this.activitiesToolbar.selectActivitiesSecondaryFilter(context.value);
+        this.selectActivitiesSecondaryFilter(context.value);
         return;
       case 'view':
-        this.activitiesToolbar.setActivitiesView(context.value, event.sourceEvent);
+        this.setActivitiesView(context.value, event.sourceEvent);
         return;
       case 'support-case':
         this.selectActivitiesSupportCaseFilter(context.value);
         return;
       case 'quick-action':
         if (context.value === 'explore') {
-          this.activitiesToolbar.requestOpenEventExplore();
+          this.requestOpenEventExplore();
           return;
         }
-        this.activitiesToolbar.requestOpenEventEditor();
+        this.requestOpenEventEditor();
         return;
       default:
         return;
@@ -1500,7 +1498,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesRateGroupPalette(label: string): AppMenuPalette {
-    return this.activitiesToolbar.isRateGroupSeparator(label) ? 'violet' : 'blue';
+    return this.isRateGroupSeparator(label) ? 'violet' : 'blue';
   }
 
   protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
@@ -2390,6 +2388,616 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant'
       ? 'recent'
       : this.activitiesSecondaryFilter;
+  }
+
+  activitiesPrimaryFilterLabel(): string {
+    return this.activitiesPrimaryFilters.find((o: any) => o.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
+  }
+
+  activitiesPrimaryFilterIcon(): string {
+    return this.activitiesPrimaryFilters.find((o: any) => o.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
+  }
+
+  activitiesPrimaryFilterClass(filter: ContractTypes.ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
+    const map: Record<ContractTypes.ActivitiesPrimaryFilter, string> = {
+      chats: 'activity-filter-chat',
+      invitations: 'activity-filter-invitations',
+      events: 'activity-filter-events',
+      hosting: 'activity-filter-hosting',
+      rates: 'activity-filter-rates'
+    };
+    return map[filter] ?? 'activity-filter-chat';
+  }
+
+  activitiesPrimaryFilterCount(filter: ContractTypes.ActivitiesPrimaryFilter): number {
+    if (filter === 'rates') { return this.gameBadge; }
+    if (filter === 'chats') { return this.chatBadge; }
+    if (filter === 'events') { return this.eventsBadge; }
+    return 0;
+  }
+
+  activitiesPrimaryPanelWidth(): string {
+    return '200px';
+  }
+
+  activitiesEventScopePanelWidth(): string {
+    return '260px';
+  }
+
+  activitiesEventScopeIcon(): string {
+    return this.activitiesEventScopeFilters.find((option: any) => option.key === this.activitiesEventScope)?.icon ?? 'event';
+  }
+
+  activitiesEventScopeClass(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): string {
+    if (scope === 'trash') {
+      return 'activity-filter-trash';
+    }
+    if (scope === 'drafts') {
+      return 'activity-filter-drafts';
+    }
+    if (scope === 'invitations') {
+      return 'activity-filter-invitations';
+    }
+    if (scope === 'my-events') {
+      return 'activity-filter-hosting';
+    }
+    return 'activity-filter-events';
+  }
+
+  activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
+    if (scope === 'all') {
+      return this.allEventsScopeBadge;
+    }
+    if (scope === 'drafts') {
+      return this.draftsBadge;
+    }
+    if (scope === 'trash') {
+      return this.trashBadge;
+    }
+    if (scope === 'active-events') {
+      return this.eventsBadge;
+    }
+    if (scope === 'pending') {
+      return this.pendingBadge;
+    }
+    if (scope === 'invitations') {
+      return this.invitationsBadge;
+    }
+    return this.hostingBadge;
+  }
+
+  activitiesRatePanelWidth(): string {
+    return '272px';
+  }
+
+  activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return this.activitiesChatsHeaderLabel();
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+      const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+      return `${group} · ${label}`;
+    }
+    if (this.isEventActivitiesPrimaryFilter()) {
+      if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+        return `Events · ${this.activitiesEventScopeLabel()}`;
+      }
+      return this.activitiesEventScopeLabel();
+    }
+    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
+      return this.activitiesPrimaryFilterLabel();
+    }
+    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+  }
+
+  activitiesHeaderLineTwo(): string {
+    return '';
+  }
+
+  activitiesChatContextFilterLabel(): string {
+    return this.activitiesChatContextFilters.find((o: any) => o.key === this.activitiesChatContextFilter)?.label ?? 'All';
+  }
+
+  activitiesChatContextFilterIcon(): string {
+    return this.activitiesChatContextFilters.find((o: any) => o.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
+  }
+
+  activitiesChatContextFilterClass(filter: ContractTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
+    const map: Record<ContractTypes.ActivitiesChatContextFilter, string> = {
+      all: 'chat-context-filter-all',
+      event: 'chat-context-filter-event',
+      subEvent: 'chat-context-filter-sub-event',
+      group: 'chat-context-filter-group',
+      service: 'chat-context-filter-service'
+    };
+    return map[filter] ?? 'chat-context-filter-all';
+  }
+
+  activitiesSecondaryFilterClass(_filter: ContractTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
+    return 'activity-filter-secondary';
+  }
+
+  activitiesChatContextFilterCount(filter: ContractTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
+    if (this.activitiesPrimaryFilter !== 'chats') { return 0; }
+    return this.chatItemsForActivities().filter((item: any) => {
+      if (filter === 'all') { return true; }
+      return this.activityChatContextFilterKey(item) === filter;
+    }).length;
+  }
+
+  private activitiesChatsHeaderLabel(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    if (this.activitiesChatContextFilter === 'all') {
+      return primary;
+    }
+    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
+  }
+
+  activitiesSecondaryFilterLabel(): string {
+    return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
+  }
+
+  activitiesSecondaryFilterOptionLabel(filter: ContractTypes.ActivitiesSecondaryFilter): string {
+    if (filter === 'recent') {
+      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
+    }
+    return this.activitiesSecondaryFilters.find((o: any) => o.key === filter)?.label ?? 'Relevant';
+  }
+
+  activitiesSecondaryFilterIcon(): string {
+    return this.activitiesSecondaryFilters.find((o: any) => o.key === this.effectiveActivitiesSecondaryFilter())?.icon ?? 'schedule';
+  }
+
+  activitiesRateFilterLabel(): string {
+    const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+    if (!label) { return `${this.rateGroupLabelKeyForKey('individual-given')} · Given`; }
+    const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+    return `${group} · ${label}`;
+  }
+
+  rateFilterOptionLabel(key: ContractTypes.RateFilterKey): string {
+    return this.rateFilterLabelForKey(key);
+  }
+
+  rateGroupOptionLabelKey(label: string): string {
+    const normalized = label.trim().toLowerCase();
+    if (normalized === 'preferences') {
+      return 'activity.rates.group.preferences';
+    }
+    if (normalized === 'suggestions') {
+      return 'activity.rates.group.suggestions';
+    }
+    return label;
+  }
+
+  activitiesRateFilterIcon(key: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
+    const icons: Record<ContractTypes.RateFilterKey, string> = {
+      'individual-given': 'north_east',
+      'individual-received': 'south_west',
+      'individual-mutual': 'sync_alt',
+      'individual-met': 'handshake',
+      'pair-given': 'group_add',
+      'pair-received': 'groups_2'
+    };
+    return icons[key] ?? 'star';
+  }
+
+  activitiesRateFilterClass(_filter: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
+    return 'activity-filter-rates';
+  }
+
+  rateFilterOptionClass(key: ContractTypes.RateFilterKey): string {
+    return `rate-filter-item-${key}`;
+  }
+
+  isRateGroupSeparator(label: string): boolean {
+    return this.rateSocialGroupForLabel(label) === 'pair';
+  }
+
+  rateFilterCount(filter: ContractTypes.RateFilterKey): number {
+    return this.rateItems.filter((item: any) => this.activitiesRates.matchesFilter(item, filter)).length;
+  }
+
+  selectedRateFilterCount(): number {
+    return this.rateFilterCount(this.activitiesRateFilter);
+  }
+
+  shouldShowRateSocialBadgeToggle(): boolean {
+    return this.activitiesPrimaryFilter === 'rates';
+  }
+
+  shouldShowRateSocialBadgeToggleForGroup(label: string): boolean {
+    if (!this.shouldShowRateSocialBadgeToggle()) {
+      return false;
+    }
+    const normalized = label.trim().toLowerCase();
+    return normalized === 'individual'
+      || normalized === 'pair'
+      || normalized === 'preferences'
+      || normalized === 'suggestions'
+      || normalized === this.rateGroupLabelKeyForKey('individual-given')
+      || normalized === this.rateGroupLabelKeyForKey('pair-given');
+  }
+
+  rateSocialBadgeButtonLabel(): string {
+    return this.activitiesRateSocialBadgeEnabled ? 'Social on' : 'Social off';
+  }
+
+  rateSocialBadgeButtonLabelForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'Social on' : 'Social off';
+  }
+
+  rateSocialBadgeToggleIconForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'sell' : 'sell_off';
+  }
+
+  rateSocialBadgeGroupIconForGroup(label: string): string {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'groups_2' : 'person';
+  }
+
+  rateSocialBadgeGroupClassForGroup(label: string): string {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'rate-filter-group-pair' : 'rate-filter-group-single';
+  }
+
+  isRateSocialBadgeToggleActiveForGroup(label: string): boolean {
+    const group = this.rateSocialGroupForLabel(label);
+    return group === 'pair'
+      ? this.activitiesPairRateSocialBadgeEnabled
+      : this.activitiesIndividualRateSocialBadgeEnabled;
+  }
+
+  toggleRateSocialBadge(): void {
+    const group = this.activitiesRateFilter.startsWith('pair') ? 'pair' : 'individual';
+    this.toggleRateSocialBadgeForGroup(group);
+  }
+
+  toggleRateSocialBadgeForGroup(labelOrGroup: string): void {
+    const group = this.rateSocialGroupForLabel(labelOrGroup);
+    const nextEnabled = group === 'pair'
+      ? !this.activitiesPairRateSocialBadgeEnabled
+      : !this.activitiesIndividualRateSocialBadgeEnabled;
+    if (group === 'pair') {
+      this.activitiesPairRateSocialBadgeEnabled = nextEnabled;
+    } else {
+      this.activitiesIndividualRateSocialBadgeEnabled = nextEnabled;
+    }
+    if (this.activitiesRateFilter.startsWith(group)) {
+      this.activitiesRateSocialBadgeEnabled = nextEnabled;
+    }
+    this.activitiesStore.setActivitiesRateSocialBadgeEnabledForGroup(group, nextEnabled);
+    if (this.activitiesRateFilter.startsWith(group)) {
+      this.lastRateIndicatorPulseRowId = null;
+      this.selectedActivityRateId = null;
+      this.activitiesStore.setActivitiesSelectedRateId(null);
+      this.resetActivitiesScroll();
+      this.syncActivitiesSmartListQuery();
+      this.activitiesSmartList?.reload();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
+    return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
+  }
+
+  private rateGroupLabelKeyForKey(key: ContractTypes.RateFilterKey): string {
+    return key.startsWith('individual')
+      ? 'activity.rates.group.preferences'
+      : 'activity.rates.group.suggestions';
+  }
+
+  private rateSocialGroupForLabel(labelOrGroup: string): 'individual' | 'pair' {
+    const normalized = labelOrGroup.trim().toLowerCase();
+    if (
+      normalized === 'pair'
+      || normalized === 'suggestions'
+      || normalized === this.rateGroupLabelKeyForKey('pair-given')
+    ) {
+      return 'pair';
+    }
+    return 'individual';
+  }
+
+  totalRateFilterCount(): number {
+    return this.rateItems.length;
+  }
+
+  activityViewLabel(): string {
+    return this.activitiesViewOptions.find((o: any) => o.key === this.activitiesView)?.label ?? 'View';
+  }
+
+  isRateFilterVisible(): boolean {
+    return this.activitiesPrimaryFilter === 'rates';
+  }
+
+  isHostingPublicationFilterVisible(): boolean {
+    return false;
+  }
+
+  hostingDraftCount(): number {
+    return this.draftsBadge;
+  }
+
+  shouldShowActivitiesQuickActions(): boolean {
+    return this.isEventActivitiesPrimaryFilter()
+      && this.activitiesEventScope !== 'all'
+      && this.activitiesEventScope !== 'active-events'
+      && this.activitiesEventScope !== 'pending'
+      && this.activitiesEventScope !== 'invitations'
+      && this.activitiesEventScope !== 'trash';
+  }
+
+  shouldShowStandaloneEventExploreAction(): boolean {
+    return this.isEventActivitiesPrimaryFilter()
+      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
+  }
+
+  availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
+    return this.isEventActivitiesPrimaryFilter()
+      ? this.activitiesSecondaryFilters.filter((option: any) => option.key !== 'relevant')
+      : this.activitiesSecondaryFilters;
+  }
+
+  selectActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): void {
+    if (this.activitiesPrimaryFilter === 'rates' || filter === 'rates') {
+      this.activitiesRates.commitPendingDirectionOverrides();
+    }
+    if (filter !== 'rates') {
+      this.activitiesRates.disableFullscreenMode();
+    }
+    this.activitiesStore.setActivitiesPrimaryFilter(filter);
+    if (filter === 'events' && this.activitiesSecondaryFilter === 'relevant') {
+      this.activitiesStore.setActivitiesSecondaryFilter('recent');
+    }
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  toggleActivitiesEventScopePicker(event: Event): void {
+    if (!this.isEventActivitiesPrimaryFilter()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
+  }
+
+  selectActivitiesEventScope(scope: ContractTypes.ActivitiesEventScope): void {
+    const currentScope = this.activitiesStore.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
+    if (!this.isEventActivitiesPrimaryFilter() || currentScope === scope) {
+      this.showActivitiesEventScopePicker = false;
+      return;
+    }
+    this.activitiesStore.setActivitiesEventScope(scope);
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectActivitiesChatContextFilter(filter: ContractTypes.ActivitiesChatContextFilter): void {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
+    this.activitiesStore.setActivitiesChatContextFilter(filter);
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectHostingPublicationFilter(filter: ContractTypes.HostingPublicationFilter): void {
+    if (!this.isHostingPublicationFilterVisible() || this.hostingPublicationFilter === filter) {
+      return;
+    }
+    this.activitiesStore.setActivitiesHostingPublicationFilter(filter);
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectActivitiesSecondaryFilter(filter: ContractTypes.ActivitiesSecondaryFilter): void {
+    const normalizedFilter = this.isEventActivitiesPrimaryFilter() && filter === 'relevant'
+      ? 'recent'
+      : filter;
+    if (this.activitiesPrimaryFilter === 'rates') {
+      this.activitiesRates.commitPendingDirectionOverrides();
+    }
+    this.activitiesStore.setActivitiesSecondaryFilter(normalizedFilter);
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectActivitiesRateFilter(filter: ContractTypes.RateFilterKey): void {
+    const currentFilter = this.activitiesStore.activitiesRateFilter() as ContractTypes.RateFilterKey;
+    if (currentFilter === filter) {
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesSecondaryPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
+    this.activitiesRates.commitPendingDirectionOverrides(filter);
+    this.activitiesStore.setActivitiesRateFilter(filter);
+    this.lastRateIndicatorPulseRowId = null;
+    this.selectedActivityRateId = null;
+    this.activitiesStore.setActivitiesSelectedRateId(null);
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  toggleActivitiesViewPicker(event: Event): void {
+    event.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return;
+    }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.activitiesStore.toggleActivitiesViewPicker();
+  }
+
+  toggleActivitiesSecondaryPicker(event: Event): void {
+    event.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return;
+    }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.activitiesStore.toggleActivitiesSecondaryPicker();
+  }
+
+  setActivitiesView(view: ContractTypes.ActivitiesView, event?: Event): void {
+    event?.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'rates') {
+      this.activitiesRates.commitPendingDirectionOverrides();
+    }
+    if (view !== 'distance') {
+      this.activitiesRates.disableFullscreenMode();
+    }
+    this.activitiesStore.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  toggleActivitiesQuickActionsMenu(event: Event): void {
+    if (!this.shouldShowActivitiesQuickActions()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = !this.showActivitiesQuickActionsMenu;
+  }
+
+  openMobileActivitiesPrimaryFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesPrimaryPicker = !this.showActivitiesPrimaryPicker;
+  }
+
+  openMobileActivitiesEventScopeSelector(event: Event): void {
+    if (!this.isMobileView || !this.isEventActivitiesPrimaryFilter()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
+  }
+
+  openMobileActivitiesChatContextFilterSelector(event: Event): void {
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesChatContextPicker = !this.showActivitiesChatContextPicker;
+  }
+
+  openMobileActivitiesRateFilterSelector(event: Event): void {
+    event.stopPropagation();
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'rates') {
+      return;
+    }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesRatePicker = !this.showActivitiesRatePicker;
+  }
+
+  requestOpenEventEditor(): void {
+    const target: ContractTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter()
+      ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
+      : 'events';
+    this.showActivitiesQuickActionsMenu = false;
+    this.popupCtx.popupStore.requestActivitiesNavigation({
+      type: 'eventEditorCreate',
+      target
+    });
+  }
+
+  requestOpenEventEditorForRow(
+    row: any,
+    readOnly = false,
+    stacked = true
+  ): void {
+    void stacked;
+    this.openActivityRowInEventModule(row, readOnly);
+  }
+
+  requestOpenEventExplore(): void {
+    this.showActivitiesQuickActionsMenu = false;
+    this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================

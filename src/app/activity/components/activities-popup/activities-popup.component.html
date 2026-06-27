@@ -5,10 +5,10 @@
       <div class="popup-header popup-header-with-progress">
         <div class="popup-title">
           <h2>Activities</h2>
-          <p class="popup-subtitle">{{ activitiesToolbar.activitiesHeaderLineOne() | i18n }}</p>
-          @if (activitiesToolbar.activitiesHeaderLineTwo()) {
+          <p class="popup-subtitle">{{ activitiesHeaderLineOne() | i18n }}</p>
+          @if (activitiesHeaderLineTwo()) {
             <p class="popup-subtitle popup-subtitle-secondary">
-              {{ activitiesToolbar.activitiesHeaderLineTwo() | i18n }}
+              {{ activitiesHeaderLineTwo() | i18n }}
             </p>
           }
         </div>
@@ -79,7 +79,7 @@
               ></app-menu>
             }
             <!-- Rate filter (rates tab only) -->
-            @if (activitiesToolbar.isRateFilterVisible()) {
+            @if (isRateFilterVisible()) {
               <app-menu
                 class="activities-app-menu activities-toolbar-select activities-rate-filter-select"
                 kind="select"
@@ -89,13 +89,13 @@
               ></app-menu>
             }
             <!-- Action stack: fullscreen toggle / quick actions -->
-            @if (activitiesToolbar.shouldShowActivitiesQuickActions() || activitiesToolbar.shouldShowStandaloneEventExploreAction() || shouldShowRatesFullscreenToggle()) {
+            @if (shouldShowActivitiesQuickActions() || shouldShowStandaloneEventExploreAction() || shouldShowRatesFullscreenToggle()) {
               <div class="activities-action-stack">
-                @if (activitiesToolbar.shouldShowStandaloneEventExploreAction()) {
+                @if (shouldShowStandaloneEventExploreAction()) {
                   <button
                     type="button"
                     class="popup-header-add-btn activities-explore-btn"
-                    (click)="activitiesToolbar.requestOpenEventExplore()"
+                    (click)="requestOpenEventExplore()"
                     aria-label="Open event explore"
                     >
                     <mat-icon>explore</mat-icon>
@@ -122,7 +122,7 @@
                     <mat-icon>fullscreen_exit</mat-icon>
                   </button>
                 }
-                @if (activitiesToolbar.shouldShowActivitiesQuickActions()) {
+                @if (shouldShowActivitiesQuickActions()) {
                   <app-menu
                     class="activities-app-menu activities-quick-actions"
                     kind="select"
