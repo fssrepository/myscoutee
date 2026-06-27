@@ -52,6 +52,7 @@ type ActivityEventCardData = InfoCardData & {
   standalone: true,
   imports: [InfoCardComponent],
   templateUrl: './activities-event-template.component.html',
+  styleUrl: './activities-event-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {

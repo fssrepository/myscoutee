@@ -1,0 +1,107 @@
+app-activities-rate-template {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.activities-rate-profile-card.is-rate-editor-selected {
+  border-color: rgba(214, 160, 42, 0.68);
+  box-shadow: 0 10px 24px rgba(147, 105, 25, 0.34);
+}
+
+.activities-rate-profile-card.is-rate-editor-selected .activities-rate-profile-layer {
+  border-color: rgba(238, 196, 92, 0.78);
+  box-shadow:
+    0 0 0 2px rgba(246, 220, 144, 0.56),
+    0 14px 28px rgba(8, 20, 38, 0.42);
+}
+
+.activities-rate-profile-stack-pair.activities-rate-profile-stack-given .activities-rate-profile-layer {
+  border-color: rgba(141, 93, 201, 0.52);
+}
+
+.activities-rate-profile-stack-pair.activities-rate-profile-stack-received .activities-rate-profile-layer {
+  border-color: rgba(197, 92, 150, 0.52);
+}
+
+.activities-rate-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.36rem;
+}
+
+.activities-rate-editor-head span {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #1f3658;
+}
+
+.activities-rate-editor-close {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(35, 58, 90, 0.22);
+  background: #f5f8fe;
+  color: #2a4a73;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.activities-rate-editor-close .mat-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 14px;
+  line-height: 14px;
+}
+
+.activities-rate-editor-stars {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.activities-rate-editor-stars.is-blink {
+  animation: game-rating-stars-blink 0.42s ease-in-out 1;
+}
+
+@keyframes game-rating-stars-blink {
+  0%, 100% {
+    filter: brightness(1);
+  }
+
+  50% {
+    filter: brightness(1.12) saturate(1.1);
+  }
+}
+
+.activities-rate-editor-stars.is-readonly {
+  opacity: 0.92;
+}
+
+.activities-rate-star-btn {
+  min-height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(22, 40, 64, 0.22);
+  background: #fff;
+  color: rgba(96, 111, 133, 0.9);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.activities-rate-star-btn.is-disabled {
+  border-color: rgba(130, 143, 160, 0.3);
+  color: rgba(109, 123, 142, 0.74);
+  cursor: default;
+}
+
+.activities-rate-star-btn.filled {
+  color: #f2ba31;
+  border-color: rgba(193, 145, 34, 0.44);
+  background: linear-gradient(180deg, #fff9e9 0%, #fff2d0 100%);
+}

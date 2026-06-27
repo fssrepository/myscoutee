@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA, type RateFilterEntry } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
@@ -33,7 +33,7 @@ import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuComponent, AppMenuDispatcher, type AppMenuGroup, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuDispatcher, type AppMenuItem, type AppMenuItemSelectEvent, EventCheckoutPopupComponent, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -58,6 +58,11 @@ import {
 import {
   ActivitiesRateTemplateComponent, ActivitiesRatesController, type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
+import {
+  ActivitiesPopupControlsComponent,
+  type ActivitiesPopupControlsAction,
+  type ActivitiesPopupControlsModel
+} from './controls/activities-popup-controls.component';
 import {
   ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, ExplanationGuideService, RatesService, ShareTokensService, UsersService } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
@@ -130,36 +135,18 @@ type ActivityPopupCard =
   | ActivityPopupRateCard
   | ActivityPopupChatCard;
 
-interface ActivitiesEventScopeOption {
-  key: ContractTypes.ActivitiesEventScope;
-  label: string;
-  icon: string;
-}
-
-type ActivitiesToolbarMenuContext =
-  | { menu: 'primary'; value: ContractTypes.ActivitiesPrimaryFilter }
-  | { menu: 'event-scope'; value: ContractTypes.ActivitiesEventScope }
-  | { menu: 'chat-context'; value: ContractTypes.ActivitiesChatContextFilter }
-  | { menu: 'rate'; value: ContractTypes.RateFilterKey }
-  | { menu: 'rate-social'; value: string }
-  | { menu: 'secondary'; value: ContractTypes.ActivitiesSecondaryFilter }
-  | { menu: 'view'; value: ContractTypes.ActivitiesView }
-  | { menu: 'support-case'; value: ContractTypes.SupportCaseFilter }
-  | { menu: 'quick-action'; value: 'explore' | 'create' };
-
 @Component({
   selector: 'app-activities-popup',
   standalone: true,
   imports: [
     CommonModule,
     MatIconModule,
-    AppMenuComponent,
     SmartListComponent,
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
+    ActivitiesPopupControlsComponent,
     EventCheckoutPopupComponent,
-    I18nPipe
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
@@ -334,37 +321,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesSmartList?: SmartListComponent<ActivityPopupCard, ActivitiesSmartListFilters>;
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
-  protected readonly activitiesPrimaryFilters: Array<{ key: ContractTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
-    { key: 'rates', label: 'Rates', icon: 'star' },
-    { key: 'chats', label: 'Chats', icon: 'chat' },
-    { key: 'events', label: 'Events', icon: 'event' }
-  ];
-  protected readonly activitiesEventScopeFilters: ReadonlyArray<ActivitiesEventScopeOption> = [
-    { key: 'all', label: 'All', icon: 'widgets' },
-    { key: 'active-events', label: 'Active Events', icon: 'event' },
-    { key: 'pending', label: 'Pending', icon: 'pending_actions' },
-    { key: 'invitations', label: 'Invitations', icon: 'mail' },
-    { key: 'my-events', label: 'My Events', icon: 'stadium' },
-    { key: 'drafts', label: 'Drafts', icon: 'drafts' },
-    { key: 'trash', label: 'Trash', icon: 'delete' }
-  ];
-  protected readonly activitiesSecondaryFilters: Array<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }>
-    = [...APP_STATIC_DATA.activitiesSecondaryFilters];
-  protected readonly activitiesChatContextFilters: Array<{ key: ContractTypes.ActivitiesChatContextFilter; label: string; icon: string }>
-    = [...APP_STATIC_DATA.activitiesChatContextFilters];
-  protected readonly activitiesSupportCaseFilters: Array<{ key: ContractTypes.SupportCaseFilter; labelKey: string; icon: string }> = [
-    { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
-    { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
-    { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
-    { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
-    { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
-  ];
-  protected readonly rateFilters: Array<{ key: ContractTypes.RateFilterKey; label: string }>
-    = [...APP_STATIC_DATA.rateFilters];
-  protected readonly rateFilterEntries: RateFilterEntry[]
-    = [...APP_STATIC_DATA.rateFilterEntries];
-  protected readonly activitiesViewOptions: Array<{ key: ContractTypes.ActivitiesView; label: string; icon: string }>
-    = [...APP_STATIC_DATA.activitiesViewOptions];
   protected activitiesRateSocialBadgeEnabled = false;
   protected activitiesIndividualRateSocialBadgeEnabled = false;
   protected activitiesPairRateSocialBadgeEnabled = false;
@@ -1055,450 +1011,139 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesStore.activitiesAdminServiceOnly();
   }
 
-  protected supportCaseFilterLabelKey(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
+  protected activitiesControlsModel(): ActivitiesPopupControlsModel {
+    return {
+      primaryFilter: this.activitiesPrimaryFilter,
+      eventScope: this.activitiesEventScope,
+      chatContextFilter: this.activitiesChatContextFilter,
+      supportCaseFilter: this.activitiesSupportCaseFilter,
+      secondaryFilter: this.activitiesSecondaryFilter,
+      rateFilter: this.activitiesRateFilter,
+      view: this.activitiesView,
+      isMobileView: this.isMobileView,
+      adminServiceMode: this.isAdminServiceChatMode(),
+      calendarLayout: this.isCalendarLayoutView(),
+      ratesFullscreenActive: this.isRatesFullscreenModeActive(),
+      showRatesFullscreenToggle: this.shouldShowRatesFullscreenToggle(),
+      individualRateSocialBadgeEnabled: this.activitiesIndividualRateSocialBadgeEnabled,
+      pairRateSocialBadgeEnabled: this.activitiesPairRateSocialBadgeEnabled,
+      primaryCounts: this.activitiesToolbarPrimaryCounts(),
+      eventScopeCounts: this.activitiesToolbarEventScopeCounts(),
+      chatContextCounts: this.activitiesToolbarChatContextCounts(),
+      supportCaseCounts: this.activitiesToolbarSupportCaseCounts(),
+      rateFilterCounts: this.activitiesToolbarRateFilterCounts()
+    };
   }
 
-  protected supportCaseFilterIcon(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.icon ?? 'list';
+  protected onActivitiesControlsAction(action: ActivitiesPopupControlsAction): void {
+    switch (action.type) {
+      case 'close':
+        this.closeActivitiesPopup();
+        return;
+      case 'primaryFilter':
+        this.selectActivitiesPrimaryFilter(action.value);
+        return;
+      case 'eventScope':
+        this.selectActivitiesEventScope(action.value);
+        return;
+      case 'chatContextFilter':
+        this.selectActivitiesChatContextFilter(action.value);
+        return;
+      case 'rateFilter':
+        this.selectActivitiesRateFilter(action.value);
+        return;
+      case 'rateSocialBadgeGroup':
+        this.toggleRateSocialBadgeForGroup(action.value);
+        return;
+      case 'secondaryFilter':
+        this.selectActivitiesSecondaryFilter(action.value);
+        return;
+      case 'view':
+        this.setActivitiesView(action.value, action.sourceEvent);
+        return;
+      case 'supportCaseFilter':
+        this.selectActivitiesSupportCaseFilter(action.value);
+        return;
+      case 'eventExplore':
+        this.requestOpenEventExplore();
+        return;
+      case 'eventEditor':
+        this.requestOpenEventEditor();
+        return;
+      case 'ratesFullscreenToggle':
+        this.activitiesRates.toggleFullscreenMode(action.sourceEvent);
+        return;
+      default:
+        return;
+    }
   }
 
-  protected supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): number {
+  protected activitiesToolbarPrimaryCounts(): Partial<Record<ContractTypes.ActivitiesPrimaryFilter, number>> {
+    return {
+      chats: this.chatBadge,
+      events: this.eventsBadge,
+      rates: this.gameBadge
+    };
+  }
+
+  protected activitiesToolbarEventScopeCounts(): Partial<Record<ContractTypes.ActivitiesEventScope, number>> {
+    return {
+      all: this.allEventsScopeBadge,
+      'active-events': this.eventsBadge,
+      pending: this.pendingBadge,
+      invitations: this.invitationsBadge,
+      'my-events': this.hostingBadge,
+      drafts: this.draftsBadge,
+      trash: this.trashBadge
+    };
+  }
+
+  protected activitiesToolbarChatContextCounts(): Partial<Record<ContractTypes.ActivitiesChatContextFilter, number>> {
+    return {
+      all: this.activitiesChatContextFilterCount('all'),
+      event: this.activitiesChatContextFilterCount('event'),
+      subEvent: this.activitiesChatContextFilterCount('subEvent'),
+      group: this.activitiesChatContextFilterCount('group'),
+      service: this.activitiesChatContextFilterCount('service')
+    };
+  }
+
+  protected activitiesToolbarSupportCaseCounts(): Partial<Record<ContractTypes.SupportCaseFilter, number>> {
+    return {
+      all: this.supportCaseFilterCount('all'),
+      pending: this.supportCaseFilterCount('pending'),
+      picked: this.supportCaseFilterCount('picked'),
+      solved: this.supportCaseFilterCount('solved'),
+      blocked: this.supportCaseFilterCount('blocked')
+    };
+  }
+
+  protected activitiesToolbarRateFilterCounts(): Partial<Record<ContractTypes.RateFilterKey, number>> {
+    return APP_STATIC_DATA.rateFilters.reduce<Partial<Record<ContractTypes.RateFilterKey, number>>>((counts, option) => {
+      counts[option.key] = this.rateFilterCount(option.key);
+      return counts;
+    }, {});
+  }
+
+  private activitiesChatContextFilterCount(filter: ContractTypes.ActivitiesChatContextFilter): number {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return 0;
+    }
+    return this.chatItemsForActivities().filter(item => {
+      if (filter === 'all') {
+        return true;
+      }
+      return this.activityChatContextFilterKey(item) === filter;
+    }).length;
+  }
+
+  private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
     const normalized = this.normalizeSupportCaseFilter(filter);
     const supportCases = this.chatItems.filter(chat => Boolean(chat.supportCaseStatus));
     if (normalized === 'all') {
       return supportCases.length;
     }
     return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
-  }
-
-  protected supportCaseFilterClass(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return `support-case-filter-${filter === 'all' ? 'all' : filter}`;
-  }
-
-  protected activitiesSupportCaseMenuTrigger(): AppMenuTrigger {
-    return this.activitiesSelectTrigger({
-      label: this.supportCaseFilterLabelKey(),
-      icon: this.supportCaseFilterIcon(),
-      palette: this.supportCasePalette(this.activitiesSupportCaseFilter),
-      counter: this.supportCaseFilterCount(),
-      layout: 'pill'
-    });
-  }
-
-  protected activitiesSupportCaseMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesSupportCaseFilters.map(option => this.activitiesMenuItem({
-      id: `support-case:${option.key}`,
-      label: option.labelKey,
-      icon: option.icon,
-      palette: this.supportCasePalette(option.key),
-      counter: this.supportCaseFilterCount(option.key),
-      active: option.key === this.activitiesSupportCaseFilter,
-      context: { menu: 'support-case', value: option.key }
-    }));
-  }
-
-  protected activitiesPrimaryMenuTrigger(): AppMenuTrigger {
-    return this.activitiesSelectTrigger({
-      label: this.activitiesPrimaryFilterLabel(),
-      icon: this.activitiesPrimaryFilterIcon(),
-      palette: this.activitiesPrimaryPalette(this.activitiesPrimaryFilter),
-      counter: this.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
-    });
-  }
-
-  protected activitiesPrimaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesPrimaryFilters.map(option => this.activitiesMenuItem({
-      id: `primary:${option.key}`,
-      label: option.label,
-      icon: option.icon,
-      palette: this.activitiesPrimaryPalette(option.key),
-      counter: this.activitiesPrimaryFilterCount(option.key),
-      active: option.key === this.activitiesPrimaryFilter,
-      context: { menu: 'primary', value: option.key }
-    }));
-  }
-
-  protected activitiesEventScopeMenuTrigger(): AppMenuTrigger {
-    return this.activitiesSelectTrigger({
-      label: this.activitiesEventScopeLabel(),
-      icon: this.activitiesEventScopeIcon(),
-      palette: this.activitiesEventScopePalette(this.activitiesEventScope),
-      counter: this.activitiesEventScopeCount()
-    });
-  }
-
-  protected activitiesEventScopeMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesEventScopeFilters.map(option => this.activitiesMenuItem({
-      id: `event-scope:${option.key}`,
-      label: option.label,
-      icon: option.icon,
-      palette: this.activitiesEventScopePalette(option.key),
-      counter: this.activitiesEventScopeCount(option.key),
-      active: option.key === this.activitiesEventScope,
-      context: { menu: 'event-scope', value: option.key }
-    }));
-  }
-
-  protected activitiesChatContextMenuTrigger(): AppMenuTrigger {
-    return this.activitiesSelectTrigger({
-      label: this.activitiesChatContextFilterLabel(),
-      icon: this.activitiesChatContextFilterIcon(),
-      palette: this.activitiesChatContextPalette(this.activitiesChatContextFilter),
-      counter: this.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
-    });
-  }
-
-  protected activitiesChatContextMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesChatContextFilters.map(option => this.activitiesMenuItem({
-      id: `chat-context:${option.key}`,
-      label: option.label,
-      icon: option.icon,
-      palette: this.activitiesChatContextPalette(option.key),
-      counter: this.activitiesChatContextFilterCount(option.key),
-      active: option.key === this.activitiesChatContextFilter,
-      context: { menu: 'chat-context', value: option.key }
-    }));
-  }
-
-  protected activitiesRateMenuTrigger(): AppMenuTrigger {
-    return this.activitiesSelectTrigger({
-      label: this.activitiesRateFilterLabel(),
-      icon: this.activitiesRateFilterIcon(this.activitiesRateFilter),
-      palette: this.activitiesRatePalette(this.activitiesRateFilter),
-      counter: this.selectedRateFilterCount()
-    });
-  }
-
-  protected activitiesRateMenuModel(): AppMenuModel<string, ActivitiesToolbarMenuContext> {
-    type RateMenuNode = Omit<AppMenuGroup<string, ActivitiesToolbarMenuContext>, 'items' | 'headerActions'> & {
-      items: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
-      headerActions?: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
-    };
-    const nodes: RateMenuNode[] = [];
-    let currentNode: typeof nodes[number] | null = null;
-    for (const option of this.rateFilterEntries) {
-      if (option.kind === 'group') {
-        const groupLabel = option.label;
-        const groupPalette = this.activitiesRateGroupPalette(groupLabel);
-        currentNode = {
-          id: `rate-group:${groupLabel}`,
-          label: this.rateGroupOptionLabelKey(groupLabel),
-          icon: this.rateSocialBadgeGroupIconForGroup(groupLabel),
-          palette: groupPalette,
-          items: [],
-          headerActions: this.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
-            ? [{
-              id: `rate-social:${groupLabel}`,
-              label: this.rateSocialBadgeButtonLabelForGroup(groupLabel),
-              icon: this.rateSocialBadgeToggleIconForGroup(groupLabel),
-              kind: 'toggle',
-              active: this.isRateSocialBadgeToggleActiveForGroup(groupLabel),
-              closeOnSelect: false,
-              palette: groupPalette,
-              context: { menu: 'rate-social', value: groupLabel }
-            }]
-            : []
-        };
-        nodes.push(currentNode);
-        continue;
-      }
-      if (!currentNode) {
-        currentNode = {
-          id: 'rate-group:default',
-          label: 'rate.type',
-          icon: 'list',
-          palette: 'gold',
-          items: []
-        };
-        nodes.push(currentNode);
-      }
-      currentNode.items.push(this.activitiesMenuItem({
-        id: `rate:${option.key}`,
-        label: this.rateFilterOptionLabel(option.key),
-        icon: this.activitiesRateFilterIcon(option.key),
-        palette: this.activitiesRatePalette(option.key),
-        counter: this.rateFilterCount(option.key),
-        active: option.key === this.activitiesRateFilter,
-        context: { menu: 'rate', value: option.key }
-      }));
-    }
-    return { nodes };
-  }
-
-  protected activitiesSecondaryMenuTrigger(): AppMenuTrigger {
-    const filter = this.effectiveActivitiesSecondaryFilter();
-    return this.activitiesSelectTrigger({
-      label: this.activitiesSecondaryFilterLabel(),
-      icon: this.activitiesSecondaryFilterIcon(),
-      palette: this.activitiesSecondaryPalette(filter),
-      layout: 'pill',
-      hideLabel: this.isMobileView
-    });
-  }
-
-  protected activitiesSecondaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
-      id: `secondary:${option.key}`,
-      label: this.activitiesSecondaryFilterOptionLabel(option.key),
-      icon: option.icon,
-      palette: this.activitiesSecondaryPalette(option.key),
-      active: option.key === this.effectiveActivitiesSecondaryFilter(),
-      context: { menu: 'secondary', value: option.key }
-    }));
-  }
-
-  protected activitiesViewMenuTrigger(): AppMenuTrigger {
-    return this.activitiesSelectTrigger({
-      label: this.activityViewLabel(),
-      icon: this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
-      palette: this.activitiesViewPalette(this.activitiesView),
-      layout: 'pill',
-      hideLabel: this.isMobileView
-    });
-  }
-
-  protected activitiesViewMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesViewOptions.map(option => this.activitiesMenuItem({
-      id: `view:${option.key}`,
-      label: option.label,
-      icon: option.icon,
-      palette: this.activitiesViewPalette(option.key),
-      active: option.key === this.activitiesView,
-      context: { menu: 'view', value: option.key }
-    }));
-  }
-
-  protected activitiesQuickActionsMenuTrigger(): AppMenuTrigger {
-    return {
-      icon: 'add',
-      closeIcon: 'close',
-      ariaLabel: 'Open event actions',
-      hideLabel: true,
-      layout: 'icon',
-      palette: 'green'
-    };
-  }
-
-  protected activitiesQuickActionsMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return [
-      {
-        id: 'quick-action:explore',
-        label: 'Explore',
-        icon: 'explore',
-        palette: 'violet',
-        surface: 'tinted',
-        context: { menu: 'quick-action', value: 'explore' }
-      },
-      {
-        id: 'quick-action:create',
-        label: 'Create Event',
-        icon: 'add_circle',
-        palette: 'green',
-        surface: 'tinted',
-        context: { menu: 'quick-action', value: 'create' }
-      }
-    ];
-  }
-
-  protected onActivitiesToolbarMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    const context = event.context as ActivitiesToolbarMenuContext | undefined;
-    if (!context) {
-      return;
-    }
-    switch (context.menu) {
-      case 'primary':
-        this.selectActivitiesPrimaryFilter(context.value);
-        return;
-      case 'event-scope':
-        this.selectActivitiesEventScope(context.value);
-        return;
-      case 'chat-context':
-        this.selectActivitiesChatContextFilter(context.value);
-        return;
-      case 'rate':
-        this.selectActivitiesRateFilter(context.value);
-        return;
-      case 'rate-social':
-        this.toggleRateSocialBadgeForGroup(context.value);
-        return;
-      case 'secondary':
-        this.selectActivitiesSecondaryFilter(context.value);
-        return;
-      case 'view':
-        this.setActivitiesView(context.value, event.sourceEvent);
-        return;
-      case 'support-case':
-        this.selectActivitiesSupportCaseFilter(context.value);
-        return;
-      case 'quick-action':
-        if (context.value === 'explore') {
-          this.requestOpenEventExplore();
-          return;
-        }
-        this.requestOpenEventEditor();
-        return;
-      default:
-        return;
-    }
-  }
-
-  private activitiesSelectTrigger(options: {
-    label: string;
-    icon: string;
-    palette: AppMenuPalette;
-    counter?: number;
-    layout?: AppMenuTrigger['layout'];
-    hideLabel?: boolean;
-  }): AppMenuTrigger {
-    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
-    return {
-      label: options.label,
-      icon: options.icon,
-      palette: options.palette,
-      layout: options.layout ?? 'pill',
-      hideLabel: options.hideLabel,
-      counter: counter > 0 ? { value: counter, max: 99 } : null
-    };
-  }
-
-  private activitiesMenuItem(options: {
-    id: string;
-    label: string;
-    icon: string;
-    palette: AppMenuPalette;
-    counter?: number;
-    active: boolean;
-    context: ActivitiesToolbarMenuContext;
-  }): AppMenuItem<string, ActivitiesToolbarMenuContext> {
-    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
-    return {
-      id: options.id,
-      label: options.label,
-      icon: options.icon,
-      kind: 'radio',
-      active: options.active,
-      palette: options.palette,
-      surface: 'tinted',
-      counter: counter > 0 ? { value: counter, max: 99 } : null,
-      context: options.context
-    };
-  }
-
-  private activitiesPrimaryPalette(filter: ContractTypes.ActivitiesPrimaryFilter): AppMenuPalette {
-    switch (filter) {
-      case 'rates':
-        return 'gold';
-      case 'events':
-        return 'orange';
-      case 'hosting':
-        return 'green';
-      case 'invitations':
-        return 'violet';
-      case 'chats':
-      default:
-        return 'blue';
-    }
-  }
-
-  private activitiesEventScopePalette(scope: ContractTypes.ActivitiesEventScope): AppMenuPalette {
-    switch (scope) {
-      case 'trash':
-        return 'danger';
-      case 'drafts':
-        return 'slate';
-      case 'invitations':
-        return 'violet';
-      case 'my-events':
-        return 'green';
-      case 'pending':
-        return 'amber';
-      case 'all':
-        return 'blue';
-      case 'active-events':
-      default:
-        return 'orange';
-    }
-  }
-
-  private activitiesChatContextPalette(filter: ContractTypes.ActivitiesChatContextFilter): AppMenuPalette {
-    switch (filter) {
-      case 'event':
-        return 'orange';
-      case 'subEvent':
-        return 'violet';
-      case 'group':
-        return 'green';
-      case 'service':
-        return 'slate';
-      case 'all':
-      default:
-        return 'blue';
-    }
-  }
-
-  private activitiesViewPalette(view: ContractTypes.ActivitiesView): AppMenuPalette {
-    switch (view) {
-      case 'distance':
-        return 'teal';
-      case 'month':
-        return 'gold';
-      case 'week':
-        return 'green';
-      case 'day':
-      default:
-        return 'blue';
-    }
-  }
-
-  private activitiesSecondaryPalette(filter: ContractTypes.ActivitiesSecondaryFilter): AppMenuPalette {
-    switch (filter) {
-      case 'past':
-        return 'slate';
-      case 'relevant':
-        return 'violet';
-      case 'recent':
-      default:
-        return 'blue';
-    }
-  }
-
-  private activitiesRatePalette(filter: ContractTypes.RateFilterKey): AppMenuPalette {
-    switch (filter) {
-      case 'individual-given':
-        return 'pink';
-      case 'individual-received':
-        return 'blue';
-      case 'individual-mutual':
-        return 'violet';
-      case 'individual-met':
-        return 'green';
-      case 'pair-given':
-        return 'brown';
-      case 'pair-received':
-      default:
-        return 'success';
-    }
-  }
-
-  private supportCasePalette(filter: ContractTypes.SupportCaseFilter): AppMenuPalette {
-    switch (filter) {
-      case 'pending':
-        return 'amber';
-      case 'picked':
-        return 'blue';
-      case 'solved':
-        return 'green';
-      case 'blocked':
-        return 'danger';
-      case 'all':
-      default:
-        return 'neutral';
-    }
-  }
-
-  private activitiesRateGroupPalette(label: string): AppMenuPalette {
-    return this.isRateGroupSeparator(label) ? 'violet' : 'blue';
   }
 
   protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
@@ -2365,7 +2010,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesEventScopeLabel(): string {
-    return this.activitiesEventScopeFilters.find(option => option.key === this.activitiesEventScope)?.label ?? 'Active Events';
+    switch (this.activitiesEventScope) {
+      case 'all':
+        return 'All';
+      case 'pending':
+        return 'Pending';
+      case 'invitations':
+        return 'Invitations';
+      case 'my-events':
+        return 'My Events';
+      case 'drafts':
+        return 'Drafts';
+      case 'trash':
+        return 'Trash';
+      case 'active-events':
+      default:
+        return 'Active Events';
+    }
   }
 
   protected shouldShowRatesFullscreenToggle(): boolean {
@@ -2390,266 +2051,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : this.activitiesSecondaryFilter;
   }
 
-  activitiesPrimaryFilterLabel(): string {
-    return this.activitiesPrimaryFilters.find((o: any) => o.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
-  }
-
-  activitiesPrimaryFilterIcon(): string {
-    return this.activitiesPrimaryFilters.find((o: any) => o.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
-  }
-
-  activitiesPrimaryFilterClass(filter: ContractTypes.ActivitiesPrimaryFilter = this.activitiesPrimaryFilter): string {
-    const map: Record<ContractTypes.ActivitiesPrimaryFilter, string> = {
-      chats: 'activity-filter-chat',
-      invitations: 'activity-filter-invitations',
-      events: 'activity-filter-events',
-      hosting: 'activity-filter-hosting',
-      rates: 'activity-filter-rates'
-    };
-    return map[filter] ?? 'activity-filter-chat';
-  }
-
-  activitiesPrimaryFilterCount(filter: ContractTypes.ActivitiesPrimaryFilter): number {
-    if (filter === 'rates') { return this.gameBadge; }
-    if (filter === 'chats') { return this.chatBadge; }
-    if (filter === 'events') { return this.eventsBadge; }
-    return 0;
-  }
-
-  activitiesPrimaryPanelWidth(): string {
-    return '200px';
-  }
-
-  activitiesEventScopePanelWidth(): string {
-    return '260px';
-  }
-
-  activitiesEventScopeIcon(): string {
-    return this.activitiesEventScopeFilters.find((option: any) => option.key === this.activitiesEventScope)?.icon ?? 'event';
-  }
-
-  activitiesEventScopeClass(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): string {
-    if (scope === 'trash') {
-      return 'activity-filter-trash';
-    }
-    if (scope === 'drafts') {
-      return 'activity-filter-drafts';
-    }
-    if (scope === 'invitations') {
-      return 'activity-filter-invitations';
-    }
-    if (scope === 'my-events') {
-      return 'activity-filter-hosting';
-    }
-    return 'activity-filter-events';
-  }
-
-  activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
-    if (scope === 'all') {
-      return this.allEventsScopeBadge;
-    }
-    if (scope === 'drafts') {
-      return this.draftsBadge;
-    }
-    if (scope === 'trash') {
-      return this.trashBadge;
-    }
-    if (scope === 'active-events') {
-      return this.eventsBadge;
-    }
-    if (scope === 'pending') {
-      return this.pendingBadge;
-    }
-    if (scope === 'invitations') {
-      return this.invitationsBadge;
-    }
-    return this.hostingBadge;
-  }
-
-  activitiesRatePanelWidth(): string {
-    return '272px';
-  }
-
-  activitiesHeaderLineOne(): string {
-    if (this.activitiesPrimaryFilter === 'chats') {
-      return this.activitiesChatsHeaderLabel();
-    }
-    if (this.activitiesPrimaryFilter === 'rates') {
-      const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
-      const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
-      return `${group} · ${label}`;
-    }
-    if (this.isEventActivitiesPrimaryFilter()) {
-      if (this.activitiesView === 'month' || this.activitiesView === 'week') {
-        return `Events · ${this.activitiesEventScopeLabel()}`;
-      }
-      return this.activitiesEventScopeLabel();
-    }
-    if (this.activitiesView === 'month' || this.activitiesView === 'week') {
-      return this.activitiesPrimaryFilterLabel();
-    }
-    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
-  }
-
-  activitiesHeaderLineTwo(): string {
-    return '';
-  }
-
-  activitiesChatContextFilterLabel(): string {
-    return this.activitiesChatContextFilters.find((o: any) => o.key === this.activitiesChatContextFilter)?.label ?? 'All';
-  }
-
-  activitiesChatContextFilterIcon(): string {
-    return this.activitiesChatContextFilters.find((o: any) => o.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
-  }
-
-  activitiesChatContextFilterClass(filter: ContractTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): string {
-    const map: Record<ContractTypes.ActivitiesChatContextFilter, string> = {
-      all: 'chat-context-filter-all',
-      event: 'chat-context-filter-event',
-      subEvent: 'chat-context-filter-sub-event',
-      group: 'chat-context-filter-group',
-      service: 'chat-context-filter-service'
-    };
-    return map[filter] ?? 'chat-context-filter-all';
-  }
-
-  activitiesSecondaryFilterClass(_filter: ContractTypes.ActivitiesSecondaryFilter = this.activitiesSecondaryFilter): string {
-    return 'activity-filter-secondary';
-  }
-
-  activitiesChatContextFilterCount(filter: ContractTypes.ActivitiesChatContextFilter = this.activitiesChatContextFilter): number {
-    if (this.activitiesPrimaryFilter !== 'chats') { return 0; }
-    return this.chatItemsForActivities().filter((item: any) => {
-      if (filter === 'all') { return true; }
-      return this.activityChatContextFilterKey(item) === filter;
-    }).length;
-  }
-
-  private activitiesChatsHeaderLabel(): string {
-    const primary = this.activitiesPrimaryFilterLabel();
-    if (this.activitiesChatContextFilter === 'all') {
-      return primary;
-    }
-    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
-  }
-
-  activitiesSecondaryFilterLabel(): string {
-    return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
-  }
-
-  activitiesSecondaryFilterOptionLabel(filter: ContractTypes.ActivitiesSecondaryFilter): string {
-    if (filter === 'recent') {
-      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
-    }
-    return this.activitiesSecondaryFilters.find((o: any) => o.key === filter)?.label ?? 'Relevant';
-  }
-
-  activitiesSecondaryFilterIcon(): string {
-    return this.activitiesSecondaryFilters.find((o: any) => o.key === this.effectiveActivitiesSecondaryFilter())?.icon ?? 'schedule';
-  }
-
-  activitiesRateFilterLabel(): string {
-    const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
-    if (!label) { return `${this.rateGroupLabelKeyForKey('individual-given')} · Given`; }
-    const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
-    return `${group} · ${label}`;
-  }
-
-  rateFilterOptionLabel(key: ContractTypes.RateFilterKey): string {
-    return this.rateFilterLabelForKey(key);
-  }
-
-  rateGroupOptionLabelKey(label: string): string {
-    const normalized = label.trim().toLowerCase();
-    if (normalized === 'preferences') {
-      return 'activity.rates.group.preferences';
-    }
-    if (normalized === 'suggestions') {
-      return 'activity.rates.group.suggestions';
-    }
-    return label;
-  }
-
-  activitiesRateFilterIcon(key: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
-    const icons: Record<ContractTypes.RateFilterKey, string> = {
-      'individual-given': 'north_east',
-      'individual-received': 'south_west',
-      'individual-mutual': 'sync_alt',
-      'individual-met': 'handshake',
-      'pair-given': 'group_add',
-      'pair-received': 'groups_2'
-    };
-    return icons[key] ?? 'star';
-  }
-
-  activitiesRateFilterClass(_filter: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
-    return 'activity-filter-rates';
-  }
-
-  rateFilterOptionClass(key: ContractTypes.RateFilterKey): string {
-    return `rate-filter-item-${key}`;
-  }
-
-  isRateGroupSeparator(label: string): boolean {
-    return this.rateSocialGroupForLabel(label) === 'pair';
-  }
-
   rateFilterCount(filter: ContractTypes.RateFilterKey): number {
     return this.rateItems.filter((item: any) => this.activitiesRates.matchesFilter(item, filter)).length;
-  }
-
-  selectedRateFilterCount(): number {
-    return this.rateFilterCount(this.activitiesRateFilter);
-  }
-
-  shouldShowRateSocialBadgeToggle(): boolean {
-    return this.activitiesPrimaryFilter === 'rates';
-  }
-
-  shouldShowRateSocialBadgeToggleForGroup(label: string): boolean {
-    if (!this.shouldShowRateSocialBadgeToggle()) {
-      return false;
-    }
-    const normalized = label.trim().toLowerCase();
-    return normalized === 'individual'
-      || normalized === 'pair'
-      || normalized === 'preferences'
-      || normalized === 'suggestions'
-      || normalized === this.rateGroupLabelKeyForKey('individual-given')
-      || normalized === this.rateGroupLabelKeyForKey('pair-given');
-  }
-
-  rateSocialBadgeButtonLabel(): string {
-    return this.activitiesRateSocialBadgeEnabled ? 'Social on' : 'Social off';
-  }
-
-  rateSocialBadgeButtonLabelForGroup(label: string): string {
-    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'Social on' : 'Social off';
-  }
-
-  rateSocialBadgeToggleIconForGroup(label: string): string {
-    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'sell' : 'sell_off';
-  }
-
-  rateSocialBadgeGroupIconForGroup(label: string): string {
-    return this.rateSocialGroupForLabel(label) === 'pair' ? 'groups_2' : 'person';
-  }
-
-  rateSocialBadgeGroupClassForGroup(label: string): string {
-    return this.rateSocialGroupForLabel(label) === 'pair' ? 'rate-filter-group-pair' : 'rate-filter-group-single';
-  }
-
-  isRateSocialBadgeToggleActiveForGroup(label: string): boolean {
-    const group = this.rateSocialGroupForLabel(label);
-    return group === 'pair'
-      ? this.activitiesPairRateSocialBadgeEnabled
-      : this.activitiesIndividualRateSocialBadgeEnabled;
-  }
-
-  toggleRateSocialBadge(): void {
-    const group = this.activitiesRateFilter.startsWith('pair') ? 'pair' : 'individual';
-    this.toggleRateSocialBadgeForGroup(group);
   }
 
   toggleRateSocialBadgeForGroup(labelOrGroup: string): void {
@@ -2677,46 +2080,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
-    return this.rateFilters.find((option: any) => option.key === key)?.label ?? 'Given';
-  }
-
-  private rateGroupLabelKeyForKey(key: ContractTypes.RateFilterKey): string {
-    return key.startsWith('individual')
-      ? 'activity.rates.group.preferences'
-      : 'activity.rates.group.suggestions';
-  }
-
   private rateSocialGroupForLabel(labelOrGroup: string): 'individual' | 'pair' {
     const normalized = labelOrGroup.trim().toLowerCase();
     if (
       normalized === 'pair'
       || normalized === 'suggestions'
-      || normalized === this.rateGroupLabelKeyForKey('pair-given')
+      || normalized === 'activity.rates.group.suggestions'
     ) {
       return 'pair';
     }
     return 'individual';
   }
 
-  totalRateFilterCount(): number {
-    return this.rateItems.length;
-  }
-
-  activityViewLabel(): string {
-    return this.activitiesViewOptions.find((o: any) => o.key === this.activitiesView)?.label ?? 'View';
-  }
-
-  isRateFilterVisible(): boolean {
-    return this.activitiesPrimaryFilter === 'rates';
-  }
-
   isHostingPublicationFilterVisible(): boolean {
     return false;
-  }
-
-  hostingDraftCount(): number {
-    return this.draftsBadge;
   }
 
   shouldShowActivitiesQuickActions(): boolean {
@@ -2726,17 +2103,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       && this.activitiesEventScope !== 'pending'
       && this.activitiesEventScope !== 'invitations'
       && this.activitiesEventScope !== 'trash';
-  }
-
-  shouldShowStandaloneEventExploreAction(): boolean {
-    return this.isEventActivitiesPrimaryFilter()
-      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
-  }
-
-  availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
-    return this.isEventActivitiesPrimaryFilter()
-      ? this.activitiesSecondaryFilters.filter((option: any) => option.key !== 'relevant')
-      : this.activitiesSecondaryFilters;
   }
 
   selectActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): void {

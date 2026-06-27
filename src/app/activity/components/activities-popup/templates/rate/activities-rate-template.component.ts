@@ -1,5 +1,14 @@
 
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  ViewEncapsulation
+} from '@angular/core';
 
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
@@ -75,6 +84,8 @@ export interface ActivitiesRateTemplateContext {
   standalone: true,
   imports: [SingleCardComponent, PairCardComponent],
   templateUrl: './activities-rate-template.component.html',
+  styleUrl: './activities-rate-template.component.scss',
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesRateTemplateComponent implements OnChanges {

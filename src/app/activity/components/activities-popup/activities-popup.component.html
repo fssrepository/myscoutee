@@ -2,138 +2,19 @@
   <div class="app-popup">
     <div class="app-popup-backdrop" (click)="closeActivitiesPopup()"></div>
     <div class="app-popup-panel popup-panel-activities popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
-      <div class="popup-header popup-header-with-progress">
-        <div class="popup-title">
-          <h2>Activities</h2>
-          <p class="popup-subtitle">{{ activitiesHeaderLineOne() | i18n }}</p>
-          @if (activitiesHeaderLineTwo()) {
-            <p class="popup-subtitle popup-subtitle-secondary">
-              {{ activitiesHeaderLineTwo() | i18n }}
-            </p>
-          }
-        </div>
-        <div class="popup-filter-picker activities-view-picker">
-          @if (activitiesPrimaryFilter === 'chats' && isAdminServiceChatMode()) {
-            <app-menu
-              class="activities-app-menu activities-support-header-filter-wrap"
-              kind="select"
-              [trigger]="activitiesSupportCaseMenuTrigger()"
-              [items]="activitiesSupportCaseMenuItems()"
-              (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-            ></app-menu>
-          }
-          @if (!isCalendarLayoutView() && activitiesPrimaryFilter !== 'chats') {
-            <app-menu
-              class="activities-app-menu popup-filter-picker-secondary activities-secondary-picker"
-              kind="select"
-              [trigger]="activitiesSecondaryMenuTrigger()"
-              [items]="activitiesSecondaryMenuItems()"
-              (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-            ></app-menu>
-          }
-          @if (activitiesPrimaryFilter !== 'chats') {
-            <app-menu
-              class="activities-app-menu"
-              kind="select"
-              [trigger]="activitiesViewMenuTrigger()"
-              [items]="activitiesViewMenuItems()"
-              (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-            ></app-menu>
-          }
-        </div>
-        <button type="button" class="popup-close" (click)="closeActivitiesPopup()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
+      <app-activities-popup-controls
+        mode="header"
+        [model]="activitiesControlsModel()"
+        (action)="onActivitiesControlsAction($event)"
+      ></app-activities-popup-controls>
       <div class="popup-body popup-body-activities">
         <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" [class.activities-popup-blocked-user]="isBlockedUser" (click)="onActivitiesPopupSurfaceClick($event)">
           <!-- ───── Toolbar ───── -->
-          <div class="experience-toolbar assets-toolbar popup-filter-bar" [class.activities-admin-service-toolbar]="isAdminServiceChatMode()">
-            @if (!isAdminServiceChatMode()) {
-              <app-menu
-                class="activities-app-menu activities-toolbar-select activities-primary-filter-select"
-                kind="select"
-                [trigger]="activitiesPrimaryMenuTrigger()"
-                [items]="activitiesPrimaryMenuItems()"
-                (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-              ></app-menu>
-            }
-            <!-- Event scope filter (events tab only) -->
-            @if (isEventActivitiesPrimaryFilter()) {
-              <app-menu
-                class="activities-app-menu activities-toolbar-select activities-event-scope-filter-select"
-                kind="select"
-                [trigger]="activitiesEventScopeMenuTrigger()"
-                [items]="activitiesEventScopeMenuItems()"
-                (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-              ></app-menu>
-            }
-            <!-- Chat context filter (chats tab only) -->
-            @if (activitiesPrimaryFilter === 'chats' && !isAdminServiceChatMode()) {
-              <app-menu
-                class="activities-app-menu activities-toolbar-select activities-chat-context-filter-select"
-                kind="select"
-                [trigger]="activitiesChatContextMenuTrigger()"
-                [items]="activitiesChatContextMenuItems()"
-                (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-              ></app-menu>
-            }
-            <!-- Rate filter (rates tab only) -->
-            @if (isRateFilterVisible()) {
-              <app-menu
-                class="activities-app-menu activities-toolbar-select activities-rate-filter-select"
-                kind="select"
-                [trigger]="activitiesRateMenuTrigger()"
-                [model]="activitiesRateMenuModel()"
-                (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-              ></app-menu>
-            }
-            <!-- Action stack: fullscreen toggle / quick actions -->
-            @if (shouldShowActivitiesQuickActions() || shouldShowStandaloneEventExploreAction() || shouldShowRatesFullscreenToggle()) {
-              <div class="activities-action-stack">
-                @if (shouldShowStandaloneEventExploreAction()) {
-                  <button
-                    type="button"
-                    class="popup-header-add-btn activities-explore-btn"
-                    (click)="requestOpenEventExplore()"
-                    aria-label="Open event explore"
-                    >
-                    <mat-icon>explore</mat-icon>
-                    <span>Explore</span>
-                  </button>
-                }
-                @if (shouldShowRatesFullscreenToggle() && !isRatesFullscreenModeActive()) {
-                  <button
-                    type="button"
-                    class="popup-header-add-btn activities-rates-fullscreen-toggle is-enter"
-                    (click)="activitiesRates.toggleFullscreenMode($event)"
-                    aria-label="Open rates fullscreen mode"
-                    >
-                    <mat-icon>fullscreen</mat-icon>
-                  </button>
-                }
-                @if (shouldShowRatesFullscreenToggle() && isRatesFullscreenModeActive()) {
-                  <button
-                    type="button"
-                    class="popup-header-add-btn activities-rates-fullscreen-toggle is-active is-exit"
-                    (click)="activitiesRates.toggleFullscreenMode($event)"
-                    aria-label="Exit rates fullscreen mode"
-                    >
-                    <mat-icon>fullscreen_exit</mat-icon>
-                  </button>
-                }
-                @if (shouldShowActivitiesQuickActions()) {
-                  <app-menu
-                    class="activities-app-menu activities-quick-actions"
-                    kind="select"
-                    [trigger]="activitiesQuickActionsMenuTrigger()"
-                    [items]="activitiesQuickActionsMenuItems()"
-                    (itemSelect)="onActivitiesToolbarMenuSelect($event)"
-                  ></app-menu>
-                }
-              </div>
-            }
-          </div><!-- /toolbar -->
+          <app-activities-popup-controls
+            mode="toolbar"
+            [model]="activitiesControlsModel()"
+            (action)="onActivitiesControlsAction($event)"
+          ></app-activities-popup-controls>
           <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
             @if (row) {
             <app-activities-rate-template

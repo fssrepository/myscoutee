@@ -1,0 +1,267 @@
+app-activities-popup-controls {
+  display: contents;
+}
+
+.activities-admin-service-toolbar {
+  display: none;
+}
+
+.activities-support-header-filter-wrap {
+  position: relative;
+}
+
+.activities-rate-filter-select .status-option-content {
+  gap: 0.34rem;
+}
+
+.activities-rate-filter-select .mat-mdc-select-arrow-wrapper {
+  margin-left: 0.54rem;
+}
+
+.activities-rate-filter-select > .mat-icon:last-child {
+  margin-left: 0.54rem;
+}
+
+.activities-event-scope-filter-select {
+  min-width: 208px;
+  width: 208px;
+  max-width: 208px;
+}
+
+.activities-view-picker-panel .activities-view-option.event-visibility-public {
+  background: linear-gradient(0deg, #ffffff, #eef7ff);
+}
+
+.activities-view-picker-panel .activities-view-option.event-visibility-friends {
+  background: linear-gradient(0deg, #ffffff, #eff8ec);
+}
+
+.activities-view-picker-panel .activities-view-option.event-visibility-invitation {
+  background: linear-gradient(0deg, #ffffff, #fff4e8);
+}
+
+.activities-popup.activities-popup-blocked-user .experience-toolbar {
+  display: none;
+}
+
+.activities-action-stack {
+  margin-left: auto;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.34rem;
+}
+
+.activities-quick-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.activities-quick-actions .activities-view-picker-panel {
+  right: 0;
+  min-width: 178px;
+}
+
+.activities-quick-action-option {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.activities-quick-action-option-explore {
+  background: linear-gradient(180deg, #f3f0ff 0%, #e9e4ff 100%);
+  border: 1px solid rgba(109, 87, 182, 0.32);
+  color: #5741ac;
+}
+
+.activities-quick-action-option-explore .mat-icon {
+  color: #644db4;
+}
+
+.activities-quick-action-option-create {
+  background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+  border: 1px solid rgba(47, 142, 157, 0.32);
+  color: #2e8795;
+}
+
+.activities-quick-action-option-create .mat-icon {
+  color: #318d98;
+}
+
+.activities-add-btn {
+  margin-left: 0;
+}
+
+.activities-add-btn.is-open .mat-icon {
+  transform: rotate(45deg);
+}
+
+.activities-add-btn .mat-icon {
+  transition: transform 0.16s ease;
+}
+
+.activities-explore-btn {
+  margin-left: 0;
+  width: auto;
+  min-width: 0;
+  padding: 0 0.84rem 0 0.64rem;
+  border-radius: 999px;
+  border-color: rgba(102, 79, 174, 0.5);
+  background: linear-gradient(180deg, #f0ecff 0%, #e3dbff 100%);
+  color: #5a43a9;
+  box-shadow: 0 2px 8px rgba(86, 63, 152, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.activities-explore-btn span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activities-explore-btn:hover {
+  background: linear-gradient(180deg, #e8e1ff 0%, #d9ceff 100%);
+  border-color: rgba(87, 65, 156, 0.62);
+  color: #4b378e;
+  box-shadow: 0 4px 10px rgba(75, 55, 142, 0.24);
+}
+
+.activities-explore-btn:active {
+  transform: scale(0.92);
+}
+
+.activities-rates-fullscreen-toggle {
+  border-color: rgba(48, 85, 138, 0.34);
+  color: #2c5f9b;
+  background: linear-gradient(180deg, #f7fbff 0%, #edf4ff 100%);
+}
+
+.activities-rates-fullscreen-toggle.is-enter {
+  border-color: rgba(188, 138, 24, 0.5);
+  background: linear-gradient(180deg, #fff7df 0%, #ffefc6 100%);
+  color: #8d5d10;
+  box-shadow: 0 5px 13px rgba(180, 127, 23, 0.2);
+}
+
+.activities-rates-fullscreen-toggle.is-enter:hover {
+  border-color: rgba(171, 122, 19, 0.62);
+  background: linear-gradient(180deg, #ffefc9 0%, #ffe4ab 100%);
+  color: #7b4f0c;
+  box-shadow: 0 6px 14px rgba(166, 113, 16, 0.25);
+}
+
+.activities-rates-fullscreen-toggle.is-active {
+  border-color: rgba(23, 57, 108, 0.64);
+  background: linear-gradient(180deg, #dce9ff 0%, #cfe0ff 100%);
+  color: #173f76;
+  box-shadow: 0 6px 16px rgba(42, 79, 138, 0.26);
+}
+
+.activities-rates-fullscreen-toggle.is-exit {
+  border-color: rgba(26, 68, 124, 0.68);
+  background: linear-gradient(180deg, #d3e4ff 0%, #bfd7ff 100%);
+  color: #123d73;
+}
+
+.experience-toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: -0.16rem;
+}
+
+.assets-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 760px) {
+  .popup-panel-activities .popup-header-with-progress {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "title filters close";
+    align-items: start;
+    gap: 0.36rem 0.44rem;
+    padding: 0.52rem 0.48rem 0.44rem;
+  }
+
+  .popup-panel-activities .popup-header-with-progress > .popup-title {
+    grid-area: title;
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .popup-panel-activities .popup-header-with-progress > .popup-filter-picker {
+    grid-area: filters;
+    width: auto;
+    min-width: 0;
+    margin-left: 0;
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.34rem;
+  }
+
+  .popup-panel-activities .popup-header-with-progress > .popup-close {
+    grid-area: close;
+    justify-self: end;
+  }
+
+  .popup-panel-activities .popup-filter-picker app-menu {
+    max-width: 100%;
+  }
+
+  .popup-panel-activities .popup-filter-bar {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.36rem;
+    overflow: visible;
+  }
+
+  .popup-panel-activities .popup-filter-bar app-menu {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: calc(100% - 2.8rem);
+  }
+
+  .popup-panel-activities .activities-action-stack {
+    flex: 0 0 auto;
+    min-width: 34px;
+    margin-left: auto;
+  }
+
+  .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-explore {
+    background: linear-gradient(180deg, #f3f0ff 0%, #e9e4ff 100%);
+    border-color: rgba(109, 87, 182, 0.32);
+    color: #5741ac;
+  }
+
+  .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-explore .mat-icon {
+    color: #644db4;
+  }
+
+  .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-create {
+    background: linear-gradient(180deg, #f1fbfa 0%, #e6f5f2 100%);
+    border-color: rgba(47, 142, 157, 0.32);
+    color: #2e8795;
+  }
+
+  .activities-mobile-filter-panel .activities-view-option.activities-quick-action-option-create .mat-icon {
+    color: #318d98;
+  }
+
+  .activities-explore-btn {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    gap: 0;
+  }
+
+  .activities-explore-btn span {
+    display: none;
+  }
+}

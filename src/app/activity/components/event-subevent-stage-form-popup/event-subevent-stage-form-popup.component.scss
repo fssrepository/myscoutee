@@ -1,9 +1,7 @@
-@use '../activity-interactions.shared' as shared;
+@use '../../../shared/ui/styles' as ui;
 
-@include shared.host-motion-vars();
-@include shared.interactive-feedback(
-  '.popup-header-add-btn, .experience-form-close-btn, .experience-action-btn, .subevent-optional-toggle, .subevent-stage-insert-mode-btn, .mat-datepicker-toggle .mat-mdc-icon-button, .mat-timepicker-toggle .mat-mdc-icon-button'
-);
+@include ui.popup-shell();
+@include ui.interactive-motion();
 
 .experience-form-overlay {
   position: fixed;
@@ -90,9 +88,6 @@
   flex: 0 0 auto;
   min-width: 0;
 }
-
-@include shared.popup-header-add-btn-base();
-@include shared.experience-form-close-btn-base();
 
 .experience-form-panel {
   border: 1px solid rgba(43, 71, 107, 0.2);
