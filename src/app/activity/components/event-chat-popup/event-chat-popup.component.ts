@@ -17,6 +17,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
 import type * as AppTypes from '../../../shared/core/base/models';
+import type * as AppUiTypes from '../../../shared/ui/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
@@ -79,7 +80,7 @@ type SelectedChatActionTone =
 type SelectedChatResourceType = 'Members' | AppConstants.AssetType;
 
 type ChatMenuContext =
-  | { menu: 'chat-context'; control: AppTypes.PopupHeaderControl }
+  | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
   | { menu: 'message-action'; message: ContractTypes.ChatPopupMessage; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
 
@@ -137,7 +138,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected allMessages: ContractTypes.ChatPopupMessage[] = [];
   protected draftMessage = '';
   protected chatComposeDetachedSpace = 108;
-  protected chatHeaderContext: AppTypes.PopupHeaderContext | null = null;
+  protected chatHeaderContext: AppUiTypes.PopupHeaderContext | null = null;
   protected chatHeaderControlsHydrated = false;
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
   private resolvedChatEventRecord: ActivityEventRecord | null = null;
@@ -366,25 +367,25 @@ export class EventChatPopupComponent implements OnDestroy {
     return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
   }
 
-  protected chatHeaderMembersControl(): AppTypes.PopupHeaderControl | null {
+  protected chatHeaderMembersControl(): AppUiTypes.PopupHeaderControl | null {
     const controls = this.chatHeaderContext?.controls ?? [];
     return controls.find(control => control.id === 'members') ?? null;
   }
 
-  protected selectedChatContextControl(): AppTypes.PopupHeaderControl | null {
+  protected selectedChatContextControl(): AppUiTypes.PopupHeaderControl | null {
     const controls = this.chatHeaderContext?.controls ?? [];
     return controls.find(control => control.id === 'chat-context') ?? null;
   }
 
-  protected chatHeaderControlIcon(control: AppTypes.PopupHeaderControl): string {
+  protected chatHeaderControlIcon(control: AppUiTypes.PopupHeaderControl): string {
     return control.visual?.kind === 'icon' ? control.visual.icon : 'groups';
   }
 
-  protected chatHeaderControlLabel(control: AppTypes.PopupHeaderControl): string {
+  protected chatHeaderControlLabel(control: AppUiTypes.PopupHeaderControl): string {
     return `${control.summary ?? control.label ?? ''}`.trim() || 'Members';
   }
 
-  protected chatHeaderThumbs(control: AppTypes.PopupHeaderControl): AppTypes.PopupHeaderThumb[] {
+  protected chatHeaderThumbs(control: AppUiTypes.PopupHeaderControl): AppUiTypes.PopupHeaderThumb[] {
     if (control.visual?.kind !== 'thumbStack') {
       return [];
     }
@@ -395,11 +396,11 @@ export class EventChatPopupComponent implements OnDestroy {
     }));
   }
 
-  protected chatHeaderControlBadgeValue(control: AppTypes.PopupHeaderControl): number {
+  protected chatHeaderControlBadgeValue(control: AppUiTypes.PopupHeaderControl): number {
     return Math.max(0, Math.trunc(Number(control.badge?.value) || 0));
   }
 
-  protected openChatHeaderControl(control: AppTypes.PopupHeaderControl, event?: Event): void {
+  protected openChatHeaderControl(control: AppUiTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
     if (control.id !== 'members') {
       return;
@@ -728,7 +729,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
-  protected selectedChatContextMenuGroups(): AppTypes.PopupHeaderControlGroup[] {
+  protected selectedChatContextMenuGroups(): AppUiTypes.PopupHeaderControlGroup[] {
     return this.selectedChatContextControl()?.menu?.groups
       ?.map(group => ({
         ...group,
@@ -737,15 +738,15 @@ export class EventChatPopupComponent implements OnDestroy {
       ?? [];
   }
 
-  protected selectedChatMenuControlIcon(control: AppTypes.PopupHeaderControl): string {
+  protected selectedChatMenuControlIcon(control: AppUiTypes.PopupHeaderControl): string {
     return this.chatHeaderControlIcon(control);
   }
 
-  protected selectedChatMenuControlBadgeCount(control: AppTypes.PopupHeaderControl): number {
+  protected selectedChatMenuControlBadgeCount(control: AppUiTypes.PopupHeaderControl): number {
     return this.chatHeaderControlBadgeValue(control);
   }
 
-  protected openSelectedChatMenuControl(control: AppTypes.PopupHeaderControl, event?: Event): void {
+  protected openSelectedChatMenuControl(control: AppUiTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
     const resourceType = this.popupControlResourceType(control);
     if (resourceType) {
@@ -3584,7 +3585,7 @@ export class EventChatPopupComponent implements OnDestroy {
     chat: ChatDTO | null,
     options: {
       hydrateControls?: boolean;
-      baseContext?: AppTypes.PopupHeaderContext | null;
+      baseContext?: AppUiTypes.PopupHeaderContext | null;
     } = {}
   ): void {
     if (!chat) {
@@ -3613,7 +3614,7 @@ export class EventChatPopupComponent implements OnDestroy {
     );
   }
 
-  private buildTitleOnlyChatHeaderContext(chat: ChatDTO): AppTypes.PopupHeaderContext {
+  private buildTitleOnlyChatHeaderContext(chat: ChatDTO): AppUiTypes.PopupHeaderContext {
     const title = `${chat.title ?? ''}`.trim() || 'Chat';
     return {
       revision: `title:${chat.id}:${title}`,
@@ -3660,8 +3661,8 @@ export class EventChatPopupComponent implements OnDestroy {
   private buildSelectedChatHeaderContext(
     chat: ChatDTO,
     state: SelectedChatNavigationState | null,
-    loadedContext: AppTypes.PopupHeaderContext | null = null
-  ): AppTypes.PopupHeaderContext {
+    loadedContext: AppUiTypes.PopupHeaderContext | null = null
+  ): AppUiTypes.PopupHeaderContext {
     const baseContext = loadedContext
       ? this.clonePopupHeaderContext(loadedContext)
       : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
@@ -3675,7 +3676,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private clonePopupHeaderContext(context: AppTypes.PopupHeaderContext): AppTypes.PopupHeaderContext {
+  private clonePopupHeaderContext(context: AppUiTypes.PopupHeaderContext): AppUiTypes.PopupHeaderContext {
     return {
       ...context,
       controls: (context.controls ?? []).map(control => ({
@@ -3711,7 +3712,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private buildSelectedChatContextControl(
     chat: ChatDTO,
     state: SelectedChatNavigationState | null
-  ): AppTypes.PopupHeaderControl {
+  ): AppUiTypes.PopupHeaderControl {
     const primaryControl = this.buildSelectedChatPrimaryControl(chat, state);
     const menu = state ? this.buildSelectedChatControlMenu(state, primaryControl) : null;
     return {
@@ -3724,7 +3725,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private buildSelectedChatPrimaryControl(
     chat: ChatDTO,
     state: SelectedChatNavigationState | null
-  ): AppTypes.PopupHeaderControl {
+  ): AppUiTypes.PopupHeaderControl {
     const channelType = state?.channelType ?? this.chatChannelType(chat);
     const label = channelType === 'groupSubEvent'
       ? (state?.group?.label ?? state?.subEvent?.name ?? 'Group')
@@ -3751,8 +3752,8 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildSelectedChatControlMenu(
     state: SelectedChatNavigationState,
-    primaryControl: AppTypes.PopupHeaderControl
-  ): AppTypes.PopupHeaderControlMenu | null {
+    primaryControl: AppUiTypes.PopupHeaderControl
+  ): AppUiTypes.PopupHeaderControlMenu | null {
     if (!state.subEvent || (state.channelType !== 'optionalSubEvent' && state.channelType !== 'groupSubEvent')) {
       return null;
     }
@@ -3782,7 +3783,7 @@ export class EventChatPopupComponent implements OnDestroy {
     subEvent: ContractTypes.SubEventDTO,
     state: SelectedChatNavigationState,
     type: SelectedChatResourceType
-  ): AppTypes.PopupHeaderControl {
+  ): AppUiTypes.PopupHeaderControl {
     const pending = this.resourcePendingCount(subEvent, state, type);
     return {
       id: `chat-resource-${type.toLowerCase()}`,
@@ -3970,7 +3971,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return 'blue';
   }
 
-  private chatContextControlMenuItem(control: AppTypes.PopupHeaderControl): AppMenuItem<string, ChatMenuContext> {
+  private chatContextControlMenuItem(control: AppUiTypes.PopupHeaderControl): AppMenuItem<string, ChatMenuContext> {
     const resourceType = this.popupControlResourceType(control);
     const counter = this.selectedChatMenuControlBadgeCount(control);
     return {
@@ -4071,7 +4072,7 @@ export class EventChatPopupComponent implements OnDestroy {
     );
   }
 
-  private popupControlResourceType(control: AppTypes.PopupHeaderControl): SelectedChatResourceType | null {
+  private popupControlResourceType(control: AppUiTypes.PopupHeaderControl): SelectedChatResourceType | null {
     if (control.lookup?.type !== 'chatResource') {
       return null;
     }

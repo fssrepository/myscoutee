@@ -18,7 +18,8 @@ export class LocalAdminSupportSessionService {
   private readonly shareTokensRepository = inject(LocalShareTokensRepository);
 
   findUser(userId: string): UserDto | null {
-    return this.usersRepository.queryUserById(userId);
+    const user = this.usersRepository.queryUserById(userId);
+    return user ? LocalUsersMapper.toDto(user) : null;
   }
 
   async saveUser(user: UserDto): Promise<UserDto> {

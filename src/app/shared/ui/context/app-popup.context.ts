@@ -10,7 +10,7 @@ import type { ActivityMemberEntry } from '../../core/contracts/activity.interfac
 import type { ChatDTO } from '../../core/contracts/chat.interface';
 import type { EventEditorTarget, EventTournamentStageDTO, SubEventDTO } from '../../core/contracts/event.interface';
 import type { AssetCardDTO } from '../../core/base/dto';
-import type { PopupHeaderLookup } from '../../core/base/models/popup-ui.model';
+import type { PopupHeaderLookup } from '../models';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;

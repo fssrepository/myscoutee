@@ -1,4 +1,4 @@
-import type { ActivityMemberRole } from '../../common/constants';
+import type { ActivityMemberRole } from '../../core/common/constants';
 
 export interface EventFeedbackOption {
   value: string;

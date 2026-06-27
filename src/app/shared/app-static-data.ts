@@ -15,11 +15,11 @@ import type {
   HelpCenterRevisionDto,
   HelpCenterSectionDto
 } from './core/contracts';
+import type { RateFilterEntry } from './core/base/models';
 import type {
   EventFeedbackOption,
-  EventFeedbackTraitOption,
-  RateFilterEntry
-} from './core/base/models';
+  EventFeedbackTraitOption
+} from './ui/models';
 import { EVENT_FEEDBACK_LIST_FILTERS, EVENT_VISIBILITIES, SUB_EVENT_RESOURCE_FILTERS } from './core/common/constants';
 import type {
   AssetCategory,

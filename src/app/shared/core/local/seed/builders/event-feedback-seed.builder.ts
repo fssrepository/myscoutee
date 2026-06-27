@@ -1,123 +1,58 @@
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityMemberRole } from '../../../common/constants';
+import type { ActivityEventRecord, SubmittedEventFeedbackAnswer } from '../../../contracts/activity.interface';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
-import type { ActivityEventSeedItem } from '../entity';
-import type { UserDto } from '../../../contracts/user.interface';
-import type { EventFeedbackCard, EventFeedbackOption, EventFeedbackTraitOption } from '../../../base/models';
-import type { SubmittedEventFeedbackAnswer } from '../../../contracts/activity.interface';
+
+interface SeedEventFeedbackOptionRecord {
+  value: string;
+  impressionTag?: string;
+}
+
+interface SeedEventFeedbackTraitOptionRecord {
+  id: string;
+}
+
+interface SeedEventFeedbackCardRecord {
+  id: string;
+  eventId: string;
+  kind: 'event' | 'attendee';
+  attendeeUserId?: string;
+  targetUserId?: string;
+  targetRole?: ActivityMemberRole;
+  heading: string;
+  primaryOptions: readonly SeedEventFeedbackOptionRecord[];
+  secondaryOptions: readonly SeedEventFeedbackOptionRecord[];
+  traitOptions: readonly SeedEventFeedbackTraitOptionRecord[];
+}
+
+interface SeedEventFeedbackOptionInputs {
+  eventFeedbackUnlockDelayMs: number;
+  eventOverallOptions: readonly SeedEventFeedbackOptionRecord[];
+  hostImproveOptions: readonly SeedEventFeedbackOptionRecord[];
+  attendeeCollabOptions: readonly SeedEventFeedbackOptionRecord[];
+  attendeeRejoinOptions: readonly SeedEventFeedbackOptionRecord[];
+  personalityTraitOptions: readonly SeedEventFeedbackTraitOptionRecord[];
+}
 
 export class SeedEventFeedbackBuilder {
-  static buildEventFeedbackCards(options: {
-    eventItems: ActivityEventSeedItem[];
-    users: UserDto[];
-    activeUser: UserDto;
-    eventDatesById: Record<string, string>;
-    activityImageById: Record<string, string>;
-    eventFeedbackUnlockDelayMs: number;
-    eventOverallOptions: EventFeedbackOption[];
-    hostImproveOptions: EventFeedbackOption[];
-    attendeeCollabOptions: EventFeedbackOption[];
-    attendeeRejoinOptions: EventFeedbackOption[];
-    personalityTraitOptions: EventFeedbackTraitOption[];
-  }): EventFeedbackCard[] {
-    const nowMs = Date.now();
-    const eventCards: EventFeedbackCard[] = [];
-    for (const item of options.eventItems) {
-      if (item.isAdmin) {
-        continue;
-      }
-      const startMs = this.eventStartAtMs(item.id, options.eventDatesById);
-      if (startMs === null || nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
-        continue;
-      }
-      const eventLabel = this.eventFeedbackWhenLabel(item.id, options.eventDatesById);
-      const host = this.feedbackHostUserForEvent(item, options.users, options.activeUser);
-      const attendees = this.feedbackAttendeesForEvent(item, host.id, options.users, options.activeUser.id);
-      eventCards.push({
-        id: `feedback-event-${item.id}`,
-        eventId: item.id,
-        kind: 'event',
-        targetUserId: host.id,
-        targetRole: 'Admin',
-        icon: 'event_available',
-        imageUrl: options.activityImageById[item.id] ?? `https://picsum.photos/seed/event-feedback-card-${item.id}/1200/700`,
-        toneClass: 'feedback-card-tone-event feedback-role-admin',
-        heading: item.title,
-        subheading: `${eventLabel} · ${item.shortDescription}`,
-        identityTitle: `${host.name} · Host`,
-        identitySubtitle: `Admin · ${host.city}`,
-        identityStatusClass: 'member-status-admin',
-        identityStatusIcon: 'admin_panel_settings',
-        questionPrimary: `How did ${item.title} feel for you overall?`,
-        questionSecondary: `What should ${host.name} improve next time?`,
-        primaryOptions: options.eventOverallOptions,
-        secondaryOptions: options.hostImproveOptions,
-        traitQuestion: `Which traits describe ${host.name} best as the event creator?`,
-        traitOptions: options.personalityTraitOptions,
-        selectedTraitIds: [],
-        answerPrimary: '',
-        answerSecondary: ''
-      });
-      for (const attendee of attendees) {
-        const attendeeRole = this.feedbackRoleForAttendee(item.id, attendee.id);
-        eventCards.push({
-          id: `feedback-attendee-${item.id}-${attendee.id}`,
-          eventId: item.id,
-          kind: 'attendee',
-          attendeeUserId: attendee.id,
-          targetUserId: attendee.id,
-          targetRole: attendeeRole,
-          icon: 'groups',
-          imageUrl: AppUtils.firstImageUrl(attendee.images),
-          toneClass: `feedback-card-tone-attendee ${this.feedbackRoleToneClass(attendeeRole)}`,
-          heading: `${attendee.name} · ${item.title}`,
-          subheading: `Attendee feedback · ${eventLabel}`,
-          identityTitle: `${attendee.name}, ${attendee.age}`,
-          identitySubtitle: `${attendeeRole} · ${attendee.city}`,
-          identityStatusClass: this.feedbackRoleStatusClass(attendeeRole),
-          identityStatusIcon: this.feedbackRoleStatusIcon(attendeeRole),
-          questionPrimary: `How was collaboration with ${attendee.name} (${attendee.traitLabel}) during this event?`,
-          questionSecondary: `Would you team up with ${attendee.name} again in a future event?`,
-          primaryOptions: options.attendeeCollabOptions,
-          secondaryOptions: options.attendeeRejoinOptions,
-          traitQuestion: `Which personality traits best matched ${attendee.name} in this event?`,
-          traitOptions: options.personalityTraitOptions,
-          selectedTraitIds: [],
-          answerPrimary: '',
-          answerSecondary: ''
-        });
-      }
-    }
-    return eventCards;
-  }
-
   static buildSeededSubmittedState(options: {
-    eventItem: ActivityEventSeedItem;
-    users: UserDto[];
-    activeUser: UserDto;
-    eventDatesById: Record<string, string>;
-    activityImageById: Record<string, string>;
-    eventFeedbackUnlockDelayMs: number;
-    eventOverallOptions: EventFeedbackOption[];
-    hostImproveOptions: EventFeedbackOption[];
-    attendeeCollabOptions: EventFeedbackOption[];
-    attendeeRejoinOptions: EventFeedbackOption[];
-    personalityTraitOptions: EventFeedbackTraitOption[];
+    eventRecord: ActivityEventRecord;
+    users: readonly UserRecord[];
+    activeUser: UserRecord;
     seedKey?: string;
-  }): EventFeedbackPersistedState | null {
-    const eventId = options.eventItem.id?.trim() ?? '';
+  } & SeedEventFeedbackOptionInputs): EventFeedbackPersistedState | null {
+    const eventId = options.eventRecord.id?.trim() ?? '';
     if (!eventId) {
       return null;
     }
 
     const eventCards = this.buildEventFeedbackCards({
-      eventItems: [options.eventItem],
+      eventRecords: [options.eventRecord],
       users: options.users,
       activeUser: options.activeUser,
-      eventDatesById: options.eventDatesById,
-      activityImageById: options.activityImageById,
       eventFeedbackUnlockDelayMs: options.eventFeedbackUnlockDelayMs,
       eventOverallOptions: options.eventOverallOptions,
       hostImproveOptions: options.hostImproveOptions,
@@ -132,8 +67,7 @@ export class SeedEventFeedbackBuilder {
 
     const seed = AppUtils.hashText(options.seedKey?.trim() || `feedback-submitted:${options.activeUser.id}:${eventId}`);
     const submittedAtIso = this.seededSubmittedAtIso(
-      eventId,
-      options.eventDatesById,
+      options.eventRecord,
       options.eventFeedbackUnlockDelayMs,
       seed
     );
@@ -154,21 +88,17 @@ export class SeedEventFeedbackBuilder {
     };
   }
 
-
   static buildSeededPersistedStates(options: {
-    eventItems: ActivityEventSeedItem[];
-    users: UserDto[];
-    activeUser: UserDto;
-    eventDatesById: Record<string, string>;
-    activityImageById: Record<string, string>;
-    eventFeedbackUnlockDelayMs: number;
-    eventOverallOptions: EventFeedbackOption[];
-    hostImproveOptions: EventFeedbackOption[];
-    attendeeCollabOptions: EventFeedbackOption[];
-    attendeeRejoinOptions: EventFeedbackOption[];
-    personalityTraitOptions: EventFeedbackTraitOption[];
-  }): EventFeedbackPersistedState[] {
-    const cardsByEventId = new Map<string, EventFeedbackCard[]>();
+    eventRecords: readonly ActivityEventRecord[];
+    users: readonly UserRecord[];
+    activeUser: UserRecord;
+  } & SeedEventFeedbackOptionInputs): EventFeedbackPersistedState[] {
+    const eventRecordsById = new Map(
+      options.eventRecords
+        .map(record => [record.id?.trim() ?? '', record] as const)
+        .filter(([eventId]) => eventId.length > 0)
+    );
+    const cardsByEventId = new Map<string, SeedEventFeedbackCardRecord[]>();
 
     for (const card of this.buildEventFeedbackCards(options)) {
       if (card.kind === 'attendee' && card.attendeeUserId === options.activeUser.id) {
@@ -180,14 +110,15 @@ export class SeedEventFeedbackBuilder {
     }
 
     const orderedEventIds = [...cardsByEventId.keys()].sort((left, right) => {
-      const leftStartAtMs = this.eventStartAtMs(left, options.eventDatesById) ?? 0;
-      const rightStartAtMs = this.eventStartAtMs(right, options.eventDatesById) ?? 0;
+      const leftStartAtMs = this.eventStartAtMs(eventRecordsById.get(left)) ?? 0;
+      const rightStartAtMs = this.eventStartAtMs(eventRecordsById.get(right)) ?? 0;
       return leftStartAtMs - rightStartAtMs || left.localeCompare(right);
     });
     const states: EventFeedbackPersistedState[] = [];
     for (const [index, eventId] of orderedEventIds.entries()) {
+      const eventRecord = eventRecordsById.get(eventId);
       const eventCards = cardsByEventId.get(eventId) ?? [];
-      if (eventCards.length === 0) {
+      if (!eventRecord || eventCards.length === 0) {
         continue;
       }
       const seed = AppUtils.hashText(`feedback-state:${options.activeUser.id}:${eventId}`);
@@ -210,8 +141,7 @@ export class SeedEventFeedbackBuilder {
       }
 
       const submittedAtIso = this.seededSubmittedAtIso(
-        eventId,
-        options.eventDatesById,
+        eventRecord,
         options.eventFeedbackUnlockDelayMs,
         seed
       );
@@ -234,8 +164,56 @@ export class SeedEventFeedbackBuilder {
     return states;
   }
 
+  private static buildEventFeedbackCards(options: {
+    eventRecords: readonly ActivityEventRecord[];
+    users: readonly UserRecord[];
+    activeUser: UserRecord;
+  } & SeedEventFeedbackOptionInputs): SeedEventFeedbackCardRecord[] {
+    const nowMs = Date.now();
+    const eventCards: SeedEventFeedbackCardRecord[] = [];
+    for (const record of options.eventRecords) {
+      const eventId = record.id?.trim() ?? '';
+      if (!eventId || this.isEventAdminRecord(record, options.activeUser.id)) {
+        continue;
+      }
+      const startMs = this.eventStartAtMs(record);
+      if (startMs === null || nowMs < startMs + options.eventFeedbackUnlockDelayMs) {
+        continue;
+      }
+      const host = this.feedbackHostUserForEvent(record, options.users, options.activeUser);
+      const attendees = this.feedbackAttendeesForEvent(record, host.id, options.users, options.activeUser.id);
+      eventCards.push({
+        id: `feedback-event-${eventId}`,
+        eventId,
+        kind: 'event',
+        targetUserId: host.id,
+        targetRole: 'Admin',
+        heading: record.title,
+        primaryOptions: options.eventOverallOptions,
+        secondaryOptions: options.hostImproveOptions,
+        traitOptions: options.personalityTraitOptions
+      });
+      for (const attendee of attendees) {
+        const attendeeRole = this.feedbackRoleForAttendee(eventId, attendee.id);
+        eventCards.push({
+          id: `feedback-attendee-${eventId}-${attendee.id}`,
+          eventId,
+          kind: 'attendee',
+          attendeeUserId: attendee.id,
+          targetUserId: attendee.id,
+          targetRole: attendeeRole,
+          heading: `${attendee.name} · ${record.title}`,
+          primaryOptions: options.attendeeCollabOptions,
+          secondaryOptions: options.attendeeRejoinOptions,
+          traitOptions: options.personalityTraitOptions
+        });
+      }
+    }
+    return eventCards;
+  }
+
   private static seededSubmittedAnswer(
-    card: EventFeedbackCard,
+    card: SeedEventFeedbackCardRecord,
     seed: number,
     submittedAtIso: string
   ): SubmittedEventFeedbackAnswer {
@@ -263,9 +241,9 @@ export class SeedEventFeedbackBuilder {
   }
 
   private static seededOption(
-    options: EventFeedbackOption[],
+    options: readonly SeedEventFeedbackOptionRecord[],
     seedKey: string
-  ): EventFeedbackOption | null {
+  ): SeedEventFeedbackOptionRecord | null {
     if (options.length === 0) {
       return null;
     }
@@ -274,12 +252,11 @@ export class SeedEventFeedbackBuilder {
   }
 
   private static seededSubmittedAtIso(
-    eventId: string,
-    eventDatesById: Record<string, string>,
+    eventRecord: ActivityEventRecord,
     eventFeedbackUnlockDelayMs: number,
     seed: number
   ): string {
-    const startMs = this.eventStartAtMs(eventId, eventDatesById);
+    const startMs = this.eventStartAtMs(eventRecord);
     const baseMs = startMs === null
       ? AppUtils.shiftDate(
         new Date(Date.UTC(2026, 2, 20, 18, 0, 0, 0)),
@@ -291,7 +268,7 @@ export class SeedEventFeedbackBuilder {
     return new Date(baseMs + (offsetMinutes * 60 * 1000)).toISOString();
   }
 
-  private static seededOrganizerNote(card: EventFeedbackCard, seed: number): string {
+  private static seededOrganizerNote(card: SeedEventFeedbackCardRecord, seed: number): string {
     const noteTemplates = [
       `Strong overall flow for ${card.heading}. I would tighten the timing at the start next round.`,
       `The vibe was good around ${card.heading}. A clearer check-in and role handoff would help next time.`,
@@ -304,7 +281,7 @@ export class SeedEventFeedbackBuilder {
     return `${userId.trim()}::${eventId.trim()}`;
   }
 
-  private static seededTraitIds(card: EventFeedbackCard, seed: number): string[] {
+  private static seededTraitIds(card: SeedEventFeedbackCardRecord, seed: number): string[] {
     if (!Array.isArray(card.traitOptions) || card.traitOptions.length === 0) {
       return [];
     }
@@ -320,8 +297,8 @@ export class SeedEventFeedbackBuilder {
     return [...next];
   }
 
-  private static eventStartAtMs(eventId: string, eventDatesById: Record<string, string>): number | null {
-    const iso = eventDatesById[eventId];
+  private static eventStartAtMs(record: ActivityEventRecord | null | undefined): number | null {
+    const iso = record?.startAtIso?.trim() ?? '';
     if (!iso) {
       return null;
     }
@@ -329,19 +306,12 @@ export class SeedEventFeedbackBuilder {
     return Number.isNaN(value) ? null : value;
   }
 
-  private static eventFeedbackWhenLabel(eventId: string, eventDatesById: Record<string, string>): string {
-    const startMs = this.eventStartAtMs(eventId, eventDatesById);
-    if (startMs === null) {
-      return 'Recent event';
-    }
-    const parsed = new Date(startMs);
-    const day = parsed.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-    const time = parsed.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    return `${day} · ${time}`;
-  }
-
-  private static feedbackHostUserForEvent(item: ActivityEventSeedItem, users: UserDto[], activeUser: UserDto): UserDto {
-    const creatorUserId = item.creatorUserId?.trim() ?? '';
+  private static feedbackHostUserForEvent(
+    record: ActivityEventRecord,
+    users: readonly UserRecord[],
+    activeUser: UserRecord
+  ): UserRecord {
+    const creatorUserId = record.creatorUserId?.trim() ?? '';
     if (creatorUserId) {
       const creator = users.find(user => user.id === creatorUserId);
       if (creator) {
@@ -352,26 +322,26 @@ export class SeedEventFeedbackBuilder {
     if (candidates.length === 0) {
       return activeUser;
     }
-    const index = AppUtils.hashText(`feedback-host:${item.id}`) % candidates.length;
+    const index = AppUtils.hashText(`feedback-host:${record.id}`) % candidates.length;
     return candidates[index] ?? candidates[0];
   }
 
   private static feedbackAttendeesForEvent(
-    item: ActivityEventSeedItem,
+    record: ActivityEventRecord,
     hostId: string,
-    users: UserDto[],
+    users: readonly UserRecord[],
     activeUserId: string
-  ): UserDto[] {
+  ): UserRecord[] {
     const attendeeIds = [...new Set([
-      ...(item.acceptedMemberUserIds ?? []),
-      ...(item.pendingMemberUserIds ?? [])
+      ...(record.acceptedMemberUserIds ?? []),
+      ...(record.pendingMemberUserIds ?? [])
     ].map(userId => `${userId}`.trim()).filter(Boolean))]
       .filter(userId => userId !== activeUserId && userId !== hostId);
     if (attendeeIds.length > 0) {
       const usersById = new Map(users.map(user => [user.id, user]));
       const resolved = attendeeIds
         .map(userId => usersById.get(userId))
-        .filter((user): user is UserDto => Boolean(user));
+        .filter((user): user is UserRecord => Boolean(user));
       if (resolved.length > 0) {
         return resolved.slice(0, Math.min(5, resolved.length));
       }
@@ -381,9 +351,9 @@ export class SeedEventFeedbackBuilder {
     if (candidates.length === 0) {
       return [];
     }
-    const seed = AppUtils.hashText(`feedback-attendees:${item.id}`);
+    const seed = AppUtils.hashText(`feedback-attendees:${record.id}`);
     const desired = Math.min(candidates.length, 3 + (seed % 4));
-    const picked: UserDto[] = [];
+    const picked: UserRecord[] = [];
     for (let index = 0; index < candidates.length && picked.length < desired; index += 1) {
       const candidate = candidates[(seed + (index * 3)) % candidates.length];
       if (!candidate || candidate.id === activeUserId || picked.some(item => item.id === candidate.id)) {
@@ -405,33 +375,12 @@ export class SeedEventFeedbackBuilder {
     return 'Member';
   }
 
-  private static feedbackRoleToneClass(role: ActivityMemberRole): string {
-    if (role === 'Admin') {
-      return 'feedback-role-admin';
+  private static isEventAdminRecord(record: ActivityEventRecord, userId: string): boolean {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return false;
     }
-    if (role === 'Manager') {
-      return 'feedback-role-manager';
-    }
-    return 'feedback-role-member';
-  }
-
-  private static feedbackRoleStatusClass(role: ActivityMemberRole): string {
-    if (role === 'Admin') {
-      return 'member-status-admin';
-    }
-    if (role === 'Manager') {
-      return 'member-status-manager';
-    }
-    return 'member-status-member';
-  }
-
-  private static feedbackRoleStatusIcon(role: ActivityMemberRole): string {
-    if (role === 'Admin') {
-      return 'admin_panel_settings';
-    }
-    if (role === 'Manager') {
-      return 'manage_accounts';
-    }
-    return 'person';
+    return record.creatorUserId?.trim() === normalizedUserId
+      || (record.adminIds ?? []).some(adminId => adminId.trim() === normalizedUserId);
   }
 }

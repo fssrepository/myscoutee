@@ -31,7 +31,8 @@ import {
   LocalActivityEventDetailsMapper,
   LocalActivityEventsMapper,
   LocalEventFeedbackMapper,
-  LocalEventParticipationActionMapper
+  LocalEventParticipationActionMapper,
+  LocalUsersMapper
 } from '../mappers';
 import type {
   ActivityEventActivitiesQuery,
@@ -186,7 +187,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
     const events = LocalActivityEventsMapper.toDtoList(records);
     const users = this.usersRepository.queryAllUsers();
-    const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
+    const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
+    const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
     if (!activeUser) {
       return new EventFeedbackPageResultDto();
     }
@@ -210,7 +212,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
     const events = LocalActivityEventsMapper.toDtoList(records);
     const users = this.usersRepository.queryAllUsers();
-    const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
+    const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
+    const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
     if (!activeUser) {
       return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }

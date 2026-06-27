@@ -62,12 +62,12 @@ export class LocalUsersRepository {
     return this.queryUsersFromTable(USERS_TABLE_NAME);
   }
 
-  queryUserById(userId: string): UserDto | null {
+  queryUserById(userId: string): UserRecord | null {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId];
     if (!user) {
       return null;
     }
-    return LocalUsersMapper.toDto(user);
+    return user;
   }
 
   upsertUser(user: UserRecord): UserRecord {

@@ -1,15 +1,13 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityInviteCandidatesQuery } from '../../../contracts/activity.interface';
-import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { LocalActivityInviteCandidateRecord } from '../mappers';
+import { LocalUsersMapper } from '../mappers';
 import { LocalContactsRepository } from './contacts.repository';
 import { LocalRatesRepository } from './rates.repository';
 import { LocalUsersRepository } from './users.repository';
-import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 import type * as AppConstants from '../../../common/constants';
 @Injectable({
@@ -70,7 +68,8 @@ export class LocalActivityInviteCandidatesRepository {
     const candidates = [...latestMetByUserId.keys()]
       .filter(userId => !existingUserIds.has(userId))
       .map(userId => this.usersRepository.queryUserById(userId))
-      .filter((user): user is UserDto => Boolean(user))
+      .filter((user): user is NonNullable<typeof user> => Boolean(user))
+      .map(user => LocalUsersMapper.toDto(user))
       .map(user => {
         const latestMet = latestMetByUserId.get(user.id)!;
         return {

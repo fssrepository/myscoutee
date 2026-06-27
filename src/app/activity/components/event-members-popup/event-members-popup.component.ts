@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import type * as AppTypes from '../../../shared/core/base/models';
+import type * as AppUiTypes from '../../../shared/ui/models';
 import { AppUtils } from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 import { AppContext, AppPopupContext } from '../../../shared/ui';
@@ -103,7 +103,7 @@ export class EventMembersPopupComponent {
   protected acceptedCount = 0;
   protected capacityTotal = 0;
   protected canShowInviteButton = false;
-  private lookupRef: AppTypes.PopupHeaderLookup | null = null;
+  private lookupRef: AppUiTypes.PopupHeaderLookup | null = null;
 
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
@@ -844,7 +844,7 @@ export class EventMembersPopupComponent {
       canManage?: boolean;
       viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
-      lookup?: AppTypes.PopupHeaderLookup;
+      lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;

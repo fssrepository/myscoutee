@@ -93,7 +93,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       return null;
     }
     const user = this.usersRepository.queryUserById(normalizedUserId);
-    return user ? { ...user } : null;
+    return user ? LocalUsersMapper.toDto(user) : null;
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -159,7 +159,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         filterPreferences: null
       };
     }
-    const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
+    const loadedRecord = this.usersRepository.queryUserById(normalizedUserId);
+    const loadedUser = loadedRecord ? LocalUsersMapper.toDto(loadedRecord) : null;
     if (loadedUser?.profileStatus === 'deleted' && this.isDeletedAccountPastPurgeWindow(loadedUser)) {
       this.usersRepository.purgeUser(normalizedUserId);
       this.clearRealtimeState(normalizedUserId);
@@ -421,12 +422,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       const previousProfileStatus = user.profileStatus === 'deleted'
         ? (user.previousProfileStatus ?? 'public')
         : user.profileStatus;
-      this.upsertUser({
+      this.upsertUser(LocalUsersMapper.toDto({
         ...user,
         profileStatus: 'deleted',
         previousProfileStatus,
         deletedAtIso: new Date().toISOString()
-      });
+      }));
       this.clearRealtimeState(normalizedUserId);
     }
     return {

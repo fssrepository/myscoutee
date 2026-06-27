@@ -1,6 +1,5 @@
 import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
 
-import type * as AppTypes from '../shared/core/base/models';
 import { AppContext, AppPopupContext } from '../shared/ui';
 import { AssetTicketsService } from '../shared/core';
 import type { SmartListStateChange } from '../shared/ui';
@@ -8,6 +7,19 @@ import { AssetFacadeService } from './asset-facade.service';
 import type { AssetPopupHost } from './asset-popup.host';
 
 import type * as AssetContracts from '../shared/core/contracts/asset.interface';
+
+interface BrowserBarcodeDetectorResult {
+  rawValue?: string;
+}
+
+interface BrowserBarcodeDetector {
+  detect(image: ImageBitmapSource): Promise<BrowserBarcodeDetectorResult[]>;
+}
+
+interface BrowserBarcodeDetectorConstructor {
+  new(options?: { formats?: string[] }): BrowserBarcodeDetector;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AssetPopupStateService {
   private readonly ngZone = inject(NgZone);
@@ -465,7 +477,7 @@ export class AssetPopupStateService {
     }, 1200);
   }
 
-  private startTicketScannerDetectionLoop(detector: AppTypes.BrowserBarcodeDetector, videoElement: HTMLVideoElement): void {
+  private startTicketScannerDetectionLoop(detector: BrowserBarcodeDetector, videoElement: HTMLVideoElement): void {
     this.cancelTicketScannerDetectionLoop();
     this.ticketScannerDetectBusy = false;
     const tick = (): void => {
@@ -494,7 +506,7 @@ export class AssetPopupStateService {
     this.ticketScannerDetectionFrame = requestAnimationFrame(tick);
   }
 
-  private ticketScannerPayloadFromResults(results: AppTypes.BrowserBarcodeDetectorResult[]): AssetContracts.TicketScanPayloadDTO | null {
+  private ticketScannerPayloadFromResults(results: BrowserBarcodeDetectorResult[]): AssetContracts.TicketScanPayloadDTO | null {
     for (const result of results) {
       const raw = `${result.rawValue ?? ''}`.trim();
       if (!raw) {
@@ -577,8 +589,8 @@ export class AssetPopupStateService {
     }
   }
 
-  private createBrowserBarcodeDetector(): AppTypes.BrowserBarcodeDetector | null {
-    const maybeCtor = (globalThis as { BarcodeDetector?: AppTypes.BrowserBarcodeDetectorConstructor }).BarcodeDetector;
+  private createBrowserBarcodeDetector(): BrowserBarcodeDetector | null {
+    const maybeCtor = (globalThis as { BarcodeDetector?: BrowserBarcodeDetectorConstructor }).BarcodeDetector;
     if (typeof maybeCtor !== 'function') {
       return null;
     }

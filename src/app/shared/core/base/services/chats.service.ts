@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
+import type * as AppUiTypes from '../../../ui/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../contracts';
@@ -44,7 +44,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async loadChatMessagesResult(
     chat: ChatDTO
-  ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppTypes.PopupHeaderContext>> {
+  ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppUiTypes.PopupHeaderContext>> {
     const items = await this.loadChatMessages(chat);
     return {
       items,
@@ -56,11 +56,11 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   buildChatPopupHeaderContext(
     chat: ChatDTO,
     options: { includeThumbs?: boolean } = {}
-  ): AppTypes.PopupHeaderContext {
+  ): AppUiTypes.PopupHeaderContext {
     const chatId = `${chat.id ?? ''}`.trim();
     const title = `${chat.title ?? ''}`.trim() || 'Chat';
     const memberIds = this.resolveChatMemberIds(chat);
-    const controls: AppTypes.PopupHeaderControl[] = [];
+    const controls: AppUiTypes.PopupHeaderControl[] = [];
     if (chatId && memberIds.length > 0) {
       const maxVisibleThumbs = 4;
       const thumbs = options.includeThumbs === true
@@ -306,7 +306,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.uniqueUserIds(chat.memberIds ?? []);
   }
 
-  private buildChatHeaderThumbs(memberIds: readonly string[], maxVisible: number): AppTypes.PopupHeaderThumb[] {
+  private buildChatHeaderThumbs(memberIds: readonly string[], maxVisible: number): AppUiTypes.PopupHeaderThumb[] {
     return memberIds.slice(0, Math.max(0, Math.trunc(maxVisible))).flatMap(memberId => {
       const user = this.usersService.peekCachedUserById(memberId);
       if (!user) {
