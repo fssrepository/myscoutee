@@ -385,7 +385,7 @@ export class UsersService extends BaseRouteModeService {
     try {
       const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
       if (!snapshot) {
-        return null;
+        return this.buildFallbackRealtimeSnapshot(normalizedUserId, cursor, requestTimeoutMs);
       }
       return this.normalizeRealtimeSnapshot(snapshot, normalizedUserId, cursor);
     } catch {
@@ -487,6 +487,21 @@ export class UsersService extends BaseRouteModeService {
     fallbackCursor: string | null
   ): UserRealtimeLongPollResponseDto {
     return UserRealtimeSnapshotMapper.snapshot(snapshot, fallbackUserId, fallbackCursor);
+  }
+
+  private async buildFallbackRealtimeSnapshot(
+    normalizedUserId: string,
+    cursor: string | null,
+    requestTimeoutMs?: number
+  ): Promise<UserRealtimeLongPollResponseDto | null> {
+    const cachedUser = this.peekCachedUserById(normalizedUserId);
+    const user = cachedUser ?? (await this.userService.queryUserById(normalizedUserId, requestTimeoutMs)).user;
+    if (!user) {
+      return null;
+    }
+    return UserRealtimeSnapshotMapper.snapshotFromUser(user, cursor, {
+      userId: normalizedUserId
+    });
   }
 
   private normalizeCounterOverrides(
