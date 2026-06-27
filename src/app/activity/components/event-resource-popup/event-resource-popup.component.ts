@@ -121,7 +121,6 @@ export interface AssetExplorePopupViewState {
   subtitle: string;
   type: AppConstants.AssetType;
   category: AppConstants.AssetCategory;
-  categoryDisplay: string;
   categoryOptions: readonly AppConstants.AssetCategory[];
   startDate: Date | null;
   endDate: Date | null;
@@ -908,8 +907,8 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected assetExploreCategoryMenuTrigger(explore: AssetExplorePopupViewState): AppMenuTrigger {
     return {
-      label: this.assetExploreCategoryLabel(explore.categoryDisplay),
-      icon: this.assetExploreCategoryIcon(explore.category),
+      label: AssetDefaultsBuilder.assetCategoryLabel(explore.category),
+      icon: AssetDefaultsBuilder.assetCategoryIcon(explore.category),
       ariaLabel: 'Open asset explore category',
       palette: this.assetCategoryPalette(explore.category),
       layout: 'field'
@@ -919,17 +918,24 @@ export class EventResourcePopupComponent implements DoCheck {
   protected assetExploreCategoryMenuItems(
     explore: AssetExplorePopupViewState
   ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
-    return explore.categoryOptions.map(option => ({
+    return explore.categoryOptions.map(option => this.assetExploreCategoryMenuItem(option, explore.category));
+  }
+
+  private assetExploreCategoryMenuItem(
+    option: AppConstants.AssetCategory,
+    activeCategory: AppConstants.AssetCategory
+  ): AppMenuItem<string, EventResourceMenuContext> {
+    return {
       id: `asset-explore-category-${option}`,
-      label: this.assetExploreCategoryLabel(option),
-      icon: this.assetExploreCategoryIcon(option),
+      label: AssetDefaultsBuilder.assetCategoryLabel(option),
+      icon: AssetDefaultsBuilder.assetCategoryIcon(option),
       kind: 'radio',
-      active: option === explore.category,
-      checked: option === explore.category,
+      active: option === activeCategory,
+      checked: option === activeCategory,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
       context: { menu: 'asset-explore-category', category: option }
-    }));
+    };
   }
 
   protected onEventResourceMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -1310,18 +1316,6 @@ export class EventResourcePopupComponent implements DoCheck {
 
   protected assetExploreHeaderStickyLabel(): string {
     return this.assetExploreStickyLabel || 'No items';
-  }
-
-  protected assetExploreCategoryClass(option: AppConstants.AssetCategory): string {
-    return AssetDefaultsBuilder.assetCategoryClass(option);
-  }
-
-  protected assetExploreCategoryIcon(option: AppConstants.AssetCategory): string {
-    return AssetDefaultsBuilder.assetCategoryIcon(option);
-  }
-
-  protected assetExploreCategoryLabel(option: AppConstants.AssetCategory): string {
-    return AssetDefaultsBuilder.assetCategoryLabel(option);
   }
 
   private resourceTypePalette(type: AppConstants.SubEventResourceFilter): AppMenuPalette {

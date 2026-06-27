@@ -2534,7 +2534,6 @@ export class SubEventResourcePopupController {
       subtitle: this.popupSubtitle(),
       type: popup.type,
       category: popup.category,
-      categoryDisplay: AssetDefaultsBuilder.assetCategoryLabel(popup.category),
       categoryOptions: [
         ...AssetDefaultsBuilder.assetCategoryOptions('Car'),
         ...AssetDefaultsBuilder.assetCategoryOptions('Accommodation'),
