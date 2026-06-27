@@ -19,7 +19,7 @@ import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
   type ActivityEventDTO,
-  type ActivityMembersSummary
+  type ActivityMembersSummaryDto
 } from '../../../shared/core/contracts/activity.interface';
 import type {
   ActivityRateDTO
@@ -2488,7 +2488,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private resolveActivityMembersPopupSummary(row: ActivityPopupEventCard): ActivityMembersSummary | null {
+  private resolveActivityMembersPopupSummary(row: ActivityPopupEventCard): ActivityMembersSummaryDto | null {
     const persistedSummary = this.activityMembersService.peekSummaryByOwner(this.activityMembersOwnerForRow(row));
     if (persistedSummary) {
       return {
@@ -2639,7 +2639,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.userById(normalizedUserId) ?? this.activeUser;
   }
 
-  private applyActivityMembersSummary(row: ActivityPopupEventCard, summary: ActivityMembersSummary): void {
+  private applyActivityMembersSummary(row: ActivityPopupEventCard, summary: ActivityMembersSummaryDto): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
     this.applyActivityMembersSummaryToRow(row, summary);
@@ -2686,7 +2686,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
   }
 
-  private applyActivityMembersSummaryToRow(row: ActivityPopupEventCard, summary: ActivityMembersSummary): void {
+  private applyActivityMembersSummaryToRow(row: ActivityPopupEventCard, summary: ActivityMembersSummaryDto): void {
     const dto = this.activityEventDTOForRow(row);
     if (!dto) {
       return;
@@ -3042,7 +3042,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const acceptedMemberUserIds = this.uniqueUserIds(persistedSummary?.acceptedMemberUserIds ?? []);
     const pendingMemberUserIds = this.uniqueUserIds(persistedSummary?.pendingMemberUserIds ?? [])
       .filter(userId => !acceptedMemberUserIds.includes(userId));
-    const summary: ActivityMembersSummary = {
+    const summary: ActivityMembersSummaryDto = {
       ownerType: 'event',
       ownerId: sync.id,
       acceptedMembers,

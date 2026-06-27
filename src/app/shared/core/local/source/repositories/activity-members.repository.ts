@@ -2,7 +2,7 @@ import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ActivityMemberOwnerRef, ActivityMembersSummary, UserGameMode, UserGameSocialCard } from '../../../contracts/activity.interface';
+import type { ActivityMemberOwnerRef, UserGameMode, UserGameSocialCard } from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
@@ -419,14 +419,13 @@ export class LocalActivityMembersRepository {
   replaceRecordsByOwner(
     owner: ActivityMemberOwnerRef,
     records: readonly ActivityMemberRecord[],
-    summary: ActivityMembersSummary,
-    syncUserIds = true
+    capacityTotal?: number | null
   ): void {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;
     }
-    this.writeOwnerRecords(normalizedOwner, records, summary, syncUserIds);
+    this.writeOwnerRecords(normalizedOwner, records, capacityTotal);
   }
 
   normalizeOwnerRef(owner: ActivityMemberOwnerRef | null | undefined): ActivityMemberOwnerRef | null {
@@ -498,8 +497,7 @@ export class LocalActivityMembersRepository {
   private writeOwnerRecords(
     owner: ActivityMemberOwnerRef,
     records: readonly ActivityMemberRecord[],
-    summary: ActivityMembersSummary,
-    syncUserIds = true
+    capacityTotal?: number | null
   ): void {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -548,13 +546,26 @@ export class LocalActivityMembersRepository {
       };
     });
 
-    this.ownerCapacityByKey.set(ownerKey, summary.capacityTotal);
+    const acceptedMembers = normalizedRecords.filter(record => record.status === 'accepted').length;
+    const pendingMembers = normalizedRecords.filter(record => record.status === 'pending').length;
+    const resolvedCapacityTotal = Math.max(
+      acceptedMembers,
+      this.normalizeMemberCount(capacityTotal) ?? this.resolveOwnerCapacityTotal(normalizedOwner, acceptedMembers)
+    );
+    this.ownerCapacityByKey.set(ownerKey, resolvedCapacityTotal);
     if (normalizedOwner.ownerType === 'event') {
-      this.syncSingleEventSummary(normalizedOwner.ownerId, summary, syncUserIds);
+      this.syncSingleEventMemberCounts(normalizedOwner.ownerId, {
+        acceptedMembers,
+        pendingMembers,
+        capacityTotal: resolvedCapacityTotal
+      });
     }
   }
 
-  private syncSingleEventSummary(eventId: string, summary: ActivityMembersSummary, syncUserIds: boolean): void {
+  private syncSingleEventMemberCounts(
+    eventId: string,
+    counts: { acceptedMembers: number; pendingMembers: number; capacityTotal: number }
+  ): void {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return;
@@ -571,9 +582,9 @@ export class LocalActivityMembersRepository {
         }
         nextById[id] = {
           ...current,
-          acceptedMembers: summary.acceptedMembers,
-          pendingMembers: summary.pendingMembers,
-          capacityTotal: Math.max(summary.acceptedMembers, summary.capacityTotal)
+          acceptedMembers: counts.acceptedMembers,
+          pendingMembers: counts.pendingMembers,
+          capacityTotal: Math.max(counts.acceptedMembers, counts.capacityTotal)
         };
         changed = true;
       }

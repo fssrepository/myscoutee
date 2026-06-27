@@ -5,7 +5,7 @@ import { LocalActivityMembersService } from '../../local/source/services/activit
 import { HttpActivityMembersService } from '../../http/services/activity-members.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 import type { ActivityMemberOwnerType } from '../../common/constants';
-import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
+import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
@@ -47,11 +47,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.queryMembersByOwner(owner);
   }
 
-  peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
+  peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
     return this.activityMembersService.peekSummaryByOwner(owner);
   }
 
-  peekSummaryByOwnerId(ownerId: string): ActivityMembersSummary | null {
+  peekSummaryByOwnerId(ownerId: string): ActivityMembersSummaryDto | null {
     const owner = this.peekOwnerRefById(ownerId);
     if (!owner) {
       return null;
@@ -59,11 +59,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.peekSummaryByOwner(owner);
   }
 
-  async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
+  async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummaryDto[]> {
     return this.activityMembersService.querySummariesByOwners(owners);
   }
 
-  async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummary | null> {
+  async querySummaryByOwnerId(ownerId: string): Promise<ActivityMembersSummaryDto | null> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return null;

@@ -1,10 +1,11 @@
 export {
   LocalActivityInviteCandidatesMapper,
-  LocalActivityMembersMapper,
+  LocalActivityMembersBuilder,
   LocalActivityResourcesMapper,
   type ActivityMemberProfileFallback,
   type ActivityMemberProfileResolver,
-  type LocalActivityInviteCandidateRecord
+  type LocalActivityInviteCandidateRecord,
+  type LocalActivityMembersOwnerSnapshot
 } from './activity.mapper';
 export { LocalContactsMapper } from './contacts.mapper';
 export { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';

@@ -4,7 +4,7 @@ import type { UserDto } from '../../../contracts/user.interface';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
+  ActivityMembersSummaryDto,
   ActivityInviteCandidatesQuery
 } from '../../../contracts/activity.interface';
 import type {
@@ -69,7 +69,19 @@ export type ActivityMemberProfileResolver = (
   fallback: ActivityMemberProfileFallback
 ) => UserDto;
 
-export class LocalActivityMembersMapper {
+export interface LocalActivityMembersOwnerSnapshot {
+  ownerType: ActivityMemberOwnerRef['ownerType'];
+  ownerId: string;
+  records: ActivityMemberRecord[];
+  acceptedMemberUserIds: string[];
+  pendingMemberUserIds: string[];
+  invitedMemberUserIds: string[];
+  pendingRequestMemberUserIds: string[];
+  adminUserIds: string[];
+  capacityTotal: number;
+}
+
+export class LocalActivityMembersBuilder {
   static toEntry(
     record: ActivityMemberRecord,
     resolveProfile: ActivityMemberProfileResolver
@@ -127,28 +139,46 @@ export class LocalActivityMembersMapper {
     };
   }
 
-  static recordsToSummary(
+  static recordsToOwnerSnapshot(
     owner: ActivityMemberOwnerRef,
     records: readonly ActivityMemberRecord[],
     capacityTotal?: number | null
-  ): ActivityMembersSummary {
+  ): LocalActivityMembersOwnerSnapshot {
     const normalizedOwner = this.normalizeOwner(owner);
-    const acceptedMemberUserIds = records
-      .filter(record => record.status === 'accepted')
-      .map(record => record.userId);
-    const pendingMemberUserIds = records
-      .filter(record => record.status === 'pending')
-      .map(record => record.userId);
-    const acceptedMembers = acceptedMemberUserIds.length;
-    const pendingMembers = pendingMemberUserIds.length;
+    const normalizedRecords = this.cloneRecords(records);
+    const acceptedMemberUserIds = this.memberUserIds(normalizedRecords, record => record.status === 'accepted');
+    const pendingMemberUserIds = this.memberUserIds(normalizedRecords, record => record.status === 'pending');
     return {
       ownerType: normalizedOwner.ownerType,
       ownerId: normalizedOwner.ownerId,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal: Math.max(acceptedMembers, this.normalizeCount(capacityTotal) ?? acceptedMembers),
-      acceptedMemberUserIds: [...acceptedMemberUserIds],
-      pendingMemberUserIds: [...pendingMemberUserIds]
+      records: normalizedRecords,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds: this.memberUserIds(
+        normalizedRecords,
+        record => record.status === 'pending' && this.isInvitationRecord(record)
+      ),
+      pendingRequestMemberUserIds: this.memberUserIds(
+        normalizedRecords,
+        record => record.status === 'pending' && !this.isInvitationRecord(record)
+      ),
+      adminUserIds: this.memberUserIds(
+        normalizedRecords,
+        record => record.status === 'accepted' && (record.role === 'Admin' || record.role === 'Manager')
+      ),
+      capacityTotal: Math.max(acceptedMemberUserIds.length, this.normalizeCount(capacityTotal) ?? acceptedMemberUserIds.length)
+    };
+  }
+
+  static ownerSnapshotToSummary(snapshot: LocalActivityMembersOwnerSnapshot): ActivityMembersSummaryDto {
+    return {
+      ownerType: snapshot.ownerType,
+      ownerId: snapshot.ownerId,
+      acceptedMembers: snapshot.acceptedMemberUserIds.length,
+      pendingMembers: snapshot.pendingMemberUserIds.length,
+      capacityTotal: Math.max(snapshot.acceptedMemberUserIds.length, this.normalizeCount(snapshot.capacityTotal) ?? 0),
+      acceptedMemberUserIds: [...snapshot.acceptedMemberUserIds],
+      pendingMemberUserIds: [...snapshot.pendingMemberUserIds]
     };
   }
 
@@ -177,6 +207,27 @@ export class LocalActivityMembersMapper {
 
   private static ownerKey(owner: ActivityMemberOwnerRef): string {
     return `${owner.ownerType}:${owner.ownerId}`;
+  }
+
+  private static memberUserIds(
+    records: readonly ActivityMemberRecord[],
+    predicate: (record: ActivityMemberRecord) => boolean
+  ): string[] {
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    for (const record of records) {
+      const userId = record.userId.trim();
+      if (!userId || seen.has(userId) || !predicate(record)) {
+        continue;
+      }
+      seen.add(userId);
+      ids.push(userId);
+    }
+    return ids;
+  }
+
+  private static isInvitationRecord(record: ActivityMemberRecord): boolean {
+    return record.requestKind === 'invite' || record.requestKind === 'waitlist-invite';
   }
 
   private static normalizeCount(value: unknown): number | null {

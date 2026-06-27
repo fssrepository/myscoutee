@@ -4,7 +4,7 @@ import type { UserDto } from '../../contracts/user.interface';
 import type {
   ActivityMemberEntry,
   ActivityMemberOwnerRef,
-  ActivityMembersSummary,
+  ActivityMembersSummaryDto,
 } from '../../contracts/activity.interface';
 import type {
   ActivityMemberStatus,
@@ -37,7 +37,7 @@ export class ActivityMembersBuilder {
       capacityByRowId: Record<string, string>;
       pendingMembersByRowId: Record<string, number>;
     }
-  ): ActivityMembersSummary | null {
+  ): ActivityMembersSummaryDto | null {
     const source = options.capacityByRowId[row.id];
     const pendingMembers = Math.max(0, Math.trunc(Number(options.pendingMembersByRowId[row.id]) || 0));
     const acceptedFromSource = Number(row.acceptedMembers);
@@ -96,7 +96,7 @@ export class ActivityMembersBuilder {
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityMemberEntry[],
     capacityTotal: number
-  ): ActivityMembersSummary {
+  ): ActivityMembersSummaryDto {
     const acceptedMemberUserIds = members
       .filter(member => member.status === 'accepted')
       .map(member => member.userId);

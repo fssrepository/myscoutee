@@ -101,7 +101,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private draftEventId: string | null = null;
   private currentSourcePublished = false;
   private publishedCapacityMaxFloor = 0;
-  private currentMemberSummary: ActivityContracts.ActivityMembersSummary | null = null;
+  private currentMemberSummary: ActivityContracts.ActivityMembersSummaryDto | null = null;
   private lastHandledActivityMembersSyncMs = 0;
   private pricingSlotCatalogCacheKey = '';
   private pricingSlotCatalogCache: ContractTypes.PricingSlotReference[] = [];
@@ -1592,7 +1592,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async resolveCurrentEventMembersSummary(
     eventId: string,
     normalizedCapacity: ContractTypes.EventCapacityRange
-  ): Promise<ActivityContracts.ActivityMembersSummary> {
+  ): Promise<ActivityContracts.ActivityMembersSummaryDto> {
     const queriedSummary = eventId ? await this.activityMembersService.querySummaryByOwnerId(eventId) : null;
     const summary = queriedSummary ?? this.currentMemberSummary;
     const acceptedMembers = summary?.acceptedMembers ?? 0;

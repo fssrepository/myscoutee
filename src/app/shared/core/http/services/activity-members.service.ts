@@ -2,7 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { ActivityMemberOwnerRef, ActivityMembersSummary } from '../../contracts/activity.interface';
+import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
@@ -12,7 +12,7 @@ export class HttpActivityMembersService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedMembersByOwnerKey: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
-  private readonly cachedSummariesByOwnerKey: Record<string, ActivityMembersSummary> = {};
+  private readonly cachedSummariesByOwnerKey: Record<string, ActivityMembersSummaryDto> = {};
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberEntry[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
@@ -43,7 +43,7 @@ export class HttpActivityMembersService {
     }
   }
 
-  peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
+  peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return null;
@@ -52,26 +52,26 @@ export class HttpActivityMembersService {
     return summary ? this.cloneSummary(summary) : null;
   }
 
-  async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
+  async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummaryDto[]> {
     const normalizedOwners = this.normalizeOwners(owners);
     if (normalizedOwners.length === 0) {
       return [];
     }
     try {
       const response = await this.http
-        .post<ActivityMembersSummary[] | null>(`${this.apiBaseUrl}/activities/events/members/summaries`, {
+        .post<ActivityMembersSummaryDto[] | null>(`${this.apiBaseUrl}/activities/events/members/summaries`, {
           owners: normalizedOwners
         })
         .toPromise();
       const summaries = (Array.isArray(response) ? response : [])
         .map(summary => this.normalizeSummary(summary))
-        .filter((summary): summary is ActivityMembersSummary => Boolean(summary));
+        .filter((summary): summary is ActivityMembersSummaryDto => Boolean(summary));
       this.cacheSummaries(summaries);
       return summaries.map(summary => this.cloneSummary(summary));
     } catch {
       return normalizedOwners
         .map(owner => this.peekSummaryByOwner(owner))
-        .filter((summary): summary is ActivityMembersSummary => Boolean(summary));
+        .filter((summary): summary is ActivityMembersSummaryDto => Boolean(summary));
     }
   }
 
@@ -177,7 +177,7 @@ export class HttpActivityMembersService {
     );
   }
 
-  private cacheSummaries(summaries: readonly ActivityMembersSummary[]): void {
+  private cacheSummaries(summaries: readonly ActivityMembersSummaryDto[]): void {
     for (const summary of summaries) {
       const normalizedSummary = this.normalizeSummary(summary);
       if (!normalizedSummary) {
@@ -191,7 +191,7 @@ export class HttpActivityMembersService {
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
-  ): ActivityMembersSummary {
+  ): ActivityMembersSummaryDto {
     const acceptedMemberUserIds = members
       .filter(member => member.status === 'accepted')
       .map(member => member.userId);
@@ -219,7 +219,7 @@ export class HttpActivityMembersService {
     return entries.map(entry => ({ ...entry }));
   }
 
-  private cloneSummary(summary: ActivityMembersSummary): ActivityMembersSummary {
+  private cloneSummary(summary: ActivityMembersSummaryDto): ActivityMembersSummaryDto {
     return {
       ...summary,
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
@@ -227,7 +227,7 @@ export class HttpActivityMembersService {
     };
   }
 
-  private normalizeSummary(summary: ActivityMembersSummary | null | undefined): ActivityMembersSummary | null {
+  private normalizeSummary(summary: ActivityMembersSummaryDto | null | undefined): ActivityMembersSummaryDto | null {
     const normalizedOwner = this.normalizeOwnerRef(summary);
     if (!normalizedOwner) {
       return null;

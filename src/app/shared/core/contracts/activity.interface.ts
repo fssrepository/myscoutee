@@ -933,7 +933,7 @@ export interface ActivityMemberOwnerRef {
   ownerId: string;
 }
 
-export interface ActivityMembersSummary {
+export interface ActivityMembersSummaryDto {
   ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
   acceptedMembers: number;
