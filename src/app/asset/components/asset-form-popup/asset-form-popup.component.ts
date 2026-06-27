@@ -1,13 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import type * as ContractTypes from '../../../shared/core/contracts';
-import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
+import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import {
   AppMenuComponent,
+  EditableImageCarouselComponent,
+  EventPoliciesInputComponent,
   LocationInputComponent,
+  type EventPoliciesInputConfig,
   type LocationInputConfig,
   PricingEditorInputComponent,
   ProgressIndicatorComponent,
@@ -22,7 +24,6 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 type AssetFormMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'type'; type: AppConstants.AssetType }
   | { menu: 'category'; category: AppConstants.AssetCategory }
   | { menu: 'save' };
 
@@ -34,6 +35,8 @@ type AssetFormMenuContext =
     FormsModule,
     MatIconModule,
     AppMenuComponent,
+    EditableImageCarouselComponent,
+    EventPoliciesInputComponent,
     LocationInputComponent,
     PricingEditorInputComponent,
     ProgressIndicatorComponent
@@ -41,7 +44,7 @@ type AssetFormMenuContext =
   templateUrl: './asset-form-popup.component.html',
   styleUrl: './asset-form-popup.component.scss'
 })
-export class AssetFormPopupComponent implements OnChanges {
+export class AssetFormPopupComponent {
   @Input() visible = false;
   @Input() title = '';
   @Input({ required: true }) assetForm!: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>;
@@ -50,10 +53,11 @@ export class AssetFormPopupComponent implements OnChanges {
   @Input() isSavePending = false;
   @Input() sourceRefreshEnabled = false;
   @Input() assetFormVisibility: AppConstants.EventVisibility = 'Invitation only';
-  @Input() assetTypeOptions: readonly AppConstants.AssetType[] = [];
   @Input() assetVisibilityOptions: readonly AppConstants.EventVisibility[] = [];
   @Input() assetFormRouteStops: string[] = [];
   @Input() isEventEditorReadOnly = false;
+  @Input() assetImageUploadOwnerId = '';
+  @Input() assetImageUploadEntityId = 'asset-draft';
   @Input({ required: true }) eventVisibilityClass!: (option: AppConstants.EventVisibility) => string;
   @Input({ required: true }) visibilityIcon!: (option: AppConstants.EventVisibility) => string;
   @Input({ required: true }) close!: () => void;
@@ -61,12 +65,8 @@ export class AssetFormPopupComponent implements OnChanges {
   @Input({ required: true }) setAssetFormVisibility!: (option: AppConstants.EventVisibility) => void;
   @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
   @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
-  @Input({ required: true }) onAssetImageFileSelected!: (file: File) => void;
-  protected showPoliciesPopup = false;
-  protected showPolicyEditorPopup = false;
-  protected workingPolicies: ContractTypes.EventPolicyDTO[] = [];
-  protected workingPolicyDraft: ContractTypes.EventPolicyDTO = this.createEmptyPolicyDraft();
-  protected editingPolicyDraftIndex: number | null = null;
+  private assetImageUrlsCacheKey = '';
+  private assetImageUrlsCache: string[] = [];
   protected readonly assetPricingEditorConfig: PricingEditorConfig = {
     context: 'asset',
     presentation: 'popup-summary',
@@ -81,12 +81,22 @@ export class AssetFormPopupComponent implements OnChanges {
     mapMode: 'search',
     mapAriaLabel: 'Open location on map'
   };
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['visible'] && changes['visible'].currentValue === true) {
-      this.showPolicyEditorPopup = false;
-    }
-  }
+  protected readonly assetPoliciesInputConfig: EventPoliciesInputConfig = {
+    title: 'Lending Policies',
+    subtitle: 'Add the rules borrowers need to read and approve before borrowing this asset.',
+    toggleable: false,
+    openLabel: 'Open Policy Setup',
+    viewLabel: 'View Policies',
+    emptyLabel: 'No lending policies yet. Add policies if borrowers must review terms before sending the request.',
+    readOnlyEmptyLabel: 'No lending policies are configured for this asset.',
+    popupSubtitle: 'Keep the list compact here. Open a policy to edit the details borrowers need to read and approve.',
+    editorSubtitle: 'Write the lending policy clearly and choose whether borrowers must approve it before sending the request.',
+    requiredApprovalLabel: 'Required approval',
+    optionalPolicyLabel: 'Optional policy',
+    requiredPreview: 'Borrowers must approve this lending policy before sending the request.',
+    optionalPreview: 'Optional lending policy shown during the request flow.',
+    requiredCheckboxLabel: 'Borrowers must approve this policy'
+  };
 
   protected requestClose(): void {
     if (this.isSavePending) {
@@ -96,7 +106,7 @@ export class AssetFormPopupComponent implements OnChanges {
   }
 
   protected submitForm(): void {
-    if (this.isLoading || !this.canSave || this.isSavePending) {
+    if (this.isLoading || !this.canSave || this.assetFormReadOnly()) {
       return;
     }
     void this.save();
@@ -108,7 +118,7 @@ export class AssetFormPopupComponent implements OnChanges {
       icon: 'done',
       layout: 'action',
       palette: this.canSave || this.isSavePending ? 'success' : 'danger',
-      disabled: !this.canSave || this.isSavePending || this.isLoading,
+      disabled: !this.canSave || this.assetFormReadOnly() || this.isLoading,
       ariaLabel: 'Save asset',
       progress: this.isSavePending
         ? {
@@ -125,7 +135,7 @@ export class AssetFormPopupComponent implements OnChanges {
       label: this.assetFormVisibility,
       icon: this.visibilityIcon(this.assetFormVisibility),
       palette: this.visibilityPalette(this.assetFormVisibility),
-      disabled: () => this.isSavePending || this.isLoading,
+      disabled: () => this.assetFormReadOnly() || this.isLoading,
       layout: 'pill',
       ariaLabel: 'Open asset visibility selector'
     };
@@ -140,33 +150,8 @@ export class AssetFormPopupComponent implements OnChanges {
       active: option === this.assetFormVisibility,
       palette: this.visibilityPalette(option),
       surface: 'tinted',
-      disabled: () => this.isSavePending || this.isLoading,
+      disabled: () => this.assetFormReadOnly() || this.isLoading,
       context: { menu: 'visibility', visibility: option }
-    }));
-  }
-
-  protected assetTypeMenuTrigger(): AppMenuTrigger {
-    return {
-      label: AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type),
-      icon: AssetDefaultsBuilder.assetTypeIcon(this.assetForm.type),
-      palette: this.assetTypePalette(this.assetForm.type),
-      layout: 'field',
-      disabled: () => this.isSavePending || this.isLoading,
-      ariaLabel: 'Open asset type'
-    };
-  }
-
-  protected assetTypeMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
-    return this.assetTypeOptions.map(option => ({
-      id: `asset-type-${option}`,
-      label: AssetDefaultsBuilder.assetTypeLabel(option),
-      icon: AssetDefaultsBuilder.assetTypeIcon(option),
-      kind: 'radio',
-      active: option === this.assetForm.type,
-      palette: this.assetTypePalette(option),
-      surface: 'tinted',
-      disabled: () => this.isSavePending || this.isLoading,
-      context: { menu: 'type', type: option }
     }));
   }
 
@@ -176,7 +161,7 @@ export class AssetFormPopupComponent implements OnChanges {
       icon: this.assetCategoryIcon(this.assetForm.category),
       palette: this.assetCategoryPalette(this.assetForm.category),
       layout: 'field',
-      disabled: () => this.isSavePending || this.isLoading,
+      disabled: () => this.assetFormReadOnly() || this.isLoading,
       ariaLabel: 'Open asset category'
     };
   }
@@ -190,13 +175,13 @@ export class AssetFormPopupComponent implements OnChanges {
       active: option === this.assetForm.category,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
-      disabled: () => this.isSavePending || this.isLoading,
+      disabled: () => this.assetFormReadOnly() || this.isLoading,
       context: { menu: 'category', category: option }
     }));
   }
 
   protected onAssetFormMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    if (this.isLoading || this.isSavePending) {
+    if (this.isLoading || this.assetFormReadOnly()) {
       return;
     }
     const context = event.context as AssetFormMenuContext | undefined;
@@ -205,10 +190,6 @@ export class AssetFormPopupComponent implements OnChanges {
     }
     if (context.menu === 'visibility') {
       this.setAssetFormVisibility(context.visibility);
-      return;
-    }
-    if (context.menu === 'type') {
-      this.onAssetTypeChange(context.type);
       return;
     }
     if (context.menu === 'save') {
@@ -234,121 +215,28 @@ export class AssetFormPopupComponent implements OnChanges {
     return AssetDefaultsBuilder.assetCategoryLabel(category);
   }
 
-  protected onAssetTypeChange(type: AppConstants.AssetType): void {
-    this.assetForm.type = type;
-    this.assetForm.category = AssetDefaultsBuilder.normalizeCategory(type, this.assetForm.category);
-    this.assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(type, this.assetForm.routes);
-  }
-
-  protected openPoliciesPopup(event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (this.isLoading || this.isSavePending) {
-      return;
+  protected assetImageUrls(): string[] {
+    const imageUrl = `${this.assetForm?.imageUrl ?? ''}`.trim();
+    if (this.assetImageUrlsCacheKey !== imageUrl) {
+      this.assetImageUrlsCacheKey = imageUrl;
+      this.assetImageUrlsCache = imageUrl ? [imageUrl] : [];
     }
-    this.showPoliciesPopup = true;
-    this.showPolicyEditorPopup = false;
-    this.editingPolicyDraftIndex = null;
-    this.workingPolicyDraft = this.createEmptyPolicyDraft();
-    this.workingPolicies = this.clonePolicies(this.assetForm.policies ?? []);
+    return this.assetImageUrlsCache;
   }
 
-  protected closePoliciesPopup(): void {
-    this.showPoliciesPopup = false;
-    this.closePolicyEditor();
-    this.workingPolicies = [];
+  protected onAssetImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
+    const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
+    this.assetForm.imageUrl = imageUrl;
+    this.assetImageUrlsCacheKey = imageUrl;
+    this.assetImageUrlsCache = imageUrl ? [imageUrl] : [];
   }
 
-  protected openPolicyEditor(index?: number, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (this.isLoading || this.isSavePending) {
-      return;
-    }
-    const source = typeof index === 'number'
-      ? this.workingPolicies[index] ?? null
-      : null;
-    this.editingPolicyDraftIndex = typeof index === 'number' ? index : null;
-    this.workingPolicyDraft = source
-      ? {
-          id: source.id?.trim() || `policy-${Date.now()}`,
-          title: source.title ?? '',
-          description: source.description ?? '',
-          required: source.required !== false
-        }
-      : this.createEmptyPolicyDraft();
-    this.showPolicyEditorPopup = true;
+  protected assetImageUploadEntity(): string {
+    return this.assetImageUploadEntityId.trim() || 'asset-draft';
   }
 
-  protected closePolicyEditor(): void {
-    this.showPolicyEditorPopup = false;
-    this.workingPolicyDraft = this.createEmptyPolicyDraft();
-    this.editingPolicyDraftIndex = null;
-  }
-
-  protected savePolicyDraft(): void {
-    if (this.isLoading || !this.canSavePolicyDraft() || this.isSavePending) {
-      return;
-    }
-    const nextItem: ContractTypes.EventPolicyDTO = {
-      id: this.workingPolicyDraft.id?.trim() || `policy-${Date.now()}`,
-      title: this.workingPolicyDraft.title.trim(),
-      description: this.workingPolicyDraft.description.trim(),
-      required: this.workingPolicyDraft.required !== false
-    };
-    if (this.editingPolicyDraftIndex !== null && this.editingPolicyDraftIndex >= 0 && this.editingPolicyDraftIndex < this.workingPolicies.length) {
-      this.workingPolicies = this.workingPolicies.map((item, index) => (
-        index === this.editingPolicyDraftIndex ? nextItem : item
-      ));
-    } else {
-      this.workingPolicies = [...this.workingPolicies, nextItem];
-    }
-    this.syncAssetPoliciesFromWorkingPolicies();
-    this.closePolicyEditor();
-  }
-
-  protected removePolicyDraft(index: number, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    if (this.isLoading || this.isSavePending || index < 0 || index >= this.workingPolicies.length) {
-      return;
-    }
-    this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
-    if (this.editingPolicyDraftIndex === index) {
-      this.closePolicyEditor();
-    }
-    this.syncAssetPoliciesFromWorkingPolicies();
-  }
-
-  protected policyPopupTitle(): string {
-    return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
-  }
-
-  protected policyCardMetaLabel(policy: ContractTypes.EventPolicyDTO): string {
-    return policy.required !== false ? 'Required approval' : 'Optional policy';
-  }
-
-  protected policyCardPreview(policy: ContractTypes.EventPolicyDTO): string {
-    const description = policy.description.trim();
-    if (description.length > 0) {
-      return description;
-    }
-    return policy.required !== false
-      ? 'Borrowers must approve this lending policy before sending the request.'
-      : 'Optional lending policy shown during the request flow.';
-  }
-
-  protected policiesCountLabel(): string {
-    const count = this.assetForm.policies?.length ?? 0;
-    return count === 1 ? '1 policy' : `${count} policies`;
-  }
-
-  protected requiredPoliciesCount(): number {
-    return (this.assetForm.policies ?? []).filter(item => item.required !== false).length;
-  }
-
-  protected canSavePolicyDraft(): boolean {
-    return this.workingPolicyDraft.title.trim().length > 0 || this.workingPolicyDraft.description.trim().length > 0;
+  protected assetFormReadOnly(): boolean {
+    return this.isSavePending || this.isEventEditorReadOnly;
   }
 
   protected isPropertyAssetForm(): boolean {
@@ -392,35 +280,4 @@ export class AssetFormPopupComponent implements OnChanges {
     return this.assetTypePalette(this.assetForm.type);
   }
 
-  protected onImageFileChange(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    const file = target.files?.[0];
-    if (!file) {
-      return;
-    }
-    this.onAssetImageFileSelected(file);
-    target.value = '';
-  }
-
-  private syncAssetPoliciesFromWorkingPolicies(): void {
-    this.assetForm.policies = this.clonePolicies(this.workingPolicies);
-  }
-
-  private createEmptyPolicyDraft(): ContractTypes.EventPolicyDTO {
-    return {
-      id: `policy-${Date.now()}`,
-      title: '',
-      description: '',
-      required: true
-    };
-  }
-
-  private clonePolicies(items: readonly ContractTypes.EventPolicyDTO[]): ContractTypes.EventPolicyDTO[] {
-    return items.map(item => ({
-      id: `${item.id ?? ''}`.trim(),
-      title: `${item.title ?? ''}`.trim(),
-      description: `${item.description ?? ''}`.trim(),
-      required: item.required !== false
-    })).filter(item => item.id || item.title || item.description);
-  }
 }

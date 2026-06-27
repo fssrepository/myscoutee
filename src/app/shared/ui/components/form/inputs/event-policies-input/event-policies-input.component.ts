@@ -11,6 +11,18 @@ export type EventPoliciesInputConfigValue<TValue> = TValue | (() => TValue);
 export interface EventPoliciesInputConfig {
   title?: EventPoliciesInputConfigValue<string>;
   subtitle?: EventPoliciesInputConfigValue<string>;
+  toggleable?: EventPoliciesInputConfigValue<boolean>;
+  openLabel?: EventPoliciesInputConfigValue<string>;
+  viewLabel?: EventPoliciesInputConfigValue<string>;
+  emptyLabel?: EventPoliciesInputConfigValue<string>;
+  readOnlyEmptyLabel?: EventPoliciesInputConfigValue<string>;
+  popupSubtitle?: EventPoliciesInputConfigValue<string>;
+  editorSubtitle?: EventPoliciesInputConfigValue<string>;
+  requiredApprovalLabel?: EventPoliciesInputConfigValue<string>;
+  optionalPolicyLabel?: EventPoliciesInputConfigValue<string>;
+  requiredPreview?: EventPoliciesInputConfigValue<string>;
+  optionalPreview?: EventPoliciesInputConfigValue<string>;
+  requiredCheckboxLabel?: EventPoliciesInputConfigValue<string>;
 }
 
 @Component({
@@ -105,12 +117,15 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected effectivePanelEnabled(): boolean {
+    if (!this.policiesToggleable()) {
+      return true;
+    }
     return this.readOnly ? this.enabled && this.policies.length > 0 : this.enabled;
   }
 
   protected togglePoliciesEnabled(event?: Event): void {
     event?.preventDefault();
-    if (this.readOnly) {
+    if (this.readOnly || !this.policiesToggleable()) {
       return;
     }
     const nextEnabled = !this.enabled;
@@ -207,7 +222,9 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected policyCardMetaLabel(policy: EventPolicyInputModel): string {
-    return policy.required !== false ? 'Required approval' : 'Optional policy';
+    return policy.required !== false
+      ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval')
+      : this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy');
   }
 
   protected policyCardPreview(policy: EventPolicyInputModel): string {
@@ -216,8 +233,45 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
       return description;
     }
     return policy.required !== false
-      ? 'Attendees must approve this policy before joining.'
-      : 'Optional policy shown during join or checkout.';
+      ? this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.')
+      : this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.');
+  }
+
+  protected policiesToggleable(): boolean {
+    return this.resolveConfigValue(this.config.toggleable, true);
+  }
+
+  protected openPoliciesLabel(): string {
+    return this.readOnly
+      ? this.resolveConfigValue(this.config.viewLabel, 'View Policies')
+      : this.resolveConfigValue(this.config.openLabel, 'Open Policy Setup');
+  }
+
+  protected emptyPoliciesLabel(): string {
+    return this.readOnly
+      ? this.resolveConfigValue(this.config.readOnlyEmptyLabel, 'No policies are configured for this event.')
+      : this.resolveConfigValue(
+          this.config.emptyLabel,
+          'No policies yet. Add policies if attendees must review terms before joining or booking.'
+        );
+  }
+
+  protected popupSubtitle(): string {
+    return this.resolveConfigValue(
+      this.config.popupSubtitle,
+      'Keep the list compact here. Open a policy to edit the details attendees need to read and approve.'
+    );
+  }
+
+  protected editorSubtitle(): string {
+    return this.resolveConfigValue(
+      this.config.editorSubtitle,
+      'Write the policy clearly and choose whether attendees must approve it before joining.'
+    );
+  }
+
+  protected requiredCheckboxLabel(): string {
+    return this.resolveConfigValue(this.config.requiredCheckboxLabel, 'Attendees must approve this policy');
   }
 
   protected canSavePolicyDraft(): boolean {

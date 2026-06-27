@@ -10,7 +10,7 @@
       <p class="event-policies-panel-subtitle">{{ panelSubtitle() }}</p>
       }
     </div>
-    @if (!readOnly) {
+    @if (!readOnly && policiesToggleable()) {
     <button
       type="button"
       class="event-policies-toggle"
@@ -27,7 +27,7 @@
   <div class="event-policies-panel-body">
     <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
       <mat-icon>gavel</mat-icon>
-      <span>{{ readOnly ? 'View Policies' : 'Open Policy Setup' }}</span>
+      <span>{{ openPoliciesLabel() }}</span>
     </button>
     <div class="event-slots-summary">
       <section class="event-slots-summary-block">
@@ -43,9 +43,7 @@
         </div>
         } @else {
         <p class="event-slots-summary-note">
-          {{ readOnly
-            ? 'No policies are configured for this event.'
-            : 'No policies yet. Add policies if attendees must review terms before joining or booking.' }}
+          {{ emptyPoliciesLabel() }}
         </p>
         }
       </section>
@@ -61,7 +59,7 @@
   <header class="event-slots-popup-head">
     <div class="event-slots-popup-copy">
       <span class="event-slots-popup-title">Policy Setup</span>
-      <span class="event-slots-popup-subtitle">Keep the list compact here. Open a policy to edit the details attendees need to read and approve.</span>
+      <span class="event-slots-popup-subtitle">{{ popupSubtitle() }}</span>
     </div>
     <div class="event-policies-popup-head-controls">
       @if (!readOnly) {
@@ -108,7 +106,7 @@
   <header class="event-slots-popup-head">
     <div class="event-slots-popup-copy">
       <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
-      <span class="event-slots-popup-subtitle">Write the policy clearly and choose whether attendees must approve it before joining.</span>
+      <span class="event-slots-popup-subtitle">{{ editorSubtitle() }}</span>
     </div>
     <div class="event-policies-popup-head-controls">
       @if (!readOnly) {
@@ -135,7 +133,7 @@
       </label>
       <label class="event-policy-check">
         <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="readOnly" />
-        <span>Attendees must approve this policy</span>
+        <span>{{ requiredCheckboxLabel() }}</span>
       </label>
     </article>
   </div>

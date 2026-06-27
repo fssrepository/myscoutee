@@ -146,10 +146,11 @@
                 [isSavePending]="ownedAssets.isAssetFormSavePending"
                 [sourceRefreshEnabled]="ownedAssets.canRefreshAssetFromSourceLink()"
                 [assetFormVisibility]="ownedAssets.assetFormVisibility"
-                [assetTypeOptions]="ownedAssets.assetTypeOptions"
                 [assetVisibilityOptions]="ownedAssets.assetVisibilityOptions"
                 [assetFormRouteStops]="ownedAssets.assetFormRouteStops()"
                 [isEventEditorReadOnly]="false"
+                [assetImageUploadOwnerId]="ownedAssets.assetFormImageUploadOwnerId()"
+                [assetImageUploadEntityId]="ownedAssets.assetFormImageUploadEntityId()"
                 [eventVisibilityClass]="ownedAssets.eventVisibilityClass"
                 [visibilityIcon]="ownedAssets.visibilityIcon"
                 [close]="closeOwnedAssetForm"
@@ -157,7 +158,6 @@
                 [setAssetFormVisibility]="ownedAssets.setAssetFormVisibility.bind(ownedAssets)"
                 [setAssetFormRouteStop]="setOwnedAssetFormRouteStop"
                 [refreshAssetFromSourceLink]="refreshOwnedAssetFromSourceLink"
-                [onAssetImageFileSelected]="onOwnedAssetImageFileSelected"
               ></app-asset-form-popup>
             }
             @if (!isBasketMode()) {

@@ -32,221 +32,104 @@
           ></app-progress-indicator>
         </div>
       } @else {
-      <section class="experience-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
-        <div class="experience-form-grid">
-          <label class="experience-description-field">
-            <span>Image</span>
-            <input #assetImageInput type="file" accept="image/*" hidden (change)="onImageFileChange($event)" />
-            <button type="button" class="asset-image-dropzone" [disabled]="isSavePending" (click)="assetImageInput.click()">
-              <div class="asset-image-preview" [style.backgroundImage]="assetForm.imageUrl ? 'url(' + assetForm.imageUrl + ')' : null">
-                @if (!isEventEditorReadOnly) {
-                  <span class="asset-image-plus">+</span>
-                }
+        <section class="experience-form-panel asset-form-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
+          <div class="asset-form-layout">
+            <div class="experience-form-grid asset-form-fields">
+              <div class="experience-description-field asset-image-field">
+                <app-editable-image-carousel
+                  class="asset-image-carousel"
+                  [slotCount]="1"
+                  [compact]="true"
+                  [autoSize]="true"
+                  ariaLabel="Asset image"
+                  [disabled]="assetFormReadOnly()"
+                  [uploadOwnerId]="assetImageUploadOwnerId"
+                  [uploadEntityId]="assetImageUploadEntity()"
+                  [ngModel]="assetImageUrls()"
+                  (ngModelChange)="onAssetImageUrlsChange($event)"
+                ></app-editable-image-carousel>
               </div>
-            </button>
-          </label>
-          <label class="experience-description-field">
-            <span>Source link</span>
-            <div class="asset-source-row">
-              <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="isSavePending" placeholder="https://..." />
-              @if (sourceRefreshEnabled) {
-                <button
-                  type="button"
-                  class="asset-source-refresh-btn"
-                  [disabled]="isSavePending"
-                  (click)="refreshAssetFromSourceLink()"
-                  aria-label="Refresh from source"
-                  >
-                  <mat-icon>refresh</mat-icon>
-                </button>
-              }
-            </div>
-          </label>
-          <label>
-            <span>Type</span>
-            <app-menu
-              class="asset-form-type-menu"
-              kind="select"
-              [trigger]="assetTypeMenuTrigger()"
-              [items]="assetTypeMenuItems()"
-              [mobileBreakpointPx]="900"
-              (itemSelect)="onAssetFormMenuSelect($event)"
-            ></app-menu>
-          </label>
-          <label>
-            <span>Title<span class="asset-form-required-marker">*</span></span>
-            <input type="text" [(ngModel)]="assetForm.title" [disabled]="isSavePending" />
-          </label>
-          <label>
-            <span>Subtitle</span>
-            <input type="text" [(ngModel)]="assetForm.subtitle" [disabled]="isSavePending" />
-          </label>
-          <label>
-            <span>Category</span>
-            <app-menu
-              class="asset-form-category-menu"
-              kind="select"
-              [trigger]="assetCategoryMenuTrigger()"
-              [items]="assetCategoryMenuItems()"
-              [mobileBreakpointPx]="900"
-              (itemSelect)="onAssetFormMenuSelect($event)"
-            ></app-menu>
-          </label>
-          <label>
-            <span>Total capacity<span class="asset-form-required-marker">*</span></span>
-            <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" [disabled]="isSavePending" />
-          </label>
-          <label>
-            <span>Quantity<span class="asset-form-required-marker">*</span></span>
-            <input type="number" min="1" step="1" [(ngModel)]="assetForm.quantity" [disabled]="isSavePending" />
-          </label>
-          <label class="experience-description-field">
-            <span>Details</span>
-            <textarea rows="3" [(ngModel)]="assetForm.details" [disabled]="isSavePending"></textarea>
-          </label>
-          <app-pricing-editor-input
-            class="experience-description-field asset-pricing-field"
-            [(ngModel)]="assetForm.pricing"
-            [config]="assetPricingEditorConfig"
-            [readOnly]="isSavePending"
-          ></app-pricing-editor-input>
-          <section class="event-policies-panel asset-policies-panel experience-description-field">
-            <div class="event-policies-panel-head">
-              <div class="event-policies-panel-title-wrap">
-                <span class="event-policies-panel-title">
-                  <mat-icon>policy</mat-icon>
-                  <span>Lending Policies</span>
-                </span>
-                <p class="event-policies-panel-subtitle">Add the rules borrowers need to read and approve before borrowing this asset.</p>
-              </div>
-            </div>
-            <div class="event-policies-panel-body">
-              <button
-                type="button"
-                class="event-slots-open-btn event-slots-open-btn-inline"
-                [disabled]="isSavePending"
-                (click)="openPoliciesPopup($event)"
-                >
-                <mat-icon>gavel</mat-icon>
-                <span>Open Policy Setup</span>
-              </button>
-              <div class="event-slots-summary">
-                <section class="event-slots-summary-block">
-                  <span class="event-slots-summary-label">Summary</span>
-                  @if ((assetForm.policies ?? []).length > 0) {
-                    <div class="event-slots-summary-list">
-                      <article class="event-slots-summary-item">
-                        <span class="event-slots-summary-title">{{ policiesCountLabel() }}</span>
-                        <span class="event-slots-summary-meta">
-                          {{ requiredPoliciesCount() }} required · {{ (assetForm.policies?.length ?? 0) - requiredPoliciesCount() }} optional
-                        </span>
-                      </article>
-                    </div>
-                  } @else {
-                    <p class="event-slots-summary-note">No lending policies yet. Add policies if borrowers must review terms before sending the request.</p>
-                  }
-                </section>
-              </div>
-            </div>
-          </section>
-          @if (isPropertyAssetForm()) {
-            <app-location-input
-              class="experience-description-field"
-              [ngModel]="assetFormRouteStops[0]"
-              (ngModelChange)="setAssetFormRouteStop(0, $event)"
-              [config]="assetLocationInputConfig"
-              [disabled]="isSavePending"
-            ></app-location-input>
-          }
-        </div>
-      </section>
-      }
 
-      @if (showPoliciesPopup) {
-        <div class="event-slots-popup-backdrop" (click)="closePoliciesPopup()"></div>
-        <section class="event-slots-popup event-policies-popup asset-policies-popup" role="dialog" aria-modal="true" aria-label="Lending policy setup">
-          <header class="event-slots-popup-head">
-            <div class="event-slots-popup-copy">
-              <span class="event-slots-popup-title">Policy Setup</span>
-              <span class="event-slots-popup-subtitle">Keep the list compact here. Open a policy to edit the details borrowers need to read and approve.</span>
+              <label class="asset-title-field">
+                <span>Title<span class="asset-form-required-marker">*</span></span>
+                <input type="text" [(ngModel)]="assetForm.title" [disabled]="assetFormReadOnly()" />
+              </label>
+              <label class="asset-subtitle-field">
+                <span>Subtitle</span>
+                <input type="text" [(ngModel)]="assetForm.subtitle" [disabled]="assetFormReadOnly()" />
+              </label>
+              <label class="asset-capacity-field">
+                <span>Total capacity<span class="asset-form-required-marker">*</span></span>
+                <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" [disabled]="assetFormReadOnly()" />
+              </label>
+              <label class="asset-quantity-field">
+                <span>Quantity<span class="asset-form-required-marker">*</span></span>
+                <input type="number" min="1" step="1" [(ngModel)]="assetForm.quantity" [disabled]="assetFormReadOnly()" />
+              </label>
             </div>
-            <div class="event-policies-popup-head-controls">
-              <button type="button" class="popup-header-add-btn event-slots-add-btn" [disabled]="isSavePending" (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
-                <mat-icon>add</mat-icon>
-              </button>
-              <button type="button" class="popup-close asset-form-close-btn" (click)="closePoliciesPopup()" aria-label="Close policy setup">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          </header>
 
-          <div class="event-slots-popup-body event-policies-popup-body">
-            <div class="event-policies-list event-policies-list-compact">
-              @for (policy of workingPolicies; track policy.id; let i = $index) {
-                <article class="event-policy-list-card" (click)="openPolicyEditor(i, $event)">
-                  <div class="event-policy-list-card-head">
-                    <div class="event-policy-list-card-copy">
-                      <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
-                      <span>{{ policyCardMetaLabel(policy) }}</span>
+            <div class="asset-form-wide">
+              <div class="experience-form-grid asset-form-wide-fields">
+                <div class="asset-meta-row">
+                  <label class="asset-source-field">
+                    <span>Source link</span>
+                    <div class="asset-source-row">
+                      <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="assetFormReadOnly()" placeholder="https://..." />
+                      @if (sourceRefreshEnabled) {
+                        <button
+                          type="button"
+                          class="asset-source-refresh-btn"
+                          [disabled]="assetFormReadOnly()"
+                          (click)="refreshAssetFromSourceLink()"
+                          aria-label="Refresh from source"
+                        >
+                          <mat-icon>refresh</mat-icon>
+                        </button>
+                      }
                     </div>
-                    <button type="button" class="event-slot-remove-btn" [disabled]="isSavePending" (click)="removePolicyDraft(i, $event)" aria-label="Remove policy">
-                      <mat-icon>delete</mat-icon>
-                    </button>
-                  </div>
-                  <p>{{ policyCardPreview(policy) }}</p>
-                </article>
-              }
-              @if (workingPolicies.length === 0) {
-                <div class="event-slot-empty-state event-policy-empty-state">
-                  <span>No policies yet.</span>
+                  </label>
+                  <label class="asset-category-field">
+                    <span>Category</span>
+                    <app-menu
+                      class="asset-form-category-menu"
+                      kind="select"
+                      [trigger]="assetCategoryMenuTrigger()"
+                      [items]="assetCategoryMenuItems()"
+                      [mobileBreakpointPx]="900"
+                      (itemSelect)="onAssetFormMenuSelect($event)"
+                    ></app-menu>
+                  </label>
                 </div>
-              }
+                <label class="experience-description-field">
+                  <span>Details</span>
+                  <textarea rows="4" [(ngModel)]="assetForm.details" [disabled]="assetFormReadOnly()"></textarea>
+                </label>
+                @if (isPropertyAssetForm()) {
+                  <app-location-input
+                    class="experience-description-field"
+                    [ngModel]="assetFormRouteStops[0]"
+                    (ngModelChange)="setAssetFormRouteStop(0, $event)"
+                    [config]="assetLocationInputConfig"
+                    [disabled]="assetFormReadOnly()"
+                  ></app-location-input>
+                }
+                <app-pricing-editor-input
+                  class="experience-description-field asset-pricing-field"
+                  [(ngModel)]="assetForm.pricing"
+                  [config]="assetPricingEditorConfig"
+                  [readOnly]="assetFormReadOnly()"
+                ></app-pricing-editor-input>
+                <app-event-policies-input
+                  class="experience-description-field asset-policies-input"
+                  [(ngModel)]="assetForm.policies"
+                  [enabled]="true"
+                  [readOnly]="assetFormReadOnly()"
+                  [config]="assetPoliciesInputConfig"
+                ></app-event-policies-input>
+              </div>
             </div>
           </div>
         </section>
-        @if (showPolicyEditorPopup) {
-          <div class="event-policy-editor-backdrop" (click)="closePolicyEditor()"></div>
-          <section class="event-slots-popup event-policy-editor-popup asset-policy-editor-popup" role="dialog" aria-modal="true" aria-label="Edit lending policy">
-            <header class="event-slots-popup-head">
-              <div class="event-slots-popup-copy">
-                <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
-                <span class="event-slots-popup-subtitle">Write the lending policy clearly and choose whether borrowers must approve it before sending the request.</span>
-              </div>
-              <div class="event-policies-popup-head-controls">
-                <button
-                  type="button"
-                  class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
-                  [class.form-save-invalid]="!canSavePolicyDraft()"
-                  [disabled]="!canSavePolicyDraft() || isSavePending"
-                  (click)="savePolicyDraft()"
-                  aria-label="Save policy"
-                >
-                  <mat-icon>done</mat-icon>
-                </button>
-                <button type="button" class="popup-close asset-form-close-btn" (click)="closePolicyEditor()" aria-label="Close policy form">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            </header>
-
-            <div class="event-slots-popup-body event-policy-editor-body">
-              <article class="event-policy-card">
-                <label class="event-policy-field">
-                  <span>Title</span>
-                  <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="isSavePending" placeholder="Policy title" />
-                </label>
-                <label class="event-policy-field">
-                  <span>Description</span>
-                  <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="isSavePending" placeholder="Explain the lending policy clearly."></textarea>
-                </label>
-                <label class="event-policy-check">
-                  <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="isSavePending" />
-                  <span>Borrowers must approve this policy</span>
-                </label>
-              </article>
-            </div>
-          </section>
-        }
       }
     </div>
   </section>
