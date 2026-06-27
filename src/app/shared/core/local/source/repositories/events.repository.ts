@@ -6,18 +6,15 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
-import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from '../mappers/event.mapper';
+import { ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
 import {
   ActivityEventDetailDTO,
-  type ActivityEventActivitiesListQueryResult,
   type ActivityEventActivitiesQuery,
   type ActivityEventExploreQuery,
   type ActivityEventExploreQueryResult,
   type ActivityEventRecord,
   type ActivityEventSubEventRuntimeDTO,
   type ActivityEventSubEventsQueryDTO,
-  type ActivityEventSubEventsResultDTO,
   type ActivityEventScopeFilter,
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
@@ -34,6 +31,17 @@ interface ActivityEventActivitiesCursor {
   distanceMeters: number;
   boost: number;
   startAtMs: number;
+}
+
+interface ActivityEventActivitiesRecordQueryResult {
+  records: ActivityEventRecord[];
+  total: number;
+  nextCursor: string | null;
+}
+
+interface ActivityEventSubEventsRecordResult {
+  event: ActivityEventRecord;
+  items: ActivityEventSubEventRuntimeDTO[];
 }
 
 type ActivityEventExploreSortTuple = readonly [number, number, number, number];
@@ -313,7 +321,7 @@ export class LocalEventsRepository {
     return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId);
   }
 
-  queryActivitiesEventListPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesListQueryResult {
+  queryActivitiesEventRecordPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesRecordQueryResult {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return {
@@ -337,7 +345,7 @@ export class LocalEventsRepository {
 
     if (query.view === 'week' || query.view === 'month') {
       return {
-        records: normalizedRecords.map(record => LocalActivityEventsMapper.toDto(record)),
+        records: normalizedRecords,
         total,
         nextCursor: null
       };
@@ -354,7 +362,7 @@ export class LocalEventsRepository {
       : null;
 
     return {
-      records: records.map(record => LocalActivityEventsMapper.toDto(record)),
+      records,
       total,
       nextCursor
     };
@@ -375,11 +383,11 @@ export class LocalEventsRepository {
       }
       const existing = byEventId.get(record.id);
       if (!existing || this.shouldPreferExploreRecord(record, existing)) {
-        byEventId.set(record.id, this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
+        byEventId.set(record.id, this.withResolvedSlotContext(record, table));
       }
     }
 
-    return [...byEventId.values()].map(record => ActivityEventRecordBuilder.cloneRecord(record));
+    return [...byEventId.values()];
   }
 
   queryEventRecordById(userId: string, eventId: string): ActivityEventRecord | null {
@@ -395,7 +403,7 @@ export class LocalEventsRepository {
     }
     const viewerCoordinates = this.queryUserLocationCoordinates(userId);
     return this.withResolvedDistance(
-      this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table),
+      this.withResolvedSlotContext(record, table),
       viewerCoordinates
     );
   }
@@ -404,7 +412,7 @@ export class LocalEventsRepository {
     userId: string,
     eventId: string,
     query?: ActivityEventSubEventsQueryDTO
-  ): ActivityEventSubEventsResultDTO | null {
+  ): ActivityEventSubEventsRecordResult | null {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -421,11 +429,9 @@ export class LocalEventsRepository {
     const parentRecord = preferredRecords.find(item => item.id === parentEventId && !this.isGeneratedSlotRecord(item))
       ?? selectedRecord;
     const viewerCoordinates = this.queryUserLocationCoordinates(userId);
-    const event = LocalActivityEventDetailsMapper.toDto(
-      this.withResolvedDistance(
-        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(parentRecord), table),
-        viewerCoordinates
-      )
+    const event = this.withResolvedDistance(
+      this.withResolvedSlotContext(parentRecord, table),
+      viewerCoordinates
     );
     const allGeneratedSlots = preferredRecords
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
@@ -586,66 +592,16 @@ export class LocalEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: ActivityEventDetailDTO): ActivityEventRecord | null {
-    const normalizedId = payload.id.trim();
-    const creatorUserId = payload.creatorUserId?.trim() ?? '';
-    if (!normalizedId || !creatorUserId) {
+  saveEventSnapshot(record: ActivityEventRecord): ActivityEventRecord | null {
+    if (!record.id || !record.creatorUserId) {
       return null;
     }
-
-    const creatorName = payload.creatorName?.trim() || 'Unknown Host';
-    const creatorInitials = payload.creatorInitials?.trim() || AppUtils.initialsFromText(creatorName);
-    const startAtIso = payload.startAtIso?.trim() || new Date().toISOString();
-    const endAtIso = payload.endAtIso?.trim()
-      || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
-    const normalizedPayload = payload.clone().apply({
-      id: normalizedId,
-      creatorUserId
-    });
-    const acceptedMembers = this.normalizeCount(normalizedPayload.acceptedMembers)
-      ?? this.eventMemberUserIdsByStatus(normalizedId, 'accepted').length;
-    const pendingMembers = this.normalizeCount(normalizedPayload.pendingMembers)
-      ?? this.eventMemberUserIdsByStatus(normalizedId, 'pending').length;
-    const capacityTotal = Math.max(
-      acceptedMembers,
-      this.normalizeCount(normalizedPayload.capacityTotal)
-        ?? this.normalizeCount(normalizedPayload.capacityMax)
-        ?? acceptedMembers
-    );
-    const existing = this.findItem(creatorUserId, normalizedId);
-    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
-    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'accepted');
-    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'pending');
-    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
-      member.status === 'pending' && this.isInvitationMember(member)
-    );
-    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
-      member.status === 'pending' && !this.isInvitationMember(member)
-    );
-    const baseRecord = LocalActivityEventDetailsMapper.toRecord(normalizedPayload, {
-      existing,
-      userId: creatorUserId,
-      creatorName,
-      creatorInitials,
-      startAtIso,
-      endAtIso,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal,
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      invitedMemberUserIds,
-      pendingRequestMemberUserIds,
-      creator: usersTable.byId[creatorUserId] ?? null,
-      acceptedUsers: acceptedMemberUserIds.map(userId => usersTable.byId[userId] ?? null)
-    });
 
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
       const nextById = { ...table.byId };
       const nextIds = [...table.ids];
-      this.upsertRecord(nextById, nextIds, baseRecord);
+      this.upsertRecord(nextById, nextIds, record);
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
@@ -655,7 +611,7 @@ export class LocalEventsRepository {
       };
     });
     this.materializeSlotRecords();
-    return this.peekKnownItemById(creatorUserId, normalizedId);
+    return this.peekKnownItemById(record.creatorUserId, record.id);
   }
 
   trashItem(userId: string, sourceId: string): void {
@@ -1306,7 +1262,7 @@ export class LocalEventsRepository {
       return null;
     }
     const record = this.memoryDb.read()[EVENTS_TABLE_NAME].byId[recordKey];
-    return record ? ActivityEventRecordBuilder.cloneRecord(record) : null;
+    return record ? record : null;
   }
 
   private resolveRecordKey(
@@ -1347,7 +1303,7 @@ export class LocalEventsRepository {
       .filter((record): record is ActivityEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
-      .map(record => this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
+      .map(record => this.withResolvedSlotContext(record, table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
@@ -1390,7 +1346,7 @@ export class LocalEventsRepository {
         continue;
       }
       recordsByUserId.get(recordUserId)?.push(
-        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table)
+        this.withResolvedSlotContext(record, table)
       );
       const directIds = directIdsByUserId.get(recordUserId) ?? new Set<string>();
       directIds.add(record.id);
@@ -1415,7 +1371,7 @@ export class LocalEventsRepository {
     const normalizedUserId = userId.trim();
     const pending = this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId);
     return {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
+      ...record,
       userId,
       type: 'events',
       pendingReason: pending ? (record.pendingReason ?? 'approval') : null
@@ -1514,11 +1470,11 @@ export class LocalEventsRepository {
   ): ActivityEventRecord {
     const eventCoordinates = this.normalizeLocationCoordinates(record.locationCoordinates);
     if (!viewerCoordinates || !eventCoordinates) {
-      return ActivityEventRecordBuilder.cloneRecord(record);
+      return record;
     }
     const distanceMeters = this.haversineDistanceMeters(viewerCoordinates, eventCoordinates);
     return {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
+      ...record,
       distanceKm: Math.round((distanceMeters / 1000) * 10) / 10
     };
   }
@@ -1564,7 +1520,7 @@ export class LocalEventsRepository {
     query: ActivityEventActivitiesQuery
   ): number {
     const cursorRecord: ActivityEventRecord = {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
+      ...record,
       id: cursor.id,
       distanceKm: cursor.distanceMeters / 1000,
       boost: cursor.boost,
@@ -1875,8 +1831,8 @@ export class LocalEventsRepository {
     ids: string[],
     record: ActivityEventRecord
   ): void {
-    const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
-    byId[recordKey] = ActivityEventRecordBuilder.cloneRecord(record);
+    const recordKey = `${record.userId}:${record.type}:${record.id}`;
+    byId[recordKey] = record;
     if (!ids.includes(recordKey)) {
       ids.push(recordKey);
     }
@@ -2558,14 +2514,14 @@ export class LocalEventsRepository {
         if (!desired) {
           return true;
         }
-        return recordKey !== ActivityEventRecordBuilder.buildRecordKey(desired.userId, desired.type, desired.id);
+        return recordKey !== `${desired.userId}:${desired.type}:${desired.id}`;
       });
       for (const recordKey of staleRecordKeys) {
         delete nextById[recordKey];
         changed = true;
       }
       for (const record of generatedRecords) {
-        const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
+        const recordKey = `${record.userId}:${record.type}:${record.id}`;
         const current = nextById[recordKey];
         if (!current || JSON.stringify(current) !== JSON.stringify(record)) {
           nextById[recordKey] = record;

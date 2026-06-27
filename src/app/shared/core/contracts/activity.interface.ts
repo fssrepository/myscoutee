@@ -237,6 +237,19 @@ export interface ActivityEventStageActionResultDTO {
   autoInviter?: boolean | null;
 }
 
+export interface EventParticipationActionResultDTO {
+  sourceId: string;
+  slotSourceId?: string | null;
+  action: 'join' | string;
+  membershipStatus: 'accepted' | 'pending' | 'unchanged' | string;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  full: boolean;
+  paymentSessionId?: string | null;
+}
+
 export interface ActivityEventDTO {
   id: string;
   userId: string;
@@ -856,12 +869,6 @@ export interface ActivityEventActivitiesQuery {
   anchorDate?: string;
   rangeStart?: string;
   rangeEnd?: string;
-}
-
-export interface ActivityEventActivitiesListQueryResult {
-  records: ActivityEventDTO[];
-  total: number;
-  nextCursor: string | null;
 }
 
 export interface ActivityMemberEntry {

@@ -19,6 +19,7 @@ import type {
   EventCheckoutSession,
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
+  EventParticipationActionResultDTO,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
@@ -28,7 +29,6 @@ import type {
 import { LocalEventsService } from '../../local';
 import { HttpEventsService } from '../../http';
 import type {
-  ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
   ActivityEventDTO,
@@ -83,16 +83,6 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.eventsService.queryTrashedItemsByUser(userId);
-  }
-
-  async queryActivitiesEventListPage(
-    query: ActivityEventActivitiesQuery,
-    signal?: AbortSignal
-  ): Promise<ActivityEventActivitiesListQueryResult> {
-    if (this.isLocalRouteEnabled('/activities/events')) {
-      return this.localEventsService.queryActivitiesEventListPage(query, signal);
-    }
-    return this.httpEventsService.queryActivitiesEventListPage(query, signal);
   }
 
   async queryActivitiesEventDTOPage(
@@ -275,7 +265,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
     } = {}
-  ): Promise<ActivityEventRecord | null> {
+  ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
   }
 

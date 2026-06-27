@@ -1,9 +1,8 @@
 import type { DtoListMapper, DtoMapper } from '../../../base/mappers/mapper.types';
 import { AppUtils } from '../../../../app-utils';
-import { ActivityEventRecordBuilder, PricingBuilder } from '../../../base/builders';
+import { PricingBuilder } from '../../../base/builders';
 import {
   ActivityEventDetailDTO,
-  type ActivityEventActivitiesListQueryResult,
   type ActivityEventDTO,
   type ActivityEventRecord,
   type ActivityEventPageResultDTO
@@ -11,25 +10,7 @@ import {
 import type * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
-import type { LocationCoordinates, UserDto } from '../../../contracts/user.interface';
-
-interface LocalActivityEventToRecordContext {
-  existing?: ActivityEventRecord | null;
-  userId: string;
-  creatorName: string;
-  creatorInitials: string;
-  startAtIso: string;
-  endAtIso: string;
-  acceptedMembers: number;
-  pendingMembers: number;
-  capacityTotal: number;
-  acceptedMemberUserIds: readonly string[];
-  pendingMemberUserIds: readonly string[];
-  invitedMemberUserIds: readonly string[];
-  pendingRequestMemberUserIds: readonly string[];
-  creator?: Partial<UserDto> | null;
-  acceptedUsers?: ReadonlyArray<Partial<UserDto> | null | undefined>;
-}
+import type { LocationCoordinates } from '../../../contracts/user.interface';
 
 export class LocalActivityEventsMapper {
   static toDto(record: ActivityEventRecord): ActivityEventDTO {
@@ -73,9 +54,13 @@ export class LocalActivityEventsMapper {
     return records.map(record => this.toDto(record));
   }
 
-  static toDtoPage(page: ActivityEventActivitiesListQueryResult): ActivityEventPageResultDTO {
+  static toDtoPage(page: {
+    records: readonly ActivityEventRecord[];
+    total: number;
+    nextCursor?: string | null;
+  }): ActivityEventPageResultDTO {
     return {
-      items: page.records.map(item => ({ ...item })),
+      items: page.records.map(record => this.toDto(record)),
       total: page.total,
       nextCursor: page.nextCursor
     };
@@ -83,82 +68,90 @@ export class LocalActivityEventsMapper {
 }
 
 export class LocalActivityEventDetailsMapper {
-  static toRecord(payload: ActivityEventDetailDTO, context: LocalActivityEventToRecordContext): ActivityEventRecord {
-    const existing = context.existing ?? null;
+  static toRecord(payload: ActivityEventDetailDTO): ActivityEventRecord {
     const id = payload.id.trim();
-    const title = payload.title.trim() || existing?.title.trim() || 'Untitled draft event';
-    const subtitle = payload.subtitle.trim() || existing?.subtitle.trim() || 'Draft event in progress';
-    const type = this.normalizeRepositoryItemType(payload.type ?? existing?.type);
-    const visibility = this.normalizeVisibility(payload.visibility ?? existing?.visibility);
-    const blindMode = this.normalizeBlindMode(payload.blindMode ?? existing?.blindMode);
-    const frequency = this.normalizeFrequency(payload.frequency ?? existing?.frequency);
-    const hasSlots = payload.slotsEnabled ?? existing?.slotsEnabled ?? false;
-    const topics = this.normalizeTopics(payload.topics ?? existing?.topics ?? []);
-    const slotTemplates = hasSlots ? this.normalizeSlotTemplates(payload.slotTemplates ?? existing?.slotTemplates ?? []) : [];
-    const subEventsEnabled = payload.subEventsEnabled ?? existing?.subEventsEnabled ?? true;
-    const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions ?? existing?.subEventDefinitions ?? []);
-    const subEvents = this.normalizeSubEvents(payload.subEvents ?? existing?.subEvents ?? []);
+    const creatorUserId = payload.creatorUserId.trim() || payload.userId.trim();
+    const creatorName = payload.creatorName.trim() || 'Unknown Host';
+    const creatorInitials = payload.creatorInitials.trim() || AppUtils.initialsFromText(creatorName);
+    const startAtIso = payload.startAtIso.trim() || new Date().toISOString();
+    const endAtIso = payload.endAtIso.trim()
+      || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
+    const title = payload.title.trim() || 'Untitled draft event';
+    const subtitle = payload.subtitle.trim() || 'Draft event in progress';
+    const type = this.normalizeRepositoryItemType(payload.type);
+    const visibility = this.normalizeVisibility(payload.visibility);
+    const blindMode = this.normalizeBlindMode(payload.blindMode);
+    const frequency = this.normalizeFrequency(payload.frequency);
+    const hasSlots = payload.slotsEnabled === true;
+    const topics = this.normalizeTopics(payload.topics);
+    const slotTemplates = hasSlots ? this.normalizeSlotTemplates(payload.slotTemplates) : [];
+    const subEventsEnabled = payload.subEventsEnabled !== false;
+    const subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(payload.subEventDefinitions);
+    const subEvents = this.normalizeSubEvents(payload.subEvents);
     const policiesEnabled = payload.policiesEnabled === true;
-    const policies = this.normalizePolicies(payload.policies ?? existing?.policies ?? []);
+    const policies = this.normalizePolicies(payload.policies);
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
-    const ticketing = payload.ticketing ?? existing?.ticketing ?? false;
+    const ticketing = payload.ticketing === true;
     const pricing = PricingBuilder.syncSlotOverrides(
-      PricingBuilder.normalizePricingConfig(payload.pricing ?? existing?.pricing, {
+      PricingBuilder.normalizePricingConfig(payload.pricing, {
         context: 'event',
         slotCatalog
       }),
       slotCatalog
     );
-    const rating = existing?.rating ?? (6 + ((AppUtils.hashText(`${id}:${title}`) % 35) / 10));
-    const boost = existing?.boost ?? (50 + (AppUtils.hashText(`${id}:${title}`) % 51));
-    const affinity = ActivityEventRecordBuilder.resolveEventAffinity({
+    const acceptedMembers = this.nonNegativeInteger(payload.acceptedMembers);
+    const pendingMembers = this.nonNegativeInteger(payload.pendingMembers);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.normalizeCount(payload.capacityTotal)
+        ?? this.normalizeCount(payload.capacityMax)
+        ?? acceptedMembers
+    );
+    const rating = this.nonNegativeInteger(payload.rating) || (6 + ((AppUtils.hashText(`${id}:${title}`) % 35) / 10));
+    const boost = this.nonNegativeInteger(payload.boost) || (50 + (AppUtils.hashText(`${id}:${title}`) % 51));
+    const affinity = this.nonNegativeInteger(payload.affinity) || this.resolveEventAffinity({
       id,
       title,
       subtitle,
       topics,
       visibility,
       blindMode,
-      creator: context.creator,
-      acceptedUsers: context.acceptedUsers,
       rating,
-      acceptedMembers: context.acceptedMembers,
-      capacityTotal: context.capacityTotal
+      acceptedMembers,
+      capacityTotal
     });
 
     return {
       id,
-      userId: context.userId,
+      userId: payload.userId.trim() || creatorUserId,
       type,
-      status: this.normalizeEventStatus(payload.status ?? existing?.status),
-      avatar: context.creatorInitials,
+      status: this.normalizeEventStatus(payload.status),
+      avatar: payload.avatar.trim() || creatorInitials,
       title,
       subtitle,
-      timeframe: payload.timeframe.trim() || existing?.timeframe.trim() || this.buildTimeframeLabel(context.startAtIso, context.endAtIso, frequency),
-      inviter: null,
-      unread: 0,
+      timeframe: payload.timeframe.trim() || this.buildTimeframeLabel(startAtIso, endAtIso, frequency),
+      inviter: payload.inviter ?? null,
+      unread: this.nonNegativeInteger(payload.unread),
       activity: this.nonNegativeInteger(payload.activity),
-      trashedAtIso: existing?.trashedAtIso ?? null,
-      creatorUserId: context.userId,
-      creatorName: context.creatorName,
-      creatorInitials: context.creatorInitials,
-      creatorGender: payload.creatorGender ?? existing?.creatorGender ?? 'man',
-      creatorCity: payload.creatorCity ?? existing?.creatorCity ?? '',
+      trashedAtIso: payload.trashedAtIso ?? null,
+      creatorUserId,
+      creatorName,
+      creatorInitials,
+      creatorGender: payload.creatorGender ?? 'man',
+      creatorCity: payload.creatorCity,
       visibility,
       blindMode,
-      startAtIso: context.startAtIso,
-      endAtIso: context.endAtIso,
+      startAtIso,
+      endAtIso,
       distanceKm: Math.max(0, Number(payload.distanceKm) || 0),
       imageUrl: payload.imageUrl.trim(),
-      sourceLink: payload.sourceLink?.trim() || existing?.sourceLink || '',
-      location: this.normalizeLocation(payload.location) || existing?.location || '',
-      locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates)
-        ?? this.normalizeLocationCoordinates(existing?.locationCoordinates),
-      capacityMin: this.normalizeCount(payload.capacityMin) ?? existing?.capacityMin ?? 0,
-      capacityMax: this.normalizeCount(payload.capacityMax) ?? existing?.capacityMax ?? context.capacityTotal,
-      capacityTotal: context.capacityTotal,
-      autoInviter: typeof payload.autoInviter === 'boolean'
-        ? payload.autoInviter
-        : (typeof existing?.autoInviter === 'boolean' ? existing.autoInviter : false),
+      sourceLink: payload.sourceLink.trim(),
+      location: this.normalizeLocation(payload.location),
+      locationCoordinates: this.normalizeLocationCoordinates(payload.locationCoordinates),
+      capacityMin: this.normalizeCount(payload.capacityMin) ?? 0,
+      capacityMax: this.normalizeCount(payload.capacityMax) ?? capacityTotal,
+      capacityTotal,
+      autoInviter: payload.autoInviter === true,
       frequency,
       ticketing,
       pricing,
@@ -166,26 +159,26 @@ export class LocalActivityEventDetailsMapper {
       policies,
       slotsEnabled: hasSlots,
       slotTemplates,
-      parentEventId: payload.parentEventId ?? existing?.parentEventId ?? null,
-      slotTemplateId: payload.slotTemplateId ?? existing?.slotTemplateId ?? null,
-      generated: payload.generated ?? existing?.generated ?? false,
-      eventType: payload.eventType ?? existing?.eventType ?? 'main',
-      nextSlot: payload.nextSlot ? { ...payload.nextSlot } : (existing?.nextSlot ? { ...existing.nextSlot } : null),
-      upcomingSlots: (payload.upcomingSlots ?? existing?.upcomingSlots ?? []).map(item => ({ ...item })),
-      acceptedMembers: context.acceptedMembers,
-      pendingMembers: context.pendingMembers,
-      acceptedMemberUserIds: [...context.acceptedMemberUserIds],
-      pendingMemberUserIds: [...context.pendingMemberUserIds],
-      invitedMemberUserIds: [...context.invitedMemberUserIds],
-      pendingRequestMemberUserIds: [...context.pendingRequestMemberUserIds],
+      parentEventId: payload.parentEventId ?? null,
+      slotTemplateId: payload.slotTemplateId ?? null,
+      generated: payload.generated === true,
+      eventType: payload.eventType ?? 'main',
+      nextSlot: payload.nextSlot ? { ...payload.nextSlot } : null,
+      upcomingSlots: payload.upcomingSlots.map(item => ({ ...item })),
+      acceptedMembers,
+      pendingMembers,
+      acceptedMemberUserIds: [...payload.acceptedMemberUserIds],
+      pendingMemberUserIds: [...payload.pendingMemberUserIds],
+      invitedMemberUserIds: [...payload.invitedMemberUserIds],
+      pendingRequestMemberUserIds: [...payload.pendingRequestMemberUserIds],
+      pendingReason: payload.pendingReason,
       topics,
       subEventsEnabled,
       subEventDefinitions,
       subEvents,
-      mode: ActivityEventRecordBuilder.normalizeEventMode(
+      mode: this.normalizeEventMode(
         payload.mode
-          ?? existing?.mode
-          ?? ActivityEventRecordBuilder.inferredEventMode(subEvents)
+          ?? this.inferredEventMode(subEvents)
       ),
       rating,
       boost,
@@ -251,12 +244,64 @@ export class LocalActivityEventDetailsMapper {
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: record.subEventDefinitions ?? [],
       subEvents: record.subEvents ?? [],
-      mode: ActivityEventRecordBuilder.normalizeEventMode(record.mode),
+      mode: this.normalizeEventMode(record.mode),
       rating: record.rating,
       boost: record.boost,
       affinity: record.affinity,
       paymentSessionId: null
     });
+  }
+
+  private static inferredEventMode(items: readonly { optional?: boolean; groups?: readonly unknown[] }[]): EventContracts.EventMode {
+    if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
+      return 'Tournament';
+    }
+    return 'Casual';
+  }
+
+  private static normalizeEventMode(value: unknown): EventContracts.EventMode {
+    return `${value ?? ''}`.trim().toLowerCase() === 'tournament' ? 'Tournament' : 'Casual';
+  }
+
+  private static resolveEventAffinity(options: {
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    topics: readonly string[];
+    visibility: string;
+    blindMode: string;
+    rating?: number | null;
+    acceptedMembers?: number | null;
+    capacityTotal?: number | null;
+  }): number {
+    const tokens = this.uniqueAffinityTokens([
+      options.title,
+      options.subtitle ?? '',
+      ...options.topics,
+      options.visibility,
+      options.blindMode
+    ]);
+    return (
+      this.resolveAffinityTokenScore(tokens, `event:${options.id}`) * 89
+      + Math.round(AppUtils.clampNumber(Number(options.rating) || 0, 0, 10) * 100) * 29
+      + Math.max(0, Math.trunc(Number(options.acceptedMembers) || 0)) * 19
+      + Math.max(0, Math.trunc(Number(options.capacityTotal) || 0)) * 7
+    );
+  }
+
+  private static uniqueAffinityTokens(values: readonly string[]): string[] {
+    const seen = new Set<string>();
+    for (const value of values) {
+      const normalized = AppUtils.normalizeText(`${value ?? ''}`.replace(/^#+\s*/, '').trim());
+      if (normalized) {
+        seen.add(normalized);
+      }
+    }
+    return [...seen];
+  }
+
+  private static resolveAffinityTokenScore(tokens: readonly string[], seedPrefix: string): number {
+    return tokens.reduce((total, token) => total + ((AppUtils.hashText(`${seedPrefix}:${token}`) % 997) + 1), 0);
   }
 
   private static cloneLocationCoordinates(

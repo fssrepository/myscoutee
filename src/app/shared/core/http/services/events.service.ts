@@ -21,6 +21,7 @@ import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
@@ -30,7 +31,6 @@ import type {
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
-  ActivityEventActivitiesListQueryResult,
   ActivityEventActivitiesQuery,
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
@@ -84,64 +84,6 @@ export class HttpEventsService implements IEventsService {
 
   async queryTrashedItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     return this.getRecords('/activities/events/trash', userId);
-  }
-
-  async queryActivitiesEventListPage(
-    query: ActivityEventActivitiesQuery,
-    signal?: AbortSignal
-  ): Promise<ActivityEventActivitiesListQueryResult> {
-    const normalizedUserId = query.userId.trim();
-    if (!normalizedUserId) {
-      return {
-        records: [],
-        total: 0,
-        nextCursor: null
-      };
-    }
-    try {
-      const response = await this.requestWithAbort(
-        this.http.post<ActivityEventDTO[] | ActivityEventActivitiesListQueryResult | null>(
-          `${this.apiBaseUrl}/activities/events/filter`,
-          {
-            userId: normalizedUserId,
-            filter: query.filter,
-            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
-            secondaryFilter: query.secondaryFilter,
-            sort: query.sort,
-            view: query.view,
-            limit: query.limit,
-            cursor: query.cursor ?? null,
-            anchorDate: query.anchorDate,
-            rangeStart: query.rangeStart,
-            rangeEnd: query.rangeEnd
-          } satisfies HttpEventsFilterRequest
-        ),
-        signal
-      );
-      if (Array.isArray(response)) {
-        const records = this.cloneDTOs(response);
-        return {
-          records,
-          total: records.length,
-          nextCursor: null
-        };
-      }
-      const records = this.cloneDTOs(response?.records);
-      return {
-        records,
-        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
-        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
-      };
-    } catch (error) {
-      if (this.isAbortError(error)) {
-        throw error;
-      }
-      return {
-        records: [],
-        total: 0,
-        nextCursor: null
-      };
-    }
   }
 
   async queryActivitiesEventDTOPage(
@@ -546,14 +488,14 @@ export class HttpEventsService implements IEventsService {
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
     } = {}
-  ): Promise<ActivityEventRecord | null> {
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
     const response = await this.http
-      .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
+      .post<EventParticipationActionResultDTO | null>(`${this.apiBaseUrl}/activities/events/join`, {
         userId: normalizedUserId,
         type: 'events',
         sourceId: normalizedSourceId,
@@ -568,7 +510,7 @@ export class HttpEventsService implements IEventsService {
           : (options.pendingReason === 'approval' ? 'approval' : null)
       })
       .toPromise();
-    return response ? this.cloneRecords([response])[0] ?? null : null;
+    return this.normalizeParticipationActionResult(response);
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
@@ -903,6 +845,39 @@ export class HttpEventsService implements IEventsService {
       capacityMax,
       membersAccepted: Math.max(0, Math.trunc(Number(group?.membersAccepted) || 0)),
       membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0))
+    };
+  }
+
+  private normalizeParticipationActionResult(
+    result: EventParticipationActionResultDTO | null | undefined
+  ): EventParticipationActionResultDTO | null {
+    if (!result) {
+      return null;
+    }
+    const sourceId = `${result.sourceId ?? ''}`.trim();
+    if (!sourceId) {
+      return null;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(result.pendingMembers) || 0));
+    const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(result.capacityTotal) || 0));
+    const pendingReason: ActivityPendingReason = result.pendingReason === 'waitlist'
+      ? 'waitlist'
+      : result.pendingReason === 'approval'
+        ? 'approval'
+        : null;
+    const membershipStatus = `${result.membershipStatus ?? ''}`.trim() || (pendingReason ? 'pending' : 'accepted');
+    return {
+      sourceId,
+      slotSourceId: `${result.slotSourceId ?? ''}`.trim() || null,
+      action: `${result.action ?? ''}`.trim() || 'join',
+      membershipStatus,
+      pendingReason,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null
     };
   }
 

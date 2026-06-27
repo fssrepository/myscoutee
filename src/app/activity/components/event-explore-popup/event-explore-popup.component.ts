@@ -1556,19 +1556,20 @@ export class EventExplorePopupComponent {
         bookingConfirmed: isAcceptedBooking,
         pendingReason
       });
-      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise]);
-      if (!joinedRecord) {
+      const [joinResult] = await Promise.all([requestJoinPromise, exitPromise]);
+      if (!joinResult || joinResult.membershipStatus === 'unchanged') {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
       const authoritativeMembers = this.sortMembersByActionTimeDesc(
-        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(joinedRecord))
+        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(record))
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
+      const nextRecord = this.withEventExploreMemberSummary(record, displayMembers);
       this.activitiesContext.emitActivityEventSave(
-        this.buildActivityEventDetailDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+        this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembersRecord = joinedRecord;
+        this.selectedMembersRecord = nextRecord;
         this.selectedMembers = displayMembers;
       }
       this.cdr.markForCheck();
