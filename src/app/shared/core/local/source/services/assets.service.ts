@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
+import { AppUtils } from '../../../../app-utils';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { AssetDefaultsBuilder } from '../../../base/builders';
@@ -67,7 +68,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     sourceLink: string
   ): Promise<AppDTOs.AssetSourcePreviewDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    const normalizedUrl = this.normalizeSourceUrl(sourceLink);
+    const normalizedUrl = AppUtils.normalizeHttpUrl(sourceLink);
     if (!normalizedUrl) {
       return null;
     }
@@ -87,21 +88,5 @@ export class LocalAssetsService extends LocalRouteDelayService {
       details: `Preview imported from ${parsed.hostname}. You can adjust the details before saving.`,
       imageUrl: AssetDefaultsBuilder.defaultAssetImage(type, seed)
     };
-  }
-
-  private normalizeSourceUrl(value: string): string {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      return '';
-    }
-    try {
-      return new URL(trimmed).toString();
-    } catch {
-      try {
-        return new URL(`https://${trimmed}`).toString();
-      } catch {
-        return '';
-      }
-    }
   }
 }

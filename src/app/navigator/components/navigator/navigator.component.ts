@@ -19,10 +19,11 @@ import {
 } from '../../../shared/ui';
 import { ProfileHeaderCardConverter } from '../../../shared/ui/converters';
 import { AppUtils } from '../../../shared/app-utils';
-import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
+import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
   HelpCenterService,
@@ -122,10 +123,11 @@ export class NavigatorComponent implements OnDestroy {
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly navigatorService = inject(NavigatorService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
-  private readonly assetPopupService = inject(AssetPopupStateService);
+  private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResources = inject(SubEventResourcePopupController);
+  protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
   private readonly activeUserLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
@@ -861,22 +863,24 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isAssetPopupVisible = this.assetPopupService.visible();
+      const isAssetPopupVisible = this.assetPopupStore.visible();
       if (isAssetPopupVisible && !this.assetPopupComponentRef()) {
         void this.ensureAssetPopupLoaded();
       }
     });
 
     effect(() => {
-      const resourceHost = this.subEventResources.resourceHost();
-      if (resourceHost && !this.eventResourcePopupComponentRef()) {
+      const resourcePopupVisible = this.subEventResourceStore.popupContextRef() !== null;
+      if (resourcePopupVisible && !this.eventResourcePopupComponentRef()) {
         void this.ensureEventResourcePopupLoaded();
       }
     });
 
     effect(() => {
-      const supplyContributionsHost = this.subEventResources.supplyContributionsHost();
-      if (supplyContributionsHost && !this.eventSupplyContributionsPopupComponentRef()) {
+      const supplyContributionsVisible = this.subEventResourceStore.popupContextRef() !== null
+        && !this.subEventResourceStore.assetExploreOnlyRef()
+        && this.subEventResourceStore.supplyPopupRef() !== null;
+      if (supplyContributionsVisible && !this.eventSupplyContributionsPopupComponentRef()) {
         void this.ensureEventSupplyContributionsPopupLoaded();
       }
     });

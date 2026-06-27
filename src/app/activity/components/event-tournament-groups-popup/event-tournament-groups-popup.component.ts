@@ -3,7 +3,6 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, ef
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { AppUtils } from '../../../shared/app-utils';
 import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
 import type * as AppDTOs from '../../../shared/core/contracts';
@@ -34,6 +33,7 @@ import {
 } from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
+import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 
 type TournamentGroupsAction =
@@ -129,7 +129,7 @@ export class EventTournamentGroupsPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -210,7 +210,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      this.ownedAssets.assetListRevision();
+      this.ownedAssetsStore.assetListRevision();
       if (!this.isOpen()) {
         return;
       }
@@ -1120,7 +1120,7 @@ export class EventTournamentGroupsPopupComponent {
     state: AppDTOs.ActivitySubEventResourceStateDTO | null
   ): TournamentResourceMetricsByType {
     const subEvent = this.resourceSubEventForStage(stage);
-    const assets = this.ownedAssets.assetCards;
+    const assets = this.ownedAssetsStore.assetCards();
     return Object.fromEntries(TOURNAMENT_RESOURCE_TYPES.map(type => {
       const joined = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assets);
       const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assets);

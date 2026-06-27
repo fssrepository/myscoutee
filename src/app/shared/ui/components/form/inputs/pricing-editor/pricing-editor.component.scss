@@ -1131,12 +1131,12 @@
   background: linear-gradient(180deg, rgba(249, 252, 255, 0.98) 0%, rgba(249, 252, 255, 0.88) 100%);
 }
 
-:host-context(app-asset-form-popup) .pricing-editor__wizard-backdrop {
+:host-context(app-asset-editor-popup) .pricing-editor__wizard-backdrop {
   position: absolute;
   inset: 0;
 }
 
-:host-context(app-asset-form-popup) .pricing-editor__wizard {
+:host-context(app-asset-editor-popup) .pricing-editor__wizard {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1148,12 +1148,12 @@
   overflow: hidden;
 }
 
-:host-context(app-asset-form-popup) .pricing-editor__wizard-head,
-:host-context(app-asset-form-popup) .pricing-editor__wizard-body,
-:host-context(app-asset-form-popup) .pricing-editor__wizard-layout,
-:host-context(app-asset-form-popup) .pricing-editor__wizard-layout .pricing-editor__main,
-:host-context(app-asset-form-popup) .pricing-editor__wizard-layout .pricing-editor__preview,
-:host-context(app-asset-form-popup) .pricing-editor__surface {
+:host-context(app-asset-editor-popup) .pricing-editor__wizard-head,
+:host-context(app-asset-editor-popup) .pricing-editor__wizard-body,
+:host-context(app-asset-editor-popup) .pricing-editor__wizard-layout,
+:host-context(app-asset-editor-popup) .pricing-editor__wizard-layout .pricing-editor__main,
+:host-context(app-asset-editor-popup) .pricing-editor__wizard-layout .pricing-editor__preview,
+:host-context(app-asset-editor-popup) .pricing-editor__surface {
   min-width: 0;
 }
 
@@ -1232,7 +1232,7 @@
     grid-template-columns: 1fr;
   }
 
-  :host-context(app-asset-form-popup) .pricing-editor__wizard-backdrop {
+  :host-context(app-asset-editor-popup) .pricing-editor__wizard-backdrop {
     position: fixed;
     inset: 0;
   }
@@ -1250,7 +1250,7 @@
     z-index: 5000;
   }
 
-  :host-context(app-asset-form-popup) .pricing-editor__wizard {
+  :host-context(app-asset-editor-popup) .pricing-editor__wizard {
     position: fixed;
     inset: auto;
     top: 0;

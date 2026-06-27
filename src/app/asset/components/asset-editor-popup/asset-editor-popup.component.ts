@@ -1,10 +1,15 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AssetDefaultsBuilder } from '../../../shared/core/base/builders';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/app-utils';
+import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
+import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
+import { OwnedAssetsStore, type OwnedAssetFormState } from '../../../shared/ui/context/stores/owned-assets.store';
 import {
+  AppContext,
   AppMenuComponent,
   EditableImageCarouselComponent,
   EventPoliciesInputComponent,
@@ -20,15 +25,14 @@ import {
   type PricingEditorConfig
 } from '../../../shared/ui';
 
-import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
-type AssetFormMenuContext =
+type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'category'; category: AppConstants.AssetCategory }
   | { menu: 'save' };
 
 @Component({
-  selector: 'app-asset-form-popup',
+  selector: 'app-asset-editor-popup',
   standalone: true,
   imports: [
     CommonModule,
@@ -41,30 +45,14 @@ type AssetFormMenuContext =
     PricingEditorInputComponent,
     ProgressIndicatorComponent
   ],
-  templateUrl: './asset-form-popup.component.html',
-  styleUrl: './asset-form-popup.component.scss'
+  templateUrl: './asset-editor-popup.component.html',
+  styleUrl: './asset-editor-popup.component.scss'
 })
-export class AssetFormPopupComponent {
-  @Input() visible = false;
-  @Input() title = '';
-  @Input({ required: true }) assetForm!: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>;
-  @Input() canSave = false;
-  @Input() isLoading = false;
-  @Input() isSavePending = false;
-  @Input() sourceRefreshEnabled = false;
-  @Input() assetFormVisibility: AppConstants.EventVisibility = 'Invitation only';
-  @Input() assetVisibilityOptions: readonly AppConstants.EventVisibility[] = [];
-  @Input() assetFormRouteStops: string[] = [];
-  @Input() isEventEditorReadOnly = false;
-  @Input() assetImageUploadOwnerId = '';
-  @Input() assetImageUploadEntityId = 'asset-draft';
-  @Input({ required: true }) eventVisibilityClass!: (option: AppConstants.EventVisibility) => string;
-  @Input({ required: true }) visibilityIcon!: (option: AppConstants.EventVisibility) => string;
-  @Input({ required: true }) close!: () => void;
-  @Input({ required: true }) save!: () => void | Promise<void>;
-  @Input({ required: true }) setAssetFormVisibility!: (option: AppConstants.EventVisibility) => void;
-  @Input({ required: true }) setAssetFormRouteStop!: (index: number, value: string) => void;
-  @Input({ required: true }) refreshAssetFromSourceLink!: () => void | Promise<void>;
+export class AssetEditorPopupComponent {
+  private readonly appCtx = inject(AppContext);
+  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  protected readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  protected readonly assetVisibilityOptions = APP_STATIC_DATA.eventVisibilityOptions;
   private assetImageUrlsCacheKey = '';
   private assetImageUrlsCache: string[] = [];
   protected readonly assetPricingEditorConfig: PricingEditorConfig = {
@@ -77,7 +65,7 @@ export class AssetFormPopupComponent {
     label: 'Location',
     placeholder: 'Property address',
     required: true,
-    routeStops: () => this.assetFormRouteStops,
+    routeStops: () => this.assetFormRouteStops(),
     mapMode: 'search',
     mapAriaLabel: 'Open location on map'
   };
@@ -98,27 +86,59 @@ export class AssetFormPopupComponent {
     requiredCheckboxLabel: 'Borrowers must approve this policy'
   };
 
+  protected get assetForm(): OwnedAssetFormState {
+    return this.ownedAssetsStore.assetForm();
+  }
+
+  protected get title(): string {
+    const mode = this.ownedAssetsStore.editingAssetId() ? 'Edit' : 'Add';
+    return `${mode} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
+  }
+
+  protected get isLoading(): boolean {
+    return this.ownedAssetsStore.assetFormLoading();
+  }
+
+  protected get isSavePending(): boolean {
+    return this.ownedAssetsStore.assetFormSavePending();
+  }
+
+  protected get assetFormVisibility(): AppConstants.EventVisibility {
+    return this.ownedAssetsStore.assetFormVisibility();
+  }
+
+  protected get sourceRefreshEnabled(): boolean {
+    return this.ownedAssets.assetSourcePreviewAvailable
+      && !this.ownedAssetsStore.assetFormLoading()
+      && Boolean(AppUtils.normalizeHttpUrl(this.assetForm.sourceLink));
+  }
+
+  protected get assetImageUploadOwnerId(): string {
+    return this.ownedAssetsStore.activeOwnerUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+  }
+
   protected requestClose(): void {
     if (this.isSavePending) {
       return;
     }
-    this.close();
+    this.ownedAssetsStore.closeAssetEditor();
   }
 
   protected submitForm(): void {
-    if (this.isLoading || !this.canSave || this.assetFormReadOnly()) {
+    if (this.isLoading || !this.ownedAssetsStore.canSubmitAssetEditor() || this.assetEditorReadOnly()) {
       return;
     }
-    void this.save();
+    void this.ownedAssets.saveAssetCard();
   }
 
-  protected assetFormSaveMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+  protected assetEditorSaveMenuItems(): readonly AppMenuItem<string, AssetEditorMenuContext>[] {
+    const canSave = this.ownedAssetsStore.canSubmitAssetEditor();
     return [{
-      id: 'asset-form-save',
+      id: 'asset-editor-save',
       icon: 'done',
       layout: 'action',
-      palette: this.canSave || this.isSavePending ? 'success' : 'danger',
-      disabled: !this.canSave || this.assetFormReadOnly() || this.isLoading,
+      palette: canSave || this.isSavePending ? 'success' : 'danger',
+      disabled: !canSave || this.assetEditorReadOnly() || this.isLoading,
       ariaLabel: 'Save asset',
       progress: this.isSavePending
         ? {
@@ -135,13 +155,13 @@ export class AssetFormPopupComponent {
       label: this.assetFormVisibility,
       icon: this.visibilityIcon(this.assetFormVisibility),
       palette: this.visibilityPalette(this.assetFormVisibility),
-      disabled: () => this.assetFormReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading,
       layout: 'pill',
       ariaLabel: 'Open asset visibility selector'
     };
   }
 
-  protected visibilityMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+  protected visibilityMenuItems(): readonly AppMenuItem<string, AssetEditorMenuContext>[] {
     return this.assetVisibilityOptions.map(option => ({
       id: `visibility-${option}`,
       label: option,
@@ -150,7 +170,7 @@ export class AssetFormPopupComponent {
       active: option === this.assetFormVisibility,
       palette: this.visibilityPalette(option),
       surface: 'tinted',
-      disabled: () => this.assetFormReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading,
       context: { menu: 'visibility', visibility: option }
     }));
   }
@@ -161,12 +181,12 @@ export class AssetFormPopupComponent {
       icon: this.assetCategoryIcon(this.assetForm.category),
       palette: this.assetCategoryPalette(this.assetForm.category),
       layout: 'field',
-      disabled: () => this.assetFormReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading,
       ariaLabel: 'Open asset category'
     };
   }
 
-  protected assetCategoryMenuItems(): readonly AppMenuItem<string, AssetFormMenuContext>[] {
+  protected assetCategoryMenuItems(): readonly AppMenuItem<string, AssetEditorMenuContext>[] {
     return this.assetCategoryOptions().map(option => ({
       id: `asset-category-${option}`,
       label: this.assetCategoryLabel(option),
@@ -175,28 +195,40 @@ export class AssetFormPopupComponent {
       active: option === this.assetForm.category,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
-      disabled: () => this.assetFormReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading,
       context: { menu: 'category', category: option }
     }));
   }
 
-  protected onAssetFormMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    if (this.isLoading || this.assetFormReadOnly()) {
+  protected onAssetEditorMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    if (this.isLoading || this.assetEditorReadOnly()) {
       return;
     }
-    const context = event.context as AssetFormMenuContext | undefined;
+    const context = event.context as AssetEditorMenuContext | undefined;
     if (!context) {
       return;
     }
     if (context.menu === 'visibility') {
-      this.setAssetFormVisibility(context.visibility);
+      this.ownedAssetsStore.setAssetEditorVisibility(context.visibility);
       return;
     }
     if (context.menu === 'save') {
       this.submitForm();
       return;
     }
-    this.assetForm.category = context.category;
+    this.ownedAssetsStore.setAssetEditorCategory(context.category);
+  }
+
+  protected assetFormRouteStops(): string[] {
+    return AssetCardBuilder.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes);
+  }
+
+  protected setAssetEditorRouteStop(index: number, value: string): void {
+    this.ownedAssetsStore.setAssetEditorRouteStop(index, value);
+  }
+
+  protected refreshAssetFromSourceLink(): void {
+    void this.ownedAssets.refreshAssetFromSourceLink();
   }
 
   protected assetCategoryOptions(): AppConstants.AssetCategory[] {
@@ -226,21 +258,29 @@ export class AssetFormPopupComponent {
 
   protected onAssetImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
     const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
-    this.assetForm.imageUrl = imageUrl;
+    this.ownedAssetsStore.setAssetEditorImageUrl(imageUrl);
     this.assetImageUrlsCacheKey = imageUrl;
     this.assetImageUrlsCache = imageUrl ? [imageUrl] : [];
   }
 
   protected assetImageUploadEntity(): string {
-    return this.assetImageUploadEntityId.trim() || 'asset-draft';
+    return this.ownedAssetsStore.editingAssetId()?.trim() || this.ownedAssetsStore.assetFormDraftId().trim() || 'asset-draft';
   }
 
-  protected assetFormReadOnly(): boolean {
-    return this.isSavePending || this.isEventEditorReadOnly;
+  protected assetEditorReadOnly(): boolean {
+    return this.isSavePending;
   }
 
   protected isPropertyAssetForm(): boolean {
     return this.assetForm?.type === 'Accommodation';
+  }
+
+  protected eventVisibilityClass(option: AppConstants.EventVisibility): string {
+    return AssetDefaultsBuilder.eventVisibilityClass(option);
+  }
+
+  protected visibilityIcon(option: AppConstants.EventVisibility): string {
+    return AssetDefaultsBuilder.visibilityIcon(option);
   }
 
   private visibilityPalette(option: AppConstants.EventVisibility): AppMenuPalette {

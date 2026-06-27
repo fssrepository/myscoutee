@@ -1,6 +1,8 @@
 import type * as AppDTOs from '../../../shared/core/contracts';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import type * as AppConstants from '../../../shared/core/common/constants';
 
-import { Component, DoCheck, Input, TemplateRef, ViewChild } from '@angular/core';
+import { Component, DoCheck, TemplateRef, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -11,53 +13,23 @@ import {
   SmartListComponent,
   type CardMenuActionEvent,
   type ListQuery,
-  type PageResult,
   type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
-
-interface SupplyBringDialogState {
-  title: string;
-  min: number;
-  max: number;
-  quantity: number;
-  busy: boolean;
-  error: string | null;
-}
+import { AppContext } from '../../../shared/ui';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { AppUtils } from '../../../shared/app-utils';
+import { ActivityResourceBuilder, ActivityResourcesService, UsersService, type UserDto } from '../../../shared/core';
+import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import type { ResourcePopupContext } from '../../../shared/ui/context/sub-event-resource-popup.types';
 
 interface SupplyContributionListFilters {
   revision?: number;
   contextKey?: string;
-}
-
-export interface EventSupplyContributionsPopupHost {
-  title(): string;
-  subtitle(): string;
-  summary(): string;
-  rows(): AppDTOs.SubEventSupplyContributionRowDTO[];
-  loadRowsPage(query: ListQuery<SupplyContributionListFilters>): Promise<PageResult<AppDTOs.SubEventSupplyContributionRowDTO>>;
-  bringDialog(): SupplyBringDialogState | null;
-  pendingDelete(): { label: string; busy?: boolean; error?: string | null } | null;
-  close(): void;
-  openBringDialog(event?: Event): void;
-  addedLabel(addedAtIso: string): string;
-  quantityLabel(quantity: number): string;
-  canDelete(row: AppDTOs.SubEventSupplyContributionRowDTO): boolean;
-  requestDelete(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void;
-  cancelBringDialog(): void;
-  canSubmitBringDialog(): boolean;
-  onBringQuantityChange(value: number | string): void;
-  confirmBringDialog(event?: Event): void;
-  isBringPending(): boolean;
-  bringErrorMessage(): string;
-  cancelDelete(): void;
-  pendingDeleteLabel(): string;
-  isDeletePending(): boolean;
-  deleteErrorMessage(): string;
-  confirmDelete(): void;
 }
 
 @Component({
@@ -75,13 +47,33 @@ export interface EventSupplyContributionsPopupHost {
   styleUrls: ['./event-supply-contributions-popup.component.scss']
 })
 export class EventSupplyContributionsPopupComponent implements DoCheck {
+  protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+
+  private readonly appCtx = inject(AppContext);
+  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
+  private readonly usersService = inject(UsersService);
+  private pendingSupplyDeleteAbortController: AbortController | null = null;
+  private pendingSupplyDeleteRequestVersion = 0;
+  private pendingSupplyBringAbortController: AbortController | null = null;
+  private pendingSupplyBringRequestVersion = 0;
   private lastRowsSignature = '';
   private lastContextKey = '';
   private lastRowCount = 0;
   private supplyContributionListReady = false;
   private supplyContributionListVisibleCount = 0;
 
-  @Input({ required: true }) host!: EventSupplyContributionsPopupHost;
+  private get users(): UserDto[] {
+    return this.usersService.peekCachedUsers();
+  }
+
+  private ownedAssetCards(): AppDTOs.AssetCardDTO[] {
+    return this.ownedAssetsStore.assetCards();
+  }
+
+  private get userById(): Map<string, UserDto> {
+    return new Map(this.users.map(user => [user.id, user]));
+  }
 
   protected supplyContributionSmartListQuery: Partial<ListQuery<SupplyContributionListFilters>> = {
     filters: {
@@ -107,7 +99,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected readonly supplyContributionSmartListLoadPage: SmartListLoadPage<
     AppDTOs.SubEventSupplyContributionRowDTO,
     SupplyContributionListFilters
-  > = query => from(this.host.loadRowsPage(query));
+  > = query => from(this.loadSupplyContributionRowsPage(query));
 
   protected readonly supplyContributionSmartListConfig: SmartListConfig<
     AppDTOs.SubEventSupplyContributionRowDTO,
@@ -134,8 +126,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   };
 
   ngDoCheck(): void {
-    const rows = this.host?.rows?.() ?? [];
-    const contextKey = `${this.host?.title?.() ?? ''}:${this.host?.subtitle?.() ?? ''}`;
+    const rows = this.supplyContributionRows();
+    const contextKey = `${this.supplyPopupTitle()}:${this.popupSubtitle()}`;
     const signature = `${contextKey}:${rows.map(row => [
       row.id,
       row.userId,
@@ -176,7 +168,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!this.supplyContributionListReady) {
       return;
     }
-    const rows = this.host?.rows?.() ?? [];
+    const rows = this.supplyContributionRows();
     if (change.total !== rows.length) {
       this.syncSupplyContributionVisibleRows(rows, change.total);
     }
@@ -186,12 +178,12 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return {
       id: row.id,
       title: `${row.name}, ${row.age} · ${row.city}`,
-      subtitle: this.host.addedLabel(row.addedAtIso),
+      subtitle: this.addedLabel(row.addedAtIso),
       avatarInitials: row.initials,
       avatarAriaLabel: row.name,
-      sideLabel: this.host.quantityLabel(row.quantity),
+      sideLabel: this.quantityLabel(row.quantity),
       sideLabelTone: 'inverse',
-      menuActions: this.host.canDelete(row) ? ['delete'] : [],
+      menuActions: this.canDeleteSupplyContribution(row) ? ['delete'] : [],
       eagerDetail: row
     };
   }
@@ -200,10 +192,680 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     row: AppDTOs.SubEventSupplyContributionRowDTO,
     event: CardMenuActionEvent<SingleRowData>
   ): void {
-    if (event.actionId !== 'delete' || !this.host.canDelete(row)) {
+    if (event.actionId !== 'delete' || !this.canDeleteSupplyContribution(row)) {
       return;
     }
-    this.host.requestDelete(row);
+    this.requestDeleteSupplyContribution(row);
+  }
+
+  protected supplyPopupTitle(): string {
+    const context = this.resourcePopupStore.supplyPopupRef();
+    const popup = this.resourcePopupStore.popupContextRef();
+    if (!context || !popup) {
+      return APP_STATIC_DATA.assetTypeLabels.Supplies;
+    }
+    const stageLabel = this.subEventStageLabel(popup.subEvent);
+    return stageLabel ? `${context.title} - ${stageLabel}` : context.title;
+  }
+
+  protected popupSubtitle(): string {
+    const context = this.resourcePopupStore.popupContextRef();
+    if (!context) {
+      return 'Event';
+    }
+    const subEventName = this.subEventDisplayName(context.subEvent);
+    if (context.parentTitle && subEventName) {
+      return `${context.parentTitle} - ${subEventName}`;
+    }
+    return context.parentTitle || subEventName || 'Event';
+  }
+
+  protected supplyContributionRows(): AppDTOs.SubEventSupplyContributionRowDTO[] {
+    const context = this.resourcePopupStore.supplyPopupRef();
+    if (!context) {
+      return [];
+    }
+    return this.buildSupplyContributionRows(this.subEventSupplyContributionEntries(context.subEventId, context.assetId));
+  }
+
+  protected async loadSupplyContributionRowsPage(
+    query: ListQuery<SupplyContributionListFilters>
+  ): Promise<{ items: AppDTOs.SubEventSupplyContributionRowDTO[]; total: number }> {
+    const rows = this.supplyContributionRows();
+    if (rows.length === 0 && !this.resourcePopupStore.supplyPopupRef()) {
+      return {
+        items: [],
+        total: 0
+      };
+    }
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return {
+      items: rows.slice(start, start + pageSize),
+      total: rows.length
+    };
+  }
+
+  protected closeSupplyContributionsPopup(): void {
+    this.abortPendingSupplyDeleteRequest();
+    this.abortPendingSupplyBringRequest();
+    this.resourcePopupStore.supplyPopupRef.set(null);
+    this.resourcePopupStore.pendingSupplyDeleteRef.set(null);
+    this.resourcePopupStore.bringDialogRef.set(null);
+  }
+
+  protected openBringDialog(event?: Event): void {
+    event?.stopPropagation();
+    const context = this.resourcePopupStore.supplyPopupRef();
+    if (!context) {
+      return;
+    }
+    const source = this.ownedAssetCards().find(card => card.id === context.assetId && card.type === 'Supplies');
+    const settings = this.getSubEventAssignedAssetSettings(context.subEventId, 'Supplies');
+    const max = Math.max(1, settings[context.assetId]?.capacityMax ?? source?.capacityTotal ?? 1);
+    this.resourcePopupStore.bringDialogRef.set({
+      subEventId: context.subEventId,
+      cardId: context.assetId,
+      title: context.title,
+      quantity: 1,
+      min: 0,
+      max,
+      busy: false,
+      error: null
+    });
+  }
+
+  protected cancelBringDialog(): void {
+    this.abortPendingSupplyBringRequest();
+    this.resourcePopupStore.bringDialogRef.set(null);
+  }
+
+  protected canSubmitBringDialog(): boolean {
+    const dialog = this.resourcePopupStore.bringDialogRef();
+    return !!dialog && !dialog.busy && dialog.quantity >= dialog.min && dialog.quantity <= dialog.max;
+  }
+
+  protected onBringQuantityChange(value: number | string): void {
+    const dialog = this.resourcePopupStore.bringDialogRef();
+    if (!dialog || dialog.busy) {
+      return;
+    }
+    const parsed = Number(value);
+    this.resourcePopupStore.bringDialogRef.set({
+      ...dialog,
+      quantity: AppUtils.clampNumber(
+        Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
+        dialog.min,
+        dialog.max
+      ),
+      error: null
+    });
+  }
+
+  protected confirmBringDialog(event?: Event): void {
+    event?.stopPropagation();
+    const dialog = this.resourcePopupStore.bringDialogRef();
+    if (!dialog || dialog.busy || !this.canSubmitBringDialog()) {
+      return;
+    }
+    if (dialog.quantity <= 0) {
+      this.resourcePopupStore.bringDialogRef.set(null);
+      return;
+    }
+
+    const nextState = this.buildPopupResourceState();
+    if (!nextState) {
+      return;
+    }
+
+    const nextEntry: AppDTOs.SubEventSupplyContributionEntryDTO = {
+      id: `subevent-supply-row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      userId: this.activeUser().id,
+      quantity: dialog.quantity,
+      addedAtIso: AppUtils.toIsoDateTime(new Date())
+    };
+    const currentEntries = nextState.supplyContributionEntriesByAssetId[dialog.cardId] ?? [];
+    nextState.supplyContributionEntriesByAssetId = {
+      ...nextState.supplyContributionEntriesByAssetId,
+      [dialog.cardId]: [nextEntry, ...currentEntries]
+    };
+
+    const requestVersion = ++this.pendingSupplyBringRequestVersion;
+    const abortController = new AbortController();
+    this.pendingSupplyBringAbortController = abortController;
+    this.resourcePopupStore.bringDialogRef.set({
+      ...dialog,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingSupplyBringAbortController === abortController) {
+          this.pendingSupplyBringAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion != this.pendingSupplyBringRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.resourcePopupStore.bringDialogRef.set(null);
+        this.syncPopupSubEventMetrics();
+      })
+      .catch(error => {
+        if (this.pendingSupplyBringAbortController === abortController) {
+          this.pendingSupplyBringAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion != this.pendingSupplyBringRequestVersion) {
+          return;
+        }
+        const currentDialog = this.resourcePopupStore.bringDialogRef();
+        if (!currentDialog || currentDialog.cardId !== dialog.cardId || currentDialog.subEventId !== dialog.subEventId) {
+          return;
+        }
+        this.resourcePopupStore.bringDialogRef.set({
+          ...currentDialog,
+          busy: false,
+          error: 'Unable to save quantity row.'
+        });
+      });
+  }
+
+  protected bringErrorMessage(): string {
+    return this.resourcePopupStore.bringDialogRef()?.error?.trim() ?? '';
+  }
+
+  protected canDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO): boolean {
+    return row.userId === this.activeUser().id;
+  }
+
+  protected isBringPending(): boolean {
+    return this.resourcePopupStore.bringDialogRef()?.busy === true;
+  }
+
+  protected isSupplyDeletePending(): boolean {
+    return this.resourcePopupStore.pendingSupplyDeleteRef()?.busy === true;
+  }
+
+  protected supplyDeleteErrorMessage(): string {
+    return this.resourcePopupStore.pendingSupplyDeleteRef()?.error?.trim() ?? '';
+  }
+
+  protected requestDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void {
+    event?.stopPropagation();
+    const context = this.resourcePopupStore.supplyPopupRef();
+    if (!context || row.userId !== this.activeUser().id) {
+      return;
+    }
+    this.resourcePopupStore.pendingSupplyDeleteRef.set({
+      subEventId: context.subEventId,
+      assetId: context.assetId,
+      entryId: row.id,
+      label: `${row.name} · ${row.quantity}`,
+      busy: false,
+      error: null
+    });
+  }
+
+  protected confirmDeleteSupplyContribution(): void {
+    const pending = this.resourcePopupStore.pendingSupplyDeleteRef();
+    if (!pending || pending.busy) {
+      return;
+    }
+    const nextState = this.buildPopupResourceState();
+    if (!nextState) {
+      return;
+    }
+
+    const currentEntries = nextState.supplyContributionEntriesByAssetId[pending.assetId] ?? [];
+    nextState.supplyContributionEntriesByAssetId = {
+      ...nextState.supplyContributionEntriesByAssetId,
+      [pending.assetId]: currentEntries.filter(entry => entry.id !== pending.entryId)
+    };
+
+    const requestVersion = ++this.pendingSupplyDeleteRequestVersion;
+    const abortController = new AbortController();
+    this.pendingSupplyDeleteAbortController = abortController;
+    this.resourcePopupStore.pendingSupplyDeleteRef.set({
+      ...pending,
+      busy: true,
+      error: null
+    });
+
+    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
+      .then(savedState => {
+        if (this.pendingSupplyDeleteAbortController === abortController) {
+          this.pendingSupplyDeleteAbortController = null;
+        }
+        if (abortController.signal.aborted || requestVersion !== this.pendingSupplyDeleteRequestVersion) {
+          return;
+        }
+        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+        this.applyPersistedPopupState(resolvedState);
+        this.resourcePopupStore.pendingSupplyDeleteRef.set(null);
+        this.syncPopupSubEventMetrics();
+      })
+      .catch(error => {
+        if (this.pendingSupplyDeleteAbortController === abortController) {
+          this.pendingSupplyDeleteAbortController = null;
+        }
+        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingSupplyDeleteRequestVersion) {
+          return;
+        }
+        const currentPending = this.resourcePopupStore.pendingSupplyDeleteRef();
+        if (!currentPending || currentPending.entryId !== pending.entryId) {
+          return;
+        }
+        this.resourcePopupStore.pendingSupplyDeleteRef.set({
+          ...currentPending,
+          busy: false,
+          error: 'Unable to delete quantity row.'
+        });
+      });
+  }
+
+  protected cancelDeleteSupplyContribution(): void {
+    this.abortPendingSupplyDeleteRequest();
+    this.resourcePopupStore.pendingSupplyDeleteRef.set(null);
+  }
+
+  protected pendingDeleteLabel(): string {
+    const pending = this.resourcePopupStore.pendingSupplyDeleteRef();
+    return pending ? `Delete "${pending.label}" from supplies?` : '';
+  }
+
+  protected supplyContributionTotalLabel(): string {
+    return this.quantityLabel(this.supplyContributionTotalQuantity());
+  }
+
+  protected addedLabel(addedAtIso: string): string {
+    const parsed = new Date(addedAtIso);
+    const value = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+    return value.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+  protected quantityLabel(quantity: number): string {
+    const normalized = AppUtils.clampNumber(Math.trunc(quantity), 0, Number.MAX_SAFE_INTEGER);
+    return normalized === 1 ? '1 item' : `${normalized} items`;
+  }
+
+  private activeUser(): UserDto {
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserProfile()
+      ?? this.usersService.peekCachedUserById(activeUserId)
+      ?? this.users[0]
+      ?? this.createFallbackUser(activeUserId);
+  }
+
+  private buildSupplyContributionRows(
+    entries: readonly AppDTOs.SubEventSupplyContributionEntryDTO[]
+  ): AppDTOs.SubEventSupplyContributionRowDTO[] {
+    void this.usersService.warmCachedUsers(entries.map(entry => entry.userId));
+    return entries
+      .map(entry => {
+        const user = this.userById.get(entry.userId) ?? null;
+        return {
+          id: entry.id,
+          userId: entry.userId,
+          name: user?.name ?? 'Unknown member',
+          initials: user?.initials ?? AppUtils.initialsFromText(user?.name ?? 'Unknown member'),
+          gender: user?.gender ?? 'woman',
+          age: user?.age ?? 0,
+          city: user?.city ?? '',
+          addedAtIso: entry.addedAtIso,
+          quantity: AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER)
+        };
+      })
+      .sort((a, b) => AppUtils.toSortableDate(b.addedAtIso) - AppUtils.toSortableDate(a.addedAtIso));
+  }
+
+  private buildPopupResourceState(
+    context: ResourcePopupContext | null = this.resourcePopupStore.popupContextRef()
+  ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    if (!context) {
+      return null;
+    }
+    const ownerId = context.ownerId.trim();
+    const subEventId = context.subEvent.id.trim();
+    const assetOwnerUserId = this.activeUser().id;
+    if (!ownerId || !subEventId || !assetOwnerUserId) {
+      return null;
+    }
+    return {
+      ownerId,
+      subEventId,
+      assetOwnerUserId,
+      assetAssignmentIds: {
+        Car: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Car')],
+        Accommodation: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Accommodation')],
+        Supplies: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies')]
+      },
+      assetSettingsByType: {
+        Car: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Car') },
+        Accommodation: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Accommodation') },
+        Supplies: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Supplies') }
+      },
+      supplyContributionEntriesByAssetId: Object.fromEntries(
+        this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies').map(assetId => [
+          assetId,
+          this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
+        ])
+      ),
+      fallbackAssetCardsByType: {
+        Car: this.persistedAssignedFallbackCards(context, 'Car'),
+        Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
+        Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+      }
+    };
+  }
+
+  private applyPersistedPopupState(state: AppDTOs.ActivitySubEventResourceStateDTO): void {
+    const normalizedState = ActivityResourceBuilder.normalizeState(state, state);
+    if (!normalizedState) {
+      return;
+    }
+    const activeContext = this.resourcePopupStore.popupContextRef();
+    if (
+      activeContext
+      && activeContext.ownerId === normalizedState.ownerId
+      && activeContext.subEvent.id === normalizedState.subEventId
+    ) {
+      this.resourcePopupStore.popupContextRef.set({
+        ...activeContext,
+        fallbackCardsByType: this.mergePersistedFallbackCards(
+          activeContext.fallbackCardsByType,
+          normalizedState.fallbackAssetCardsByType,
+          normalizedState.subEventId
+        )
+      });
+    }
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      this.resourcePopupStore.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
+        ...(normalizedState.assetAssignmentIds[type] ?? [])
+      ];
+      this.resourcePopupStore.assignedAssetSettingsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = {
+        ...(normalizedState.assetSettingsByType[type] ?? {})
+      };
+    }
+    for (const key of Object.keys(this.resourcePopupStore.supplyContributionEntriesByAssignmentKey)) {
+      if (key.startsWith(`${normalizedState.subEventId}:`)) {
+        delete this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[key];
+      }
+    }
+    for (const [assetId, entries] of Object.entries(normalizedState.supplyContributionEntriesByAssetId)) {
+      this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(normalizedState.subEventId, assetId)] = entries
+        .map(entry => ({ ...entry }));
+    }
+  }
+
+  private syncPopupSubEventMetrics(): void {
+    const context = this.resourcePopupStore.popupContextRef();
+    if (!context) {
+      return;
+    }
+    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car');
+    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation');
+    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, 'Supplies');
+    nextSubEvent.carsAccepted = cars.joined;
+    nextSubEvent.carsPending = cars.pending;
+    nextSubEvent.carsCapacityMin = cars.capacityMin;
+    nextSubEvent.carsCapacityMax = cars.capacityMax;
+    nextSubEvent.accommodationAccepted = accommodation.joined;
+    nextSubEvent.accommodationPending = accommodation.pending;
+    nextSubEvent.accommodationCapacityMin = accommodation.capacityMin;
+    nextSubEvent.accommodationCapacityMax = accommodation.capacityMax;
+    nextSubEvent.suppliesAccepted = supplies.joined;
+    nextSubEvent.suppliesPending = supplies.pending;
+    nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
+    nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
+    this.resourcePopupStore.popupContextRef.set({
+      ...context,
+      subEvent: nextSubEvent
+    });
+  }
+
+  private subEventAssetCapacityMetrics(
+    subEvent: ContractTypes.SubEventDTO,
+    type: AppConstants.AssetType
+  ): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
+    const cards = this.subEventAssignedAssetCards(subEvent.id, type);
+    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
+    const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
+    const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
+    const pending = type === 'Supplies'
+      ? 0
+      : cards.reduce((sum, card) => (
+        sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'pending')
+      ), 0);
+    if (type === 'Supplies') {
+      return {
+        joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
+        capacityMin,
+        capacityMax,
+        pending
+      };
+    }
+    return {
+      joined: cards.reduce((sum, card) => (
+        sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'accepted')
+      ), 0),
+      capacityMin,
+      capacityMax,
+      pending
+    };
+  }
+
+  private getSubEventAssignedAssetSettings(
+    subEventId: string,
+    type: AppConstants.AssetType
+  ): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
+    const key = this.subEventAssetAssignmentKey(subEventId, type);
+    const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
+    const existing = this.resourcePopupStore.assignedAssetSettingsByKey[key] ?? {};
+    const next: Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> = {};
+    for (const assetId of assignedIds) {
+      const source = this.resolveSubEventAssignedAssetCard(subEventId, type, assetId);
+      const previous = existing[assetId];
+      next[assetId] = {
+        capacityMin: Math.max(0, Math.trunc(Number(previous?.capacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(previous?.capacityMax ?? source?.capacityTotal) || 0)),
+        addedByUserId: `${previous?.addedByUserId ?? ''}`.trim() || this.activeUser().id,
+        routes: Array.isArray(previous?.routes) ? [...previous.routes] : []
+      };
+    }
+    this.resourcePopupStore.assignedAssetSettingsByKey[key] = next;
+    return next;
+  }
+
+  private resolveSubEventAssignedAssetIds(subEventId: string, type: AppConstants.AssetType): string[] {
+    const key = this.subEventAssetAssignmentKey(subEventId, type);
+    const eligibleIds = [
+      ...this.ownedAssetCards().filter(card => card.type === type).map(card => card.id),
+      ...this.subEventFallbackAssetCards(subEventId, type).map(card => card.id)
+    ];
+    const eligible = new Set(eligibleIds);
+    const stored = this.resourcePopupStore.assignedAssetIdsByKey[key];
+    if (!stored) {
+      this.resourcePopupStore.assignedAssetIdsByKey[key] = [];
+      return [];
+    }
+    const normalized = stored.filter(id => eligible.has(id));
+    if (normalized.length !== stored.length) {
+      this.resourcePopupStore.assignedAssetIdsByKey[key] = [...normalized];
+    }
+    return normalized;
+  }
+
+  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+    return this.resolveSubEventAssignedAssetIds(subEventId, type)
+      .map(assetId => this.resolveSubEventAssignedAssetCard(subEventId, type, assetId))
+      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
+  }
+
+  private resolveSubEventAssignedAssetCard(
+    subEventId: string,
+    type: AppConstants.AssetType,
+    assetId: string
+  ): AppDTOs.AssetCardDTO | null {
+    return this.ownedAssetCards().find(card => card.id === assetId && card.type === type)
+      ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId) ?? null;
+  }
+
+  private subEventFallbackAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+    const context = this.resourcePopupStore.popupContextRef();
+    if (context?.subEvent.id !== subEventId) {
+      return [];
+    }
+    return (context.fallbackCardsByType[type] ?? []).map(card => this.cloneAsset(card));
+  }
+
+  private persistedAssignedFallbackCards(
+    context: ResourcePopupContext,
+    type: AppConstants.AssetType
+  ): AppDTOs.AssetCardDTO[] {
+    const assigned = new Set(this.resolveSubEventAssignedAssetIds(context.subEvent.id, type));
+    return (context.fallbackCardsByType[type] ?? [])
+      .filter(card => assigned.has(card.id) && !this.ownedAssetCards().some(item => item.id === card.id && item.type === type))
+      .map(card => this.cloneAsset(card));
+  }
+
+  private mergePersistedFallbackCards(
+    current: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
+    persisted: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
+    subEventId: string
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
+    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      const cardsById = new Map<string, AppDTOs.AssetCardDTO>();
+      for (const card of current?.[type] ?? []) {
+        cardsById.set(card.id, this.cloneAsset(card));
+      }
+      for (const card of persisted?.[type] ?? []) {
+        cardsById.set(card.id, this.cloneAsset(card));
+      }
+      const assigned = new Set(this.resourcePopupStore.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(subEventId, type)] ?? []);
+      const cards = [...cardsById.values()].filter(card => assigned.has(card.id));
+      if (cards.length > 0) {
+        next[type] = cards;
+      }
+    }
+    return next;
+  }
+
+  private subEventSupplyContributionEntries(subEventId: string, cardId: string): AppDTOs.SubEventSupplyContributionEntryDTO[] {
+    return this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[this.subEventSupplyAssignmentKey(subEventId, cardId)] ?? [];
+  }
+
+  private subEventSupplyProvidedCount(cardId: string, subEventId: string): number {
+    return this.subEventSupplyContributionEntries(subEventId, cardId)
+      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+  }
+
+  private supplyContributionTotalQuantity(): number {
+    const context = this.resourcePopupStore.supplyPopupRef();
+    if (!context) {
+      return 0;
+    }
+    return this.subEventSupplyContributionEntries(context.subEventId, context.assetId)
+      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
+  }
+
+  private abortPendingSupplyBringRequest(): void {
+    this.pendingSupplyBringRequestVersion += 1;
+    const controller = this.pendingSupplyBringAbortController;
+    this.pendingSupplyBringAbortController = null;
+    controller?.abort();
+  }
+
+  private abortPendingSupplyDeleteRequest(): void {
+    this.pendingSupplyDeleteRequestVersion += 1;
+    const controller = this.pendingSupplyDeleteAbortController;
+    this.pendingSupplyDeleteAbortController = null;
+    controller?.abort();
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return !!error && typeof error === 'object' && 'name' in error && (error as { name?: string }).name === 'AbortError';
+  }
+
+  private subEventSupplyAssignmentKey(subEventId: string, cardId: string): string {
+    return this.resourcePopupStore.supplyAssignmentKey(subEventId, cardId);
+  }
+
+  private subEventAssetAssignmentKey(subEventId: string, type: AppConstants.AssetType): string {
+    return this.resourcePopupStore.assetAssignmentKey(subEventId, type);
+  }
+
+  private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
+    return {
+      ...subEvent
+    };
+  }
+
+  private cloneAsset(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+    return {
+      ...card,
+      routes: [...(card.routes ?? [])],
+      policies: (card.policies ?? []).map(policy => ({ ...policy })),
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }))
+    };
+  }
+
+  private createFallbackUser(userId: string): UserDto {
+    return {
+      id: userId.trim(),
+      name: 'User',
+      age: 0,
+      birthday: '',
+      city: '',
+      height: '',
+      physique: '',
+      languages: [],
+      horoscope: '',
+      initials: 'U',
+      gender: 'woman',
+      statusText: '',
+      hostTier: '',
+      traitLabel: '',
+      completion: 0,
+      headline: '',
+      about: '',
+      images: [],
+      profileStatus: 'public',
+      activities: {
+        game: 0,
+        chat: 0,
+        invitations: 0,
+        events: 0,
+        hosting: 0,
+        cars: 0,
+        accommodation: 0,
+        supplies: 0,
+        tickets: 0,
+        contacts: 0,
+        feedback: 0
+      }
+    } satisfies UserDto;
+  }
+
+  private subEventDisplayName(subEvent: ContractTypes.SubEventDTO | null | undefined): string {
+    const name = `${subEvent?.name ?? ''}`.trim();
+    return name || 'Sub Event';
+  }
+
+  private subEventStageLabel(subEvent: ContractTypes.SubEventDTO | null | undefined): string {
+    const name = this.subEventDisplayName(subEvent);
+    return name || 'Sub Event';
   }
 
   private syncSupplyContributionVisibleRows(

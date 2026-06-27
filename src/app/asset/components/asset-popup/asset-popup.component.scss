@@ -46,22 +46,6 @@
   height: calc(100dvh - 1.2rem);
 }
 
-.app-popup-panel.popup-panel-ticket-fullscreen {
-  width: 100vw;
-  max-width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100vh;
-  max-height: 100dvh;
-  border-radius: 0;
-}
-
-.app-popup-panel.popup-panel-ticket-fullscreen .popup-body {
-  padding: 0;
-  gap: 0;
-  overflow: hidden;
-}
-
 .asset-popup {
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
 }
@@ -1559,8 +1543,7 @@
 
   .asset-popup .app-popup-panel,
   .asset-popup .app-popup-panel.popup-panel-assets,
-  .asset-popup .app-popup-panel.popup-panel-subevent-asset-assign,
-  .asset-popup .app-popup-panel.popup-panel-ticket-fullscreen {
+  .asset-popup .app-popup-panel.popup-panel-subevent-asset-assign {
     width: 100vw !important;
     max-width: 100vw !important;
     height: 100dvh !important;
@@ -1570,11 +1553,6 @@
     border-radius: 0;
     box-shadow: none;
     border: 0;
-  }
-
-  .asset-popup .app-popup-panel.popup-panel-ticket-fullscreen .popup-body {
-    padding: 0 !important;
-    gap: 0 !important;
   }
 
   .asset-popup .popup-body {
@@ -1620,10 +1598,6 @@
     height: 18px;
     font-size: 18px;
     line-height: 18px;
-  }
-
-  .asset-popup .ticket-scanner-header-btn span {
-    display: none;
   }
 }
 

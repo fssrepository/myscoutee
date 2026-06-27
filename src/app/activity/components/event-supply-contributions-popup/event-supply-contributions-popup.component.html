@@ -1,25 +1,25 @@
 <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-supply-contributions-popup-shell">
-  <div class="app-popup-backdrop" (click)="host.close()"></div>
+  <div class="app-popup-backdrop" (click)="closeSupplyContributionsPopup()"></div>
   <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
     <div class="popup-header popup-header-members-invite-mobile-layout">
       <div class="popup-title popup-title-members">
         <div class="popup-chat-title-block">
-          <h2>{{ host.title() }}</h2>
-          <p>{{ host.subtitle() }}</p>
+          <h2>{{ supplyPopupTitle() }}</h2>
+          <p>{{ popupSubtitle() }}</p>
         </div>
       </div>
       <div class="subevent-supply-header-actions">
         <button
           type="button"
           class="popup-header-add-btn subevent-supply-contribution-add-btn"
-          (click)="host.openBringDialog($event)"
+          (click)="openBringDialog($event)"
           aria-label="Add supply quantity row"
           >
           <mat-icon>add</mat-icon>
         </button>
-        <span class="header-members-count members-header-summary-badge subevent-supply-header-summary">{{ host.summary() }}</span>
+        <span class="header-members-count members-header-summary-badge subevent-supply-header-summary">{{ supplyContributionTotalLabel() }}</span>
       </div>
-      <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
+      <button mat-icon-button class="popup-close" (click)="closeSupplyContributionsPopup()" aria-label="Close">
         <mat-icon>close</mat-icon>
       </button>
     </div>
@@ -43,9 +43,9 @@
           ></single-row>
         </ng-template>
 
-        @if (host.bringDialog(); as dialog) {
+        @if (resourcePopupStore.bringDialogRef(); as dialog) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-supply-bring-overlay">
-            <div class="experience-form-overlay-backdrop" (click)="host.cancelBringDialog()"></div>
+            <div class="experience-form-overlay-backdrop" (click)="cancelBringDialog()"></div>
             <div class="experience-form-popup subevent-form-popup subevent-group-popup">
               <div class="experience-form-header subevent-group-header">
                 <div class="subevent-group-header-main">
@@ -55,30 +55,30 @@
                 <div class="experience-form-header-controls">
                   <span
                     class="subevent-supply-bring-save-btn-shell"
-                    [class.is-loading]="host.isBringPending()"
-                    [class.is-error]="!host.isBringPending() && !!host.bringErrorMessage()"
+                    [class.is-loading]="isBringPending()"
+                    [class.is-error]="!isBringPending() && !!bringErrorMessage()"
                     >
-                    @if (host.isBringPending() || host.bringErrorMessage()) {
+                    @if (isBringPending() || bringErrorMessage()) {
                       <span class="subevent-supply-bring-save-btn-ring" aria-hidden="true">
                         <app-progress-indicator
                           kind="action-ring"
                           shape="circle"
-                          [state]="host.isBringPending() ? 'loading' : 'error'"
+                          [state]="isBringPending() ? 'loading' : 'error'"
                         ></app-progress-indicator>
                       </span>
                     }
                     <button
                       type="button"
                       class="popup-header-add-btn subevent-leaderboard-save-btn subevent-supply-bring-save-btn"
-                      [class.form-save-invalid]="!host.canSubmitBringDialog() && !host.isBringPending()"
-                      [disabled]="!host.canSubmitBringDialog()"
-                      (click)="host.confirmBringDialog($event)"
+                      [class.form-save-invalid]="!canSubmitBringDialog() && !isBringPending()"
+                      [disabled]="!canSubmitBringDialog()"
+                      (click)="confirmBringDialog($event)"
                       aria-label="Save supply quantity"
                       >
                       <mat-icon>done</mat-icon>
                     </button>
                   </span>
-                  <button type="button" class="experience-form-close-btn" (click)="host.cancelBringDialog()" aria-label="Close bring items">
+                  <button type="button" class="experience-form-close-btn" (click)="cancelBringDialog()" aria-label="Close bring items">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -93,13 +93,13 @@
                       [max]="dialog.max"
                       step="1"
                       [ngModel]="dialog.quantity"
-                      (ngModelChange)="host.onBringQuantityChange($event)"
-                      [disabled]="host.isBringPending()"
+                      (ngModelChange)="onBringQuantityChange($event)"
+                      [disabled]="isBringPending()"
                       placeholder="0"
                       />
                     <span class="subevent-supply-bring-range">Range: {{ dialog.min }} - {{ dialog.max }}</span>
-                    @if (host.bringErrorMessage()) {
-                      <p class="subevent-supply-bring-error">{{ host.bringErrorMessage() }}</p>
+                    @if (bringErrorMessage()) {
+                      <p class="subevent-supply-bring-error">{{ bringErrorMessage() }}</p>
                     }
                   </label>
                 </div>
@@ -108,38 +108,38 @@
           </section>
         }
 
-        @if (host.pendingDelete()) {
+        @if (resourcePopupStore.pendingSupplyDeleteRef()) {
           <section class="experience-delete-confirm">
-            <div class="experience-delete-confirm-backdrop" (click)="host.cancelDelete()"></div>
+            <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteSupplyContribution()"></div>
             <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
               <h4>Delete quantity row</h4>
-              <p>{{ host.pendingDeleteLabel() }}</p>
-              @if (host.deleteErrorMessage()) {
-                <p class="subevent-supply-delete-error">{{ host.deleteErrorMessage() }}</p>
+              <p>{{ pendingDeleteLabel() }}</p>
+              @if (supplyDeleteErrorMessage()) {
+                <p class="subevent-supply-delete-error">{{ supplyDeleteErrorMessage() }}</p>
               }
               <div class="popup-actions">
-                <button type="button" class="link-btn neutral-btn" (click)="host.cancelDelete()">Cancel</button>
+                <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteSupplyContribution()">Cancel</button>
                 <span
                   class="subevent-supply-delete-btn-shell"
-                  [class.is-loading]="host.isDeletePending()"
-                  [class.is-error]="!host.isDeletePending() && !!host.deleteErrorMessage()"
+                  [class.is-loading]="isSupplyDeletePending()"
+                  [class.is-error]="!isSupplyDeletePending() && !!supplyDeleteErrorMessage()"
                   >
-                  @if (host.isDeletePending() || host.deleteErrorMessage()) {
+                  @if (isSupplyDeletePending() || supplyDeleteErrorMessage()) {
                     <span class="subevent-supply-delete-btn-ring" aria-hidden="true">
                       <app-progress-indicator
                         kind="action-ring"
                         shape="button"
-                        [state]="host.isDeletePending() ? 'loading' : 'error'"
+                        [state]="isSupplyDeletePending() ? 'loading' : 'error'"
                       ></app-progress-indicator>
                     </span>
                   }
                   <button
                     type="button"
                     class="link-btn experience-delete-btn subevent-supply-delete-confirm-btn"
-                    [disabled]="host.isDeletePending()"
-                    (click)="host.confirmDelete()"
+                    [disabled]="isSupplyDeletePending()"
+                    (click)="confirmDeleteSupplyContribution()"
                     >
-                    {{ host.isDeletePending() ? 'Deleting...' : 'Delete' }}
+                    {{ isSupplyDeletePending() ? 'Deleting...' : 'Delete' }}
                   </button>
                 </span>
               </div>

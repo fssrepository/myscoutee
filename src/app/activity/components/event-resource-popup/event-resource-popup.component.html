@@ -19,24 +19,24 @@
   ></app-info-card>
 </ng-template>
 
-@if (!host.assetExploreOnly() || host.resourceAssetView()) {
+@if (!resourcePopupStore.assetExploreOnlyRef() || resourceAssetView()) {
   <section
     class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
-    [class.event-resource-popup-shell--standalone-asset-view]="host.standaloneResourceAssetView()"
-    [class.event-resource-popup-shell--asset-explore-view]="host.assetExploreOnly() && host.resourceAssetView()"
+    [class.event-resource-popup-shell--standalone-asset-view]="resourcePopupStore.resourceAssetViewReturnToChatRef()"
+    [class.event-resource-popup-shell--asset-explore-view]="resourcePopupStore.assetExploreOnlyRef() && resourceAssetView()"
     >
   <div class="app-popup-backdrop" (click)="closeResourceShellBackdrop($event)"></div>
   <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
-    @if (!host.standaloneResourceAssetView() && !host.assetExploreOnly()) {
+    @if (!resourcePopupStore.resourceAssetViewReturnToChatRef() && !resourcePopupStore.assetExploreOnlyRef()) {
       <div class="popup-header popup-header-members-invite-mobile-layout">
         <div class="popup-title popup-title-members">
           <div class="popup-chat-title-block">
-            <h2>{{ host.title() }}</h2>
-            <p>{{ host.subtitle() }}</p>
+            <h2>{{ popupTitle() }}</h2>
+            <p>{{ popupSubtitle() }}</p>
           </div>
         </div>
-        <span class="header-members-count members-header-summary-badge" [ngClass]="host.resourceTypeClass(host.resourceFilter())">{{ host.summary() }}</span>
-        <button mat-icon-button class="popup-close" (click)="host.close()" aria-label="Close">
+        <span class="header-members-count members-header-summary-badge" [ngClass]="resourceTypeClass(resourcePopupStore.resourceFilterRef())">{{ popupSummary() }}</span>
+        <button mat-icon-button class="popup-close" (click)="closeResourcePopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -44,7 +44,7 @@
 
     <div class="popup-body popup-body-members">
       <div class="experience-popup assets-popup subevent-assets-popup">
-        @if (!host.standaloneResourceAssetView() && !host.assetExploreOnly()) {
+        @if (!resourcePopupStore.resourceAssetViewReturnToChatRef() && !resourcePopupStore.assetExploreOnlyRef()) {
           <div class="experience-toolbar assets-toolbar">
           <app-menu
             class="subevent-resource-filter-menu"
@@ -76,9 +76,9 @@
           ></app-smart-list>
         }
 
-        @if (host.resourceAssetView(); as view) {
+        @if (resourceAssetView(); as view) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-view-overlay">
-            <div class="experience-form-overlay-backdrop" (click)="host.closeResourceAssetView($event)"></div>
+            <div class="experience-form-overlay-backdrop" (click)="closeResourceAssetView($event)"></div>
             <div class="experience-form-popup subevent-form-popup subevent-asset-view-popup" (click)="$event.stopPropagation()">
               <div class="experience-form-header subevent-group-header">
                 <div class="subevent-group-header-main">
@@ -102,12 +102,12 @@
                       </span>
                     }
                   </button>
-                  <button type="button" class="experience-form-close-btn" (click)="host.closeResourceAssetView($event)" aria-label="Close asset view">
+                  <button type="button" class="experience-form-close-btn" (click)="closeResourceAssetView($event)" aria-label="Close asset view">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
               </div>
-              <section class="experience-form-panel subevent-form-panel subevent-asset-view-panel" [ngClass]="host.resourceTypeClass(view.card.type)">
+              <section class="experience-form-panel subevent-form-panel subevent-asset-view-panel" [ngClass]="resourceTypeClass(view.card.type)">
                 <div class="subevent-asset-view-image-field">
                   <span>Image</span>
                   <div class="subevent-asset-view-media">
@@ -121,10 +121,10 @@
                 <div class="experience-form-grid subevent-asset-view-grid">
                   <label>
                     <span>Type</span>
-                    <div class="profile-status-select-wrap selector-like experience-type-select subevent-asset-view-selector" [ngClass]="host.resourceTypeClass(view.card.type)">
+                    <div class="profile-status-select-wrap selector-like experience-type-select subevent-asset-view-selector" [ngClass]="resourceTypeClass(view.card.type)">
                       <span class="status-option-content">
-                        <mat-icon [class]="host.resourceTypeClass(view.card.type)">{{ host.resourceTypeIcon(view.card.type) }}</mat-icon>
-                        <span>{{ host.resourceTypeLabel(view.card.type) }}</span>
+                        <mat-icon [class]="resourceTypeClass(view.card.type)">{{ resourceTypeIcon(view.card.type) }}</mat-icon>
+                        <span>{{ resourceTypeLabel(view.card.type) }}</span>
                       </span>
                       <mat-icon>expand_more</mat-icon>
                     </div>
@@ -320,9 +320,9 @@
           </section>
         }
 
-        @if (host.capacityEditor(); as editor) {
+        @if (resourcePopupStore.capacityEditorRef(); as editor) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay">
-            <div class="experience-form-overlay-backdrop" (click)="host.closeCapacityEditor($event)"></div>
+            <div class="experience-form-overlay-backdrop" (click)="closeCapacityEditor($event)"></div>
             <div class="experience-form-popup subevent-form-popup subevent-group-popup">
               <div class="experience-form-header subevent-group-header">
                 <div class="subevent-group-header-main">
@@ -332,30 +332,30 @@
                 <div class="experience-form-header-controls">
                   <span
                     class="subevent-resource-save-btn-shell"
-                    [class.is-loading]="host.isCapacitySavePending()"
-                    [class.is-error]="!host.isCapacitySavePending() && !!host.capacitySaveErrorMessage()"
+                    [class.is-loading]="isCapacitySavePending()"
+                    [class.is-error]="!isCapacitySavePending() && !!capacitySaveErrorMessage()"
                     >
-                    @if (host.isCapacitySavePending() || host.capacitySaveErrorMessage()) {
+                    @if (isCapacitySavePending() || capacitySaveErrorMessage()) {
                       <span class="subevent-resource-save-btn-ring" aria-hidden="true">
                         <app-progress-indicator
                           kind="action-ring"
                           shape="circle"
-                          [state]="host.isCapacitySavePending() ? 'loading' : 'error'"
+                          [state]="isCapacitySavePending() ? 'loading' : 'error'"
                         ></app-progress-indicator>
                       </span>
                     }
                     <button
                       type="button"
                       class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
-                      [class.form-save-invalid]="!host.canSubmitCapacityEditor() && !host.isCapacitySavePending()"
-                      [disabled]="!host.canSubmitCapacityEditor()"
-                      (click)="host.saveCapacityEditor($event)"
+                      [class.form-save-invalid]="!canSubmitCapacityEditor() && !isCapacitySavePending()"
+                      [disabled]="!canSubmitCapacityEditor()"
+                      (click)="saveCapacityEditor($event)"
                       aria-label="Save capacity"
                       >
                       <mat-icon>done</mat-icon>
                     </button>
                   </span>
-                  <button type="button" class="experience-form-close-btn" (click)="host.closeCapacityEditor($event)" aria-label="Close capacity editor">
+                  <button type="button" class="experience-form-close-btn" (click)="closeCapacityEditor($event)" aria-label="Close capacity editor">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -371,8 +371,8 @@
                         [max]="editor.capacityMax"
                         step="1"
                         [ngModel]="editor.capacityMin"
-                        (ngModelChange)="host.onCapacityMinChange($event)"
-                        [disabled]="host.isCapacitySavePending()"
+                        (ngModelChange)="onCapacityMinChange($event)"
+                        [disabled]="isCapacitySavePending()"
                         placeholder="Min"
                         />
                       <span class="subevent-capacity-separator">-</span>
@@ -382,13 +382,13 @@
                         [max]="editor.capacityLimit"
                         step="1"
                         [ngModel]="editor.capacityMax"
-                        (ngModelChange)="host.onCapacityMaxChange($event)"
-                        [disabled]="host.isCapacitySavePending()"
+                        (ngModelChange)="onCapacityMaxChange($event)"
+                        [disabled]="isCapacitySavePending()"
                         placeholder="Max"
                         />
                     </div>
-                    @if (host.capacitySaveErrorMessage()) {
-                      <p class="subevent-resource-editor-error">{{ host.capacitySaveErrorMessage() }}</p>
+                    @if (capacitySaveErrorMessage()) {
+                      <p class="subevent-resource-editor-error">{{ capacitySaveErrorMessage() }}</p>
                     }
                   </label>
                 </div>
@@ -397,9 +397,9 @@
           </section>
         }
 
-        @if (host.routeEditor(); as editor) {
+        @if (resourcePopupStore.routeEditorRef(); as editor) {
           <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay subevent-asset-route-overlay">
-            <div class="experience-form-overlay-backdrop" (click)="host.closeRouteEditor($event)"></div>
+            <div class="experience-form-overlay-backdrop" (click)="closeRouteEditor($event)"></div>
             <div class="experience-form-popup subevent-form-popup subevent-group-popup">
               <div class="experience-form-header subevent-group-header">
                 <div class="subevent-group-header-main">
@@ -407,34 +407,34 @@
                   <p class="subevent-group-stage-subtitle">{{ editor.title }}</p>
                 </div>
                 <div class="experience-form-header-controls">
-                  @if (!host.routeEditorReadOnly()) {
+                  @if (!routeEditorReadOnly()) {
                     <span
                       class="subevent-resource-save-btn-shell"
-                      [class.is-loading]="host.isRouteSavePending()"
-                      [class.is-error]="!host.isRouteSavePending() && !!host.routeSaveErrorMessage()"
+                      [class.is-loading]="isRouteSavePending()"
+                      [class.is-error]="!isRouteSavePending() && !!routeSaveErrorMessage()"
                       >
-                      @if (host.isRouteSavePending() || host.routeSaveErrorMessage()) {
+                      @if (isRouteSavePending() || routeSaveErrorMessage()) {
                         <span class="subevent-resource-save-btn-ring" aria-hidden="true">
                           <app-progress-indicator
                             kind="action-ring"
                             shape="circle"
-                            [state]="host.isRouteSavePending() ? 'loading' : 'error'"
+                            [state]="isRouteSavePending() ? 'loading' : 'error'"
                           ></app-progress-indicator>
                         </span>
                       }
                       <button
                         type="button"
                         class="popup-header-add-btn subevent-leaderboard-save-btn subevent-resource-save-btn"
-                        [class.form-save-invalid]="!host.canSubmitRouteEditor() && !host.isRouteSavePending()"
-                        [disabled]="!host.canSubmitRouteEditor()"
-                        (click)="host.saveRouteEditor($event)"
+                        [class.form-save-invalid]="!canSubmitRouteEditor() && !isRouteSavePending()"
+                        [disabled]="!canSubmitRouteEditor()"
+                        (click)="saveRouteEditor($event)"
                         aria-label="Save route"
                         >
                         <mat-icon>done</mat-icon>
                       </button>
                     </span>
                   }
-                  <button type="button" class="experience-form-close-btn" (click)="host.closeRouteEditor($event)" aria-label="Close route editor">
+                  <button type="button" class="experience-form-close-btn" (click)="closeRouteEditor($event)" aria-label="Close route editor">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
@@ -444,23 +444,23 @@
                   <div class="experience-title-field">
                       <div class="asset-route-toolbar">
                         <span>Route Stops</span>
-                      <div class="asset-route-toolbar-actions" [class.asset-route-toolbar-actions-single]="host.routeEditorReadOnly()">
+                      <div class="asset-route-toolbar-actions" [class.asset-route-toolbar-actions-single]="routeEditorReadOnly()">
                         <button
                           type="button"
                           class="experience-action-btn asset-route-map-btn asset-route-main-map-btn"
-                          [class.form-save-invalid]="!host.routeEditorReadOnly() && !host.canSubmitRouteEditor() && !host.isRouteSavePending()"
-                          [disabled]="host.isRouteSavePending() || (!host.routeEditorReadOnly() && !host.canSubmitRouteEditor())"
-                          (click)="host.openRouteMap($event)"
+                          [class.form-save-invalid]="!routeEditorReadOnly() && !canSubmitRouteEditor() && !isRouteSavePending()"
+                          [disabled]="isRouteSavePending() || (!routeEditorReadOnly() && !canSubmitRouteEditor())"
+                          (click)="openRouteMap($event)"
                           aria-label="Open multistep route on map"
                           >
                           <mat-icon>location_on</mat-icon>
                         </button>
-                        @if (!host.routeEditorReadOnly()) {
+                        @if (!routeEditorReadOnly()) {
                           <button
                             type="button"
                             class="experience-action-btn asset-route-add-btn"
-                            [disabled]="host.isRouteSavePending()"
-                            (click)="host.addRouteStop()"
+                            [disabled]="isRouteSavePending()"
+                            (click)="addRouteStop()"
                             aria-label="Add route stop"
                             >
                             <mat-icon>add</mat-icon>
@@ -473,21 +473,21 @@
                       class="asset-route-list"
                       cdkDropList
                       [cdkDropListData]="editor.routes"
-                      (cdkDropListDropped)="host.dropRouteStop($event)"
-                      [cdkDropListDisabled]="host.routeEditorReadOnly() || !host.routeEditorSupportsMultiRoute() || host.isRouteSavePending()"
+                      (cdkDropListDropped)="dropRouteStop($event)"
+                      [cdkDropListDisabled]="routeEditorReadOnly() || !routeEditorSupportsMultiRoute() || isRouteSavePending()"
                       >
-                      @for (stop of routeEditorVisibleStops(editor); track host.routeEditorReadOnly() ? stop : routeStopTrackId($index); let stopIndex = $index) {
+                      @for (stop of routeEditorVisibleStops(editor); track routeEditorReadOnly() ? stop : routeStopTrackId($index); let stopIndex = $index) {
                         <div
                           class="asset-route-row"
                           cdkDrag
-                          [cdkDragDisabled]="host.routeEditorReadOnly() || !host.routeEditorSupportsMultiRoute() || host.isRouteSavePending()"
+                          [cdkDragDisabled]="routeEditorReadOnly() || !routeEditorSupportsMultiRoute() || isRouteSavePending()"
                           >
-                          @if (host.routeEditorSupportsMultiRoute()) {
+                          @if (routeEditorSupportsMultiRoute()) {
                             <button
                               type="button"
                               class="experience-action-btn asset-route-drag-btn"
                               cdkDragHandle
-                              [disabled]="host.routeEditorReadOnly() || host.isRouteSavePending()"
+                              [disabled]="routeEditorReadOnly() || isRouteSavePending()"
                               aria-label="Drag route stop"
                               >
                               <mat-icon>drag_indicator</mat-icon>
@@ -496,25 +496,25 @@
                           <input
                             type="text"
                             [ngModel]="stop"
-                            (ngModelChange)="host.updateRouteStop(stopIndex, $event)"
-                            [disabled]="host.routeEditorReadOnly() || host.isRouteSavePending()"
+                            (ngModelChange)="updateRouteStop(stopIndex, $event)"
+                            [disabled]="routeEditorReadOnly() || isRouteSavePending()"
                             [placeholder]="'Route stop ' + (stopIndex + 1)"
                             />
                           <button
                             type="button"
                             class="experience-action-btn asset-route-map-btn"
-                            [disabled]="host.isRouteSavePending()"
+                            [disabled]="isRouteSavePending()"
                             (click)="openRouteEditorStopMap(editor, stop, stopIndex, $event)"
                             aria-label="Open stop on map"
                             >
                             <mat-icon>location_on</mat-icon>
                           </button>
-                          @if (!host.routeEditorReadOnly() && editor.routes.length > 1) {
+                          @if (!routeEditorReadOnly() && editor.routes.length > 1) {
                             <button
                               type="button"
                               class="experience-action-btn experience-action-delete asset-route-delete-btn"
-                              [disabled]="host.isRouteSavePending()"
-                              (click)="host.removeRouteStop(stopIndex)"
+                              [disabled]="isRouteSavePending()"
+                              (click)="removeRouteStop(stopIndex)"
                               aria-label="Delete route stop"
                               >
                               <mat-icon>delete</mat-icon>
@@ -522,14 +522,14 @@
                           }
                         </div>
                       }
-                      @if (host.routeEditorReadOnly() && routeEditorVisibleStops(editor).length === 0) {
+                      @if (routeEditorReadOnly() && routeEditorVisibleStops(editor).length === 0) {
                         <div class="event-slot-empty-state event-policy-empty-state">
                           <span>No route set yet.</span>
                         </div>
                       }
                     </div>
-                    @if (host.routeSaveErrorMessage()) {
-                      <p class="subevent-resource-editor-error">{{ host.routeSaveErrorMessage() }}</p>
+                    @if (routeSaveErrorMessage()) {
+                      <p class="subevent-resource-editor-error">{{ routeSaveErrorMessage() }}</p>
                     }
                   </div>
                 </div>
@@ -538,38 +538,38 @@
           </section>
         }
 
-        @if (host.pendingDeleteCard()) {
+        @if (resourcePopupStore.pendingResourceDeleteRef()) {
           <section class="experience-delete-confirm">
-            <div class="experience-delete-confirm-backdrop" (click)="host.cancelDeleteCard()"></div>
+            <div class="experience-delete-confirm-backdrop" (click)="cancelDeleteResourceCard()"></div>
             <div class="experience-delete-confirm-panel" (click)="$event.stopPropagation()">
               <h4>Remove assignment</h4>
-              <p>{{ host.deleteCardLabel() }}</p>
-              @if (host.deleteCardErrorMessage()) {
-                <p class="subevent-resource-delete-error">{{ host.deleteCardErrorMessage() }}</p>
+              <p>{{ resourceDeleteCardLabel() }}</p>
+              @if (deleteCardErrorMessage()) {
+                <p class="subevent-resource-delete-error">{{ deleteCardErrorMessage() }}</p>
               }
               <div class="popup-actions">
-                <button type="button" class="link-btn neutral-btn" (click)="host.cancelDeleteCard()">Cancel</button>
+                <button type="button" class="link-btn neutral-btn" (click)="cancelDeleteResourceCard()">Cancel</button>
                 <span
                   class="subevent-resource-delete-btn-shell"
-                  [class.is-loading]="host.isDeleteCardPending()"
-                  [class.is-error]="!host.isDeleteCardPending() && !!host.deleteCardErrorMessage()"
+                  [class.is-loading]="isDeleteCardPending()"
+                  [class.is-error]="!isDeleteCardPending() && !!deleteCardErrorMessage()"
                   >
-                  @if (host.isDeleteCardPending() || host.deleteCardErrorMessage()) {
+                  @if (isDeleteCardPending() || deleteCardErrorMessage()) {
                     <span class="subevent-resource-delete-btn-ring" aria-hidden="true">
                       <app-progress-indicator
                         kind="action-ring"
                         shape="button"
-                        [state]="host.isDeleteCardPending() ? 'loading' : 'error'"
+                        [state]="isDeleteCardPending() ? 'loading' : 'error'"
                       ></app-progress-indicator>
                     </span>
                   }
                   <button
                     type="button"
                     class="link-btn experience-delete-btn subevent-resource-delete-confirm-btn"
-                    [disabled]="host.isDeleteCardPending()"
-                    (click)="host.confirmDeleteCard()"
+                    [disabled]="isDeleteCardPending()"
+                    (click)="confirmDeleteResourceCard()"
                     >
-                    {{ host.isDeleteCardPending() ? 'Removing...' : 'Remove' }}
+                    {{ isDeleteCardPending() ? 'Removing...' : 'Remove' }}
                   </button>
                 </span>
               </div>
@@ -577,10 +577,10 @@
           </section>
         }
 
-        @if (host.joinDialog(); as dialog) {
+        @if (assignedAssetJoinDialogViewState(); as dialog) {
           <div class="asset-explore-shell assigned-asset-join-shell">
             <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay asset-explore-borrow-overlay">
-              <div class="experience-form-overlay-backdrop" (click)="host.closeJoinDialog($event)"></div>
+              <div class="experience-form-overlay-backdrop" (click)="closeAssignedAssetJoinDialog($event)"></div>
               <div class="experience-form-popup subevent-form-popup subevent-group-popup asset-explore-borrow-popup">
                 <div class="experience-form-header subevent-group-header">
                   <div class="subevent-group-header-main">
@@ -588,7 +588,7 @@
                     <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
                   </div>
                   <div class="experience-form-header-controls">
-                    <button type="button" class="experience-form-close-btn" (click)="host.closeJoinDialog($event)" aria-label="Close join request">
+                    <button type="button" class="experience-form-close-btn" (click)="closeAssignedAssetJoinDialog($event)" aria-label="Close join request">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -654,7 +654,7 @@
                               <input
                                 type="checkbox"
                                 [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
-                                (change)="host.toggleJoinPolicy(policy.id)"
+                                (change)="toggleAssignedAssetJoinPolicy(policy.id)"
                               />
                               <div>
                                 <strong>{{ policy.title }}</strong>
@@ -680,7 +680,7 @@
                         type="button"
                         class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary"
                         [disabled]="dialog.busy"
-                        (click)="host.closeJoinDialog($event)"
+                        (click)="closeAssignedAssetJoinDialog($event)"
                       >
                         Cancel
                       </button>
@@ -701,8 +701,8 @@
                         <button
                           type="button"
                           class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--primary asset-explore-borrow-actions__btn--confirm"
-                          [disabled]="!host.canSubmitJoin() || dialog.busy"
-                          (click)="host.confirmJoin($event)"
+                          [disabled]="!canSubmitAssignedAssetJoin() || dialog.busy"
+                          (click)="confirmAssignedAssetJoin($event)"
                         >
                           {{ dialog.busy ? dialog.busyLabel : dialog.submitLabel }}
                         </button>
@@ -720,9 +720,9 @@
   </section>
 }
 
-@if (host.assetExplorePopup(); as explore) {
+@if (assetExplorePopupViewState(); as explore) {
   <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell">
-    <div class="app-popup-backdrop" (click)="host.closeExplorePopup($event)"></div>
+    <div class="app-popup-backdrop" (click)="closeExplorePopup($event)"></div>
     <div class="app-popup-panel popup-panel-asset-members asset-explore-shell-panel" (click)="$event.stopPropagation()">
       <div class="popup-header popup-header-with-progress asset-explore-shell-header">
         <div class="popup-title">
@@ -738,7 +738,7 @@
             (itemSelect)="onEventResourceMenuSelect($event)"
           ></app-menu>
         </div>
-        <button type="button" class="popup-close" (click)="host.closeExplorePopup($event)" aria-label="Close asset explore">
+        <button type="button" class="popup-close" (click)="closeExplorePopup($event)" aria-label="Close asset explore">
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -871,9 +871,9 @@
             </div>
           }
 
-          @if (host.assetExploreBorrowDialog(); as dialog) {
+          @if (assetExploreBorrowDialogViewState(); as dialog) {
             <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay asset-explore-borrow-overlay">
-              <div class="experience-form-overlay-backdrop" (click)="host.closeAssetExploreBorrowDialog($event)"></div>
+              <div class="experience-form-overlay-backdrop" (click)="closeAssetExploreBorrowDialog($event)"></div>
               <div class="experience-form-popup subevent-form-popup subevent-group-popup asset-explore-borrow-popup">
                 <div class="experience-form-header subevent-group-header">
                   <div class="subevent-group-header-main">
@@ -881,7 +881,7 @@
                     <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
                   </div>
                   <div class="experience-form-header-controls">
-                    <button type="button" class="experience-form-close-btn" (click)="host.closeAssetExploreBorrowDialog($event)" aria-label="Close borrow request">
+                    <button type="button" class="experience-form-close-btn" (click)="closeAssetExploreBorrowDialog($event)" aria-label="Close borrow request">
                       <mat-icon>close</mat-icon>
                     </button>
                   </div>
@@ -897,7 +897,7 @@
                               matInput
                               [matDatepicker]="borrowStartPicker"
                               [ngModel]="dialog.startDate"
-                              (ngModelChange)="host.setAssetExploreBorrowDateRange($event, dialog.endDate)"
+                              (ngModelChange)="setAssetExploreBorrowDateRange($event, dialog.endDate)"
                             />
                             <mat-datepicker-toggle matSuffix [for]="borrowStartPicker"></mat-datepicker-toggle>
                             <mat-datepicker #borrowStartPicker></mat-datepicker>
@@ -908,7 +908,7 @@
                               [matTimepicker]="borrowStartTimePicker"
                               [matTimepickerOpenOnClick]="true"
                               [ngModel]="dialog.startTime"
-                              (ngModelChange)="host.setAssetExploreBorrowTime('start', $event)"
+                              (ngModelChange)="setAssetExploreBorrowTime('start', $event)"
                             />
                             <mat-timepicker-toggle matSuffix [for]="borrowStartTimePicker"></mat-timepicker-toggle>
                             <mat-timepicker #borrowStartTimePicker></mat-timepicker>
@@ -923,7 +923,7 @@
                               matInput
                               [matDatepicker]="borrowEndPicker"
                               [ngModel]="dialog.endDate"
-                              (ngModelChange)="host.setAssetExploreBorrowDateRange(dialog.startDate, $event)"
+                              (ngModelChange)="setAssetExploreBorrowDateRange(dialog.startDate, $event)"
                             />
                             <mat-datepicker-toggle matSuffix [for]="borrowEndPicker"></mat-datepicker-toggle>
                             <mat-datepicker #borrowEndPicker></mat-datepicker>
@@ -934,7 +934,7 @@
                               [matTimepicker]="borrowEndTimePicker"
                               [matTimepickerOpenOnClick]="true"
                               [ngModel]="dialog.endTime"
-                              (ngModelChange)="host.setAssetExploreBorrowTime('end', $event)"
+                              (ngModelChange)="setAssetExploreBorrowTime('end', $event)"
                             />
                             <mat-timepicker-toggle matSuffix [for]="borrowEndTimePicker"></mat-timepicker-toggle>
                             <mat-timepicker #borrowEndTimePicker></mat-timepicker>
@@ -949,8 +949,8 @@
                           step="1"
                           [max]="dialog.availableQuantity"
                           [ngModel]="dialog.quantity"
-                          (ngModelChange)="host.onAssetExploreBorrowQuantityChange($event)"
-                          (blur)="host.normalizeAssetExploreBorrowQuantityOnBlur($any($event.target).value)"
+                          (ngModelChange)="onAssetExploreBorrowQuantityChange($event)"
+                          (blur)="normalizeAssetExploreBorrowQuantityOnBlur($any($event.target).value)"
                         />
                       </label>
                     }
@@ -1027,7 +1027,7 @@
                               <input
                                 type="checkbox"
                                 [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
-                                (change)="host.toggleAssetExploreBorrowPolicy(policy.id)"
+                                (change)="toggleAssetExploreBorrowPolicy(policy.id)"
                               />
                               <div>
                                 <strong>{{ policy.title }}</strong>
@@ -1122,7 +1122,7 @@
                           type="button"
                           class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary"
                           [disabled]="dialog.busy"
-                          (click)="host.backAssetExploreBorrowToDetails($event)"
+                          (click)="backAssetExploreBorrowToDetails($event)"
                         >
                           Back
                         </button>
@@ -1131,7 +1131,7 @@
                           type="button"
                           class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary"
                           [disabled]="dialog.busy"
-                          (click)="host.closeAssetExploreBorrowDialog($event)"
+                          (click)="closeAssetExploreBorrowDialog($event)"
                         >
                           Cancel
                         </button>
@@ -1153,8 +1153,8 @@
                         <button
                           type="button"
                           class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--primary asset-explore-borrow-actions__btn--confirm"
-                          [disabled]="!host.canSubmitAssetExploreBorrow() || dialog.busy"
-                          (click)="host.confirmAssetExploreBorrow($event)"
+                          [disabled]="!canSubmitAssetExploreBorrow() || dialog.busy"
+                          (click)="confirmAssetExploreBorrow($event)"
                         >
                           {{ dialog.busy ? dialog.busyLabel : dialog.submitLabel }}
                         </button>

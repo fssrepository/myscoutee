@@ -29,7 +29,7 @@ import { AppUtils } from '../../../shared/app-utils';
 import { AppContext, AppPopupContext, type ActivityCounterKey, type ActivityCounters, type ActivityMembersSyncState } from '../../../shared/ui';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
+import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
@@ -187,7 +187,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly shareTokensService = inject(ShareTokensService);
   protected readonly appCtx = inject(AppContext);
   protected readonly popupCtx = inject(AppPopupContext);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogService = inject(ConfirmationDialogService);
   protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
@@ -298,7 +298,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private activitiesExplanationContextKey: string | null = null;
 
   protected get assetCards(): AppDTOs.AssetCardDTO[] {
-    return this.ownedAssets.assetCards;
+    return this.ownedAssetsStore.assetCards();
   }
 
   private activityCounterValue(key: ActivityCounterKey): number {
@@ -819,7 +819,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.ownedAssets.assetListRevision();
+      this.ownedAssetsStore.assetListRevision();
       this.cdr.markForCheck();
     });
 

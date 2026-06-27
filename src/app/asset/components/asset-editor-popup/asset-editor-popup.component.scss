@@ -4,18 +4,18 @@
 @include ui.popup-shell();
 @include ui.form-controls();
 @include asset-interactions.host-motion-vars(contents);
-@include asset-interactions.interactive-feedback('.asset-form-close-btn, .asset-source-refresh-btn');
+@include asset-interactions.interactive-feedback('.asset-editor-close-btn, .asset-source-refresh-btn');
 
 .experience-form-overlay {
   z-index: 4200;
 }
 
-.experience-form-overlay.asset-form-overlay {
+.experience-form-overlay.asset-editor-overlay {
   align-items: flex-start;
   padding: 1rem;
 }
 
-.asset-form-popup {
+.asset-editor-popup {
   position: relative;
   width: min(1160px, calc(100vw - 1.2rem));
   max-width: min(1160px, calc(100vw - 1.2rem));
@@ -26,23 +26,23 @@
   border-radius: 14px;
 }
 
-.asset-form-visibility-picker {
+.asset-editor-visibility-picker {
   position: relative;
   display: inline-flex;
   align-items: center;
 }
 
-.asset-form-save-menu {
+.asset-editor-save-menu {
   flex: 0 0 auto;
 }
 
-.asset-form-required-marker {
+.asset-editor-required-marker {
   color: #cb2f2f;
   font-weight: 800;
   margin-left: 0.12rem;
 }
 
-.asset-form-panel {
+.asset-editor-panel {
   min-height: 0;
 }
 
@@ -76,24 +76,24 @@
   border-color: rgba(176, 86, 66, 0.24);
 }
 
-.asset-form-layout {
+.asset-editor-layout {
   display: grid;
   gap: 1rem;
   min-width: 0;
 }
 
-.asset-form-wide {
+.asset-editor-wide {
   min-width: 0;
 }
 
-.asset-form-wide-fields {
+.asset-editor-wide-fields {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: none;
   justify-content: stretch;
   align-content: start;
 }
 
-.asset-form-fields {
+.asset-editor-fields {
   grid-template-columns: minmax(300px, 360px) repeat(2, minmax(0, 1fr));
   max-width: none;
   justify-content: stretch;
@@ -102,13 +102,13 @@
   row-gap: 0.72rem;
 }
 
-.asset-form-wide-fields > .experience-description-field,
+.asset-editor-wide-fields > .experience-description-field,
 .asset-pricing-field,
 .asset-policies-input {
   grid-column: 1 / -1;
 }
 
-.asset-form-wide {
+.asset-editor-wide {
   grid-column: 1 / -1;
 }
 
@@ -210,7 +210,7 @@
 }
 
 @media (max-width: 900px) {
-  .asset-form-fields {
+  .asset-editor-fields {
     grid-template-columns: 1fr;
   }
 
@@ -239,13 +239,13 @@
 }
 
 @media (max-width: 760px) {
-  .experience-form-overlay.asset-form-overlay {
+  .experience-form-overlay.asset-editor-overlay {
     align-items: stretch;
     justify-content: stretch;
     padding: 0;
   }
 
-  .asset-form-popup {
+  .asset-editor-popup {
     width: 100vw;
     max-width: 100vw;
     height: 100dvh;
@@ -253,8 +253,8 @@
     border-radius: 0;
   }
 
-  .asset-form-fields,
-  .asset-form-wide-fields {
+  .asset-editor-fields,
+  .asset-editor-wide-fields {
     grid-template-columns: 1fr;
     row-gap: 0.72rem;
   }

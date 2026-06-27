@@ -1,5 +1,5 @@
-<div class="asset-popup" [attr.data-owned-assets-ui-rev]="ownedAssets.uiRevision()">
-  @if (ownedAssets.isPopupOpen()) {
+<div class="asset-popup" [attr.data-owned-assets-ui-rev]="ownedAssetsStore.uiRevision()">
+  @if (ownedAssetsStore.popupOpen()) {
     <section
       class="app-popup"
       [class.app-popup-stacked]="isBasketMode()"
@@ -54,7 +54,7 @@
               </button>
             </div>
           } @else {
-            @if (ownedAssets.isTicketPopup()) {
+            @if (ownedAssetsStore.ticketPopup()) {
               <app-menu
                 class="ticket-order-picker"
                 kind="select"
@@ -70,13 +70,13 @@
         </div>
         <div
           class="popup-body popup-body-assets-list"
-          [class.popup-body-assets-tickets]="ownedAssets.isTicketPopup()"
+          [class.popup-body-assets-tickets]="ownedAssetsStore.ticketPopup()"
           [class.popup-body-friends-picker]="isBasketMode()"
           [class.popup-body-subevent-asset-assign]="isBasketMode()"
           >
             <div
               class="experience-popup assets-popup assets-popup-smart-list"
-              [class.assets-popup-tickets]="ownedAssets.isTicketPopup()"
+              [class.assets-popup-tickets]="ownedAssetsStore.ticketPopup()"
               [class.assets-popup-basket]="isBasketMode()"
               >
             @if (isBasketMode()) {
@@ -93,21 +93,21 @@
                   [mobileBreakpointPx]="900"
                   (itemSelect)="onAssetPopupMenuSelect($event)"
                 ></app-menu>
-                @if (!ownedAssets.isTicketPopup()) {
+                @if (!ownedAssetsStore.ticketPopup()) {
                   <button
                     type="button"
                     class="popup-header-add-btn assets-add-btn"
-                    (click)="ownedAssets.openAssetForm()"
+                    (click)="ownedAssets.openAssetEditor()"
                     aria-label="Add asset"
                     >
                     <mat-icon>add</mat-icon>
                   </button>
                 }
-                @if (ownedAssets.isTicketPopup()) {
+                @if (ownedAssetsStore.ticketPopup()) {
                   <button
                     type="button"
                     class="popup-header-add-btn assets-add-btn ticket-toolbar-scanner-btn"
-                    (click)="assetPopup.openTicketScannerPopup($event)"
+                    (click)="openTicketScannerPopup($event)"
                     aria-label="Scan ticket"
                     >
                     <mat-icon>qr_code_scanner</mat-icon>
@@ -116,7 +116,7 @@
                 }
               </div>
             }
-            @if (ownedAssets.isTicketPopup() && !isBasketMode()) {
+            @if (ownedAssetsStore.ticketPopup() && !isBasketMode()) {
               <app-smart-list
                 [config]="ticketSmartListConfig"
                 [loadPage]="ticketSmartListLoadPage"
@@ -137,41 +137,20 @@
               ></app-smart-list>
             }
             @if (!isBasketMode()) {
-              <app-asset-form-popup
-                [visible]="ownedAssets.showAssetForm"
-                [title]="ownedAssets.assetFormTitle()"
-                [assetForm]="ownedAssets.assetForm"
-                [canSave]="ownedAssets.canSubmitAssetForm()"
-                [isLoading]="ownedAssets.isAssetFormLoading"
-                [isSavePending]="ownedAssets.isAssetFormSavePending"
-                [sourceRefreshEnabled]="ownedAssets.canRefreshAssetFromSourceLink()"
-                [assetFormVisibility]="ownedAssets.assetFormVisibility"
-                [assetVisibilityOptions]="ownedAssets.assetVisibilityOptions"
-                [assetFormRouteStops]="ownedAssets.assetFormRouteStops()"
-                [isEventEditorReadOnly]="false"
-                [assetImageUploadOwnerId]="ownedAssets.assetFormImageUploadOwnerId()"
-                [assetImageUploadEntityId]="ownedAssets.assetFormImageUploadEntityId()"
-                [eventVisibilityClass]="ownedAssets.eventVisibilityClass"
-                [visibilityIcon]="ownedAssets.visibilityIcon"
-                [close]="closeOwnedAssetForm"
-                [save]="saveOwnedAssetCard"
-                [setAssetFormVisibility]="ownedAssets.setAssetFormVisibility.bind(ownedAssets)"
-                [setAssetFormRouteStop]="setOwnedAssetFormRouteStop"
-                [refreshAssetFromSourceLink]="refreshOwnedAssetFromSourceLink"
-              ></app-asset-form-popup>
+              <app-asset-editor-popup></app-asset-editor-popup>
             }
             @if (!isBasketMode()) {
               <app-confirmation-dialog
                 [useService]="false"
             [dialog]="{
-              visible: !!ownedAssets.pendingAssetDeleteCardId,
+              visible: !!ownedAssetsStore.pendingAssetDeleteCardId(),
               title: 'Delete asset',
-              message: ownedAssets.pendingAssetDeleteLabel(),
+              message: pendingOwnedAssetDeleteLabel(),
               confirmLabel: 'Delete',
-              busyConfirmLabel: ownedAssets.assetDeleteBusyLabel(),
+              busyConfirmLabel: 'Deleting...',
               confirmTone: 'danger',
-              busy: ownedAssets.isAssetDeletePending,
-              errorMessage: ownedAssets.assetDeleteErrorMessage(),
+              busy: ownedAssetsStore.assetDeletePending(),
+              errorMessage: ownedAssetsStore.pendingAssetDeleteError(),
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"
@@ -290,7 +269,7 @@
   <ng-template #ticketItemTemplate let-row let-groupLabel="groupLabel">
     <app-info-card
       [card]="ticketInfoCard(row, { groupLabel: groupLabel })"
-      (mediaEndClick)="assetPopup.openTicketCodePopup(row)"
+      (mediaEndClick)="openTicketCodePopup(row)"
     ></app-info-card>
   </ng-template>
 
@@ -307,50 +286,6 @@
 
   <app-menu-outlet (itemSelect)="onAssetDispatchedMenuSelect($event)"></app-menu-outlet>
 
-  @if (assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') {
-    <section class="app-popup app-popup-stacked">
-      <div class="app-popup-backdrop" (click)="assetPopup.closeTicketOverlay()"></div>
-      <div
-        class="app-popup-panel"
-        [class.popup-panel-ticket-fullscreen]="(assetPopup.ticketOverlayMode() === 'ticketCode' || assetPopup.ticketOverlayMode() === 'ticketScanner') && ownedAssets.isMobileView()"
-        (click)="$event.stopPropagation()"
-        >
-        <div class="popup-header">
-          <div class="popup-title">
-            <h2>{{ assetPopup.ticketOverlayMode() === 'ticketCode' ? 'Ticket' : 'Scan Ticket' }}</h2>
-          </div>
-          <button mat-icon-button class="popup-close" (click)="assetPopup.closeTicketOverlay()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <div class="popup-body">
-          @if (assetPopup.ticketOverlayMode() === 'ticketCode') {
-            <app-asset-ticket-code-popup
-              [selectedTicketRow]="assetPopup.selectedTicketRow()"
-              [avatarUrl]="assetPopup.ticketCodeAvatarUrl()"
-              [initials]="assetPopup.ticketCodeInitials()"
-              [personLine]="assetPopup.ticketCodePersonLine()"
-              [roleEventLine]="assetPopup.ticketCodeRoleEventLine()"
-              [dateLine]="assetPopup.ticketCodeDateLine()"
-              [qrImageUrl]="assetPopup.ticketQrImageUrl()"
-            ></app-asset-ticket-code-popup>
-          }
-          @if (assetPopup.ticketOverlayMode() === 'ticketScanner') {
-            <app-asset-ticket-scanner-popup
-              [state]="assetPopup.ticketScannerState()"
-              [result]="assetPopup.ticketScannerResult()"
-              [avatarUrl]="assetPopup.ticketScannerResultAvatarUrl()"
-              [initials]="assetPopup.ticketScannerResultInitials()"
-              [personLine]="assetPopup.ticketScannerPersonLine()"
-              [roleEventLine]="assetPopup.ticketScannerRoleEventLine()"
-              [dateLine]="assetPopup.ticketScannerDateLine()"
-              [retry]="retryTicketScanner"
-              (videoElementChange)="onTicketScannerVideoElementChange($event)"
-            ></app-asset-ticket-scanner-popup>
-          }
-        </div>
-      </div>
-    </section>
-  }
+  <app-asset-ticket-scan-popup></app-asset-ticket-scan-popup>
 
 </div>

@@ -7,7 +7,8 @@ import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService,
 import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogService } from '../shared/ui/services/confirmation-dialog.service';
-import { AssetPopupStateService } from '../asset/asset-popup-state.service';
+import { AppPopupContext } from '../shared/ui';
+import { AssetPopupStore } from '../shared/ui/context/stores/asset-popup.store';
 
 export interface NavigatorMenuUiState {
   open: boolean;
@@ -65,10 +66,11 @@ export class NavigatorService {
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
+  private readonly popupCtx = inject(AppPopupContext);
   private readonly router = inject(Router);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly assetPopupService = inject(AssetPopupStateService);
+  private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly currentRouteUrlRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
@@ -107,7 +109,10 @@ export class NavigatorService {
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
-  readonly navigatorCoveredByAssetPopup = computed(() => this.assetPopupService.visible());
+  readonly navigatorCoveredByAssetPopup = computed(() =>
+    this.assetPopupStore.visible()
+    || this.popupCtx.popupStore.activityInvitePopup() !== null
+  );
 
   constructor() {
     this.router.events.subscribe(event => {

@@ -275,15 +275,7 @@ export class HttpAssetsService {
   }
 
   private cloneCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
-    return cards.map(card => ({
-      ...card,
-      routes: [...(card.routes ?? [])],
-      topics: [...(card.topics ?? [])],
-      policies: (card.policies ?? []).map(item => ({ ...item })),
-      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
-      requests: card.requests.map(request => this.cloneRequest(request)),
-      menuActions: [...(card.menuActions ?? [])]
-    }));
+    return AssetCardBuilder.cloneCards(cards);
   }
 
   private normalizeCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
@@ -392,41 +384,14 @@ export class HttpAssetsService {
   }
 
   private restoredAssetStatus(_card: AppDTOs.AssetCardDTO): string {
-    return 'A';
+    return AssetCardBuilder.restoredAssetStatus(_card);
   }
 
   private normalizeAssetStatus(status: string | null | undefined): string {
-    const normalized = `${status ?? ''}`.trim();
-    switch (normalized) {
-      case 'active':
-        return 'A';
-      case 'under-review':
-      case 'under review':
-        return 'UR';
-      case 'blocked':
-        return 'B';
-      case 'deleted':
-        return 'D';
-      case 'inactive':
-        return 'I';
-      case 'trashed':
-      case 'trash':
-        return 'T';
-      default:
-        return normalized || 'A';
-    }
+    return AssetCardBuilder.normalizeAssetStatus(status);
   }
 
   private cloneRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
-    return {
-      ...request,
-      menuActions: [...(request.menuActions ?? [])],
-      booking: request.booking
-        ? {
-            ...request.booking,
-            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-          }
-        : null
-    };
+    return AssetCardBuilder.cloneRequest(request);
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import type * as AppConstants from '../../../core/common/constants';
+import type * as AppDTOs from '../../../core/contracts';
 import type {
   AssetExploreBorrowDialogState,
   AssetExploreBorrowDraftState,
@@ -20,6 +21,10 @@ import type {
   providedIn: 'root'
 })
 export class SubEventResourcePopupStore {
+  readonly assignedAssetIdsByKey: Record<string, string[]> = {};
+  readonly assignedAssetSettingsByKey: Record<string, Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO>> = {};
+  readonly supplyContributionEntriesByAssignmentKey: Record<string, AppDTOs.SubEventSupplyContributionEntryDTO[]> = {};
+
   readonly popupContextRef = signal<ResourcePopupContext | null>(null);
   readonly resourceFilterRef = signal<AppConstants.AssetType>('Car');
   readonly resourceAssetViewIdRef = signal<string | null>(null);
@@ -39,4 +44,43 @@ export class SubEventResourcePopupStore {
   readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   readonly assignContextRef = signal<{ subEventId: string; type: AppConstants.AssetType } | null>(null);
   readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+
+  openResourcePopup(context: ResourcePopupContext, type: AppConstants.AssetType): void {
+    this.popupContextRef.set(context);
+    this.resourceFilterRef.set(type);
+    this.resetResourcePopupState();
+  }
+
+  closeResourcePopup(): void {
+    this.popupContextRef.set(null);
+    this.resetResourcePopupState();
+  }
+
+  resetResourcePopupState(): void {
+    this.resourceAssetViewIdRef.set(null);
+    this.resourceAssetViewModeRef.set('view');
+    this.resourceAssetViewReturnToChatRef.set(false);
+    this.capacityEditorRef.set(null);
+    this.routeEditorRef.set(null);
+    this.pendingResourceDeleteRef.set(null);
+    this.supplyPopupRef.set(null);
+    this.bringDialogRef.set(null);
+    this.pendingSupplyDeleteRef.set(null);
+    this.assignedAssetJoinDialogRef.set(null);
+    this.assetExploreBorrowDialogRef.set(null);
+    this.assetExplorePopupRef.set(null);
+    this.assetExploreOnlyRef.set(false);
+  }
+
+  assetAssignmentKey(subEventId: string, type: AppConstants.AssetType): string {
+    return `${subEventId}:${type}`;
+  }
+
+  supplyAssignmentKey(subEventId: string, cardId: string): string {
+    return `${subEventId}:${cardId}`;
+  }
+
+  supplyContributionEntries(subEventId: string, cardId: string): AppDTOs.SubEventSupplyContributionEntryDTO[] {
+    return this.supplyContributionEntriesByAssignmentKey[this.supplyAssignmentKey(subEventId, cardId)] ?? [];
+  }
 }

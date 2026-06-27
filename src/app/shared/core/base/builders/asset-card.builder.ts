@@ -3,6 +3,7 @@ import { PricingBuilder } from './pricing.builder';
 
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
+
 export class AssetCardBuilder {
   static buildEmptyAssetForm(type: AppConstants.AssetType): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
     return {
@@ -21,6 +22,131 @@ export class AssetCardBuilder {
       policies: [],
       pricing: PricingBuilder.createDefaultPricingConfig('asset')
     };
+  }
+
+  static buildAssetFormFromCard(card: AppDTOs.AssetCardDTO): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
+    const imageUrl = this.normalizeAssetLink(card.imageUrl);
+    const sourceLink = this.normalizeAssetLink(card.sourceLink, imageUrl);
+    return {
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: card.quantity,
+      details: card.details,
+      imageUrl,
+      sourceLink,
+      routes: this.normalizeAssetRoutes(card.type, card.routes),
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
+    };
+  }
+
+  static buildAssetSavePayload(
+    assetForm: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>,
+    resolvedImageUrl: string | null | undefined = null
+  ): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
+    const title = assetForm.title.trim();
+    const city = assetForm.city.trim();
+    const routes = this.normalizeAssetRoutes(assetForm.type, assetForm.routes);
+    const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
+    const imageUrl = this.normalizeAssetLink(resolvedImageUrl || assetForm.imageUrl);
+    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink, imageUrl);
+    return {
+      type: assetForm.type,
+      title,
+      subtitle: assetForm.subtitle.trim(),
+      category: AssetDefaultsBuilder.normalizeCategory(assetForm.type, assetForm.category),
+      city: assetForm.type === 'Accommodation' ? accommodationLocation : city,
+      capacityTotal: Math.max(1, Number(assetForm.capacityTotal) || (assetForm.type === 'Supplies' ? 6 : 4)),
+      quantity: this.normalizeQuantity(assetForm.type, assetForm.quantity, assetForm.capacityTotal),
+      details: assetForm.details.trim(),
+      imageUrl,
+      sourceLink,
+      routes,
+      topics: [...(assetForm.topics ?? [])],
+      policies: this.normalizePolicies(assetForm.policies),
+      pricing: PricingBuilder.compactPricingConfig(
+        assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'),
+        { context: 'asset', allowSlotFeatures: false }
+      )
+    };
+  }
+
+  static visibilityFromCard(card: Pick<AppDTOs.AssetCardDTO, 'visibility'>): AppConstants.EventVisibility {
+    return card.visibility === 'Friends only'
+      ? 'Friends only'
+      : card.visibility === 'Invitation only'
+        ? 'Invitation only'
+        : 'Public';
+  }
+
+  static activeAssetTypeFromFilter(filter: AppConstants.AssetFilterType): AppConstants.AssetType {
+    if (filter === 'Accommodation') {
+      return 'Accommodation';
+    }
+    if (filter === 'Supplies') {
+      return 'Supplies';
+    }
+    return 'Car';
+  }
+
+  static cloneCard(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+    return {
+      ...card,
+      routes: [...(card.routes ?? [])],
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(item => ({ ...item })),
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
+      requests: card.requests.map(request => this.cloneRequest(request)),
+      menuActions: [...(card.menuActions ?? [])]
+    };
+  }
+
+  static cloneCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
+    return cards.map(card => this.cloneCard(card));
+  }
+
+  static cloneRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
+    return {
+      ...request,
+      menuActions: [...(request.menuActions ?? [])],
+      booking: request.booking
+        ? {
+            ...request.booking,
+            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+          }
+        : null
+    };
+  }
+
+  static normalizeAssetStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return normalized || 'A';
+    }
+  }
+
+  static restoredAssetStatus(_card: AppDTOs.AssetCardDTO): string {
+    return 'A';
   }
 
   static normalizeAssetRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
@@ -129,6 +255,19 @@ export class AssetCardBuilder {
 
   static canOpenMap(card: AppDTOs.AssetCardDTO): boolean {
     return card.type === 'Accommodation' && this.primaryLocation(card).length > 0;
+  }
+
+  private static normalizePolicies(
+    policies: readonly AppDTOs.EventPolicyItemDTO[] | null | undefined
+  ): AppDTOs.EventPolicyItemDTO[] {
+    return (policies ?? [])
+      .map(item => ({
+        id: `${item.id ?? ''}`.trim(),
+        title: `${item.title ?? ''}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        required: item.required !== false
+      }))
+      .filter(item => item.id || item.title || item.description);
   }
 
   static isGoogleMapsLikeLink(value: string): boolean {
