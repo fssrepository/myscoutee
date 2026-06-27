@@ -5,6 +5,8 @@ import { PricingBuilder } from './pricing.builder';
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 
+type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
+
 export class ActivityResourceBuilder {
   static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}`;
@@ -148,9 +150,9 @@ export class ActivityResourceBuilder {
   }
 
   static cloneFallbackAssetCardsByType(
-    source: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | null | undefined
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
-    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
+    source: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> | null | undefined
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = source?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
@@ -164,7 +166,7 @@ export class ActivityResourceBuilder {
   static resolveAssignedAssetIds(
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     type: AppConstants.AssetType,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): string[] {
     const eligibleIds = this.resolveAvailableAssetCards(type, state, assets).map(card => card.id);
     const eligible = new Set(eligibleIds);
@@ -198,7 +200,7 @@ export class ActivityResourceBuilder {
     subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
@@ -228,7 +230,7 @@ export class ActivityResourceBuilder {
     subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
@@ -255,7 +257,7 @@ export class ActivityResourceBuilder {
     subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[],
+    assets: readonly ActivityResourceAssetDTO[],
     accepted: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {
@@ -291,7 +293,7 @@ export class ActivityResourceBuilder {
 
   static buildSeededState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): AppDTOs.ActivitySubEventResourceStateDTO {
     return this.createEmptyState(ref);
   }
@@ -299,21 +301,21 @@ export class ActivityResourceBuilder {
   private static resolveAssignedCards(
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
-  ): AppDTOs.AssetCardDTO[] {
+    assets: readonly ActivityResourceAssetDTO[]
+  ): ActivityResourceAssetDTO[] {
     const assignedIds = this.resolveAssignedAssetIds(state, type, assets);
     const availableCards = this.resolveAvailableAssetCards(type, state, assets);
     return assignedIds
       .map(id => availableCards.find(card => card.id === id && card.type === type) ?? null)
-      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
+      .filter((card): card is ActivityResourceAssetDTO => card !== null);
   }
 
   private static resolveAvailableAssetCards(
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
-  ): AppDTOs.AssetCardDTO[] {
-    const nextById = new Map<string, AppDTOs.AssetCardDTO>();
+    assets: readonly ActivityResourceAssetDTO[]
+  ): ActivityResourceAssetDTO[] {
+    const nextById = new Map<string, ActivityResourceAssetDTO>();
     for (const card of assets) {
       if (card.type !== type) {
         continue;
@@ -349,7 +351,7 @@ export class ActivityResourceBuilder {
   }
 
   static subEventOccupancyRequestCount(
-    card: AppDTOs.AssetCardDTO,
+    card: ActivityResourceAssetDTO,
     subEventId: string,
     status: AppConstants.AssetRequestStatus
   ): number {
@@ -377,7 +379,7 @@ export class ActivityResourceBuilder {
     });
   }
 
-  private static cloneAssetCard(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+  private static cloneAssetCard(card: AppDTOs.AssetDetailDTO): AppDTOs.AssetDetailDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],

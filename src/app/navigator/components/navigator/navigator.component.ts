@@ -19,10 +19,10 @@ import {
 } from '../../../shared/ui';
 import { ProfileHeaderCardConverter } from '../../../shared/ui/converters';
 import { AppUtils } from '../../../shared/app-utils';
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
+import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
@@ -124,7 +124,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly navigatorService = inject(NavigatorService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResources = inject(SubEventResourcePopupController);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
@@ -910,7 +910,8 @@ export class NavigatorComponent implements OnDestroy {
         return;
       }
       this.lastHandledAssetRequestMs = request.updatedMs;
-      this.ownedAssets.openPopup(request.assetFilter);
+      this.ownedAssetsStore.openAssetPopup(request.assetFilter);
+      this.assetPopupStore.primaryVisibleRef.set(true);
       this.popupCtx.popupStore.clearNavigatorAssetRequest();
     });
 

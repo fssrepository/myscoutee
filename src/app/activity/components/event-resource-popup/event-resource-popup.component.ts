@@ -50,7 +50,6 @@ import {
   UsersService,
   type UserDto
 } from '../../../shared/core';
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
 import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
 import { NavigatorService } from '../../../navigator';
@@ -76,6 +75,18 @@ import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
+type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
+  description?: string;
+  details?: string;
+  sourceLink?: string;
+  routes?: string[];
+  topics?: string[];
+  policies?: AppDTOs.EventPolicyItemDTO[];
+  pricing?: AppDTOs.PricingConfig | null;
+  locationLabel?: string;
+  priceLabel?: string;
+  policyCount?: number;
+};
 interface RouteEditorState {
   title: string;
   mode: 'view' | 'edit';
@@ -88,7 +99,7 @@ interface RouteEditorState {
 export interface ResourceAssetViewState {
   card: AppDTOs.SubEventResourceCardDTO;
   mode: 'view' | 'edit';
-  source: AppDTOs.AssetCardDTO | null;
+  source: ResourceAssetDTO | null;
   memberLabel: string;
   memberCount: number;
   pendingCount: number;
@@ -123,7 +134,7 @@ type EventResourceMenuContext =
     }
   | {
       menu: 'asset-explore-card';
-      card: AppDTOs.AssetCardDTO;
+      card: ResourceAssetDTO;
       infoCard: InfoCardData;
       action: CardMenuAction;
     };
@@ -148,7 +159,7 @@ export interface AssetExplorePopupViewState {
   endTime: string;
   loading: boolean;
   error: string | null;
-  cards: AppDTOs.AssetCardDTO[];
+  cards: ResourceAssetDTO[];
 }
 
 export interface AssetExploreBorrowDialogViewState {
@@ -237,7 +248,6 @@ export class EventResourcePopupComponent implements DoCheck {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly assetsService = inject(SharedAssetsService);
@@ -253,7 +263,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return this.usersService.peekCachedUsers();
   }
 
-  private ownedAssetCards(): AppDTOs.AssetDTO[] {
+  private ownedAssetCards(): ResourceAssetDTO[] {
     return this.ownedAssetsStore.assetCards();
   }
 
@@ -286,7 +296,7 @@ export class EventResourcePopupComponent implements DoCheck {
   private pendingAssetExploreRequestVersion = 0;
   private pendingAssetExploreBorrowRequestVersion = 0;
   private assetExploreLoadScheduled = false;
-  private readonly assetExploreWarmCacheByKey = new Map<string, AppDTOs.AssetCardDTO[]>();
+  private readonly assetExploreWarmCacheByKey = new Map<string, ResourceAssetDTO[]>();
   private readonly localAssetExploreReservationsByKey = new Map<string, {
     startAtIso: string;
     endAtIso: string;
@@ -380,7 +390,7 @@ export class EventResourcePopupComponent implements DoCheck {
   private resourceSmartList?: SmartListComponent<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters>;
 
   @ViewChild('assetExploreSmartList')
-  private assetExploreSmartList?: SmartListComponent<AppDTOs.AssetCardDTO, ResourceSmartListFilters>;
+  private assetExploreSmartList?: SmartListComponent<ResourceAssetDTO, ResourceSmartListFilters>;
 
   protected readonly resourceSmartListLoadPage: SmartListLoadPage<AppDTOs.SubEventResourceCardDTO, ResourceSmartListFilters> = (
     query
@@ -421,13 +431,13 @@ export class EventResourcePopupComponent implements DoCheck {
     trackBy: (_index, card) => card.id
   };
 
-  protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = (
+  protected readonly assetExploreSmartListLoadPage: SmartListLoadPage<ResourceAssetDTO, ResourceSmartListFilters> = (
     query
   ) => from(this.loadAssetExploreSmartListPage(query));
 
   private async loadAssetExploreSmartListPage(
     query: ListQuery<ResourceSmartListFilters>
-  ): Promise<PageResult<AppDTOs.AssetCardDTO>> {
+  ): Promise<PageResult<ResourceAssetDTO>> {
     await this.activityResourcesService.waitForResourceRouteDelay();
     const cards = this.assetExploreCardsForView();
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
@@ -445,7 +455,7 @@ export class EventResourcePopupComponent implements DoCheck {
     };
   }
 
-  protected readonly assetExploreSmartListConfig: SmartListConfig<AppDTOs.AssetCardDTO, ResourceSmartListFilters> = {
+  protected readonly assetExploreSmartListConfig: SmartListConfig<ResourceAssetDTO, ResourceSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'list',
@@ -577,7 +587,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected onAssetExploreSmartListStateChange(
-    change: SmartListStateChange<AppDTOs.AssetCardDTO, ResourceSmartListFilters>
+    change: SmartListStateChange<ResourceAssetDTO, ResourceSmartListFilters>
   ): void {
     this.assetExploreHeaderProgress = change.progress;
     this.assetExploreHeaderProgressLoading = change.loading;
@@ -1017,7 +1027,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected openAssetExploreInfoCardMenu(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     request: CardMenuRequestEvent<InfoCardData>
   ): void {
     const menuId = `asset-explore-card:${request.id}`;
@@ -1046,7 +1056,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private infoCardMenuItems(
-    card: AppDTOs.SubEventResourceCardDTO | AppDTOs.AssetCardDTO,
+    card: AppDTOs.SubEventResourceCardDTO | ResourceAssetDTO,
     request: CardMenuRequestEvent<InfoCardData>,
     menu: 'resource-card' | 'asset-explore-card'
   ): readonly AppMenuItem<string, EventResourceMenuContext>[] {
@@ -1068,7 +1078,7 @@ export class EventResourcePopupComponent implements DoCheck {
           }
         : {
             menu,
-            card: card as AppDTOs.AssetCardDTO,
+            card: card as ResourceAssetDTO,
             infoCard: request.card,
             action
           };
@@ -1099,10 +1109,10 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   protected assetExploreInfoCard(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     options: { groupLabel?: string | null } = {}
   ): InfoCardData {
-    return AssetInfoCardConverter.convert(card, {
+    return AssetInfoCardConverter.convert(this.toAssetDto(card), {
       variant: 'explore',
       groupLabel: options?.groupLabel ?? null,
       availabilityLabel: this.assetExploreAvailabilityLabel(card),
@@ -1111,7 +1121,7 @@ export class EventResourcePopupComponent implements DoCheck {
     });
   }
 
-  protected openAssetExploreBorrowFromBadge(card: AppDTOs.AssetCardDTO): void {
+  protected openAssetExploreBorrowFromBadge(card: ResourceAssetDTO): void {
     if (this.assetExploreAvailableQuantity(card) <= 0) {
       return;
     }
@@ -1119,7 +1129,7 @@ export class EventResourcePopupComponent implements DoCheck {
     this.openAssetExploreBorrowDialog(card);
   }
 
-  protected onAssetExploreCardMenuAction(card: AppDTOs.AssetCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
+  protected onAssetExploreCardMenuAction(card: ResourceAssetDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.showAssetExploreBorrowBasket = false;
       this.openAssetExploreAssetView(card, new Event('click'));
@@ -1508,7 +1518,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private syncVisibleAssetExploreCards(
-    cards: AppDTOs.AssetCardDTO[],
+    cards: ResourceAssetDTO[],
     previousCardCount: number
   ): void {
     if (!this.assetExploreListReady || !this.assetExploreSmartList) {
@@ -1537,11 +1547,11 @@ export class EventResourcePopupComponent implements DoCheck {
     this.assetExploreStickyLabel = 'No items';
   }
 
-  private assetExploreCardsForView(source: readonly AppDTOs.AssetCardDTO[] = this.assetExplorePopupViewState()?.cards ?? []): AppDTOs.AssetCardDTO[] {
-    const availability = (card: AppDTOs.AssetCardDTO) => this.assetExploreAvailableQuantity(card);
+  private assetExploreCardsForView(source: readonly ResourceAssetDTO[] = this.assetExplorePopupViewState()?.cards ?? []): ResourceAssetDTO[] {
+    const availability = (card: ResourceAssetDTO) => this.assetExploreAvailableQuantity(card);
     const cards = [...source].filter(card => availability(card) > 0);
-    const price = (card: AppDTOs.AssetCardDTO) => this.assetExplorePriceAmount(card);
-    const policyCount = (card: AppDTOs.AssetCardDTO) => (card.policies ?? []).length;
+    const price = (card: ResourceAssetDTO) => this.assetExplorePriceAmount(card);
+    const policyCount = (card: ResourceAssetDTO) => (card.policies ?? []).length;
 
     cards.sort((left, right) => {
       if (this.assetExploreOrder === 'lowest-price') {
@@ -1580,7 +1590,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return cards;
   }
 
-  private assetExploreGroupLabel(card: AppDTOs.AssetCardDTO): string {
+  private assetExploreGroupLabel(card: ResourceAssetDTO): string {
     if (this.assetExploreOrder === 'lowest-price') {
       const amount = this.assetExplorePriceAmount(card);
       if (amount <= 0) {
@@ -1617,14 +1627,14 @@ export class EventResourcePopupComponent implements DoCheck {
     return '4+ left';
   }
 
-  private assetExplorePriceAmount(card: AppDTOs.AssetCardDTO): number {
+  private assetExplorePriceAmount(card: ResourceAssetDTO): number {
     if (!card.pricing?.enabled) {
       return 0;
     }
     return Math.max(0, Number(card.pricing.basePrice) || 0);
   }
 
-  private assetExplorePriceLabel(card: AppDTOs.AssetCardDTO): string {
+  private assetExplorePriceLabel(card: ResourceAssetDTO): string {
     const amount = this.assetExplorePriceAmount(card);
     const currency = card.pricing?.currency || 'USD';
     if (amount <= 0) {
@@ -1641,7 +1651,7 @@ export class EventResourcePopupComponent implements DoCheck {
     }
   }
 
-  private assetExplorePolicyLabel(card: AppDTOs.AssetCardDTO): string {
+  private assetExplorePolicyLabel(card: ResourceAssetDTO): string {
     const count = (card.policies ?? []).length;
     if (count <= 0) {
       return 'No policy';
@@ -1667,7 +1677,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return basePageSize;
   }
 
-  private openAssetExploreShareDialog(card: AppDTOs.AssetCardDTO): void {
+  private openAssetExploreShareDialog(card: ResourceAssetDTO): void {
     void this.shareTokensService.createToken({
       kind: 'asset',
       entityId: card.id,
@@ -1810,7 +1820,9 @@ export class EventResourcePopupComponent implements DoCheck {
     this.resourcePopupStore.assignContextRef.set(null);
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([]);
     this.assetPopupStore.basketVisibleRef.set(false);
-    this.ownedAssets.closePopup();
+    this.ownedAssetsStore.closeAssetPopup();
+    this.assetPopupStore.resetTicketState();
+    this.assetPopupStore.primaryVisibleRef.set(false);
   }
 
   popupTitle(): string {
@@ -1911,7 +1923,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreCardToResourceCard(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId: string
   ): AppDTOs.SubEventResourceCardDTO {
     const managerUserId = `${card.ownerUserId ?? ''}`.trim() || null;
@@ -1922,9 +1934,9 @@ export class EventResourcePopupComponent implements DoCheck {
       title: card.title,
       subtitle: card.subtitle,
       city: card.city,
-      details: card.details,
+      details: this.assetDetailText(card),
       imageUrl: card.imageUrl,
-      sourceLink: card.sourceLink,
+      sourceLink: this.assetSourceLink(card),
       routes: this.normalizeAssetRoutes(card.type, card.routes),
       capacityTotal: Math.max(0, card.capacityTotal),
       accepted: card.type === 'Supplies'
@@ -1935,7 +1947,7 @@ export class EventResourcePopupComponent implements DoCheck {
     };
   }
 
-  openAssetExploreAssetView(card: AppDTOs.AssetCardDTO, event?: Event): void {
+  openAssetExploreAssetView(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.resourcePopupStore.assetExplorePopupRef()) {
       return;
@@ -2050,7 +2062,7 @@ export class EventResourcePopupComponent implements DoCheck {
         ?? fallbackCardById.get(id)
         ?? null
       ))
-      .filter((card): card is AppDTOs.AssetCardDTO => card !== null)
+      .filter((card): card is ResourceAssetDTO => card !== null)
       .map(card => {
       const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
         ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
@@ -2062,9 +2074,9 @@ export class EventResourcePopupComponent implements DoCheck {
       title: card.title,
       subtitle: card.subtitle,
       city: card.city,
-      details: card.details,
+      details: this.assetDetailText(card),
       imageUrl: card.imageUrl,
-      sourceLink: card.sourceLink,
+      sourceLink: this.assetSourceLink(card),
       routes: card.type === 'Accommodation'
         ? this.normalizeAssetRoutes(card.type, card.routes)
         : this.normalizeAssetRoutes(card.type, settings[card.id]?.routes ?? card.routes),
@@ -2119,7 +2131,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private isAssetOwnedByActiveUser(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     activeUserId = this.activeUser().id.trim(),
     ownerUserId = `${card.ownerUserId ?? ''}`.trim()
   ): boolean {
@@ -2133,7 +2145,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private subEventScopedAssetRequests(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId: string
   ): AppDTOs.AssetMemberRequestDTO[] {
     return card.requests
@@ -2150,7 +2162,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private findAssignedAssetJoinRequest(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId: string,
     activeUserId = this.activeUser().id
   ): AppDTOs.AssetMemberRequestDTO | null {
@@ -2162,7 +2174,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assignedAssetJoinMemberCounts(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId: string,
     activeUserId = this.activeUser().id,
     managerUserId: string | null = null
@@ -2185,7 +2197,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetRequestsForView(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId: string,
     managerUserId: string | null = null
   ): AppDTOs.AssetMemberRequestDTO[] {
@@ -2233,7 +2245,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private resolveAssignedAssetJoinPricing(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEvent: ContractTypes.SubEventDTO,
     activeUserId = this.activeUser().id,
     managerUserId: string | null = null
@@ -2380,14 +2392,21 @@ export class EventResourcePopupComponent implements DoCheck {
       this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
     }
     if (this.isAssetOwnedByActiveUser(sourceCard)) {
-      this.ownedAssets.applyAssetCards(this.ownedAssetCards().map(asset => (
+      const nextCards = this.ownedAssetCards().map(asset => (
         asset.id === sourceCard.id && asset.type === sourceCard.type
           ? {
               ...asset,
               requests: nextRequests
             }
           : asset
-      )), { persist: true, reloadList: false });
+      ));
+      if (this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
+        const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+          || this.appCtx.userProfileStore.getActiveUserId().trim();
+        if (ownerUserId) {
+          void this.assetsService.replaceOwnedAssets(ownerUserId, this.ownedAssetsStore.assetCards());
+        }
+      }
       this.syncPopupSubEventMetrics();
       return;
     }
@@ -2530,14 +2549,21 @@ export class EventResourcePopupComponent implements DoCheck {
       error: null
     });
     if (this.isAssetOwnedByActiveUser(sourceCard)) {
-      this.ownedAssets.applyAssetCards(this.ownedAssetCards().map(asset => (
+      const nextCards = this.ownedAssetCards().map(asset => (
         asset.id === sourceCard.id && asset.type === sourceCard.type
           ? {
               ...asset,
               requests: nextRequests
             }
           : asset
-      )), { persist: true, reloadList: false });
+      ));
+      if (this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
+        const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+          || this.appCtx.userProfileStore.getActiveUserId().trim();
+        if (ownerUserId) {
+          void this.assetsService.replaceOwnedAssets(ownerUserId, this.ownedAssetsStore.assetCards());
+        }
+      }
       this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
       this.syncPopupSubEventMetrics();
       return;
@@ -2749,7 +2775,7 @@ export class EventResourcePopupComponent implements DoCheck {
     const source = this.ownedAssetCards().find(item => item.id === card.sourceAssetId && item.type === 'Car')
       ?? this.resourcePopupStore.assetExplorePopupRef()?.cards.find(item => item.id === card.sourceAssetId && item.type === 'Car')
       ?? null;
-    const routes = this.resolveViewableCarRoutes(settings[card.sourceAssetId]?.routes, card.routes, source?.routes);
+    const routes = this.resolveViewableCarRoutes(settings[card.sourceAssetId]?.routes, card.routes, this.assetRouteValues(source));
     if (resolvedMode === 'view' && routes.every(stop => stop.trim().length === 0)) {
       return;
     }
@@ -2792,7 +2818,7 @@ export class EventResourcePopupComponent implements DoCheck {
       : this.ownedAssetCards().find(item => item.id === assetId && item.type === 'Car')
         ?? this.resourcePopupStore.assetExplorePopupRef()?.cards.find(item => item.id === assetId && item.type === 'Car')
         ?? null;
-    const routes = this.resolveViewableCarRoutes(settings[assetId]?.routes, card.routes, source?.routes);
+    const routes = this.resolveViewableCarRoutes(settings[assetId]?.routes, card.routes, this.assetRouteValues(source));
     if (resolvedMode === 'view' && routes.every(stop => stop.trim().length === 0)) {
       return;
     }
@@ -2856,13 +2882,13 @@ export class EventResourcePopupComponent implements DoCheck {
     this.activitiesStore.openEventChat(chat);
   }
 
-  canReportAssetExploreOwner(card: AppDTOs.AssetCardDTO): boolean {
+  canReportAssetExploreOwner(card: ResourceAssetDTO): boolean {
     const activeUserId = this.activeUser().id.trim();
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
     return !!this.resourcePopupStore.popupContextRef() && !!ownerUserId && ownerUserId !== activeUserId;
   }
 
-  reportAssetExploreOwner(card: AppDTOs.AssetCardDTO, event?: Event): void {
+  reportAssetExploreOwner(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
@@ -3244,7 +3270,7 @@ export class EventResourcePopupComponent implements DoCheck {
     const type = this.resourcePopupStore.resourceFilterRef();
     this.resourcePopupStore.assignContextRef.set({ subEventId: context.subEvent.id, type });
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([...this.resolveSubEventAssignedAssetIds(context.subEvent.id, type)]);
-    this.ownedAssets.openPopup(type);
+    this.ownedAssetsStore.openAssetPopup(type);
     this.assetPopupStore.primaryVisibleRef.set(true);
     this.assetPopupStore.stackedVisibleRef.set(false);
     this.assetPopupStore.basketVisibleRef.set(true);
@@ -3632,12 +3658,12 @@ export class EventResourcePopupComponent implements DoCheck {
     ].join('|');
   }
 
-  private peekAssetExploreWarmCache(query: AppDTOs.AssetExploreQueryDTO): AppDTOs.AssetCardDTO[] | null {
+  private peekAssetExploreWarmCache(query: AppDTOs.AssetExploreQueryDTO): ResourceAssetDTO[] | null {
     const cached = this.assetExploreWarmCacheByKey.get(this.assetExploreQueryKey(query));
     return cached ? cached.map(card => this.cloneAsset(card)) : null;
   }
 
-  private storeAssetExploreWarmCache(queryKey: string, cards: readonly AppDTOs.AssetCardDTO[]): void {
+  private storeAssetExploreWarmCache(queryKey: string, cards: readonly ResourceAssetDTO[]): void {
     this.assetExploreWarmCacheByKey.set(queryKey, cards.map(card => this.cloneAsset(card)));
     if (this.assetExploreWarmCacheByKey.size <= 18) {
       return;
@@ -3649,10 +3675,10 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private sortAssetExploreCards(
-    cards: readonly AppDTOs.AssetCardDTO[],
+    cards: readonly ResourceAssetDTO[],
     startAtIso: string,
     endAtIso: string
-  ): AppDTOs.AssetCardDTO[] {
+  ): ResourceAssetDTO[] {
     return cards
       .map(card => this.cloneAsset(card))
       .sort((left, right) => {
@@ -3673,7 +3699,7 @@ export class EventResourcePopupComponent implements DoCheck {
     setTimeout(task, 0);
   }
 
-  assetExploreAvailabilityLabel(card: AppDTOs.AssetCardDTO): string {
+  assetExploreAvailabilityLabel(card: ResourceAssetDTO): string {
     const available = this.assetExploreAvailableQuantity(card);
     if (available <= 0) {
       return '0 left';
@@ -3681,7 +3707,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return `${available} left`;
   }
 
-  assetExploreAvailableQuantity(card: AppDTOs.AssetCardDTO): number {
+  assetExploreAvailableQuantity(card: ResourceAssetDTO): number {
     const popup = this.resourcePopupStore.assetExplorePopupRef();
     if (!popup) {
       return 0;
@@ -3690,7 +3716,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreAvailableQuantityForWindow(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     startAtIso: string,
     endAtIso: string
   ): number {
@@ -3705,7 +3731,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetExploreLocalReservedQuantity(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     startAtIso: string,
     endAtIso: string
   ): number {
@@ -3758,7 +3784,7 @@ export class EventResourcePopupComponent implements DoCheck {
     this.localAssetExploreReservationsByKey.delete(this.assetExploreLocalReservationKey(normalizedSubEventId, normalizedAssetId));
   }
 
-  openAssetExploreServiceChat(card: AppDTOs.AssetCardDTO, event?: Event): void {
+  openAssetExploreServiceChat(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
@@ -3807,7 +3833,7 @@ export class EventResourcePopupComponent implements DoCheck {
     };
   }
 
-  openAssetExploreBorrowDialog(card: AppDTOs.AssetCardDTO, event?: Event): void {
+  openAssetExploreBorrowDialog(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
     const popup = this.resourcePopupStore.assetExplorePopupRef();
     const context = this.resourcePopupStore.popupContextRef();
@@ -4187,7 +4213,7 @@ export class EventResourcePopupComponent implements DoCheck {
             }
           )
         };
-        const nextCard: AppDTOs.AssetCardDTO = {
+        const nextCard: ResourceAssetDTO = {
           ...card,
           quantity: inventoryApplied
             ? Math.max(0, AssetCardBuilder.storedQuantityValue(card) - dialog.quantity)
@@ -4207,7 +4233,7 @@ export class EventResourcePopupComponent implements DoCheck {
               }))
           ]
         };
-        return this.assetsService.saveOwnedAsset(dialog.ownerUserId, nextCard);
+        return this.assetsService.saveOwnedAsset(dialog.ownerUserId, this.toAssetDetailDto(nextCard));
       })
       .then(savedCard => {
         const currentDialog = this.resourcePopupStore.assetExploreBorrowDialogRef();
@@ -4389,10 +4415,10 @@ export class EventResourcePopupComponent implements DoCheck {
     return this.subEventAssetCapacityMetrics(context.subEvent, type).pending;
   }
 
-  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): ResourceAssetDTO[] {
     return this.resolveSubEventAssignedAssetIds(subEventId, type)
       .map(id => this.resolveSubEventAssignedAssetCard(subEventId, type, id))
-      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
+      .filter((card): card is ResourceAssetDTO => card !== null);
   }
 
   private getSubEventAssignedAssetSettings(subEventId: string, type: AppConstants.AssetType): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
@@ -4443,7 +4469,7 @@ export class EventResourcePopupComponent implements DoCheck {
     subEventId: string,
     type: AppConstants.AssetType,
     assetId: string
-  ): AppDTOs.AssetCardDTO | null {
+  ): ResourceAssetDTO | null {
     return this.ownedAssetCards().find(card => card.id === assetId && card.type === type)
       ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId && card.type === type)
       ?? null;
@@ -4452,7 +4478,7 @@ export class EventResourcePopupComponent implements DoCheck {
   private subEventFallbackAssetCards(
     subEventId: string,
     type: AppConstants.AssetType
-  ): AppDTOs.AssetCardDTO[] {
+  ): ResourceAssetDTO[] {
     const context = this.resourcePopupStore.popupContextRef();
     if (context?.subEvent.id !== subEventId) {
       return [];
@@ -4463,7 +4489,7 @@ export class EventResourcePopupComponent implements DoCheck {
   private seedAssignmentsFromRequest(
     subEventId: string,
     assetAssignmentIds: Partial<Record<AppConstants.AssetType, string[]>> | undefined,
-    fallbackCardsByType: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
+    fallbackCardsByType: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): void {
     if (!subEventId || !assetAssignmentIds) {
       return;
@@ -4648,11 +4674,18 @@ export class EventResourcePopupComponent implements DoCheck {
       this.persistPopupResourceState(nextContext);
       return;
     }
-    this.ownedAssets.applyAssetCards(this.ownedAssetCards().map(card =>
+    const nextCards = this.ownedAssetCards().map(card =>
       card.id === asset.id && card.type === asset.type
         ? { ...card, requests: nextRequests }
         : card
-    ), { persist: true, reloadList: false });
+    );
+    if (this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
+      const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+        || this.appCtx.userProfileStore.getActiveUserId().trim();
+      if (ownerUserId) {
+        void this.assetsService.replaceOwnedAssets(ownerUserId, this.ownedAssetsStore.assetCards());
+      }
+    }
     this.syncPopupSubEventMetrics();
   }
 
@@ -4725,7 +4758,7 @@ export class EventResourcePopupComponent implements DoCheck {
     }
     const activeUser = this.activeUser();
     let changed = false;
-    const dirtyCards: AppDTOs.AssetCardDTO[] = [];
+    const dirtyCards: ResourceAssetDTO[] = [];
     const nextCards = this.ownedAssetCards().map(card => {
       const nextManualRequest = this.buildManualAssignmentRequest(card, subEvent, context.ownerId, context.parentTitle, activeUser);
       const preservedRequests: AppDTOs.AssetMemberRequestDTO[] = card.requests
@@ -4756,17 +4789,17 @@ export class EventResourcePopupComponent implements DoCheck {
       return nextCard;
     });
     if (changed) {
-      this.ownedAssets.applyAssetCards(nextCards, { persist });
+      this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: persist });
       if (persist) {
         for (const dirtyCard of dirtyCards) {
-          void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+          void this.assetsService.saveOwnedAsset(activeUser.id, this.toAssetDetailDto(dirtyCard));
         }
       }
     }
   }
 
   private buildManualAssignmentRequest(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEvent: ContractTypes.SubEventDTO,
     ownerId: string,
     parentTitle: string,
@@ -4855,7 +4888,7 @@ export class EventResourcePopupComponent implements DoCheck {
     };
   }
 
-  private resolveAssetExploreCard(cardId: string): AppDTOs.AssetCardDTO | null {
+  private resolveAssetExploreCard(cardId: string): ResourceAssetDTO | null {
     const normalizedCardId = cardId.trim();
     if (!normalizedCardId) {
       return null;
@@ -4870,7 +4903,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private resolveAssetExploreBorrowPricing(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     startAtIso: string,
     endAtIso: string,
     quantity: number
@@ -5060,7 +5093,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetMemberEntries(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     ownerUserId: string | null,
     subEventId?: string
   ): ActivityContracts.ActivityMemberEntry[] {
@@ -5192,7 +5225,7 @@ export class EventResourcePopupComponent implements DoCheck {
     };
   }
 
-  private cloneAsset(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+  private cloneAsset(card: ResourceAssetDTO): ResourceAssetDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
@@ -5209,8 +5242,90 @@ export class EventResourcePopupComponent implements DoCheck {
     };
   }
 
+  private assetDetailText(card: ResourceAssetDTO): string {
+    return `${card.details ?? card.description ?? ''}`.trim();
+  }
+
+  private assetSourceLink(card: ResourceAssetDTO): string {
+    return `${card.sourceLink ?? ''}`.trim();
+  }
+
+  private assetRouteValues(card: ResourceAssetDTO | AppDTOs.AssetDTO | null | undefined): string[] | undefined {
+    return 'routes' in (card ?? {}) && Array.isArray((card as ResourceAssetDTO).routes)
+      ? [...((card as ResourceAssetDTO).routes ?? [])]
+      : undefined;
+  }
+
+  private toAssetDetailDto(card: ResourceAssetDTO): AppDTOs.AssetDetailDTO {
+    return {
+      id: card.id,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: card.category,
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: AssetCardBuilder.storedQuantityValue(card),
+      details: this.assetDetailText(card),
+      imageUrl: card.imageUrl,
+      sourceLink: this.assetSourceLink(card),
+      routes: this.normalizeAssetRoutes(card.type, card.routes),
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(policy => ({ ...policy })),
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : card.pricing,
+      visibility: card.visibility,
+      status: card.status,
+      ownerUserId: card.ownerUserId,
+      ownerName: card.ownerName,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      })),
+      menuActions: card.menuActions ? [...card.menuActions] : undefined
+    };
+  }
+
+  private toAssetDto(card: ResourceAssetDTO): AppDTOs.AssetDTO {
+    return {
+      id: card.id,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: card.category,
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: AssetCardBuilder.storedQuantityValue(card),
+      description: this.assetDetailText(card),
+      imageUrl: card.imageUrl,
+      locationLabel: card.locationLabel ?? (card.type === 'Accommodation'
+        ? this.normalizeAssetRoutes(card.type, card.routes).find(Boolean)
+        : card.city),
+      priceLabel: card.priceLabel ?? this.assetExplorePriceLabel(card),
+      policyCount: card.policyCount ?? (card.policies ?? []).length,
+      visibility: card.visibility,
+      status: card.status,
+      ownerUserId: card.ownerUserId,
+      ownerName: card.ownerName,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      })),
+      menuActions: card.menuActions ? [...card.menuActions] : undefined
+    };
+  }
+
   private findPendingAssetExploreBorrowRequest(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId: string,
     activeUserId = this.activeUser().id
   ): AppDTOs.AssetMemberRequestDTO | null {
@@ -5223,9 +5338,9 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private cloneFallbackCards(
-    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
-    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
+    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
+  ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = fallbackCardsByType?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
@@ -5237,10 +5352,10 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private mergePersistedFallbackCards(
-    current: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
-    persisted: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
+    current: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> | undefined,
+    persisted: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> | undefined,
     subEventId: string
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
+  ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
     const next = this.cloneFallbackCards(current);
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = persisted?.[type];
@@ -5259,19 +5374,19 @@ export class EventResourcePopupComponent implements DoCheck {
   private persistedAssignedFallbackCards(
     context: ResourcePopupContext,
     type: AppConstants.AssetType
-  ): AppDTOs.AssetCardDTO[] {
+  ): AppDTOs.AssetDetailDTO[] {
     const assignedIds = new Set(this.resolveSubEventAssignedAssetIds(context.subEvent.id, type));
     const ownedIds = new Set(this.ownedAssetCards().filter(card => card.type === type).map(card => card.id));
     return (context.fallbackCardsByType[type] ?? [])
       .filter(card => assignedIds.has(card.id) && !ownedIds.has(card.id))
-      .map(card => this.assignedFallbackAssetSnapshot(context.subEvent.id, card));
+      .map(card => this.toAssetDetailDto(this.assignedFallbackAssetSnapshot(context.subEvent.id, card)));
   }
 
   private assignedFallbackAssetSnapshot(
     subEventId: string,
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     options: { clearRequests?: boolean } = {}
-  ): AppDTOs.AssetCardDTO {
+  ): ResourceAssetDTO {
     const nextCard = this.cloneAsset(card);
     if (options.clearRequests) {
       return {
@@ -5287,7 +5402,7 @@ export class EventResourcePopupComponent implements DoCheck {
 
   private attachBoughtAssetToSubEventLocally(
     context: ResourcePopupContext,
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     quantity: number
   ): void {
     const key = this.subEventAssetAssignmentKey(context.subEvent.id, card.type);
@@ -5401,7 +5516,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetPendingCount(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId?: string,
     managerUserId: string | null = null
   ): number {
@@ -5412,7 +5527,7 @@ export class EventResourcePopupComponent implements DoCheck {
   }
 
   private assetAcceptedCount(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEventId?: string,
     managerUserId: string | null = null
   ): number {

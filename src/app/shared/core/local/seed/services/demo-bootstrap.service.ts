@@ -252,7 +252,7 @@ export class SeedDemoBootstrapService {
     try {
       let seededUsers: readonly UserRecord[] = [];
       let seededUserIds: readonly string[] = [];
-      let assetsByUserId: Map<string, AppDTOs.AssetCardDTO[]> = new Map();
+      let assetsByUserId: Map<string, AppDTOs.AssetDTO[]> = new Map();
       const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;
 
       await this.runBootstrapStep('chats', async () => {

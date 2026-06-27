@@ -40,7 +40,29 @@ export interface AssetMemberRequestDTO {
   menuActions?: string[];
 }
 
-export interface AssetCardDTO {
+export interface AssetDTO {
+  id: string;
+  type: AppConstants.AssetType;
+  title: string;
+  subtitle: string;
+  category?: AppConstants.AssetCategory;
+  city: string;
+  capacityTotal: number;
+  quantity: number;
+  description: string;
+  imageUrl: string;
+  locationLabel?: string;
+  priceLabel?: string;
+  policyCount?: number;
+  visibility?: AppConstants.EventVisibility;
+  status?: AppConstants.AssetLifecycleStatus | string;
+  ownerUserId?: string;
+  ownerName?: string;
+  requests: AssetMemberRequestDTO[];
+  menuActions?: string[];
+}
+
+export interface AssetDetailDTO {
   id: string;
   type: AppConstants.AssetType;
   title: string;
@@ -64,11 +86,7 @@ export interface AssetCardDTO {
   menuActions?: string[];
 }
 
-export interface AssetDTO extends AssetCardDTO {}
-
-export interface AssetDetailDTO extends AssetDTO {}
-
-export class AssetCardDto implements AssetCardDTO {
+export class AssetDto implements AssetDTO {
   id = '';
   type: AppConstants.AssetType = 'Car';
   title = '';
@@ -77,13 +95,11 @@ export class AssetCardDto implements AssetCardDTO {
   city = '';
   capacityTotal = 0;
   quantity = 0;
-  details = '';
+  description = '';
   imageUrl = '';
-  sourceLink = '';
-  routes?: string[];
-  topics?: string[];
-  policies?: EventPolicyItemDTO[];
-  pricing?: PricingConfig | null;
+  locationLabel?: string;
+  priceLabel?: string;
+  policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
@@ -91,16 +107,29 @@ export class AssetCardDto implements AssetCardDTO {
   requests: AssetMemberRequestDTO[] = [];
   menuActions?: string[];
 
-  constructor(card?: AssetCardDTO | null) {
+  constructor(card?: AssetDTO | AssetDetailDTO | null) {
     if (!card) {
       return;
     }
+    const detailCard = 'details' in card ? card : null;
     Object.assign(this, {
-      ...card,
-      routes: card.routes ? [...card.routes] : undefined,
-      topics: card.topics ? [...card.topics] : undefined,
-      policies: card.policies ? card.policies.map(item => ({ ...item })) : undefined,
-      pricing: card.pricing ? { ...card.pricing } : card.pricing,
+      id: card.id,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: card.category,
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: card.quantity,
+      description: 'description' in card ? card.description : card.details,
+      imageUrl: card.imageUrl,
+      locationLabel: 'locationLabel' in card ? card.locationLabel : detailCard ? AssetDto.locationLabelFromDetail(detailCard) : card.city,
+      priceLabel: 'priceLabel' in card ? card.priceLabel : undefined,
+      policyCount: 'policyCount' in card ? card.policyCount : (detailCard?.policies ?? []).length,
+      visibility: card.visibility,
+      status: card.status,
+      ownerUserId: card.ownerUserId,
+      ownerName: card.ownerName,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
@@ -114,7 +143,7 @@ export class AssetCardDto implements AssetCardDTO {
     });
   }
 
-  equals(other: AssetCardDTO | null | undefined): boolean {
+  equals(other: AssetDTO | null | undefined): boolean {
     if (!other) {
       return false;
     }
@@ -126,33 +155,49 @@ export class AssetCardDto implements AssetCardDTO {
       && this.city === other.city
       && this.capacityTotal === other.capacityTotal
       && this.quantity === other.quantity
-      && this.details === other.details
+      && this.description === other.description
       && this.imageUrl === other.imageUrl
-      && this.sourceLink === other.sourceLink
+      && (this.locationLabel ?? '') === (other.locationLabel ?? '')
+      && (this.priceLabel ?? '') === (other.priceLabel ?? '')
+      && (this.policyCount ?? 0) === (other.policyCount ?? 0)
       && (this.visibility ?? '') === (other.visibility ?? '')
       && (this.status ?? '') === (other.status ?? '')
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
-      && AssetCardDto.sameStringList(this.routes, other.routes)
-      && AssetCardDto.sameStringList(this.topics, other.topics)
-      && AssetCardDto.samePolicies(this.policies, other.policies)
-      && AssetCardDto.samePricing(this.pricing, other.pricing)
-      && AssetCardDto.sameRequests(this.requests, other.requests)
-      && AssetCardDto.sameStringList(this.menuActions, other.menuActions);
+      && AssetDto.sameRequests(this.requests, other.requests)
+      && AssetDto.sameStringList(this.menuActions, other.menuActions);
   }
 
-  static equals(left: AssetCardDTO | null | undefined, right: AssetCardDTO | null | undefined): boolean {
+  static equals(left: AssetDTO | null | undefined, right: AssetDTO | null | undefined): boolean {
     if (!left || !right) {
       return left === right;
     }
-    return new AssetCardDto(left).equals(right);
+    return new AssetDto(left).equals(right);
   }
 
-  static listEquals(left: readonly AssetCardDTO[], right: readonly AssetCardDTO[]): boolean {
+  static listEquals(left: readonly AssetDTO[], right: readonly AssetDTO[]): boolean {
     if (left.length !== right.length) {
       return false;
     }
-    return left.every((card, index) => AssetCardDto.equals(card, right[index]));
+    return left.every((card, index) => AssetDto.equals(card, right[index]));
+  }
+
+  static clone(card: AssetDTO | AssetDetailDTO): AssetDTO {
+    return new AssetDto(card);
+  }
+
+  static cloneList(cards: readonly (AssetDTO | AssetDetailDTO)[]): AssetDTO[] {
+    return cards.map(card => this.clone(card));
+  }
+
+  private static locationLabelFromDetail(card: AssetDetailDTO): string {
+    if (card.type !== 'Accommodation') {
+      return card.city;
+    }
+    return (card.routes ?? [])
+      .map(route => route.trim())
+      .find(route => route.length > 0)
+      ?? card.city;
   }
 
   private static sameStringList(left: readonly string[] | null | undefined, right: readonly string[] | null | undefined): boolean {
@@ -160,29 +205,6 @@ export class AssetCardDto implements AssetCardDTO {
     const rightItems = right ?? [];
     return leftItems.length === rightItems.length
       && leftItems.every((item, index) => item === rightItems[index]);
-  }
-
-  private static samePolicies(
-    left: readonly EventPolicyItemDTO[] | null | undefined,
-    right: readonly EventPolicyItemDTO[] | null | undefined
-  ): boolean {
-    const leftItems = left ?? [];
-    const rightItems = right ?? [];
-    return leftItems.length === rightItems.length
-      && leftItems.every((item, index) => {
-        const other = rightItems[index];
-        if (!other) {
-          return false;
-        }
-        return item.id === other.id
-          && item.title === other.title
-          && item.description === other.description
-          && (item.required !== false) === (other.required !== false);
-      });
-  }
-
-  private static samePricing(left: PricingConfig | null | undefined, right: PricingConfig | null | undefined): boolean {
-    return JSON.stringify(left ?? null) === JSON.stringify(right ?? null);
   }
 
   private static sameRequests(
@@ -194,7 +216,7 @@ export class AssetCardDto implements AssetCardDTO {
     return leftItems.length === rightItems.length
       && leftItems.every((item, index) => {
         const other = rightItems[index];
-        return other !== undefined && AssetCardDto.sameRequest(item, other);
+        return other !== undefined && AssetDto.sameRequest(item, other);
       });
   }
 
@@ -217,15 +239,50 @@ export class AssetCardDto implements AssetCardDTO {
   }
 }
 
-export class AssetDto extends AssetCardDto implements AssetDTO {
-  constructor(card?: AssetDTO | AssetCardDTO | null) {
-    super(card);
-  }
-}
+export class AssetDetailDto implements AssetDetailDTO {
+  id = '';
+  type: AppConstants.AssetType = 'Car';
+  title = '';
+  subtitle = '';
+  category?: AppConstants.AssetCategory;
+  city = '';
+  capacityTotal = 0;
+  quantity = 0;
+  details = '';
+  imageUrl = '';
+  sourceLink = '';
+  routes?: string[];
+  topics?: string[];
+  policies?: EventPolicyItemDTO[];
+  pricing?: PricingConfig | null;
+  visibility?: AppConstants.EventVisibility;
+  status?: AppConstants.AssetLifecycleStatus | string;
+  ownerUserId?: string;
+  ownerName?: string;
+  requests: AssetMemberRequestDTO[] = [];
+  menuActions?: string[];
 
-export class AssetDetailDto extends AssetCardDto implements AssetDetailDTO {
-  constructor(card?: AssetDetailDTO | AssetCardDTO | null) {
-    super(card);
+  constructor(card?: AssetDetailDTO | null) {
+    if (!card) {
+      return;
+    }
+    Object.assign(this, {
+      ...card,
+      routes: card.routes ? [...card.routes] : undefined,
+      topics: card.topics ? [...card.topics] : undefined,
+      policies: card.policies ? card.policies.map(item => ({ ...item })) : undefined,
+      pricing: card.pricing ? { ...card.pricing } : card.pricing,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      })),
+      menuActions: card.menuActions ? [...card.menuActions] : undefined
+    });
   }
 
   toAssetDTO(): AssetDTO {

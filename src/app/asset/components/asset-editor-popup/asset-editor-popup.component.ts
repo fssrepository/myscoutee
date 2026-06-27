@@ -8,7 +8,6 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { AssetsService, MediaService } from '../../../shared/core';
-import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import { OwnedAssetsStore, type OwnedAssetFormState } from '../../../shared/ui/context/stores/owned-assets.store';
 import {
   AppContext,
@@ -55,7 +54,6 @@ export class AssetEditorPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly assetsService = inject(AssetsService);
   private readonly mediaService = inject(MediaService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   protected readonly ownedAssetsStore = inject(OwnedAssetsStore);
   protected readonly assetVisibilityOptions = APP_STATIC_DATA.eventVisibilityOptions;
   private assetImageUrlsCacheKey = '';
@@ -251,7 +249,8 @@ export class AssetEditorPopupComponent {
     if (!sourceUrl) {
       return;
     }
-    const ownerUserId = this.resolveOwnerUserId();
+    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+      || this.appCtx.userProfileStore.getActiveUserId().trim();
     const assetForm = this.ownedAssetsStore.assetFormRef();
     const preview = await this.assetsService.refreshAssetSourcePreview(ownerUserId, assetForm.type, sourceUrl);
     if (!preview || preview.enabled === false) {
@@ -269,7 +268,8 @@ export class AssetEditorPopupComponent {
     }
     try {
       const assetForm = this.ownedAssetsStore.assetFormRef();
-      const ownerUserId = this.resolveOwnerUserId();
+      const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+        || this.appCtx.userProfileStore.getActiveUserId().trim();
       const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || undefined;
       const editingAssetId = this.ownedAssetsStore.editingAssetIdRef();
       const assetId = editingAssetId || this.ownedAssetsStore.assetFormDraftIdRef() || `asset-${Date.now()}`;
@@ -291,18 +291,15 @@ export class AssetEditorPopupComponent {
           requests: existing?.requests.map(request => ({ ...request })) ?? [],
           menuActions: [...(existing?.menuActions ?? [])]
         };
-        this.ownedAssets.applyAssetCards(this.ownedAssetsStore.assetCards().map(card =>
+        this.ownedAssetsStore.applyAssetCards(this.ownedAssetsStore.assetCards().map(card =>
           card.id === editingAssetId
             ? nextCard
             : card
-        ), { persist: false, reloadList: false, mutation: true });
+        ), { reloadList: false, mutation: true });
         const persistPromise = ownerUserId
           ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
               if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-                this.ownedAssets.applyAssetCards(this.ownedAssetsStore.assetCards().map(card => card.id === savedCard.id ? savedCard : card), {
-                  persist: false,
-                  reloadList: false
-                });
+                this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
               }
             })
           : Promise.resolve();
@@ -317,18 +314,14 @@ export class AssetEditorPopupComponent {
           requests: [],
           menuActions: ['share', 'edit', 'delete']
         };
-        this.ownedAssets.applyAssetCards([nextCard, ...this.ownedAssetsStore.assetCards()], {
-          persist: false,
+        this.ownedAssetsStore.applyAssetCards([nextCard, ...this.ownedAssetsStore.assetCards()], {
           reloadList: false,
           mutation: true
         });
         const persistPromise = ownerUserId
           ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
               if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-                this.ownedAssets.applyAssetCards(this.ownedAssetsStore.assetCards().map(card => card.id === savedCard.id ? savedCard : card), {
-                  persist: false,
-                  reloadList: false
-                });
+                this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
               }
             })
           : Promise.resolve();
@@ -374,10 +367,6 @@ export class AssetEditorPopupComponent {
       this.ownedAssetsStore.setAssetEditorSourceLink(normalizedUrl);
     }
     return normalizedUrl;
-  }
-
-  private resolveOwnerUserId(): string {
-    return this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
   }
 
   private setAssetEditorCategory(category: AppConstants.AssetCategory): void {

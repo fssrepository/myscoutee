@@ -52,12 +52,12 @@ export class LocalAssetsService extends LocalRouteDelayService {
     await this.assetsRepository.deleteOwnedAsset(userId, assetId);
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.takeOverOwnedAsset(userId, assetId);
   }
 
-  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
   }

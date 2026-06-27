@@ -15,6 +15,7 @@ import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
+import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { UserProfileState } from '../../../common/user-profile-state';
 
@@ -43,7 +44,7 @@ export class SeedActivityMembersRepository {
 
   seedDefaults(
     ownerUserIds?: readonly string[],
-    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetCardDTO[]>,
+    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetDTO[]>,
     seedUsers: readonly UserRecord[] = []
   ): void {
     const state = this.memoryDb.read();
@@ -440,7 +441,7 @@ export class SeedActivityMembersRepository {
 
   private buildSeededAssetOwnerRecordsForUser(
     ownerUserId: string,
-    assets: readonly AppDTOs.AssetCardDTO[],
+    assets: readonly AppDTOs.AssetDTO[],
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityMemberRecord[] {
@@ -452,7 +453,7 @@ export class SeedActivityMembersRepository {
 
   private buildSeededEntriesForAsset(
     ownerUserId: string,
-    asset: AppDTOs.AssetCardDTO,
+    asset: AppDTOs.AssetDTO,
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityContracts.ActivityMemberEntry[] {
@@ -522,7 +523,7 @@ export class SeedActivityMembersRepository {
 
   private buildFallbackAssetRequests(
     ownerUserId: string,
-    asset: AppDTOs.AssetCardDTO,
+    asset: AppDTOs.AssetDTO,
     users: readonly UserDto[]
   ): AppDTOs.AssetMemberRequestDTO[] {
     const requestUsers = UserProfileState.friendUsersForActiveUser(users, ownerUserId, 2);
@@ -734,13 +735,13 @@ export class SeedActivityMembersRepository {
     };
   }
 
-  private readOwnedAssetsByUser(ownerUserId: string): AppDTOs.AssetCardDTO[] {
+  private readOwnedAssetsByUser(ownerUserId: string): AppDTOs.AssetDTO[] {
     const table = this.memoryDb.read()[ASSETS_TABLE_NAME];
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => !this.isSuppressedAssetStatus(record.status))
-      .map(record => ({ ...record, requests: [...(record.requests ?? [])] }));
+      .map(record => LocalAssetsMapper.toAssetDto(record));
   }
 
   private normalizeCollection(value: unknown): ActivityMembersRecordCollection {

@@ -297,7 +297,7 @@ export interface ActivitySubEventResourceStateDTO extends ActivitySubEventResour
   assetAssignmentIds: ActivitySubEventAssetAssignmentIdsDTO;
   assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
-  fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetCardDTO[]>>;
+  fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
 }
 
 export interface ActivityEventDTO {

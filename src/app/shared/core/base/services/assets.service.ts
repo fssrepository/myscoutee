@@ -66,11 +66,11 @@ export class AssetsService extends BaseRouteModeService {
     await this.assetsService.deleteOwnedAsset(userId, assetId);
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     return this.assetsService.takeOverOwnedAsset(userId, assetId);
   }
 
-  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
     return this.assetsService.makeAssetManager(userId, assetId, targetUserId);
   }
 

@@ -36,7 +36,8 @@ import {
 import {
   ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
 import { NavigatorService } from '../../../navigator';
-import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
+import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
+import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
 interface ActivityInviteFilters {
@@ -70,7 +71,8 @@ export class AssetMemberPickerPopupComponent {
   private readonly popupCtx = inject(AppPopupContext);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly assetPopupStore = inject(AssetPopupStore);
+  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly navigatorService = inject(NavigatorService);
 
   protected isOpen = false;
@@ -187,7 +189,9 @@ export class AssetMemberPickerPopupComponent {
     this.popupCtx.popupStore.closeActivityInvitePopup();
     this.resetState();
     if (shouldCloseOwnerPopup) {
-      this.ownedAssets.closePopup();
+      this.ownedAssetsStore.closeAssetPopup();
+      this.assetPopupStore.resetTicketState();
+      this.assetPopupStore.primaryVisibleRef.set(false);
     }
   }
 

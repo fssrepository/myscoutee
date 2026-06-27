@@ -27,6 +27,19 @@ import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ResourcePopupContext } from '../../../shared/ui/context/sub-event-resource-popup.types';
 
+type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
+  description?: string;
+  details?: string;
+  sourceLink?: string;
+  routes?: string[];
+  topics?: string[];
+  policies?: AppDTOs.EventPolicyItemDTO[];
+  pricing?: AppDTOs.PricingConfig | null;
+  locationLabel?: string;
+  priceLabel?: string;
+  policyCount?: number;
+};
+
 interface SupplyContributionListFilters {
   revision?: number;
   contextKey?: string;
@@ -67,7 +80,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return this.usersService.peekCachedUsers();
   }
 
-  private ownedAssetCards(): AppDTOs.AssetDTO[] {
+  private ownedAssetCards(): ResourceAssetDTO[] {
     return this.ownedAssetsStore.assetCards();
   }
 
@@ -698,22 +711,22 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return normalized;
   }
 
-  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): ResourceAssetDTO[] {
     return this.resolveSubEventAssignedAssetIds(subEventId, type)
       .map(assetId => this.resolveSubEventAssignedAssetCard(subEventId, type, assetId))
-      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
+      .filter((card): card is ResourceAssetDTO => card !== null);
   }
 
   private resolveSubEventAssignedAssetCard(
     subEventId: string,
     type: AppConstants.AssetType,
     assetId: string
-  ): AppDTOs.AssetCardDTO | null {
+  ): ResourceAssetDTO | null {
     return this.ownedAssetCards().find(card => card.id === assetId && card.type === type)
       ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId) ?? null;
   }
 
-  private subEventFallbackAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  private subEventFallbackAssetCards(subEventId: string, type: AppConstants.AssetType): ResourceAssetDTO[] {
     const context = this.resourcePopupStore.popupContextRef();
     if (context?.subEvent.id !== subEventId) {
       return [];
@@ -724,21 +737,21 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   private persistedAssignedFallbackCards(
     context: ResourcePopupContext,
     type: AppConstants.AssetType
-  ): AppDTOs.AssetCardDTO[] {
+  ): AppDTOs.AssetDetailDTO[] {
     const assigned = new Set(this.resolveSubEventAssignedAssetIds(context.subEvent.id, type));
     return (context.fallbackCardsByType[type] ?? [])
       .filter(card => assigned.has(card.id) && !this.ownedAssetCards().some(item => item.id === card.id && item.type === type))
-      .map(card => this.cloneAsset(card));
+      .map(card => this.toAssetDetailDto(card));
   }
 
   private mergePersistedFallbackCards(
-    current: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
-    persisted: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
+    current: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> | undefined,
+    persisted: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> | undefined,
     subEventId: string
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
-    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
+  ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
-      const cardsById = new Map<string, AppDTOs.AssetCardDTO>();
+      const cardsById = new Map<string, ResourceAssetDTO>();
       for (const card of current?.[type] ?? []) {
         cardsById.set(card.id, this.cloneAsset(card));
       }
@@ -804,7 +817,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     };
   }
 
-  private cloneAsset(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+  private cloneAsset(card: ResourceAssetDTO): ResourceAssetDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
@@ -818,6 +831,40 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
             }
           : null
       }))
+    };
+  }
+
+  private toAssetDetailDto(card: ResourceAssetDTO): AppDTOs.AssetDetailDTO {
+    return {
+      id: card.id,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: card.category,
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: Math.max(0, Math.trunc(Number(card.quantity) || 0)),
+      details: `${card.details ?? card.description ?? ''}`.trim(),
+      imageUrl: card.imageUrl,
+      sourceLink: `${card.sourceLink ?? ''}`.trim(),
+      routes: [...(card.routes ?? [])],
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(policy => ({ ...policy })),
+      pricing: card.pricing ?? undefined,
+      visibility: card.visibility,
+      status: card.status,
+      ownerUserId: card.ownerUserId,
+      ownerName: card.ownerName,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      })),
+      menuActions: card.menuActions ? [...card.menuActions] : undefined
     };
   }
 

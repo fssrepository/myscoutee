@@ -7,9 +7,8 @@ import { AssetPopupStore } from '../../shared/ui/context/stores/asset-popup.stor
 import { SubEventResourcePopupStore } from '../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { EventEditorSubEventResourcePopupRequest } from '../../shared/ui/context/event-editor-popup.types';
 import type { ResourcePopupContext } from '../../shared/ui/context/sub-event-resource-popup.types';
-import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
 import { AppUtils } from '../../shared/app-utils';
-import { AssetDefaultsBuilder, PricingBuilder } from '../../shared/core/base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../shared/core/base/builders';
 import {
   ActivityResourceBuilder,
   ActivityResourcesService,
@@ -21,6 +20,18 @@ import {
 import type * as ContractTypes from '../../shared/core/contracts';
 import type * as AppDTOs from '../../shared/core/contracts';
 import type * as AppConstants from '../../shared/core/common/constants';
+type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
+  description?: string;
+  details?: string;
+  sourceLink?: string;
+  routes?: string[];
+  topics?: string[];
+  policies?: AppDTOs.EventPolicyItemDTO[];
+  pricing?: AppDTOs.PricingConfig | null;
+  locationLabel?: string;
+  priceLabel?: string;
+  policyCount?: number;
+};
 
 @Injectable({
   providedIn: 'root'
@@ -28,7 +39,6 @@ import type * as AppConstants from '../../shared/core/common/constants';
 export class SubEventResourcePopupController {
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly assetsService = inject(SharedAssetsService);
@@ -44,7 +54,7 @@ export class SubEventResourcePopupController {
     return this.usersService.peekCachedUsers();
   }
 
-  private ownedAssetCards(): AppDTOs.AssetDTO[] {
+  private ownedAssetCards(): ResourceAssetDTO[] {
     return this.ownedAssetsStore.assetCards();
   }
 
@@ -205,7 +215,7 @@ export class SubEventResourcePopupController {
     type: AppConstants.AssetType,
     rawSubEvent: ContractTypes.SubEventDTO,
     group: EventEditorSubEventResourcePopupRequest['group'],
-    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
+    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): ResourcePopupContext {
     const subEvent = this.cloneSubEvent(rawSubEvent);
     const scopedSubEvent = group?.id
@@ -375,7 +385,9 @@ export class SubEventResourcePopupController {
     this.resourcePopupStore.assignContextRef.set(null);
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([]);
     this.assetPopupStore.basketVisibleRef.set(false);
-    this.ownedAssets.closePopup();
+    this.ownedAssetsStore.closeAssetPopup();
+    this.assetPopupStore.resetTicketState();
+    this.assetPopupStore.primaryVisibleRef.set(false);
   }
 
   confirmAssignPopup(event?: Event): void {
@@ -557,19 +569,19 @@ export class SubEventResourcePopupController {
     subEventId: string,
     type: AppConstants.AssetType,
     assetId: string
-  ): AppDTOs.AssetCardDTO | null {
+  ): ResourceAssetDTO | null {
     return this.ownedAssetCards().find(card => card.id === assetId && card.type === type)
       ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId && card.type === type)
       ?? null;
   }
 
-  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): ResourceAssetDTO[] {
     return this.resolveSubEventAssignedAssetIds(subEventId, type)
       .map(id => this.resolveSubEventAssignedAssetCard(subEventId, type, id))
-      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
+      .filter((card): card is ResourceAssetDTO => card !== null);
   }
 
-  private subEventFallbackAssetCards(subEventId: string, type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  private subEventFallbackAssetCards(subEventId: string, type: AppConstants.AssetType): ResourceAssetDTO[] {
     const context = this.resourcePopupStore.popupContextRef();
     if (context?.subEvent.id !== subEventId) {
       return [];
@@ -580,7 +592,7 @@ export class SubEventResourcePopupController {
   private seedAssignmentsFromRequest(
     subEventId: string,
     assetAssignmentIds: Partial<Record<AppConstants.AssetType, string[]>> | undefined,
-    fallbackCardsByType: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
+    fallbackCardsByType: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): void {
     if (!subEventId || !assetAssignmentIds) {
       return;
@@ -678,7 +690,7 @@ export class SubEventResourcePopupController {
     }
     const activeUser = this.activeUser();
     let changed = false;
-    const dirtyCards: AppDTOs.AssetCardDTO[] = [];
+    const dirtyCards: ResourceAssetDTO[] = [];
     const nextCards = this.ownedAssetCards().map(card => {
       const nextManualRequest = this.buildManualAssignmentRequest(card, subEvent, context.ownerId, context.parentTitle, activeUser);
       const preservedRequests: AppDTOs.AssetMemberRequestDTO[] = card.requests
@@ -714,17 +726,17 @@ export class SubEventResourcePopupController {
     if (!changed) {
       return;
     }
-    this.ownedAssets.applyAssetCards(nextCards, { persist });
+    this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: persist });
     if (!persist) {
       return;
     }
     for (const dirtyCard of dirtyCards) {
-      void this.assetsService.saveOwnedAsset(activeUser.id, dirtyCard);
+      void this.assetsService.saveOwnedAsset(activeUser.id, this.toAssetDetailDto(dirtyCard));
     }
   }
 
   private buildManualAssignmentRequest(
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     subEvent: ContractTypes.SubEventDTO,
     ownerId: string,
     parentTitle: string,
@@ -917,7 +929,7 @@ export class SubEventResourcePopupController {
     };
   }
 
-  private cloneAsset(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+  private cloneAsset(card: ResourceAssetDTO): ResourceAssetDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
@@ -934,10 +946,44 @@ export class SubEventResourcePopupController {
     };
   }
 
+  private toAssetDetailDto(card: ResourceAssetDTO): AppDTOs.AssetDetailDTO {
+    return {
+      id: card.id,
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: card.category,
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: AssetCardBuilder.storedQuantityValue(card),
+      details: `${card.details ?? card.description ?? ''}`.trim(),
+      imageUrl: card.imageUrl,
+      sourceLink: `${card.sourceLink ?? ''}`.trim(),
+      routes: this.normalizeAssetRoutes(card.type, card.routes),
+      topics: [...(card.topics ?? [])],
+      policies: (card.policies ?? []).map(policy => ({ ...policy })),
+      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : card.pricing,
+      visibility: card.visibility,
+      status: card.status,
+      ownerUserId: card.ownerUserId,
+      ownerName: card.ownerName,
+      requests: card.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      })),
+      menuActions: card.menuActions ? [...card.menuActions] : undefined
+    };
+  }
+
   private cloneFallbackCards(
-    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
-    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
+    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
+  ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = fallbackCardsByType?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
@@ -949,10 +995,10 @@ export class SubEventResourcePopupController {
   }
 
   private mergePersistedFallbackCards(
-    current: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
-    persisted: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | undefined,
+    current: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> | undefined,
+    persisted: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> | undefined,
     subEventId: string
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
+  ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
     const next = this.cloneFallbackCards(current);
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = persisted?.[type];
@@ -971,19 +1017,19 @@ export class SubEventResourcePopupController {
   private persistedAssignedFallbackCards(
     context: ResourcePopupContext,
     type: AppConstants.AssetType
-  ): AppDTOs.AssetCardDTO[] {
+  ): AppDTOs.AssetDetailDTO[] {
     const assignedIds = new Set(this.resolveSubEventAssignedAssetIds(context.subEvent.id, type));
     const ownedIds = new Set(this.ownedAssetCards().filter(card => card.type === type).map(card => card.id));
     return (context.fallbackCardsByType[type] ?? [])
       .filter(card => assignedIds.has(card.id) && !ownedIds.has(card.id))
-      .map(card => this.assignedFallbackAssetSnapshot(context.subEvent.id, card));
+      .map(card => this.toAssetDetailDto(this.assignedFallbackAssetSnapshot(context.subEvent.id, card)));
   }
 
   private assignedFallbackAssetSnapshot(
     subEventId: string,
-    card: AppDTOs.AssetCardDTO,
+    card: ResourceAssetDTO,
     options: { clearRequests?: boolean } = {}
-  ): AppDTOs.AssetCardDTO {
+  ): ResourceAssetDTO {
     const nextCard = this.cloneAsset(card);
     if (options.clearRequests) {
       return {

@@ -1178,7 +1178,7 @@ export class EventTournamentGroupsPopupComponent {
     subEvent: ContractTypes.SubEventDTO,
     type: AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null,
-    assets: readonly AppDTOs.AssetCardDTO[],
+    assets: readonly AppDTOs.AssetDTO[],
     joined: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {

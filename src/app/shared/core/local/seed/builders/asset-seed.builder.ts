@@ -34,7 +34,7 @@ export class SeedAssetBuilder {
     return 'Item condition, handoff location, and timing are confirmed.';
   }
 
-  static buildSampleAssetCards(users: readonly UserDto[]): AppDTOs.AssetCardDTO[] {
+  static buildSampleAssetCards(users: readonly UserDto[]): AppDTOs.AssetDetailDTO[] {
     void users;
     const sampleSpecs: Array<{
       id: string;

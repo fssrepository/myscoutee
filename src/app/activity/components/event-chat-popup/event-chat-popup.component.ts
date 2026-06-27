@@ -79,7 +79,11 @@ type SelectedChatActionTone =
 
 type SelectedChatResourceType = 'Members' | AppConstants.AssetType;
 type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
-type SubEventAssetCardsByType = Partial<Record<AssetType, AppDTOs.AssetCardDTO[]>>;
+type SubEventAssetCard = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
+  description?: string;
+  details?: string;
+};
+type SubEventAssetCardsByType = Partial<Record<AssetType, SubEventAssetCard[]>>;
 
 type ChatMenuContext =
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
@@ -2051,8 +2055,8 @@ export class EventChatPopupComponent implements OnDestroy {
         ownerUserId: card.ownerUserId ?? null,
         title: card.title,
         subtitle: [type, card.city].filter(Boolean).join(' - ') || null,
-        description: `${card.details || card.subtitle || ''}`.trim() || null,
-        url: `${card.sourceLink ?? ''}`.trim() || null,
+        description: `${card.description ?? card.details ?? card.subtitle ?? ''}`.trim() || null,
+        url: null,
         previewUrl: `${card.imageUrl ?? ''}`.trim() || null
       };
     }
@@ -2095,7 +2099,7 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  private assetAttachmentToViewCard(attachment: ContractTypes.ChatMessageAttachment): AppDTOs.AssetCardDTO | undefined {
+  private assetAttachmentToViewCard(attachment: ContractTypes.ChatMessageAttachment): AppDTOs.AssetDTO | undefined {
     const assetId = `${attachment.entityId ?? ''}`.trim();
     const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car';
     if (!assetId) {
@@ -2112,13 +2116,8 @@ export class EventChatPopupComponent implements OnDestroy {
       city: subtitleParts.length > 1 ? subtitleParts[subtitleParts.length - 1] : '',
       capacityTotal: 1,
       quantity: 1,
-      details: `${attachment.description ?? ''}`.trim(),
+      description: `${attachment.description ?? ''}`.trim(),
       imageUrl: `${attachment.previewUrl ?? ''}`.trim(),
-      sourceLink: `${attachment.url ?? ''}`.trim(),
-      routes: [],
-      topics: [],
-      policies: [],
-      pricing: null,
       visibility: 'Public',
       ownerUserId: `${attachment.ownerUserId ?? ''}`.trim() || undefined,
       requests: []
@@ -3911,7 +3910,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private syncSubEventResourceCounts(
     subEvent: ContractTypes.SubEventDTO,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null,
-    assetCards: readonly AppDTOs.AssetCardDTO[]
+    assetCards: readonly SubEventAssetCard[]
   ): ContractTypes.SubEventDTO {
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assetCards);
@@ -3944,7 +3943,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private flattenAssetCards(assetCardsByType: SubEventAssetCardsByType): AppDTOs.AssetCardDTO[] {
+  private flattenAssetCards(assetCardsByType: SubEventAssetCardsByType): SubEventAssetCard[] {
     return (['Car', 'Accommodation', 'Supplies'] as const)
       .flatMap(type => assetCardsByType[type] ?? []);
   }

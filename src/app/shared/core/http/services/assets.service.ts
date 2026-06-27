@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
+import { AssetDto } from '../../contracts';
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 @Injectable({
@@ -60,19 +61,21 @@ export class HttpAssetsService {
       const response = await this.http
         .get<AppDTOs.AssetDetailDTO | null>(`${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}`)
         .toPromise();
-      const detail = this.normalizeCard(response);
+      const detail = this.normalizeDetail(response);
       if (detail) {
-        this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
-          this.peekOwnedAssetsByUser(normalizedUserId),
-          detail
-        );
+        const summary = this.normalizeCard(detail);
+        if (summary) {
+          this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
+            this.peekOwnedAssetsByUser(normalizedUserId),
+            summary
+          );
+        }
         return detail;
       }
     } catch {
       // Fall back to the list cache while the detail endpoint is being wired.
     }
-    const cards = await this.queryOwnedAssetsByUser(normalizedUserId);
-    return cards.find(card => card.id === normalizedAssetId) ?? null;
+    return null;
   }
 
   async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
@@ -82,7 +85,7 @@ export class HttpAssetsService {
     }
     try {
       const response = await this.http
-        .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets/explore`, {
+        .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets/explore`, {
           params: new HttpParams()
             .set('type', query.type)
             .set('category', `${query.category ?? ''}`.trim())
@@ -98,9 +101,10 @@ export class HttpAssetsService {
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
-    const normalizedAsset = this.normalizeCard(asset);
-    if (!normalizedUserId || !normalizedAsset) {
-      return asset;
+    const normalizedDetail = this.normalizeDetail(asset);
+    const normalizedAsset = normalizedDetail ? this.normalizeCard(normalizedDetail) : null;
+    if (!normalizedUserId || !normalizedDetail || !normalizedAsset) {
+      return this.normalizeCard(asset) ?? new AssetDto(asset);
     }
     this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
       this.peekOwnedAssetsByUser(normalizedUserId),
@@ -110,7 +114,7 @@ export class HttpAssetsService {
       const response = await this.http
         .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/upsert`, {
           userId: normalizedUserId,
-          asset: normalizedAsset
+          asset: normalizedDetail
         })
         .toPromise();
       const savedAsset = this.normalizeCard(response) ?? normalizedAsset;
@@ -165,7 +169,7 @@ export class HttpAssetsService {
     }
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -181,7 +185,7 @@ export class HttpAssetsService {
     );
     try {
       const response = await this.http
-        .post<AppDTOs.AssetCardDTO | null>(`${this.apiBaseUrl}/assets/take-over`, {
+        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/take-over`, {
           userId: normalizedUserId,
           assetId: normalizedAssetId
         })
@@ -197,7 +201,7 @@ export class HttpAssetsService {
     return this.peekOwnedAssetsByUser(normalizedUserId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     const normalizedTargetUserId = targetUserId.trim();
@@ -206,7 +210,7 @@ export class HttpAssetsService {
     }
     try {
       const response = await this.http
-        .post<AppDTOs.AssetCardDTO | null>(`${this.apiBaseUrl}/assets/make-manager`, {
+        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/make-manager`, {
           userId: normalizedUserId,
           assetId: normalizedAssetId,
           targetUserId: normalizedTargetUserId
@@ -269,7 +273,7 @@ export class HttpAssetsService {
 
   private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const response = await this.http
-      .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets`)
+      .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets`)
       .toPromise();
     const cards = this.normalizeCards(Array.isArray(response) ? response : []);
     this.cachedAssetsByUserId[userId] = this.cloneCards(cards);
@@ -296,13 +300,97 @@ export class HttpAssetsService {
     return AssetCardBuilder.cloneCards(cards);
   }
 
-  private normalizeCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetDTO[] {
+  private normalizeCards(cards: readonly (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO)[]): AppDTOs.AssetDTO[] {
     return cards
       .map(card => this.normalizeCard(card))
       .filter((card): card is AppDTOs.AssetDTO => Boolean(card));
   }
 
-  private normalizeCard(card: AppDTOs.AssetCardDTO | null | undefined): AppDTOs.AssetDTO | null {
+  private normalizeCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null | undefined): AppDTOs.AssetDTO | null {
+    const id = card?.id?.trim() ?? '';
+    if (!id) {
+      return null;
+    }
+    const type = card?.type;
+    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+      return null;
+    }
+    return {
+      id,
+      type,
+      title: card?.title?.trim() ?? '',
+      subtitle: card?.subtitle?.trim() ?? '',
+      category: AssetDefaultsBuilder.normalizeCategory(type, card?.category),
+      city: card?.city?.trim() ?? '',
+      capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card?.capacityTotal ?? 0 }),
+      quantity: AssetCardBuilder.storedQuantityValue({
+        type,
+        quantity: card?.quantity,
+        capacityTotal: card?.capacityTotal ?? 0
+      }),
+      description: this.assetDescription(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
+      imageUrl: card?.imageUrl?.trim() ?? '',
+      locationLabel: this.assetLocationLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type),
+      priceLabel: this.assetPriceLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
+      policyCount: this.assetPolicyCount(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
+      visibility: card?.visibility === 'Friends only'
+        ? 'Friends only'
+        : card?.visibility === 'Invitation only'
+          ? 'Invitation only'
+          : 'Public',
+      status: this.normalizeAssetStatus(card?.status),
+      ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
+      ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
+      menuActions: Array.isArray(card?.menuActions)
+        ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
+        : [],
+      requests: Array.isArray(card?.requests)
+        ? card.requests
+          .map(request => ({
+            id: `${request?.id ?? ''}`.trim(),
+            userId: `${request?.userId ?? ''}`.trim() || undefined,
+            name: `${request?.name ?? ''}`.trim(),
+            initials: `${request?.initials ?? ''}`.trim(),
+            gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
+            note: `${request?.note ?? ''}`.trim(),
+            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
+            requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
+            menuActions: Array.isArray(request?.menuActions)
+              ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
+              : [],
+            booking: request?.booking
+              ? {
+                  eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
+                  eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
+                  subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
+                  subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
+                  slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
+                  slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
+                  timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
+                  startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
+                  endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
+                  quantity: Number.isFinite(Number(request.booking.quantity))
+                    ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
+                    : null,
+                  totalAmount: Number.isFinite(Number(request.booking.totalAmount))
+                    ? Math.max(0, Number(request.booking.totalAmount))
+                    : null,
+                  currency: `${request.booking.currency ?? ''}`.trim() || undefined,
+                  paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
+                  inventoryApplied: request.booking.inventoryApplied === true ? true : null,
+                  acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
+                    ? request.booking.acceptedPolicyIds.map((item: string) => `${item ?? ''}`.trim()).filter((item: string) => item.length > 0)
+                    : []
+                }
+              : null
+          }))
+          .filter(request => request.id.length > 0)
+        : []
+    };
+  }
+
+  private normalizeDetail(card: AppDTOs.AssetDetailDTO | null | undefined): AppDTOs.AssetDetailDTO | null {
     const id = card?.id?.trim() ?? '';
     if (!id) {
       return null;
@@ -353,55 +441,108 @@ export class HttpAssetsService {
       ownerUserId: `${card?.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card?.ownerName ?? ''}`.trim() || undefined,
       menuActions: Array.isArray(card?.menuActions)
-        ? card.menuActions.map(action => `${action ?? ''}`.trim()).filter(action => action.length > 0)
+        ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: Array.isArray(card?.requests)
-        ? card.requests
-          .map(request => ({
-            id: `${request?.id ?? ''}`.trim(),
-            userId: `${request?.userId ?? ''}`.trim() || undefined,
-            name: `${request?.name ?? ''}`.trim(),
-            initials: `${request?.initials ?? ''}`.trim(),
-            gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
-            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
-            note: `${request?.note ?? ''}`.trim(),
-            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
-            requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
-            menuActions: Array.isArray(request?.menuActions)
-              ? request.menuActions.map(action => `${action ?? ''}`.trim()).filter(action => action.length > 0)
-              : [],
-            booking: request?.booking
-              ? {
-                  eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
-                  eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
-                  subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
-                  subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
-                  slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
-                  slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
-                  timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
-                  startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
-                  endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
-                  quantity: Number.isFinite(Number(request.booking.quantity))
-                    ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
-                    : null,
-                  totalAmount: Number.isFinite(Number(request.booking.totalAmount))
-                    ? Math.max(0, Number(request.booking.totalAmount))
-                    : null,
-                  currency: `${request.booking.currency ?? ''}`.trim() || undefined,
-                  paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
-                  inventoryApplied: request.booking.inventoryApplied === true ? true : null,
-                  acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
-                    ? request.booking.acceptedPolicyIds.map(item => `${item ?? ''}`.trim()).filter(item => item.length > 0)
-                    : []
-                }
-              : null
-          }))
-          .filter(request => request.id.length > 0)
-        : []
+      requests: this.normalizeRequests(card?.requests)
     };
   }
 
-  private restoredAssetStatus(_card: AppDTOs.AssetCardDTO): string {
+  private normalizeRequests(requests: readonly AppDTOs.AssetMemberRequestDTO[] | null | undefined): AppDTOs.AssetMemberRequestDTO[] {
+    return Array.isArray(requests)
+      ? requests
+        .map(request => ({
+          id: `${request?.id ?? ''}`.trim(),
+          userId: `${request?.userId ?? ''}`.trim() || undefined,
+          name: `${request?.name ?? ''}`.trim(),
+          initials: `${request?.initials ?? ''}`.trim(),
+          gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
+          status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
+          note: `${request?.note ?? ''}`.trim(),
+          requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
+          requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
+          menuActions: Array.isArray(request?.menuActions)
+            ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
+            : [],
+          booking: request?.booking
+            ? {
+                eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
+                eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
+                subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
+                subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
+                slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
+                slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
+                timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
+                startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
+                endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
+                quantity: Number.isFinite(Number(request.booking.quantity))
+                  ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
+                  : null,
+                totalAmount: Number.isFinite(Number(request.booking.totalAmount))
+                  ? Math.max(0, Number(request.booking.totalAmount))
+                  : null,
+                currency: `${request.booking.currency ?? ''}`.trim() || undefined,
+                paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
+                inventoryApplied: request.booking.inventoryApplied === true ? true : null,
+                acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
+                  ? request.booking.acceptedPolicyIds.map((item: string) => `${item ?? ''}`.trim()).filter((item: string) => item.length > 0)
+                  : []
+              }
+            : null
+        }))
+        .filter(request => request.id.length > 0)
+      : [];
+  }
+
+  private assetDescription(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): string {
+    return 'description' in card
+      ? card.description.trim()
+      : card.details.trim();
+  }
+
+  private assetLocationLabel(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type: AppConstants.AssetType): string {
+    if ('locationLabel' in card && card.locationLabel?.trim()) {
+      return card.locationLabel.trim();
+    }
+    if (type !== 'Accommodation' || !('routes' in card)) {
+      return card.city?.trim() ?? '';
+    }
+    return (card.routes ?? [])
+      .map(route => `${route ?? ''}`.trim())
+      .find(route => route.length > 0)
+      ?? card.city.trim();
+  }
+
+  private assetPriceLabel(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): string | undefined {
+    if ('priceLabel' in card && card.priceLabel?.trim()) {
+      return card.priceLabel.trim();
+    }
+    if (!('pricing' in card) || !card.pricing?.enabled) {
+      return undefined;
+    }
+    const amount = Math.max(0, Number(card.pricing.basePrice) || 0);
+    if (amount <= 0) {
+      return 'Free borrow';
+    }
+    const currency = card.pricing.currency || 'USD';
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0
+      }).format(amount);
+    } catch {
+      return `${currency} ${amount.toFixed(0)}`;
+    }
+  }
+
+  private assetPolicyCount(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): number {
+    if ('policyCount' in card && Number.isFinite(Number(card.policyCount))) {
+      return Math.max(0, Math.trunc(Number(card.policyCount)));
+    }
+    return 'policies' in card ? (card.policies ?? []).length : 0;
+  }
+
+  private restoredAssetStatus(_card: AppDTOs.AssetDTO): string {
     return AssetCardBuilder.restoredAssetStatus(_card);
   }
 

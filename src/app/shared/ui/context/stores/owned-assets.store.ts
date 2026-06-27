@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 
+import { AssetDto } from '../../../core/contracts';
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
@@ -26,6 +27,7 @@ export type OwnedAssetFormState = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'
 })
 export class OwnedAssetsStore {
   private readonly assetCardsRef = signal<AppDTOs.AssetDTO[]>([]);
+  private assetMutationVersion = 0;
   private visibleListContextKey = '';
   private visibleListSignature = '';
   private visibleListCardCount = 0;
@@ -91,7 +93,54 @@ export class OwnedAssetsStore {
   readonly ticketPopup = computed(() => this.popupOpen() && this.assetFilterRef() === 'Ticket');
 
   setAssetCards(cards: readonly AppDTOs.AssetDTO[]): void {
-    this.assetCardsRef.set([...cards]);
+    this.assetCardsRef.set(AssetDto.cloneList(cards));
+  }
+
+  applyAssetCards(
+    cards: readonly (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO)[],
+    options: { reloadList?: boolean; mutation?: boolean } = {}
+  ): boolean {
+    const nextCards = AssetDto.cloneList(cards);
+    if (AssetDto.listEquals(this.assetCardsRef(), nextCards)) {
+      return false;
+    }
+    if (options.mutation === true) {
+      this.markAssetMutation();
+    }
+    this.assetCardsRef.set(nextCards);
+    this.bumpAssetListRevision(options.reloadList !== false);
+    return true;
+  }
+
+  replaceAssetCard(
+    card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO,
+    options: { reloadList?: boolean; mutation?: boolean } = {}
+  ): boolean {
+    const normalizedCard = AssetDto.clone(card);
+    const nextCards = this.assetCardsRef().some(item => item.id === normalizedCard.id)
+      ? this.assetCardsRef().map(item => item.id === normalizedCard.id ? normalizedCard : item)
+      : [normalizedCard, ...this.assetCardsRef()];
+    return this.applyAssetCards(nextCards, options);
+  }
+
+  removeAssetCard(cardId: string, options: { reloadList?: boolean; mutation?: boolean } = {}): boolean {
+    const normalizedCardId = cardId.trim();
+    if (!normalizedCardId) {
+      return false;
+    }
+    return this.applyAssetCards(
+      this.assetCardsRef().filter(card => card.id !== normalizedCardId),
+      options
+    );
+  }
+
+  markAssetMutation(): number {
+    this.assetMutationVersion += 1;
+    return this.assetMutationVersion;
+  }
+
+  currentAssetMutationVersion(): number {
+    return this.assetMutationVersion;
   }
 
   setActiveOwnerUserId(userId: string): boolean {
@@ -468,16 +517,16 @@ export class OwnedAssetsStore {
       card.city,
       card.capacityTotal,
       card.quantity,
-      card.details,
+      card.description,
       card.imageUrl,
-      card.sourceLink,
+      card.locationLabel ?? '',
+      card.priceLabel ?? '',
+      card.policyCount ?? 0,
       card.visibility ?? '',
       card.status ?? '',
       card.ownerUserId ?? '',
       card.ownerName ?? '',
       (card.menuActions ?? []).join(','),
-      JSON.stringify(card.pricing ?? null),
-      ...(card.routes ?? []),
       card.requests.map(request => [
         request.id,
         request.status,

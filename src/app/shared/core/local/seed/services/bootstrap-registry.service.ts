@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
-import type { AssetCardDTO } from '../../../contracts';
+import type { AssetDTO } from '../../../contracts';
 
 @Injectable({
   providedIn: 'root'
@@ -11,7 +11,7 @@ export class SeedBootstrapRegistryService {
   private users: readonly UserRecord[] = [];
   private userIds: readonly string[] = [];
   private eventsByUserId = new Map<string, readonly ActivityEventRecord[]>();
-  private assetsByUserId = new Map<string, readonly AssetCardDTO[]>();
+  private assetsByUserId = new Map<string, readonly AssetDTO[]>();
 
   clear(): void {
     this.users = [];
@@ -43,11 +43,11 @@ export class SeedBootstrapRegistryService {
     return this.eventsByUserId;
   }
 
-  registerAssetsByUserId(assetsByUserId: ReadonlyMap<string, readonly AssetCardDTO[]>): void {
+  registerAssetsByUserId(assetsByUserId: ReadonlyMap<string, readonly AssetDTO[]>): void {
     this.assetsByUserId = new Map(assetsByUserId);
   }
 
-  getAssetsByUserId(): ReadonlyMap<string, readonly AssetCardDTO[]> {
+  getAssetsByUserId(): ReadonlyMap<string, readonly AssetDTO[]> {
     return this.assetsByUserId;
   }
 }

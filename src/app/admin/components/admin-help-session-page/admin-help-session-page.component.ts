@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import { AppPopupContext } from '../../../shared/ui';
 import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, type ShareTokenResolvedItem } from '../../../shared/core';
-import type { AssetCardDTO } from '../../../shared/core/contracts';
+import type { AssetDTO } from '../../../shared/core/contracts';
 import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
 
@@ -265,7 +265,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return parsed.pathname || '/game';
   }
 
-  private buildSupportFallbackAsset(assetType: AssetType, parsed: URL): AssetCardDTO | undefined {
+  private buildSupportFallbackAsset(assetType: AssetType, parsed: URL): AssetDTO | undefined {
     const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
     if (!assetId) {
       return undefined;
@@ -289,13 +289,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
       city: city || this.defaultSupportAssetCity(assetType),
       capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === 'Supplies' ? 4 : 1),
       quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === 'Supplies' ? 4 : 1),
-      details: details || subtitle || title,
+      description: details || subtitle || title,
       imageUrl,
-      sourceLink: this.safeImageUrl(parsed.searchParams.get('assetSourceLink')) || imageUrl,
-      routes: [],
-      topics: [],
-      policies: [],
-      pricing: null,
       visibility: 'Public',
       ownerUserId: '',
       requests: []

@@ -2,6 +2,19 @@ import type * as AppConstants from '../../core/common/constants';
 import type * as AppDTOs from '../../core/contracts';
 import type * as ContractTypes from '../../core/contracts';
 
+export type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
+  description?: string;
+  details?: string;
+  sourceLink?: string;
+  routes?: string[];
+  topics?: string[];
+  policies?: AppDTOs.EventPolicyItemDTO[];
+  pricing?: AppDTOs.PricingConfig | null;
+  locationLabel?: string;
+  priceLabel?: string;
+  policyCount?: number;
+};
+
 export interface ResourcePopupContext {
   origin: 'chat' | 'eventEditor';
   ownerId: string;
@@ -9,7 +22,7 @@ export interface ResourcePopupContext {
   subEvent: ContractTypes.SubEventDTO;
   groupId?: string;
   groupName?: string;
-  fallbackCardsByType: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>;
+  fallbackCardsByType: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>;
 }
 
 export interface CapacityEditorState {
@@ -74,7 +87,7 @@ export interface AssetExplorePopupState {
   endAtIso: string;
   loading: boolean;
   error: string | null;
-  cards: AppDTOs.AssetCardDTO[];
+  cards: ResourceAssetDTO[];
 }
 
 export interface AssetExploreBorrowDialogState {

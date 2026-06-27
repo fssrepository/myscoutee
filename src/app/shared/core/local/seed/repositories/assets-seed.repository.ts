@@ -5,6 +5,7 @@ import { AppUtils } from '../../../../app-utils';
 import { AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
+import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { SeedAssetBuilder } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
@@ -19,7 +20,7 @@ export class SeedAssetsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private lastSeedToken = '';
 
-  seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AppDTOs.AssetCardDTO[]> {
+  seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AppDTOs.AssetDTO[]> {
     const allUsers = seedUsers
       .filter(user => user.profileStatus === 'public');
     const normalizedOwnerIds = Array.from(new Set(
@@ -47,9 +48,9 @@ export class SeedAssetsRepository {
     return this.peekOwnedAssetsByUsers(normalizedOwnerIds);
   }
 
-  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetCardDTO[]> {
+  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    const assetsByUserId = new Map<string, AppDTOs.AssetCardDTO[]>();
+    const assetsByUserId = new Map<string, AppDTOs.AssetDTO[]>();
     for (const userId of userIds) {
       const normalizedUserId = `${userId ?? ''}`.trim();
       if (!normalizedUserId) {
@@ -147,16 +148,8 @@ export class SeedAssetsRepository {
     };
   }
 
-  private toAssetCard(record: AssetRecord): AppDTOs.AssetCardDTO {
-    return {
-      ...record,
-      routes: [...(record.routes ?? [])],
-      topics: [...(record.topics ?? [])],
-      policies: (record.policies ?? []).map(item => ({ ...item })),
-      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      requests: (record.requests ?? []).map(request => ({ ...request })),
-      menuActions: [...(record.menuActions ?? [])]
-    };
+  private toAssetCard(record: AssetRecord): AppDTOs.AssetDTO {
+    return LocalAssetsMapper.toAssetDto(record);
   }
 
   private normalizeCollection(value: unknown): AssetsRecordCollection {

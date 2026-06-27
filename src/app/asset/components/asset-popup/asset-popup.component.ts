@@ -5,12 +5,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { SubEventResourcePopupController } from '../../../activity/services/sub-event-resource-popup.controller';
-import { OwnedAssetsPopupFacadeService } from '../../owned-assets-popup-facade.service';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../shared/core/base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
 import { AppContext, AssetInfoCardConverter, AssetTicketInfoCardConverter, type ActivityCounterKey } from '../../../shared/ui';
-import { AssetsService, AssetTicketsService, ShareTokensService } from '../../../shared/core';
+import { AssetsService, AssetTicketsService, ExplanationGuideService, ShareTokensService } from '../../../shared/core';
 import { AssetEditorPopupComponent } from '../asset-editor-popup/asset-editor-popup.component';
 import { AssetTicketScanPopupComponent } from '../asset-ticket-scan-popup/asset-ticket-scan-popup.component';
 import {
@@ -111,7 +110,7 @@ export class AssetPopupComponent {
   protected readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly subEventResources = inject(SubEventResourcePopupController);
-  protected readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly explanationGuide = inject(ExplanationGuideService);
   protected showSupplyRequestList = false;
   protected selectedSupplyAssetId: string | null = null;
   protected supplyRequestFilter: AssetSupplyRequestFilter = 'all';
@@ -131,6 +130,11 @@ export class AssetPopupComponent {
   private assetSmartListQueryRevision = 0;
   private ticketSmartListQueryKey = '';
   private ticketSmartListQueryRevision = 0;
+  private trackedAssetRefreshToken = 0;
+  private trackedAssetRefreshOwnerUserId = '';
+  private trackedAssetRefreshPromise: Promise<void> | null = null;
+  private assetsExplanationContextKey: string | null = null;
+  private unregisterAssetsExplanationContext: (() => void) | null = null;
   @ViewChild('assetSmartList')
   private assetSmartList?: SmartListComponent<AppDTOs.AssetDTO, OwnedAssetListFilters>;
 
@@ -190,6 +194,28 @@ export class AssetPopupComponent {
 
   constructor() {
     this.syncSmartListQueries();
+    effect(() => {
+      this.initializeOwnedAssetsFromUser(this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim());
+    });
+    effect(() => {
+      const activeFilter = this.ownedAssetsStore.activePopupFilter();
+      if (!activeFilter) {
+        return;
+      }
+      if (activeFilter === 'Ticket') {
+        this.assetPopupStore.prepareTicketPopupOpen(
+          this.assetTicketsService.peekTicketCountByUser(this.appCtx.userProfileStore.activeUserId().trim())
+        );
+      } else {
+        void this.refreshOwnedAssetsFromRepository(
+          this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim(),
+          { trackLoading: true }
+        );
+      }
+      this.setAssetsExplanationContext(this.assetExplanationContextForFilter(activeFilter));
+      this.assetPopupStore.primaryVisibleRef.set(true);
+      this.ownedAssetsStore.touchUiState();
+    });
     effect(() => {
       this.ownedAssetsStore.assetListRevision();
       this.ownedAssetsStore.assetListReloadRevision();
@@ -420,7 +446,7 @@ export class AssetPopupComponent {
         busyConfirmLabel: 'Taking over...',
         confirmTone: 'accent',
         failureMessage: 'Unable to take over asset.',
-        onConfirm: () => this.ownedAssets.takeOverAssetCardById(card.id)
+        onConfirm: () => this.takeOverAssetCardById(card.id)
       });
       return;
     }
@@ -430,7 +456,8 @@ export class AssetPopupComponent {
   }
 
   private async openAssetEditor(card: AppDTOs.AssetDTO): Promise<void> {
-    const ownerUserId = this.resolveOwnerUserId();
+    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+      || this.appCtx.userProfileStore.getActiveUserId().trim();
     const generation = this.ownedAssetsStore.openAssetEditorEdit({
       cardId: card.id,
       form: AssetCardBuilder.buildAssetFormFromCard(card),
@@ -449,9 +476,7 @@ export class AssetPopupComponent {
         return;
       }
       if (loadedCard) {
-        this.ownedAssets.applyAssetCards(this.ownedAssetsStore.assetCards().map(item => (
-          item.id === loadedCard.id ? loadedCard : item
-        )), { persist: false, reloadList: false });
+        this.ownedAssetsStore.replaceAssetCard(loadedCard, { reloadList: false });
         this.ownedAssetsStore.applyAssetEditorForm(
           loadedCard.id,
           AssetCardBuilder.visibilityFromCard(loadedCard),
@@ -464,10 +489,6 @@ export class AssetPopupComponent {
         this.ownedAssetsStore.setAssetEditorLoading(false);
       }
     }
-  }
-
-  private resolveOwnerUserId(): string {
-    return this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
   }
 
   protected openAssetEditorCreate(): void {
@@ -483,7 +504,7 @@ export class AssetPopupComponent {
       return;
     }
     try {
-      await this.ownedAssets.deleteAssetCardById(pendingCardId);
+      await this.deleteAssetCardById(pendingCardId);
       this.ownedAssetsStore.completeAssetDelete();
     } catch (error) {
       this.ownedAssetsStore.failAssetDelete(this.resolveAssetDeleteErrorMessage(error));
@@ -501,6 +522,175 @@ export class AssetPopupComponent {
       }
     }
     return 'Unable to delete asset right now.';
+  }
+
+  private async applyAssetRequestAction(
+    assetId: string,
+    requestId: string,
+    action: AppConstants.AssetRequestAction
+  ): Promise<void> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedRequestId = requestId.trim();
+    if (!normalizedAssetId || !normalizedRequestId || (action !== 'accept' && action !== 'remove')) {
+      return;
+    }
+    const existing = this.ownedAssetsStore.assetCards().find(card => card.id === normalizedAssetId) ?? null;
+    if (!existing) {
+      return;
+    }
+
+    let nextQuantity = AssetCardBuilder.storedQuantityValue(existing);
+    const nextRequests = existing.requests
+      .map(request => AssetCardBuilder.cloneRequest(request))
+      .filter(request => {
+        if (request.id !== normalizedRequestId) {
+          return true;
+        }
+        if (action === 'remove') {
+          return false;
+        }
+        request.status = 'accepted';
+        request.note = request.requestKind === 'manual'
+          ? 'Reserved and assigned by the owner.'
+          : 'Borrow request approved by the owner.';
+        if (request.requestKind !== 'manual' && request.booking?.inventoryApplied !== true) {
+          nextQuantity = Math.max(0, nextQuantity - this.assetRequestQuantity(request));
+          request.booking = request.booking
+            ? {
+                ...request.booking,
+                inventoryApplied: true
+              }
+            : null;
+        }
+        return true;
+      });
+
+    const nextCard: AppDTOs.AssetDTO = {
+      ...existing,
+      quantity: nextQuantity,
+      requests: nextRequests
+    };
+
+    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    this.ownedAssetsStore.applyAssetCards(this.ownedAssetsStore.assetCards().map(card => (
+      card.id === normalizedAssetId ? nextCard : card
+    )), { reloadList: false, mutation: true });
+    if (!ownerUserId) {
+      return;
+    }
+    const assetDetail = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, normalizedAssetId);
+    if (!assetDetail) {
+      return;
+    }
+    const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, {
+      ...assetDetail,
+      quantity: nextQuantity,
+      requests: nextRequests
+    });
+    if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
+      this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
+    }
+  }
+
+  private async promoteAssetRequestToManager(assetId: string, requestId: string): Promise<void> {
+    const normalizedAssetId = assetId.trim();
+    const normalizedRequestId = requestId.trim();
+    if (!normalizedAssetId || !normalizedRequestId) {
+      return;
+    }
+    const existing = this.ownedAssetsStore.assetCards().find(card => card.id === normalizedAssetId) ?? null;
+    const request = existing?.requests.find(item => item.id === normalizedRequestId) ?? null;
+    const targetUserId = `${request?.userId ?? ''}`.trim();
+    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    if (!existing || !request || !targetUserId || !ownerUserId) {
+      return;
+    }
+    const savedCard = await this.assetsService.makeAssetManager(ownerUserId, normalizedAssetId, targetUserId);
+    if (!savedCard) {
+      return;
+    }
+    this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false, mutation: true });
+    this.ownedAssetsStore.touchUiState();
+  }
+
+  private async deleteAssetCardById(cardId: string): Promise<boolean> {
+    const normalizedCardId = cardId.trim();
+    if (!normalizedCardId || !this.ownedAssetsStore.assetCards().some(card => card.id === normalizedCardId)) {
+      return false;
+    }
+    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    if (ownerUserId) {
+      await this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId);
+    }
+    this.ownedAssetsStore.removeAssetCard(normalizedCardId, { reloadList: false, mutation: true });
+    this.ownedAssetsStore.recordAssetDeleted(normalizedCardId);
+    return true;
+  }
+
+  private async takeOverAssetCardById(cardId: string): Promise<void> {
+    const normalizedCardId = cardId.trim();
+    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
+      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    if (!normalizedCardId || !ownerUserId) {
+      return;
+    }
+    const current = this.ownedAssetsStore.assetCards().find(card => card.id === normalizedCardId);
+    if (!current) {
+      return;
+    }
+    const nextStatus = AssetCardBuilder.restoredAssetStatus(current);
+    const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || current.ownerName;
+    const nextCard: AppDTOs.AssetDTO = {
+      ...current,
+      ownerUserId,
+      ownerName,
+      status: nextStatus,
+      menuActions: this.restoredTakeOverMenuActions(current, null)
+    };
+    this.ownedAssetsStore.replaceAssetCard(nextCard, { reloadList: false, mutation: true });
+    this.ownedAssetsStore.touchUiState();
+
+    const savedCard = await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
+    if (
+      (this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim()) !== ownerUserId
+      || !savedCard
+    ) {
+      return;
+    }
+    const resolvedStatus = AssetCardBuilder.normalizeAssetStatus(savedCard.status);
+    this.ownedAssetsStore.replaceAssetCard({
+      ...nextCard,
+      ...savedCard,
+      ownerUserId: savedCard.ownerUserId ?? ownerUserId,
+      ownerName: savedCard.ownerName ?? ownerName,
+      status: resolvedStatus === 'UR' ? nextStatus : resolvedStatus,
+      menuActions: this.restoredTakeOverMenuActions(nextCard, savedCard)
+    }, { reloadList: false });
+    this.ownedAssetsStore.touchUiState();
+  }
+
+  private restoredTakeOverMenuActions(
+    current: AppDTOs.AssetDTO,
+    savedCard: AppDTOs.AssetDTO | null | undefined
+  ): string[] {
+    const savedStatus = AssetCardBuilder.normalizeAssetStatus(savedCard?.status);
+    const savedActions = (savedCard?.menuActions ?? [])
+      .map(action => `${action ?? ''}`.trim())
+      .filter(action => action.length > 0 && action !== 'takeOver');
+    if (savedStatus !== 'UR' && savedActions.length > 0) {
+      return savedActions;
+    }
+    const currentActions = current.menuActions ?? [];
+    const shareAction = currentActions.includes('shareAsset') ? 'shareAsset' : 'share';
+    const editAction = currentActions.includes('editAsset') ? 'editAsset' : 'edit';
+    return [shareAction, editAction, 'delete'];
+  }
+
+  private assetRequestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
+    return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 0));
   }
 
   protected ticketOrderMenuTrigger(): AppMenuTrigger {
@@ -1077,7 +1267,7 @@ export class AssetPopupComponent {
     this.appMenuDispatcher.close();
     this.supplyRequestBusyKey = `${request.id}:accept`;
     try {
-      await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'accept');
+      await this.applyAssetRequestAction(asset.id, request.id, 'accept');
     } finally {
       this.supplyRequestBusyKey = '';
     }
@@ -1092,7 +1282,7 @@ export class AssetPopupComponent {
     this.appMenuDispatcher.close();
     this.supplyRequestBusyKey = `${request.id}:remove`;
     try {
-      await this.ownedAssets.applyAssetRequestAction(asset.id, request.id, 'remove');
+      await this.applyAssetRequestAction(asset.id, request.id, 'remove');
     } finally {
       this.supplyRequestBusyKey = '';
     }
@@ -1107,7 +1297,7 @@ export class AssetPopupComponent {
     this.appMenuDispatcher.close();
     this.supplyRequestBusyKey = `${request.id}:makeManager`;
     try {
-      await this.ownedAssets.promoteAssetRequestToManager(asset.id, request.id);
+      await this.promoteAssetRequestToManager(asset.id, request.id);
     } finally {
       this.supplyRequestBusyKey = '';
     }
@@ -1314,10 +1504,10 @@ export class AssetPopupComponent {
     if (this.isBasketMode()) {
       return;
     }
-    this.ownedAssets.selectAssetFilter(filter);
+    this.ownedAssetsStore.selectAssetFilter(filter);
     this.assetSmartListQuery = {
       filters: {
-        userId: this.activeUserId(),
+        userId: this.appCtx.userProfileStore.activeUserId().trim(),
         type: filter === 'Ticket' ? 'Car' : filter,
         refreshToken: this.ownedAssetsStore.assetListReloadRevision()
       }
@@ -1326,7 +1516,10 @@ export class AssetPopupComponent {
 
   protected selectTicketDateOrder(order: 'upcoming' | 'past', event?: Event): void {
     event?.stopPropagation();
-    this.assetPopupStore.selectTicketDateOrder(order, this.ticketCountForActiveUser());
+    this.assetPopupStore.selectTicketDateOrder(
+      order,
+      this.assetTicketsService.peekTicketCountByUser(this.appCtx.userProfileStore.activeUserId().trim())
+    );
   }
 
   protected openTicketCodePopup(row: AssetContracts.AssetTicketDTO, event?: Event): void {
@@ -1371,7 +1564,11 @@ export class AssetPopupComponent {
       return;
     }
     this.appMenuDispatcher.close();
-    this.ownedAssets.closePopup();
+    this.ownedAssetsStore.closeAssetPopup();
+    this.assetPopupStore.resetTicketState();
+    this.clearAssetsExplanationContext();
+    this.assetPopupStore.primaryVisibleRef.set(false);
+    this.ownedAssetsStore.touchUiState();
   }
 
   protected confirmBasketSelection(event?: Event): void {
@@ -1416,7 +1613,7 @@ export class AssetPopupComponent {
   }
 
   private syncSmartListQueries(): void {
-    const activeUserId = this.activeUserId();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     const assetType = this.currentAssetSmartListType();
     const basketMode = this.isBasketMode();
     const assetKey = `${activeUserId}:${assetType}:${basketMode ? 'basket' : 'assets'}:${this.ownedAssetsStore.assetListReloadRevision()}`;
@@ -1447,12 +1644,99 @@ export class AssetPopupComponent {
     }
   }
 
-  private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+  private initializeOwnedAssetsFromUser(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!this.ownedAssetsStore.setActiveOwnerUserId(normalizedUserId)) {
+      return;
+    }
+    this.ownedAssetsStore.resetAssetDeleteDialog();
+    if (!normalizedUserId) {
+      this.ownedAssetsStore.applyAssetCards([], { reloadList: false });
+      return;
+    }
+    this.ownedAssetsStore.applyAssetCards(this.assetsService.peekOwnedAssetsByUser(normalizedUserId), { reloadList: false });
+    void this.refreshOwnedAssetsFromRepository(normalizedUserId);
   }
 
-  private ticketCountForActiveUser(): number {
-    return this.assetTicketsService.peekTicketCountByUser(this.activeUserId());
+  private async waitForAssetListLoad(ownerUserId: string): Promise<void> {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const refreshPromise = normalizedOwnerUserId
+      && normalizedOwnerUserId === this.trackedAssetRefreshOwnerUserId
+      ? this.trackedAssetRefreshPromise
+      : null;
+    if (refreshPromise) {
+      await refreshPromise;
+    }
+  }
+
+  private refreshOwnedAssetsFromRepository(
+    ownerUserId: string,
+    options: { trackLoading?: boolean } = {}
+  ): Promise<void> {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return Promise.resolve();
+    }
+    const requestMutationVersion = this.ownedAssetsStore.currentAssetMutationVersion();
+    const trackLoading = options.trackLoading === true;
+    const trackedToken = trackLoading ? ++this.trackedAssetRefreshToken : 0;
+    if (trackLoading) {
+      this.trackedAssetRefreshOwnerUserId = normalizedOwnerUserId;
+      this.ownedAssetsStore.setAssetListLoading(true);
+    }
+    const refreshPromise = (async () => {
+      try {
+        const cards = await this.assetsService.queryOwnedAssetsByUser(normalizedOwnerUserId);
+        if (
+          !this.ownedAssetsStore.isActiveOwnerUser(normalizedOwnerUserId)
+          || requestMutationVersion !== this.ownedAssetsStore.currentAssetMutationVersion()
+        ) {
+          return;
+        }
+        this.ownedAssetsStore.applyAssetCards(cards, { reloadList: false });
+      } catch {
+        // Keep the popup usable with the already-peeked cache if the refresh fails.
+      } finally {
+        if (trackLoading && this.trackedAssetRefreshToken === trackedToken) {
+          this.trackedAssetRefreshPromise = null;
+          this.trackedAssetRefreshOwnerUserId = '';
+          this.ownedAssetsStore.setAssetListLoading(false);
+        }
+      }
+    })();
+    if (trackLoading) {
+      this.trackedAssetRefreshPromise = refreshPromise;
+    }
+    return refreshPromise;
+  }
+
+  private assetExplanationContextForFilter(filter: AppConstants.AssetFilterType): string {
+    switch (filter) {
+      case 'Accommodation':
+        return 'assets.accommodation';
+      case 'Supplies':
+        return 'assets.supplies';
+      case 'Ticket':
+        return 'assets.tickets';
+      case 'Car':
+      default:
+        return 'assets.car';
+    }
+  }
+
+  private setAssetsExplanationContext(contextKey: string): void {
+    if (this.assetsExplanationContextKey === contextKey) {
+      return;
+    }
+    this.clearAssetsExplanationContext();
+    this.assetsExplanationContextKey = contextKey;
+    this.unregisterAssetsExplanationContext = this.explanationGuide.registerContext(contextKey);
+  }
+
+  private clearAssetsExplanationContext(): void {
+    this.unregisterAssetsExplanationContext?.();
+    this.unregisterAssetsExplanationContext = null;
+    this.assetsExplanationContextKey = null;
   }
 
   private currentAssetSmartListType(): AppConstants.AssetType {
@@ -1470,7 +1754,7 @@ export class AssetPopupComponent {
     const selectedAssetKey = this.isBasketMode()
       ? this.assetAssignBasketCards().map(card => card.id).join('|')
       : '';
-    const contextKey = `${this.activeUserId()}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : 'assets'}`;
+    const contextKey = `${this.appCtx.userProfileStore.activeUserId().trim()}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : 'assets'}`;
     this.applyVisibleOwnedAssetPatch(
       this.ownedAssetsStore.syncVisibleAssetList({
         active,
@@ -1501,7 +1785,7 @@ export class AssetPopupComponent {
   private async loadTicketSmartListPage(
     query: ListQuery<AssetTicketListFilters>
   ): Promise<{ items: AssetContracts.AssetTicketDTO[]; total: number }> {
-    const userId = query.filters?.userId?.trim() || this.activeUserId();
+    const userId = query.filters?.userId?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
     if (!userId) {
       return {
         items: [],
@@ -1523,7 +1807,7 @@ export class AssetPopupComponent {
   private async loadOwnedAssetSmartListPage(
     query: ListQuery<OwnedAssetListFilters>
   ): Promise<{ items: AppDTOs.AssetDTO[]; total: number }> {
-    const userId = query.filters?.userId?.trim() || this.activeUserId();
+    const userId = query.filters?.userId?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
     const type = query.filters?.type;
     if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
       return {
@@ -1531,7 +1815,7 @@ export class AssetPopupComponent {
         total: 0
       };
     }
-    await this.ownedAssets.waitForAssetListLoad(userId);
+    await this.waitForAssetListLoad(userId);
     const filtered = this.orderedOwnedAssetCards(type);
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
@@ -1545,8 +1829,6 @@ export class AssetPopupComponent {
   private cloneOwnedAsset(card: AppDTOs.AssetDTO): AppDTOs.AssetDTO {
     return {
       ...card,
-      routes: [...(card.routes ?? [])],
-      pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
       requests: card.requests.map(request => ({
         ...request,
         booking: request.booking
@@ -1555,7 +1837,8 @@ export class AssetPopupComponent {
               acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
             }
           : null
-      }))
+      })),
+      menuActions: card.menuActions ? [...card.menuActions] : undefined
     };
   }
 }

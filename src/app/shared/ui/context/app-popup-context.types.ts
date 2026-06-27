@@ -8,8 +8,9 @@ import type {
 import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../core/contracts/chat.interface';
 import type { EventEditorTarget, EventTournamentStageDTO, SubEventDTO } from '../../core/contracts/event.interface';
-import type { AssetCardDTO } from '../../core/contracts';
+import type { AssetDTO } from '../../core/contracts';
 import type { PopupHeaderLookup } from '../models';
+import type { ResourceAssetDTO } from './sub-event-resource-popup.types';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
@@ -65,7 +66,7 @@ export interface AdminNavigatorRequest {
 export type ActivitiesNavigationRequest =
   | { type: 'eventExplore'; stacked?: boolean }
   | { type: 'eventCheckoutDraft'; sourceId: string }
-  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCardDTO }
+  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetDTO }
   | {
       type: 'chatResource';
       ownerId?: string;
@@ -74,7 +75,7 @@ export type ActivitiesNavigationRequest =
       subEvent: SubEventDTO;
       group?: { id: string; groupLabel: string } | null;
       assetAssignmentIds?: Partial<Record<AssetType, string[]>>;
-      assetCardsByType?: Partial<Record<AssetType, AssetCardDTO[]>>;
+      assetCardsByType?: Partial<Record<AssetType, ResourceAssetDTO[]>>;
       openExplore?: boolean;
       assetViewId?: string;
     }

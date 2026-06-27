@@ -297,7 +297,7 @@ export class LocalActivityResourcesMapper {
 
   static toState(
     record: ActivitySubEventResourceRecord,
-    availableAssets: readonly AppDTOs.AssetCardDTO[]
+    availableAssets: readonly AppDTOs.AssetDTO[]
   ): AppDTOs.ActivitySubEventResourceStateDTO | null {
     const fallbackCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType);
     const eligibleIdsByType: Partial<Record<AppConstants.AssetType, Set<string>>> = {
