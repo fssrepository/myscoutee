@@ -1,22 +1,27 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 
-import { AppContext } from '../../shared/ui';
-import { AdminWorkspaceDataService, HelpCenterService, SessionService, USER_BY_ID_LOAD_CONTEXT_KEY, type AdminBootstrapProcessState, type AdminDashboardDto, type AdminFeedbackDto, type AdminModerationUserPatch, type AdminReportedUserDto, type AdminUserDto, type UserDto } from '../../shared/core';
-import { APP_STORAGE_KEYS } from '../../shared/core/common/storage-scope';
-import { AdminShellService } from './admin-shell.service';
+import {
+  USER_BY_ID_LOAD_CONTEXT_KEY,
+  type AdminDashboardDto,
+  type AdminFeedbackDto,
+  type AdminModerationUserPatch,
+  type AdminReportedUserDto,
+  type AdminUserDto,
+  type UserDto
+} from '../../../core';
+import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
+import { AppContext } from '../app.context';
+import { AdminPopupStore } from './admin-popup.store';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 
 @Injectable({
   providedIn: 'root'
 })
-export class AdminWorkspaceService {
+export class AdminWorkspaceStore {
   private readonly appCtx = inject(AppContext);
-  private readonly workspaceData = inject(AdminWorkspaceDataService);
-  private readonly helpCenter = inject(HelpCenterService);
-  private readonly sessionService = inject(SessionService);
-  private readonly shell = inject(AdminShellService);
+  private readonly adminPopupStore = inject(AdminPopupStore);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
@@ -27,23 +32,73 @@ export class AdminWorkspaceService {
   readonly error = this.errorRef.asReadonly();
   readonly accessDenied = this.accessDeniedRef.asReadonly();
 
-  get isFirebaseAdminMode(): boolean {
-    return this.workspaceData.isFirebaseAdminMode;
+  setBusy(busy: boolean): void {
+    this.busyRef.set(busy);
   }
 
-  prepareSelectedAdminSession(adminUserId: string): void {
+  setError(error: string): void {
+    this.errorRef.set(error);
+  }
+
+  clearError(): void {
+    this.errorRef.set('');
+  }
+
+  setAccessDenied(accessDenied: boolean): void {
+    this.accessDeniedRef.set(accessDenied);
+  }
+
+  prepareSelectedAdminSession(adminUserId: string): string {
     const normalizedAdminUserId = adminUserId.trim();
-    if (!normalizedAdminUserId) {
-      return;
+    if (normalizedAdminUserId) {
+      this.persistAdminSession(normalizedAdminUserId);
     }
-    this.workspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
-    this.persistAdminSession(normalizedAdminUserId);
+    return normalizedAdminUserId;
   }
 
-  applyDashboard(dashboard: AdminDashboardDto): void {
+  applyDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
     const normalized = this.normalizeDashboard(dashboard);
     this.dashboardRef.set(normalized);
     this.activateAdminProfile(normalized);
+    return normalized;
+  }
+
+  applyReportedUsers(users: readonly AdminReportedUserDto[]): AdminReportedUserDto[] {
+    const normalized = users.map(user => this.normalizeReportedUser(user));
+    this.patchDashboard({ reportedUsers: normalized });
+    return normalized;
+  }
+
+  applyBlockedUsers(users: readonly AdminReportedUserDto[]): AdminReportedUserDto[] {
+    const normalized = users.map(user => this.normalizeReportedUser(user, true));
+    this.patchDashboard({ blockedUsers: normalized });
+    return normalized;
+  }
+
+  applyFeedback(feedback: readonly AdminFeedbackDto[]): AdminFeedbackDto[] {
+    const normalized = feedback.map(item => this.normalizeFeedback(item));
+    this.patchDashboard({ feedback: normalized });
+    return normalized;
+  }
+
+  applyAdminMenuCounters(adminUserId: string, counters: { adminJobs: number; adminMetrics: number }): void {
+    const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
+    if (!normalizedAdminUserId) {
+      return;
+    }
+    this.appCtx.activityStore.patchUserCounterOverrides(normalizedAdminUserId, counters);
+    const currentUser = this.appCtx.userProfileStore.getUserProfile(normalizedAdminUserId);
+    if (!currentUser) {
+      return;
+    }
+    this.appCtx.userProfileStore.setUserProfile({
+      ...currentUser,
+      activities: {
+        ...currentUser.activities,
+        adminJobs: counters.adminJobs,
+        adminMetrics: counters.adminMetrics
+      }
+    });
   }
 
   patchModerationUser(patch: AdminModerationUserPatch | null | undefined): AdminReportedUserDto | null {
@@ -92,106 +147,71 @@ export class AdminWorkspaceService {
     return patchedUser;
   }
 
-  async restoreAdminSession(): Promise<boolean> {
-    const adminId = this.readStoredAdminId();
-    if (!adminId) {
-      return false;
-    }
-    try {
-      if (this.isFirebaseAdminMode) {
-        const session = await this.sessionService.ensureSession();
-        if (session?.kind !== 'firebase') {
-          this.clearAdminSession();
-          return false;
-        }
-      }
-      this.prepareSelectedAdminSession(adminId);
-      return Boolean(await this.bootstrapAdmin(adminId));
-    } catch {
-      this.clearAdminSession();
-      return false;
-    }
-  }
-
-  async bootstrapAdmin(
-    adminUserId?: string,
-    onProgress?: (state: AdminBootstrapProcessState) => void
-  ): Promise<AdminDashboardDto | null> {
-    if (this.busyRef()) {
-      return this.dashboardRef();
-    }
-    this.busyRef.set(true);
-    this.errorRef.set('');
-    this.accessDeniedRef.set(false);
-    try {
-      const dashboard = this.normalizeDashboard(await this.workspaceData.loadDashboard(adminUserId, onProgress));
-      this.dashboardRef.set(dashboard);
-      this.activateAdminProfile(dashboard);
-      await this.refreshAdminMenuCountersFromUserRecord(dashboard.activeAdmin.id);
-      void this.helpCenter.preloadAll();
-      this.persistAdminSession(dashboard.activeAdmin.id);
-      return dashboard;
-    } catch (error) {
-      if (this.isAdminAccessDenied(error)) {
-        this.handleAdminAccessDenied();
-        return null;
-      }
-      this.errorRef.set(this.errorMessage(error));
-      return null;
-    } finally {
-      this.busyRef.set(false);
-    }
-  }
-
-  async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
-    const users = (await this.workspaceData.loadReportedUsers(this.currentAdminUserId())).map(user =>
-      this.normalizeReportedUser(user)
-    );
-    this.patchDashboard({ reportedUsers: users });
-    return users;
-  }
-
-  async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {
-    const users = (await this.workspaceData.loadBlockedUsers(this.currentAdminUserId())).map(user =>
-      this.normalizeReportedUser(user, true)
-    );
-    this.patchDashboard({ blockedUsers: users });
-    return users;
-  }
-
-  async loadFeedback(): Promise<AdminFeedbackDto[]> {
-    const feedback = (await this.workspaceData.loadFeedback(this.currentAdminUserId())).map(item => ({
-      ...item,
-      userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
-    }));
-    this.patchDashboard({ feedback });
-    return feedback;
-  }
-
-  clearAdminSession(): void {
+  clearAdminSessionState(): void {
     this.dashboardRef.set(null);
-    this.shell.clear();
+    this.adminPopupStore.clear();
     this.accessDeniedRef.set(false);
     this.appCtx.userProfileStore.setActiveUserId('');
+    this.clearStoredAdminSession();
+  }
+
+  handleAdminAccessDeniedState(sessionUserId = ''): void {
+    this.dashboardRef.set(null);
+    this.adminPopupStore.clear();
+    this.accessDeniedRef.set(true);
+    this.errorRef.set('This account does not have admin access.');
+    this.clearStoredAdminSession();
+    this.appCtx.userProfileStore.setActiveUserId(sessionUserId.trim());
+  }
+
+  currentAdminUserId(): string | undefined {
+    return this.dashboardRef()?.activeAdmin.id ?? this.readStoredAdminId() ?? undefined;
+  }
+
+  persistAdminSession(adminUserId: string): void {
+    if (typeof localStorage === 'undefined') {
+      return;
+    }
+    localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify({ adminUserId }));
+  }
+
+  readStoredAdminId(): string {
+    if (typeof localStorage === 'undefined') {
+      return '';
+    }
+    const raw = localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return '';
+    }
+    try {
+      const parsed = JSON.parse(raw) as { adminUserId?: unknown };
+      return typeof parsed.adminUserId === 'string' ? parsed.adminUserId.trim() : '';
+    } catch {
+      return '';
+    }
+  }
+
+  clearStoredAdminSession(): void {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
     }
   }
 
-  handleAdminAccessDenied(): void {
-    this.dashboardRef.set(null);
-    this.shell.clear();
-    this.accessDeniedRef.set(true);
-    this.errorRef.set('This account does not have admin access.');
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
+  adminErrorMessage(error: unknown): string {
+    if (this.isAdminAccessDenied(error)) {
+      return 'This account does not have admin access.';
     }
-    const session = this.sessionService.currentSession();
-    if (session?.kind === 'firebase') {
-      this.appCtx.userProfileStore.setActiveUserId(session.profile.id.trim());
-    } else {
-      this.appCtx.userProfileStore.setActiveUserId('');
+    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string' && error.error.message.trim()) {
+      return error.error.message.trim();
     }
+    if (error instanceof Error && error.message.trim()) {
+      return error.message;
+    }
+    return 'Admin workspace is unavailable.';
+  }
+
+  isAdminAccessDenied(error: unknown): boolean {
+    return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
   }
 
   private normalizeDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
@@ -212,10 +232,7 @@ export class AdminWorkspaceService {
         : null,
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => this.normalizeReportedUser(user)),
       blockedUsers: (dashboard.blockedUsers ?? []).map(user => this.normalizeReportedUser(user, true)),
-      feedback: (dashboard.feedback ?? []).map(item => ({
-        ...item,
-        userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
-      }))
+      feedback: (dashboard.feedback ?? []).map(item => this.normalizeFeedback(item))
     };
   }
 
@@ -232,8 +249,11 @@ export class AdminWorkspaceService {
     this.activateAdminProfile(nextDashboard);
   }
 
-  private currentAdminUserId(): string | undefined {
-    return this.dashboardRef()?.activeAdmin.id ?? this.readStoredAdminId() ?? undefined;
+  private normalizeFeedback(item: AdminFeedbackDto): AdminFeedbackDto {
+    return {
+      ...item,
+      userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
+    };
   }
 
   private normalizeReportedUser(user: AdminReportedUserDto, blockedFallback = false): AdminReportedUserDto {
@@ -291,31 +311,6 @@ export class AdminWorkspaceService {
     return [...unreadByUserId.values()].reduce((total, unread) => total + unread, 0);
   }
 
-  private async refreshAdminMenuCountersFromUserRecord(adminUserId: string): Promise<void> {
-    try {
-      const counters = await this.workspaceData.loadDashboardMenuCounters(adminUserId);
-      if (!counters) {
-        return;
-      }
-      const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
-      this.appCtx.activityStore.patchUserCounterOverrides(normalizedAdminUserId, counters);
-      const currentUser = this.appCtx.userProfileStore.getUserProfile(normalizedAdminUserId);
-      if (!currentUser) {
-        return;
-      }
-      this.appCtx.userProfileStore.setUserProfile({
-        ...currentUser,
-        activities: {
-          ...currentUser.activities,
-          adminJobs: counters.adminJobs,
-          adminMetrics: counters.adminMetrics
-        }
-      });
-    } catch {
-      // The periodic user counter poll keeps the admin menu in sync if the first read is unavailable.
-    }
-  }
-
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
     const existingAdminProfile = this.appCtx.userProfileStore.getUserProfile(admin.id) ?? dashboard.activeAdminProfile ?? null;
     const name = `${existingAdminProfile?.name ?? admin.name}`.trim() || admin.name;
@@ -364,29 +359,6 @@ export class AdminWorkspaceService {
     };
   }
 
-  private persistAdminSession(adminUserId: string): void {
-    if (typeof localStorage === 'undefined') {
-      return;
-    }
-    localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify({ adminUserId }));
-  }
-
-  private readStoredAdminId(): string {
-    if (typeof localStorage === 'undefined') {
-      return '';
-    }
-    const raw = localStorage.getItem(ADMIN_SESSION_STORAGE_KEY);
-    if (!raw) {
-      return '';
-    }
-    try {
-      const parsed = JSON.parse(raw) as { adminUserId?: unknown };
-      return typeof parsed.adminUserId === 'string' ? parsed.adminUserId.trim() : '';
-    } catch {
-      return '';
-    }
-  }
-
   private initialsFromName(name: string, fallback: string): string {
     const initials = name.trim().split(/\s+/)
       .filter(Boolean)
@@ -394,22 +366,5 @@ export class AdminWorkspaceService {
       .map(part => part.charAt(0).toUpperCase())
       .join('');
     return initials || fallback;
-  }
-
-  private errorMessage(error: unknown): string {
-    if (this.isAdminAccessDenied(error)) {
-      return 'This account does not have admin access.';
-    }
-    if (error instanceof HttpErrorResponse && typeof error.error?.message === 'string' && error.error.message.trim()) {
-      return error.error.message.trim();
-    }
-    if (error instanceof Error && error.message.trim()) {
-      return error.message;
-    }
-    return 'Admin workspace is unavailable.';
-  }
-
-  private isAdminAccessDenied(error: unknown): boolean {
-    return error instanceof HttpErrorResponse && (error.status === 401 || error.status === 403);
   }
 }

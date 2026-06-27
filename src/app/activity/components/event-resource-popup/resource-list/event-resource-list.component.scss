@@ -1,0 +1,135 @@
+@use '../../../../shared/ui/styles' as ui;
+
+@include ui.interactive-motion();
+
+app-event-resource-list {
+  display: contents;
+}
+
+.event-resource-popup-shell .assets-toolbar {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap {
+  position: relative;
+  overflow: visible;
+}
+
+.event-resource-popup-shell .assets-toolbar .status-option-content {
+  gap: 0.34rem;
+}
+
+.event-resource-popup-shell .subevent-assets-toolbar-actions {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.event-resource-popup-shell app-smart-list.subevent-assets-scroll-list {
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.event-resource-popup-shell .subevent-resource-card-list {
+  min-height: 0;
+  padding-bottom: 0.3rem;
+}
+
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap:focus-within {
+  outline: none;
+}
+
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap.asset-filter-open {
+  outline: none;
+  box-shadow: 0 5px 14px rgba(30, 64, 106, 0.2);
+}
+
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap.asset-filter-car.asset-filter-open {
+  background: linear-gradient(180deg, #d6e8ff 0%, #c7dcfa 100%);
+  color: #173d69;
+}
+
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap.asset-filter-accommodation.asset-filter-open {
+  background: linear-gradient(180deg, #d7efe2 0%, #c8e3d4 100%);
+  color: #164936;
+}
+
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap.asset-filter-supplies.asset-filter-open {
+  background: linear-gradient(180deg, #ffe6ce 0%, #f5d4b2 100%);
+  color: #633917;
+}
+
+.event-resource-popup-shell .subevent-assets-quick-actions-trigger.is-open .mat-icon {
+  transform: rotate(45deg);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-filter-car,
+.event-resource-popup-shell .experience-type-select.asset-filter-car {
+  background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
+  border-color: rgba(43, 111, 179, 0.32);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-filter-accommodation,
+.event-resource-popup-shell .experience-type-select.asset-filter-accommodation {
+  background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  border-color: rgba(37, 127, 95, 0.32);
+}
+
+.event-resource-popup-shell .experience-filter-select.asset-filter-supplies,
+.event-resource-popup-shell .experience-type-select.asset-filter-supplies {
+  background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
+  border-color: rgba(151, 92, 41, 0.32);
+}
+
+.event-resource-popup-shell .asset-filter-car {
+  color: #295d96;
+}
+
+.event-resource-popup-shell .asset-filter-accommodation {
+  color: #236d51;
+}
+
+.event-resource-popup-shell .asset-filter-supplies {
+  color: #8a5428;
+}
+
+.event-resource-popup-shell .subevent-resource-card-list app-info-card [class*='avatar'],
+.event-resource-popup-shell .subevent-resource-card-list app-info-card [class*='media-start'] {
+  background: linear-gradient(180deg, #ffe8cc 0%, #ffd7af 100%) !important;
+  border: 1px solid rgba(179, 108, 42, 0.54) !important;
+  color: #8c4f18 !important;
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease,
+    filter 0.2s ease !important;
+
+  .mat-icon {
+    color: #8c4f18 !important;
+  }
+
+  &:hover {
+    transform: scale(1.08) translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(179, 108, 42, 0.25) !important;
+    filter: brightness(1.05) !important;
+  }
+
+  &:active {
+    transform: scale(0.95) !important;
+    box-shadow: 0 1px 4px rgba(179, 108, 42, 0.15) !important;
+  }
+}

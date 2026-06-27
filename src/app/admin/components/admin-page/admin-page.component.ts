@@ -7,11 +7,16 @@ import { MatRippleModule } from '@angular/material/core';
 import { AppPopupContext } from '../../../shared/ui';
 import { NavigatorComponent } from '../../../navigator';
 import {
-  SessionService } from '../../../shared/core';
+  AdminWorkspaceDataService,
+  HelpCenterService,
+  SessionService,
+  type AdminBootstrapProcessState,
+  type AdminDashboardDto
+} from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
 import { NavigatorService } from '../../../navigator/navigator.service';
-import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 
 @Component({
   selector: 'app-admin-page',
@@ -27,9 +32,11 @@ import { AdminWorkspaceService } from '../../services/admin-workspace.service';
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
-  protected readonly workspace = inject(AdminWorkspaceService);
-  protected readonly shell = inject(AdminShellService);
+  protected readonly workspace = inject(AdminWorkspaceStore);
+  protected readonly adminPopup = inject(AdminPopupStore);
   protected readonly sessionService = inject(SessionService);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
+  private readonly helpCenter = inject(HelpCenterService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
   private readonly navigatorService = inject(NavigatorService);
@@ -61,7 +68,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     this.document.body.classList.add('admin-document-no-scroll');
 
     effect(() => {
-      switch (this.shell.activePopup()) {
+      switch (this.adminPopup.activePopup()) {
         case 'reports':
           void this.ensureReportsPopupLoaded();
           break;
@@ -101,48 +108,48 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       this.popupCtx.popupStore.clearAdminNavigatorRequest();
       switch (request.popup) {
         case 'reports':
-          this.shell.openReports(this.workspace.dashboard()?.reportedUsers[0] ?? null);
+          this.adminPopup.openReports(this.workspace.dashboard()?.reportedUsers[0] ?? null);
           break;
         case 'feedback':
-          this.shell.openFeedback();
+          this.adminPopup.openFeedback();
           break;
         case 'chat':
-          this.shell.openChat();
+          this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
           break;
         case 'profile':
           this.navigatorService.openProfileEditor();
           break;
         case 'help-editor':
-          this.shell.openHelpEditor();
+          this.adminPopup.openHelpEditor();
           break;
         case 'idea-editor':
-          this.shell.openIdeaEditor();
+          this.adminPopup.openIdeaEditor();
           break;
         case 'notifications':
-          this.shell.openNotifications();
+          this.adminPopup.openNotifications();
           break;
         case 'params':
-          this.shell.openParams();
+          this.adminPopup.openParams();
           break;
         case 'stats':
-          this.shell.openStats();
+          this.adminPopup.openStats();
           break;
         case 'affinity-graph':
-          this.shell.openAffinityGraph();
+          this.adminPopup.openAffinityGraph();
           break;
         case 'monitoring':
-          this.shell.openMonitoring();
+          this.adminPopup.openMonitoring();
           break;
       }
     });
   }
 
   async ngOnInit(): Promise<void> {
-    if (this.workspace.isFirebaseAdminMode && !this.workspace.dashboard()) {
+    if (this.isFirebaseAdminMode && !this.workspace.dashboard()) {
       const session = await this.sessionService.ensureSession();
       if (session?.kind === 'firebase') {
         this.restoringWorkspace.set(true);
-        const dashboard = await this.workspace.bootstrapAdmin();
+        const dashboard = await this.bootstrapAdmin();
         this.restoringWorkspace.set(false);
         if (dashboard) {
           await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
@@ -155,7 +162,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       return;
     }
     this.restoringWorkspace.set(true);
-    const restored = await this.workspace.restoreAdminSession();
+    const restored = await this.restoreAdminSession();
     this.restoringWorkspace.set(false);
     if (!restored) {
       await this.router.navigateByUrl('/admin', { replaceUrl: true });
@@ -168,7 +175,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   protected async requestAdminLogin(): Promise<void> {
-    if (!this.workspace.isFirebaseAdminMode) {
+    if (!this.isFirebaseAdminMode) {
       this.openAdminSelector();
       return;
     }
@@ -176,13 +183,94 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (!session) {
       return;
     }
-    const dashboard = await this.workspace.bootstrapAdmin();
+    const dashboard = await this.bootstrapAdmin();
     if (dashboard) {
       await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
       return;
     }
     if (this.workspace.accessDenied()) {
       await this.router.navigateByUrl('/admin', { replaceUrl: true });
+    }
+  }
+
+  protected get isFirebaseAdminMode(): boolean {
+    return this.workspaceData.isFirebaseAdminMode;
+  }
+
+  private prepareSelectedAdminSession(adminUserId: string): void {
+    const normalizedAdminUserId = this.workspace.prepareSelectedAdminSession(adminUserId);
+    if (!normalizedAdminUserId) {
+      return;
+    }
+    this.workspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
+  }
+
+  private async restoreAdminSession(): Promise<boolean> {
+    const adminId = this.workspace.readStoredAdminId();
+    if (!adminId) {
+      return false;
+    }
+    try {
+      if (this.isFirebaseAdminMode) {
+        const session = await this.sessionService.ensureSession();
+        if (session?.kind !== 'firebase') {
+          this.clearAdminSession();
+          return false;
+        }
+      }
+      this.prepareSelectedAdminSession(adminId);
+      return Boolean(await this.bootstrapAdmin(adminId));
+    } catch {
+      this.clearAdminSession();
+      return false;
+    }
+  }
+
+  private async bootstrapAdmin(
+    adminUserId?: string,
+    onProgress?: (state: AdminBootstrapProcessState) => void
+  ): Promise<AdminDashboardDto | null> {
+    if (this.workspace.busy()) {
+      return this.workspace.dashboard();
+    }
+    this.workspace.setBusy(true);
+    this.workspace.clearError();
+    this.workspace.setAccessDenied(false);
+    try {
+      const dashboard = this.workspace.applyDashboard(await this.workspaceData.loadDashboard(adminUserId, onProgress));
+      await this.refreshAdminMenuCountersFromUserRecord(dashboard.activeAdmin.id);
+      void this.helpCenter.preloadAll();
+      this.workspace.persistAdminSession(dashboard.activeAdmin.id);
+      return dashboard;
+    } catch (error) {
+      if (this.workspace.isAdminAccessDenied(error)) {
+        this.handleAdminAccessDenied();
+        return null;
+      }
+      this.workspace.setError(this.workspace.adminErrorMessage(error));
+      return null;
+    } finally {
+      this.workspace.setBusy(false);
+    }
+  }
+
+  private clearAdminSession(): void {
+    this.workspace.clearAdminSessionState();
+  }
+
+  private handleAdminAccessDenied(): void {
+    const session = this.sessionService.currentSession();
+    this.workspace.handleAdminAccessDeniedState(session?.kind === 'firebase' ? session.profile.id.trim() : '');
+  }
+
+  private async refreshAdminMenuCountersFromUserRecord(adminUserId: string): Promise<void> {
+    try {
+      const counters = await this.workspaceData.loadDashboardMenuCounters(adminUserId);
+      if (counters) {
+        this.workspace.applyAdminMenuCounters(adminUserId, counters);
+      }
+    } catch {
+      // The periodic user counter poll keeps the admin menu in sync if the first read is unavailable.
     }
   }
 
@@ -200,7 +288,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     if (!normalizedAdminUserId) {
       return false;
     }
-    this.workspace.prepareSelectedAdminSession(normalizedAdminUserId);
+    this.prepareSelectedAdminSession(normalizedAdminUserId);
     void this.navigateToAdminWorkspaceAfterSelectorClose();
     return true;
   }
@@ -222,12 +310,12 @@ export class AdminPageComponent implements OnInit, OnDestroy {
 
   @HostListener('window:adminLogoutRequested')
   protected onAdminLogoutRequested(): void {
-    this.workspace.clearAdminSession();
+    this.clearAdminSession();
   }
 
   @HostListener('window:adminAccessDenied')
   protected onAdminAccessDenied(): void {
-    this.workspace.handleAdminAccessDenied();
+    this.handleAdminAccessDenied();
     if (this.router.url.split('?')[0].startsWith('/admin')) {
       void this.router.navigateByUrl('/admin', { replaceUrl: true });
     }

@@ -1,0 +1,44 @@
+<ng-template #resourceItemTemplate let-item>
+  <app-info-card
+    [card]="item.infoCard"
+    [useSharedMenu]="true"
+    (mediaStartClick)="openResourceCardMap(item)"
+    (mediaEndClick)="openResourceCardBadgeDetails(item)"
+    (menuAction)="onResourceCardMenuAction(item, $event)"
+    (menuRequest)="openResourceInfoCardMenu(item, $event)"
+  ></app-info-card>
+</ng-template>
+
+<div class="experience-toolbar assets-toolbar">
+  <app-menu
+    class="subevent-resource-filter-menu"
+    kind="select"
+    [trigger]="resourceFilterMenuTrigger()"
+    [items]="resourceFilterMenuItems()"
+    (itemSelect)="onEventResourceMenuSelect($event)"
+  ></app-menu>
+
+  <div class="subevent-assets-toolbar-actions">
+    <app-menu
+      class="subevent-assets-quick-actions"
+      kind="select"
+      [trigger]="quickActionsMenuTrigger()"
+      [items]="quickActionsMenuItems()"
+      (itemSelect)="onEventResourceMenuSelect($event)"
+    ></app-menu>
+  </div>
+</div>
+
+<app-smart-list
+  #resourceSmartList
+  class="subevent-assets-scroll-list"
+  [config]="resourceSmartListConfig"
+  [loadPage]="resourceSmartListLoadPage"
+  [itemTemplate]="resourceItemTemplate"
+  [query]="resourceSmartListQuery"
+  (stateChange)="onResourceSmartListStateChange($event)"
+></app-smart-list>
+
+<app-menu-outlet
+  (itemSelect)="onEventResourceMenuSelect($event)"
+></app-menu-outlet>

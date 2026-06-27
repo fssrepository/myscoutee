@@ -4,7 +4,7 @@ import { AppContext } from '../../../shared/ui';
 import { MatIconModule } from '@angular/material/icon';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
-import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 import { AdminAffinityGraphService } from '../../../shared/core';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components';
@@ -17,7 +17,7 @@ import { ProgressIndicatorComponent } from '../../../shared/ui/components';
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
 export class AdminAffinityGraphPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   private readonly appCtx = inject(AppContext);
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);
   protected readonly popupKey = 'affinity-graph';

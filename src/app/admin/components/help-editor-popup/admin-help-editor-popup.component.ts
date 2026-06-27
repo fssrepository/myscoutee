@@ -26,7 +26,7 @@ import {
 } from '../../../shared/ui/components/menu';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 
 type EditorTab = 'html' | 'preview';
 
@@ -137,7 +137,7 @@ export class AdminHelpEditorPopupComponent {
     'track',
     'wbr'
   ]);
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   private readonly appCtx = inject(AppContext);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly confirmationDialog = inject(ConfirmationDialogStore);

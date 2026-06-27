@@ -30,7 +30,7 @@
                 [max]="editor.capacityMax"
                 step="1"
                 [ngModel]="editor.capacityMin"
-                (ngModelChange)="minChanged.emit($event)"
+                (ngModelChange)="updateMin($event)"
                 [disabled]="isSavePending(editor)"
                 placeholder="Min"
               />
@@ -41,7 +41,7 @@
                 [max]="editor.capacityLimit"
                 step="1"
                 [ngModel]="editor.capacityMax"
-                (ngModelChange)="maxChanged.emit($event)"
+                (ngModelChange)="updateMax($event)"
                 [disabled]="isSavePending(editor)"
                 placeholder="Max"
               />

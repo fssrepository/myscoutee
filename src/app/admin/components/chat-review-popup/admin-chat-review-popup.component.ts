@@ -6,20 +6,20 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppContext } from '../../../shared/ui';
 import { AdminModerationService as CoreAdminModerationService, type AdminChatMessageDto, type AdminModerationActionResult, type AdminReportedUserDto } from '../../../shared/core';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 
 @Component({
   selector: 'app-admin-chat-review-popup',
   standalone: true,
   imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent],
   templateUrl: './admin-chat-review-popup.component.html',
-  styleUrl: '../admin-popups.scss'
+  styleUrl: './admin-chat-review-popup.component.scss'
 })
 export class AdminChatReviewPopupComponent {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   private readonly appCtx = inject(AppContext);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly workspace = inject(AdminWorkspaceStore);
   private readonly moderationData = inject(CoreAdminModerationService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
   protected sending = false;

@@ -1,12 +1,10 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 
-import { AppPopupContext } from '../../shared/ui';
-import { type AdminReportedUserDto, type AdminReportDto } from '../../shared/core';
+import { type AdminReportedUserDto, type AdminReportDto } from '../../../core';
 
 export type AdminPopupKind =
   | 'reports'
   | 'feedback'
-  | 'chat'
   | 'chat-review'
   | 'warn-chat'
   | 'help-editor'
@@ -21,8 +19,7 @@ export type AdminPopupKind =
 @Injectable({
   providedIn: 'root'
 })
-export class AdminShellService {
-  private readonly popupCtx = inject(AppPopupContext);
+export class AdminPopupStore {
   private readonly activePopupRef = signal<AdminPopupKind | null>(null);
   private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
   private readonly selectedReportRef = signal<AdminReportDto | null>(null);
@@ -40,10 +37,6 @@ export class AdminShellService {
 
   openFeedback(): void {
     this.activePopupRef.set('feedback');
-  }
-
-  openChat(): void {
-    this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
   }
 
   openHelpEditor(): void {

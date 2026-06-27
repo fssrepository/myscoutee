@@ -7,7 +7,7 @@ import { from } from 'rxjs';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { AdminModerationService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
+import { AdminModerationService, AdminWorkspaceDataService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
 import {
   AppContext,
   AppMenuDispatcher,
@@ -30,8 +30,8 @@ import {
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
 import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
 
@@ -82,13 +82,14 @@ interface AdminReportActionsMenuContext {
     AdminItemPreviewPopupComponent
   ],
   templateUrl: './admin-reports-popup.component.html',
-  styleUrl: '../admin-popups.scss',
+  styleUrl: './admin-reports-popup.component.scss',
   providers: [AppMenuDispatcher]
 })
 export class AdminReportsPopupComponent {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   private readonly appCtx = inject(AppContext);
-  private readonly workspace = inject(AdminWorkspaceService);
+  private readonly workspace = inject(AdminWorkspaceStore);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly moderationData = inject(AdminModerationService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly confirmationDialog = inject(ConfirmationDialogStore);
@@ -779,7 +780,7 @@ export class AdminReportsPopupComponent {
   }
 
   private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
-    const rows = this.reportRowsForUsers(await this.workspace.loadReportedUsers());
+    const rows = this.reportRowsForUsers(await this.loadReportedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -791,7 +792,7 @@ export class AdminReportsPopupComponent {
   }
 
   private async loadBlockedUsersPage(query: ListQuery<AdminBlockedUserListFilters>): Promise<PageResult<AdminBlockedUserListItem>> {
-    const rows = this.blockedUserRowsForUsers(await this.workspace.loadBlockedUsers());
+    const rows = this.blockedUserRowsForUsers(await this.loadBlockedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -804,6 +805,18 @@ export class AdminReportsPopupComponent {
 
   private blockedUserRows(): AdminBlockedUserListItem[] {
     return this.blockedUserRowsForUsers(this.blockedUsers());
+  }
+
+  private async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
+    return this.workspace.applyReportedUsers(
+      await this.workspaceData.loadReportedUsers(this.workspace.currentAdminUserId())
+    );
+  }
+
+  private async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {
+    return this.workspace.applyBlockedUsers(
+      await this.workspaceData.loadBlockedUsers(this.workspace.currentAdminUserId())
+    );
   }
 
   private blockedUserRowsForUsers(users: readonly AdminReportedUserDto[]): AdminBlockedUserListItem[] {

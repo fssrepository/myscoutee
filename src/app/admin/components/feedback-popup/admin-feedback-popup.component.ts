@@ -5,7 +5,7 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import type { AdminFeedbackDto } from '../../../shared/core';
+import { AdminWorkspaceDataService, type AdminFeedbackDto } from '../../../shared/core';
 import {
   SingleRowComponent,
   SmartListComponent,
@@ -19,8 +19,8 @@ import {
 } from '../../../shared/ui';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 
 interface AdminFeedbackListFilters {
   revision?: number;
@@ -37,11 +37,12 @@ interface AdminFeedbackListItem {
   standalone: true,
   imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent],
   templateUrl: './admin-feedback-popup.component.html',
-  styleUrl: '../admin-popups.scss'
+  styleUrl: './admin-feedback-popup.component.scss'
 })
 export class AdminFeedbackPopupComponent {
-  protected readonly admin = inject(AdminShellService);
-  private readonly workspace = inject(AdminWorkspaceService);
+  protected readonly admin = inject(AdminPopupStore);
+  private readonly workspace = inject(AdminWorkspaceStore);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly feedbackCategories = new Set(APP_STATIC_DATA.feedbackCategories);
   protected feedbackDetail: AdminFeedbackDto | null = null;
 
@@ -202,7 +203,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private async loadFeedbackPage(query: ListQuery<AdminFeedbackListFilters>): Promise<PageResult<AdminFeedbackListItem>> {
-    const rows = [...(await this.workspace.loadFeedback())].sort((first, second) =>
+    const rows = [...(await this.loadFeedback())].sort((first, second) =>
       Date.parse(second.createdDate) - Date.parse(first.createdDate)
     ).map(feedback => ({
       id: feedback.id,
@@ -217,6 +218,12 @@ export class AdminFeedbackPopupComponent {
       total: rows.length,
       nextCursor: start + pageSize < rows.length ? String(page + 1) : null
     };
+  }
+
+  private async loadFeedback(): Promise<AdminFeedbackDto[]> {
+    return this.workspace.applyFeedback(
+      await this.workspaceData.loadFeedback(this.workspace.currentAdminUserId())
+    );
   }
 
   private buildFeedbackActivityRow(feedback: AdminFeedbackDto): SingleRowData {

@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { AppUtils } from '../../../../shared/app-utils';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent } from '../../../../shared/ui';
+import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { CapacityEditorState } from '../../../../shared/ui/context/sub-event-resource-popup.types';
 
 type CapacityEditorMenuContext = { menu: 'save' };
@@ -22,8 +24,8 @@ export class EventResourceCapacityEditorComponent {
 
   @Output() closeRequested = new EventEmitter<Event | undefined>();
   @Output() saveRequested = new EventEmitter<Event | undefined>();
-  @Output() minChanged = new EventEmitter<number | string>();
-  @Output() maxChanged = new EventEmitter<number | string>();
+
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
   protected isSavePending(editor: CapacityEditorState): boolean {
     return editor.busy === true;
@@ -70,5 +72,41 @@ export class EventResourceCapacityEditorComponent {
   protected save(event?: Event): void {
     event?.stopPropagation();
     this.saveRequested.emit(event);
+  }
+
+  protected updateMin(value: number | string): void {
+    const editor = this.resourcePopupStore.capacityEditorRef();
+    if (!editor || editor.busy) {
+      return;
+    }
+    const parsed = Number(value);
+    this.resourcePopupStore.capacityEditorRef.set({
+      ...editor,
+      capacityMin: AppUtils.clampNumber(
+        Number.isFinite(parsed) ? Math.trunc(parsed) : editor.capacityMin,
+        0,
+        editor.capacityMax
+      ),
+      error: null
+    });
+  }
+
+  protected updateMax(value: number | string): void {
+    const editor = this.resourcePopupStore.capacityEditorRef();
+    if (!editor || editor.busy) {
+      return;
+    }
+    const parsed = Number(value);
+    const capacityMax = AppUtils.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : editor.capacityMax,
+      0,
+      editor.capacityLimit
+    );
+    this.resourcePopupStore.capacityEditorRef.set({
+      ...editor,
+      capacityMin: Math.min(editor.capacityMin, capacityMax),
+      capacityMax,
+      error: null
+    });
   }
 }

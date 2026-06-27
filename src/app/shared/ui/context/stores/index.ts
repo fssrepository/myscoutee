@@ -1,5 +1,7 @@
 export { ActivityStore } from './activity.store';
 export { ActivitiesPopupStore } from './activities-popup.store';
+export { AdminPopupStore, type AdminPopupKind } from './admin-popup.store';
+export { AdminWorkspaceStore } from './admin-workspace.store';
 export { AppRuntimeStore } from './app-runtime.store';
 export { EventEditorPopupStore } from './event-editor-popup.store';
 export { ConfirmationDialogStore } from './confirmation-dialog.store';

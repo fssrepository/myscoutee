@@ -1,6 +1,22 @@
 import type * as ContractTypes from '../../contracts';
 
 import type * as AppConstants from '../../common/constants';
+import { AppUtils } from '../../../app-utils';
+
+export interface AssetBorrowPricingPreview {
+  amount: number;
+  currency: string;
+}
+
+export interface AssetBorrowPricingOptions {
+  pricing: ContractTypes.PricingConfig | null | undefined;
+  totalQuantity: number;
+  requestedQuantity: number;
+  startAtIso: string;
+  endAtIso: string;
+  requests?: readonly ContractTypes.AssetMemberRequestDTO[];
+}
+
 export class PricingBuilder {
   static createDefaultPricingConfig(
     context: 'event' | 'asset' | 'subevent' = 'event'
@@ -295,6 +311,159 @@ export class PricingBuilder {
       .filter((item, index, source) => source.findIndex(candidate => candidate.id === item.id) === index);
 
     return next;
+  }
+
+  static resolveAssetBorrowPricing(options: AssetBorrowPricingOptions): AssetBorrowPricingPreview {
+    const normalized = this.compactPricingConfig(options.pricing, {
+      context: 'asset',
+      allowSlotFeatures: false
+    });
+    const currency = normalized.currency?.trim() || 'USD';
+    if (!normalized.enabled) {
+      return {
+        amount: 0,
+        currency
+      };
+    }
+
+    const totalQuantity = Math.max(1, Math.trunc(Number(options.totalQuantity) || 1));
+    const requestedQuantity = Math.max(1, Math.trunc(Number(options.requestedQuantity) || 1));
+    const overlappingCommitted = (options.requests ?? [])
+      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.booking?.inventoryApplied !== true)
+      .filter(request => this.isPricingWindowOverlap(request, options.startAtIso, options.endAtIso))
+      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+    const capacityFilledPercent = Math.round(
+      (Math.min(totalQuantity, overlappingCommitted + requestedQuantity) / totalQuantity) * 100
+    );
+    const hoursUntilStart = this.resolveHoursUntilStart(options.startAtIso);
+
+    let nextPrice = normalized.basePrice;
+    if ((normalized.mode === 'demand-based' || normalized.mode === 'hybrid') && normalized.demandRulesEnabled) {
+      for (const rule of normalized.demandRules) {
+        if (this.matchesPricingDemandRule(rule, capacityFilledPercent)) {
+          nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        }
+      }
+    }
+    if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
+      for (const rule of normalized.timeRules) {
+        if (this.matchesPricingTimeRule(rule, hoursUntilStart, options.startAtIso)) {
+          nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        }
+      }
+    }
+
+    if (normalized.minPrice !== null) {
+      nextPrice = Math.max(normalized.minPrice, nextPrice);
+    }
+    if (normalized.maxPrice !== null) {
+      nextPrice = Math.min(normalized.maxPrice, nextPrice);
+    }
+
+    const roundedUnitPrice = this.applyPricingRounding(nextPrice, normalized.rounding);
+    const multiplier = normalized.chargeType === 'per_attendee'
+      ? requestedQuantity
+      : 1;
+    return {
+      amount: Math.round(roundedUnitPrice * multiplier * 100) / 100,
+      currency
+    };
+  }
+
+  private static matchesPricingDemandRule(
+    rule: ContractTypes.PricingDemandRule,
+    capacityFilledPercent: number
+  ): boolean {
+    if (rule.operator === 'lte') {
+      return capacityFilledPercent <= rule.capacityFilledPercent;
+    }
+    return capacityFilledPercent >= rule.capacityFilledPercent;
+  }
+
+  private static matchesPricingTimeRule(
+    rule: ContractTypes.PricingTimeRule,
+    hoursUntilStart: number,
+    comparisonIso: string
+  ): boolean {
+    if (rule.trigger === 'specific_date') {
+      const start = `${rule.specificDateStart ?? ''}`.trim();
+      const end = `${rule.specificDateEnd ?? ''}`.trim();
+      if (!start || !end || !comparisonIso) {
+        return false;
+      }
+      const comparisonDate = comparisonIso.slice(0, 10);
+      return comparisonDate >= start && comparisonDate <= end;
+    }
+    if (rule.trigger === 'hours_before_start') {
+      return hoursUntilStart <= Math.max(0, Number(rule.offsetValue) || 0);
+    }
+    const dayWindowHours = Math.max(0, Number(rule.offsetValue) || 0) * 24;
+    return hoursUntilStart <= dayWindowHours;
+  }
+
+  private static applyPricingAction(currentPrice: number, action: ContractTypes.PricingAction): number {
+    const value = Number(action.value) || 0;
+    if (action.kind === 'set_exact_price') {
+      return Math.max(0, value);
+    }
+    const percent = value / 100;
+    if (action.kind === 'decrease_percent') {
+      return Math.max(0, currentPrice * (1 - percent));
+    }
+    return Math.max(0, currentPrice * (1 + percent));
+  }
+
+  private static applyPricingRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
+    if (rounding === 'whole') {
+      return Math.round(price);
+    }
+    if (rounding === 'half') {
+      return Math.round(price * 2) / 2;
+    }
+    return Math.round(price * 100) / 100;
+  }
+
+  private static resolveHoursUntilStart(startAtIso: string): number {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    if (!start) {
+      return 0;
+    }
+    return Math.max(0, Math.round((start.getTime() - Date.now()) / (60 * 60 * 1000)));
+  }
+
+  private static assetRequestQuantity(request: ContractTypes.AssetMemberRequestDTO): number {
+    return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 0));
+  }
+
+  private static isPricingWindowOverlap(
+    request: ContractTypes.AssetMemberRequestDTO,
+    startAtIso: string,
+    endAtIso: string
+  ): boolean {
+    const requestStart = this.parseLocalDateMs(request.booking?.startAtIso);
+    const requestEnd = this.parseLocalDateMs(request.booking?.endAtIso);
+    const windowStart = this.parseLocalDateMs(startAtIso);
+    const windowEnd = this.parseLocalDateMs(endAtIso);
+    if (requestStart !== null && requestEnd !== null && windowStart !== null && windowEnd !== null) {
+      return requestStart < windowEnd && windowStart < requestEnd;
+    }
+    const requestWindow = [
+      `${request.booking?.eventId ?? ''}`.trim(),
+      `${request.booking?.subEventId ?? ''}`.trim(),
+      `${request.booking?.slotKey ?? ''}`.trim(),
+      `${request.booking?.timeframe ?? ''}`.trim()
+    ].filter(Boolean).join('|');
+    const targetWindow = [startAtIso.trim(), endAtIso.trim()].filter(Boolean).join('|');
+    if (requestWindow && targetWindow) {
+      return requestWindow === targetWindow;
+    }
+    return true;
+  }
+
+  private static parseLocalDateMs(value: string | null | undefined): number | null {
+    const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
+    return parsed ? parsed.getTime() : null;
   }
 
   private static hasMeaningfulPricingContent(

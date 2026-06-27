@@ -34,7 +34,7 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
@@ -107,7 +107,7 @@ export class AdminIdeaEditorPopupComponent {
   @ViewChild('ideaSmartList')
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   private readonly appCtx = inject(AppContext);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly confirmationDialog = inject(ConfirmationDialogStore);

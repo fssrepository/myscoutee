@@ -1,0 +1,459 @@
+import { CommonModule } from '@angular/common';
+import {
+  Component,
+  DoCheck,
+  EventEmitter,
+  Input,
+  Output,
+  ViewChild,
+  ViewEncapsulation,
+  inject
+} from '@angular/core';
+import { from } from 'rxjs';
+
+import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
+import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders';
+import type * as AppConstants from '../../../../shared/core/common/constants';
+import type * as AppDTOs from '../../../../shared/core/contracts';
+import { ActivityResourcesService } from '../../../../shared/core';
+import {
+  AppMenuComponent,
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  CARD_MENU_ACTIONS,
+  InfoCardComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type CardMenuAction,
+  type CardMenuActionEvent,
+  type CardMenuRequestEvent,
+  type InfoCardData,
+  type ListQuery,
+  type PageResult,
+  type SmartListConfig,
+  type SmartListLoadPage,
+  type SmartListStateChange
+} from '../../../../shared/ui';
+
+export interface EventResourceListItem {
+  card: AppDTOs.SubEventResourceCardDTO;
+  infoCard: InfoCardData;
+}
+
+export interface EventResourceListModel {
+  filter: AppConstants.AssetType;
+  filterCounts: Record<AppConstants.AssetType, number>;
+  items: readonly EventResourceListItem[];
+}
+
+export interface EventResourceCardActionRequest {
+  card: AppDTOs.SubEventResourceCardDTO;
+  event: CardMenuActionEvent<InfoCardData>;
+}
+
+interface ResourceSmartListFilters {
+  revision?: number;
+  contextKey?: string;
+}
+
+type EventResourceListMenuContext =
+  | { menu: 'resource-filter'; filter: AppConstants.AssetType }
+  | { menu: 'quick-action'; action: 'assign' | 'explore' }
+  | {
+      menu: 'resource-card';
+      card: AppDTOs.SubEventResourceCardDTO;
+      infoCard: InfoCardData;
+      action: CardMenuAction;
+    };
+
+const EMPTY_FILTER_COUNTS: Record<AppConstants.AssetType, number> = {
+  Car: 0,
+  Accommodation: 0,
+  Supplies: 0
+};
+
+const EMPTY_MODEL: EventResourceListModel = {
+  filter: 'Car',
+  filterCounts: EMPTY_FILTER_COUNTS,
+  items: []
+};
+
+@Component({
+  selector: 'app-event-resource-list',
+  standalone: true,
+  imports: [
+    CommonModule,
+    AppMenuComponent,
+    AppMenuOutletComponent,
+    InfoCardComponent,
+    SmartListComponent
+  ],
+  templateUrl: './event-resource-list.component.html',
+  styleUrl: './event-resource-list.component.scss',
+  encapsulation: ViewEncapsulation.None,
+  providers: [AppMenuDispatcher]
+})
+export class EventResourceListComponent implements DoCheck {
+  @Input() model: EventResourceListModel | null = null;
+
+  @Output() filterSelected = new EventEmitter<AppConstants.AssetType>();
+  @Output() assignRequested = new EventEmitter<Event>();
+  @Output() exploreRequested = new EventEmitter<Event>();
+  @Output() mapRequested = new EventEmitter<AppDTOs.SubEventResourceCardDTO>();
+  @Output() badgeDetailsRequested = new EventEmitter<AppDTOs.SubEventResourceCardDTO>();
+  @Output() cardActionRequested = new EventEmitter<EventResourceCardActionRequest>();
+
+  private readonly appMenuDispatcher = inject(AppMenuDispatcher);
+  private readonly activityResourcesService = inject(ActivityResourcesService);
+
+  private lastItemsSignature = '';
+  private lastContextKey = '';
+  private lastItemCount = 0;
+  private resourceListReady = false;
+  private resourceListVisibleCount = 0;
+
+  protected readonly resourceFilterOptions: readonly AppConstants.AssetType[] = ['Car', 'Accommodation', 'Supplies'];
+
+  protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
+    filters: {
+      revision: 0,
+      contextKey: ''
+    }
+  };
+
+  @ViewChild('resourceSmartList')
+  private resourceSmartList?: SmartListComponent<EventResourceListItem, ResourceSmartListFilters>;
+
+  protected readonly resourceSmartListLoadPage: SmartListLoadPage<EventResourceListItem, ResourceSmartListFilters> = (
+    query
+  ) => from(this.loadResourceSmartListPage(query));
+
+  protected readonly resourceSmartListConfig: SmartListConfig<EventResourceListItem, ResourceSmartListFilters> = {
+    pageSize: 18,
+    defaultView: 'list',
+    headerProgress: {
+      enabled: true
+    },
+    emptyLabel: 'No assigned resources yet.',
+    emptyDescription: 'Assign current-user assets to see them here.',
+    showStickyHeader: false,
+    showGroupMarker: () => false,
+    listLayout: 'card-grid',
+    desktopColumns: 3,
+    snapMode: 'none',
+    containerClass: {
+      'experience-card-list': true,
+      'assets-card-list': true,
+      'subevent-resource-card-list': true
+    },
+    trackBy: (_index, item) => item.card.id
+  };
+
+  ngDoCheck(): void {
+    const model = this.currentModel();
+    const contextKey = model.filter;
+    const signature = `${contextKey}:${model.items.map(item => [
+      item.card.id,
+      item.card.accepted,
+      item.card.pending,
+      item.card.capacityTotal,
+      ...(item.card.routes ?? []),
+      item.infoCard.title,
+      item.infoCard.mediaSubtitle,
+      item.infoCard.description,
+      ...(item.infoCard.detailRows ?? []),
+      ...(item.infoCard.menuActions ?? [])
+    ].join(':')).join('|')}`;
+
+    if (contextKey !== this.lastContextKey) {
+      this.lastContextKey = contextKey;
+      this.lastItemsSignature = signature;
+      this.lastItemCount = model.items.length;
+      this.resourceListReady = false;
+      this.resourceListVisibleCount = 0;
+      this.resourceSmartListQuery = {
+        filters: {
+          revision: Date.now(),
+          contextKey
+        }
+      };
+    } else if (signature !== this.lastItemsSignature) {
+      const previousItemCount = this.lastItemCount;
+      this.lastItemsSignature = signature;
+      this.lastItemCount = model.items.length;
+      this.syncVisibleResourceItems(model.items, previousItemCount);
+    }
+  }
+
+  protected onResourceSmartListStateChange(
+    change: SmartListStateChange<EventResourceListItem, ResourceSmartListFilters>
+  ): void {
+    this.resourceListVisibleCount = change.items.length;
+    this.resourceListReady = !change.initialLoading;
+    if (!this.resourceListReady) {
+      return;
+    }
+    const items = this.currentModel().items;
+    if (change.total !== items.length) {
+      this.syncVisibleResourceItems(items, change.total);
+    }
+  }
+
+  protected resourceFilterMenuTrigger(): AppMenuTrigger {
+    const model = this.currentModel();
+    const count = this.resourceFilterCount(model.filter);
+    return {
+      label: this.resourceTypeLabel(model.filter).toLowerCase(),
+      icon: this.resourceTypeIcon(model.filter),
+      ariaLabel: 'Open asset filter',
+      palette: this.resourceTypePalette(model.filter),
+      counter: count > 0 ? { value: count, max: 99 } : null,
+      layout: 'pill'
+    };
+  }
+
+  protected resourceFilterMenuItems(): readonly AppMenuItem<string, EventResourceListMenuContext>[] {
+    const active = this.currentModel().filter;
+    return this.resourceFilterOptions.map(option => {
+      const count = this.resourceFilterCount(option);
+      return {
+        id: `resource-filter-${option}`,
+        label: this.resourceTypeLabel(option).toLowerCase(),
+        icon: this.resourceTypeIcon(option),
+        kind: 'radio',
+        active: option === active,
+        checked: option === active,
+        palette: this.resourceTypePalette(option),
+        surface: 'tinted',
+        counter: count > 0 ? { value: count, max: 99 } : null,
+        context: { menu: 'resource-filter', filter: option }
+      };
+    });
+  }
+
+  protected quickActionsMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'add',
+      closeIcon: 'close',
+      ariaLabel: 'Open sub-event asset actions',
+      hideLabel: true,
+      palette: 'green',
+      layout: 'icon'
+    };
+  }
+
+  protected quickActionsMenuItems(): readonly AppMenuItem<string, EventResourceListMenuContext>[] {
+    return [
+      {
+        id: 'quick-assign',
+        label: 'Assign',
+        icon: 'assignment_ind',
+        palette: 'blue',
+        surface: 'tinted',
+        context: { menu: 'quick-action', action: 'assign' }
+      },
+      {
+        id: 'quick-explore',
+        label: 'Explore',
+        icon: 'explore',
+        palette: 'green',
+        surface: 'tinted',
+        context: { menu: 'quick-action', action: 'explore' }
+      }
+    ];
+  }
+
+  protected onEventResourceMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as EventResourceListMenuContext | undefined;
+    if (!context) {
+      return;
+    }
+    switch (context.menu) {
+      case 'resource-filter':
+        event.sourceEvent.stopPropagation();
+        this.filterSelected.emit(context.filter);
+        return;
+      case 'quick-action':
+        if (context.action === 'assign') {
+          this.assignRequested.emit(event.sourceEvent);
+          return;
+        }
+        this.exploreRequested.emit(event.sourceEvent);
+        return;
+      case 'resource-card':
+        this.cardActionRequested.emit({
+          card: context.card,
+          event: {
+            id: context.infoCard.id,
+            actionId: context.action.id,
+            action: context.action,
+            card: context.infoCard
+          }
+        });
+        return;
+      default:
+        return;
+    }
+  }
+
+  protected openResourceInfoCardMenu(
+    item: EventResourceListItem,
+    request: CardMenuRequestEvent<InfoCardData>
+  ): void {
+    const menuId = `event-resource-card:${request.id}`;
+    if (this.appMenuDispatcher.isOpen(menuId)) {
+      this.appMenuDispatcher.close(menuId);
+      return;
+    }
+    this.appMenuDispatcher.open({
+      id: menuId,
+      kind: 'select',
+      title: this.infoCardMenuTitle(request.card),
+      items: this.infoCardMenuItems(item.card, request),
+      triggerRect: request.triggerRect,
+      openUp: request.openUp,
+      panelAlign: 'auto',
+      closeOnSelect: true,
+      onClose: request.closeTrigger
+    }, null);
+  }
+
+  protected openResourceCardMap(item: EventResourceListItem): void {
+    this.mapRequested.emit(item.card);
+  }
+
+  protected openResourceCardBadgeDetails(item: EventResourceListItem): void {
+    this.badgeDetailsRequested.emit(item.card);
+  }
+
+  protected onResourceCardMenuAction(
+    item: EventResourceListItem,
+    event: CardMenuActionEvent<InfoCardData>
+  ): void {
+    this.cardActionRequested.emit({
+      card: item.card,
+      event
+    });
+  }
+
+  private async loadResourceSmartListPage(
+    query: ListQuery<ResourceSmartListFilters>
+  ): Promise<PageResult<EventResourceListItem>> {
+    await this.activityResourcesService.waitForResourceRouteDelay();
+    const items = this.currentModel().items;
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    const start = page * pageSize;
+    return {
+      items: items.slice(start, start + pageSize),
+      total: items.length
+    };
+  }
+
+  private syncVisibleResourceItems(
+    items: readonly EventResourceListItem[],
+    previousItemCount: number
+  ): void {
+    if (!this.resourceListReady || !this.resourceSmartList) {
+      return;
+    }
+
+    const visibleCount = Math.max(this.resourceListVisibleCount, this.resourceSmartList.itemsSnapshot().length);
+    const allItemsWereVisible = visibleCount >= previousItemCount;
+    let nextVisibleCount = Math.min(items.length, visibleCount);
+
+    if (items.length > previousItemCount && allItemsWereVisible) {
+      nextVisibleCount = Math.min(items.length, visibleCount + (items.length - previousItemCount));
+    }
+
+    this.resourceSmartList.replaceVisibleItems(items.slice(0, nextVisibleCount), {
+      total: items.length
+    });
+  }
+
+  private infoCardMenuTitle(card: InfoCardData): string | null {
+    if (card.menuTitle === null) {
+      return null;
+    }
+    return `${card.menuTitle ?? card.title ?? ''}`.trim();
+  }
+
+  private infoCardMenuItems(
+    card: AppDTOs.SubEventResourceCardDTO,
+    request: CardMenuRequestEvent<InfoCardData>
+  ): readonly AppMenuItem<string, EventResourceListMenuContext>[] {
+    return (request.actions ?? []).flatMap(actionId => {
+      const config = CARD_MENU_ACTIONS[actionId];
+      if (!config) {
+        return [];
+      }
+      const action: CardMenuAction = {
+        id: actionId,
+        ...config
+      };
+      const context: EventResourceListMenuContext = {
+        menu: 'resource-card',
+        card,
+        infoCard: request.card,
+        action
+      };
+      return [{
+        id: actionId,
+        label: config.label,
+        icon: config.icon,
+        palette: this.infoCardActionPalette(config.tone),
+        surface: 'tinted',
+        context
+      }];
+    });
+  }
+
+  private infoCardActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
+    switch (tone) {
+      case 'accent':
+        return 'green';
+      case 'review':
+        return 'violet';
+      case 'warning':
+        return 'warning';
+      case 'destructive':
+        return 'danger';
+      default:
+        return 'neutral';
+    }
+  }
+
+  private resourceFilterCount(type: AppConstants.AssetType): number {
+    return this.currentModel().filterCounts[type] ?? 0;
+  }
+
+  private currentModel(): EventResourceListModel {
+    return this.model ?? EMPTY_MODEL;
+  }
+
+  private resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string {
+    return type === 'Members' ? 'groups' : AssetDefaultsBuilder.assetTypeIcon(type);
+  }
+
+  private resourceTypeLabel(type: AppConstants.SubEventResourceFilter): string {
+    return APP_STATIC_DATA.subEventResourceFilterLabels[type];
+  }
+
+  private resourceTypePalette(type: AppConstants.SubEventResourceFilter): AppMenuPalette {
+    switch (type) {
+      case 'Members':
+        return 'blue';
+      case 'Car':
+        return 'sky';
+      case 'Accommodation':
+        return 'green';
+      case 'Supplies':
+        return 'brown';
+      default:
+        return 'default';
+    }
+  }
+}

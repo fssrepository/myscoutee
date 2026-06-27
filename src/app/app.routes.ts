@@ -64,17 +64,8 @@ export const routes: Routes = [
     data: { documentKind: 'terms' }
   },
   {
-    path: 'admin/help/:token',
-    loadComponent: () => import('./admin/components/admin-help-session-page/admin-help-session-page.component')
-      .then(m => m.AdminHelpSessionPageComponent)
-  },
-  {
-    path: 'admin/workspace',
-    loadComponent: () => import('./admin/components/admin-page/admin-page.component').then(m => m.AdminPageComponent)
-  },
-  {
     path: 'admin',
-    loadComponent: () => import('./admin/components/admin-page/admin-page.component').then(m => m.AdminPageComponent)
+    loadChildren: () => import('./admin/admin.module').then(m => m.AdminModule)
   },
   {
     path: '',

@@ -12,7 +12,7 @@ import {
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 
 const MONITORING_POPUP_KEY = 'monitoring';
 
@@ -54,7 +54,7 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
   styleUrl: './admin-monitoring-popup.component.scss'
 })
 export class AdminMonitoringPopupComponent implements OnInit {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   protected readonly monitoringService = inject(AdminMonitoringService);
   private readonly appCtx = inject(AppContext);
   protected readonly popupKey = MONITORING_POPUP_KEY;

@@ -14,7 +14,7 @@ import {
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
 type AdminParamSelectMenuItemId = `param-option:${string}:${string}`;
@@ -32,7 +32,7 @@ interface AdminParamSelectMenuContext {
   styleUrl: './admin-params-popup.component.scss'
 })
 export class AdminParamsPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   protected readonly paramsService = inject(AdminParamsService);
   private readonly appCtx = inject(AppContext);
   protected readonly loading = signal(false);

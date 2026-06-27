@@ -1,25 +1,14 @@
 import { DragDropModule, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent } from '../../../../shared/ui';
+import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { RouteEditorState } from '../../../../shared/ui/context/sub-event-resource-popup.types';
 
 type RouteEditorMenuContext = { menu: 'save' };
-
-export interface RouteEditorStopMapRequest {
-  editor: RouteEditorState;
-  stop: string;
-  stopIndex: number;
-  sourceEvent: Event;
-}
-
-export interface RouteEditorStopChange {
-  stopIndex: number;
-  value: string;
-}
 
 @Component({
   selector: 'app-event-resource-route-editor',
@@ -35,12 +24,9 @@ export class EventResourceRouteEditorComponent {
 
   @Output() closeRequested = new EventEmitter<Event | undefined>();
   @Output() saveRequested = new EventEmitter<Event | undefined>();
-  @Output() addStopRequested = new EventEmitter<void>();
-  @Output() removeStopRequested = new EventEmitter<number>();
-  @Output() stopChanged = new EventEmitter<RouteEditorStopChange>();
-  @Output() stopsDropped = new EventEmitter<CdkDragDrop<string[]>>();
-  @Output() routeMapRequested = new EventEmitter<Event | undefined>();
-  @Output() stopMapRequested = new EventEmitter<RouteEditorStopMapRequest>();
+
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  private routeEditorRowIdSequence = 0;
 
   protected routeStopTrack(stop: string, stopIndex: number): string {
     const editor = this.editor;
@@ -110,8 +96,112 @@ export class EventResourceRouteEditorComponent {
     this.saveRequested.emit(event);
   }
 
-  protected requestStopMap(editor: RouteEditorState, stop: string, stopIndex: number, event: Event): void {
+  protected addStop(): void {
+    const editor = this.resourcePopupStore.routeEditorRef();
+    if (!editor || editor.busy || editor.mode === 'view') {
+      return;
+    }
+    this.resourcePopupStore.routeEditorRef.set({
+      ...editor,
+      routes: [...editor.routes, ''],
+      routeRowIds: [...editor.routeRowIds, this.nextRouteEditorRowId()],
+      error: null
+    });
+  }
+
+  protected removeStop(index: number): void {
+    const editor = this.resourcePopupStore.routeEditorRef();
+    if (!editor || editor.busy || editor.mode === 'view' || index < 0 || index >= editor.routes.length) {
+      return;
+    }
+    this.resourcePopupStore.routeEditorRef.set({
+      ...editor,
+      routes: editor.routes.filter((_stop, stopIndex) => stopIndex !== index),
+      routeRowIds: editor.routeRowIds.filter((_routeRowId, stopIndex) => stopIndex !== index),
+      error: null
+    });
+  }
+
+  protected dropStop(event: CdkDragDrop<string[]>): void {
+    const editor = this.resourcePopupStore.routeEditorRef();
+    if (!editor || editor.busy || editor.mode === 'view' || event.previousIndex === event.currentIndex) {
+      return;
+    }
+    const routes = [...editor.routes];
+    const routeRowIds = [...editor.routeRowIds];
+    const [moved] = routes.splice(event.previousIndex, 1);
+    const [movedRouteRowId] = routeRowIds.splice(event.previousIndex, 1);
+    routes.splice(event.currentIndex, 0, moved);
+    routeRowIds.splice(event.currentIndex, 0, movedRouteRowId);
+    this.resourcePopupStore.routeEditorRef.set({
+      ...editor,
+      routes,
+      routeRowIds,
+      error: null
+    });
+  }
+
+  protected updateStop(index: number, value: string): void {
+    const editor = this.resourcePopupStore.routeEditorRef();
+    if (!editor || editor.busy || editor.mode === 'view' || index < 0 || index >= editor.routes.length) {
+      return;
+    }
+    const routes = [...editor.routes];
+    routes[index] = value;
+    this.resourcePopupStore.routeEditorRef.set({
+      ...editor,
+      routes,
+      error: null
+    });
+  }
+
+  protected openStopMap(editor: RouteEditorState, stop: string, stopIndex: number, event: Event): void {
     event.stopPropagation();
-    this.stopMapRequested.emit({ editor, stop, stopIndex, sourceEvent: event });
+    this.openGoogleMapsSearch(editor.mode === 'view' ? stop : editor.routes[stopIndex] ?? stop);
+  }
+
+  protected openRouteMap(event?: Event): void {
+    event?.stopPropagation();
+    const editor = this.resourcePopupStore.routeEditorRef();
+    if (!editor) {
+      return;
+    }
+    this.openGoogleMapsDirections(editor.routes);
+  }
+
+  private nextRouteEditorRowId(): string {
+    this.routeEditorRowIdSequence += 1;
+    return `route-stop-local-${Date.now()}-${this.routeEditorRowIdSequence}`;
+  }
+
+  private openGoogleMapsSearch(query: string): void {
+    const trimmed = query.trim();
+    if (!trimmed || typeof window === 'undefined') {
+      return;
+    }
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmed)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  }
+
+  private openGoogleMapsDirections(stops: string[]): void {
+    const normalized = stops.map(stop => stop.trim()).filter(Boolean);
+    if (normalized.length === 0 || typeof window === 'undefined') {
+      return;
+    }
+    if (normalized.length === 1) {
+      this.openGoogleMapsSearch(normalized[0]);
+      return;
+    }
+    const origin = normalized[0];
+    const destination = normalized[normalized.length - 1];
+    const waypoints = normalized.slice(1, -1);
+    let url = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`;
+    if (waypoints.length > 0) {
+      url += `&waypoints=${encodeURIComponent(waypoints.join('|'))}`;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }

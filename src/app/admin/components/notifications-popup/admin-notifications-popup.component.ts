@@ -22,7 +22,7 @@ import {
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
 import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminShellService } from '../../services/admin-shell.service';
+import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 
 const PROCESS_LIST_FILTER = {
   all: 'all',
@@ -314,7 +314,7 @@ const STATUS_CLASS_PREFIX = 'is-';
   styleUrl: './admin-notifications-popup.component.scss'
 })
 export class AdminNotificationsPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   protected readonly notificationsService = inject(AdminNotificationsService);
   private readonly appCtx = inject(AppContext);
   protected readonly popupKey = ADMIN_POPUP_KEY;

@@ -379,6 +379,74 @@ export class ActivityResourceBuilder {
     });
   }
 
+  static subEventAssetAssignmentKey(subEventId: string, type: AppConstants.AssetType): string {
+    return `${subEventId}:${type}`;
+  }
+
+  static subEventSupplyAssignmentKey(subEventId: string, cardId: string): string {
+    return `${subEventId}:${cardId}`;
+  }
+
+  static assetDetailText(card: { details?: string | null; description?: string | null }): string {
+    return `${card.details ?? card.description ?? ''}`.trim();
+  }
+
+  static assetSourceLink(card: { sourceLink?: string | null }): string {
+    return `${card.sourceLink ?? ''}`.trim();
+  }
+
+  static normalizeAssetRoutes(
+    type: AppConstants.AssetType,
+    routes: readonly string[] | undefined | null
+  ): string[] {
+    if (type === 'Supplies') {
+      return [];
+    }
+    const cleaned = (routes ?? [])
+      .map(value => `${value ?? ''}`.trim())
+      .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
+    if (type === 'Accommodation') {
+      return cleaned.length > 0 ? [cleaned[0]] : [''];
+    }
+    return cleaned.length > 0 ? cleaned : [''];
+  }
+
+  static assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    if (!start || !end) {
+      return '';
+    }
+    const sameDay = start.toDateString() === end.toDateString();
+    const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return sameDay
+      ? `${startDate} · ${startTime} - ${endTime}`
+      : `${startDate} ${startTime} - ${endDate} ${endTime}`;
+  }
+
+  static defaultAssetExploreRange(
+    subEvent: ContractTypes.SubEventDTO
+  ): { startAtIso: string; endAtIso: string } {
+    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(new Date());
+    const endAtIso = `${subEvent.endAt ?? ''}`.trim();
+    if (endAtIso) {
+      return {
+        startAtIso,
+        endAtIso
+      };
+    }
+    const base = AppUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
+    const nextEnd = new Date(base);
+    nextEnd.setHours(nextEnd.getHours() + 2);
+    return {
+      startAtIso,
+      endAtIso: AppUtils.toIsoDateTimeLocal(nextEnd)
+    };
+  }
+
   private static cloneAssetCard(card: AppDTOs.AssetDetailDTO): AppDTOs.AssetDetailDTO {
     return {
       ...card,

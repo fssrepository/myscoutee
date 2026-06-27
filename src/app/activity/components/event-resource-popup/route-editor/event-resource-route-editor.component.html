@@ -32,7 +32,7 @@
                   class="experience-action-btn asset-route-map-btn asset-route-main-map-btn"
                   [class.form-save-invalid]="!isReadOnly(editor) && !canSubmit(editor) && !isSavePending(editor)"
                   [disabled]="isSavePending(editor) || (!isReadOnly(editor) && !canSubmit(editor))"
-                  (click)="routeMapRequested.emit($event)"
+                  (click)="openRouteMap($event)"
                   aria-label="Open multistep route on map"
                 >
                   <mat-icon>location_on</mat-icon>
@@ -42,7 +42,7 @@
                     type="button"
                     class="experience-action-btn asset-route-add-btn"
                     [disabled]="isSavePending(editor)"
-                    (click)="addStopRequested.emit()"
+                    (click)="addStop()"
                     aria-label="Add route stop"
                   >
                     <mat-icon>add</mat-icon>
@@ -55,7 +55,7 @@
               class="asset-route-list"
               cdkDropList
               [cdkDropListData]="editor.routes"
-              (cdkDropListDropped)="stopsDropped.emit($event)"
+              (cdkDropListDropped)="dropStop($event)"
               [cdkDropListDisabled]="isReadOnly(editor) || !supportsMultiRoute(editor) || isSavePending(editor)"
             >
               @for (stop of visibleStops(editor); track routeStopTrack(stop, $index); let stopIndex = $index) {
@@ -78,7 +78,7 @@
                   <input
                     type="text"
                     [ngModel]="stop"
-                    (ngModelChange)="stopChanged.emit({ stopIndex, value: $event })"
+                    (ngModelChange)="updateStop(stopIndex, $event)"
                     [disabled]="isReadOnly(editor) || isSavePending(editor)"
                     [placeholder]="'Route stop ' + (stopIndex + 1)"
                   />
@@ -86,7 +86,7 @@
                     type="button"
                     class="experience-action-btn asset-route-map-btn"
                     [disabled]="isSavePending(editor)"
-                    (click)="requestStopMap(editor, stop, stopIndex, $event)"
+                    (click)="openStopMap(editor, stop, stopIndex, $event)"
                     aria-label="Open stop on map"
                   >
                     <mat-icon>location_on</mat-icon>
@@ -96,7 +96,7 @@
                       type="button"
                       class="experience-action-btn experience-action-delete asset-route-delete-btn"
                       [disabled]="isSavePending(editor)"
-                      (click)="removeStopRequested.emit(stopIndex)"
+                      (click)="removeStop(stopIndex)"
                       aria-label="Delete route stop"
                     >
                       <mat-icon>delete</mat-icon>

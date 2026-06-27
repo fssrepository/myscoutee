@@ -1,10 +1,8 @@
 @use '../../../shared/ui/styles' as ui;
-@use '../_asset-interactions.shared' as asset-interactions;
 
 @include ui.popup-shell();
 @include ui.form-controls();
-@include asset-interactions.host-motion-vars(contents);
-@include asset-interactions.interactive-feedback('.asset-editor-close-btn, .asset-source-refresh-btn');
+@include ui.interactive-motion();
 
 .experience-form-overlay {
   z-index: 4200;
