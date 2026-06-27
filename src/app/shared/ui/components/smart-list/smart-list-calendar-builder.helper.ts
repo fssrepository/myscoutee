@@ -131,7 +131,7 @@ function buildMonthWeekSpans<T>(
     }
     const startDate = AppUtils.dateOnly(range.start);
     const endDate = AppUtils.dateOnly(range.end);
-    if (!dateRangeOverlaps(startDate, endDate, weekStart, weekEnd)) {
+    if (!AppUtils.dateRangeOverlaps(startDate, endDate, weekStart, weekEnd)) {
       continue;
     }
     const visibleStart = startDate.getTime() < weekStart.getTime() ? weekStart : startDate;
@@ -200,8 +200,4 @@ function weekRangeLabel(start: Date, end: Date): string {
 function dayDiff(from: Date, to: Date): number {
   const ms = AppUtils.dateOnly(to).getTime() - AppUtils.dateOnly(from).getTime();
   return Math.floor(ms / 86400000);
-}
-
-function dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
-  return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
 }

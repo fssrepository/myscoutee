@@ -22,6 +22,7 @@ import type {
   EventFeedbackPageQueryDto,
   EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
+import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
@@ -35,7 +36,6 @@ import {
   LocalUsersMapper
 } from '../mappers';
 import type {
-  ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
   ActivityEventDTO,
   ActivityEventStageActionRequestDTO,
@@ -90,14 +90,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE, signal);
-    const page = this.eventsRepository.queryActivitiesEventRecordPage({
-      ...query,
-      userId: this.resolveDemoActivityUserId(query.userId)
-    });
+    const page = this.eventsRepository.queryActivitiesEventRecordPage(
+      this.resolveDemoActivityUserId(userId),
+      query
+    );
     return LocalActivityEventsMapper.toDtoPage(page);
   }
 

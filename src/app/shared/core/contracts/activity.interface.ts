@@ -3,6 +3,7 @@ import type * as AssetContracts from './asset.interface';
 import type * as ChatContracts from './chat.interface';
 import type { DateRangeDto } from './date.interface';
 import type * as EventContracts from './event.interface';
+import type { ListQuery } from './list.interface';
 import type * as PricingContracts from './pricing.interface';
 import type * as UserContracts from './user.interface';
 
@@ -50,7 +51,8 @@ export interface ActivityRatePageResultDTO {
 
 export interface IEventsService {
   queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
   loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null>;
@@ -83,7 +85,7 @@ export interface IEventsService {
 export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
 }
@@ -92,7 +94,7 @@ export interface IRatesService {
   queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]>;
   queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityRatePageResultDTO>;
 }
@@ -117,28 +119,6 @@ export interface EventExploreFeedFilters {
   openSpotsOnly: boolean;
   topic: string;
   excludedSourceIds?: string[];
-}
-
-export interface ActivitiesPageRequest {
-  primaryFilter: ActivitiesPrimaryFilter;
-  eventScopeFilter?: ActivitiesEventScope;
-  secondaryFilter: ActivitiesSecondaryFilter;
-  chatContextFilter: ChatContracts.ActivitiesChatContextFilter;
-  hostingPublicationFilter: HostingPublicationFilter;
-  rateFilter: RateFilterKey;
-  rateSocialBadgeEnabled?: boolean;
-  view: ActivitiesView;
-  page: number;
-  pageSize: number;
-  cursor?: string | null;
-  sort?: string;
-  direction?: 'asc' | 'desc';
-  groupBy?: string;
-  anchorDate?: string;
-  rangeStart?: string;
-  rangeEnd?: string;
-  adminServiceOnly?: boolean;
-  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export type ActivityEventScopeFilter = ActivitiesEventScope;
@@ -925,20 +905,6 @@ export interface ActivityEventExploreQueryResult {
   records: ActivityEventRecord[];
   total: number;
   nextCursor: string | null;
-}
-
-export interface ActivityEventActivitiesQuery {
-  userId: string;
-  filter: ActivityEventScopeFilter;
-  hostingPublicationFilter?: HostingPublicationFilter;
-  secondaryFilter: ActivitiesSecondaryFilter;
-  sort: ActivityEventActivitiesSort;
-  view: ActivitiesView;
-  limit: number;
-  cursor?: string | null;
-  anchorDate?: string;
-  rangeStart?: string;
-  rangeEnd?: string;
 }
 
 export interface ActivityMemberEntry {

@@ -3,10 +3,9 @@ import { Injectable, inject } from '@angular/core';
 import type * as AppUiTypes from '../../../ui/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesPageRequest } from '../../contracts';
+import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
 import type { ChatDTO } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
-import type { PageResult } from '../../../ui';
 
 import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
@@ -285,12 +284,12 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async queryActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     options: {
       chatItems?: readonly ChatDTO[];
     } = {}
   ): Promise<PageResult<ChatDTO>> {
-    const page = await this.chatsService.queryActivitiesChatPage(userId, request, options);
+    const page = await this.chatsService.queryActivitiesChatPage(userId, query, options);
     return {
       items: page.items,
       total: page.total,

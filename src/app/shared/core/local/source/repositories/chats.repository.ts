@@ -6,10 +6,10 @@ import { Injectable, inject } from '@angular/core';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
-import { activityChatContextFilterKey } from '../../../base/mappers';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { LocalChatThreadMapper } from '../mappers';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
+import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 
 @Injectable({
   providedIn: 'root'
@@ -27,7 +27,7 @@ export class LocalChatsRepository {
 
   queryActivitiesChatPage(
     userId: string,
-    request: ContractTypes.ActivitiesPageRequest
+    query: ListQuery<ActivitiesFeedFilters>
   ): { items: ChatThreadRecord[]; total: number; nextCursor: string | null } {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
@@ -38,8 +38,8 @@ export class LocalChatsRepository {
       };
     }
 
-    const rangeStartMs = this.parseRangeDateMs(request.rangeStart, Number.NEGATIVE_INFINITY);
-    const rangeEndMs = this.parseRangeDateMs(request.rangeEnd, Number.POSITIVE_INFINITY);
+    const rangeStartMs = this.parseRangeDateMs(query.rangeStart, Number.NEGATIVE_INFINITY);
+    const rangeEndMs = this.parseRangeDateMs(query.rangeEnd, Number.POSITIVE_INFINITY);
     if (rangeStartMs > rangeEndMs) {
       return {
         items: [],
@@ -48,13 +48,13 @@ export class LocalChatsRepository {
       };
     }
 
-    const source = (request.adminServiceOnly === true && request.chatContextFilter === 'service'
-      ? this.querySupportCaseRecordsForAdmin(normalizedUserId, request.supportCaseFilter ?? 'all')
-      : this.queryUserRecordsForPage(normalizedUserId, request))
+    const source = (query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
+      ? this.querySupportCaseRecordsForAdmin(normalizedUserId, this.activitiesSupportCaseFilter(query))
+      : this.queryUserRecordsForPage(normalizedUserId, query))
       .filter(record => this.matchesDateRange(record, rangeStartMs, rangeEndMs));
-    const sorted = this.sortChatPageRecords(source, request);
-    const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
-    const startIndex = this.resolvePageStartIndex(request, pageSize);
+    const sorted = this.sortChatPageRecords(source, query);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const startIndex = this.resolvePageStartIndex(query, pageSize);
     const endIndex = Math.min(sorted.length, startIndex + pageSize);
     return {
       items: sorted
@@ -339,22 +339,55 @@ export class LocalChatsRepository {
 
   private queryUserRecordsForPage(
     userId: string,
-    request: ContractTypes.ActivitiesPageRequest
+    query: ListQuery<ActivitiesFeedFilters>
   ): ChatThreadRecord[] {
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ChatThreadRecord => Boolean(record))
       .filter(record => record.ownerUserId === userId)
-      .filter(record => this.matchesChatContextFilter(record, request.chatContextFilter))
-      .filter(record => this.matchesSupportCaseFilter(record, request.supportCaseFilter));
+      .filter(record => this.matchesChatContextFilter(record, this.activitiesChatContextFilter(query)))
+      .filter(record => this.matchesSupportCaseFilter(record, this.activitiesSupportCaseFilter(query)));
   }
 
   private matchesChatContextFilter(
     record: ChatRecord,
     filter: ContractTypes.ActivitiesChatContextFilter
   ): boolean {
-    return filter === 'all' || activityChatContextFilterKey(record) === filter;
+    return filter === 'all' || this.activityChatContextFilterKey(record) === filter;
+  }
+
+  private activityChatContextFilterKey(
+    record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
+  ): ContractTypes.ActivitiesChatContextFilter {
+    if (record.channelType === 'serviceEvent' || record.serviceContext) {
+      return 'service';
+    }
+    if (record.channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    if (record.channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (record.channelType === 'mainEvent') {
+      return 'event';
+    }
+    return 'all';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
+    const value = query.filters?.chatContextFilter;
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+  }
+
+  private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
+    const value = query.filters?.supportCaseFilter;
+    return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }
 
   private matchesSupportCaseFilter(record: ChatRecord, filter: ContractTypes.SupportCaseFilter | undefined): boolean {
@@ -364,11 +397,11 @@ export class LocalChatsRepository {
 
   private sortChatPageRecords(
     records: readonly ChatThreadRecord[],
-    request: ContractTypes.ActivitiesPageRequest
+    query: ListQuery<ActivitiesFeedFilters>
   ): ChatThreadRecord[] {
-    const direction = request.direction === 'asc' ? 1 : -1;
+    const direction = query.direction === 'asc' ? 1 : -1;
     const sorted = [...records];
-    if (request.secondaryFilter === 'relevant') {
+    if (this.activitiesSecondaryFilter(query) === 'relevant') {
       return sorted.sort((left, right) =>
         this.chatMetricScore(right) - this.chatMetricScore(left)
         || direction * (
@@ -391,12 +424,12 @@ export class LocalChatsRepository {
     return unread * 10 + memberCount;
   }
 
-  private resolvePageStartIndex(request: ContractTypes.ActivitiesPageRequest, pageSize: number): number {
-    const cursorIndex = Number(request.cursor);
+  private resolvePageStartIndex(query: ListQuery<ActivitiesFeedFilters>, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
     if (Number.isFinite(cursorIndex)) {
       return Math.max(0, Math.trunc(cursorIndex));
     }
-    return Math.max(0, Math.trunc(Number(request.page) || 0)) * pageSize;
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
   }
 
   private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {

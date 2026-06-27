@@ -22,6 +22,7 @@ import {
   EventFeedbackPageResultDto,
   type ActivityEventDTO
 } from '../../contracts/activity.interface';
+import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -34,7 +35,6 @@ import type {
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
-  ActivityEventActivitiesQuery,
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
@@ -90,10 +90,11 @@ export class HttpEventsService implements IEventsService {
   }
 
   async queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
-    const normalizedUserId = query.userId.trim();
+    const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
         items: [],
@@ -105,19 +106,7 @@ export class HttpEventsService implements IEventsService {
       const response = await this.requestWithAbort(
         this.http.post<ActivityEventDTO[] | ActivityEventPageResultDTO | null>(
           `${this.apiBaseUrl}/activities/events/filter`,
-          {
-            userId: normalizedUserId,
-            filter: query.filter,
-            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
-            secondaryFilter: query.secondaryFilter,
-            sort: query.sort,
-            view: query.view,
-            limit: query.limit,
-            cursor: query.cursor ?? null,
-            anchorDate: query.anchorDate,
-            rangeStart: query.rangeStart,
-            rangeEnd: query.rangeEnd
-          } satisfies HttpEventsFilterRequest
+          this.toHttpEventsFilterRequest(normalizedUserId, query)
         ),
         signal
       );
@@ -145,6 +134,72 @@ export class HttpEventsService implements IEventsService {
         nextCursor: null
       };
     }
+  }
+
+  private toHttpEventsFilterRequest(
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>
+  ): HttpEventsFilterRequest {
+    const view = this.activitiesView(query);
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    return {
+      userId,
+      filter: this.activitiesEventScopeFilter(query),
+      hostingPublicationFilter: this.activitiesHostingPublicationFilter(query),
+      secondaryFilter,
+      sort: this.activitiesSort(query, view, secondaryFilter),
+      view,
+      limit: Math.max(1, Math.trunc(Number(query.pageSize) || 10)),
+      cursor: query.cursor ?? null,
+      anchorDate: query.anchorDate,
+      rangeStart: query.rangeStart,
+      rangeEnd: query.rangeEnd
+    };
+  }
+
+  private activitiesEventScopeFilter(query: ListQuery<ActivitiesFeedFilters>): ActivityEventScopeFilter {
+    const value = query.filters?.eventScopeFilter;
+    if (
+      value === 'all'
+      || value === 'active-events'
+      || value === 'pending'
+      || value === 'invitations'
+      || value === 'my-events'
+      || value === 'drafts'
+      || value === 'trash'
+    ) {
+      return value;
+    }
+    return 'active-events';
+  }
+
+  private activitiesHostingPublicationFilter(query: ListQuery<ActivitiesFeedFilters>): HttpEventsFilterRequest['hostingPublicationFilter'] {
+    return query.filters?.hostingPublicationFilter === 'drafts' ? 'drafts' : 'all';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): HttpEventsFilterRequest['secondaryFilter'] {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesView(query: ListQuery<ActivitiesFeedFilters>): HttpEventsFilterRequest['view'] {
+    const value = query.view;
+    return value === 'month' || value === 'week' || value === 'distance' ? value : 'day';
+  }
+
+  private activitiesSort(
+    query: ListQuery<ActivitiesFeedFilters>,
+    view: HttpEventsFilterRequest['view'],
+    secondaryFilter: HttpEventsFilterRequest['secondaryFilter']
+  ): HttpEventsFilterRequest['sort'] {
+    const value = query.sort;
+    if (value === 'date' || value === 'distance' || value === 'relevance') {
+      return value;
+    }
+    if (view === 'distance') {
+      return 'distance';
+    }
+    return secondaryFilter === 'relevant' ? 'relevance' : 'date';
   }
 
   async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {

@@ -2,13 +2,9 @@ import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../app-utils';
 import type * as ContractTypes from '../../contracts';
-import type { ActivitiesFeedFilters, EventExploreFeedFilters } from '../../contracts';
+import type { ActivitiesFeedFilters, EventExploreFeedFilters, ListQuery, PageResult } from '../../contracts';
 import type { ChatDTO } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import type { ListQuery, PageResult } from '../../../ui';
-import {
-  toActivitiesPageRequest
-} from '../mappers';
 import { AppContext } from '../../../ui/context';
 import type { ActivityEventRecord, ActivityRateDTO } from '../../contracts/activity.interface';
 import { ChatsService } from './chats.service';
@@ -45,8 +41,7 @@ export class ActivitiesService extends BaseRouteModeService {
     query: ListQuery<ActivitiesFeedFilters>,
     options: { chatItems?: readonly ChatDTO[]; signal?: AbortSignal } = {}
   ): Promise<PageResult<ChatDTO>> {
-    const request = toActivitiesPageRequest(query);
-    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
+    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), query, {
       chatItems: options.chatItems
     });
   }
@@ -55,9 +50,8 @@ export class ActivitiesService extends BaseRouteModeService {
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}
   ): Promise<PageResult<ActivityRateDTO, { users: UserDto[] }>> {
-    const request = toActivitiesPageRequest(query);
     const activeUserId = this.resolveActiveUserId();
-    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request, options.signal);
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, query, options.signal);
     const users = this.resolveActivityUsers(page.users);
     this.cacheActivityUsers(users);
     return {

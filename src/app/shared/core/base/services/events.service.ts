@@ -12,7 +12,7 @@ import type {
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
-import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
+import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -29,7 +29,6 @@ import type {
 import { LocalEventsService } from '../../local';
 import { HttpEventsService } from '../../http';
 import type {
-  ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
   ActivityEventDTO,
   ActivityEventStageActionRequestDTO,
@@ -42,9 +41,7 @@ import type {
   ActivityEventSubEventsResultDTO
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
-import type { ListQuery, PageResult } from '../../../ui';
 import { AppContext } from '../../../ui/context';
-import { toActivitiesPageRequest, toActivityEventActivitiesQuery } from '../mappers';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { UsersService } from './users.service';
 
@@ -86,27 +83,28 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   }
 
   async queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
     if (this.isLocalRouteEnabled('/activities/events')) {
-      return this.localEventsService.queryActivitiesEventDTOPage(query, signal);
+      return this.localEventsService.queryActivitiesEventDTOPage(userId, query, signal);
     }
-    return this.httpEventsService.queryActivitiesEventDTOPage(query, signal);
+    return this.httpEventsService.queryActivitiesEventDTOPage(userId, query, signal);
   }
 
   async loadActivityEvents(
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}
   ): Promise<PageResult<ActivityEventDTO>> {
-    const request = toActivitiesPageRequest(query);
     const activeUserId = this.resolveActiveUserId();
     const page = await this.queryActivitiesEventDTOPage(
-      toActivityEventActivitiesQuery(request, activeUserId),
+      activeUserId,
+      query,
       options.signal
     );
-    if (this.isCalendarActivitiesView(request.view)) {
-      return this.paginateActivityEventDTOs(page.items, request);
+    if (this.isCalendarActivitiesView(query.view)) {
+      return this.filterActivityEventDTOsByQueryRange(page.items, query);
     }
     return {
       items: page.items,
@@ -332,88 +330,21 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.usersService.peekCachedUsers()[0]?.id ?? '';
   }
 
-  private paginateActivityEventDTOs(
+  private filterActivityEventDTOsByQueryRange(
     items: readonly ActivityEventDTO[],
-    request: ActivitiesPageRequest
+    query: ListQuery<ActivitiesFeedFilters>
   ): PageResult<ActivityEventDTO> {
-    if (this.isCalendarActivitiesView(request.view)) {
-      const range = this.activitiesQueryRange(request);
-      const filteredItems = range
-        ? items.filter(item => this.doesActivityEventDTOOverlapRange(item, range.start, range.end))
-        : [...items];
-      return {
-        items: filteredItems,
-        total: filteredItems.length
-      };
-    }
-
-    const startIndex = request.page * request.pageSize;
+    const range = AppUtils.parseDateOnlyRange(query.rangeStart, query.rangeEnd);
+    const filteredItems = range
+      ? items.filter(item => AppUtils.dateRangeValuesOverlap(item.startAtIso, item.endAtIso, range.start, range.end))
+      : [...items];
     return {
-      items: items.slice(startIndex, startIndex + request.pageSize),
-      total: items.length
+      items: filteredItems,
+      total: filteredItems.length
     };
   }
 
-  private activitiesQueryRange(request: ActivitiesPageRequest): { start: Date; end: Date } | null {
-    const start = this.parseSmartListDate(request.rangeStart);
-    const end = this.parseSmartListDate(request.rangeEnd);
-    if (!start || !end) {
-      return null;
-    }
-    return {
-      start,
-      end: AppUtils.dateOnly(end)
-    };
-  }
-
-  private doesActivityEventDTOOverlapRange(item: ActivityEventDTO, start: Date, end: Date): boolean {
-    const range = this.resolveActivityEventDTORange(item);
-    if (!range) {
-      return false;
-    }
-    return this.dateRangeOverlaps(
-      AppUtils.dateOnly(range.start),
-      AppUtils.dateOnly(range.end),
-      start,
-      end
-    );
-  }
-
-  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
-    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
-  }
-
-  private resolveActivityEventDTORange(item: ActivityEventDTO): { start: Date; end: Date } | null {
-    const start = new Date(item.startAtIso);
-    const end = new Date(item.endAtIso || new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      return null;
-    }
-    return end.getTime() > start.getTime()
-      ? { start, end }
-      : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
-  }
-
-  private isCalendarActivitiesView(view: ActivitiesPageRequest['view']): boolean {
+  private isCalendarActivitiesView(view: string | undefined): boolean {
     return view === 'week' || view === 'month';
-  }
-
-  private parseSmartListDate(value: string | undefined): Date | null {
-    if (!value) {
-      return null;
-    }
-    const trimmed = value.trim();
-    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const year = Number.parseInt(match[1], 10);
-      const month = Number.parseInt(match[2], 10) - 1;
-      const day = Number.parseInt(match[3], 10);
-      return new Date(year, month, day);
-    }
-    const parsed = new Date(trimmed);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return AppUtils.dateOnly(parsed);
   }
 }

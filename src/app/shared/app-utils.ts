@@ -7,6 +7,11 @@ interface ActivityGroupableModel {
   distanceMetersExact?: number | null;
 }
 
+export interface AppDateRange {
+  start: Date;
+  end: Date;
+}
+
 export interface AsciiEmojiConversion {
   token: string;
   emoji: string;
@@ -322,6 +327,74 @@ export class AppUtils {
     return parsed ? this.dateOnly(parsed) : null;
   }
 
+  static parseDateOnlyLocal(value: unknown): Date | null {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number.parseInt(match[1], 10);
+      const month = Number.parseInt(match[2], 10) - 1;
+      const day = Number.parseInt(match[3], 10);
+      const parsed = new Date(year, month, day);
+      return parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === day
+        ? parsed
+        : null;
+    }
+    const parsed = this.parseDate(value);
+    return parsed ? this.dateOnly(parsed) : null;
+  }
+
+  static parseDateOnlyRange(
+    startValue: string | number | Date | null | undefined,
+    endValue: string | number | Date | null | undefined
+  ): AppDateRange | null {
+    const start = this.parseDateOnlyLocal(startValue);
+    const end = this.parseDateOnlyLocal(endValue);
+    return start && end ? { start, end } : null;
+  }
+
+  static parseDateRange(
+    startValue: string | number | Date | null | undefined,
+    endValue: string | number | Date | null | undefined,
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): AppDateRange | null {
+    const start = this.parseDate(startValue);
+    if (!start) {
+      return null;
+    }
+    const hasEndValue = `${endValue ?? ''}`.trim().length > 0;
+    const parsedEnd = hasEndValue ? this.parseDate(endValue) : null;
+    if (hasEndValue && !parsedEnd) {
+      return null;
+    }
+    const durationMs = Math.max(0, Math.trunc(Number(defaultDurationMs) || 0));
+    const end = parsedEnd && parsedEnd.getTime() > start.getTime()
+      ? parsedEnd
+      : new Date(start.getTime() + durationMs);
+    return Number.isFinite(end.getTime()) ? { start, end } : null;
+  }
+
+  static dateRangeValuesOverlap(
+    startValue: string | number | Date | null | undefined,
+    endValue: string | number | Date | null | undefined,
+    rangeStart: Date,
+    rangeEnd: Date,
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): boolean {
+    const range = this.parseDateRange(startValue, endValue, defaultDurationMs);
+    if (!range) {
+      return false;
+    }
+    return this.dateRangeOverlaps(
+      this.dateOnly(range.start),
+      this.dateOnly(range.end),
+      rangeStart,
+      rangeEnd
+    );
+  }
+
   static anchorDate(offsetInDays: number | null | undefined = 0, now = new Date(Date.now())): Date {
     const base = this.parseDate(now) ?? new Date(Date.now());
     const today = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
@@ -492,6 +565,10 @@ export class AppUtils {
 
   static dateOnly(value: Date): Date {
     return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  static dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
   }
 
   static addDays(value: Date, days: number): Date {

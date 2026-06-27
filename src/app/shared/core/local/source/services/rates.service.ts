@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesPageRequest } from '../../../contracts';
+import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../../contracts/activity.interface';
 import type { IRatesService } from '../../../contracts/activity.interface';
 import type { ActivityRateRecordQuery } from '../entity/rate.entity';
@@ -27,13 +27,13 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
 
   async queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityRatePageResultDTO> {
     await this.waitForRouteDelay(LocalRatesService.RATES_ROUTE, signal);
     const ownerUserId = this.resolveDemoActivityUserId(userId);
     const page = await this.ratesRepository.queryActivityRateItemsPage(
-      this.toActivityRateRecordQuery(ownerUserId, request)
+      this.toActivityRateRecordQuery(ownerUserId, query)
     );
     const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, { ...user }]));
     const userIds = new Set<string>();
@@ -65,29 +65,40 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
     return this.usersRepository.queryAllUsers()[0]?.id ?? '';
   }
 
-  private toActivityRateRecordQuery(userId: string, request: ActivitiesPageRequest): ActivityRateRecordQuery {
-    const [mode, displayDirection] = request.rateFilter.split('-') as [
+  private toActivityRateRecordQuery(userId: string, query: ListQuery<ActivitiesFeedFilters>): ActivityRateRecordQuery {
+    const [mode, displayDirection] = this.activitiesRateFilter(query).split('-') as [
       'individual' | 'pair',
       'given' | 'received' | 'mutual' | 'met'
     ];
-    const normalizedSort = request.sort === 'distance' || request.sort === 'relevance'
-      ? request.sort
+    const normalizedSort = query.sort === 'distance' || query.sort === 'relevance'
+      ? query.sort
       : 'happenedAt';
-    const sortDirection = request.direction === 'asc' || request.direction === 'desc'
-      ? request.direction
+    const sortDirection = query.direction === 'asc' || query.direction === 'desc'
+      ? query.direction
       : (normalizedSort === 'distance' ? 'asc' : 'desc');
 
     return {
       ownerUserId: userId,
       mode: mode === 'pair' ? 'pair' : 'single',
       displayDirection,
-      socialBadgeEnabled: request.rateSocialBadgeEnabled === true,
+      socialBadgeEnabled: query.filters?.rateSocialBadgeEnabled === true,
       sort: normalizedSort,
       sortDirection,
-      cursor: request.cursor,
-      limit: Math.max(1, Math.trunc(request.pageSize)),
-      rangeStartIso: request.rangeStart,
-      rangeEndIso: request.rangeEnd
+      cursor: query.cursor,
+      limit: Math.max(1, Math.trunc(query.pageSize)),
+      rangeStartIso: query.rangeStart,
+      rangeEndIso: query.rangeEnd
     };
+  }
+
+  private activitiesRateFilter(query: ListQuery<ActivitiesFeedFilters>): NonNullable<ActivitiesFeedFilters['rateFilter']> {
+    const value = query.filters?.rateFilter;
+    return value === 'individual-received'
+      || value === 'individual-mutual'
+      || value === 'individual-met'
+      || value === 'pair-given'
+      || value === 'pair-received'
+      ? value
+      : 'individual-given';
   }
 }

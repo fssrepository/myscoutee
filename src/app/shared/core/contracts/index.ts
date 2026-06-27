@@ -6,6 +6,7 @@ export * from './contact.interface';
 export * from './content.interface';
 export * from './date.interface';
 export * from './event.interface';
+export * from './list.interface';
 export * from './pricing.interface';
 export * from './profile.interface';
 export * from './share.interface';

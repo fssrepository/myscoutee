@@ -10,7 +10,6 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import {
   ActivityEventDetailDTO,
-  type ActivityEventActivitiesQuery,
   type ActivityEventExploreQuery,
   type ActivityEventExploreQueryResult,
   type ActivityEventRecord,
@@ -37,6 +36,12 @@ interface ActivityEventActivitiesRecordQueryResult {
   records: ActivityEventRecord[];
   total: number;
   nextCursor: string | null;
+}
+
+interface ActivityEventActivitiesPageOptions {
+  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter;
+  sort: ContractTypes.ActivityEventActivitiesSort;
+  view: ContractTypes.ActivitiesView;
 }
 
 interface ActivityEventSubEventsRecordResult {
@@ -321,8 +326,11 @@ export class LocalEventsRepository {
     return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId);
   }
 
-  queryActivitiesEventRecordPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesRecordQueryResult {
-    const normalizedUserId = query.userId.trim();
+  queryActivitiesEventRecordPage(
+    userId: string,
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ActivityEventActivitiesRecordQueryResult {
+    const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
         records: [],
@@ -331,19 +339,26 @@ export class LocalEventsRepository {
       };
     }
 
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    const view = this.activitiesView(query);
+    const pageOptions: ActivityEventActivitiesPageOptions = {
+      secondaryFilter,
+      view,
+      sort: this.activitiesSort(query, view, secondaryFilter)
+    };
     const filteredRecords = this.queryEventRecordsByFilter(
       normalizedUserId,
-      query.filter,
-      query.hostingPublicationFilter ?? 'all'
+      this.activitiesEventScopeFilter(query),
+      this.activitiesHostingPublicationFilter(query)
     );
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const normalizedRecords = filteredRecords
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
-      .filter(record => this.matchesActivitiesSecondaryFilter(record, query.secondaryFilter))
-      .sort((left, right) => this.compareActivitiesRecords(left, right, query));
+      .filter(record => this.matchesActivitiesSecondaryFilter(record, secondaryFilter))
+      .sort((left, right) => this.compareActivitiesRecords(left, right, pageOptions));
     const total = normalizedRecords.length;
 
-    if (query.view === 'week' || query.view === 'month') {
+    if (view === 'week' || view === 'month') {
       return {
         records: normalizedRecords,
         total,
@@ -353,9 +368,9 @@ export class LocalEventsRepository {
 
     const cursor = this.parseActivitiesCursor(query.cursor);
     const remaining = cursor
-      ? normalizedRecords.filter(record => this.compareRecordToCursor(record, cursor, query) > 0)
+      ? normalizedRecords.filter(record => this.compareRecordToCursor(record, cursor, pageOptions) > 0)
       : normalizedRecords;
-    const limit = Math.max(1, Math.trunc(query.limit));
+    const limit = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
     const records = remaining.slice(0, limit);
     const nextCursor = remaining.length > limit && records.length > 0
       ? this.serializeActivitiesCursor(this.buildActivitiesCursor(records[records.length - 1]))
@@ -366,6 +381,57 @@ export class LocalEventsRepository {
       total,
       nextCursor
     };
+  }
+
+  private activitiesEventScopeFilter(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ActivityEventScopeFilter {
+    const value = query.filters?.eventScopeFilter;
+    if (
+      value === 'all'
+      || value === 'active-events'
+      || value === 'pending'
+      || value === 'invitations'
+      || value === 'my-events'
+      || value === 'drafts'
+      || value === 'trash'
+    ) {
+      return value;
+    }
+    return 'active-events';
+  }
+
+  private activitiesHostingPublicationFilter(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ContractTypes.HostingPublicationFilter {
+    return query.filters?.hostingPublicationFilter === 'drafts' ? 'drafts' : 'all';
+  }
+
+  private activitiesSecondaryFilter(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesView(query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>): ContractTypes.ActivitiesView {
+    const value = query.view;
+    return value === 'month' || value === 'week' || value === 'distance' ? value : 'day';
+  }
+
+  private activitiesSort(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>,
+    view: ContractTypes.ActivitiesView,
+    secondaryFilter: ContractTypes.ActivitiesSecondaryFilter
+  ): ContractTypes.ActivityEventActivitiesSort {
+    const value = query.sort;
+    if (value === 'date' || value === 'distance' || value === 'relevance') {
+      return value;
+    }
+    if (view === 'distance') {
+      return 'distance';
+    }
+    return secondaryFilter === 'relevant' ? 'relevance' : 'date';
   }
 
   queryExploreItems(userId: string): ActivityEventRecord[] {
@@ -1482,10 +1548,10 @@ export class LocalEventsRepository {
   private compareActivitiesRecords(
     left: ActivityEventRecord,
     right: ActivityEventRecord,
-    query: ActivityEventActivitiesQuery
+    options: ActivityEventActivitiesPageOptions
   ): number {
-    if (query.view === 'distance' || query.sort === 'distance') {
-      if (query.secondaryFilter === 'relevant') {
+    if (options.view === 'distance' || options.sort === 'distance') {
+      if (options.secondaryFilter === 'relevant') {
         return this.distanceOrderValue(left) - this.distanceOrderValue(right)
           || this.boostOrderValue(right) - this.boostOrderValue(left)
           || this.timestampOrderValue(right) - this.timestampOrderValue(left)
@@ -1496,14 +1562,14 @@ export class LocalEventsRepository {
         || this.compareRecordIdentity(left, right);
     }
 
-    if (query.secondaryFilter === 'relevant') {
+    if (options.secondaryFilter === 'relevant') {
       return this.dayOrderValue(left) - this.dayOrderValue(right)
         || this.boostOrderValue(right) - this.boostOrderValue(left)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
     }
 
-    if (query.secondaryFilter === 'past') {
+    if (options.secondaryFilter === 'past') {
       return this.dayOrderValue(right) - this.dayOrderValue(left)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
@@ -1517,7 +1583,7 @@ export class LocalEventsRepository {
   private compareRecordToCursor(
     record: ActivityEventRecord,
     cursor: ActivityEventActivitiesCursor,
-    query: ActivityEventActivitiesQuery
+    options: ActivityEventActivitiesPageOptions
   ): number {
     const cursorRecord: ActivityEventRecord = {
       ...record,
@@ -1526,7 +1592,7 @@ export class LocalEventsRepository {
       boost: cursor.boost,
       startAtIso: new Date(cursor.startAtMs).toISOString()
     };
-    return this.compareActivitiesRecords(record, cursorRecord, query);
+    return this.compareActivitiesRecords(record, cursorRecord, options);
   }
 
   private buildActivitiesCursor(record: ActivityEventRecord): ActivityEventActivitiesCursor {
@@ -1590,7 +1656,7 @@ export class LocalEventsRepository {
 
   private matchesActivitiesSecondaryFilter(
     record: ActivityEventRecord,
-    secondaryFilter: ActivityEventActivitiesQuery['secondaryFilter']
+    secondaryFilter: ContractTypes.ActivitiesSecondaryFilter
   ): boolean {
     if (secondaryFilter === 'past') {
       return this.isPastActivitiesRecord(record);

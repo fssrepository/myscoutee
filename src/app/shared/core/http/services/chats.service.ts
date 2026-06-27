@@ -10,8 +10,7 @@ import type {
   ChatDTO
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
-import type { ActivitiesPageRequest } from '../../contracts';
-import { activityChatContextFilterKey } from '../../base/mappers';
+import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import { AppContext } from '../../../ui/context';
 import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';
@@ -242,7 +241,7 @@ export class HttpChatsService implements IChatsService {
 
   async queryActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     options: { chatItems?: readonly ChatDTO[] } = {}
   ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
@@ -256,31 +255,34 @@ export class HttpChatsService implements IChatsService {
 
     let params = new HttpParams()
       .set('userId', normalizedUserId)
-      .set('limit', String(Math.max(1, Math.trunc(request.pageSize || 10))))
-      .set('sort', request.sort ?? 'date');
-    if (request.direction) {
-      params = params.set('sortDirection', request.direction);
+      .set('limit', String(Math.max(1, Math.trunc(query.pageSize || 10))))
+      .set('sort', query.sort ?? 'date');
+    if (query.direction) {
+      params = params.set('sortDirection', query.direction);
     }
-    if (request.secondaryFilter === 'recent' || request.secondaryFilter === 'past' || request.secondaryFilter === 'relevant') {
-      params = params.set('secondaryFilter', request.secondaryFilter);
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    if (secondaryFilter === 'recent' || secondaryFilter === 'past' || secondaryFilter === 'relevant') {
+      params = params.set('secondaryFilter', secondaryFilter);
     }
-    if (request.chatContextFilter && request.chatContextFilter !== 'all') {
-      params = params.set('contextFilter', request.chatContextFilter);
+    const chatContextFilter = this.activitiesChatContextFilter(query);
+    if (chatContextFilter !== 'all') {
+      params = params.set('contextFilter', chatContextFilter);
     }
-    if (request.cursor) {
-      params = params.set('cursor', request.cursor);
+    if (query.cursor) {
+      params = params.set('cursor', query.cursor);
     }
-    if (request.rangeStart) {
-      params = params.set('rangeStartIso', request.rangeStart);
+    if (query.rangeStart) {
+      params = params.set('rangeStartIso', query.rangeStart);
     }
-    if (request.rangeEnd) {
-      params = params.set('rangeEndIso', request.rangeEnd);
+    if (query.rangeEnd) {
+      params = params.set('rangeEndIso', query.rangeEnd);
     }
-    if (request.adminServiceOnly === true) {
+    if (query.filters?.adminServiceOnly === true) {
       params = params.set('adminServiceOnly', 'true');
     }
-    if (request.supportCaseFilter && request.supportCaseFilter !== 'all') {
-      params = params.set('supportCaseFilter', request.supportCaseFilter);
+    const supportCaseFilter = this.activitiesSupportCaseFilter(query);
+    if (supportCaseFilter !== 'all') {
+      params = params.set('supportCaseFilter', supportCaseFilter);
     }
 
     try {
@@ -302,12 +304,12 @@ export class HttpChatsService implements IChatsService {
           : null
       };
       const resultPage = this.shouldUseCachedActivitiesChatPage(page, normalizedUserId, options.chatItems ?? [])
-        ? this.buildCachedActivitiesChatPage(normalizedUserId, request, options.chatItems ?? [])
+        ? this.buildCachedActivitiesChatPage(normalizedUserId, query, options.chatItems ?? [])
         : page;
       return this.toActivitiesChatPageDTO(resultPage);
     } catch {
       return this.toActivitiesChatPageDTO(
-        this.buildCachedActivitiesChatPage(normalizedUserId, request, options.chatItems ?? [])
+        this.buildCachedActivitiesChatPage(normalizedUserId, query, options.chatItems ?? [])
       );
     }
   }
@@ -616,16 +618,16 @@ export class HttpChatsService implements IChatsService {
 
   private buildCachedActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     cachedChatItems: readonly ChatDTO[]
   ): { items: ChatThreadRecord[]; total: number; nextCursor: null } {
-    const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
-    const pageIndex = Math.max(0, Math.trunc(Number(request.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
     const filtered = this.resolveCachedActivitiesChatItems(userId, cachedChatItems).filter(item =>
-      this.matchesActivitiesChatContextFilter(item, request.chatContextFilter)
-      && this.matchesSupportCaseFilter(item, request.supportCaseFilter)
+      this.matchesActivitiesChatContextFilter(item, this.activitiesChatContextFilter(query))
+      && this.matchesSupportCaseFilter(item, this.activitiesSupportCaseFilter(query))
     );
-    const sorted = this.sortActivitiesChatPageRecords(filtered, request);
+    const sorted = this.sortActivitiesChatPageRecords(filtered, query);
     const startIndex = pageIndex * pageSize;
     return {
       items: sorted.slice(startIndex, startIndex + pageSize).map(item => this.cloneChatRecord(item)),
@@ -715,7 +717,40 @@ export class HttpChatsService implements IChatsService {
     const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service'
       ? filter
       : 'all';
-    return normalizedFilter === 'all' || activityChatContextFilterKey(item) === normalizedFilter;
+    return normalizedFilter === 'all' || this.activityChatContextFilterKey(item) === normalizedFilter;
+  }
+
+  private activityChatContextFilterKey(
+    item: Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>
+  ): ContractTypes.ActivitiesChatContextFilter {
+    if (item.channelType === 'serviceEvent' || item.serviceContext) {
+      return 'service';
+    }
+    if (item.channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    if (item.channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (item.channelType === 'mainEvent') {
+      return 'event';
+    }
+    return 'all';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
+    const value = query.filters?.chatContextFilter;
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+  }
+
+  private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
+    const value = query.filters?.supportCaseFilter;
+    return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }
 
   private matchesSupportCaseFilter(
@@ -730,10 +765,10 @@ export class HttpChatsService implements IChatsService {
 
   private sortActivitiesChatPageRecords(
     records: readonly ChatThreadRecord[],
-    request: ActivitiesPageRequest
+    query: ListQuery<ActivitiesFeedFilters>
   ): ChatThreadRecord[] {
     const sorted = records.map(record => this.cloneChatRecord(record));
-    if (request.secondaryFilter === 'relevant') {
+    if (this.activitiesSecondaryFilter(query) === 'relevant') {
       return sorted.sort((left, right) =>
         this.chatMetricScore(right) - this.chatMetricScore(left)
         || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')

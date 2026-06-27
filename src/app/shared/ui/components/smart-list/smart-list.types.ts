@@ -4,6 +4,11 @@ import type {
   ProgressIndicatorTone
 } from '../progress-indicator';
 import type {
+  ListDirection,
+  ListQuery,
+  PageResult
+} from '../../../core/contracts/list.interface';
+import type {
   AppMenuAnchorRect,
   AppMenuDispatchState,
   AppMenuItem,
@@ -13,7 +18,6 @@ import type {
 } from '../menu';
 import type { RatingStarBarConfig } from '../rating-star-bar';
 
-export type ListDirection = 'asc' | 'desc';
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListPresentation = 'list' | 'fullscreen';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
@@ -31,29 +35,13 @@ export type SmartListLoadTriggerEdge = 'end' | 'start';
 export type SmartListMergeStrategy = 'append' | 'prepend';
 export type SmartListInitialScrollAnchor = 'start' | 'end' | 'first-item';
 export type SmartListPrependRestoreMode = 'manual' | 'native';
+export type {
+  ListDirection,
+  ListQuery,
+  PageResult
+} from '../../../core/contracts/list.interface';
 export type SmartListConfigValue<TValue, TFilters extends SmartListFilters = SmartListFilters>
   = TValue | ((query: ListQuery<TFilters>) => TValue);
-
-export interface ListQuery<TFilters extends SmartListFilters = SmartListFilters> {
-  page: number;
-  pageSize: number;
-  cursor?: string | null;
-  sort?: string;
-  direction?: ListDirection;
-  filters?: TFilters;
-  groupBy?: string;
-  view?: string;
-  anchorDate?: string;
-  rangeStart?: string;
-  rangeEnd?: string;
-}
-
-export interface PageResult<T, TContext = unknown> {
-  items: T[];
-  total: number;
-  nextCursor?: string | null;
-  context?: TContext;
-}
 
 export interface SmartListLoadContext {
   signal?: AbortSignal;
