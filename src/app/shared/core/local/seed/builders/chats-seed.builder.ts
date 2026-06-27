@@ -2,7 +2,7 @@ import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../source/
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
 import type { ChatPopupMessage } from '../../../contracts/chat.interface';
-import type { ChatRecord } from '../../../contracts/chat.interface';
+import type { ChatRecord } from '../../source/entity/chat.entity';
 import type { UserDto } from '../../../contracts/user.interface';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';

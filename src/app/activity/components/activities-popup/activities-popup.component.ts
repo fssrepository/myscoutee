@@ -15,7 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type { ChatDTO, ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
   type ActivityEventDTO,
@@ -253,7 +253,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ?? this.createFallbackActiveUser();
 
   protected activityItems: ActivitySmartListDTO[] = [];
-  protected chatItems: ChatRecord[] = [];
+  protected chatItems: ChatDTO[] = [];
   protected rateItems: ActivityRateDTO[] = [];
 
   protected get chatBadge(): number { return this.activityCounterValue('chat'); }
@@ -508,27 +508,27 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected selectedActivityMembersRowId: string | null = null;
   protected readonly trashedActivityRowsByKey: Record<string, ActivityPopupCard> = {};
 
-  protected getChatLastSender(item: ChatRecord): UserDto {
+  protected getChatLastSender(item: ChatDTO): UserDto {
     return this.activitiesChats.getChatLastSender(item);
   }
 
-  protected getChatMemberCount(item: ChatRecord): number {
+  protected getChatMemberCount(item: ChatDTO): number {
     return this.activitiesChats.getChatMemberCount(item);
   }
 
-  protected chatChannelType(item: ChatRecord): ContractTypes.ChatChannelType {
+  protected chatChannelType(item: ChatDTO): ContractTypes.ChatChannelType {
     return this.activitiesChats.chatChannelType(item);
   }
 
-  protected chatItemsForActivities(): ChatRecord[] {
+  protected chatItemsForActivities(): ChatDTO[] {
     return this.activitiesChats.chatItemsForActivities();
   }
 
-  protected activityChatContextFilterKey(item: ChatRecord): ContractTypes.ActivitiesChatContextFilter | null {
+  protected activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {
     return this.activitiesChats.activityChatContextFilterKey(item);
   }
 
-  protected openActivityChat(chat: ChatRecord): void {
+  protected openActivityChat(chat: ChatDTO): void {
     this.activitiesChats.openActivityChat(chat);
   }
 
@@ -955,6 +955,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
           nextItems[activeSessionIndex] = {
             ...nextItems[activeSessionIndex],
             ...activeSessionChat,
+            ownerUserId: activeSessionChat.ownerUserId?.trim() || nextItems[activeSessionIndex].ownerUserId,
             memberIds: [...(activeSessionChat.memberIds ?? [])]
           };
           nextItems = this.sortChatRecords(nextItems);
@@ -1000,7 +1001,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }, 30000);
   }
 
-  private syncChatItemFromOpenSession(chat: ChatRecord): void {
+  private syncChatItemFromOpenSession(chat: ChatDTO): void {
     const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
     if (currentIndex < 0) {
       const nextChat = this.cloneChatRecord(chat);
@@ -1023,7 +1024,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private syncVisibleChatRow(chat: ChatRecord): void {
+  private syncVisibleChatRow(chat: ChatDTO): void {
     const smartList = this.activitiesSmartList;
     if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
       return;
@@ -1040,7 +1041,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.replaceVisibleActivityItems(nextItems);
   }
 
-  private doesChatMatchActiveContextFilter(chat: ChatRecord): boolean {
+  private doesChatMatchActiveContextFilter(chat: ChatDTO): boolean {
     if (this.activitiesChatContextFilter === 'all') {
       return this.doesChatMatchActiveSupportCaseFilter(chat);
     }
@@ -1518,7 +1519,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : 'all';
   }
 
-  private doesChatMatchActiveSupportCaseFilter(chat: ChatRecord): boolean {
+  private doesChatMatchActiveSupportCaseFilter(chat: ChatDTO): boolean {
     if (!this.isAdminServiceChatMode()) {
       return true;
     }
@@ -1609,7 +1610,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.i18nService.translate(key);
   }
 
-  private applySupportCaseUpdate(chat: ChatRecord): void {
+  private applySupportCaseUpdate(chat: ChatDTO): void {
     const nextChat = this.cloneChatRecord(chat);
     const currentIndex = this.chatItems.findIndex(item => item.id === nextChat.id);
     if (currentIndex >= 0) {
@@ -1633,7 +1634,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private patchVisibleChatRow(chat: ChatRecord): void {
+  private patchVisibleChatRow(chat: ChatDTO): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
       return;
@@ -1809,7 +1810,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return 'events';
   }
 
-  private sortChatRecords<T extends ChatRecord>(items: readonly T[]): T[] {
+  private sortChatRecords<T extends ChatDTO>(items: readonly T[]): T[] {
     const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
     return [...items].sort((left, right) => {
       if (secondaryFilter === 'relevant') {
@@ -1835,7 +1836,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private chatMenuMetricScore(chat: ChatRecord): number {
+  private chatMenuMetricScore(chat: ChatDTO): number {
     const unread = Math.max(0, Math.trunc(Number(chat.unread) || 0));
     return unread * 10 + this.activitiesChats.getChatMemberCount(chat);
   }
@@ -1847,19 +1848,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
         + Math.max(0, Math.trunc(Number(row.memberCount) || 0));
   }
 
-  private cloneChatRecord<T extends ChatRecord>(chat: T): T {
+  private cloneChatRecord<T extends ChatDTO>(chat: T): T {
     return {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])]
     } as T;
   }
 
-  protected chatRecordForRow(row: ActivityPopupCard): ChatRecord | null {
+  protected chatRecordForRow(row: ActivityPopupCard): ChatDTO | null {
     const existing = this.chatItems.find(item => item.id === row.id);
     return existing ? this.cloneChatRecord(existing) : null;
   }
 
-  private chatRecordPreviewForRow(row: ActivityPopupCard): ChatRecord | null {
+  private chatRecordPreviewForRow(row: ActivityPopupCard): ChatDTO | null {
     if (row.type !== 'chats') {
       return null;
     }
@@ -1906,7 +1907,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private async resolveChatRecordForRow(
     row: ActivityPopupCard,
     options: { skipCache?: boolean } = {}
-  ): Promise<ChatRecord | null> {
+  ): Promise<ChatDTO | null> {
     if (row.type !== 'chats') {
       return null;
     }
@@ -1929,7 +1930,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return resolved ? this.cloneChatRecord(resolved) : null;
   }
 
-  private areChatRecordsEqual(left: ChatRecord, right: ChatRecord): boolean {
+  private areChatRecordsEqual(left: ChatDTO, right: ChatDTO): boolean {
     const leftMemberIds = left.memberIds ?? [];
     const rightMemberIds = right.memberIds ?? [];
     if (

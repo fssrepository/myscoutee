@@ -1,5 +1,4 @@
 import type * as AppTypes from '../../core/base/models';
-import { EventFeedbackBuilder } from '../../core/base/builders';
 import { EventFeedbackDetailDto } from '../../core/contracts/activity.interface';
 import type {
   AppMenuItem,
@@ -28,7 +27,7 @@ export class EventFeedbackFormFlowConverter {
     detail: EventFeedbackDetailDto | null | undefined,
     options: EventFeedbackFormFlowConverterOptions = {}
   ): FormFlowModel {
-    const normalizedDetail = EventFeedbackBuilder.cloneDetail(detail);
+    const normalizedDetail = new EventFeedbackDetailDto(detail);
     const cards = EventFeedbackDetailConverter.convert(normalizedDetail);
     return {
       title: 'Event Feedback',

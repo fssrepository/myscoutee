@@ -8,6 +8,7 @@ export {
 } from './activity.mapper';
 export { LocalContactsMapper } from './contacts.mapper';
 export { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
+export { LocalEventFeedbackMapper } from './event-feedback.mapper';
 export { LocalEventParticipationActionMapper } from './event-participation-action.mapper';
 export { LocalHelpCenterMapper } from './help-center.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';

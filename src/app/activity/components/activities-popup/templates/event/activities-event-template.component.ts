@@ -3,7 +3,7 @@ import type * as ActivityContracts from '../../../../../shared/core/contracts/ac
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 
 import { AppUtils } from '../../../../../shared/app-utils';
-import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
 import { ActivityEventDetailDTO } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import { ActivityMembersBuilder } from '../../../../../shared/core';
@@ -166,7 +166,7 @@ export class ActivitiesEventsController {
   }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private cloneSyncedSubEventForms(items: ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] { return this.host.cloneSyncedSubEventForms(items); }
-  private openActivityChat(chat: ChatRecord): void { this.host.openActivityChat(chat); }
+  private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
   private removeVisibleActivityRow(row: ActivityEventCardData): void { this.host.removeVisibleActivityRow(row); }
@@ -422,7 +422,7 @@ export class ActivitiesEventsController {
     };
   }
 
-  private resolveActivityServiceChat(row: ActivityEventCardData, card: InfoCardData | null = null): ChatRecord | null {
+  private resolveActivityServiceChat(row: ActivityEventCardData, card: InfoCardData | null = null): ChatDTO | null {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;

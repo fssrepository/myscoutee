@@ -6,7 +6,7 @@ import type * as ContractTypes from '../../shared/core/contracts';
 import { ChatsService, EventsService } from '../../shared/core';
 import type { EventChatSession } from '../../shared/core/base/models';
 import type { ActivityEventDetailDTO, ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
-import type { ChatRecord } from '../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../shared/core/contracts/chat.interface';
 
 interface ActivitiesUiState {
   open: boolean;
@@ -319,7 +319,7 @@ export class ActivitiesPopupStateService {
     this._activityEventSave.set(null);
   }
 
-  openEventChat(item: ChatRecord): void {
+  openEventChat(item: ChatDTO): void {
     const chatItem = this.cloneChatRecord(item);
     this._eventChatSession.set({
       item: chatItem,
@@ -331,7 +331,7 @@ export class ActivitiesPopupStateService {
     this._eventChatSession.set(null);
   }
 
-  patchEventChatSessionItem(itemUpdater: (item: ChatRecord) => ChatRecord): void {
+  patchEventChatSessionItem(itemUpdater: (item: ChatDTO) => ChatDTO): void {
     const session = this._eventChatSession();
     if (!session) {
       return;
@@ -342,16 +342,16 @@ export class ActivitiesPopupStateService {
     });
   }
 
-  async loadEventChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadEventChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
-  async sendEventChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendEventChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async sendEventChatMessageWithAttachments(
-    chat: ChatRecord,
+    chat: ChatDTO,
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[],
     clientId?: string,
@@ -361,7 +361,7 @@ export class ActivitiesPopupStateService {
   }
 
   async updateEventChatMessage(
-    chat: ChatRecord,
+    chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
   ): Promise<ContractTypes.ChatPopupMessage | null> {
@@ -369,24 +369,24 @@ export class ActivitiesPopupStateService {
   }
 
   async watchEventChatMessages(
-    chat: ChatRecord,
+    chat: ChatDTO,
     onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchEventChatEvents(
-    chat: ChatRecord,
+    chat: ChatDTO,
     onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatEvents(chat, onEvent);
   }
 
-  async sendEventChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
+  async sendEventChatTyping(chat: ChatDTO, typing: boolean): Promise<void> {
     return this.chatsService.sendChatTyping(chat, typing);
   }
 
-  async markEventChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
+  async markEventChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 
@@ -428,7 +428,7 @@ export class ActivitiesPopupStateService {
     return 'active-events';
   }
 
-  private cloneChatRecord(item: ChatRecord): ChatRecord {
+  private cloneChatRecord(item: ChatDTO): ChatDTO {
     return {
       ...item,
       memberIds: [...(item.memberIds ?? [])]

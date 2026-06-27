@@ -2,7 +2,7 @@ import type * as ContractTypes from '../../contracts';
 import type { ActivitiesFeedFilters, ActivitiesPageRequest, ActivityEventActivitiesQuery } from '../../contracts';
 import type { ListQuery } from '../../../ui';
 
-type ActivityChatContextFilterSource = Pick<ContractTypes.ChatRecord, 'channelType' | 'serviceContext'>;
+type ActivityChatContextFilterSource = Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>;
 
 export function toActivitiesPageRequest(query: ListQuery<ActivitiesFeedFilters>): ActivitiesPageRequest {
   const filters = query.filters;

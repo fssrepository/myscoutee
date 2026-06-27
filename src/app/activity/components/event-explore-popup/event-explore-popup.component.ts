@@ -52,7 +52,7 @@ import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../sha
 import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
 import { NavigatorService } from '../../../navigator';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
@@ -1055,7 +1055,7 @@ export class EventExplorePopupComponent {
     this.activitiesContext.openEventChat(chat);
   }
 
-  private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatRecord & { ownerUserId?: string }) | null {
+  private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatDTO & { ownerUserId?: string }) | null {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return null;

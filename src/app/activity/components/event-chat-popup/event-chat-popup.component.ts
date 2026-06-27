@@ -21,7 +21,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
 import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
 import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { ASSET_TYPES, type AssetType, type SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
@@ -2211,7 +2211,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private async resolvePersistableImageAttachment(
-    chat: ChatRecord,
+    chat: ChatDTO,
     attachment: ContractTypes.ChatMessageAttachment,
     file: File
   ): Promise<ContractTypes.ChatMessageAttachment> {
@@ -2456,10 +2456,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private applyResolvedInitialChatItem(
-    chat: ChatRecord,
-    resolvedChat: ChatRecord | null,
+    chat: ChatDTO,
+    resolvedChat: ChatDTO | null,
     sessionKey: string
-  ): ChatRecord {
+  ): ChatDTO {
     if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
       return chat;
     }
@@ -2510,7 +2510,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private async startLiveChatUpdates(chat: ChatRecord, sessionKey: string): Promise<void> {
+  private async startLiveChatUpdates(chat: ChatDTO, sessionKey: string): Promise<void> {
     if (this.loadedSessionKey !== sessionKey || this.liveChatUnsubscribe) {
       return;
     }
@@ -2716,7 +2716,7 @@ export class EventChatPopupComponent implements OnDestroy {
       .join(',');
   }
 
-  private handleLiveChatEvent(chat: ChatRecord, event: ContractTypes.ChatLiveEvent): void {
+  private handleLiveChatEvent(chat: ChatDTO, event: ContractTypes.ChatLiveEvent): void {
     if (event.type === 'reconnected') {
       this.clearRemoteTypingIndicators();
       void this.resyncChatThreadFromServer(chat);
@@ -2976,7 +2976,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
-  private async resyncChatThreadFromServer(chat: ChatRecord): Promise<void> {
+  private async resyncChatThreadFromServer(chat: ChatDTO): Promise<void> {
     const sessionKey = this.loadedSessionKey;
     if (!sessionKey) {
       return;
@@ -3214,7 +3214,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private markLoadedChatThreadAsRead(
-    chat: ChatRecord,
+    chat: ChatDTO,
     messages: readonly ContractTypes.ChatPopupMessage[]
   ): void {
     const activeUserId = this.activeUserId();
@@ -3581,7 +3581,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private syncSelectedChatHeader(
-    chat: ChatRecord | null,
+    chat: ChatDTO | null,
     options: {
       hydrateControls?: boolean;
       baseContext?: AppTypes.PopupHeaderContext | null;
@@ -3613,7 +3613,7 @@ export class EventChatPopupComponent implements OnDestroy {
     );
   }
 
-  private buildTitleOnlyChatHeaderContext(chat: ChatRecord): AppTypes.PopupHeaderContext {
+  private buildTitleOnlyChatHeaderContext(chat: ChatDTO): AppTypes.PopupHeaderContext {
     const title = `${chat.title ?? ''}`.trim() || 'Chat';
     return {
       revision: `title:${chat.id}:${title}`,
@@ -3622,7 +3622,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private async refreshSelectedChatHeader(chat: ChatRecord, sessionKey: string | null): Promise<void> {
+  private async refreshSelectedChatHeader(chat: ChatDTO, sessionKey: string | null): Promise<void> {
     if (!sessionKey || this.loadedSessionKey !== sessionKey) {
       return;
     }
@@ -3658,7 +3658,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildSelectedChatHeaderContext(
-    chat: ChatRecord,
+    chat: ChatDTO,
     state: SelectedChatNavigationState | null,
     loadedContext: AppTypes.PopupHeaderContext | null = null
   ): AppTypes.PopupHeaderContext {
@@ -3709,7 +3709,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildSelectedChatContextControl(
-    chat: ChatRecord,
+    chat: ChatDTO,
     state: SelectedChatNavigationState | null
   ): AppTypes.PopupHeaderControl {
     const primaryControl = this.buildSelectedChatPrimaryControl(chat, state);
@@ -3722,7 +3722,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildSelectedChatPrimaryControl(
-    chat: ChatRecord,
+    chat: ChatDTO,
     state: SelectedChatNavigationState | null
   ): AppTypes.PopupHeaderControl {
     const channelType = state?.channelType ?? this.chatChannelType(chat);
@@ -3797,7 +3797,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private buildSelectedChatNavigationState(chat: ChatRecord): SelectedChatNavigationState | null {
+  private buildSelectedChatNavigationState(chat: ChatDTO): SelectedChatNavigationState | null {
     const eventId = `${chat.eventId ?? ''}`.trim();
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
@@ -3832,7 +3832,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return 'events';
   }
 
-  private chatChannelType(chat: ChatRecord): ContractTypes.ChatChannelType {
+  private chatChannelType(chat: ChatDTO): ContractTypes.ChatChannelType {
     const channelType = `${chat.channelType ?? ''}`.trim();
     if (
       channelType === 'general'
@@ -3855,7 +3855,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return `${chat.eventId ?? ''}`.trim() ? 'mainEvent' : 'general';
   }
 
-  private resolveSelectedChatEventRecord(chat: ChatRecord): ActivityEventRecord | null {
+  private resolveSelectedChatEventRecord(chat: ChatDTO): ActivityEventRecord | null {
     const eventId = `${chat.eventId ?? ''}`.trim();
     if (!eventId) {
       return null;
@@ -3867,7 +3867,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private resolveSelectedChatSubEvent(
-    chat: ChatRecord,
+    chat: ChatDTO,
     eventRecord: ActivityEventRecord | null
   ): ContractTypes.SubEventDTO | null {
     const subEventId = `${chat.subEventId ?? ''}`.trim();
@@ -3878,7 +3878,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private resolveSelectedChatGroup(
-    chat: ChatRecord,
+    chat: ChatDTO,
     subEvent: ContractTypes.SubEventDTO | null
   ): SelectedChatGroupState | null {
     const groupId = `${chat.groupId ?? ''}`.trim();
@@ -3988,7 +3988,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private selectedChatActionBadgeCount(
-    chat: ChatRecord,
+    chat: ChatDTO,
     state: SelectedChatNavigationState | null
   ): number {
     if (state?.subEvent && (state.channelType === 'optionalSubEvent' || state.channelType === 'groupSubEvent')) {

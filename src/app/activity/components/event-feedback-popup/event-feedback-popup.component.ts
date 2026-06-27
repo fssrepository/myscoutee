@@ -37,7 +37,7 @@ import {
 } from '../../../shared/ui';
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
-import { EventFeedbackBuilder, EventsService } from '../../../shared/core/base';
+import { EventsService } from '../../../shared/core/base';
 import {
   ConfirmationDialogService,
   type ConfirmationDialogConfig
@@ -529,7 +529,7 @@ export class EventFeedbackPopupComponent {
     if (this.activeUserId() !== normalizedUserId) {
       return { items: [], total: 0 };
     }
-    const pageResult = EventFeedbackBuilder.clonePageResult(result);
+    const pageResult = new ActivityContracts.EventFeedbackPageResultDto(result);
     this.eventFeedbackPageResult.set(pageResult);
     this.eventFeedbackFilterCountDelta.set({});
     return {
@@ -584,7 +584,7 @@ export class EventFeedbackPopupComponent {
       return;
     }
     const submittedAtIso = new Date().toISOString();
-    const feedback = EventFeedbackBuilder.cloneDetail(
+    const feedback = new ActivityContracts.EventFeedbackDetailDto(
       this.eventFeedbackDetailDto()
     ).withFormValue(event.value).submitted({ submittedAtIso });
     if (!feedback.eventId || feedback.cards.length === 0) {

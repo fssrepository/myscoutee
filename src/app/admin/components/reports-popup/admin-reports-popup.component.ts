@@ -27,7 +27,7 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
 import { AdminShellService } from '../../services/admin-shell.service';
@@ -756,7 +756,7 @@ export class AdminReportsPopupComponent {
     this.activitiesContext.openEventChat(chat);
   }
 
-  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatRecord & { ownerUserId?: string }) | null {
+  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {
     const admin = this.appCtx.activeAdminUser();
     if (!admin) {
       return null;
@@ -817,7 +817,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildBlockedUserActivityRow(user: AdminReportedUserDto): SingleRowData {
-    const source: ChatRecord = {
+    const source: ChatDTO = {
       id: user.userId,
       avatar: user.initials,
       title: user.name,
@@ -845,7 +845,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildReportActivityRow(user: AdminReportedUserDto, report: AdminReportDto): SingleRowData {
-    const source: ChatRecord = {
+    const source: ChatDTO = {
       id: report.id,
       avatar: this.reporterInitial(report),
       title: this.reportTitle(user, report),

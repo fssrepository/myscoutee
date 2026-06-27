@@ -1,10 +1,9 @@
-import type { ChatThreadRecord } from '../entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
-import type { ActivitiesChatPageResultDTO, ChatRecord } from '../../../contracts/chat.interface';
+import type { ActivitiesChatPageResultDTO, ChatDTO } from '../../../contracts/chat.interface';
 import type { IChatsService } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
@@ -22,23 +21,23 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
 
-  async queryChatItemsByUser(userId: string): Promise<ChatThreadRecord[]> {
+  async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryChatItemsByUser(userId);
+    return LocalChatThreadMapper.toDtoList(this.chatsRepository.queryChatItemsByUser(userId));
   }
 
   async querySupportCaseItemsForAdmin(
     userId: string,
     filter: ContractTypes.SupportCaseFilter = 'all'
-  ): Promise<ChatThreadRecord[]> {
+  ): Promise<ChatDTO[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter);
+    return LocalChatThreadMapper.toDtoList(this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter));
   }
 
   async queryActivitiesChatPage(
     userId: string,
     request: ContractTypes.ActivitiesPageRequest,
-    _options: { chatItems?: readonly ChatRecord[] } = {}
+    _options: { chatItems?: readonly ChatDTO[] } = {}
   ): Promise<ActivitiesChatPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return LocalChatThreadMapper.toDtoPage(
@@ -46,11 +45,11 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     );
   }
 
-  peekChatItemsByUser(userId: string): ChatThreadRecord[] {
-    return this.chatsRepository.queryChatItemsByUser(userId);
+  peekChatItemsByUser(userId: string): ChatDTO[] {
+    return LocalChatThreadMapper.toDtoList(this.chatsRepository.queryChatItemsByUser(userId));
   }
 
-  async loadChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMessages(chat);
   }
@@ -60,12 +59,12 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return this.chatsRepository.queryChatMembers(chatId);
   }
 
-  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatRecord,
+    chat: ChatDTO,
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[] = [],
     clientId?: string,
@@ -97,7 +96,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   }
 
   async updateChatMessage(
-    chat: ChatRecord,
+    chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
   ): Promise<ContractTypes.ChatPopupMessage | null> {
@@ -112,30 +111,31 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   }
 
   async watchChatMessages(
-    _chat: ChatRecord,
+    _chat: ChatDTO,
     _onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return () => {};
   }
 
   async watchChatEvents(
-    _chat: ChatRecord,
+    _chat: ChatDTO,
     _onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return () => {};
   }
 
-  async sendChatTyping(_chat: ChatRecord, _typing: boolean): Promise<void> {
+  async sendChatTyping(_chat: ChatDTO, _typing: boolean): Promise<void> {
     return;
   }
 
-  async markChatRead(_chat: ChatRecord, _messageIds: readonly string[]): Promise<void> {
+  async markChatRead(_chat: ChatDTO, _messageIds: readonly string[]): Promise<void> {
     return;
   }
 
-  async updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
+  async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.updateSupportCase(chat, action);
+    const record = this.chatsRepository.updateSupportCase(chat, action);
+    return record ? LocalChatThreadMapper.toDto(record) : null;
   }
 
   private resolveDemoActivityUserId(userId: string): string {

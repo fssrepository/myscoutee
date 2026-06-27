@@ -1,14 +1,13 @@
 import { Injectable, computed, effect, inject, signal } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
 
-import { AppContext, AppPopupContext, AssetInfoCardConverter } from '../../shared/ui';
+import { AppContext, AppPopupContext, AssetInfoCardConverter, type ActivitiesNavigationRequest } from '../../shared/ui';
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
 import { APP_STATIC_DATA } from '../../shared/app-static-data';
 import { AppUtils } from '../../shared/app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../shared/core/base/builders';
-import type * as AppTypes from '../../shared/core/base/models';
 import type * as ContractTypes from '../../shared/core/contracts';
 import {
   ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AssetsService as SharedAssetsService, EventsService, UsersService, type UserDto } from '../../shared/core';
@@ -27,7 +26,7 @@ import type {
   EventSupplyContributionsPopupHost
 } from '../components/event-supply-contributions-popup/event-supply-contributions-popup.component';
 import type { ListQuery, PageResult } from '../../shared/ui';
-import type { ChatRecord } from '../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../shared/core/contracts/chat.interface';
 import type * as ActivityContracts from '../../shared/core/contracts/activity.interface';
 
 import type * as AppDTOs from '../../shared/core/base/dto';
@@ -452,7 +451,7 @@ export class SubEventResourcePopupController {
       ?? this.createFallbackUser(activeUserId);
   }
 
-  private openFromChatRequest(request: Extract<AppTypes.ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
+  private openFromChatRequest(request: Extract<ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
       this.popupCtx.requestActivitiesNavigation({
         type: 'members',
@@ -481,7 +480,7 @@ export class SubEventResourcePopupController {
   }
 
   private openStandaloneAssetExploreRequest(
-    request: Extract<AppTypes.ActivitiesNavigationRequest, { type: 'assetExplore' }>
+    request: Extract<ActivitiesNavigationRequest, { type: 'assetExplore' }>
   ): void {
     const type = request.assetType === 'Accommodation' || request.assetType === 'Supplies'
       ? request.assetType
@@ -3029,7 +3028,7 @@ export class SubEventResourcePopupController {
     memberIds: string[];
     lastSenderId: string;
     avatarSource: string;
-  }): ChatRecord & { ownerUserId?: string } {
+  }): ChatDTO & { ownerUserId?: string } {
     const activeUserId = this.activeUser().id.trim();
     return {
       id: input.id,

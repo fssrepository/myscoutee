@@ -13,6 +13,7 @@ export {
 export {
   AppPopupContext,
   type ActivityInvitePopupState,
+  type ActivitiesNavigationRequest,
   type AdminNavigatorRequest,
   type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState,

@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
-import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
+import { PricingBuilder } from '../../../core/base/builders';
 import type { ActivityPendingReason } from '../../common/constants';
 import type {
   EventTournamentGroupDeleteRequestDTO,
@@ -16,18 +16,21 @@ import type {
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
-import { ActivityEventDetailDTO, type ActivityEventDTO } from '../../contracts/activity.interface';
+import {
+  ActivityEventDetailDTO,
+  EventFeedbackDetailDto,
+  EventFeedbackPageResultDto,
+  type ActivityEventDTO
+} from '../../contracts/activity.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
-  EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
-  EventFeedbackPageResultDto,
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
@@ -611,7 +614,7 @@ export class HttpEventsService implements IEventsService {
   async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
-      return EventFeedbackBuilder.emptyPageResult(query.filter);
+      return new EventFeedbackPageResultDto();
     }
     try {
       const response = await this.http
@@ -622,9 +625,9 @@ export class HttpEventsService implements IEventsService {
           pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
         })
         .toPromise();
-      return EventFeedbackBuilder.clonePageResult(response);
+      return new EventFeedbackPageResultDto(response);
     } catch {
-      return EventFeedbackBuilder.emptyPageResult(query.filter);
+      return new EventFeedbackPageResultDto();
     }
   }
 
@@ -632,7 +635,7 @@ export class HttpEventsService implements IEventsService {
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
-      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
+      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
     try {
       const response = await this.http
@@ -641,12 +644,12 @@ export class HttpEventsService implements IEventsService {
           eventId: normalizedEventId
         })
         .toPromise();
-      return EventFeedbackBuilder.cloneDetail({
+      return new EventFeedbackDetailDto({
         ...(response ?? {}),
         eventId: response?.eventId?.trim() || normalizedEventId
       });
     } catch {
-      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
+      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
   }
 

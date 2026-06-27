@@ -1,5 +1,5 @@
 import { CHATS_TABLE_NAME } from '../entity/chat.entity';
-import type { ChatThreadRecord } from '../entity/chat.entity';
+import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
@@ -9,9 +9,6 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { activityChatContextFilterKey } from '../../../base/mappers';
 import { UserProfileStateBuilder } from '../../../base/builders';
 import { LocalChatThreadMapper } from '../mappers';
-import type { ChatRecord } from '../../../contracts/chat.interface';
-
-
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 @Injectable({

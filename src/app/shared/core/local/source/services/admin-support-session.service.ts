@@ -1,8 +1,8 @@
-import type { ChatThreadRecord } from '../entity/chat.entity';
+import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ChatMessageMutation, ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
+import type { ChatMessageMutation, ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalShareTokensRepository } from '../repositories/share-tokens.repository';

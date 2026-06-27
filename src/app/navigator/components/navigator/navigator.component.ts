@@ -38,7 +38,7 @@ import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/n
 import { SubEventResourcePopupController } from '../../../activity/services/sub-event-resource-popup.controller';
 import { NavigatorService } from '../../navigator.service';
 import { resolveNavigatorPresentation } from '../../navigator-presenters';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -1390,7 +1390,7 @@ export class NavigatorComponent implements OnDestroy {
     }
     const activeUserId = user.id.trim();
     const adminUserId = 'myscoutee-admin';
-    const chat: ChatRecord & { ownerUserId?: string } = {
+    const chat: ChatDTO & { ownerUserId?: string } = {
       id: `c-support-blocked-${activeUserId}`,
       avatar: 'MS',
       title: 'MyScoutee Support',

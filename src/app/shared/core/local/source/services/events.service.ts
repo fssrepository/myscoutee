@@ -11,25 +11,28 @@ import type {
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../../contracts/event.interface';
-import { EventFeedbackBuilder } from '../../../base/builders';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
-  EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
-  EventFeedbackPageResultDto,
   EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
+import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper, LocalEventParticipationActionMapper } from '../mappers';
+import {
+  LocalActivityEventDetailsMapper,
+  LocalActivityEventsMapper,
+  LocalEventFeedbackMapper,
+  LocalEventParticipationActionMapper
+} from '../mappers';
 import type {
   ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
@@ -177,33 +180,23 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
-      return EventFeedbackBuilder.emptyPageResult(query.filter);
+      return new EventFeedbackPageResultDto();
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
-    const ownedEventIds = records
-      .filter(record =>
-        record.type !== 'invitations'
-        && record.status !== 'T'
-        && (
-          record.creatorUserId === normalizedUserId
-          || (record.adminIds ?? []).includes(normalizedUserId)
-        )
-      )
-      .map(record => record.id.trim())
-      .filter(Boolean);
+    const events = LocalActivityEventsMapper.toDtoList(records);
     const users = this.usersRepository.queryAllUsers();
     const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
     if (!activeUser) {
-      return EventFeedbackBuilder.emptyPageResult(query.filter);
+      return new EventFeedbackPageResultDto();
     }
-    return EventFeedbackBuilder.buildPageResult({
+    return LocalEventFeedbackMapper.toPageResult({
       query,
-      records,
+      events,
       users,
       activeUser,
       states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
-      receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId, ownedEventIds)
+      receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId)
     });
   }
 
@@ -211,21 +204,22 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
-      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
+      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
+    const events = LocalActivityEventsMapper.toDtoList(records);
     const users = this.usersRepository.queryAllUsers();
     const activeUser = this.usersRepository.queryUserById(normalizedUserId) ?? users[0] ?? null;
     if (!activeUser) {
-      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
+      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
-    return EventFeedbackBuilder.buildDetail({
+    return LocalEventFeedbackMapper.toDetail({
       query: {
         userId: normalizedUserId,
         eventId: normalizedEventId
       },
-      records,
+      events,
       users,
       activeUser
     });

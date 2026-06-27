@@ -17,7 +17,7 @@ import {
   type SmartListLoadPage,
   ActivityChatSingleRowConverter
 } from '../../../shared/ui';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AdminShellService } from '../../services/admin-shell.service';
 import { AdminWorkspaceService } from '../../services/admin-workspace.service';
@@ -220,7 +220,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private buildFeedbackActivityRow(feedback: AdminFeedbackDto): SingleRowData {
-    const source: ChatRecord = {
+    const source: ChatDTO = {
       id: feedback.id,
       avatar: this.feedbackInitial(feedback),
       title: feedback.userName,

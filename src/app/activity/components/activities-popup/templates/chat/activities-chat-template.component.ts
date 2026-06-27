@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Out
 
 import { AppUtils } from '../../../../../shared/app-utils';
 import { I18nService } from '../../../../../shared/core';
-import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
@@ -190,19 +190,19 @@ export class ActivitiesChatsController {
 
   private cachedActiveUserRef: UserDto | null = null;
   private cachedUsersRef: readonly UserDto[] | null = null;
-  private cachedChatItemsRef: readonly ChatRecord[] | null = null;
+  private cachedChatItemsRef: readonly ChatDTO[] | null = null;
   private readonly userByIdCache = new Map<string, UserDto>();
-  private readonly chatItemByIdCache = new Map<string, ChatRecord>();
+  private readonly chatItemByIdCache = new Map<string, ChatDTO>();
   private readonly chatMembersByIdCache = new Map<string, UserDto[]>();
   private readonly chatLastSenderByIdCache = new Map<string, UserDto>();
   private cachedOtherUsers: UserDto[] = [];
 
   private get activeUser() { return this.host.activeUser as UserDto; }
   private get activitiesContext() { return this.host.activitiesContext; }
-  private get chatItems() { return this.host.chatItems as ChatRecord[]; }
+  private get chatItems() { return this.host.chatItems as ChatDTO[]; }
   private get users() { return this.host.users as UserDto[]; }
 
-  public chatChannelType(item: ChatRecord): ContractTypes.ChatChannelType {
+  public chatChannelType(item: ChatDTO): ContractTypes.ChatChannelType {
     if (
       item.channelType === 'mainEvent'
       || item.channelType === 'optionalSubEvent'
@@ -214,7 +214,7 @@ export class ActivitiesChatsController {
     return 'general';
   }
 
-  public chatItemsForActivities(): ChatRecord[] {
+  public chatItemsForActivities(): ChatDTO[] {
     return this.chatItems.map(item => ({
       ...item,
       memberIds: [...(item.memberIds ?? [])],
@@ -256,7 +256,7 @@ export class ActivitiesChatsController {
     }
   }
 
-  private getChatItemById(chatId: string): ChatRecord | undefined {
+  private getChatItemById(chatId: string): ChatDTO | undefined {
     this.syncChatLookupCache();
     return this.chatItemByIdCache.get(chatId);
   }
@@ -319,7 +319,7 @@ export class ActivitiesChatsController {
     return picked;
   }
 
-  private explicitChatMemberCount(item: ChatRecord | null | undefined): number {
+  private explicitChatMemberCount(item: ChatDTO | null | undefined): number {
     const uniqueIds = new Set(
       (item?.memberIds ?? [])
         .map(memberId => `${memberId ?? ''}`.trim())
@@ -328,7 +328,7 @@ export class ActivitiesChatsController {
     return uniqueIds.size;
   }
 
-  public getChatLastSender(item: ChatRecord): UserDto {
+  public getChatLastSender(item: ChatDTO): UserDto {
     this.syncChatLookupCache();
     const cachedLastSender = this.chatLastSenderByIdCache.get(item.id);
     if (cachedLastSender) {
@@ -339,7 +339,7 @@ export class ActivitiesChatsController {
     return nextLastSender;
   }
 
-  public getChatMemberCount(item: ChatRecord): number {
+  public getChatMemberCount(item: ChatDTO): number {
     const explicitCount = this.explicitChatMemberCount(item);
     if (explicitCount > 0) {
       return explicitCount;
@@ -347,11 +347,11 @@ export class ActivitiesChatsController {
     return this.getChatMembersById(item.id).length;
   }
 
-  public openActivityChat(chat: ChatRecord): void {
+  public openActivityChat(chat: ChatDTO): void {
     this.activitiesContext.openEventChat(chat);
   }
 
-  public activityChatContextFilterKey(item: ChatRecord): ContractTypes.ActivitiesChatContextFilter | null {
+  public activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {
     const channelType = this.chatChannelType(item);
     if (channelType === 'mainEvent') {
       return 'event';

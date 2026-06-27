@@ -1,9 +1,16 @@
 import { Injectable, signal } from '@angular/core';
 import type { UserSelectorListItemDto } from '../../core/contracts/user.interface';
-import type { ActivityMemberOwnerType, AssetFilterType } from '../../core/common/constants';
+import type {
+  ActivityMemberOwnerType,
+  AssetFilterType,
+  AssetType,
+  SubEventResourceFilter
+} from '../../core/common/constants';
 import type { ActivityMemberEntry } from '../../core/contracts/activity.interface';
-import type { ActivitiesNavigationRequest } from '../../core/base/models/activities-ui.model';
-import type { EventEditorTarget, EventTournamentStageDTO } from '../../core/contracts/event.interface';
+import type { ChatDTO } from '../../core/contracts/chat.interface';
+import type { EventEditorTarget, EventTournamentStageDTO, SubEventDTO } from '../../core/contracts/event.interface';
+import type { AssetCardDTO } from '../../core/base/dto';
+import type { PopupHeaderLookup } from '../../core/base/models/popup-ui.model';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
@@ -55,6 +62,40 @@ export interface AdminNavigatorRequest {
   updatedMs: number;
   popup: 'reports' | 'feedback' | 'chat' | 'profile' | 'help-editor' | 'idea-editor' | 'notifications' | 'params' | 'stats' | 'affinity-graph' | 'monitoring';
 }
+
+export type ActivitiesNavigationRequest =
+  | { type: 'eventExplore'; stacked?: boolean }
+  | { type: 'eventCheckoutDraft'; sourceId: string }
+  | { type: 'assetExplore'; assetType?: AssetType; assetId?: string; viewOnly?: boolean; fallbackAsset?: AssetCardDTO }
+  | {
+      type: 'chatResource';
+      ownerId?: string;
+      item: ChatDTO;
+      resourceType: SubEventResourceFilter;
+      subEvent: SubEventDTO;
+      group?: { id: string; groupLabel: string } | null;
+      assetAssignmentIds?: Partial<Record<AssetType, string[]>>;
+      assetCardsByType?: Partial<Record<AssetType, AssetCardDTO[]>>;
+      openExplore?: boolean;
+      assetViewId?: string;
+    }
+  | {
+      type: 'members';
+      ownerId: string;
+      ownerType?: ActivityMemberOwnerType;
+      subtitle?: string;
+      canManage?: boolean;
+      viewOnly?: boolean;
+      acceptedMembers?: number;
+      pendingMembers?: number;
+      capacityTotal?: number;
+      members?: readonly ActivityMemberEntry[];
+      lookup?: PopupHeaderLookup;
+      onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
+    }
+  | { type: 'eventEditorMembers'; ownerId: string; title?: string; canManage?: boolean }
+  | { type: 'eventEditorCreate'; target: EventEditorTarget }
+  | { type: 'eventEditor'; eventId: string; target: EventEditorTarget; readOnly: boolean };
 
 export type DemoBootstrapSelectorMode = 'member' | 'admin';
 

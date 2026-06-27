@@ -1,10 +1,10 @@
-import type { ChatThreadRecord } from '../../source/entity/chat.entity';
+import type { ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { Location } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 
 import type { AdminChatMessageDto, AdminHelpTarget, AdminMonitoringStateDto, AdminModerationStore, AdminNotificationCenterState, AdminUserDto } from '../../../contracts/admin.interface';
-import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
+import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { AdminHelpSeedBuilder, AdminModerationSeedBuilder, AdminMonitoringSeedBuilder, AdminNotificationsSeedBuilder, AdminParamsSeedBuilder, AdminProfileSeedBuilder, AdminStatsSeedBuilder } from '../builders/admin';
 import { SeedChatsRepository } from './chats-seed.repository';

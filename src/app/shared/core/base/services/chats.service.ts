@@ -1,11 +1,10 @@
-import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as AppTypes from '../../../core/base/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesPageRequest } from '../../contracts';
-import type { ChatDTO, ChatRecord } from '../../contracts/chat.interface';
+import type { ChatDTO } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { PageResult } from '../../../ui';
 
@@ -31,20 +30,20 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
   }
 
-  async queryChatItemsByUser(userId: string): Promise<ChatThreadRecord[]> {
+  async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
     return this.chatsService.queryChatItemsByUser(userId);
   }
 
-  peekChatItemsByUser(userId: string): ChatThreadRecord[] {
+  peekChatItemsByUser(userId: string): ChatDTO[] {
     return this.chatsService.peekChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
   async loadChatMessagesResult(
-    chat: ChatRecord
+    chat: ChatDTO
   ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppTypes.PopupHeaderContext>> {
     const items = await this.loadChatMessages(chat);
     return {
@@ -55,7 +54,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   }
 
   buildChatPopupHeaderContext(
-    chat: ChatRecord,
+    chat: ChatDTO,
     options: { includeThumbs?: boolean } = {}
   ): AppTypes.PopupHeaderContext {
     const chatId = `${chat.id ?? ''}`.trim();
@@ -97,12 +96,12 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.queryChatMembers(normalizedChatId);
   }
 
-  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatRecord,
+    chat: ChatDTO,
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[],
     clientId?: string,
@@ -112,7 +111,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   }
 
   async updateChatMessage(
-    chat: ChatRecord,
+    chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
   ): Promise<ContractTypes.ChatPopupMessage | null> {
@@ -120,28 +119,28 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   }
 
   async watchChatMessages(
-    chat: ChatRecord,
+    chat: ChatDTO,
     onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
 
   async watchChatEvents(
-    chat: ChatRecord,
+    chat: ChatDTO,
     onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatEvents(chat, onEvent);
   }
 
-  async sendChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
+  async sendChatTyping(chat: ChatDTO, typing: boolean): Promise<void> {
     return this.chatsService.sendChatTyping(chat, typing);
   }
 
-  async markChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 
-  async updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
+  async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
     return this.chatsService.updateSupportCase(chat, action);
   }
 
@@ -156,7 +155,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     pendingMemberUserIds?: readonly string[] | null;
     hosting?: boolean;
     notification: boolean;
-  }): Promise<(ChatRecord & { ownerUserId?: string }) | null> {
+  }): Promise<ChatDTO | null> {
     const activeUserId = input.activeUserId.trim();
     const eventId = input.eventId.trim();
     const ownerId = input.ownerId.trim();
@@ -195,13 +194,13 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   }
 
   private resolveExistingEventServiceChat(
-    chats: readonly ChatRecord[],
+    chats: readonly ChatDTO[],
     input: {
       activeUserId: string;
       eventId: string;
       notification: boolean;
     }
-  ): (ChatRecord & { ownerUserId?: string }) | null {
+  ): ChatDTO | null {
     const expectedId = `c-service-event-${input.eventId}-${input.activeUserId}`;
     const expectedServiceContext = input.notification ? 'notification' : 'event';
     const match = chats.find(chat => chat.id === expectedId)
@@ -229,7 +228,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     pendingMemberUserIds?: readonly string[] | null;
     hosting: boolean;
     notification: boolean;
-  }): ChatRecord & { ownerUserId?: string } {
+  }): ChatDTO {
     const acceptedMemberUserIds = Array.isArray(input.acceptedMemberUserIds)
       ? input.acceptedMemberUserIds
       : [];
@@ -265,7 +264,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     };
   }
 
-  async resolveRepositoryEventServiceChat(chat: ChatRecord): Promise<(ChatRecord & { ownerUserId?: string }) | null> {
+  async resolveRepositoryEventServiceChat(chat: ChatDTO): Promise<ChatDTO | null> {
     if (chat.channelType !== 'serviceEvent') {
       return null;
     }
@@ -288,7 +287,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     userId: string,
     request: ActivitiesPageRequest,
     options: {
-      chatItems?: readonly ChatRecord[];
+      chatItems?: readonly ChatDTO[];
     } = {}
   ): Promise<PageResult<ChatDTO>> {
     const page = await this.chatsService.queryActivitiesChatPage(userId, request, options);
@@ -303,7 +302,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
   }
 
-  private resolveChatMemberIds(chat: Pick<ChatRecord, 'memberIds'>): string[] {
+  private resolveChatMemberIds(chat: Pick<ChatDTO, 'memberIds'>): string[] {
     return this.uniqueUserIds(chat.memberIds ?? []);
   }
 
@@ -331,7 +330,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return ['chat-header', chatId, title, ...memberIds].join(':');
   }
 
-  private resolveChatOwnerUserId(chat: ChatRecord, eventId: string): string {
+  private resolveChatOwnerUserId(chat: ChatDTO, eventId: string): string {
     const ownerUserId = `${(chat as { ownerUserId?: string | null }).ownerUserId ?? ''}`.trim();
     if (ownerUserId) {
       return ownerUserId;

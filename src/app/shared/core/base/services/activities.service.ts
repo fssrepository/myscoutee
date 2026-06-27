@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { AppUtils } from '../../../app-utils';
 import type * as ContractTypes from '../../contracts';
 import type { ActivitiesFeedFilters, EventExploreFeedFilters } from '../../contracts';
-import type { ChatDTO, ChatRecord } from '../../contracts/chat.interface';
+import type { ChatDTO } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import type { ListQuery, PageResult } from '../../../ui';
 import {
@@ -43,7 +43,7 @@ export class ActivitiesService extends BaseRouteModeService {
 
   async loadActivityChats(
     query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatRecord[]; signal?: AbortSignal } = {}
+    options: { chatItems?: readonly ChatDTO[]; signal?: AbortSignal } = {}
   ): Promise<PageResult<ChatDTO>> {
     const request = toActivitiesPageRequest(query);
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {

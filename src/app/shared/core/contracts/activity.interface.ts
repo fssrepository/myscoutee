@@ -83,7 +83,7 @@ export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
     request: ActivitiesPageRequest,
-    options?: { chatItems?: readonly ChatContracts.ChatRecord[] }
+    options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
 }
 
