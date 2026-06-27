@@ -7,7 +7,7 @@ import { computed, Injectable, inject } from '@angular/core';
 import type { UserSelectorRole, UserDto } from '../../../contracts/user.interface';
 
 import { LocalMemoryDb } from '../../../common/app.db';
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 
 
 import { LocalUsersMapper } from '../mappers/user.mapper';
@@ -171,8 +171,7 @@ export class LocalUsersRepository {
 
   queryGameStackUsers(raterUserId?: string): UserDto[] {
     const users = this.queryUsersFromTable(USERS_TABLE_NAME)
-      .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id))
-      .filter(user => UserProfileStateBuilder.isPublicGameProfile(user));
+      .filter(user => UserProfileState.isPublicGameProfile(user));
     const normalizedRaterId = raterUserId?.trim() ?? '';
     if (!normalizedRaterId) {
       return users;

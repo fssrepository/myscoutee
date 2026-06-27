@@ -8,7 +8,6 @@ import type { AdminAffinityGraphDto, AdminAffinityGraphEdgeDto, AdminAffinityGra
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
-import { SeedUserBuilder } from '../builders';
 
 const ADMIN_AFFINITY_GRAPH_STORE_KEY = APP_INDEXED_DB_KEYS.adminAffinityGraph;
 
@@ -60,7 +59,7 @@ export class SeedAdminAffinityGraphRepository {
 
   private isGraphMember(user: UserDto | null | undefined): user is UserDto {
     const id = `${user?.id ?? ''}`.trim();
-    if (!id || id.startsWith('admin-demo-') || SeedUserBuilder.isEmptyOnboardingProfileUserId(id)) {
+    if (!id || id.startsWith('admin-demo-')) {
       return false;
     }
     return this.activeGraphProfileStatuses.has(`${user?.profileStatus ?? ''}`.trim().toLowerCase());

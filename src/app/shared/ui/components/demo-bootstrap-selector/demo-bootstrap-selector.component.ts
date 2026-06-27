@@ -12,7 +12,7 @@ import {
 } from '../menu';
 import { I18nPipe } from '../../pipes';
 import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
-import { UserProfileStateBuilder } from '../../../core/base/builders';
+import { UserProfileState } from '../../../core/common/user-profile-state';
 import { SeedDemoBootstrapService } from '../../../core/local/seed';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
@@ -155,7 +155,7 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected isNewProfile(user: UserSelectorListItemDto): boolean {
-    return UserProfileStateBuilder.isEmptyOnboardingProfile(user);
+    return UserProfileState.isEmptyOnboardingProfile(user);
   }
 
   protected newProfileMenuItems(): readonly AppMenuItem<DemoSelectorHeaderMenuItemId, DemoSelectorHeaderMenuContext>[] {

@@ -7,7 +7,7 @@ import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import {
   ActivityEventDetailDTO,
   type ActivityEventExploreQuery,
@@ -1481,9 +1481,7 @@ export class LocalEventsRepository {
       return false;
     }
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
-    return user
-      ? UserProfileStateBuilder.isEmptyOnboardingProfile(user)
-      : UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
+    return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 
   private computePreferredEventRecords(table: ActivityEventRecordCollection): ActivityEventRecord[] {
@@ -1826,7 +1824,7 @@ export class LocalEventsRepository {
       record.creatorUserId,
       ...this.eventAcceptedMemberUserIds(record)
     ].some(userId =>
-      userId !== activeUserId && UserProfileStateBuilder.isFriendOfActiveUser(userId, activeUserId)
+      userId !== activeUserId && UserProfileState.isFriendOfActiveUser(userId, activeUserId)
     );
   }
 
@@ -1877,7 +1875,7 @@ export class LocalEventsRepository {
     if (record.visibility === 'Invitation only') {
       return false;
     }
-    if (record.visibility === 'Friends only' && !UserProfileStateBuilder.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
+    if (record.visibility === 'Friends only' && !UserProfileState.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
       return false;
     }
     return true;

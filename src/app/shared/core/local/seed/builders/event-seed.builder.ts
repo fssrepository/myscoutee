@@ -7,7 +7,6 @@ import type {
   SeedActivityDateTimeRange
 } from '../entity';
 import type { UserDto } from '../../../contracts/user.interface';
-import { SeedUserBuilder } from './user-seed.builder';
 
 export class SeedEventBuilder {
   static seededTournamentGroupIdForUser<TGroup extends { id: string }>(
@@ -30,10 +29,10 @@ export class SeedEventBuilder {
     activeUserId: string
   ): string[] {
     const normalizedActiveUserId = activeUserId.trim();
-    if (!normalizedActiveUserId || SeedUserBuilder.isEmptyOnboardingProfileUserId(normalizedActiveUserId)) {
+    if (!normalizedActiveUserId) {
       return [];
     }
-    const seedableUsers = users.filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id));
+    const seedableUsers = [...users];
     const count = Math.max(4, Math.min(Math.max(4, targetCount), seedableUsers.length));
     const others = seedableUsers.filter(user => user.id !== normalizedActiveUserId);
     const seeded: string[] = [normalizedActiveUserId];

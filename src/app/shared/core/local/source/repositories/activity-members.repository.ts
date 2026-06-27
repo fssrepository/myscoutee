@@ -7,7 +7,7 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalUsersRepository } from './users.repository';
 
 export interface DemoAcceptedEventMemberGroup {
@@ -136,12 +136,12 @@ export class LocalActivityMembersRepository {
     const graphUserIds = [...graph.neighborsByUserId.keys()].sort();
     const gameUserIds = [...usersById.keys()].sort();
     for (const activeUserId of gameUserIds) {
-      if (!UserProfileStateBuilder.isPublicGameProfile(usersById.get(activeUserId))) {
+      if (!UserProfileState.isPublicGameProfile(usersById.get(activeUserId))) {
         continue;
       }
       const activeNeighbors = [...(graph.neighborsByUserId.get(activeUserId) ?? new Set<string>())]
         .filter(userId => userId !== activeUserId)
-        .filter(userId => UserProfileStateBuilder.isInsideNetworkGameProfile(usersById.get(userId)))
+        .filter(userId => UserProfileState.isInsideNetworkGameProfile(usersById.get(userId)))
         .sort();
       const activeNeighborIds = new Set(activeNeighbors);
       const cards: LocalGameSocialCardsByMode = {
@@ -173,14 +173,14 @@ export class LocalActivityMembersRepository {
         if (
           candidateUserId === activeUserId
           || activeNeighborIds.has(candidateUserId)
-          || !UserProfileStateBuilder.isPublicGameProfile(usersById.get(candidateUserId))
+          || !UserProfileState.isPublicGameProfile(usersById.get(candidateUserId))
         ) {
           continue;
         }
         const candidateNeighbors = graph.neighborsByUserId.get(candidateUserId) ?? new Set<string>();
         const bridgeUserIds = activeNeighbors
           .filter(bridgeUserId => candidateNeighbors.has(bridgeUserId))
-          .filter(bridgeUserId => UserProfileStateBuilder.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
+          .filter(bridgeUserId => UserProfileState.isInsideNetworkGameProfile(usersById.get(bridgeUserId)))
           .sort();
         if (bridgeUserIds.length === 0) {
           continue;
@@ -202,7 +202,7 @@ export class LocalActivityMembersRepository {
         if (
           leftUserId === activeUserId
           || activeNeighborIds.has(leftUserId)
-          || !UserProfileStateBuilder.isPublicGameProfile(usersById.get(leftUserId))
+          || !UserProfileState.isPublicGameProfile(usersById.get(leftUserId))
         ) {
           continue;
         }
@@ -212,7 +212,7 @@ export class LocalActivityMembersRepository {
             rightUserId === activeUserId
             || activeNeighborIds.has(rightUserId)
             || graph.neighborsByUserId.get(leftUserId)?.has(rightUserId)
-            || !UserProfileStateBuilder.isPublicGameProfile(usersById.get(rightUserId))
+            || !UserProfileState.isPublicGameProfile(usersById.get(rightUserId))
           ) {
             continue;
           }
@@ -492,8 +492,7 @@ export class LocalActivityMembersRepository {
   }
 
   private get localActivityMemberUsers(): UserDto[] {
-    return (this.localUsersRepository.queryAllUsers() as UserDto[])
-      .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id));
+    return this.localUsersRepository.queryAllUsers() as UserDto[];
   }
 
   private writeOwnerRecords(

@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder, UserProfileStateBuilder } from '../../../base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import type { UserDto } from '../../../contracts/user.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
@@ -279,8 +280,7 @@ export class LocalAssetsRepository {
   }
 
   private queryUsers(): UserDto[] {
-    return (this.usersRepository.queryGameStackUsers() as UserDto[])
-      .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id));
+    return this.usersRepository.queryGameStackUsers() as UserDto[];
   }
 
   private assetMemberRecords(assetId: string): ActivityMemberRecord[] {
@@ -548,7 +548,7 @@ export class LocalAssetsRepository {
       .filter(record => record.ownerUserId !== activeUserId)
       .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
-        || (record.visibility === 'Friends only' && UserProfileStateBuilder.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
+        || (record.visibility === 'Friends only' && UserProfileState.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
       .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity))
       .map(record => this.toAssetCard(record, activeUserId));
   }
@@ -718,7 +718,7 @@ export class LocalAssetsRepository {
 
   private queryVisibleExploreOwners(activeUserId: string): UserDto[] {
     const allUsers = this.queryUsers();
-    const prioritizedFriends = UserProfileStateBuilder.friendUsersForActiveUser(
+    const prioritizedFriends = UserProfileState.friendUsersForActiveUser(
       allUsers,
       activeUserId,
       Math.min(8, LocalAssetsRepository.VISIBLE_EXPLORE_OWNER_LIMIT)

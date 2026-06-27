@@ -16,8 +16,9 @@ import type { UserRecord } from '../../source/entity/user.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import { UserProfileState } from '../../../common/user-profile-state';
 
-import { SeedEventBuilder, SeedEventsBuilder, SeedUserBuilder } from '../builders';
+import { SeedEventBuilder, SeedEventsBuilder } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { ActivityMemberOwnerRef } from '../../../contracts/activity.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
@@ -51,7 +52,6 @@ export class SeedActivityMembersRepository {
       (ownerUserIds ?? users.map(user => user.id))
         .map(userId => `${userId ?? ''}`.trim())
         .filter(userId => userId.length > 0)
-        .filter(userId => !SeedUserBuilder.isEmptyOnboardingProfileUserId(userId))
     ));
     const eventsTable = state[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
@@ -131,7 +131,6 @@ export class SeedActivityMembersRepository {
         .map(id => this.memoryDb.read()[USERS_TABLE_NAME].byId[id])
         .filter((user): user is UserDto => Boolean(user));
     return source
-      .filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id))
       .map(user => ({ ...user, images: [...(user.images ?? [])] }));
   }
 
@@ -526,7 +525,7 @@ export class SeedActivityMembersRepository {
     asset: AppDTOs.AssetCardDTO,
     users: readonly UserDto[]
   ): AppDTOs.AssetMemberRequestDTO[] {
-    const requestUsers = SeedUserBuilder.friendUsersForActiveUser(users, ownerUserId, 2);
+    const requestUsers = UserProfileState.friendUsersForActiveUser(users, ownerUserId, 2);
     return requestUsers.map((user, index) => ({
       id: `${asset.id}:request:${index + 1}`,
       userId: user.id,

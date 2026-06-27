@@ -1,7 +1,7 @@
-import { AppUtils } from '../../../app-utils';
-import type { UserDto } from '../../contracts/user.interface';
+import { AppUtils } from '../../app-utils';
+import type { UserDto } from '../contracts/user.interface';
 
-export class UserProfileStateBuilder {
+export class UserProfileState {
   private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
   private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
 
@@ -9,8 +9,6 @@ export class UserProfileStateBuilder {
     if (
       !userId
       || userId === activeUserId
-      || this.isEmptyOnboardingProfileUserId(userId)
-      || this.isEmptyOnboardingProfileUserId(activeUserId)
     ) {
       return false;
     }
@@ -29,11 +27,6 @@ export class UserProfileStateBuilder {
 
   static isActivityRateVisibleProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
     return Boolean(user) && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
-  }
-
-  static isEmptyOnboardingProfileUserId(userId: string): boolean {
-    void userId;
-    return false;
   }
 
   static isEmptyOnboardingProfile(
@@ -81,10 +74,10 @@ export class UserProfileStateBuilder {
     limit = 12
   ): T[] {
     const normalizedActiveUserId = activeUserId.trim();
-    if (!normalizedActiveUserId || limit <= 0 || this.isEmptyOnboardingProfileUserId(normalizedActiveUserId)) {
+    if (!normalizedActiveUserId || limit <= 0) {
       return [];
     }
-    const seedableUsers = users.filter(user => !this.isEmptyOnboardingProfileUserId(user.id) && !this.isEmptyOnboardingProfile(user));
+    const seedableUsers = users.filter(user => !this.isEmptyOnboardingProfile(user));
     const activeUser = seedableUsers.find(user => user.id === normalizedActiveUserId) ?? null;
     return seedableUsers
       .filter(user => user.id.trim().length > 0 && user.id !== normalizedActiveUserId)

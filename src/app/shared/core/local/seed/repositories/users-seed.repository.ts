@@ -14,7 +14,7 @@ import {
   type ActivityEventRecord
 } from '../../../contracts/activity.interface';
 
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalUserFilterPreferencesMapper } from '../../source/mappers';
 import { SeedUserBuilder, SeedUserImpressionsBuilder } from '../builders';
 
@@ -280,7 +280,7 @@ export class SeedUsersRepository {
   }
 
   private applySeededActivityCounts(user: UserRecord): UserRecord {
-    if (UserProfileStateBuilder.isEmptyOnboardingProfile(user)) {
+    if (UserProfileState.isEmptyOnboardingProfile(user)) {
       return {
         ...user,
         activities: {
@@ -510,7 +510,7 @@ export class SeedUsersRepository {
 
   private queryActivityRateItemsByUserId(userId: string): readonly unknown[] {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId)) {
+    if (!normalizedUserId) {
       return [];
     }
     const state = this.memoryDb.read();

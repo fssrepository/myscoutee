@@ -6,7 +6,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalChatThreadMapper } from '../mappers';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
@@ -513,9 +513,7 @@ export class LocalChatsRepository {
       return false;
     }
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
-    return user
-      ? UserProfileStateBuilder.isEmptyOnboardingProfile(user)
-      : UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
+    return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 
   private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberEntry {

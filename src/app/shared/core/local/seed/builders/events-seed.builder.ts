@@ -16,8 +16,7 @@ import {
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
 
-const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50)
-  .filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id));
+const DEMO_EVENT_MEMBER_USERS = SeedUserBuilder.buildExpandedDemoUsers(50);
 
 function buildCheckoutDemoPolicies(): ContractTypes.EventPolicyDTO[] {
   return [

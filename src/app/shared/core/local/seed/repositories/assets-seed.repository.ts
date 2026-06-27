@@ -6,7 +6,6 @@ import { AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
-import { UserProfileStateBuilder } from '../../../base/builders';
 import { SeedAssetBuilder } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
@@ -22,7 +21,6 @@ export class SeedAssetsRepository {
 
   seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AppDTOs.AssetCardDTO[]> {
     const allUsers = seedUsers
-      .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id))
       .filter(user => user.profileStatus === 'public');
     const normalizedOwnerIds = Array.from(new Set(
       (ownerUserIds ?? allUsers.map(user => user.id))

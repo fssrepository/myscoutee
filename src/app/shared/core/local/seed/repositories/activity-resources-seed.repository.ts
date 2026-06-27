@@ -9,7 +9,6 @@ import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../source/entity/activity.entity
 import { ACTIVITY_RESOURCES_TABLE_NAME, type ActivityResourcesRecordCollection, type ActivitySubEventResourceRecord } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
-import { SeedUserBuilder } from '../builders';
 
 import type * as AppDTOs from '../../../contracts';
 @Injectable({
@@ -28,7 +27,6 @@ export class SeedActivityResourcesRepository {
       (ownerUserIds ?? [])
         .map(userId => `${userId ?? ''}`.trim())
         .filter(userId => userId.length > 0)
-        .filter(userId => !SeedUserBuilder.isEmptyOnboardingProfileUserId(userId))
     ));
     if (normalizedUserIds.length === 0) {
       return;
