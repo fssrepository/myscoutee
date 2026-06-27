@@ -1,4 +1,3 @@
-export { ActivityEventBuilder } from './activity-event.builder';
 export {
   ActivityMembersBuilder,
   type ActivityMemberSourceModel,
