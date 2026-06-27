@@ -509,7 +509,7 @@ export class ActivitiesEventsController {
 
   private async openInvitationApprovalFlow(row: ActivityEventCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
-    const record = activeUserId ? await this.eventsService.queryKnownItemById(activeUserId, row.id) : null;
+    const record = activeUserId ? await this.eventsService.queryKnownRecordById(activeUserId, row.id) : null;
     const relatedSource = this.activityDisplaySourceForRow(row);
     const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
       row.id,
@@ -853,7 +853,7 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
     const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberEntry) =>
       member.userId === activeUserId
@@ -1066,7 +1066,7 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
     const source = relatedSource;
     const creatorUserId = record?.creatorUserId ?? source.creatorUserId ?? row.ownerId ?? row.ownerUserId ?? '';
     if (!creatorUserId.trim()) {

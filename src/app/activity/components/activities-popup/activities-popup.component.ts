@@ -1964,10 +1964,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     );
   }
 
-  private currentActivityEventItems(): ActivityEventDTO[] {
-    return this.activityItems.filter(item => this.isActivityEventDTOItem(item));
-  }
-
   private cacheActivityEventItems(items: readonly ActivityEventDTO[]): void {
     const normalizedItems = Array.isArray(items)
       ? items.map(item => this.cloneActivityEventDTO(item))
@@ -2012,8 +2008,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private applyActivityEventDTO(update: ActivityEventDTO): ActivityEventDTO {
-    const existingDTO = this.currentActivityEventItems().find(item => item.id === update.id)
-      ?? this.eventsService.peekKnownItemDTOById(this.activeUser.id, update.id);
+    const existingDTO = this.activityItems
+      .filter(item => this.isActivityEventDTOItem(item))
+      .find(item => item.id === update.id)
+      ?? this.eventsService.peekKnownItemById(this.activeUser.id, update.id);
     const nextDTO = existingDTO
       ? this.patchActivityEventDTO(existingDTO, update)
       : this.cloneActivityEventDTO(update);
@@ -2472,8 +2470,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityEventDTOForRow(row: ActivityPopupEventCard): ActivityEventDTO | null {
-    return this.currentActivityEventItems().find(item => item.id === row.id)
-      ?? this.eventsService.peekKnownItemDTOById(this.activeUser.id, row.id);
+    return this.activityItems
+      .filter(item => this.isActivityEventDTOItem(item))
+      .find(item => item.id === row.id)
+      ?? this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
   }
 
   private activityMembersOwnerForRow(row: ActivityPopupEventCard): ActivityMemberOwnerRef {
@@ -2732,13 +2732,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private syncEventOwnerMemberCountsFromEventRows(): void {
-    const eventRecords = this.currentActivityEventItems().map(item => ({
-      id: item.id,
-      row: this.buildActivityEventCard(item),
-      acceptedMembers: item.acceptedMembers ?? 0,
-      capacityTotal: item.capacityTotal ?? 0,
-      pendingMembers: item.pendingMembers ?? 0
-    }));
+    const eventRecords = this.activityItems
+      .filter(item => this.isActivityEventDTOItem(item))
+      .map(item => ({
+        id: item.id,
+        row: this.buildActivityEventCard(item),
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      }));
     for (const record of eventRecords) {
       const owner = this.activityMembersOwnerForRow(record.row);
       const summary = this.activityMembersService.peekSummaryByOwner(owner);

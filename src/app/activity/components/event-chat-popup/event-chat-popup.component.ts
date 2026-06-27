@@ -2185,7 +2185,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return;
     }
-    const eventRecord = await this.eventsService.queryKnownItemById(this.activeUserId(), eventId);
+    const eventRecord = await this.eventsService.queryKnownRecordById(this.activeUserId(), eventId);
     if (!eventRecord) {
       this.confirmationDialogService.openInfo('This event is not available anymore.', {
         title: attachment.title || 'Shared event'
@@ -3628,7 +3628,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const eventId = `${chat.eventId ?? ''}`.trim();
     if (eventId && this.resolvedChatEventRecordKey !== eventId) {
-      const record = await this.eventsService.queryKnownItemById(this.activeUserId(), eventId).catch(() => null);
+      const record = await this.eventsService.queryKnownRecordById(this.activeUserId(), eventId).catch(() => null);
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
@@ -3863,7 +3863,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (this.resolvedChatEventRecordKey === eventId) {
       return this.resolvedChatEventRecord;
     }
-    return this.eventsService.peekKnownItemById(this.activeUserId(), eventId);
+    return this.eventsService.peekKnownRecordById(this.activeUserId(), eventId);
   }
 
   private resolveSelectedChatSubEvent(

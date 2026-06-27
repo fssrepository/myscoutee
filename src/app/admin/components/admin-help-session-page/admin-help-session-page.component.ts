@@ -234,7 +234,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
       }
     } else if (supportTarget === 'event') {
       const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
-      const eventRecord = eventId ? await this.eventsService.queryKnownItemById(userId, eventId) : null;
+      const eventRecord = eventId ? await this.eventsService.queryKnownRecordById(userId, eventId) : null;
       if (eventRecord) {
         this.popupCtx.requestActivitiesNavigation({
           type: 'eventEditor',

@@ -143,7 +143,15 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.httpEventsService.peekEventExplorePage(query);
   }
 
-  peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
+  peekKnownItemById(userId: string, itemId: string): ActivityEventDTO | null {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return null;
+    }
+    return this.eventsService.peekKnownItemById(userId, normalizedItemId);
+  }
+
+  peekKnownRecordById(userId: string, itemId: string): ActivityEventRecord | null {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
@@ -155,20 +163,12 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return known.find(record => record.id === normalizedItemId) ?? null;
   }
 
-  peekKnownItemDTOById(userId: string, itemId: string): ActivityEventDTO | null {
-    const normalizedItemId = itemId.trim();
-    if (!normalizedItemId || !this.isLocalRouteEnabled('/activities/events')) {
-      return null;
-    }
-    return this.localEventsService.peekKnownItemDTOById(userId, normalizedItemId);
-  }
-
-  async queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
+  async queryKnownRecordById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
     }
-    const cached = this.peekKnownItemById(userId, normalizedItemId);
+    const cached = this.peekKnownRecordById(userId, normalizedItemId);
     if (cached) {
       return cached;
     }

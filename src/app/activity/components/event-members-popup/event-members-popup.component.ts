@@ -944,13 +944,13 @@ export class EventMembersPopupComponent {
     }
   ): Promise<void> {
     const activeUserId = this.activeUserId();
-    const cachedRecord = this.eventsService.peekKnownItemById(activeUserId, ownerId);
+    const cachedRecord = this.eventsService.peekKnownRecordById(activeUserId, ownerId);
     if (cachedRecord) {
       this.applyOwnerRecord(cachedRecord, options);
       return;
     }
 
-    const record = await this.eventsService.queryKnownItemById(activeUserId, ownerId);
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, ownerId);
     if (!record || !this.isOpen || this.ownerId !== ownerId) {
       return;
     }

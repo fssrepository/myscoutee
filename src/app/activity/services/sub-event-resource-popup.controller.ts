@@ -2173,7 +2173,7 @@ export class SubEventResourcePopupController {
         ownerType: 'asset'
       };
     }
-    const eventRecord = this.eventsService.peekKnownItemById(this.activeUser().id.trim(), context.ownerId);
+    const eventRecord = this.eventsService.peekKnownRecordById(this.activeUser().id.trim(), context.ownerId);
     const organizerUserId = `${eventRecord?.creatorUserId ?? context.subEvent.createdByUserId ?? ''}`.trim();
     if (!organizerUserId) {
       return null;

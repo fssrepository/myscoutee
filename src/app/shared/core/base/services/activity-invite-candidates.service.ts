@@ -102,8 +102,8 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     }
     const summary = this.activityMembersService.peekSummaryByOwner(ownerRef);
     const ownerRecord = ownerType === 'event'
-      ? (this.eventsService.peekKnownItemById(activeUserId, normalizedOwnerId)
-        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedOwnerId))
+      ? (this.eventsService.peekKnownRecordById(activeUserId, normalizedOwnerId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedOwnerId))
       : null;
     const nextMembers = [...currentMembers, ...additions];
     await this.activityMembersService.replaceMembersByOwner(
@@ -133,7 +133,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
         isAdmin: true
       };
     }
-    const record = this.eventsService.peekKnownItemById(activeUserId, owner.ownerId);
+    const record = this.eventsService.peekKnownRecordById(activeUserId, owner.ownerId);
     if (!record) {
       return {
         ownerId: owner.ownerId,

@@ -137,7 +137,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return this.eventsRepository.queryExploreItems(userId);
   }
 
-  peekKnownItemDTOById(userId: string, itemId: string): ActivityEventDTO | null {
+  peekKnownItemById(userId: string, itemId: string): ActivityEventDTO | null {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;

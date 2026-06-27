@@ -271,6 +271,10 @@ export class HttpEventsService implements IEventsService {
     return [];
   }
 
+  peekKnownItemById(_userId: string, _itemId: string): ActivityEventDTO | null {
+    return null;
+  }
+
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {

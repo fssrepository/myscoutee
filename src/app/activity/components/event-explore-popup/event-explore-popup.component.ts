@@ -779,7 +779,7 @@ export class EventExplorePopupComponent {
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
-        record: this.eventsService.peekKnownItemById(activeUserId, draft.sourceId)
+        record: this.eventsService.peekKnownRecordById(activeUserId, draft.sourceId)
       }));
   }
 
@@ -876,8 +876,8 @@ export class EventExplorePopupComponent {
       return;
     }
     const { draft } = entry;
-    const record = this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
-      ?? await this.eventsService.queryKnownItemById(this.activeUserId, draft.sourceId);
+    const record = this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
       this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
       this.confirmationDialogService.openInfo('This checkout draft can no longer be restored.', {
@@ -908,8 +908,8 @@ export class EventExplorePopupComponent {
     }
     const entry: CheckoutDraftEntry = {
       draft,
-      record: this.eventsService.peekKnownItemById(activeUserId, normalizedSourceId)
-        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedSourceId)
+      record: this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedSourceId)
     };
     await this.continueCheckoutDraft(entry);
   }
@@ -924,8 +924,8 @@ export class EventExplorePopupComponent {
     }
     const sourceId = entry.draft.sourceId.trim();
     const record = entry.record
-      ?? this.eventsService.peekKnownItemById(this.activeUserId, sourceId)
-      ?? await this.eventsService.queryKnownItemById(this.activeUserId, sourceId);
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, sourceId);
     if (!record) {
       this.confirmationDialogService.openInfo('This event can no longer be opened.', {
         title: 'Event unavailable',
@@ -957,8 +957,8 @@ export class EventExplorePopupComponent {
     this.eventCheckoutDraftService.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
-      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId)
-        ?? await this.eventsService.queryKnownItemById(activeUserId, sourceId);
+      const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, sourceId);
 
       if (!record) {
         return;
@@ -1654,7 +1654,7 @@ export class EventExplorePopupComponent {
       return;
     }
     sourceIds.forEach(sourceId => {
-      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId.trim());
+      const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId.trim());
       if (record) {
         this.restoreVisibleEventExploreRecord(record);
       }
