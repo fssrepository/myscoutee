@@ -11,10 +11,10 @@ import type * as AppConstants from '../../common/constants';
 export class HttpAssetsService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedAssetsByUserId: Record<string, AppDTOs.AssetCardDTO[]> = {};
-  private readonly inflightAssetsByUserId: Record<string, Promise<AppDTOs.AssetCardDTO[]>> = {};
+  private readonly cachedAssetsByUserId: Record<string, AppDTOs.AssetDTO[]> = {};
+  private readonly inflightAssetsByUserId: Record<string, Promise<AppDTOs.AssetDTO[]>> = {};
 
-  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetCardDTO[] {
+  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -22,7 +22,7 @@ export class HttpAssetsService {
     return this.cloneCards(this.cachedAssetsByUserId[normalizedUserId] ?? []);
   }
 
-  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetCardDTO | null {
+  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetDTO | null {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
       return null;
@@ -30,7 +30,7 @@ export class HttpAssetsService {
     return this.peekOwnedAssetsByUser(userId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -50,17 +50,32 @@ export class HttpAssetsService {
     }
   }
 
-  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
+    try {
+      const response = await this.http
+        .get<AppDTOs.AssetDetailDTO | null>(`${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}`)
+        .toPromise();
+      const detail = this.normalizeCard(response);
+      if (detail) {
+        this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
+          this.peekOwnedAssetsByUser(normalizedUserId),
+          detail
+        );
+        return detail;
+      }
+    } catch {
+      // Fall back to the list cache while the detail endpoint is being wired.
+    }
     const cards = await this.queryOwnedAssetsByUser(normalizedUserId);
     return cards.find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -69,7 +84,6 @@ export class HttpAssetsService {
       const response = await this.http
         .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets/explore`, {
           params: new HttpParams()
-            .set('userId', normalizedUserId)
             .set('type', query.type)
             .set('category', `${query.category ?? ''}`.trim())
             .set('startAtIso', `${query.startAtIso ?? ''}`.trim())
@@ -82,7 +96,7 @@ export class HttpAssetsService {
     }
   }
 
-  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetCardDTO): Promise<AppDTOs.AssetCardDTO> {
+  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
     const normalizedAsset = this.normalizeCard(asset);
     if (!normalizedUserId || !normalizedAsset) {
@@ -93,19 +107,25 @@ export class HttpAssetsService {
       normalizedAsset
     );
     try {
-      await this.http
-        .post(`${this.apiBaseUrl}/assets/upsert`, {
+      const response = await this.http
+        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/upsert`, {
           userId: normalizedUserId,
           asset: normalizedAsset
         })
         .toPromise();
+      const savedAsset = this.normalizeCard(response) ?? normalizedAsset;
+      this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
+        this.peekOwnedAssetsByUser(normalizedUserId),
+        savedAsset
+      );
+      return this.cloneCards([savedAsset])[0] ?? savedAsset;
     } catch {
       // Keep optimistic cache while concrete endpoint wiring lands.
     }
     return this.cloneCards([normalizedAsset])[0] ?? normalizedAsset;
   }
 
-  async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetCardDTO[]): Promise<AppDTOs.AssetCardDTO[]> {
+  async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -247,11 +267,9 @@ export class HttpAssetsService {
     }
   }
 
-  private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
+  private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const response = await this.http
-      .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets`, {
-        params: new HttpParams().set('userId', userId)
-      })
+      .get<AppDTOs.AssetCardDTO[] | null>(`${this.apiBaseUrl}/assets`)
       .toPromise();
     const cards = this.normalizeCards(Array.isArray(response) ? response : []);
     this.cachedAssetsByUserId[userId] = this.cloneCards(cards);
@@ -259,9 +277,9 @@ export class HttpAssetsService {
   }
 
   private upsertCard(
-    cards: readonly AppDTOs.AssetCardDTO[],
-    nextCard: AppDTOs.AssetCardDTO
-  ): AppDTOs.AssetCardDTO[] {
+    cards: readonly AppDTOs.AssetDTO[],
+    nextCard: AppDTOs.AssetDTO
+  ): AppDTOs.AssetDTO[] {
     const next = this.cloneCards(cards);
     const existingIndex = next.findIndex(card => card.id === nextCard.id);
     if (existingIndex >= 0) {
@@ -274,17 +292,17 @@ export class HttpAssetsService {
     ];
   }
 
-  private cloneCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
+  private cloneCards(cards: readonly AppDTOs.AssetDTO[]): AppDTOs.AssetDTO[] {
     return AssetCardBuilder.cloneCards(cards);
   }
 
-  private normalizeCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetCardDTO[] {
+  private normalizeCards(cards: readonly AppDTOs.AssetCardDTO[]): AppDTOs.AssetDTO[] {
     return cards
       .map(card => this.normalizeCard(card))
-      .filter((card): card is AppDTOs.AssetCardDTO => Boolean(card));
+      .filter((card): card is AppDTOs.AssetDTO => Boolean(card));
   }
 
-  private normalizeCard(card: AppDTOs.AssetCardDTO | null | undefined): AppDTOs.AssetCardDTO | null {
+  private normalizeCard(card: AppDTOs.AssetCardDTO | null | undefined): AppDTOs.AssetDTO | null {
     const id = card?.id?.trim() ?? '';
     if (!id) {
       return null;

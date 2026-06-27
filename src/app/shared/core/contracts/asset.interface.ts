@@ -64,6 +64,10 @@ export interface AssetCardDTO {
   menuActions?: string[];
 }
 
+export interface AssetDTO extends AssetCardDTO {}
+
+export interface AssetDetailDTO extends AssetDTO {}
+
 export class AssetCardDto implements AssetCardDTO {
   id = '';
   type: AppConstants.AssetType = 'Car';
@@ -210,6 +214,22 @@ export class AssetCardDto implements AssetCardDTO {
       && (left.booking?.quantity ?? '') === (right.booking?.quantity ?? '')
       && (left.booking?.totalAmount ?? '') === (right.booking?.totalAmount ?? '')
       && (left.booking?.timeframe ?? '') === (right.booking?.timeframe ?? '');
+  }
+}
+
+export class AssetDto extends AssetCardDto implements AssetDTO {
+  constructor(card?: AssetDTO | AssetCardDTO | null) {
+    super(card);
+  }
+}
+
+export class AssetDetailDto extends AssetCardDto implements AssetDetailDTO {
+  constructor(card?: AssetDetailDTO | AssetCardDTO | null) {
+    super(card);
+  }
+
+  toAssetDTO(): AssetDTO {
+    return new AssetDto(this);
   }
 }
 

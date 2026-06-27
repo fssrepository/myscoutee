@@ -10,7 +10,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../shared/core/base/builders';
 import { AppContext, AssetInfoCardConverter, AssetTicketInfoCardConverter, type ActivityCounterKey } from '../../../shared/ui';
-import { AssetTicketsService, ShareTokensService } from '../../../shared/core';
+import { AssetsService, AssetTicketsService, ShareTokensService } from '../../../shared/core';
 import { AssetEditorPopupComponent } from '../asset-editor-popup/asset-editor-popup.component';
 import { AssetTicketScanPopupComponent } from '../asset-ticket-scan-popup/asset-ticket-scan-popup.component';
 import {
@@ -66,13 +66,13 @@ interface AssetSupplyRequestRow extends SingleRowData {
 type AssetPopupMenuContext =
   | { menu: 'ticket-order'; order: AppConstants.AssetTicketOrder }
   | { menu: 'asset-filter'; filter: AppConstants.AssetFilterType }
-  | { menu: 'asset-assign-basket'; assetCard: AppDTOs.AssetCardDTO }
+  | { menu: 'asset-assign-basket'; assetCard: AppDTOs.AssetDTO }
   | { menu: 'asset-assign-confirm' }
   | { menu: 'supply-request-filter'; filter: AssetSupplyRequestFilter }
   | { menu: 'supply-request-action'; row: AssetSupplyRequestRow; action: AssetSupplyRequestRowAction }
   | {
       menu: 'asset-info-card';
-      assetCard: AppDTOs.AssetCardDTO;
+      assetCard: AppDTOs.AssetDTO;
       card: InfoCardData;
       action: CardMenuAction;
     };
@@ -100,6 +100,7 @@ type AssetPopupMenuContext =
 })
 export class AssetPopupComponent {
   private readonly appCtx = inject(AppContext);
+  private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly confirmationDialogService = inject(ConfirmationDialogService);
@@ -131,13 +132,13 @@ export class AssetPopupComponent {
   private ticketSmartListQueryKey = '';
   private ticketSmartListQueryRevision = 0;
   @ViewChild('assetSmartList')
-  private assetSmartList?: SmartListComponent<AppDTOs.AssetCardDTO, OwnedAssetListFilters>;
+  private assetSmartList?: SmartListComponent<AppDTOs.AssetDTO, OwnedAssetListFilters>;
 
   protected readonly assetSmartListLoadPage = (query: ListQuery<OwnedAssetListFilters>) =>
     from(this.loadOwnedAssetSmartListPage(query));
   protected readonly ticketSmartListLoadPage = (query: ListQuery<AssetTicketListFilters>) =>
     from(this.loadTicketSmartListPage(query));
-  protected readonly assetSmartListConfig: SmartListConfig<AppDTOs.AssetCardDTO, OwnedAssetListFilters> = {
+  protected readonly assetSmartListConfig: SmartListConfig<AppDTOs.AssetDTO, OwnedAssetListFilters> = {
     pageSize: 18,
     defaultView: 'list',
     emptyLabel: query => AssetDefaultsBuilder.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
@@ -299,12 +300,12 @@ export class AssetPopupComponent {
     }));
   }
 
-  private assetAssignBasketCards(): AppDTOs.AssetCardDTO[] {
+  private assetAssignBasketCards(): AppDTOs.AssetDTO[] {
     const selected = new Set(this.resourcePopupStore.selectedAssignAssetIdsRef());
     return this.assetAssignCandidates().filter(card => selected.has(card.id));
   }
 
-  private assetAssignCandidates(): AppDTOs.AssetCardDTO[] {
+  private assetAssignCandidates(): AppDTOs.AssetDTO[] {
     const context = this.resourcePopupStore.assignContextRef();
     if (!context) {
       return [];
@@ -350,7 +351,7 @@ export class AssetPopupComponent {
     return this.subEventDisplayName(subEvent) || 'Sub Event';
   }
 
-  private assetAssignBasketItemDescription(card: AppDTOs.AssetCardDTO): string {
+  private assetAssignBasketItemDescription(card: AppDTOs.AssetDTO): string {
     return [
       AssetDefaultsBuilder.assetTypeLabel(card.type),
       card.subtitle,
@@ -380,7 +381,7 @@ export class AssetPopupComponent {
   }
 
   protected ownedAssetInfoCard(
-    card: AppDTOs.AssetCardDTO,
+    card: AppDTOs.AssetDTO,
     options: { groupLabel?: string | null; selectMode?: boolean; selected?: boolean; selectDisabled?: boolean } = {}
   ) {
     return AssetInfoCardConverter.convert(card, options);
@@ -391,7 +392,7 @@ export class AssetPopupComponent {
   }
 
   protected onOwnedAssetCardMenuAction(
-    card: AppDTOs.AssetCardDTO,
+    card: AppDTOs.AssetDTO,
     event: CardMenuActionEvent<InfoCardData>,
     selectItem?: (() => void) | null
   ): void {
@@ -424,8 +425,56 @@ export class AssetPopupComponent {
       return;
     }
     if (event.actionId === 'editAsset' || event.actionId === 'edit') {
-      this.ownedAssets.openAssetEditor(card);
+      void this.openAssetEditor(card);
     }
+  }
+
+  private async openAssetEditor(card: AppDTOs.AssetDTO): Promise<void> {
+    const ownerUserId = this.resolveOwnerUserId();
+    const generation = this.ownedAssetsStore.openAssetEditorEdit({
+      cardId: card.id,
+      form: AssetCardBuilder.buildAssetFormFromCard(card),
+      visibility: AssetCardBuilder.visibilityFromCard(card),
+      loading: Boolean(ownerUserId)
+    });
+
+    if (!ownerUserId) {
+      this.ownedAssetsStore.setAssetEditorLoading(false);
+      return;
+    }
+
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+      if (!this.ownedAssetsStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.ownedAssets.applyAssetCards(this.ownedAssetsStore.assetCards().map(item => (
+          item.id === loadedCard.id ? loadedCard : item
+        )), { persist: false, reloadList: false });
+        this.ownedAssetsStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.ownedAssetsStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.ownedAssetsStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        this.ownedAssetsStore.setAssetEditorLoading(false);
+      }
+    }
+  }
+
+  private resolveOwnerUserId(): string {
+    return this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+  }
+
+  protected openAssetEditorCreate(): void {
+    this.ownedAssetsStore.openAssetEditorCreate(
+      AssetCardBuilder.buildEmptyAssetForm(AssetCardBuilder.activeAssetTypeFromFilter(this.ownedAssetsStore.assetFilter())),
+      `asset-${Date.now()}`
+    );
   }
 
   private async confirmOwnedAssetDeleteAction(): Promise<void> {
@@ -695,7 +744,7 @@ export class AssetPopupComponent {
     }
   }
 
-  protected onAssetSmartListItemSelect(event: SmartListItemSelectEvent<AppDTOs.AssetCardDTO, OwnedAssetListFilters>): void {
+  protected onAssetSmartListItemSelect(event: SmartListItemSelectEvent<AppDTOs.AssetDTO, OwnedAssetListFilters>): void {
     if (!event.selectMode || !this.isBasketMode()) {
       return;
     }
@@ -745,7 +794,7 @@ export class AssetPopupComponent {
     }
   }
 
-  private openOwnedAssetShareDialog(card: AppDTOs.AssetCardDTO): void {
+  private openOwnedAssetShareDialog(card: AppDTOs.AssetDTO): void {
     void this.shareTokensService.createToken({
       kind: 'asset',
       entityId: card.id,
@@ -781,7 +830,7 @@ export class AssetPopupComponent {
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([...selectedIds, cardId]);
   }
 
-  protected openSupplyRequestList(card: AppDTOs.AssetCardDTO, event?: Event): void {
+  protected openSupplyRequestList(card: AppDTOs.AssetDTO, event?: Event): void {
     event?.stopPropagation();
     if (this.isBasketMode()) {
       return;
@@ -801,7 +850,7 @@ export class AssetPopupComponent {
     this.appMenuDispatcher.close();
   }
 
-  protected selectedSupplyAsset(): AppDTOs.AssetCardDTO | null {
+  protected selectedSupplyAsset(): AppDTOs.AssetDTO | null {
     const assetId = `${this.selectedSupplyAssetId ?? ''}`.trim();
     if (!assetId) {
       return null;
@@ -1250,7 +1299,7 @@ export class AssetPopupComponent {
     return this.parseIsoDate(value)?.getTime() ?? null;
   }
 
-  protected openOwnedAssetMap(card: AppDTOs.AssetCardDTO): void {
+  protected openOwnedAssetMap(card: AppDTOs.AssetDTO): void {
     if (!AssetCardBuilder.canOpenMap(card)) {
       return;
     }
@@ -1301,7 +1350,7 @@ export class AssetPopupComponent {
     this.assetPopupStore.updateTicketList(change.items, change.total);
   }
 
-  protected onAssetSmartListStateChange(change: SmartListStateChange<AppDTOs.AssetCardDTO, OwnedAssetListFilters>): void {
+  protected onAssetSmartListStateChange(change: SmartListStateChange<AppDTOs.AssetDTO, OwnedAssetListFilters>): void {
     if (this.ownedAssetsStore.ticketPopup()) {
       return;
     }
@@ -1442,7 +1491,7 @@ export class AssetPopupComponent {
     });
   }
 
-  private orderedOwnedAssetCards(type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  private orderedOwnedAssetCards(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {
     const selectedAssetIds = this.isBasketMode()
       ? new Set(this.resourcePopupStore.selectedAssignAssetIdsRef().map(id => id.trim()).filter(Boolean))
       : null;
@@ -1473,7 +1522,7 @@ export class AssetPopupComponent {
 
   private async loadOwnedAssetSmartListPage(
     query: ListQuery<OwnedAssetListFilters>
-  ): Promise<{ items: AppDTOs.AssetCardDTO[]; total: number }> {
+  ): Promise<{ items: AppDTOs.AssetDTO[]; total: number }> {
     const userId = query.filters?.userId?.trim() || this.activeUserId();
     const type = query.filters?.type;
     if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
@@ -1493,7 +1542,7 @@ export class AssetPopupComponent {
     };
   }
 
-  private cloneOwnedAsset(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+  private cloneOwnedAsset(card: AppDTOs.AssetDTO): AppDTOs.AssetDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],

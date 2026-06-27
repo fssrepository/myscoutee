@@ -4,8 +4,10 @@ import { PricingBuilder } from './pricing.builder';
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 
+export type AssetCardFormValue = Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>;
+
 export class AssetCardBuilder {
-  static buildEmptyAssetForm(type: AppConstants.AssetType): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
+  static buildEmptyAssetForm(type: AppConstants.AssetType): AssetCardFormValue {
     return {
       type,
       title: '',
@@ -24,7 +26,7 @@ export class AssetCardBuilder {
     };
   }
 
-  static buildAssetFormFromCard(card: AppDTOs.AssetCardDTO): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
+  static buildAssetFormFromCard(card: AppDTOs.AssetCardDTO): AssetCardFormValue {
     const imageUrl = this.normalizeAssetLink(card.imageUrl);
     const sourceLink = this.normalizeAssetLink(card.sourceLink, imageUrl);
     return {
@@ -46,9 +48,9 @@ export class AssetCardBuilder {
   }
 
   static buildAssetSavePayload(
-    assetForm: Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>,
+    assetForm: AssetCardFormValue,
     resolvedImageUrl: string | null | undefined = null
-  ): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
+  ): AssetCardFormValue {
     const title = assetForm.title.trim();
     const city = assetForm.city.trim();
     const routes = this.normalizeAssetRoutes(assetForm.type, assetForm.routes);

@@ -1,11 +1,9 @@
 import { Injectable, effect, inject } from '@angular/core';
-import { environment } from '../../environments/environment';
 
-import { AppUtils } from '../shared/app-utils';
 import { OwnedAssetsStore } from '../shared/ui/context/stores/owned-assets.store';
 import { AssetPopupStore } from '../shared/ui/context/stores/asset-popup.store';
 import { AppContext } from '../shared/ui';
-import { AssetCardBuilder, AssetsService, AssetTicketsService, ExplanationGuideService, MediaService } from '../shared/core';
+import { AssetCardBuilder, AssetsService, AssetTicketsService, ExplanationGuideService } from '../shared/core';
 import { AssetCardDto } from '../shared/core/contracts';
 
 import type * as AppDTOs from '../shared/core/contracts';
@@ -21,11 +19,8 @@ export class OwnedAssetsPopupFacadeService {
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly appCtx = inject(AppContext);
   private readonly explanationGuide = inject(ExplanationGuideService);
-  private readonly mediaService = inject(MediaService);
 
-  readonly assetSourcePreviewAvailable = environment.activitiesDataSource === 'http';
-
-  private pendingPersistSnapshot: AppDTOs.AssetCardDTO[] | null = null;
+  private pendingPersistSnapshot: AppDTOs.AssetDTO[] | null = null;
   private pendingPersistOwnerUserId = '';
   private persistTimerId: ReturnType<typeof setTimeout> | null = null;
   private assetMutationVersion = 0;
@@ -110,7 +105,7 @@ export class OwnedAssetsPopupFacadeService {
         return true;
       });
 
-    const nextCard: AppDTOs.AssetCardDTO = AssetCardBuilder.cloneCard({
+    const nextCard: AppDTOs.AssetDTO = AssetCardBuilder.cloneCard({
       ...existing,
       quantity: nextQuantity,
       requests: nextRequests
@@ -191,182 +186,6 @@ export class OwnedAssetsPopupFacadeService {
     this.touchUiState();
   }
 
-  openAssetEditor(card?: AppDTOs.AssetCardDTO): void {
-    if (card) {
-      void this.openAssetEditorForEdit(card);
-      return;
-    }
-    this.ownedAssetsStore.openAssetEditorCreate(this.ownedAssetsStore.activeAssetType(), `asset-${Date.now()}`);
-  }
-
-  private async openAssetEditorForEdit(card: AppDTOs.AssetCardDTO): Promise<void> {
-    const ownerUserId = this.resolveOwnerUserId();
-    const generation = this.ownedAssetsStore.openAssetEditorEdit({
-      cardId: card.id,
-      form: AssetCardBuilder.buildAssetFormFromCard(card),
-      visibility: AssetCardBuilder.visibilityFromCard(card),
-      loading: Boolean(ownerUserId)
-    });
-
-    if (!ownerUserId) {
-      this.ownedAssetsStore.setAssetEditorLoading(false);
-      return;
-    }
-
-    try {
-      const loadedCard = await this.assetsService.loadFullOwnedAssetById(ownerUserId, card.id);
-      if (!this.ownedAssetsStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        return;
-      }
-      if (loadedCard) {
-        this.applyAssetCards(this.ownedAssetsStore.assetCards().map(item => (
-          item.id === loadedCard.id ? loadedCard : item
-        )), { persist: false, reloadList: false });
-        this.ownedAssetsStore.applyAssetEditorForm(
-          loadedCard.id,
-          AssetCardBuilder.visibilityFromCard(loadedCard),
-          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
-        );
-      }
-      this.ownedAssetsStore.setAssetEditorLoading(false);
-    } catch {
-      if (this.ownedAssetsStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        this.ownedAssetsStore.setAssetEditorLoading(false);
-      }
-    }
-  }
-
-  async refreshAssetFromSourceLink(): Promise<void> {
-    if (this.ownedAssetsStore.assetFormLoadingRef()) {
-      return;
-    }
-    const sourceUrl = this.normalizedAssetSourcePreviewUrl(true);
-    if (!sourceUrl) {
-      return;
-    }
-    const ownerUserId = this.resolveOwnerUserId();
-    const assetForm = this.ownedAssetsStore.assetFormRef();
-    const preview = await this.assetsService.refreshAssetSourcePreview(ownerUserId, assetForm.type, sourceUrl);
-    if (!preview || preview.enabled === false) {
-      return;
-    }
-    const replacedImageUrl = this.ownedAssetsStore.applyAssetSourcePreview(preview, sourceUrl);
-    if (environment.activitiesDataSource === 'http') {
-      AppUtils.revokeObjectUrl(replacedImageUrl);
-    }
-  }
-
-  async saveAssetCard(): Promise<void> {
-    if (!this.ownedAssetsStore.beginAssetEditorSave()) {
-      return;
-    }
-    try {
-      const assetForm = this.ownedAssetsStore.assetFormRef();
-      const ownerUserId = this.resolveOwnerUserId();
-      const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || undefined;
-      const editingAssetId = this.ownedAssetsStore.editingAssetIdRef();
-      const assetId = editingAssetId || this.ownedAssetsStore.assetFormDraftIdRef() || `asset-${Date.now()}`;
-      const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
-      if (environment.activitiesDataSource === 'http' && this.hasPendingAssetSourceImage() && !resolvedImageUrl) {
-        throw new Error('Unable to upload asset image.');
-      }
-      const payload = AssetCardBuilder.buildAssetSavePayload(assetForm, resolvedImageUrl || assetForm.imageUrl);
-      const resolvedVisibility: AppConstants.EventVisibility = this.ownedAssetsStore.assetFormVisibilityRef();
-
-      if (editingAssetId) {
-        const existing = this.ownedAssetsStore.assetCards().find(card => card.id === editingAssetId);
-        const nextCard: AppDTOs.AssetCardDTO = {
-          id: editingAssetId,
-          ...payload,
-          visibility: resolvedVisibility,
-          ownerUserId: existing?.ownerUserId,
-          ownerName: existing?.ownerName ?? ownerName,
-          requests: existing?.requests.map(request => ({ ...request })) ?? [],
-          menuActions: [...(existing?.menuActions ?? [])]
-        };
-        this.markAssetMutation();
-        this.applyAssetCards(this.ownedAssetsStore.assetCards().map(card =>
-          card.id === editingAssetId
-            ? nextCard
-            : card
-        ), { persist: false, reloadList: true });
-        const persistPromise = ownerUserId
-          ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
-              if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-                this.applyAssetCards(this.ownedAssetsStore.assetCards().map(card => card.id === savedCard.id ? savedCard : card), {
-                  persist: false,
-                  reloadList: true
-                });
-              }
-            })
-          : Promise.resolve();
-        await persistPromise;
-      } else {
-        const nextCard: AppDTOs.AssetCardDTO = {
-          id: assetId,
-          ...payload,
-          visibility: resolvedVisibility,
-          ownerUserId,
-          ownerName,
-          requests: [],
-          menuActions: ['share', 'edit', 'delete']
-        };
-        this.markAssetMutation();
-        this.applyAssetCards([nextCard, ...this.ownedAssetsStore.assetCards()], { persist: false, reloadList: true });
-        const persistPromise = ownerUserId
-          ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
-              if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-                this.applyAssetCards(this.ownedAssetsStore.assetCards().map(card => card.id === savedCard.id ? savedCard : card), {
-                  persist: false,
-                  reloadList: true
-                });
-              }
-            })
-          : Promise.resolve();
-        await persistPromise;
-      }
-      this.ownedAssetsStore.completeAssetEditorSave();
-    } catch {
-      this.ownedAssetsStore.failAssetEditorSave();
-    }
-  }
-
-  private async resolvePersistedAssetImageUrl(ownerUserId: string, assetId: string): Promise<string | null> {
-    const assetForm = this.ownedAssetsStore.assetFormRef();
-    const pendingSourceImageUrl = this.ownedAssetsStore.pendingAssetSourceImageUrlRef().trim();
-    if (pendingSourceImageUrl && pendingSourceImageUrl === assetForm.imageUrl.trim()) {
-      const importResult = await this.mediaService.importImage(ownerUserId, assetId, pendingSourceImageUrl);
-      if (importResult.uploaded && importResult.imageUrl) {
-        this.ownedAssetsStore.applyPersistedAssetImage(importResult.imageUrl);
-        return importResult.imageUrl;
-      }
-      return null;
-    }
-    return assetForm.imageUrl.trim() || null;
-  }
-
-  private hasPendingAssetSourceImage(): boolean {
-    const assetForm = this.ownedAssetsStore.assetFormRef();
-    const pendingSourceImageUrl = this.ownedAssetsStore.pendingAssetSourceImageUrlRef().trim();
-    return Boolean(pendingSourceImageUrl && pendingSourceImageUrl === assetForm.imageUrl.trim());
-  }
-
-  private normalizedAssetSourcePreviewUrl(updateForm: boolean): string {
-    if (!this.assetSourcePreviewAvailable) {
-      return '';
-    }
-    const assetForm = this.ownedAssetsStore.assetFormRef();
-    const raw = assetForm.sourceLink.trim();
-    const normalizedUrl = AppUtils.normalizeHttpUrl(raw);
-    if (!normalizedUrl) {
-      return '';
-    }
-    if (updateForm && normalizedUrl !== raw) {
-      this.ownedAssetsStore.setAssetEditorSourceLink(normalizedUrl);
-    }
-    return normalizedUrl;
-  }
-
   async deleteAssetCardById(cardId: string): Promise<boolean> {
     const normalizedCardId = cardId.trim();
     if (!normalizedCardId) {
@@ -404,7 +223,7 @@ export class OwnedAssetsPopupFacadeService {
     }
     const nextStatus = AssetCardBuilder.restoredAssetStatus(current);
     const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || current.ownerName;
-    const nextCard: AppDTOs.AssetCardDTO = {
+    const nextCard: AppDTOs.AssetDTO = {
       ...current,
       ownerUserId,
       ownerName,
@@ -427,7 +246,7 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     const resolvedStatus = AssetCardBuilder.normalizeAssetStatus(savedCard.status);
-    const reconciledCard: AppDTOs.AssetCardDTO = {
+    const reconciledCard: AppDTOs.AssetDTO = {
       ...nextCard,
       ...savedCard,
       ownerUserId: savedCard.ownerUserId ?? ownerUserId,
@@ -445,12 +264,15 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   public applyAssetCards(
-    cards: readonly AppDTOs.AssetCardDTO[],
-    options: { persist?: boolean; reloadList?: boolean } = {}
+    cards: readonly AppDTOs.AssetDTO[],
+    options: { persist?: boolean; reloadList?: boolean; mutation?: boolean } = {}
   ): void {
     const nextCards = AssetCardBuilder.normalizeAssetMediaCards(AssetCardBuilder.cloneCards(cards));
     if (AssetCardDto.listEquals(this.ownedAssetsStore.assetCards(), nextCards)) {
       return;
+    }
+    if (options.mutation === true) {
+      this.markAssetMutation();
     }
     this.ownedAssetsStore.setAssetCards(nextCards);
     this.ownedAssetsStore.bumpAssetListRevision(options.reloadList !== false);
@@ -460,8 +282,8 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private restoredTakeOverMenuActions(
-    current: AppDTOs.AssetCardDTO,
-    savedCard: AppDTOs.AssetCardDTO | null | undefined
+    current: AppDTOs.AssetDTO,
+    savedCard: AppDTOs.AssetDTO | null | undefined
   ): string[] {
     const savedStatus = AssetCardBuilder.normalizeAssetStatus(savedCard?.status);
     const savedActions = (savedCard?.menuActions ?? [])

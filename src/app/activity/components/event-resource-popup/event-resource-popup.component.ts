@@ -253,7 +253,7 @@ export class EventResourcePopupComponent implements DoCheck {
     return this.usersService.peekCachedUsers();
   }
 
-  private ownedAssetCards(): AppDTOs.AssetCardDTO[] {
+  private ownedAssetCards(): AppDTOs.AssetDTO[] {
     return this.ownedAssetsStore.assetCards();
   }
 

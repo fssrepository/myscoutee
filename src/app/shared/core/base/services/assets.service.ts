@@ -18,15 +18,15 @@ export class AssetsService extends BaseRouteModeService {
     return this.resolveRouteService('/assets', this.localAssetsService, this.httpAssetsService);
   }
 
-  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetCardDTO[] {
+  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     return this.assetsService.peekOwnedAssetsByUser(userId);
   }
 
-  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetCardDTO | null {
+  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetDTO | null {
     return this.assetsService.peekOwnedAssetById(userId, assetId);
   }
 
-  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -34,16 +34,16 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.queryOwnedAssetsByUser(normalizedUserId);
   }
 
-  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
-    return this.assetsService.loadFullOwnedAssetById(normalizedUserId, normalizedAssetId);
+    return this.assetsService.loadOwnedAssetDetailById(normalizedUserId, normalizedAssetId);
   }
 
-  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -54,11 +54,11 @@ export class AssetsService extends BaseRouteModeService {
     });
   }
 
-  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetCardDTO): Promise<AppDTOs.AssetCardDTO> {
+  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     return this.assetsService.saveOwnedAsset(userId, asset);
   }
 
-  async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetCardDTO[]): Promise<AppDTOs.AssetCardDTO[]> {
+  async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {
     return this.assetsService.replaceOwnedAssets(userId, assets);
   }
 

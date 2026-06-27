@@ -297,7 +297,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
 
-  protected get assetCards(): AppDTOs.AssetCardDTO[] {
+  protected get assetCards(): AppDTOs.AssetDTO[] {
     return this.ownedAssetsStore.assetCards();
   }
 

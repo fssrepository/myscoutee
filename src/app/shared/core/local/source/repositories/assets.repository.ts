@@ -29,7 +29,7 @@ export class LocalAssetsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly usersRepository = inject(LocalUsersRepository);
 
-  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetCardDTO[] {
+  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -37,7 +37,7 @@ export class LocalAssetsRepository {
     return this.readOwnerAssets(normalizedUserId);
   }
 
-  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetCardDTO | null {
+  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetDTO | null {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
       return null;
@@ -45,13 +45,13 @@ export class LocalAssetsRepository {
     return this.peekOwnedAssetsByUser(userId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetCardDTO[]> {
+  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
     const normalizedUserIds = [...new Set(
       userIds
         .map(userId => userId.trim())
         .filter(Boolean)
     )];
-    const assetsByUserId = new Map<string, AppDTOs.AssetCardDTO[]>(
+    const assetsByUserId = new Map<string, AppDTOs.AssetDTO[]>(
       normalizedUserIds.map(userId => [userId, []])
     );
     if (normalizedUserIds.length === 0) {
@@ -70,7 +70,7 @@ export class LocalAssetsRepository {
     return assetsByUserId;
   }
 
-  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -78,7 +78,7 @@ export class LocalAssetsRepository {
     return this.readOwnerAssets(normalizedUserId);
   }
 
-  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -87,7 +87,7 @@ export class LocalAssetsRepository {
     return this.readOwnerAssets(normalizedUserId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -98,7 +98,7 @@ export class LocalAssetsRepository {
       .filter(card => !normalizedCategory || card.category === normalizedCategory);
   }
 
-  peekVisibleAssetById(userId: string, type: AppConstants.AssetType, assetId: string): AppDTOs.AssetCardDTO | null {
+  peekVisibleAssetById(userId: string, type: AppConstants.AssetType, assetId: string): AppDTOs.AssetDTO | null {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -108,7 +108,7 @@ export class LocalAssetsRepository {
       .find(card => card.type === type && card.id === normalizedAssetId) ?? null;
   }
 
-  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetCardDTO): Promise<AppDTOs.AssetCardDTO> {
+  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
     const normalizedAsset = LocalAssetsMapper.normalizeCard(asset);
     if (!normalizedUserId || !normalizedAsset) {
@@ -141,8 +141,8 @@ export class LocalAssetsRepository {
 
   async replaceOwnedAssets(
     userId: string,
-    assets: readonly AppDTOs.AssetCardDTO[]
-  ): Promise<AppDTOs.AssetCardDTO[]> {
+    assets: readonly AppDTOs.AssetDTO[]
+  ): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];

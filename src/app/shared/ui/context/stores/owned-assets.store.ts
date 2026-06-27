@@ -1,17 +1,16 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../core/base/builders';
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
 export interface OwnedAssetsVisibleListState {
-  items: readonly AppDTOs.AssetCardDTO[];
+  items: readonly AppDTOs.AssetDTO[];
   total: number;
   initialLoading: boolean;
 }
 
 export interface OwnedAssetsVisibleListPatch {
-  items: AppDTOs.AssetCardDTO[];
+  items: AppDTOs.AssetDTO[];
   total: number;
 }
 
@@ -20,13 +19,13 @@ export interface OwnedAssetDeletedEvent {
   revision: number;
 }
 
-export type OwnedAssetFormState = Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'>;
+export type OwnedAssetFormState = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
 
 @Injectable({
   providedIn: 'root'
 })
 export class OwnedAssetsStore {
-  private readonly assetCardsRef = signal<AppDTOs.AssetCardDTO[]>([]);
+  private readonly assetCardsRef = signal<AppDTOs.AssetDTO[]>([]);
   private visibleListContextKey = '';
   private visibleListSignature = '';
   private visibleListCardCount = 0;
@@ -44,7 +43,17 @@ export class OwnedAssetsStore {
   readonly assetDeletePendingRef = signal(false);
   readonly pendingAssetDeleteLabelRef = signal('');
   readonly pendingAssetDeleteErrorRef = signal('');
-  readonly assetFormRef = signal<OwnedAssetFormState>(AssetCardBuilder.buildEmptyAssetForm('Car'));
+  readonly assetFormRef = signal<OwnedAssetFormState>({
+    type: 'Car',
+    title: '',
+    subtitle: '',
+    city: '',
+    capacityTotal: 4,
+    quantity: 1,
+    details: '',
+    imageUrl: '',
+    sourceLink: ''
+  });
   readonly assetFormVisibilityRef = signal<AppConstants.EventVisibility>('Public');
   readonly assetFormDraftIdRef = signal('');
   readonly assetFormLoadGenerationRef = signal(0);
@@ -81,7 +90,7 @@ export class OwnedAssetsStore {
   readonly popupOpen = computed(() => this.activePopupFilterRef() !== null);
   readonly ticketPopup = computed(() => this.popupOpen() && this.assetFilterRef() === 'Ticket');
 
-  setAssetCards(cards: readonly AppDTOs.AssetCardDTO[]): void {
+  setAssetCards(cards: readonly AppDTOs.AssetDTO[]): void {
     this.assetCardsRef.set([...cards]);
   }
 
@@ -114,10 +123,6 @@ export class OwnedAssetsStore {
     this.assetFilterRef.set(filter);
     this.activePopupFilterRef.set(filter);
     this.touchUiState();
-  }
-
-  activeAssetType(): AppConstants.AssetType {
-    return AssetCardBuilder.activeAssetTypeFromFilter(this.assetFilterRef());
   }
 
   setAssetListLoading(loading: boolean): void {
@@ -155,7 +160,7 @@ export class OwnedAssetsStore {
     this.touchUiState();
   }
 
-  requestAssetDelete(card: AppDTOs.AssetCardDTO): void {
+  requestAssetDelete(card: AppDTOs.AssetDTO): void {
     this.pendingAssetDeleteCardIdRef.set(card.id);
     this.pendingAssetDeleteLabelRef.set(`Delete ${card.title}?`);
     this.pendingAssetDeleteErrorRef.set('');
@@ -197,7 +202,7 @@ export class OwnedAssetsStore {
     this.touchUiState();
   }
 
-  openAssetEditorCreate(type: AppConstants.AssetType, draftId: string): number {
+  openAssetEditorCreate(form: OwnedAssetFormState, draftId: string): number {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(false);
@@ -206,7 +211,7 @@ export class OwnedAssetsStore {
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
-    this.assetFormRef.set(AssetCardBuilder.buildEmptyAssetForm(type));
+    this.assetFormRef.set(form);
     this.touchUiState();
     return generation;
   }
@@ -267,15 +272,6 @@ export class OwnedAssetsStore {
     this.touchUiState();
   }
 
-  setAssetEditorCategory(category: AppConstants.AssetCategory): void {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
-      return;
-    }
-    const assetForm = this.assetFormRef();
-    assetForm.category = AssetDefaultsBuilder.normalizeCategory(assetForm.type, category);
-    this.touchUiState();
-  }
-
   setAssetEditorImageUrl(imageUrl: string): void {
     this.assetFormRef().imageUrl = imageUrl.trim();
     this.touchUiState();
@@ -283,17 +279,6 @@ export class OwnedAssetsStore {
 
   setAssetEditorSourceLink(sourceLink: string): void {
     this.assetFormRef().sourceLink = sourceLink.trim();
-    this.touchUiState();
-  }
-
-  setAssetEditorRouteStop(index: number, value: string): void {
-    const assetForm = this.assetFormRef();
-    const routes = [...AssetCardBuilder.normalizeAssetRoutes(assetForm.type, assetForm.routes)];
-    if (index < 0 || index >= routes.length) {
-      return;
-    }
-    routes[index] = value;
-    assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(assetForm.type, routes);
     this.touchUiState();
   }
 
@@ -347,7 +332,7 @@ export class OwnedAssetsStore {
   }
 
   beginAssetEditorSave(): boolean {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef() || !this.canSubmitAssetEditor()) {
+    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return false;
     }
     this.assetFormSavePendingRef.set(true);
@@ -365,35 +350,17 @@ export class OwnedAssetsStore {
     this.touchUiState();
   }
 
-  canSubmitAssetEditor(): boolean {
-    if (this.assetFormLoadingRef()) {
-      return false;
-    }
-    const assetForm = this.assetFormRef();
-    const title = assetForm.title.trim();
-    const capacityTotal = Math.max(0, Math.trunc(Number(assetForm.capacityTotal) || 0));
-    const quantity = Math.max(0, Math.trunc(Number(assetForm.quantity) || 0));
-    if (!title || capacityTotal < 1 || quantity < 1) {
-      return false;
-    }
-    if (assetForm.type !== 'Accommodation') {
-      return true;
-    }
-    return AssetCardBuilder.normalizeAssetRoutes(assetForm.type, assetForm.routes)
-      .some(stop => stop.trim().length > 0);
-  }
-
   private bumpAssetEditorGeneration(): number {
     const nextGeneration = this.assetFormLoadGenerationRef() + 1;
     this.assetFormLoadGenerationRef.set(nextGeneration);
     return nextGeneration;
   }
 
-  cardsByType(type: AppConstants.AssetType): AppDTOs.AssetCardDTO[] {
+  cardsByType(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {
     return this.assetCardsRef().filter(card => card.type === type);
   }
 
-  orderedCardsByType(type: AppConstants.AssetType, selectedAssetIds: ReadonlySet<string> | null = null): AppDTOs.AssetCardDTO[] {
+  orderedCardsByType(type: AppConstants.AssetType, selectedAssetIds: ReadonlySet<string> | null = null): AppDTOs.AssetDTO[] {
     return this.cardsByType(type).sort((left, right) => {
       if (selectedAssetIds) {
         const selectedDelta = Number(selectedAssetIds.has(right.id)) - Number(selectedAssetIds.has(left.id));
@@ -405,7 +372,7 @@ export class OwnedAssetsStore {
     });
   }
 
-  findAsset(assetId: string, type?: AppConstants.AssetType): AppDTOs.AssetCardDTO | null {
+  findAsset(assetId: string, type?: AppConstants.AssetType): AppDTOs.AssetDTO | null {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
       return null;
@@ -430,7 +397,7 @@ export class OwnedAssetsStore {
 
   trackVisibleAssetListState(
     state: OwnedAssetsVisibleListState,
-    cards: readonly AppDTOs.AssetCardDTO[]
+    cards: readonly AppDTOs.AssetDTO[]
   ): OwnedAssetsVisibleListPatch | null {
     this.visibleListRenderedCount = state.items.length;
     this.visibleListReady = !state.initialLoading;
@@ -444,7 +411,7 @@ export class OwnedAssetsStore {
     options: {
       active: boolean;
       contextKey: string;
-      cards: readonly AppDTOs.AssetCardDTO[];
+      cards: readonly AppDTOs.AssetDTO[];
       renderedCount: number;
     }
   ): OwnedAssetsVisibleListPatch | null {
@@ -471,7 +438,7 @@ export class OwnedAssetsStore {
   }
 
   private createVisibleAssetListPatch(
-    cards: readonly AppDTOs.AssetCardDTO[],
+    cards: readonly AppDTOs.AssetDTO[],
     previousCardCount: number,
     renderedCount: number
   ): OwnedAssetsVisibleListPatch | null {
@@ -492,7 +459,7 @@ export class OwnedAssetsStore {
     };
   }
 
-  private visibleAssetListSignature(contextKey: string, cards: readonly AppDTOs.AssetCardDTO[]): string {
+  private visibleAssetListSignature(contextKey: string, cards: readonly AppDTOs.AssetDTO[]): string {
     return `${contextKey}:${cards.map(card => [
       card.id,
       card.type,
