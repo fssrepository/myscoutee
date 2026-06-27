@@ -1,52 +1,12 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, effect, inject, signal } from '@angular/core';
 import { type ActivityCounters } from '../shared/ui';
 import { NavigationEnd, Router } from '@angular/router';
 import { AppContext } from '../shared/ui';
 import { AppUtils } from '../shared/app-utils';
 import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
-import type { ActivityMemberOwnerType } from '../shared/core/common/constants';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogStore } from '../shared/ui/context/stores/confirmation-dialog.store';
-import { AppPopupContext } from '../shared/ui';
-import { AssetPopupStore } from '../shared/ui/context/stores/asset-popup.store';
-
-export interface NavigatorMenuUiState {
-  open: boolean;
-}
-
-export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
-
-export interface NavigatorReportUserContext {
-  targetUserId: string;
-  targetName: string;
-  memberEntryId?: string | null;
-  eventId: string;
-  eventTitle?: string | null;
-  eventStartAtIso?: string | null;
-  eventTimeframe?: string | null;
-  ownerType?: ActivityMemberOwnerType;
-  sourceType?: string | null;
-  sourceId?: string | null;
-  sourceText?: string | null;
-  chatId?: string | null;
-  messageId?: string | null;
-  assetId?: string | null;
-  assetType?: string | null;
-}
-
-export interface NavigatorBindings {
-  syncHydratedUser?(user: UserDto): void;
-}
-
-export interface NavigatorProfileViewRequest {
-  userId: string;
-  label?: string | null;
-}
-
-export interface NavigatorProfileViewTarget {
-  userId: string;
-  label: string | null;
-}
+import { NavigatorStore, type NavigatorSettingsPopup } from '../shared/ui/context/stores/navigator.store';
 
 @Injectable({
   providedIn: 'root'
@@ -66,25 +26,13 @@ export class NavigatorService {
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
   private readonly router = inject(Router);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
-  private readonly assetPopupStore = inject(AssetPopupStore);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly currentRouteUrlRef = signal(AppUtils.normalizeRoutePath(this.router.url));
-  private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly hydrationRequestKeyRef = signal('');
-  private readonly menuOpenRef = signal(false);
-  private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
-  private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
-  private readonly deletedAccountReactivationPendingRef = signal(false);
   private readonly privacyConsentCheckKeyRef = signal('');
-  private readonly privacyConsentRequiredKeyRef = signal('');
-  private readonly profileEditorOpenRef = signal(false);
-  private readonly profileViewTargetRef = signal<NavigatorProfileViewTarget | null>(null);
-  private readonly impressionsPopupOpenRef = signal(false);
-  private readonly contactsPopupOpenRef = signal(false);
-  private readonly impressionsPopupUserIdRef = signal('');
   private hydrationRequestVersion = 0;
   private stopUserRealtimeLongPollInterval: (() => void) | null = null;
   private userRealtimeLongPollInFlight = false;
@@ -94,25 +42,6 @@ export class NavigatorService {
   private readonly userRealtimeLongPollCursorByUserId: Record<string, string> = {};
   private readonly userSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly userIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
-
-  readonly bindings = this.bindingsRef.asReadonly();
-  readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
-  readonly profileViewTarget = this.profileViewTargetRef.asReadonly();
-  readonly profileViewOpen = computed(() => this.profileViewTargetRef() !== null);
-  readonly settingsPopup = this.settingsPopupRef.asReadonly();
-  readonly privacyConsentRequired = computed(() => this.privacyConsentRequiredKeyRef().length > 0);
-  readonly reportUserContext = this.reportUserContextRef.asReadonly();
-  readonly deletedAccountReactivationPending = this.deletedAccountReactivationPendingRef.asReadonly();
-  readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
-  readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
-  readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
-  readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
-    open: this.menuOpenRef()
-  }));
-  readonly navigatorCoveredByAssetPopup = computed(() =>
-    this.assetPopupStore.visible()
-    || this.popupCtx.popupStore.activityInvitePopup() !== null
-  );
 
   constructor() {
     this.router.events.subscribe(event => {
@@ -171,13 +100,13 @@ export class NavigatorService {
 
       if (!session || !activeUserId) {
         this.stopUserRealtimeLongPoll();
-        this.impressionsPopupOpenRef.set(false);
-        this.contactsPopupOpenRef.set(false);
+        this.navigatorStore.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
         return;
       }
       if (this.isAdminWorkspaceRoute() || this.appCtx.userProfileStore.activeUserIsAdmin()) {
-        this.impressionsPopupOpenRef.set(false);
-        this.contactsPopupOpenRef.set(false);
+        this.navigatorStore.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
         this.activateUserRealtimeLongPoll(activeUserId);
         return;
       }
@@ -194,7 +123,7 @@ export class NavigatorService {
 
       if (!shouldCheckPrivacyConsent) {
         this.privacyConsentCheckKeyRef.set('');
-        this.privacyConsentRequiredKeyRef.set('');
+        this.navigatorStore.clearPrivacyConsentRequirement();
         return;
       }
       if (!revision) {
@@ -212,23 +141,6 @@ export class NavigatorService {
     });
   }
 
-  registerBindings(bindings: NavigatorBindings): void {
-    this.bindingsRef.set(bindings);
-  }
-
-  clearBindings(bindings?: NavigatorBindings): void {
-    if (bindings && this.bindingsRef() !== bindings) {
-      return;
-    }
-    this.bindingsRef.set(null);
-    this.closeMenu();
-    this.closeSettingsPopup();
-    this.closeImpressionsPopup();
-    this.closeContactsPopup();
-    this.closeProfileEditor();
-    this.closeProfileView();
-  }
-
   async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
     if (this.isAdminWorkspaceRoute()) {
       return null;
@@ -241,7 +153,7 @@ export class NavigatorService {
       return null;
     }
     if (this.shouldPromptDeletedAccountReactivation(loadedUser)) {
-      this.deletedAccountReactivationPendingRef.set(true);
+      this.navigatorStore.setDeletedAccountReactivationPending(true);
       this.openDeletedAccountReactivationPrompt(loadedUser, requestVersion);
       return loadedUser;
     }
@@ -280,7 +192,7 @@ export class NavigatorService {
       failureMessage: 'Unable to reactivate account.',
       onCancel: async () => {
         this.reactivationPromptUserId = '';
-        this.deletedAccountReactivationPendingRef.set(false);
+        this.navigatorStore.setDeletedAccountReactivationPending(false);
         this.clearHydratedUser();
         await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
       },
@@ -301,7 +213,7 @@ export class NavigatorService {
           if (requestVersion === this.hydrationRequestVersion) {
             this.syncHydratedUser(saved);
           }
-          this.deletedAccountReactivationPendingRef.set(false);
+          this.navigatorStore.setDeletedAccountReactivationPending(false);
         }, 0);
       }
     });
@@ -315,7 +227,7 @@ export class NavigatorService {
         return;
       }
       if (this.isPrivacyConsentCurrent(existingConsent, revision)) {
-        this.privacyConsentRequiredKeyRef.set('');
+        this.navigatorStore.clearPrivacyConsentRequirement();
         return;
       }
 
@@ -324,15 +236,15 @@ export class NavigatorService {
         return;
       }
       if (syncedAnonymousConsent) {
-        this.privacyConsentRequiredKeyRef.set('');
+        this.navigatorStore.clearPrivacyConsentRequirement();
         return;
       }
 
-      this.privacyConsentRequiredKeyRef.set(checkKey);
+      this.navigatorStore.setPrivacyConsentRequiredKey(checkKey);
       this.openSettingsPopup('privacy');
     } catch {
       if (this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
-        this.privacyConsentRequiredKeyRef.set(checkKey);
+        this.navigatorStore.setPrivacyConsentRequiredKey(checkKey);
         this.openSettingsPopup('privacy');
       }
     }
@@ -432,7 +344,7 @@ export class NavigatorService {
   }
 
   private isActivePrivacyConsentRequired(): boolean {
-    const requiredKey = this.privacyConsentRequiredKeyRef();
+    const requiredKey = this.navigatorStore.privacyConsentRequiredKey();
     const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     const revision = this.privacyPolicy.activeRevision();
     if (!requiredKey || !activeUserId || !revision) {
@@ -464,74 +376,20 @@ export class NavigatorService {
 
   syncHydratedUser(user: UserDto): void {
     this.syncHydratedUserIntoAppContext(user);
-    this.bindingsRef()?.syncHydratedUser?.(user);
+    this.navigatorStore.bindings()?.syncHydratedUser?.(user);
   }
 
   clearHydrationState(): void {
     this.hydrationRequestVersion += 1;
     this.hydrationRequestKeyRef.set('');
-    this.deletedAccountReactivationPendingRef.set(false);
+    this.navigatorStore.setDeletedAccountReactivationPending(false);
   }
 
   clearHydratedUser(): void {
     this.clearHydrationState();
   }
 
-  openMenu(): void {
-    this.menuOpenRef.set(true);
-  }
-
-  closeMenu(): void {
-    this.menuOpenRef.set(false);
-  }
-
-  toggleMenu(): void {
-    if (this.menuOpenRef()) {
-      this.closeMenu();
-      return;
-    }
-    this.openMenu();
-  }
-
-  openProfileEditor(): void {
-    this.profileEditorOpenRef.set(true);
-  }
-
-  closeProfileEditor(): void {
-    this.profileEditorOpenRef.set(false);
-  }
-
-  openProfileView(request: NavigatorProfileViewRequest): void {
-    const userId = `${request?.userId ?? ''}`.trim();
-    if (!userId) {
-      return;
-    }
-    const targetLabel = `${request.label ?? ''}`.trim() || null;
-    const currentTarget = this.profileViewTargetRef();
-    if (currentTarget?.userId === userId && currentTarget.label === targetLabel) {
-      return;
-    }
-    this.profileViewTargetRef.set({
-      userId,
-      label: targetLabel
-    });
-  }
-
-  openProfileViewById(userId: string, label?: string | null): void {
-    this.openProfileView({
-      userId,
-      label: label ?? null
-    });
-  }
-
-  closeProfileView(): void {
-    this.profileViewTargetRef.set(null);
-  }
-
   openSettingsPopup(popup: NavigatorSettingsPopup): void {
-    if (popup !== 'report-user') {
-      this.reportUserContextRef.set(null);
-    }
     if (popup === 'privacy') {
       void this.privacyPolicy.prepareOpen();
     }
@@ -541,50 +399,19 @@ export class NavigatorService {
     if (popup === 'help') {
       void this.helpCenterService.preload('help');
     }
-    this.settingsPopupRef.set(popup);
+    this.navigatorStore.openSettingsPopup(popup);
   }
 
   closeSettingsPopup(): void {
-    if (this.settingsPopupRef() === 'privacy' && this.isActivePrivacyConsentRequired()) {
-      return;
-    }
-    if (this.settingsPopupRef() === 'report-user') {
-      this.reportUserContextRef.set(null);
-    }
-    this.settingsPopupRef.set(null);
+    this.navigatorStore.closeSettingsPopup({
+      keepPrivacyOpen: this.isActivePrivacyConsentRequired()
+    });
   }
 
   markActivePrivacyConsentApproved(): void {
     if (this.isActivePrivacyConsentRequired()) {
-      this.privacyConsentRequiredKeyRef.set('');
+      this.navigatorStore.clearPrivacyConsentRequirement();
     }
-  }
-
-  openReportUserPopup(context: NavigatorReportUserContext): void {
-    const targetUserId = `${context.targetUserId ?? ''}`.trim();
-    const eventId = `${context.eventId ?? ''}`.trim();
-    const targetName = `${context.targetName ?? ''}`.trim();
-    if (!targetUserId || !eventId || !targetName) {
-      return;
-    }
-    this.reportUserContextRef.set({
-      targetUserId,
-      targetName,
-      memberEntryId: `${context.memberEntryId ?? ''}`.trim() || null,
-      eventId,
-      eventTitle: `${context.eventTitle ?? ''}`.trim() || null,
-      eventStartAtIso: `${context.eventStartAtIso ?? ''}`.trim() || null,
-      eventTimeframe: `${context.eventTimeframe ?? ''}`.trim() || null,
-      ownerType: context.ownerType,
-      sourceType: `${context.sourceType ?? ''}`.trim() || null,
-      sourceId: `${context.sourceId ?? ''}`.trim() || null,
-      sourceText: `${context.sourceText ?? ''}`.trim() || null,
-      chatId: `${context.chatId ?? ''}`.trim() || null,
-      messageId: `${context.messageId ?? ''}`.trim() || null,
-      assetId: `${context.assetId ?? ''}`.trim() || null,
-      assetType: `${context.assetType ?? ''}`.trim() || null
-    });
-    this.openSettingsPopup('report-user');
   }
 
   openImpressionsPopup(userId?: string): void {
@@ -594,22 +421,10 @@ export class NavigatorService {
       ? (this.appCtx.userProfileStore.getUserProfile(normalizedUserId)
         ?? (normalizedUserId === activeUserId ? this.appCtx.userProfileStore.activeUserProfile() : null))
       : null;
-    this.impressionsPopupUserIdRef.set(normalizedUserId);
     if (normalizedUserId && !cachedUser) {
       void this.usersService.loadUserById(normalizedUserId);
     }
-    this.impressionsPopupOpenRef.set(true);
-  }
-
-  openContactsPopup(): void {
-    if (!this.appCtx.userProfileStore.activeUserId().trim()) {
-      return;
-    }
-    this.contactsPopupOpenRef.set(true);
-  }
-
-  closeContactsPopup(): void {
-    this.contactsPopupOpenRef.set(false);
+    this.navigatorStore.openImpressionsPopup(normalizedUserId);
   }
 
   openDeleteAccountConfirm(): void {
@@ -622,11 +437,11 @@ export class NavigatorService {
       confirmLabel: 'Delete',
       confirmTone: 'danger',
       onConfirm: async () => {
-        this.closeMenu();
+        this.navigatorStore.closeMenu();
         this.closeSettingsPopup();
-        this.closeProfileEditor();
+        this.navigatorStore.closeProfileEditor();
         this.closeImpressionsPopup();
-        this.closeContactsPopup();
+        this.navigatorStore.closeContactsPopup();
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           this.clearHydratedUser();
           localStorage.removeItem(NavigatorService.ADMIN_SESSION_STORAGE_KEY);
@@ -664,11 +479,11 @@ export class NavigatorService {
       confirmLabel: 'Kilépés',
       confirmTone: 'accent',
       onConfirm: async () => {
-        this.closeMenu();
+        this.navigatorStore.closeMenu();
         this.closeSettingsPopup();
-        this.closeProfileEditor();
+        this.navigatorStore.closeProfileEditor();
         this.closeImpressionsPopup();
-        this.closeContactsPopup();
+        this.navigatorStore.closeContactsPopup();
         const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           if (activeUserId) {
@@ -714,7 +529,7 @@ export class NavigatorService {
   }
 
   closeImpressionsPopup(): void {
-    const userId = this.impressionsPopupUserIdRef().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
     const cursor = userId ? (this.userRealtimeLongPollCursorByUserId[userId] ?? '') : '';
     if (userId && cursor) {
       this.userSeenImpressionsCursorByUserId[userId] = cursor;
@@ -722,8 +537,7 @@ export class NavigatorService {
     if (userId && this.userRealtimeLongPollInFlight) {
       this.userIgnoreNextImpressionsSnapshotByUserId[userId] = true;
     }
-    this.impressionsPopupOpenRef.set(false);
-    this.impressionsPopupUserIdRef.set('');
+    this.navigatorStore.closeImpressionsPopup();
   }
 
   private syncHydratedUserIntoAppContext(user: UserDto): void {

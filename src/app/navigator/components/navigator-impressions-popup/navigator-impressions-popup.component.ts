@@ -12,6 +12,7 @@ import {
   type NavigatorPresentation
 } from '../../navigator-presenters';
 import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 interface NavigatorImpressionsPulseFlags {
   hostTop: boolean;
@@ -80,6 +81,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   private readonly appCtx = inject(AppContext);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
   private readonly pulseFlagsRef = signal<NavigatorImpressionsPulseFlags>({
     ...NavigatorImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
@@ -93,9 +95,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     Record<keyof NavigatorImpressionsPulseFlags, ReturnType<typeof setTimeout>>
   > = {};
 
-  protected readonly popupOpen = this.navigatorService.impressionsPopupOpen;
+  protected readonly popupOpen = this.navigatorStore.impressionsPopupOpen;
   protected readonly viewModel = computed<NavigatorImpressionsViewModel | null>(() => {
-    const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
     const user = selectedUserId
       ? (this.appCtx.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.userProfileStore.activeUserId().trim() ? this.appCtx.userProfileStore.activeUserProfile() : null))
       : null;
@@ -143,7 +145,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const isOpen = this.popupOpen();
-      const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+      const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
       const user = selectedUserId
         ? (this.appCtx.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.userProfileStore.activeUserId().trim() ? this.appCtx.userProfileStore.activeUserProfile() : null))
         : null;

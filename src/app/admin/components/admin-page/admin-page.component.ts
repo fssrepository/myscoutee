@@ -14,9 +14,9 @@ import {
   type AdminDashboardDto
 } from '../../../shared/core';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components';
-import { NavigatorService } from '../../../navigator/navigator.service';
 import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 @Component({
   selector: 'app-admin-page',
@@ -39,7 +39,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly popupCtx = inject(AppPopupContext);
   private lastHandledAdminRequestMs = 0;
   private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -117,7 +117,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
           this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
           break;
         case 'profile':
-          this.navigatorService.openProfileEditor();
+          this.navigatorStore.openProfileEditor();
           break;
         case 'help-editor':
           this.adminPopup.openHelpEditor();

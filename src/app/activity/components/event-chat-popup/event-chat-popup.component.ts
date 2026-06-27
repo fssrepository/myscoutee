@@ -41,7 +41,7 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { NavigatorService } from '../../../navigator';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -136,7 +136,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly mediaService = inject(MediaService);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly location = inject(Location);
 
   protected readonly session = computed(() => this.activitiesStore.eventChatSession());
@@ -1713,7 +1713,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const attachment = this.resolveViewableMessageAttachment(message);
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId,

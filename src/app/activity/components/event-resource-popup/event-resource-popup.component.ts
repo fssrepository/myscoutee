@@ -22,7 +22,7 @@ import {
 } from '../../../shared/core';
 import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { NavigatorService } from '../../../navigator';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
@@ -97,7 +97,7 @@ export class EventResourcePopupComponent {
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
@@ -376,7 +376,7 @@ export class EventResourcePopupComponent {
     if (!context || !target || target.userId === this.activeUser().id.trim()) {
       return;
     }
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId: context.ownerId,

@@ -16,7 +16,8 @@ import {
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
 import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
-import { NavigatorService, type NavigatorSettingsPopup } from '../../navigator.service';
+import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore, type NavigatorSettingsPopup } from '../../../shared/ui/context/stores/navigator.store';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
 
@@ -36,13 +37,14 @@ import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popu
 })
 export class NavigatorSettingsPopupsComponent {
   private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly appCtx = inject(AppContext);
 
-  protected readonly activePopup = this.navigatorService.settingsPopup;
+  protected readonly activePopup = this.navigatorStore.settingsPopup;
   protected readonly activeUserId = this.appCtx.userProfileStore.activeUserId;
-  protected readonly privacyConsentRequired = this.navigatorService.privacyConsentRequired;
+  protected readonly privacyConsentRequired = this.navigatorStore.privacyConsentRequired;
   protected settingsPrivacySaving = false;
   protected settingsPrivacySaveMessage = '';
   protected settingsPrivacySaveError = '';

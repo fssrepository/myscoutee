@@ -37,7 +37,7 @@ import {
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -73,12 +73,12 @@ export class ProfileEditorComponent {
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly appCtx = inject(AppContext);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly profileSaveLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
 
-  protected readonly isOpen = this.navigatorService.profileEditorOpen;
+  protected readonly isOpen = this.navigatorStore.profileEditorOpen;
   protected readonly activeUserIsAdmin = this.appCtx.userProfileStore.activeUserIsAdmin;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
@@ -95,7 +95,7 @@ export class ProfileEditorComponent {
 
   constructor() {
     effect(() => {
-      const isOpen = this.navigatorService.profileEditorOpen();
+      const isOpen = this.navigatorStore.profileEditorOpen();
       const activeProfileExt = this.appCtx.userProfileStore.activeUserProfileExt();
       const activeUser = activeProfileExt?.profile ?? this.appCtx.userProfileStore.activeUserProfile();
       const activeUserId = activeUser?.id.trim() ?? '';
@@ -181,7 +181,7 @@ export class ProfileEditorComponent {
       this.panel = 'profile';
       return;
     }
-    this.navigatorService.closeProfileEditor();
+    this.navigatorStore.closeProfileEditor();
     this.resetTransientUiState();
   }
 
@@ -191,7 +191,7 @@ export class ProfileEditorComponent {
       return;
     }
     await this.commitProfileForm(false);
-    this.navigatorService.closeProfileEditor();
+    this.navigatorStore.closeProfileEditor();
     this.resetTransientUiState();
   }
 

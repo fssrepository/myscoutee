@@ -50,6 +50,7 @@ import {
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import { NavigatorService } from '../../../navigator';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
@@ -99,6 +100,7 @@ export class EventExplorePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   protected readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
@@ -1083,7 +1085,7 @@ export class EventExplorePopupComponent {
     if (!targetUserId || targetUserId === this.activeUserId.trim()) {
       return;
     }
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId,
       targetName: record.creatorName?.trim() || 'Organizer',
       eventId: record.id,

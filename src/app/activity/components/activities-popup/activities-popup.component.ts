@@ -48,7 +48,7 @@ import type {
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { NavigatorService } from '../../../navigator';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import {
   ActivitiesChatTemplateComponent, ActivitiesChatsController
 } from './templates/chat/activities-chat-template.component';
@@ -176,7 +176,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
-  protected readonly navigatorService = inject(NavigatorService);
+  protected readonly navigatorStore = inject(NavigatorStore);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -624,7 +624,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
-    this.navigatorService.openProfileView(profileView);
+    this.navigatorStore.openProfileView(profileView);
   }
 
   protected isActivityIdentityTrashed(type: ActivityPopupCard['type'], id: string): boolean {

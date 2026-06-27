@@ -45,7 +45,7 @@ import { ActivitiesPopupStore } from '../../../../shared/ui/context/stores/activ
 import { ConfirmationDialogStore } from '../../../../shared/ui/context/stores/confirmation-dialog.store';
 import { OwnedAssetsStore } from '../../../../shared/ui/context/stores/owned-assets.store';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { NavigatorService } from '../../../../navigator';
+import { NavigatorStore } from '../../../../shared/ui/context/stores/navigator.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
@@ -159,7 +159,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   private lastCardsSignature = '';
@@ -2298,7 +2298,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId: ownerUserId,
       targetName: card.ownerName?.trim() || this.reportTargetName(ownerUserId, 'Owner'),
       eventId: context.ownerId,

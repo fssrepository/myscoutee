@@ -8,7 +8,7 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
-import { NavigatorBindings, NavigatorComponent, NavigatorService } from './navigator';
+import { NavigatorComponent, NavigatorService } from './navigator';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from './shared/app-calendar-date-adapter';
 import { Subscription } from 'rxjs';
 import { AppInstallPromptComponent } from './shared/ui/components/app-install-prompt/app-install-prompt.component';
@@ -17,6 +17,7 @@ import { FirebaseMessagingService } from './shared/core/base/services/firebase-m
 import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core';
 import { DemoBootstrapSelectorComponent } from './shared/ui';
+import { NavigatorStore, type NavigatorBindings } from './shared/ui/context/stores/navigator.store';
 
 @Component({
   selector: 'app-root',
@@ -58,6 +59,7 @@ export class App implements OnDestroy {
   private readonly firebaseMessagingService = inject(FirebaseMessagingService);
   private readonly i18nService = inject(I18nService);
   protected readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly navigatorBindings: NavigatorBindings = {};
   private readonly routerEventsSubscription: Subscription;
   private routeWarmupHideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -75,7 +77,7 @@ export class App implements OnDestroy {
     void this.pwaService.initialize();
     this.appLocationService.initialize();
     this.firebaseMessagingService.initialize();
-    this.navigatorService.registerBindings(this.navigatorBindings);
+    this.navigatorStore.registerBindings(this.navigatorBindings);
     this.syncNavigatorVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
     this.routeWarmupVisible = this.initialLandingWarmupPending;
@@ -110,7 +112,7 @@ export class App implements OnDestroy {
     this.clearRouteWarmupWatchdogTimer();
     this.clearMobileResumeRecoveryTimer();
     this.routerEventsSubscription.unsubscribe();
-    this.navigatorService.clearBindings(this.navigatorBindings);
+    this.navigatorStore.clearBindings(this.navigatorBindings);
   }
 
   @HostListener('window:pageshow')

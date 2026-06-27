@@ -12,9 +12,9 @@ import {
   AppMenuComponent, AppMenuTriggerComponent, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type SmartListConfig, type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import { AppContext } from '../../../shared/ui';
 import { ContactsService as ContactsDataService, ExplanationGuideService, UsersService, type ActivityMemberEntry, type ContactFormValue, type ContactListFilters, type ContactListItem, type ContactMethodDraft, type ContactMethodItem, type ContactMethodOption, type ContactMethodType, type StoredContact, type UserDto } from '../../../shared/core';
-import { NavigatorService } from '../../navigator.service';
 
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   {
@@ -156,11 +156,11 @@ export class ContactsPopupComponent implements OnDestroy {
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly contactsDataService = inject(ContactsDataService);
-  protected readonly contactsPopupOpen = this.navigatorService.contactsPopupOpen;
+  protected readonly contactsPopupOpen = this.navigatorStore.contactsPopupOpen;
   protected readonly contactMethodOptions = CONTACT_METHOD_OPTIONS;
   protected readonly searchText = signal('');
   protected readonly editingContact = signal<ContactFormValue | null>(null);
@@ -201,7 +201,7 @@ export class ContactsPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.setContactsExplanationContext(this.navigatorService.contactsPopupOpen() ? 'contacts' : null);
+      this.setContactsExplanationContext(this.navigatorStore.contactsPopupOpen() ? 'contacts' : null);
     });
 
     effect(() => {
@@ -270,7 +270,7 @@ export class ContactsPopupComponent implements OnDestroy {
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (!this.navigatorService.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
+    if (!this.navigatorStore.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -295,7 +295,7 @@ export class ContactsPopupComponent implements OnDestroy {
     this.searchText.set('');
     this.editingContact.set(null);
     this.formErrorMessage.set('');
-    this.navigatorService.closeContactsPopup();
+    this.navigatorStore.closeContactsPopup();
   }
 
   private setContactsExplanationContext(contextKey: string | null): void {
@@ -347,7 +347,7 @@ export class ContactsPopupComponent implements OnDestroy {
     if (!userId) {
       return;
     }
-    this.navigatorService.openProfileView({
+    this.navigatorStore.openProfileView({
       userId,
       label: contact.name
     });

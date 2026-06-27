@@ -35,7 +35,7 @@ import {
 } from '../../../shared/ui';
 import {
   ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
-import { NavigatorService } from '../../../navigator';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
 import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 
@@ -73,7 +73,7 @@ export class AssetMemberPickerPopupComponent {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -446,7 +446,7 @@ export class AssetMemberPickerPopupComponent {
     if (!userId) {
       return;
     }
-    this.navigatorService.openProfileView({
+    this.navigatorStore.openProfileView({
       userId,
       label: candidate.name
     });

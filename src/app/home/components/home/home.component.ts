@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { NavigatorService } from '../../../navigator';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -265,7 +265,7 @@ export class HomeComponent implements OnDestroy {
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly activitiesStore: ActivitiesPopupStore,
-    private readonly navigatorService: NavigatorService,
+    private readonly navigatorStore: NavigatorStore,
     private readonly appCtx: AppContext,
     private readonly explanationGuide: ExplanationGuideService,
     private readonly gameService: GameService,
@@ -367,7 +367,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get isAccountReactivationPending(): boolean {
-    return this.navigatorService.deletedAccountReactivationPending();
+    return this.navigatorStore.deletedAccountReactivationPending();
   }
 
   protected get homeHeaderControlsReady(): boolean {
@@ -779,7 +779,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
-    this.navigatorService.openProfileView(profileView);
+    this.navigatorStore.openProfileView(profileView);
   }
 
   protected setRating(value: number): void {

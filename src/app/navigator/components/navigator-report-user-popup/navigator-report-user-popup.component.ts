@@ -10,6 +10,7 @@ import {
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
 import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 @Component({
   selector: 'app-navigator-report-user-popup',
@@ -20,6 +21,7 @@ import { NavigatorService } from '../../navigator.service';
 })
 export class NavigatorReportUserPopupComponent implements OnDestroy {
   private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly appCtx = inject(AppContext);
   private readonly submitLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
@@ -30,7 +32,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
   protected readonly reportUserHandleMinLength = 3;
   protected readonly reportUserDetailsMinLength = 12;
-  protected readonly reportUserContext = this.navigatorService.reportUserContext;
+  protected readonly reportUserContext = this.navigatorStore.reportUserContext;
   protected readonly isContextualReport = computed(() => {
     const context = this.reportUserContext();
     return !!context?.targetUserId?.trim() && !!context?.eventId?.trim();

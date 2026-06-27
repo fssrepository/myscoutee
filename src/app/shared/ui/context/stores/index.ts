@@ -11,6 +11,15 @@ export type { ConfirmationDialogConfig, ConfirmationDialogState, ConfirmationDia
 export type { EventCheckoutDialogConfig, EventCheckoutDialogState } from './event-checkout-dialog.store';
 export type { EventCheckoutDraft } from './event-checkout-draft.store';
 export { HelpCenterStore } from './help-center.store';
+export {
+  NavigatorStore,
+  type NavigatorBindings,
+  type NavigatorMenuUiState,
+  type NavigatorProfileViewRequest,
+  type NavigatorProfileViewTarget,
+  type NavigatorReportUserContext,
+  type NavigatorSettingsPopup
+} from './navigator.store';
 export { PopupStore } from './popup.store';
 export { SubEventResourcePopupStore } from './sub-event-resource-popup.store';
 export { UserProfileStore } from './user-profile.store';

@@ -149,7 +149,7 @@ export class ActivitiesEventsController {
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
   private get popupCtx() { return this.host.popupCtx; }
-  private get navigatorService() { return this.host.navigatorService; }
+  private get navigatorStore() { return this.host.navigatorStore; }
   private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
   private set activeHostingIds(value: ReadonlySet<string>) { this.host.activeHostingIds = value; }
@@ -392,7 +392,7 @@ export class ActivitiesEventsController {
       return;
     }
     const entityId = this.resolveActivityShareEntityId(row, card);
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId: entityId || row.id,

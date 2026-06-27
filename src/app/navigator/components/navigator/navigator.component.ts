@@ -37,6 +37,7 @@ import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/user
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
 import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import { resolveNavigatorPresentation } from '../../navigator-presenters';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 
@@ -121,6 +122,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly ownedAssetsStore = inject(OwnedAssetsStore);
@@ -171,7 +173,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
   protected readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
   protected readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
-  protected readonly bindings = this.navigatorService.bindings;
+  protected readonly bindings = this.navigatorStore.bindings;
   protected readonly activeUser = this.appCtx.userProfileStore.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
   protected readonly helpVersionLabel = this.helpCenterService.activeVersionLabel;
@@ -186,8 +188,8 @@ export class NavigatorComponent implements OnDestroy {
       imageUrl: AppUtils.firstImageUrl(user?.images) || null
     };
   });
-  protected readonly menuUiState = this.navigatorService.menuUiState;
-  protected readonly isCoveredByAssetPopup = this.navigatorService.navigatorCoveredByAssetPopup;
+  protected readonly menuUiState = this.navigatorStore.menuUiState;
+  protected readonly isCoveredByAssetPopup = this.navigatorStore.navigatorCoveredByAssetPopup;
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
     return path !== '/' && !path.startsWith('/entry');
@@ -754,7 +756,7 @@ export class NavigatorComponent implements OnDestroy {
       const status = this.activeUserLoadState().status;
 
       if (!isInternal) {
-        this.navigatorService.closeMenu();
+        this.navigatorStore.closeMenu();
         this.clearUserMenuLoadState();
         return;
       }
@@ -774,21 +776,21 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isOpen = this.navigatorService.impressionsPopupOpen();
+      const isOpen = this.navigatorStore.impressionsPopupOpen();
       if (isOpen && !this.navigatorImpressionsPopupComponentRef()) {
         void this.ensureNavigatorImpressionsPopupLoaded();
       }
     });
 
     effect(() => {
-      const isOpen = this.navigatorService.profileEditorOpen();
+      const isOpen = this.navigatorStore.profileEditorOpen();
       if (isOpen && !this.profileEditorComponentRef()) {
         void this.ensureProfileEditorLoaded();
       }
     });
 
     effect(() => {
-      const isOpen = this.navigatorService.profileViewOpen();
+      const isOpen = this.navigatorStore.profileViewOpen();
       if (isOpen && !this.profileViewPopupComponentRef()) {
         void this.ensureProfileViewPopupLoaded();
       }
@@ -870,7 +872,7 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isContactsOpen = this.navigatorService.contactsPopupOpen();
+      const isContactsOpen = this.navigatorStore.contactsPopupOpen();
       if (isContactsOpen && !this.contactsPopupComponentRef()) {
         void this.ensureContactsPopupLoaded();
       }
@@ -962,11 +964,11 @@ export class NavigatorComponent implements OnDestroy {
     if (event.context?.kind !== 'toggle-menu' || !this.canToggleAvatarMenu()) {
       return;
     }
-    this.navigatorService.toggleMenu();
+    this.navigatorStore.toggleMenu();
   }
 
   protected onCloseMenu(): void {
-    this.navigatorService.closeMenu();
+    this.navigatorStore.closeMenu();
   }
 
   protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
@@ -1136,7 +1138,7 @@ export class NavigatorComponent implements OnDestroy {
       this.popupCtx.popupStore.openAdminNavigatorRequest('profile');
       return;
     }
-    this.navigatorService.openProfileEditor();
+    this.navigatorStore.openProfileEditor();
   }
 
   protected impressionShortcutBadgeCount(user: NavigatorMenuUser): number {
@@ -1211,7 +1213,9 @@ export class NavigatorComponent implements OnDestroy {
 
   protected openContactsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.navigatorService.openContactsPopup();
+    if (this.appCtx.userProfileStore.activeUserId().trim()) {
+      this.navigatorStore.openContactsPopup();
+    }
   }
 
   protected openEventFeedbackPopup(event?: Event): void {

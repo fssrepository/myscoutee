@@ -7,7 +7,7 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { I18nPipe, ProgressIndicatorComponent } from '../../../shared/ui';
 import {
   ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
-import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 interface ProfileViewRow {
   label: string;
@@ -29,10 +29,10 @@ interface ProfileViewRow {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileViewPopupComponent {
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly contactsService = inject(ContactsService);
 
-  protected readonly target = this.navigatorService.profileViewTarget;
+  protected readonly target = this.navigatorStore.profileViewTarget;
   private readonly targetUserId = computed(() => this.target()?.userId?.trim() || undefined);
   private readonly profileResource = resource<ProfileViewData, string | undefined>({
     params: () => this.targetUserId(),
@@ -92,7 +92,7 @@ export class ProfileViewPopupComponent {
 
   protected closePopup(event?: Event): void {
     event?.stopPropagation();
-    this.navigatorService.closeProfileView();
+    this.navigatorStore.closeProfileView();
   }
 
   protected displayTitle(user: UserDto): string {
