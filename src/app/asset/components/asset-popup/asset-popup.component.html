@@ -185,7 +185,7 @@
         <section class="app-popup app-popup-stacked app-popup-super-stacked asset-supply-requests-shell">
           <div class="app-popup-backdrop" (click)="closeSupplyRequestList()"></div>
           <div
-            class="app-popup-panel popup-panel-assets popup-panel-wide popup-panel-full-height asset-supply-requests-panel"
+            class="app-popup-panel popup-panel-wide popup-panel-full-height asset-supply-requests-panel"
             (click)="$event.stopPropagation()"
             >
             <div class="popup-header popup-header-friends-picker asset-supply-requests-head">
@@ -195,19 +195,21 @@
                   <p>{{ assetRequestListSubtitle() | i18n }}</p>
                 </div>
               </div>
-              <div class="popup-filter-picker asset-supply-request-filter-picker">
-                <app-menu
-                  class="asset-supply-request-filter-menu"
-                  kind="select"
-                  [trigger]="supplyRequestFilterMenuTrigger()"
-                  [items]="supplyRequestFilterMenuItems()"
-                  [mobileBreakpointPx]="900"
-                  (itemSelect)="onAssetPopupMenuSelect($event)"
-                ></app-menu>
+              <div class="asset-supply-requests-actions">
+                <div class="popup-filter-picker asset-supply-request-filter-picker">
+                  <app-menu
+                    class="asset-supply-request-filter-menu"
+                    kind="select"
+                    [trigger]="supplyRequestFilterMenuTrigger()"
+                    [items]="supplyRequestFilterMenuItems()"
+                    [mobileBreakpointPx]="900"
+                    (itemSelect)="onAssetPopupMenuSelect($event)"
+                  ></app-menu>
+                </div>
+                <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" [attr.aria-label]="'asset.requests.close' | i18n">
+                  <mat-icon>close</mat-icon>
+                </button>
               </div>
-              <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" [attr.aria-label]="'asset.requests.close' | i18n">
-                <mat-icon>close</mat-icon>
-              </button>
             </div>
 
             <div class="popup-body popup-body-friends-picker asset-supply-requests-body">
