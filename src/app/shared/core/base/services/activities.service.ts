@@ -63,11 +63,11 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.appCtx.activeUserProfile()?.id?.trim();
+    const activeUserProfileId = this.appCtx.userProfileStore.activeUserProfile()?.id?.trim();
     if (activeUserProfileId) {
       return activeUserProfileId;
     }
-    const activeUserId = this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }
@@ -140,7 +140,7 @@ export class ActivitiesService extends BaseRouteModeService {
       if (!user?.id?.trim()) {
         continue;
       }
-      this.appCtx.setUserProfile(user);
+      this.appCtx.userProfileStore.setUserProfile(user);
     }
   }
 

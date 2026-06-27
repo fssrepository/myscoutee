@@ -1,7 +1,27 @@
-import { Injectable, computed, effect, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject } from '@angular/core';
 import type { CdkDragDrop } from '@angular/cdk/drag-drop';
 
 import { AppContext, AppPopupContext, AssetInfoCardConverter, type ActivitiesNavigationRequest } from '../../shared/ui';
+import { ActivitiesPopupStore } from '../../shared/ui/context/stores/activities-popup.store';
+import { EventEditorPopupStore } from '../../shared/ui/context/stores/event-editor-popup.store';
+import { SubEventResourcePopupStore } from '../../shared/ui/context/stores/sub-event-resource-popup.store';
+import type { EventEditorSubEventResourcePopupRequest } from '../../shared/ui/context/event-editor-popup.types';
+import type {
+  AssetExploreBorrowDialogState,
+  AssetExploreBorrowDraftState,
+  AssetExploreBorrowPricingPreview,
+  AssetExplorePopupState,
+  AssignedAssetJoinDialogState,
+  AssignedAssetJoinPricingPreview,
+  CapacityEditorState,
+  PendingAssignSaveState,
+  PendingResourceDeleteState,
+  PendingSupplyDeleteState,
+  ResourcePopupContext,
+  RouteEditorState,
+  SupplyBringDialogState,
+  SupplyContributionPopupState
+} from '../../shared/ui/context/sub-event-resource-popup.types';
 import { AssetPopupStateService } from '../../asset/asset-popup-state.service';
 import type { AssetPopupHost } from '../../asset/asset-popup.host';
 import { OwnedAssetsPopupFacadeService } from '../../asset/owned-assets-popup-facade.service';
@@ -11,8 +31,6 @@ import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../sh
 import type * as ContractTypes from '../../shared/core/contracts';
 import {
   ActivityMembersService, ActivityResourceBuilder, ActivityResourcesService, AssetsService as SharedAssetsService, EventsService, UsersService, type UserDto } from '../../shared/core';
-import { ActivitiesPopupStateService } from './activities-popup-state.service';
-import { EventEditorPopupStateService } from './event-editor-popup-state.service';
 import { NavigatorService } from '../../navigator';
 import type {
   AssignedAssetJoinDialogViewState,
@@ -31,149 +49,13 @@ import type * as ActivityContracts from '../../shared/core/contracts/activity.in
 
 import type * as AppDTOs from '../../shared/core/contracts';
 import type * as AppConstants from '../../shared/core/common/constants';
-interface ResourcePopupContext {
-  origin: 'chat' | 'eventEditor';
-  ownerId: string;
-  parentTitle: string;
-  subEvent: ContractTypes.SubEventDTO;
-  groupId?: string;
-  groupName?: string;
-  fallbackCardsByType: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>;
-}
-
-interface CapacityEditorState {
-  subEventId: string;
-  type: AppConstants.AssetType;
-  assetId: string;
-  title: string;
-  capacityMin: number;
-  capacityMax: number;
-  capacityLimit: number;
-  busy: boolean;
-  error: string | null;
-}
-
-interface RouteEditorState {
-  subEventId: string;
-  type: 'Car';
-  assetId: string;
-  title: string;
-  mode: 'view' | 'edit';
-  routes: string[];
-  routeRowIds: string[];
-  busy: boolean;
-  error: string | null;
-}
-
-interface SupplyContributionPopupState {
-  subEventId: string;
-  assetId: string;
-  title: string;
-}
-
-interface PendingSupplyDeleteState {
-  subEventId: string;
-  assetId: string;
-  entryId: string;
-  label: string;
-  busy: boolean;
-  error: string | null;
-}
-
-interface PendingResourceDeleteState {
-  assetId: string;
-  type: AppConstants.AssetType;
-  title: string;
-  busy: boolean;
-  error: string | null;
-}
-
-interface PendingAssignSaveState {
-  subEventId: string;
-  type: AppConstants.AssetType;
-  busy: boolean;
-  error: string | null;
-}
-
-interface AssetExplorePopupState {
-  subEventId: string;
-  type: AppConstants.AssetType;
-  category: AppConstants.AssetCategory;
-  startAtIso: string;
-  endAtIso: string;
-  loading: boolean;
-  error: string | null;
-  cards: AppDTOs.AssetCardDTO[];
-}
-
-interface AssetExploreBorrowDialogState {
-  cardId: string;
-  ownerUserId: string;
-  quantity: number;
-  startAtIso: string;
-  endAtIso: string;
-  availableQuantity: number;
-  acceptedPolicyIds: string[];
-  checkoutSessionId: string | null;
-  paymentStep: boolean;
-  busy: boolean;
-  error: string | null;
-}
-
-interface AssignedAssetJoinDialogState {
-  cardId: string;
-  type: 'Car' | 'Accommodation';
-  sourceAssetId: string;
-  acceptedPolicyIds: string[];
-  busy: boolean;
-  error: string | null;
-}
-
-interface AssetExploreBorrowDraftState {
-  userId: string;
-  subEventId: string;
-  cardId: string;
-  ownerUserId: string;
-  title: string;
-  quantity: number;
-  startAtIso: string;
-  endAtIso: string;
-  acceptedPolicyIds: string[];
-  checkoutSessionId: string | null;
-  paymentStep: boolean;
-  updatedAtMs: number;
-}
-
-interface AssetExploreBorrowPricingPreview {
-  amount: number;
-  currency: string;
-}
-
-interface SupplyBringDialogState {
-  subEventId: string;
-  cardId: string;
-  title: string;
-  quantity: number;
-  min: number;
-  max: number;
-  busy: boolean;
-  error: string | null;
-}
-
-interface AssignedAssetJoinPricingPreview {
-  totalAmount: number;
-  shareAmount: number;
-  shareMemberCount: number;
-  currency: string;
-  chargeType: AppConstants.PricingChargeType | null;
-}
 
 @Injectable({
   providedIn: 'root'
 })
 export class SubEventResourcePopupController {
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -182,6 +64,7 @@ export class SubEventResourcePopupController {
   private readonly eventsService = inject(EventsService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly usersService = inject(UsersService);
   private readonly navigatorService = inject(NavigatorService);
 
@@ -193,25 +76,25 @@ export class SubEventResourcePopupController {
     return new Map(this.users.map(user => [user.id, user]));
   }
 
-  private readonly popupContextRef = signal<ResourcePopupContext | null>(null);
-  private readonly resourceFilterRef = signal<AppConstants.AssetType>('Car');
-  private readonly resourceAssetViewIdRef = signal<string | null>(null);
-  private readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
-  private readonly resourceAssetViewReturnToChatRef = signal(false);
-  private readonly capacityEditorRef = signal<CapacityEditorState | null>(null);
-  private readonly routeEditorRef = signal<RouteEditorState | null>(null);
-  private readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
-  private readonly bringDialogRef = signal<SupplyBringDialogState | null>(null);
-  private readonly pendingSupplyDeleteRef = signal<PendingSupplyDeleteState | null>(null);
-  private readonly pendingResourceDeleteRef = signal<PendingResourceDeleteState | null>(null);
-  private readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
-  private readonly assetExplorePopupRef = signal<AssetExplorePopupState | null>(null);
-  private readonly assetExploreOnlyRef = signal(false);
-  private readonly assetExploreBorrowDialogRef = signal<AssetExploreBorrowDialogState | null>(null);
-  private readonly assignedAssetJoinDialogRef = signal<AssignedAssetJoinDialogState | null>(null);
-  private readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
-  private readonly assignContextRef = signal<{ subEventId: string; type: AppConstants.AssetType } | null>(null);
-  private readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+  private readonly popupContextRef = this.resourcePopupStore.popupContextRef;
+  private readonly resourceFilterRef = this.resourcePopupStore.resourceFilterRef;
+  private readonly resourceAssetViewIdRef = this.resourcePopupStore.resourceAssetViewIdRef;
+  private readonly resourceAssetViewModeRef = this.resourcePopupStore.resourceAssetViewModeRef;
+  private readonly resourceAssetViewReturnToChatRef = this.resourcePopupStore.resourceAssetViewReturnToChatRef;
+  private readonly capacityEditorRef = this.resourcePopupStore.capacityEditorRef;
+  private readonly routeEditorRef = this.resourcePopupStore.routeEditorRef;
+  private readonly supplyPopupRef = this.resourcePopupStore.supplyPopupRef;
+  private readonly bringDialogRef = this.resourcePopupStore.bringDialogRef;
+  private readonly pendingSupplyDeleteRef = this.resourcePopupStore.pendingSupplyDeleteRef;
+  private readonly pendingResourceDeleteRef = this.resourcePopupStore.pendingResourceDeleteRef;
+  private readonly pendingAssignSaveRef = this.resourcePopupStore.pendingAssignSaveRef;
+  private readonly assetExplorePopupRef = this.resourcePopupStore.assetExplorePopupRef;
+  private readonly assetExploreOnlyRef = this.resourcePopupStore.assetExploreOnlyRef;
+  private readonly assetExploreBorrowDialogRef = this.resourcePopupStore.assetExploreBorrowDialogRef;
+  private readonly assignedAssetJoinDialogRef = this.resourcePopupStore.assignedAssetJoinDialogRef;
+  private readonly assetExploreBorrowDraftsRef = this.resourcePopupStore.assetExploreBorrowDraftsRef;
+  private readonly assignContextRef = this.resourcePopupStore.assignContextRef;
+  private readonly selectedAssignAssetIdsRef = this.resourcePopupStore.selectedAssignAssetIdsRef;
 
   private readonly assignedAssetIdsByKey: Record<string, string[]> = {};
   private readonly assignedAssetSettingsByKey: Record<string, Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO>> = {};
@@ -421,11 +304,11 @@ export class SubEventResourcePopupController {
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
-      this.popupCtx.clearActivitiesNavigationRequest();
+      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'assetExplore') {
         this.openStandaloneAssetExploreRequest(request);
         return;
@@ -434,18 +317,18 @@ export class SubEventResourcePopupController {
     });
 
     effect(() => {
-      const request = this.eventEditorService.subEventResourcePopupRequest();
+      const request = this.eventEditorStore.subEventResourcePopupRequest();
       if (!request) {
         return;
       }
-      this.eventEditorService.clearSubEventResourcePopupRequest();
+      this.eventEditorStore.clearSubEventResourcePopupRequest();
       this.openFromEventEditorRequest(request);
     });
   }
 
   private activeUser(): UserDto {
-    const activeUserId = this.appCtx.activeUserId().trim();
-    return this.appCtx.activeUserProfile()
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserProfile()
       ?? this.usersService.peekCachedUserById(activeUserId)
       ?? this.users[0]
       ?? this.createFallbackUser(activeUserId);
@@ -453,7 +336,7 @@ export class SubEventResourcePopupController {
 
   private openFromChatRequest(request: Extract<ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
-      this.popupCtx.requestActivitiesNavigation({
+      this.popupCtx.popupStore.requestActivitiesNavigation({
         type: 'members',
         ownerId: request.group?.id?.trim() || request.subEvent.id,
         ownerType: request.group?.id ? 'group' : 'subEvent'
@@ -524,12 +407,12 @@ export class SubEventResourcePopupController {
     this.openExplorePopup();
   }
 
-  private openFromEventEditorRequest(request: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>): void {
+  private openFromEventEditorRequest(request: EventEditorSubEventResourcePopupRequest): void {
     if (request.type === 'Members') {
       const group = request.group ?? null;
       const ownerId = group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim();
       const groupLabel = group?.groupLabel?.trim() ?? '';
-      this.popupCtx.requestActivitiesNavigation({
+      this.popupCtx.popupStore.requestActivitiesNavigation({
         type: 'members',
         ownerId,
         ownerType: group?.id ? 'group' : 'subEvent',
@@ -562,7 +445,7 @@ export class SubEventResourcePopupController {
     parentTitle: string,
     type: AppConstants.AssetType,
     rawSubEvent: ContractTypes.SubEventDTO,
-    group: NonNullable<ReturnType<EventEditorPopupStateService['subEventResourcePopupRequest']>>['group'],
+    group: EventEditorSubEventResourcePopupRequest['group'],
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>>
   ): ResourcePopupContext {
     const subEvent = this.cloneSubEvent(rawSubEvent);
@@ -918,7 +801,7 @@ export class SubEventResourcePopupController {
     const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
       ownerType: 'asset',
@@ -2095,7 +1978,7 @@ export class SubEventResourcePopupController {
       lastSenderId: managerUserId || activeUserId,
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
   private canReportAssetExploreOwner(card: AppDTOs.AssetCardDTO): boolean {
@@ -2184,7 +2067,7 @@ export class SubEventResourcePopupController {
 
   private reportTargetName(userId: string, fallback: string): string {
     const normalizedUserId = userId.trim();
-    return this.appCtx.getUserProfile(normalizedUserId)?.name?.trim()
+    return this.appCtx.userProfileStore.getUserProfile(normalizedUserId)?.name?.trim()
       || (normalizedUserId === this.activeUser().id.trim() ? this.activeUser().name?.trim() : '')
       || fallback;
   }
@@ -3016,7 +2899,7 @@ export class SubEventResourcePopupController {
       lastSenderId: ownerUserId || activeUserId,
       avatarSource: card.ownerName || card.title
     });
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
   private buildServiceChatItem(input: {

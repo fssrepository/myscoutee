@@ -1,4 +1,4 @@
-@if (activitiesContext.activitiesOpenBoolean()) {
+@if (activitiesStore.activitiesOpenBoolean()) {
   <div class="app-popup">
     <div class="app-popup-backdrop" (click)="closeActivitiesPopup()"></div>
     <div class="app-popup-panel popup-panel-activities popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">

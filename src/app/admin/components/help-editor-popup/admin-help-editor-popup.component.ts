@@ -1060,7 +1060,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   protected documentLabel(): string {

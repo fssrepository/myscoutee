@@ -250,7 +250,7 @@ export class ContactsPopupComponent implements OnDestroy {
     emptyStickyLabel: 'No contacts',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',
@@ -583,7 +583,7 @@ export class ContactsPopupComponent implements OnDestroy {
       return;
     }
 
-    this.popupCtx.openActivityInvitePopup({
+    this.popupCtx.popupStore.openActivityInvitePopup({
       ownerId: activeUserId,
       ownerType: 'asset',
       title: 'Create contact',
@@ -1028,7 +1028,7 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private randomId(prefix: string): string {

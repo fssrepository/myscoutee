@@ -150,7 +150,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     emptyDescription: query => this.assetFacade.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -173,7 +173,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
     emptyStickyLabel: 'No tickets',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',
@@ -1246,7 +1246,7 @@ export class AssetPopupComponent implements DoCheck, OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private currentAssetSmartListType(): AppConstants.AssetType {

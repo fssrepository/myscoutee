@@ -172,7 +172,7 @@ export class AdminWorkspaceService {
     this.dashboardRef.set(null);
     this.shell.clear();
     this.accessDeniedRef.set(false);
-    this.appCtx.setActiveUserId('');
+    this.appCtx.userProfileStore.setActiveUserId('');
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
     }
@@ -188,9 +188,9 @@ export class AdminWorkspaceService {
     }
     const session = this.sessionService.currentSession();
     if (session?.kind === 'firebase') {
-      this.appCtx.setActiveUserId(session.profile.id.trim());
+      this.appCtx.userProfileStore.setActiveUserId(session.profile.id.trim());
     } else {
-      this.appCtx.setActiveUserId('');
+      this.appCtx.userProfileStore.setActiveUserId('');
     }
   }
 
@@ -262,10 +262,10 @@ export class AdminWorkspaceService {
     const admin = dashboard.activeAdmin;
     const user = this.buildAdminProfile(admin, dashboard);
     const chatUnread = this.adminChatUnreadCount(dashboard);
-    this.appCtx.setUserProfile(user);
-    this.appCtx.setActiveUserId(user.id);
-    this.appCtx.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
-    this.appCtx.patchUserCounterOverrides(user.id, {
+    this.appCtx.userProfileStore.setUserProfile(user);
+    this.appCtx.userProfileStore.setActiveUserId(user.id);
+    this.appCtx.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+    this.appCtx.activityStore.patchUserCounterOverrides(user.id, {
       game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
       chat: chatUnread,
       events: dashboard.reportedUsers.length,
@@ -298,12 +298,12 @@ export class AdminWorkspaceService {
         return;
       }
       const normalizedAdminUserId = `${adminUserId ?? ''}`.trim();
-      this.appCtx.patchUserCounterOverrides(normalizedAdminUserId, counters);
-      const currentUser = this.appCtx.getUserProfile(normalizedAdminUserId);
+      this.appCtx.activityStore.patchUserCounterOverrides(normalizedAdminUserId, counters);
+      const currentUser = this.appCtx.userProfileStore.getUserProfile(normalizedAdminUserId);
       if (!currentUser) {
         return;
       }
-      this.appCtx.setUserProfile({
+      this.appCtx.userProfileStore.setUserProfile({
         ...currentUser,
         activities: {
           ...currentUser.activities,
@@ -317,7 +317,7 @@ export class AdminWorkspaceService {
   }
 
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
-    const existingAdminProfile = this.appCtx.getUserProfile(admin.id) ?? dashboard.activeAdminProfile ?? null;
+    const existingAdminProfile = this.appCtx.userProfileStore.getUserProfile(admin.id) ?? dashboard.activeAdminProfile ?? null;
     const name = `${existingAdminProfile?.name ?? admin.name}`.trim() || admin.name;
     const initials = `${existingAdminProfile?.initials ?? admin.initials}`.trim() || this.initialsFromName(name, admin.initials);
     const headline = `${existingAdminProfile?.headline ?? admin.headline ?? ''}`.trim() || 'Moderation workspace';

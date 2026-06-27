@@ -130,7 +130,7 @@ export class ActivitiesEventsController {
   constructor(private readonly host: ActivitiesEventsHost) {}
 
   private get activeUser() { return this.host.activeUser as any; }
-  private get activitiesContext() { return this.host.activitiesContext; }
+  private get activitiesStore() { return this.host.activitiesStore; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
@@ -142,7 +142,6 @@ export class ActivitiesEventsController {
   private get confirmationDialogService() { return this.host.confirmationDialogService; }
   private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
   private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
-  private get eventEditorService() { return this.host.eventEditorService; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
@@ -163,6 +162,17 @@ export class ActivitiesEventsController {
   private activityRowIdentity(row: ActivityEventCardData): string { return this.host.activityRowIdentity(row); }
   private applyActivityEventSave(sync: ActivityContracts.ActivityEventDTO): void {
     this.host.applyActivityEventSave(sync);
+  }
+  private emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
+    return this.eventsService.saveActivityEvent(payload)
+      .then((displaySync: ActivityContracts.ActivityEventDTO | null) => {
+        if (displaySync) {
+          this.activitiesStore.emitActivityEventSaveResult(displaySync);
+        }
+      })
+      .catch(() => {
+        // Demo persistence is best-effort; UI state stays optimistic.
+      });
   }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private cloneSyncedSubEventForms(items: ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] { return this.host.cloneSyncedSubEventForms(items); }
@@ -294,7 +304,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.openEventSubeventsListPopup({
+    this.popupCtx.popupStore.openEventSubeventsListPopup({
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
       title: row.title,
@@ -788,7 +798,7 @@ export class ActivitiesEventsController {
       Math.max(0, Math.trunc(Number(eventDetailDTO.capacityTotal) || 0))
     );
     const persistence = Promise.all([
-      this.activitiesContext.emitActivityEventSave(eventDetailDTO),
+      this.emitActivityEventSave(eventDetailDTO),
       currentMembers.length > nextMembers.length
         ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
         : Promise.resolve()
@@ -1246,7 +1256,7 @@ export class ActivitiesEventsController {
 
   public openActivityMembers(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event',
@@ -1384,7 +1394,7 @@ export class ActivitiesEventsController {
   }
 
   public openActivityRowInEventModule(row: ActivityEventCardData, readOnly: boolean): void {
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',

@@ -626,7 +626,7 @@ export class GameService extends BaseRouteModeService {
 
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
-    this.appCtx.setStatus(contextKey, status, message);
+    this.appCtx.runtimeStore.setStatus(contextKey, status, message);
   }
 
 }

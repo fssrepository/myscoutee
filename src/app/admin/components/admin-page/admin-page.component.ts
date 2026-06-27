@@ -93,12 +93,12 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.adminNavigatorRequest();
+      const request = this.popupCtx.popupStore.adminNavigatorRequest();
       if (!request || request.updatedMs <= this.lastHandledAdminRequestMs) {
         return;
       }
       this.lastHandledAdminRequestMs = request.updatedMs;
-      this.popupCtx.clearAdminNavigatorRequest();
+      this.popupCtx.popupStore.clearAdminNavigatorRequest();
       switch (request.popup) {
         case 'reports':
           this.shell.openReports(this.workspace.dashboard()?.reportedUsers[0] ?? null);
@@ -187,7 +187,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   private openAdminSelector(): void {
-    this.popupCtx.openDemoBootstrapSelector({
+    this.popupCtx.popupStore.openDemoBootstrapSelector({
       mode: 'admin',
       title: 'Select admin user',
       subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',

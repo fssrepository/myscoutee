@@ -24,7 +24,7 @@ export class ActivitiesPopupToolbarController {
   private get activitiesViewOptions() { return this.host.activitiesViewOptions as typeof this.host.activitiesViewOptions; }
   private get activitiesRates() { return this.host.activitiesRates; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
-  private get activitiesContext() { return this.host.activitiesContext; }
+  private get activitiesStore() { return this.host.activitiesStore; }
   private get popupCtx() { return this.host.popupCtx; }
   private get cdr() { return this.host.cdr; }
   private get rateFilters() { return this.host.rateFilters as typeof this.host.rateFilters; }
@@ -342,11 +342,11 @@ export class ActivitiesPopupToolbarController {
     if (this.activitiesRateFilter.startsWith(group)) {
       this.activitiesRateSocialBadgeEnabled = nextEnabled;
     }
-    this.activitiesContext.setActivitiesRateSocialBadgeEnabledForGroup(group, nextEnabled);
+    this.activitiesStore.setActivitiesRateSocialBadgeEnabledForGroup(group, nextEnabled);
     if (this.activitiesRateFilter.startsWith(group)) {
       this.lastRateIndicatorPulseRowId = null;
       this.selectedActivityRateId = null;
-      this.activitiesContext.setActivitiesSelectedRateId(null);
+      this.activitiesStore.setActivitiesSelectedRateId(null);
       this.resetActivitiesScroll();
       this.syncActivitiesSmartListQuery();
       this.activitiesSmartList?.reload();
@@ -423,9 +423,9 @@ export class ActivitiesPopupToolbarController {
     if (filter !== 'rates') {
       this.activitiesRates.disableFullscreenMode();
     }
-    this.activitiesContext.setActivitiesPrimaryFilter(filter);
+    this.activitiesStore.setActivitiesPrimaryFilter(filter);
     if (filter === 'events' && this.activitiesSecondaryFilter === 'relevant') {
-      this.activitiesContext.setActivitiesSecondaryFilter('recent');
+      this.activitiesStore.setActivitiesSecondaryFilter('recent');
     }
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
@@ -452,12 +452,12 @@ export class ActivitiesPopupToolbarController {
   }
 
   selectActivitiesEventScope(scope: ContractTypes.ActivitiesEventScope): void {
-    const currentScope = this.activitiesContext.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
+    const currentScope = this.activitiesStore.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
     if (!this.isEventActivitiesPrimaryFilter() || currentScope === scope) {
       this.showActivitiesEventScopePicker = false;
       return;
     }
-    this.activitiesContext.setActivitiesEventScope(scope);
+    this.activitiesStore.setActivitiesEventScope(scope);
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
@@ -472,7 +472,7 @@ export class ActivitiesPopupToolbarController {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return;
     }
-    this.activitiesContext.setActivitiesChatContextFilter(filter);
+    this.activitiesStore.setActivitiesChatContextFilter(filter);
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
@@ -486,7 +486,7 @@ export class ActivitiesPopupToolbarController {
     if (!this.isHostingPublicationFilterVisible() || this.hostingPublicationFilter === filter) {
       return;
     }
-    this.activitiesContext.setActivitiesHostingPublicationFilter(filter);
+    this.activitiesStore.setActivitiesHostingPublicationFilter(filter);
     this.resetActivitiesScroll();
     this.cdr.markForCheck();
   }
@@ -498,7 +498,7 @@ export class ActivitiesPopupToolbarController {
     if (this.activitiesPrimaryFilter === 'rates') {
       this.activitiesRates.commitPendingDirectionOverrides();
     }
-    this.activitiesContext.setActivitiesSecondaryFilter(normalizedFilter);
+    this.activitiesStore.setActivitiesSecondaryFilter(normalizedFilter);
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
@@ -510,7 +510,7 @@ export class ActivitiesPopupToolbarController {
   }
 
   selectActivitiesRateFilter(filter: ContractTypes.RateFilterKey): void {
-    const currentFilter = this.activitiesContext.activitiesRateFilter() as ContractTypes.RateFilterKey;
+    const currentFilter = this.activitiesStore.activitiesRateFilter() as ContractTypes.RateFilterKey;
     if (currentFilter === filter) {
       this.showActivitiesPrimaryPicker = false;
       this.showActivitiesEventScopePicker = false;
@@ -521,10 +521,10 @@ export class ActivitiesPopupToolbarController {
       return;
     }
     this.activitiesRates.commitPendingDirectionOverrides(filter);
-    this.activitiesContext.setActivitiesRateFilter(filter);
+    this.activitiesStore.setActivitiesRateFilter(filter);
     this.lastRateIndicatorPulseRowId = null;
     this.selectedActivityRateId = null;
-    this.activitiesContext.setActivitiesSelectedRateId(null);
+    this.activitiesStore.setActivitiesSelectedRateId(null);
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -545,7 +545,7 @@ export class ActivitiesPopupToolbarController {
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.showActivitiesQuickActionsMenu = false;
-    this.activitiesContext.toggleActivitiesViewPicker();
+    this.activitiesStore.toggleActivitiesViewPicker();
   }
 
   toggleActivitiesSecondaryPicker(event: Event): void {
@@ -558,7 +558,7 @@ export class ActivitiesPopupToolbarController {
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesRatePicker = false;
     this.showActivitiesQuickActionsMenu = false;
-    this.activitiesContext.toggleActivitiesSecondaryPicker();
+    this.activitiesStore.toggleActivitiesSecondaryPicker();
   }
 
   setActivitiesView(view: ContractTypes.ActivitiesView, event?: Event): void {
@@ -569,7 +569,7 @@ export class ActivitiesPopupToolbarController {
     if (view !== 'distance') {
       this.activitiesRates.disableFullscreenMode();
     }
-    this.activitiesContext.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
+    this.activitiesStore.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesViewPicker = false;
     this.showActivitiesSecondaryPicker = false;
@@ -657,7 +657,7 @@ export class ActivitiesPopupToolbarController {
       ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
       : 'events';
     this.showActivitiesQuickActionsMenu = false;
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target
     });
@@ -674,6 +674,6 @@ export class ActivitiesPopupToolbarController {
 
   requestOpenEventExplore(): void {
     this.showActivitiesQuickActionsMenu = false;
-    this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore' });
+    this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 }

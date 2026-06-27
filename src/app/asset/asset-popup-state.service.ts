@@ -47,7 +47,7 @@ export class AssetPopupStateService {
     this.primaryVisibleRef()
     || this.stackedVisibleRef()
     || this.basketVisibleRef()
-    || this.popupCtx.activityInvitePopup() !== null
+    || this.popupCtx.popupStore.activityInvitePopup() !== null
     || this.ticketOverlayModeRef() !== null
   );
 
@@ -293,7 +293,7 @@ export class AssetPopupStateService {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private selectedTicketPayload(): AssetContracts.TicketScanPayloadDTO | null {

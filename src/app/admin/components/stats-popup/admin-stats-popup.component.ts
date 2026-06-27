@@ -658,6 +658,6 @@ export class AdminStatsPopupComponent {
   }
 
   private activeAdminId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 }

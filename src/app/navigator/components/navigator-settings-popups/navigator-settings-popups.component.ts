@@ -41,7 +41,7 @@ export class NavigatorSettingsPopupsComponent {
   private readonly appCtx = inject(AppContext);
 
   protected readonly activePopup = this.navigatorService.settingsPopup;
-  protected readonly activeUserId = this.appCtx.activeUserId;
+  protected readonly activeUserId = this.appCtx.userProfileStore.activeUserId;
   protected readonly privacyConsentRequired = this.navigatorService.privacyConsentRequired;
   protected settingsPrivacySaving = false;
   protected settingsPrivacySaveMessage = '';

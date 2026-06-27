@@ -43,7 +43,7 @@ export class AdminShellService {
   }
 
   openChat(): void {
-    this.popupCtx.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
+    this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
   }
 
   openHelpEditor(): void {

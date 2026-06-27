@@ -1,70 +1,21 @@
-import { computed, Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 
-import { environment } from '../../../environments/environment';
-import type * as ContractTypes from '../../shared/core/contracts';
-import { ChatsService, EventsService } from '../../shared/core';
-import type { ActivityEventDetailDTO, ActivityEventDTO } from '../../shared/core/contracts/activity.interface';
-import type { ChatDTO } from '../../shared/core/contracts/chat.interface';
-
-export interface EventChatSession {
-  item: ChatDTO;
-  openedAtIso: string;
-}
-
-interface ActivitiesUiState {
-  open: boolean;
-  openRevision: number;
-  primaryFilter: ContractTypes.ActivitiesPrimaryFilter;
-  eventScope: ContractTypes.ActivitiesEventScope;
-  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter;
-  chatContextFilter: ContractTypes.ActivitiesChatContextFilter;
-  supportCaseFilter: ContractTypes.SupportCaseFilter;
-  hostingPublicationFilter: ContractTypes.HostingPublicationFilter;
-  rateFilter: ContractTypes.RateFilterKey;
-  rateSocialBadgeEnabled: boolean;
-  rateIndividualSocialBadgeEnabled: boolean;
-  ratePairSocialBadgeEnabled: boolean;
-  view: ContractTypes.ActivitiesView;
-  showViewPicker: boolean;
-  showSecondaryPicker: boolean;
-  stickyValue: string;
-  ratesFullscreenMode: boolean;
-  selectedRateId: string | null;
-  adminServiceOnly: boolean;
-}
-
-const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
-  open: false,
-  openRevision: 0,
-  primaryFilter: 'chats',
-  eventScope: 'active-events',
-  secondaryFilter: 'recent',
-  chatContextFilter: 'all',
-  supportCaseFilter: 'all',
-  hostingPublicationFilter: 'all',
-  rateFilter: 'individual-given',
-  rateSocialBadgeEnabled: false,
-  rateIndividualSocialBadgeEnabled: false,
-  ratePairSocialBadgeEnabled: false,
-  view: 'day',
-  showViewPicker: false,
-  showSecondaryPicker: false,
-  stickyValue: '',
-  ratesFullscreenMode: false,
-  selectedRateId: null,
-  adminServiceOnly: false
-};
+import type * as ContractTypes from '../../../core/contracts';
+import type { ActivityEventDTO } from '../../../core/contracts/activity.interface';
+import type { ChatDTO } from '../../../core/contracts/chat.interface';
+import {
+  DEFAULT_ACTIVITIES_UI_STATE,
+  type ActivitiesUiState,
+  type EventChatSession
+} from '../activities-popup.types';
 
 @Injectable({
   providedIn: 'root'
 })
-export class ActivitiesPopupStateService {
-  private readonly eventsService = inject(EventsService);
-  private readonly chatsService = inject(ChatsService);
-
+export class ActivitiesPopupStore {
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private _activityEventSave = signal<ActivityEventDTO | null>(null);
-  private _eventChatSession = signal<EventChatSession | null>(null);
+  private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
+  private readonly _eventChatSession = signal<EventChatSession | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
   readonly activitiesOpen = computed(() => this._uiState().open);
@@ -91,10 +42,6 @@ export class ActivitiesPopupStateService {
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
-
-  readonly dataMode = environment.activitiesDataSource === 'local'
-    ? 'local'
-    : 'http';
 
   openActivities(
     primaryFilter: ContractTypes.ActivitiesPrimaryFilter = 'chats',
@@ -298,24 +245,8 @@ export class ActivitiesPopupStateService {
     this.patchUiState({ selectedRateId: rateId });
   }
 
-  emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
-    return this.runDeferredEventPersistence(payload);
-  }
-
   emitActivityEventSaveResult(sync: ActivityEventDTO): void {
     this._activityEventSave.set(sync);
-  }
-
-  private runDeferredEventPersistence(payload: ActivityEventDetailDTO): Promise<void> {
-    return this.eventsService.saveActivityEvent(payload)
-      .then(displaySync => {
-        if (displaySync) {
-          this._activityEventSave.set(displaySync);
-        }
-      })
-      .catch(() => {
-        // Demo persistence is best-effort; UI state stays optimistic.
-      });
   }
 
   clearActivityEventSave(): void {
@@ -343,54 +274,6 @@ export class ActivitiesPopupStateService {
       ...session,
       item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
     });
-  }
-
-  async loadEventChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
-    return this.chatsService.loadChatMessages(chat);
-  }
-
-  async sendEventChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
-    return this.chatsService.sendChatMessage(chat, text, clientId);
-  }
-
-  async sendEventChatMessageWithAttachments(
-    chat: ChatDTO,
-    text: string,
-    attachments: readonly ContractTypes.ChatMessageAttachment[],
-    clientId?: string,
-    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
-    return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
-  }
-
-  async updateEventChatMessage(
-    chat: ChatDTO,
-    messageId: string,
-    mutation: ContractTypes.ChatMessageMutation
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
-    return this.chatsService.updateChatMessage(chat, messageId, mutation);
-  }
-
-  async watchEventChatMessages(
-    chat: ChatDTO,
-    onMessage: (message: ContractTypes.ChatPopupMessage) => void
-  ): Promise<() => void> {
-    return this.chatsService.watchChatMessages(chat, onMessage);
-  }
-
-  async watchEventChatEvents(
-    chat: ChatDTO,
-    onEvent: (event: ContractTypes.ChatLiveEvent) => void
-  ): Promise<() => void> {
-    return this.chatsService.watchChatEvents(chat, onEvent);
-  }
-
-  async sendEventChatTyping(chat: ChatDTO, typing: boolean): Promise<void> {
-    return this.chatsService.sendChatTyping(chat, typing);
-  }
-
-  async markEventChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
-    return this.chatsService.markChatRead(chat, messageIds);
   }
 
   private patchUiState(patch: Partial<ActivitiesUiState>): void {
@@ -437,5 +320,4 @@ export class ActivitiesPopupStateService {
       memberIds: [...(item.memberIds ?? [])]
     };
   }
-
 }

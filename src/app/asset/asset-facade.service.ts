@@ -79,12 +79,12 @@ export class AssetFacadeService {
   }
 
   private currentActiveUserId(): string {
-    return this.appCtx.getActiveUserId().trim();
+    return this.appCtx.userProfileStore.getActiveUserId().trim();
   }
 
   private resolveActiveTicketHolder(): TicketPerson | null {
     const activeUserId = this.currentActiveUserId();
-    const activeProfile = this.appCtx.activeUserProfile();
+    const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
     if (activeProfile && activeProfile.id.trim() === activeUserId) {
       return activeProfile;
     }
@@ -174,7 +174,7 @@ export class AssetFacadeService {
     if (!normalizedUserId) {
       return null;
     }
-    const cachedProfile = this.appCtx.getUserProfile(normalizedUserId);
+    const cachedProfile = this.appCtx.userProfileStore.getUserProfile(normalizedUserId);
     if (cachedProfile) {
       return cachedProfile;
     }

@@ -75,11 +75,11 @@ export class ProfileEditorComponent {
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly navigatorService = inject(NavigatorService);
   private readonly usersService = inject(UsersService);
-  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
 
   protected readonly isOpen = this.navigatorService.profileEditorOpen;
-  protected readonly activeUserIsAdmin = this.appCtx.activeUserIsAdmin;
+  protected readonly activeUserIsAdmin = this.appCtx.userProfileStore.activeUserIsAdmin;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
@@ -96,8 +96,8 @@ export class ProfileEditorComponent {
   constructor() {
     effect(() => {
       const isOpen = this.navigatorService.profileEditorOpen();
-      const activeProfileExt = this.appCtx.activeUserProfileExt();
-      const activeUser = activeProfileExt?.profile ?? this.appCtx.activeUserProfile();
+      const activeProfileExt = this.appCtx.userProfileStore.activeUserProfileExt();
+      const activeUser = activeProfileExt?.profile ?? this.appCtx.userProfileStore.activeUserProfile();
       const activeUserId = activeUser?.id.trim() ?? '';
 
       if (!isOpen) {

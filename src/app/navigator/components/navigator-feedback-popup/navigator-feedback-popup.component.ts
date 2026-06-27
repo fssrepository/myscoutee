@@ -22,7 +22,7 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
   private readonly navigatorService = inject(NavigatorService);
   private readonly usersService = inject(UsersService);
   private readonly appCtx = inject(AppContext);
-  private readonly submitLoadState = this.appCtx.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+  private readonly submitLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   private submitAbortController: AbortController | null = null;
   private submitRequestVersion = 0;
 
@@ -46,12 +46,12 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
   protected feedbackSubmitted = false;
 
   constructor() {
-    this.appCtx.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 
   ngOnDestroy(): void {
     this.abortActiveSubmit();
-    this.appCtx.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 
   protected closePopup(): void {
@@ -99,18 +99,18 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
     if (this.isSubmitBusy() || this.feedbackSubmitted) {
       return;
     }
-    this.appCtx.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 
   protected async submitFeedback(): Promise<void> {
-    const activeUserId = this.appCtx.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     const subject = this.feedbackForm.subject.trim();
     const details = this.feedbackForm.details.trim();
     if (!activeUserId || !subject || details.length < this.feedbackDetailsMinLength || this.isSubmitting()) {
       return;
     }
 
-    this.appCtx.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
     const requestVersion = ++this.submitRequestVersion;
     const abortController = new AbortController();
     this.submitAbortController = abortController;
@@ -155,6 +155,6 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
     const controller = this.submitAbortController;
     this.submitAbortController = null;
     controller.abort();
-    this.appCtx.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 }

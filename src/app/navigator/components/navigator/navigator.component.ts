@@ -21,8 +21,8 @@ import { ProfileHeaderCardConverter } from '../../../shared/ui/converters';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
 import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
-import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
+import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
   ExplanationGuideService,
   HelpCenterService,
@@ -121,16 +121,16 @@ export class NavigatorComponent implements OnDestroy {
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly navigatorService = inject(NavigatorService);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupService = inject(AssetPopupStateService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResources = inject(SubEventResourcePopupController);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
-  private readonly activeUserLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
-  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
-  private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
+  private readonly activeUserLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly userLogoutLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
@@ -172,13 +172,13 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
   protected readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
   protected readonly bindings = this.navigatorService.bindings;
-  protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly activeUser = this.appCtx.userProfileStore.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
   protected readonly helpVersionLabel = this.helpCenterService.activeVersionLabel;
   protected readonly hasActiveHelpRevision = this.helpCenterService.hasActiveRevision;
   protected readonly privacyVersionLabel = this.privacyPolicy.activeVersionLabel;
   protected readonly termsVersionLabel = this.termsPolicy.activeVersionLabel;
-  protected readonly isOnline = this.appCtx.isOnline;
+  protected readonly isOnline = this.appCtx.runtimeStore.isOnline;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
     const user = this.activeUser();
     return {
@@ -195,7 +195,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
-    !this.appCtx.isOnline() && this.activeUser() !== null
+    !this.appCtx.runtimeStore.isOnline() && this.activeUser() !== null
   );
   protected readonly canToggleAvatarMenu = computed(() =>
     this.avatarVisible()
@@ -297,11 +297,11 @@ export class NavigatorComponent implements OnDestroy {
     }];
   });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
     if (!activeUser) {
       return null;
     }
-    const activityOverrides = this.appCtx.getUserCounterOverrides(activeUser.id);
+    const activityOverrides = this.appCtx.activityStore.getUserCounterOverrides(activeUser.id);
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
       chat: activityOverrides.chat ?? activeUser.activities?.chat ?? 0,
@@ -317,9 +317,9 @@ export class NavigatorComponent implements OnDestroy {
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
-    const impressionChangeFlags = this.appCtx.getUserImpressionChangeFlags(activeUser.id);
+    const impressionChangeFlags = this.appCtx.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveNavigatorPresentation('trait', activeUser.traitLabel ?? '');
-    const totalBadgeCount = this.appCtx.isAdminUserProfile(activeUser)
+    const totalBadgeCount = this.appCtx.userProfileStore.isAdminUserProfile(activeUser)
       ? (
         mergedActivities.game +
         mergedActivities.feedback +
@@ -345,7 +345,7 @@ export class NavigatorComponent implements OnDestroy {
     return {
       ...activeUser,
       completion: this.resolveCompletionPercent(activeUser),
-      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
+      impressions: this.appCtx.userProfileStore.getUserImpressions(activeUser.id) ?? activeUser.impressions,
       activities: mergedActivities,
       impressionChangeFlags,
       memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
@@ -795,28 +795,28 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isOpen = this.eventEditorService.isOpen();
+      const isOpen = this.eventEditorStore.isOpen();
       if (isOpen && !this.eventEditorPopupComponentRef()) {
         void this.ensureEventEditorPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.eventSubeventsListPopup();
+      const request = this.popupCtx.popupStore.eventSubeventsListPopup();
       if (request && !this.eventSubeventsListPopupComponentRef()) {
         void this.ensureEventSubeventsListPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.eventTournamentGroupsPopup();
+      const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
       if (request && !this.eventTournamentGroupsPopupComponentRef()) {
         void this.ensureEventTournamentGroupsPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
@@ -824,7 +824,7 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
@@ -832,7 +832,7 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
@@ -840,14 +840,14 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const session = this.activitiesContext.eventChatSession();
+      const session = this.activitiesStore.eventChatSession();
       if (session && !this.eventChatPopupComponentRef()) {
         void this.ensureEventChatPopupLoaded();
       }
     });
 
     effect(() => {
-      const isActivitiesOpen = this.activitiesContext.activitiesOpen();
+      const isActivitiesOpen = this.activitiesStore.activitiesOpen();
       if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
         void this.ensureActivitiesPopupLoaded();
       }
@@ -882,36 +882,36 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const activityInvitePopup = this.popupCtx.activityInvitePopup();
+      const activityInvitePopup = this.popupCtx.popupStore.activityInvitePopup();
       if (activityInvitePopup?.ownerId?.trim() && !this.assetMemberPickerPopupComponentRef()) {
         void this.ensureAssetMemberPickerPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.navigatorActivitiesRequest();
+      const request = this.popupCtx.popupStore.navigatorActivitiesRequest();
       if (!request || request.updatedMs <= this.lastHandledActivitiesRequestMs) {
         return;
       }
       this.lastHandledActivitiesRequestMs = request.updatedMs;
-      this.activitiesContext.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
+      this.activitiesStore.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
         adminServiceOnly: request.adminServiceOnly === true
       });
-      this.popupCtx.clearNavigatorActivitiesRequest();
+      this.popupCtx.popupStore.clearNavigatorActivitiesRequest();
     });
 
     effect(() => {
-      const request = this.popupCtx.navigatorAssetRequest();
+      const request = this.popupCtx.popupStore.navigatorAssetRequest();
       if (!request || request.updatedMs <= this.lastHandledAssetRequestMs) {
         return;
       }
       this.lastHandledAssetRequestMs = request.updatedMs;
       this.ownedAssets.openPopup(request.assetFilter);
-      this.popupCtx.clearNavigatorAssetRequest();
+      this.popupCtx.popupStore.clearNavigatorAssetRequest();
     });
 
     effect(() => {
-      const request = this.popupCtx.navigatorEventFeedbackRequest();
+      const request = this.popupCtx.popupStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
         return;
       }
@@ -929,12 +929,12 @@ export class NavigatorComponent implements OnDestroy {
 
   @HostListener('window:online')
   protected onWindowOnline(): void {
-    this.appCtx.setOnlineState(true);
+    this.appCtx.runtimeStore.setOnlineState(true);
   }
 
   @HostListener('window:offline')
   protected onWindowOffline(): void {
-    this.appCtx.setOnlineState(false);
+    this.appCtx.runtimeStore.setOnlineState(false);
   }
 
   protected onAvatarMenuSelect(
@@ -1114,7 +1114,7 @@ export class NavigatorComponent implements OnDestroy {
       return;
     }
     if (this.isAdminMode()) {
-      this.popupCtx.openAdminNavigatorRequest('profile');
+      this.popupCtx.popupStore.openAdminNavigatorRequest('profile');
       return;
     }
     this.navigatorService.openProfileEditor();
@@ -1166,7 +1166,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorAssetRequest('Car');
+    this.popupCtx.popupStore.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
@@ -1174,7 +1174,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorAssetRequest('Accommodation');
+    this.popupCtx.popupStore.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
@@ -1182,12 +1182,12 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorAssetRequest('Supplies');
+    this.popupCtx.popupStore.openNavigatorAssetRequest('Supplies');
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.openNavigatorAssetRequest('Ticket');
+    this.popupCtx.popupStore.openNavigatorAssetRequest('Ticket');
   }
 
   protected openContactsPopup(event?: Event): void {
@@ -1200,7 +1200,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorEventFeedbackRequest();
+    this.popupCtx.popupStore.openNavigatorEventFeedbackRequest();
   }
 
   protected isAdminMode(): boolean {
@@ -1212,7 +1212,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('reports');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('reports');
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {
@@ -1220,7 +1220,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('feedback');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('feedback');
   }
 
   protected openAdminChatShortcut(event?: Event): void {
@@ -1228,7 +1228,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('chat');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('chat');
   }
 
   protected openAdminProfileShortcut(event?: Event): void {
@@ -1236,7 +1236,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('profile');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('profile');
   }
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
@@ -1244,7 +1244,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('help-editor');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('help-editor');
   }
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
@@ -1252,7 +1252,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('idea-editor');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('idea-editor');
   }
 
   protected openAdminNotificationsShortcut(event?: Event): void {
@@ -1260,7 +1260,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('notifications');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('notifications');
   }
 
   protected openAdminParamsShortcut(event?: Event): void {
@@ -1268,7 +1268,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('params');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('params');
   }
 
   protected openAdminStatsShortcut(event?: Event): void {
@@ -1276,7 +1276,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('stats');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('stats');
   }
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
@@ -1284,7 +1284,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('affinity-graph');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('affinity-graph');
   }
 
   protected openAdminMonitoringShortcut(event?: Event): void {
@@ -1292,7 +1292,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('monitoring');
+    this.popupCtx.popupStore.openAdminNavigatorRequest('monitoring');
   }
 
   ngOnDestroy(): void {
@@ -1328,7 +1328,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private resolveUserBadgeCount(user: UserDto): number {
-    if (this.appCtx.isAdminUserProfile(user)) {
+    if (this.appCtx.userProfileStore.isAdminUserProfile(user)) {
       return (
         this.resolveActivityBadge(user, 'game') +
         this.resolveActivityBadge(user, 'chat') +
@@ -1337,7 +1337,7 @@ export class NavigatorComponent implements OnDestroy {
         this.resolveActivityBadge(user, 'adminMetrics')
       );
     }
-    const impressionFlags = this.appCtx.getUserImpressionChangeFlags(user.id);
+    const impressionFlags = this.appCtx.userProfileStore.getUserImpressionChangeFlags(user.id);
     return (
       (impressionFlags.host ? 1 : 0) +
       (impressionFlags.member ? 1 : 0) +
@@ -1356,7 +1356,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {
-    const override = this.appCtx.getUserCounterOverride(user.id, key);
+    const override = this.appCtx.activityStore.getUserCounterOverride(user.id, key);
     if (override !== null) {
       return override;
     }
@@ -1380,7 +1380,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
-    this.popupCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+    this.popupCtx.popupStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
   private openBlockedUserSupportChat(): void {
@@ -1403,8 +1403,8 @@ export class NavigatorComponent implements OnDestroy {
       serviceContext: 'notification',
       ownerUserId: activeUserId
     };
-    this.activitiesContext.openActivities('chats');
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openActivities('chats');
+    this.activitiesStore.openEventChat(chat);
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {
@@ -1555,14 +1555,14 @@ export class NavigatorComponent implements OnDestroy {
   protected onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
     if (popupEvent.detail?.type === 'eventExplore') {
-      this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore' });
+      this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
       void this.ensureEventExplorePopupLoaded();
       return;
     }
     if (popupEvent.detail?.type !== 'eventEditor') {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target: 'events'
     });

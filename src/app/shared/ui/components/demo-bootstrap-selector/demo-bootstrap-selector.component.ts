@@ -65,7 +65,7 @@ export class DemoBootstrapSelectorComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.demoBootstrapSelector();
+      const request = this.popupCtx.popupStore.demoBootstrapSelector();
       if (!request) {
         this.resetContextState();
         return;

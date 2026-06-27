@@ -21,7 +21,7 @@ import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.
 import { AppUtils } from '../../../shared/app-utils';
 import {
   ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
-import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   AppMenuDispatcher,
   AppMenuComponent,
@@ -105,7 +105,7 @@ export class EventExplorePopupComponent {
   private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
@@ -170,7 +170,7 @@ export class EventExplorePopupComponent {
     emptyDescription: 'Try another filter or check back later.',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     presentation: 'list',
     listLayout: 'card-grid',
@@ -196,11 +196,11 @@ export class EventExplorePopupComponent {
     this.refreshUsersDirectory();
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      this.popupCtx.clearActivitiesNavigationRequest();
+      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventCheckoutDraft') {
         void this.continueCheckoutDraftBySourceId(request.sourceId);
         return;
@@ -209,7 +209,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const nextActiveUserId = this.appCtx.activeUserId().trim();
+      const nextActiveUserId = this.appCtx.userProfileStore.activeUserId().trim();
       if (nextActiveUserId === this.activeUserId) {
         return;
       }
@@ -223,7 +223,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.appCtx.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -232,7 +232,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.activitiesContext.activityEventSave();
+      const sync = this.activitiesStore.activityEventSave();
       if (!sync) {
         return;
       }
@@ -637,7 +637,7 @@ export class EventExplorePopupComponent {
     if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
       ownerType: 'event',
@@ -685,7 +685,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: record.id,
       target: record.type === 'hosting' ? 'hosting' : 'events',
@@ -738,7 +738,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.appCtx.setUserProfile(this.resolveUser(record.creatorUserId, record));
+    this.appCtx.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
     this.navigatorService.openImpressionsPopup(record.creatorUserId);
   }
@@ -897,7 +897,7 @@ export class EventExplorePopupComponent {
     if (!normalizedSourceId) {
       return;
     }
-    const activeUserId = this.activeUserId.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.activeUserId.trim() || this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
     if (!activeUserId) {
       return;
     }
@@ -980,7 +980,7 @@ export class EventExplorePopupComponent {
       const eventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers);
       const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
       this.checkoutDraftClearSaveSourceIds.add(sourceId);
-      const persistence = this.activitiesContext.emitActivityEventSave(eventDetailDTO);
+      const persistence = this.emitActivityEventSave(eventDetailDTO);
       this.restoreVisibleEventExploreRecord(nextRecord);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
@@ -1052,7 +1052,7 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
   private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatDTO & { ownerUserId?: string }) | null {
@@ -1200,6 +1200,18 @@ export class EventExplorePopupComponent {
     if (changed) {
       this.cdr.markForCheck();
     }
+  }
+
+  private emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
+    return this.eventsService.saveActivityEvent(payload)
+      .then(displaySync => {
+        if (displaySync) {
+          this.activitiesStore.emitActivityEventSaveResult(displaySync);
+        }
+      })
+      .catch(() => {
+        // Demo persistence is best-effort; UI state stays optimistic.
+      });
   }
 
   private applyActivityEventSave(sync: ActivityEventDTO): void {
@@ -1559,7 +1571,7 @@ export class EventExplorePopupComponent {
     const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
     const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
     this.locallyTrackedMembershipSourceIds.add(record.id);
-    this.activitiesContext.emitActivityEventSave(nextEventDetailDTO);
+    this.emitActivityEventSave(nextEventDetailDTO);
 
     try {
       const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1580,7 +1592,7 @@ export class EventExplorePopupComponent {
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
       const nextRecord = this.withEventExploreMemberSummary(record, displayMembers);
-      this.activitiesContext.emitActivityEventSave(
+      this.emitActivityEventSave(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
@@ -1592,7 +1604,7 @@ export class EventExplorePopupComponent {
       await exitPromise;
       this.locallyTrackedMembershipSourceIds.delete(record.id);
       this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
-      this.activitiesContext.emitActivityEventSave(rollbackEventDetailDTO);
+      this.emitActivityEventSave(rollbackEventDetailDTO);
       throw error;
     }
   }
@@ -2004,7 +2016,7 @@ export class EventExplorePopupComponent {
 
   private refreshUsersDirectory(): void {
     const users = this.gameService.getGameCardsUsersSnapshot();
-    const activeProfile = this.appCtx.activeUserProfile();
+    const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
     const nextUsers = [...users];
 
     if (activeProfile && !nextUsers.some(user => user.id === activeProfile.id)) {

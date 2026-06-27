@@ -1380,7 +1380,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private activeUserParams(): HttpParams {

@@ -122,7 +122,7 @@ export class NavigatorService {
       if (!session) {
         return;
       }
-      if (this.appCtx.activeUserId().trim()) {
+      if (this.appCtx.userProfileStore.activeUserId().trim()) {
         return;
       }
       const bootstrapUserId = session.kind === 'firebase'
@@ -131,12 +131,12 @@ export class NavigatorService {
       if (!bootstrapUserId) {
         return;
       }
-      this.appCtx.setActiveUserId(bootstrapUserId);
+      this.appCtx.userProfileStore.setActiveUserId(bootstrapUserId);
     });
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.appCtx.activeUserId().trim();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
       const routeUrl = this.currentRouteUrlRef();
 
       if (!session) {
@@ -162,7 +162,7 @@ export class NavigatorService {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.appCtx.activeUserId().trim();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
 
       if (!session || !activeUserId) {
         this.stopUserRealtimeLongPoll();
@@ -170,7 +170,7 @@ export class NavigatorService {
         this.contactsPopupOpenRef.set(false);
         return;
       }
-      if (this.isAdminWorkspaceRoute() || this.appCtx.activeUserIsAdmin()) {
+      if (this.isAdminWorkspaceRoute() || this.appCtx.userProfileStore.activeUserIsAdmin()) {
         this.impressionsPopupOpenRef.set(false);
         this.contactsPopupOpenRef.set(false);
         this.activateUserRealtimeLongPoll(activeUserId);
@@ -182,7 +182,7 @@ export class NavigatorService {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.appCtx.activeUserId().trim();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
         && (Boolean(session) || this.isAdminWorkspaceRoute());
@@ -428,7 +428,7 @@ export class NavigatorService {
 
   private isActivePrivacyConsentRequired(): boolean {
     const requiredKey = this.privacyConsentRequiredKeyRef();
-    const activeUserId = this.appCtx.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     const revision = this.privacyPolicy.activeRevision();
     if (!requiredKey || !activeUserId || !revision) {
       return false;
@@ -583,11 +583,11 @@ export class NavigatorService {
   }
 
   openImpressionsPopup(userId?: string): void {
-    const normalizedUserId = `${userId ?? ''}`.trim() || this.appCtx.activeUserId().trim();
-    const activeUserId = this.appCtx.activeUserId().trim();
+    const normalizedUserId = `${userId ?? ''}`.trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     const cachedUser = normalizedUserId
-      ? (this.appCtx.getUserProfile(normalizedUserId)
-        ?? (normalizedUserId === activeUserId ? this.appCtx.activeUserProfile() : null))
+      ? (this.appCtx.userProfileStore.getUserProfile(normalizedUserId)
+        ?? (normalizedUserId === activeUserId ? this.appCtx.userProfileStore.activeUserProfile() : null))
       : null;
     this.impressionsPopupUserIdRef.set(normalizedUserId);
     if (normalizedUserId && !cachedUser) {
@@ -597,7 +597,7 @@ export class NavigatorService {
   }
 
   openContactsPopup(): void {
-    if (!this.appCtx.activeUserId().trim()) {
+    if (!this.appCtx.userProfileStore.activeUserId().trim()) {
       return;
     }
     this.contactsPopupOpenRef.set(true);
@@ -608,7 +608,7 @@ export class NavigatorService {
   }
 
   openDeleteAccountConfirm(): void {
-    const activeUserName = this.appCtx.activeUserProfile()?.name?.trim() || 'this account';
+    const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
     this.confirmationDialogService.open({
       title: 'Delete account?',
       message: activeUserName,
@@ -629,7 +629,7 @@ export class NavigatorService {
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
           return;
         }
-        const activeUserId = this.appCtx.activeUserId().trim();
+        const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
           if (!result.submitted) {
@@ -651,7 +651,7 @@ export class NavigatorService {
   }
 
   openLogoutConfirm(): void {
-    const activeUserName = this.appCtx.activeUserProfile()?.name?.trim() || '';
+    const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || '';
     this.confirmationDialogService.open({
       title: 'Biztosan kilép?',
       message: activeUserName,
@@ -664,7 +664,7 @@ export class NavigatorService {
         this.closeProfileEditor();
         this.closeImpressionsPopup();
         this.closeContactsPopup();
-        const activeUserId = this.appCtx.activeUserId().trim();
+        const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);
@@ -709,7 +709,7 @@ export class NavigatorService {
   }
 
   closeImpressionsPopup(): void {
-    const userId = this.impressionsPopupUserIdRef().trim() || this.appCtx.activeUserId().trim();
+    const userId = this.impressionsPopupUserIdRef().trim() || this.appCtx.userProfileStore.activeUserId().trim();
     const cursor = userId ? (this.userRealtimeLongPollCursorByUserId[userId] ?? '') : '';
     if (userId && cursor) {
       this.userSeenImpressionsCursorByUserId[userId] = cursor;
@@ -727,19 +727,19 @@ export class NavigatorService {
       return;
     }
 
-    this.appCtx.setUserProfile(user);
-    this.appCtx.setActiveUserId(normalizedUserId);
+    this.appCtx.userProfileStore.setUserProfile(user);
+    this.appCtx.userProfileStore.setActiveUserId(normalizedUserId);
 
     if (user.impressions) {
-      this.appCtx.setUserImpressions(normalizedUserId, user.impressions);
+      this.appCtx.userProfileStore.setUserImpressions(normalizedUserId, user.impressions);
       return;
     }
-    this.appCtx.clearUserImpressions(normalizedUserId);
+    this.appCtx.userProfileStore.clearUserImpressions(normalizedUserId);
   }
 
   private activateUserRealtimeLongPoll(userId: string): void {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || this.appCtx.activeUserId().trim() !== normalizedUserId) {
+    if (!normalizedUserId || this.appCtx.userProfileStore.activeUserId().trim() !== normalizedUserId) {
       return;
     }
     this.startUserRealtimeLongPoll();
@@ -790,7 +790,7 @@ export class NavigatorService {
     if (this.userRealtimeLongPollInFlight) {
       return;
     }
-    const userId = this.appCtx.activeUserId().trim();
+    const userId = this.appCtx.userProfileStore.activeUserId().trim();
     if (!userId) {
       return;
     }
@@ -798,7 +798,7 @@ export class NavigatorService {
     try {
       const cursor = this.userRealtimeLongPollCursorByUserId[userId] ?? null;
       const snapshot = await this.usersService.pollUserRealtimeSnapshot(userId, cursor);
-      if (!snapshot || this.appCtx.activeUserId().trim() !== userId) {
+      if (!snapshot || this.appCtx.userProfileStore.activeUserId().trim() !== userId) {
         return;
       }
       this.applyPolledUserRealtimeSnapshot(userId, snapshot);
@@ -811,7 +811,7 @@ export class NavigatorService {
     userId: string,
     snapshot: UserRealtimeLongPollResponseDto
   ): void {
-    const previousImpressions = this.appCtx.getUserImpressions(userId);
+    const previousImpressions = this.appCtx.userProfileStore.getUserImpressions(userId);
     const nextCursor = typeof snapshot.cursor === 'string' ? snapshot.cursor.trim() : '';
     const shouldIgnoreNextImpressionsSnapshot = this.userIgnoreNextImpressionsSnapshotByUserId[userId] === true;
     const isSeenCursor = nextCursor.length > 0 && this.userSeenImpressionsCursorByUserId[userId] === nextCursor;
@@ -821,16 +821,16 @@ export class NavigatorService {
       ? (shouldSuppressImpressionBadges ? this.normalizeSeenImpressions(snapshot.impressions) : snapshot.impressions)
       : undefined;
 
-    this.appCtx.patchUserCounterOverrides(userId, counterPatch);
+    this.appCtx.activityStore.patchUserCounterOverrides(userId, counterPatch);
     if (nextImpressions) {
-      this.appCtx.setUserImpressions(userId, nextImpressions);
+      this.appCtx.userProfileStore.setUserImpressions(userId, nextImpressions);
     } else {
-      this.appCtx.clearUserImpressions(userId);
+      this.appCtx.userProfileStore.clearUserImpressions(userId);
     }
 
-    const currentUser = this.appCtx.getUserProfile(userId) ?? this.appCtx.activeUserProfile();
+    const currentUser = this.appCtx.userProfileStore.getUserProfile(userId) ?? this.appCtx.userProfileStore.activeUserProfile();
     if (currentUser) {
-      this.appCtx.setUserProfile({
+      this.appCtx.userProfileStore.setUserProfile({
         ...currentUser,
         activities: {
           ...currentUser.activities,
@@ -858,7 +858,7 @@ export class NavigatorService {
     }
 
     if (shouldSuppressImpressionBadges) {
-      this.appCtx.clearUserImpressionChangeFlags(userId);
+      this.appCtx.userProfileStore.clearUserImpressionChangeFlags(userId);
     } else {
       this.applyImpressionsChangeFlags(userId, previousImpressions, snapshot);
     }
@@ -987,12 +987,12 @@ return patch;
     previousImpressions: UserDto['impressions'] | null,
     snapshot: UserRealtimeLongPollResponseDto
   ): void {
-    const current = this.appCtx.getUserImpressionChangeFlags(userId);
+    const current = this.appCtx.userProfileStore.getUserImpressionChangeFlags(userId);
     const hostChangedByCounter = snapshot.counters.impressionsHostChanged === true;
     const memberChangedByCounter = snapshot.counters.impressionsMemberChanged === true;
     const hostChangedByDiff = this.hasImpressionsSectionChanged(previousImpressions?.host, snapshot.impressions?.host);
     const memberChangedByDiff = this.hasImpressionsSectionChanged(previousImpressions?.member, snapshot.impressions?.member);
-    this.appCtx.setUserImpressionChangeFlags(userId, {
+    this.appCtx.userProfileStore.setUserImpressionChangeFlags(userId, {
       host: current.host || hostChangedByCounter || hostChangedByDiff,
       member: current.member || memberChangedByCounter || memberChangedByDiff
     });

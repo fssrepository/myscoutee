@@ -445,7 +445,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private openDemoUserSelectorPopup(): void {
-    this.popupCtx.openDemoBootstrapSelector({
+    this.popupCtx.popupStore.openDemoBootstrapSelector({
       mode: 'member',
       onSelect: userId => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {

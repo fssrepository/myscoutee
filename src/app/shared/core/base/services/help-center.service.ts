@@ -134,7 +134,7 @@ export class HelpCenterService extends BaseRouteModeService {
     const cloned = this.cloneState(state);
     if (kind === 'privacy') {
       this.privacyStateRef.set(cloned);
-      this.appCtx.setPrivacyState(cloned);
+      this.appCtx.helpCenterStore.setPrivacyState(cloned);
       return;
     }
     if (kind === 'terms') {

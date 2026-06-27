@@ -322,11 +322,11 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.appCtx.activeUserProfile()?.id?.trim();
+    const activeUserProfileId = this.appCtx.userProfileStore.activeUserProfile()?.id?.trim();
     if (activeUserProfileId) {
       return activeUserProfileId;
     }
-    const activeUserId = this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }

@@ -75,7 +75,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private openSharedUserSelector(userId: string, targetUrl: string): void {
-    this.popupCtx.openDemoBootstrapSelector({
+    this.popupCtx.popupStore.openDemoBootstrapSelector({
       mode: 'member',
       title: 'Demo felhasználó választása',
       subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
@@ -107,7 +107,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private fail(message: string): void {
-    this.popupCtx.closeDemoBootstrapSelector();
+    this.popupCtx.popupStore.closeDemoBootstrapSelector();
     this.error = message;
   }
 
@@ -217,11 +217,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
     if (supportTarget === 'service-chat' || supportTarget === 'chats' || supportTarget === 'chat-message') {
-      this.popupCtx.openNavigatorActivitiesRequest('chats');
+      this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats');
     } else if (supportTarget === 'member') {
       const ownerId = `${parsed.searchParams.get('ownerId') ?? ''}`.trim();
       if (ownerId) {
-        this.popupCtx.requestActivitiesNavigation({
+        this.popupCtx.popupStore.requestActivitiesNavigation({
           type: 'members',
           ownerId,
           ownerType: 'event',
@@ -230,30 +230,30 @@ export class AdminHelpSessionPageComponent implements OnInit {
           subtitle: 'Reported member context'
         });
       } else {
-        this.popupCtx.openNavigatorActivitiesRequest('events');
+        this.popupCtx.popupStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'event') {
       const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
       const eventRecord = eventId ? await this.eventsService.queryKnownRecordById(userId, eventId) : null;
       if (eventRecord) {
-        this.popupCtx.requestActivitiesNavigation({
+        this.popupCtx.popupStore.requestActivitiesNavigation({
           type: 'eventEditor',
           eventId: eventRecord.id,
           target: eventRecord.type === 'hosting' || eventRecord.creatorUserId === userId ? 'hosting' : 'events',
           readOnly: true
         });
       } else {
-        this.popupCtx.openNavigatorActivitiesRequest('events');
+        this.popupCtx.popupStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'events') {
-      this.popupCtx.openNavigatorActivitiesRequest('events');
+      this.popupCtx.popupStore.openNavigatorActivitiesRequest('events');
     } else if (supportTarget === 'rates') {
-      this.popupCtx.openNavigatorActivitiesRequest('rates');
+      this.popupCtx.popupStore.openNavigatorActivitiesRequest('rates');
     } else if (supportTarget === 'asset') {
       const assetFilter = this.toAssetFilter(parsed.searchParams.get('assetFilter'));
       if (assetFilter) {
         const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
-        this.popupCtx.requestActivitiesNavigation({
+        this.popupCtx.popupStore.requestActivitiesNavigation({
           type: 'assetExplore',
           assetType: assetFilter,
           assetId: assetId || undefined,

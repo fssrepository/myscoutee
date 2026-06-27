@@ -182,7 +182,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   }
 
   private activeUserId(): string {
-    const activeUserId = this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }

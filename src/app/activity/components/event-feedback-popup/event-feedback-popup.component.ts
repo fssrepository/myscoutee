@@ -181,7 +181,7 @@ export class EventFeedbackPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => EventFeedbackListPresentationConverter.convert({
@@ -230,18 +230,18 @@ export class EventFeedbackPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.navigatorEventFeedbackRequest();
+      const request = this.popupCtx.popupStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledNavigatorEventFeedbackRequestMs) {
         return;
       }
       this.lastHandledNavigatorEventFeedbackRequestMs = request.updatedMs;
-      this.popupCtx.clearNavigatorEventFeedbackRequest();
+      this.popupCtx.popupStore.clearNavigatorEventFeedbackRequest();
       this.openPopup();
     });
 
     effect(() => {
       const filter = this.eventFeedbackListFilter();
-      const userId = this.appCtx.activeUserId().trim();
+      const userId = this.appCtx.userProfileStore.activeUserId().trim();
       const currentFilters = this.eventFeedbackSmartListQuery.filters;
       if (currentFilters?.filter === filter && currentFilters?.userId === userId) {
         return;
@@ -279,7 +279,7 @@ export class EventFeedbackPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityEventFeedbackSubmitSync();
+      const sync = this.appCtx.activityStore.activityEventFeedbackSubmitSync();
       if (!sync || sync.updatedMs <= this.lastAppliedEventFeedbackSubmitUpdatedMs) {
         return;
       }
@@ -539,7 +539,7 @@ export class EventFeedbackPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private async startEventFeedback(item: ActivityContracts.EventFeedbackDto, event?: Event): Promise<void> {
@@ -594,7 +594,7 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackSubmitting.set(true);
     try {
       await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
-      this.appCtx.emitActivityEventFeedbackSubmit(feedback);
+      this.appCtx.activityStore.emitActivityEventFeedbackSubmit(feedback);
       this.eventFeedbackSubmitted.set(true);
       this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
       this.clearLoadedEventFeedbackDetail(feedback.eventId);

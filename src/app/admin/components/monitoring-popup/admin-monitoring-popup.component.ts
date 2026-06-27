@@ -171,7 +171,7 @@ export class AdminMonitoringPopupComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     try {
-      const state = await this.monitoringService.loadMonitoringState(this.appCtx.activeUserId().trim());
+      const state = await this.monitoringService.loadMonitoringState(this.appCtx.userProfileStore.activeUserId().trim());
       this.state.set(state);
     } catch {
       this.error.set('admin.monitoring.error.load');

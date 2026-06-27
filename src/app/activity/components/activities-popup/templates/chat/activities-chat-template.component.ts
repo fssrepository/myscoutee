@@ -198,7 +198,7 @@ export class ActivitiesChatsController {
   private cachedOtherUsers: UserDto[] = [];
 
   private get activeUser() { return this.host.activeUser as UserDto; }
-  private get activitiesContext() { return this.host.activitiesContext; }
+  private get activitiesStore() { return this.host.activitiesStore; }
   private get chatItems() { return this.host.chatItems as ChatDTO[]; }
   private get users() { return this.host.users as UserDto[]; }
 
@@ -348,7 +348,7 @@ export class ActivitiesChatsController {
   }
 
   public openActivityChat(chat: ChatDTO): void {
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
   public activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {

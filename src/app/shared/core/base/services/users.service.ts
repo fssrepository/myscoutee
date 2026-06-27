@@ -47,7 +47,7 @@ export class UsersService extends BaseRouteModeService {
 
   peekCachedUsers(): UserDto[] {
     const byId = new Map<string, UserDto>();
-    const appProfiles = this.appCtx.userProfilesByUserId();
+    const appProfiles = this.appCtx.userProfileStore.userProfilesByUserId();
     for (const [userId, user] of Object.entries(appProfiles)) {
       if (!userId.trim()) {
         continue;
@@ -62,7 +62,7 @@ export class UsersService extends BaseRouteModeService {
       byId.set(user.id, this.cloneUser(user));
     }
 
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
     if (activeUser?.id?.trim()) {
       byId.set(activeUser.id, this.cloneUser(activeUser));
     }
@@ -75,7 +75,7 @@ export class UsersService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return null;
     }
-    const appProfile = this.appCtx.getUserProfile(normalizedUserId);
+    const appProfile = this.appCtx.userProfileStore.getUserProfile(normalizedUserId);
     if (appProfile) {
       return this.cloneUser(appProfile);
     }
@@ -144,27 +144,27 @@ export class UsersService extends BaseRouteModeService {
       }
 
       const resolvedUserId = response.user.id.trim() || normalizedUserId;
-      const previousActiveUserId = this.appCtx.getActiveUserId().trim();
+      const previousActiveUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
       if (response.user.profileStatus === 'deleted') {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
         return response.user;
       }
-      this.appCtx.setUserProfile(response.user);
+      this.appCtx.userProfileStore.setUserProfile(response.user);
       if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
-        this.appCtx.setActiveUserId(resolvedUserId);
+        this.appCtx.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
-        this.appCtx.clearUserCounterOverrides(resolvedUserId);
+        this.appCtx.activityStore.clearUserCounterOverrides(resolvedUserId);
         if (response.counterOverrides) {
-          this.appCtx.patchUserCounterOverrides(
+          this.appCtx.activityStore.patchUserCounterOverrides(
             resolvedUserId,
             this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
           );
         }
         if (response.filterPreferences) {
-          this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
+          this.appCtx.userProfileStore.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
         } else {
-          this.appCtx.clearUserFilterPreferences(resolvedUserId);
+          this.appCtx.userProfileStore.clearUserFilterPreferences(resolvedUserId);
         }
       }
 
@@ -202,33 +202,33 @@ export class UsersService extends BaseRouteModeService {
       }
 
       const resolvedUserId = user.id.trim() || normalizedUserId;
-      const previousActiveUserId = this.appCtx.getActiveUserId().trim();
+      const previousActiveUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
       if (user.profileStatus === 'deleted') {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
         return profileExt;
       }
 
-      this.appCtx.setProfileExt(profileExt);
+      this.appCtx.userProfileStore.setProfileExt(profileExt);
       if (resolvedUserId && (!normalizedUserId || previousActiveUserId === normalizedUserId)) {
-        this.appCtx.setActiveUserId(resolvedUserId);
+        this.appCtx.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
-        this.appCtx.clearUserCounterOverrides(resolvedUserId);
+        this.appCtx.activityStore.clearUserCounterOverrides(resolvedUserId);
         if (response.counterOverrides) {
-          this.appCtx.patchUserCounterOverrides(
+          this.appCtx.activityStore.patchUserCounterOverrides(
             resolvedUserId,
             this.normalizeCounterOverrides(response.counterOverrides, user.activities)
           );
         }
         if (response.filterPreferences) {
-          this.appCtx.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
+          this.appCtx.userProfileStore.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
         } else {
-          this.appCtx.clearUserFilterPreferences(resolvedUserId);
+          this.appCtx.userProfileStore.clearUserFilterPreferences(resolvedUserId);
         }
       }
 
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
-      return this.appCtx.getProfileExt(resolvedUserId) ?? profileExt;
+      return this.appCtx.userProfileStore.getProfileExt(resolvedUserId) ?? profileExt;
     } catch (error) {
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
         this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'timeout', 'User profile request timeout.');
@@ -245,7 +245,7 @@ export class UsersService extends BaseRouteModeService {
     if (!normalizedUserId) {
       return;
     }
-    this.appCtx.setUserFilterPreferences(normalizedUserId, preferences);
+    this.appCtx.userProfileStore.setUserFilterPreferences(normalizedUserId, preferences);
     await this.userService.saveUserFilterPreferences(normalizedUserId, preferences);
   }
 
@@ -255,13 +255,13 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
 
-    this.appCtx.setUserProfile(user);
+    this.appCtx.userProfileStore.setUserProfile(user);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
       const savedUser = await this.userService.saveUserProfile(user);
       if (savedUser) {
-        this.appCtx.setUserProfile(savedUser);
+        this.appCtx.userProfileStore.setUserProfile(savedUser);
       }
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
       return savedUser;
@@ -283,13 +283,13 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
 
-    this.appCtx.setProfileExt(request);
+    this.appCtx.userProfileStore.setProfileExt(request);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
     try {
       const savedUser = await this.userService.saveUserProfileExt(request);
       if (savedUser) {
-        this.appCtx.setProfileExt({
+        this.appCtx.userProfileStore.setProfileExt({
           profile: savedUser,
           experienceEntries: request.experienceEntries
         });
@@ -391,7 +391,7 @@ export class UsersService extends BaseRouteModeService {
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
-    this.appCtx.setStatus(contextKey, status, message);
+    this.appCtx.runtimeStore.setStatus(contextKey, status, message);
   }
 
   private async submitUserAction(
@@ -406,7 +406,7 @@ export class UsersService extends BaseRouteModeService {
     signal?: AbortSignal
   ): Promise<UserSubmitActionResponseDto> {
     if (signal?.aborted) {
-      this.appCtx.resetLoadingState(contextKey);
+      this.appCtx.runtimeStore.resetLoadingState(contextKey);
       return {
         submitted: false,
         message: null
@@ -432,7 +432,7 @@ export class UsersService extends BaseRouteModeService {
       return response;
     } catch (error) {
       if (this.isAbortError(error)) {
-        this.appCtx.resetLoadingState(contextKey);
+        this.appCtx.runtimeStore.resetLoadingState(contextKey);
         return {
           submitted: false,
           message: null

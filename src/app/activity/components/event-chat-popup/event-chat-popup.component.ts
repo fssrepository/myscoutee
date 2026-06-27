@@ -19,7 +19,8 @@ import { from, of } from 'rxjs';
 import type * as AppUiTypes from '../../../shared/ui/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
-import { ActivitiesPopupStateService, type EventChatSession } from '../../services/activities-popup-state.service';
+import type { EventChatSession } from '../../../shared/ui/context/activities-popup.types';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -121,7 +122,7 @@ interface SelectedChatNavigationState {
 })
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
-  protected readonly activitiesContext = inject(ActivitiesPopupStateService);
+  protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly appCtx = inject(AppContext);
   private readonly popupCtx = inject(AppPopupContext);
   private readonly chatsService = inject(ChatsService);
@@ -134,7 +135,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly navigatorService = inject(NavigatorService);
   private readonly location = inject(Location);
 
-  protected readonly session = computed(() => this.activitiesContext.eventChatSession());
+  protected readonly session = computed(() => this.activitiesStore.eventChatSession());
   protected chatInitialLoadPending = false;
   protected allMessages: ContractTypes.ChatPopupMessage[] = [];
   protected draftMessage = '';
@@ -223,7 +224,7 @@ export class EventChatPopupComponent implements OnDestroy {
     headerProgress: {
       enabled: true,
       tone: 'chat',
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: () => this.chatInitialLoadPending ? '' : 'No messages yet',
     emptyDescription: () => this.chatInitialLoadPending ? '' : 'Start the conversation.',
@@ -358,10 +359,10 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatHeaderControlsHydrated = false;
     this.closeTransientMessageUi();
     if (this.isBlockedSupportChat()) {
-      this.activitiesContext.closeActivities();
+      this.activitiesStore.closeActivities();
       return;
     }
-    this.activitiesContext.closeEventChat();
+    this.activitiesStore.closeEventChat();
   }
 
   protected chatHeaderTitle(chatSession: EventChatSession): string {
@@ -411,7 +412,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!ownerId) {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
@@ -652,7 +653,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!eventId) {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId,
       target: this.selectedChatNavigationState?.eventTarget ?? 'events',
@@ -685,7 +686,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!eventId) {
       return;
     }
-    this.popupCtx.openEventSubeventsListPopup({
+    this.popupCtx.popupStore.openEventSubeventsListPopup({
       eventId,
       target: state?.eventTarget ?? 'events',
       title: state?.eventTitle ?? this.session()?.item.title ?? null,
@@ -711,7 +712,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.chatThreadSmartList?.closeMenu();
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: state.eventId ?? session.item.eventId,
       item: session.item,
@@ -771,7 +772,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (!this.localTypingActive) {
       this.localTypingActive = true;
-      void this.activitiesContext.sendEventChatTyping(session.item, true);
+      void this.chatsService.sendChatTyping(session.item, true);
     }
     this.clearTypingIdleTimer();
     this.typingIdleTimer = setTimeout(() => {
@@ -1166,7 +1167,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const mutationSequence = (this.pollVoteMutationSequenceByMessageId.get(messageId) ?? 0) + 1;
     this.pollVoteMutationSequenceByMessageId.set(messageId, mutationSequence);
-    void this.activitiesContext.updateEventChatMessage(session.item, messageId, { attachments: nextAttachments })
+    void this.chatsService.updateChatMessage(session.item, messageId, { attachments: nextAttachments })
       .then(updated => {
         if (this.pollVoteMutationSequenceByMessageId.get(messageId) !== mutationSequence) {
           return;
@@ -1198,13 +1199,13 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareCurrentEvent(event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+    this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
   }
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
     const resourceType = this.firstAvailableAssetType();
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: resourceType ?? 'Car'
     });
@@ -1431,7 +1432,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (session) {
       const mutationSequence = (this.reactionMutationSequenceByMessageId.get(messageId) ?? 0) + 1;
       this.reactionMutationSequenceByMessageId.set(messageId, mutationSequence);
-      void this.activitiesContext.updateEventChatMessage(session.item, messageId, { reactionEmoji })
+      void this.chatsService.updateChatMessage(session.item, messageId, { reactionEmoji })
         .then(updated => {
           if (this.reactionMutationSequenceByMessageId.get(messageId) !== mutationSequence) {
             return;
@@ -1467,7 +1468,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const knownOwnIds = new Set([
       `${activeUserId ?? ''}`.trim(),
       `${presentation.senderAvatar.id ?? ''}`.trim(),
-      `${this.appCtx.activeUserProfile()?.id ?? ''}`.trim(),
+      `${this.appCtx.userProfileStore.activeUserProfile()?.id ?? ''}`.trim(),
       'self',
       'me'
     ].filter(Boolean));
@@ -1616,7 +1617,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     const session = this.session();
     if (session) {
-      void this.activitiesContext.updateEventChatMessage(session.item, message.id, { deleted: true })
+      void this.chatsService.updateChatMessage(session.item, message.id, { deleted: true })
         .then(updated => {
           if (updated) {
             this.clearPendingMessageTimeout(message.id);
@@ -1653,7 +1654,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     const session = this.session();
     if (session) {
-      void this.activitiesContext.updateEventChatMessage(session.item, message.id, { pinned })
+      void this.chatsService.updateChatMessage(session.item, message.id, { pinned })
         .then(updated => {
           if (updated) {
             this.clearPendingMessageTimeout(message.id);
@@ -1733,7 +1734,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private isAdminRoleActive(): boolean {
-    const hostTier = `${this.appCtx.activeUserProfile()?.hostTier ?? ''}`.trim().toLowerCase();
+    const hostTier = `${this.appCtx.userProfileStore.activeUserProfile()?.hostTier ?? ''}`.trim().toLowerCase();
     if (hostTier === 'admin') {
       return true;
     }
@@ -1841,7 +1842,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.activitiesContext.sendEventChatMessageWithAttachments(session.item, text, [], optimisticMessage.clientId, optimisticMessage.replyTo)
+    void this.chatsService.sendChatMessageWithAttachments(session.item, text, [], optimisticMessage.clientId, optimisticMessage.replyTo)
       .then(message => {
         if (this.loadedSessionKey !== sessionKey) {
           return;
@@ -1902,7 +1903,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     try {
       const persistedAttachment = await this.resolvePersistableImageAttachment(session.item, imageAttachment, file);
-      const persistedMessage = await this.activitiesContext.sendEventChatMessageWithAttachments(
+      const persistedMessage = await this.chatsService.sendChatMessageWithAttachments(
         session.item,
         caption,
         [persistedAttachment],
@@ -1944,7 +1945,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(optimisticMessage);
     this.schedulePendingMessageTimeout(optimisticMessage.id);
     this.cdr.markForCheck();
-    void this.activitiesContext.sendEventChatMessageWithAttachments(
+    void this.chatsService.sendChatMessageWithAttachments(
       session.item,
       caption,
       [{ ...attachment }],
@@ -2085,7 +2086,7 @@ export class EventChatPopupComponent implements OnDestroy {
       );
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
       assetId: `${attachment.entityId ?? ''}`.trim() || undefined,
@@ -2194,7 +2195,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupCtx.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: eventRecord.id,
       target: this.eventEditorTargetForRecord(eventRecord),
@@ -2251,9 +2252,7 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       return upload.audioUrl;
     }
-    this.voiceRecorderError = this.activitiesContext.dataMode === 'local'
-      ? 'Voice clip could not be saved on this device.'
-      : 'Voice upload failed.';
+    this.voiceRecorderError = 'Voice upload failed.';
     return null;
   }
 
@@ -2385,7 +2384,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
     this.schedulePendingMessageTimeout(editingMessageId);
     if (session) {
-      void this.activitiesContext.updateEventChatMessage(session.item, editingMessageId, { text: convertedText })
+      void this.chatsService.updateChatMessage(session.item, editingMessageId, { text: convertedText })
         .then(updated => {
           if (updated) {
             this.clearPendingMessageTimeout(editingMessageId);
@@ -2465,7 +2464,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
       return chat;
     }
-    this.activitiesContext.patchEventChatSessionItem(current =>
+    this.activitiesStore.patchEventChatSessionItem(current =>
       current.id === chat.id
         ? resolvedChat
         : current
@@ -2516,7 +2515,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (this.loadedSessionKey !== sessionKey || this.liveChatUnsubscribe) {
       return;
     }
-    this.liveChatUnsubscribe = await this.activitiesContext.watchEventChatEvents(chat, event => {
+    this.liveChatUnsubscribe = await this.chatsService.watchChatEvents(chat, event => {
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
@@ -2746,7 +2745,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {
       this.clearOpenChatUnreadState();
-      void this.activitiesContext.markEventChatRead(chat, [event.message.id]);
+      void this.chatsService.markChatRead(chat, [event.message.id]);
     }
   }
 
@@ -2960,7 +2959,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.schedulePendingMessageTimeout(normalizedStoredMessageId);
     const mutationSequence = (this.reactionMutationSequenceByMessageId.get(normalizedStoredMessageId) ?? 0) + 1;
     this.reactionMutationSequenceByMessageId.set(normalizedStoredMessageId, mutationSequence);
-    void this.activitiesContext.updateEventChatMessage(session.item, normalizedStoredMessageId, { reactionEmoji })
+    void this.chatsService.updateChatMessage(session.item, normalizedStoredMessageId, { reactionEmoji })
       .then(updated => {
         if (this.reactionMutationSequenceByMessageId.get(normalizedStoredMessageId) !== mutationSequence) {
           return;
@@ -2986,7 +2985,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const shouldStickToEnd = this.isChatThreadNearEnd();
 
     try {
-      const snapshot = await this.activitiesContext.loadEventChatMessages(chat);
+      const snapshot = await this.chatsService.loadChatMessages(chat);
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
@@ -3201,7 +3200,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private clearOpenChatUnreadState(): void {
@@ -3209,7 +3208,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || Math.max(0, Math.trunc(Number(session.item.unread) || 0)) === 0) {
       return;
     }
-    this.activitiesContext.patchEventChatSessionItem(item => ({
+    this.activitiesStore.patchEventChatSessionItem(item => ({
       ...item,
       unread: 0
     }));
@@ -3231,7 +3230,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (unreadMessageIds.length === 0) {
       return;
     }
-    void this.activitiesContext.markEventChatRead(chat, unreadMessageIds);
+    void this.chatsService.markChatRead(chat, unreadMessageIds);
   }
 
   private syncEventChatSummaryFromLatestMessage(): void {
@@ -3253,7 +3252,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!nextLastMessage && !nextDateIso && !nextLastSenderId) {
       return;
     }
-    this.activitiesContext.patchEventChatSessionItem(item => ({
+    this.activitiesStore.patchEventChatSessionItem(item => ({
       ...item,
       lastMessage: nextLastMessage || item.lastMessage,
       lastSenderId: nextLastSenderId || item.lastSenderId,
@@ -3365,7 +3364,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolveOptimisticSenderPresentation(
     activeUserId: string
   ): Pick<ContractTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
-    const activeUser = this.appCtx.activeUserProfile() ?? (activeUserId ? this.appCtx.getUserProfile(activeUserId) : null);
+    const activeUser = this.appCtx.userProfileStore.activeUserProfile() ?? (activeUserId ? this.appCtx.userProfileStore.getUserProfile(activeUserId) : null);
     const initials = activeUser?.initials?.trim()
       || AppUtils.initialsFromText(activeUser?.name ?? 'Me');
     return {
@@ -3423,7 +3422,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.localTypingActive = false;
     const session = this.session();
     if (session) {
-      void this.activitiesContext.sendEventChatTyping(session.item, false);
+      void this.chatsService.sendChatTyping(session.item, false);
     }
   }
 

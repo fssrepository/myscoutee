@@ -166,14 +166,14 @@ export class SessionService {
 
   private syncActiveUserIdWithSession(session: AppSession | null): void {
     if (session?.kind === 'demo') {
-      this.appCtx.setActiveUserId(session.userId.trim());
+      this.appCtx.userProfileStore.setActiveUserId(session.userId.trim());
       return;
     }
     if (session?.kind === 'firebase') {
-      this.appCtx.setActiveUserId(session.profile.id.trim());
+      this.appCtx.userProfileStore.setActiveUserId(session.profile.id.trim());
       return;
     }
-    this.appCtx.setActiveUserId('');
+    this.appCtx.userProfileStore.setActiveUserId('');
   }
 
   private loadStoredSession(): AppSession | null {

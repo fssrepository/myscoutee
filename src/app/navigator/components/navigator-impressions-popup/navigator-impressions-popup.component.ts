@@ -95,9 +95,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   protected readonly popupOpen = this.navigatorService.impressionsPopupOpen;
   protected readonly viewModel = computed<NavigatorImpressionsViewModel | null>(() => {
-    const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.activeUserId().trim();
+    const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
     const user = selectedUserId
-      ? (this.appCtx.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.activeUserId().trim() ? this.appCtx.activeUserProfile() : null))
+      ? (this.appCtx.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.userProfileStore.activeUserId().trim() ? this.appCtx.userProfileStore.activeUserProfile() : null))
       : null;
     if (!user) {
       return null;
@@ -143,13 +143,13 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const isOpen = this.popupOpen();
-      const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.activeUserId().trim();
+      const selectedUserId = this.navigatorService.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
       const user = selectedUserId
-        ? (this.appCtx.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.activeUserId().trim() ? this.appCtx.activeUserProfile() : null))
+        ? (this.appCtx.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.userProfileStore.activeUserId().trim() ? this.appCtx.userProfileStore.activeUserProfile() : null))
         : null;
       const userId = user?.id.trim() ?? selectedUserId;
       const currentImpressions = userId
-        ? (this.appCtx.getUserImpressions(userId) ?? user?.impressions ?? null)
+        ? (this.appCtx.userProfileStore.getUserImpressions(userId) ?? user?.impressions ?? null)
         : null;
 
       if (!isOpen || !userId) {
@@ -217,7 +217,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   private hasUserImpressionsData(user: UserDto): boolean {
     return this.hasImpressionsData(
-      this.appCtx.getUserImpressions(user.id) ?? user.impressions
+      this.appCtx.userProfileStore.getUserImpressions(user.id) ?? user.impressions
     );
   }
 
@@ -269,7 +269,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private activeUserImpressionsSection(user: UserDto, kind: 'host' | 'member'): UserImpressionsSectionDto | null {
-    const impressions = this.appCtx.getUserImpressions(user.id) ?? user.impressions ?? null;
+    const impressions = this.appCtx.userProfileStore.getUserImpressions(user.id) ?? user.impressions ?? null;
     if (!impressions) {
       return null;
     }
@@ -277,10 +277,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private finalizePopupSession(userId: string): void {
-    this.appCtx.clearUserImpressionChangeFlags(userId);
-    const current = this.appCtx.getUserImpressions(userId);
+    this.appCtx.userProfileStore.clearUserImpressionChangeFlags(userId);
+    const current = this.appCtx.userProfileStore.getUserImpressions(userId);
     if (current) {
-      this.appCtx.setUserImpressions(userId, {
+      this.appCtx.userProfileStore.setUserImpressions(userId, {
         ...current,
         host: current.host
           ? {

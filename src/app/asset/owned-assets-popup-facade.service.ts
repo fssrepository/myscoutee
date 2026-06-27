@@ -292,9 +292,9 @@ export class OwnedAssetsPopupFacadeService {
 
   assetFilterCount(type: AppConstants.AssetFilterType): number {
     const ownerUserId = this.resolveContextOwnerUserId();
-    const source = this.appCtx.getUserProfile(ownerUserId);
-    const activeUser = source ?? this.appCtx.activeUserProfile();
-    const overrides = ownerUserId ? this.appCtx.getUserCounterOverrides(ownerUserId) : {};
+    const source = this.appCtx.userProfileStore.getUserProfile(ownerUserId);
+    const activeUser = source ?? this.appCtx.userProfileStore.activeUserProfile();
+    const overrides = ownerUserId ? this.appCtx.activityStore.getUserCounterOverrides(ownerUserId) : {};
     const grouped = overrides.asset ?? activeUser?.activities?.asset;
     const key = this.assetFilterCounterKey(type);
     switch (key) {
@@ -574,7 +574,7 @@ export class OwnedAssetsPopupFacadeService {
         ? accommodationLocation
         : city;
       const ownerUserId = this.resolveOwnerUserId();
-      const ownerName = this.appCtx.activeUserProfile()?.name?.trim() || undefined;
+      const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || undefined;
       const assetId = this.editingAssetId || this.assetFormDraftId || `asset-${Date.now()}`;
       const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
       if (environment.activitiesDataSource === 'http' && this.hasPendingAssetSourceImage() && !resolvedImageUrl) {
@@ -801,7 +801,7 @@ export class OwnedAssetsPopupFacadeService {
       return;
     }
     const nextStatus = this.restoredAssetStatus(current);
-    const ownerName = this.appCtx.activeUserProfile()?.name?.trim() || current.ownerName;
+    const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || current.ownerName;
     const nextCard: AppDTOs.AssetCardDTO = {
       ...current,
       ownerUserId,
@@ -1063,11 +1063,11 @@ export class OwnedAssetsPopupFacadeService {
   }
 
   private resolveOwnerUserId(): string {
-    return this.activeOwnerUserId.trim() || this.appCtx.getActiveUserId().trim();
+    return this.activeOwnerUserId.trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
   }
 
   private resolveContextOwnerUserId(): string {
-    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private schedulePersist(): void {

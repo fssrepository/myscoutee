@@ -70,7 +70,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   protected graphProgressState(loading: boolean): 'loading' | 'scrolling' | 'inactive' {
-    if (!this.appCtx.isOnline()) {
+    if (!this.appCtx.runtimeStore.isOnline()) {
       return 'inactive';
     }
     return loading ? 'loading' : 'scrolling';
@@ -147,7 +147,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   private resolveGraphRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
-    const adminUserId = this.appCtx.activeUserId().trim();
+    const adminUserId = this.appCtx.userProfileStore.activeUserId().trim();
     switch (method) {
       case 'initialGraph':
         return this.withGraphDataLoading(() => this.affinityGraph.loadInitialGraph(adminUserId));

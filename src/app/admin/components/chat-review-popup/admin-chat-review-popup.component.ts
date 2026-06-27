@@ -63,7 +63,7 @@ export class AdminChatReviewPopupComponent {
     }
     const result = await this.moderationData.warnUser(
       normalizedUserId,
-      this.appCtx.activeAdminUser(),
+      this.appCtx.userProfileStore.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result);

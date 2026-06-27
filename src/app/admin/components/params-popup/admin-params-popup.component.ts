@@ -326,6 +326,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
   }
 
   private activeAdminId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 }

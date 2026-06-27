@@ -1,45 +1,19 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Subject } from 'rxjs';
-import type { SubEventResourceFilter } from '../../shared/core/common/constants';
-import type { ActivityMemberEntry } from '../../shared/core/contracts/activity.interface';
 
-export interface EventEditorState {
-  isOpen: boolean;
-  mode: 'create' | 'edit';
-  sourceEvent?: any;
-  readOnly?: boolean;
-}
-
-export type EventEditorSubEventResourceType = SubEventResourceFilter;
-
-export interface EventEditorSubEventResourcePopupRequest {
-  type: EventEditorSubEventResourceType;
-  subEvent: any;
-  ownerId?: string | null;
-  parentTitle?: string;
-  group?: {
-    id?: string | null;
-    groupLabel?: string;
-    source?: string | null;
-    pending?: number;
-    accepted?: number;
-    capacityMin?: number;
-    capacityMax?: number;
-    canManage?: boolean;
-    members?: readonly ActivityMemberEntry[];
-    onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
-  } | null;
-}
+import type { EventEditorSubEventResourcePopupRequest } from '../event-editor-popup.types';
 
 @Injectable({
   providedIn: 'root'
 })
-export class EventEditorPopupStateService {
-  private _isOpen = signal(false);
-  private _mode = signal<'create' | 'edit'>('create');
-  private _sourceEvent = signal<any>(null);
-  private _readOnly = signal(false);
-  private _subEventResourcePopupRequest = signal<EventEditorSubEventResourcePopupRequest | null>(null);
+export class EventEditorPopupStore {
+  private readonly _isOpen = signal(false);
+  private readonly _mode = signal<'create' | 'edit'>('create');
+  private readonly _sourceEvent = signal<any>(null);
+  private readonly _readOnly = signal(false);
+  private readonly _subEventResourcePopupRequest = signal<EventEditorSubEventResourcePopupRequest | null>(null);
+  private readonly _onOpen = new Subject<void>();
+  private readonly _onClose = new Subject<void>();
 
   readonly isOpen = this._isOpen.asReadonly();
   readonly mode = this._mode.asReadonly();
@@ -48,10 +22,6 @@ export class EventEditorPopupStateService {
   readonly subEventResourcePopupRequest = this._subEventResourcePopupRequest.asReadonly();
 
   readonly isOpenBoolean = computed(() => this._isOpen());
-
-  private _onOpen = new Subject<void>();
-  private _onClose = new Subject<void>();
-
   readonly onOpen$ = this._onOpen.asObservable();
   readonly onClose$ = this._onClose.asObservable();
 
@@ -114,5 +84,4 @@ export class EventEditorPopupStateService {
   clearSubEventResourcePopupRequest(): void {
     this._subEventResourcePopupRequest.set(null);
   }
-
 }

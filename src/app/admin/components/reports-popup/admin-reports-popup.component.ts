@@ -4,7 +4,7 @@ import { Component, TemplateRef, ViewChild, inject, signal } from '@angular/core
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { AdminModerationService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
@@ -90,7 +90,7 @@ export class AdminReportsPopupComponent {
   private readonly appCtx = inject(AppContext);
   private readonly workspace = inject(AdminWorkspaceService);
   private readonly moderationData = inject(AdminModerationService);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly location = inject(Location);
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
@@ -133,7 +133,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -163,7 +163,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -677,7 +677,7 @@ export class AdminReportsPopupComponent {
     }
     const result = await this.moderationData.blockUser(
       normalizedUserId,
-      this.appCtx.activeAdminUser(),
+      this.appCtx.userProfileStore.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -690,7 +690,7 @@ export class AdminReportsPopupComponent {
     }
     const result = await this.moderationData.unblockUser(
       normalizedUserId,
-      this.appCtx.activeAdminUser()
+      this.appCtx.userProfileStore.activeAdminUser()
     );
     this.applyModerationActionResult(normalizedUserId, result);
   }
@@ -753,11 +753,11 @@ export class AdminReportsPopupComponent {
       return;
     }
     this.admin.closePopup();
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
   private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {
-    const admin = this.appCtx.activeAdminUser();
+    const admin = this.appCtx.userProfileStore.activeAdminUser();
     if (!admin) {
       return null;
     }

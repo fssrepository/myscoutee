@@ -1,12 +1,12 @@
-@if (eventEditorService.isOpenBoolean()) {
+@if (eventEditorStore.isOpenBoolean()) {
 <div class="app-popup event-editor-popup-shell">
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-editor"
-    [class.popup-panel-event-editor-readonly]="eventEditorService.readOnly()">
+    [class.popup-panel-event-editor-readonly]="eventEditorStore.readOnly()">
     <div class="popup-header" (click)="$event.stopPropagation()">
       <div class="popup-title">
         <h2>{{ getPopupTitle() }}</h2>
-        @if (eventEditorService.readOnly() && eventDetailDTO.title) {
+        @if (eventEditorStore.readOnly() && eventDetailDTO.title) {
         <p class="popup-subtitle-activities">
           {{ eventDetailDTO.title }}
         </p>
@@ -28,7 +28,7 @@
         </div>
       </div>
       <div class="popup-header-mobile-actions-row">
-        @if (!eventEditorService.readOnly()) {
+        @if (!eventEditorStore.readOnly()) {
         <app-menu
           class="event-editor-save-menu"
           kind="inline"
@@ -68,7 +68,7 @@
                 [compact]="true"
                 [autoSize]="true"
                 ariaLabel="Event image"
-                [disabled]="eventEditorService.readOnly()"
+                [disabled]="eventEditorStore.readOnly()"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
                 [uploadEntityId]="eventImageUploadEntityId()"
                 [ngModel]="eventImageUrls()"
@@ -77,7 +77,7 @@
             </div>
             <label class="experience-title-field">
               <span>Name <span class="required-star">*</span></span>
-              <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventEditorService.readOnly()"
+              <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventEditorStore.readOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
             </label>
             <label class="event-capacity-range-field">
@@ -89,7 +89,7 @@
                 <span class="subevent-capacity-separator">-</span>
                 <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
                   (ngModelChange)="onEventCapacityMaxChange($event)" (blur)="onEventCapacityMaxBlur()"
-                  [disabled]="eventEditorService.readOnly()"
+                  [disabled]="eventEditorStore.readOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" placeholder="Max" />
               </div>
             </label>
@@ -98,7 +98,7 @@
               [ngModel]="eventDetailDTO.location"
               (ngModelChange)="onEventLocationChange($event)"
               [config]="eventLocationInputConfig"
-              [readOnly]="eventEditorService.readOnly()"
+              [readOnly]="eventEditorStore.readOnly()"
             ></app-location-input>
             <div class="event-intel-row">
               <app-menu
@@ -110,7 +110,7 @@
             </div>
             <label class="experience-description-field">
               <span>Description <span class="required-star">*</span></span>
-              <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventEditorService.readOnly()"
+              <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventEditorStore.readOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
             <app-event-subevent-definitions-panel

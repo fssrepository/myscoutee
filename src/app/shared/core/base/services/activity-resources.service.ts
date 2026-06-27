@@ -32,7 +32,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
   }
 
   activeAssetOwnerUserId(): string {
-    return this.normalizeId(this.appCtx.activeUserId());
+    return this.normalizeId(this.appCtx.userProfileStore.activeUserId());
   }
 
   waitForResourceRouteDelay(signal?: AbortSignal): Promise<void> {
@@ -66,7 +66,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
     }
     const state = await this.activityResourcesService.querySubEventResourceState(ref);
     if (state) {
-      this.appCtx.emitActivityResourceSync(ref);
+      this.appCtx.activityStore.emitActivityResourceSync(ref);
     }
     return state;
   }
@@ -89,7 +89,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
       assetOwnerUserId: normalizedState.assetOwnerUserId
     }, signal);
     if (savedState) {
-      this.appCtx.emitActivityResourceSync({
+      this.appCtx.activityStore.emitActivityResourceSync({
         ownerId: savedState.ownerId,
         subEventId: savedState.subEventId,
         assetOwnerUserId: savedState.assetOwnerUserId

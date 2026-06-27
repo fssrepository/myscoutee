@@ -1,7 +1,47 @@
-import { Routes } from '@angular/router';
-import { restrictedAreaGuard } from './routing/restricted-area.guard';
+import { inject } from '@angular/core';
+import { CanActivateFn, Router, Routes } from '@angular/router';
+
+import { AppUtils } from './shared/app-utils';
+import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
+import { SessionService, UsersService } from './shared/core';
+import type { UserDto } from './shared/core/contracts/user.interface';
 
 const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
+
+const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
+  const sessionService = inject(SessionService);
+  const usersService = inject(UsersService);
+  const router = inject(Router);
+  const session = await sessionService.ensureSession();
+  if (session) {
+    if (session.kind === 'firebase') {
+      const user = await usersService.loadUserById(undefined, 8000).catch(() => null);
+      if (user?.admin === true) {
+        return router.createUrlTree(['/admin']);
+      }
+      if (requiresProfileOnboarding(user)) {
+        return router.createUrlTree(['/entry'], {
+          queryParams: {
+            redirect: state.url && state.url !== '/' ? state.url : '/game',
+            onboarding: '1'
+          }
+        });
+      }
+    }
+    return true;
+  }
+  return router.createUrlTree(['/entry'], {
+    queryParams: state.url && state.url !== '/' ? { redirect: state.url } : undefined
+  });
+};
+
+function requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
+  if (!user || user.admin === true || user.profileStatus === 'blocked' || user.profileStatus === 'deleted' || user.hostTier === 'Admin') {
+    return false;
+  }
+  return user.profileStatus === 'onboarding'
+    || AppUtils.positiveInteger(user.profileFormVersion) < CURRENT_PROFILE_FORM_VERSION;
+}
 
 export const routes: Routes = [
   {

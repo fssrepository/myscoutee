@@ -53,9 +53,9 @@ export const adminAccessInterceptor: HttpInterceptorFn = (req, next) => {
           localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
         }
         if (session?.kind === 'firebase') {
-          appCtx.setActiveUserId(session.profile.id.trim());
+          appCtx.userProfileStore.setActiveUserId(session.profile.id.trim());
         } else {
-          appCtx.setActiveUserId('');
+          appCtx.userProfileStore.setActiveUserId('');
         }
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('adminAccessDenied'));

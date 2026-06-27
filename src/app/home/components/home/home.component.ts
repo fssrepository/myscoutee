@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, On
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
-import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { NavigatorService } from '../../../navigator';
 import {
   AppMenuComponent,
@@ -231,7 +231,7 @@ export class HomeComponent implements OnDestroy {
     showBackgroundLoadingProgress: true,
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     trackBy: (_index, row) => row.id,
     emptyLabel: () => this.noCandidateTitle,
@@ -264,7 +264,7 @@ export class HomeComponent implements OnDestroy {
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
-    private readonly activitiesContext: ActivitiesPopupStateService,
+    private readonly activitiesStore: ActivitiesPopupStore,
     private readonly navigatorService: NavigatorService,
     private readonly appCtx: AppContext,
     private readonly explanationGuide: ExplanationGuideService,
@@ -283,8 +283,8 @@ export class HomeComponent implements OnDestroy {
       this.syncHomeSmartListQuery();
       this.homeSmartListQueryReady = true;
     }
-    const activeUserIdSignal = this.appCtx.activeUserId;
-    const userByIdLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+    const activeUserIdSignal = this.appCtx.userProfileStore.activeUserId;
+    const userByIdLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
     effect(() => {
       const targetUserId = activeUserIdSignal().trim();
       if (!targetUserId || targetUserId === this.lastHandledActiveUserId) {
@@ -298,7 +298,7 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       const status = userByIdLoadState().status;
-      const activeProfile = this.appCtx.activeUserProfile();
+      const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
       const alreadyLoaded = activeProfile?.id === this.activeUserId;
       if (status === 'loading') {
         this.awaitingUserByIdLoadingSeen = true;
@@ -356,7 +356,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get activeUser(): UserDto {
     const localUser = this.users.find(user => user.id === this.activeUserId) ?? this.users[0] ?? null;
-    const contextUser = this.appCtx.activeUserProfile();
+    const contextUser = this.appCtx.userProfileStore.activeUserProfile();
     if (!localUser) {
       return contextUser ? this.toHomeUser(contextUser) : this.createFallbackActiveUser();
     }
@@ -383,7 +383,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get isAvatarProfileSettled(): boolean {
-    return this.appCtx.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
+    return this.appCtx.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
   }
 
   protected get isBlockedUserStatusPending(): boolean {
@@ -420,7 +420,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private get avatarLoadedUser(): UserDto | null {
-    const user = this.appCtx.activeUserProfile();
+    const user = this.appCtx.userProfileStore.activeUserProfile();
     return user?.id === this.activeUserId ? user : null;
   }
 
@@ -432,7 +432,7 @@ export class HomeComponent implements OnDestroy {
     if (!this.canOpenHistory) {
       return 0;
     }
-    return this.appCtx.resolveUserCounter(this.activeUser.id, 'game', this.activeUser.activities.game);
+    return this.appCtx.activityStore.resolveUserCounter(this.activeUser.id, 'game', this.activeUser.activities.game);
   }
 
   protected gamePageStatusClass(): string {
@@ -853,7 +853,7 @@ export class HomeComponent implements OnDestroy {
     }
     this.stopPairModeSplitDrag();
     this.selectedHomeMode = normalizedMode;
-    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.appCtx.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
     this.leftSocialQuery = '';
@@ -884,7 +884,7 @@ export class HomeComponent implements OnDestroy {
       return;
     }
     const initialRateFilter = this.isPairMode ? 'pair-given' : 'individual-given';
-    this.activitiesContext.openActivities(
+    this.activitiesStore.openActivities(
       'rates',
       undefined,
       initialRateFilter,
@@ -924,7 +924,7 @@ export class HomeComponent implements OnDestroy {
     }
     this.gameFilterPopupContext = null;
     this.localPopup = null;
-    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.appCtx.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
     this.resetCandidateImageState();
@@ -1374,7 +1374,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private applyFilterPreferencesFromAppContext(): void {
-    const next = this.appCtx.resolveUserFilterPreferences(this.activeUserId, createInitialGameFilter(this.activeUser));
+    const next = this.appCtx.userProfileStore.resolveUserFilterPreferences(this.activeUserId, createInitialGameFilter(this.activeUser));
     this.gameFilter = normalizeGameFilter(next);
   }
 
@@ -1468,7 +1468,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private getActiveUserId(): string {
-    const activeUserId = this.appCtx.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }
@@ -1938,7 +1938,7 @@ export class HomeComponent implements OnDestroy {
     if (!this.isSeparatedFriendsMode && !this.isFriendsInCommonMode) {
       return;
     }
-    this.appCtx.clearUserFilterCountOverride(this.activeUserId);
+    this.appCtx.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
     this.resetCandidateImageState();
@@ -2726,7 +2726,7 @@ export class HomeComponent implements OnDestroy {
 
   private createFallbackActiveUser(): UserDto {
     return {
-      id: this.activeUserId || this.appCtx.activeUserId().trim(),
+      id: this.activeUserId || this.appCtx.userProfileStore.activeUserId().trim(),
       name: '',
       age: 30,
       birthday: '',

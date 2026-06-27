@@ -141,7 +141,7 @@ export class EventMembersPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -166,11 +166,11 @@ export class EventMembersPopupComponent {
     this.syncMobileViewFromViewport();
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      this.popupCtx.clearActivitiesNavigationRequest();
+      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
@@ -194,7 +194,7 @@ export class EventMembersPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.appCtx.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -284,7 +284,7 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.popupCtx.openActivityInvitePopup({
+    this.popupCtx.popupStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
       title: this.subtitle,
@@ -294,7 +294,7 @@ export class EventMembersPopupComponent {
   }
 
   protected isSuspendedForAssetInvite(): boolean {
-    const invitePopup = this.popupCtx.activityInvitePopup();
+    const invitePopup = this.popupCtx.popupStore.activityInvitePopup();
     return !!invitePopup && invitePopup.ownerId === this.ownerId;
   }
 
@@ -1320,7 +1320,7 @@ export class EventMembersPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.appCtx.userProfileStore.activeUserId().trim();
   }
 
   private resetSummaryState(): void {

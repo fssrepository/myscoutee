@@ -40,7 +40,7 @@ export class AppLocationService {
     this.initialized = true;
 
     effect(() => {
-      const activeUserId = this.appCtx.activeUserId().trim();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
       if (!activeUserId) {
         this.stopCoordinateWatch();
         return;
@@ -64,12 +64,12 @@ export class AppLocationService {
       return null;
     }
 
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
     if (activeUser?.id?.trim() === normalizedUserId) {
       return activeUser;
     }
 
-    const cachedUser = this.appCtx.getUserProfile(normalizedUserId);
+    const cachedUser = this.appCtx.userProfileStore.getUserProfile(normalizedUserId);
     if (cachedUser) {
       return cachedUser;
     }
@@ -85,7 +85,7 @@ export class AppLocationService {
       session.profile.initials,
       session.profile.imageUrl
     );
-    this.appCtx.setUserProfile(bootstrapUser);
+    this.appCtx.userProfileStore.setUserProfile(bootstrapUser);
     return bootstrapUser;
   }
 
@@ -139,7 +139,7 @@ export class AppLocationService {
 
     const stored = this.readStoredCoordinates(userId);
     if (stored && !this.sameCoordinates(activeUser.locationCoordinates, stored)) {
-      this.appCtx.setUserProfile({
+      this.appCtx.userProfileStore.setUserProfile({
         ...activeUser,
         locationCoordinates: stored
       });
@@ -200,7 +200,7 @@ export class AppLocationService {
       return;
     }
 
-    this.appCtx.setUserProfile({
+    this.appCtx.userProfileStore.setUserProfile({
       ...activeUser,
       locationCoordinates: coordinates
     });
@@ -353,7 +353,7 @@ export class AppLocationService {
         locationCoordinates: normalizedCoordinates
       });
       if (savedUser?.id?.trim()) {
-        this.appCtx.setUserProfile(savedUser);
+        this.appCtx.userProfileStore.setUserProfile(savedUser);
         this.lastPersistedCoordinatesByUserId.set(
           userId,
           this.normalizeCoordinates(savedUser.locationCoordinates) ?? normalizedCoordinates

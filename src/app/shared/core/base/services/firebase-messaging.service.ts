@@ -31,7 +31,7 @@ export class FirebaseMessagingService {
     this.initialized = true;
 
     effect(() => {
-      const userId = this.appCtx.activeUserId().trim();
+      const userId = this.appCtx.userProfileStore.activeUserId().trim();
       if (!userId || !this.enabled) {
         return;
       }
@@ -66,7 +66,7 @@ export class FirebaseMessagingService {
     if (!this.enabled) {
       return;
     }
-    const userId = this.appCtx.activeUserId().trim();
+    const userId = this.appCtx.userProfileStore.activeUserId().trim();
     if (!userId) {
       return;
     }

@@ -471,7 +471,7 @@ export class HttpUsersService implements UserService {
       return null;
     }
 
-    const activeProfile = this.appCtx.activeUserProfile();
+    const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
     if (activeProfile) {
       return {
         user: activeProfile

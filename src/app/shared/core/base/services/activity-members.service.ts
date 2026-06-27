@@ -82,7 +82,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
-    const actorUserId = this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    const actorUserId = this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
@@ -117,7 +117,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     }
     const members = this.presentMembers(await this.activityMembersService.applyMemberAction(
       normalizedOwner,
-      this.appCtx.activeUserId().trim(),
+      this.appCtx.userProfileStore.activeUserId().trim(),
       targetUserId,
       action,
       reason
@@ -140,7 +140,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     pendingMembers: number,
     capacityTotal: number
   ): void {
-    this.appCtx.emitActivityMembersSync({
+    this.appCtx.activityStore.emitActivityMembersSync({
       id,
       acceptedMembers,
       pendingMembers,
@@ -170,7 +170,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   private presentMembers(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
-    const activeUserId = this.appCtx.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const invitedByUserId = `${entry.invitedByUserId ?? ''}`.trim() || null;
       return {
@@ -184,7 +184,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   private prepareMembersForPersistence(
     entries: readonly ActivityContracts.ActivityMemberEntry[]
   ): ActivityContracts.ActivityMemberEntry[] {
-    const activeUserId = this.appCtx.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const isPendingInvite = entry.status === 'pending'
         && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');

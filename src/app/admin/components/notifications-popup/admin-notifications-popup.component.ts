@@ -1410,7 +1410,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private activeAdminId(fallback?: string | null): string {
-    return this.appCtx.activeUserId().trim() || `${fallback ?? ''}`.trim();
+    return this.appCtx.userProfileStore.activeUserId().trim() || `${fallback ?? ''}`.trim();
   }
 
   private hasFinishedCurrentRun(rule: AdminNotificationRule): boolean {

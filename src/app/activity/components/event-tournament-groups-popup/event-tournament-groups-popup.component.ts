@@ -33,7 +33,7 @@ import {
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
 import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
+import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 
 type TournamentGroupsAction =
@@ -130,7 +130,7 @@ export class EventTournamentGroupsPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -162,7 +162,7 @@ export class EventTournamentGroupsPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.eventTournamentGroupsPopup();
+      const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
       if (!request) {
         this.resetState();
         return;
@@ -182,7 +182,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.appCtx.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs === this.handledMembersSyncMs) {
         return;
       }
@@ -198,7 +198,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityResourceSync();
+      const sync = this.appCtx.activityStore.activityResourceSync();
       if (!sync || sync.updatedMs === this.handledResourceSyncMs) {
         return;
       }
@@ -237,11 +237,11 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupCtx.eventTournamentGroupsPopup());
+    return Boolean(this.popupCtx.popupStore.eventTournamentGroupsPopup());
   }
 
   protected close(): void {
-    this.popupCtx.closeEventTournamentGroupsPopup();
+    this.popupCtx.popupStore.closeEventTournamentGroupsPopup();
   }
 
   protected viewModel(): EventTournamentGroupsPopupModel {
@@ -986,7 +986,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private async loadGroupsForStage(stageId: string): Promise<void> {
-    const request = this.popupCtx.eventTournamentGroupsPopup();
+    const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
     const eventId = `${request?.eventId ?? ''}`.trim();
     const normalizedStageId = `${stageId ?? ''}`.trim();
     if (!eventId || !normalizedStageId) {
@@ -1223,20 +1223,20 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    return this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
   }
 
   private eventId(): string {
-    const request = this.popupCtx.eventTournamentGroupsPopup();
+    const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
     return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
   }
 
   private requestEventId(): string {
-    return `${this.popupCtx.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+    return `${this.popupCtx.popupStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
   }
 
   private requestSlotId(): string | null {
-    const slotId = `${this.popupCtx.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
+    const slotId = `${this.popupCtx.popupStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
     return slotId || null;
   }
 
@@ -1422,7 +1422,7 @@ export class EventTournamentGroupsPopupComponent {
   ): void {
     event?.stopPropagation();
     const isMembersPopup = type === 'Members';
-    this.eventEditorService.requestSubEventResourcePopup({
+    this.eventEditorStore.requestSubEventResourcePopup({
       type,
       ownerId: this.eventId(),
       parentTitle: this.state?.title ?? '',

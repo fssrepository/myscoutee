@@ -111,7 +111,7 @@ export class AssetMemberPickerPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -129,7 +129,7 @@ export class AssetMemberPickerPopupComponent {
 
   constructor() {
     effect(() => {
-      const context = this.popupCtx.activityInvitePopup();
+      const context = this.popupCtx.popupStore.activityInvitePopup();
       if (!context?.ownerId?.trim()) {
         this.resetState();
         return;
@@ -184,7 +184,7 @@ export class AssetMemberPickerPopupComponent {
       return;
     }
     const shouldCloseOwnerPopup = this.closeOwnerPopupOnClose;
-    this.popupCtx.closeActivityInvitePopup();
+    this.popupCtx.popupStore.closeActivityInvitePopup();
     this.resetState();
     if (shouldCloseOwnerPopup) {
       this.ownedAssets.closePopup();
@@ -503,7 +503,7 @@ export class AssetMemberPickerPopupComponent {
     const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
     const queryKey = `${ownerId}:${this.ownerType}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
-      const activeUserId = this.appCtx.activeUserId().trim();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
       if (this.isLocalCandidateSource) {
         this.persistedSelectedUserIds = new Set<string>();
         this.currentCandidates = this.sortLocalCandidates(inviteSort);
