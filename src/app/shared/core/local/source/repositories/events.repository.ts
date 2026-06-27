@@ -2,11 +2,12 @@ import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.en
 import type { ActivityEventRecordCollection } from '../entity/event.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
-import { ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileStateBuilder } from '../../../base/builders';
 import {
   ActivityEventDetailDTO,
   type ActivityEventActivitiesQuery,
@@ -2556,7 +2557,7 @@ export class LocalEventsRepository {
       return [];
     }
 
-    const scheduleAnchorMs = ScheduleDateBuilder.anchorDate().getTime();
+    const scheduleAnchorMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
     const dayMs = 24 * 60 * 60 * 1000;
     const horizonStart = new Date(Math.max(parentStart.getTime(), scheduleAnchorMs - dayMs));
     const horizonEnd = new Date(Math.min(parentEnd.getTime(), scheduleAnchorMs + (45 * dayMs)));

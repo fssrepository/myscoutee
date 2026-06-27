@@ -322,6 +322,40 @@ export class AppUtils {
     return parsed ? this.dateOnly(parsed) : null;
   }
 
+  static anchorDate(offsetInDays: number | null | undefined = 0, now = new Date(Date.now())): Date {
+    const base = this.parseDate(now) ?? new Date(Date.now());
+    const today = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
+    const normalizedOffsetDays = Math.trunc(Number(offsetInDays) || 0);
+    return this.addDays(today, normalizedOffsetDays);
+  }
+
+  static shiftDate(
+    value: string | number | Date | null | undefined,
+    referenceDate: string | number | Date | null | undefined,
+    offsetInDays: number | null | undefined = 0,
+    now = new Date(Date.now())
+  ): Date {
+    const parsedValue = this.parseDate(value);
+    const parsedReferenceDate = this.parseDate(referenceDate);
+    if (!parsedValue || !parsedReferenceDate) {
+      return new Date(Number.NaN);
+    }
+    return new Date(
+      this.anchorDate(offsetInDays, now).getTime()
+      + (parsedValue.getTime() - parsedReferenceDate.getTime())
+    );
+  }
+
+  static rebaseDateTime(
+    value: string | number | Date | null | undefined,
+    referenceDate: string | number | Date | null | undefined,
+    offsetInDays: number | null | undefined = 0,
+    now = new Date(Date.now())
+  ): string | undefined {
+    const shifted = this.shiftDate(value, referenceDate, offsetInDays, now);
+    return Number.isFinite(shifted.getTime()) ? this.toIsoDateTimeLocal(shifted) : undefined;
+  }
+
   static dateTimeMs(value: string | number | Date | null | undefined): number | null {
     return this.parseDate(value)?.getTime() ?? null;
   }

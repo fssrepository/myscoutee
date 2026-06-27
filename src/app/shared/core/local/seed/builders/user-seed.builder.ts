@@ -1,8 +1,8 @@
 import { AppUtils } from '../../../../app-utils';
+import { environment } from '../../../../../../environments/environment';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
 
 
 function buildDemoPortraitStack(
@@ -389,7 +389,7 @@ export class SeedUserBuilder {
     if (index === totalCount - 1) {
       return {
         profileStatus: 'deleted',
-        deletedAtIso: SeedScheduleBuilder.anchorDate().toISOString(),
+        deletedAtIso: AppUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
         statusText: 'Deleted',
         activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
       };

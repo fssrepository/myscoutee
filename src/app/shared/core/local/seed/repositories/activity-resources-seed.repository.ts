@@ -1,5 +1,6 @@
 import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
@@ -9,7 +10,7 @@ import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../source/entity/activity.entity
 import { ACTIVITY_RESOURCES_TABLE_NAME, type ActivityResourcesRecordCollection, type ActivitySubEventResourceRecord } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
-import { SeedScheduleBuilder, SeedUserBuilder } from '../builders';
+import { SeedUserBuilder } from '../builders';
 
 import type * as AppDTOs from '../../../base/dto';
 @Injectable({
@@ -127,7 +128,7 @@ export class SeedActivityResourcesRepository {
     const sourceRecords = seedSourceRecords ?? [];
     const seenRecordIds = new Set<string>();
     const nextRecords: ActivitySubEventResourceRecord[] = [];
-    let createdMs = SeedScheduleBuilder.anchorDate().getTime();
+    let createdMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
 
     for (const record of sourceRecords) {
       if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId, contributorUserIdsByEventId)) {

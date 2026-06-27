@@ -1,4 +1,5 @@
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
@@ -7,7 +8,8 @@ import type * as AppTypes from '../../../base/models';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { UserProfileStateBuilder } from '../../../base/builders';
-import { SeedAssetBuilder, SeedScheduleBuilder } from '../builders';
+import { SeedAssetBuilder } from '../builders';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 import type * as AppDTOs from '../../../base/dto';
 @Injectable({
@@ -88,7 +90,11 @@ export class SeedAssetsRepository {
       }
       const ownerBucket = nextIdsByOwnerUserId[ownerUserId] ?? [];
       const ownerIdSet = new Set(ownerBucket);
-      const createdAt = SeedScheduleBuilder.shiftDate(new Date('2026-02-01T12:00:00.000Z'));
+      const createdAt = AppUtils.shiftDate(
+        new Date('2026-02-01T12:00:00.000Z'),
+        SEED_SCHEDULE_REFERENCE_DATE,
+        environment.bootstrapOffsetInDays
+      );
       for (const [index, card] of sampleCards.entries()) {
         const id = `${ownerUserId}:${card.id}`;
         if (ownerIdSet.has(id)) {

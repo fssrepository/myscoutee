@@ -1,6 +1,4 @@
-import { AppUtils } from '../../../app-utils';
 import type { UserSelectorListItemDto, UserDto } from '../../contracts/user.interface';
-import { UserMenuCountersBuilder } from './user-menu-counters.builder';
 
 interface UserRecordsActivitySources {
   chatItems?: ReadonlyArray<{ unread: number }>;
@@ -45,7 +43,7 @@ export class UserRecordsBuilder {
 
     const activities = user.activities;
     const chat = sources.chatItems
-      ? UserMenuCountersBuilder.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
+      ? this.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
       : activities.chat;
     const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
     const events = Number.isFinite(sources.eventsCount)
@@ -127,11 +125,11 @@ export class UserRecordsBuilder {
     };
   }
 
-  static legacySyntheticEventActivityTotal(existingCount: number, minEventsPerUser: number): number {
-    return UserMenuCountersBuilder.syntheticEventActivityTotal(existingCount, minEventsPerUser);
-  }
-
-  static stableSortSeed(value: string): number {
-    return AppUtils.hashText(value);
+  private static resolveSectionBadge(values: number[], itemCount: number): number {
+    const positiveTotal = values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
+    if (positiveTotal > 0) {
+      return positiveTotal;
+    }
+    return itemCount;
   }
 }

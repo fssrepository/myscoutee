@@ -2,6 +2,7 @@ import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
@@ -16,7 +17,8 @@ import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMe
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
-import { SeedEventBuilder, SeedEventsBuilder, SeedScheduleBuilder, SeedUserBuilder } from '../builders';
+import { SeedEventBuilder, SeedEventsBuilder, SeedUserBuilder } from '../builders';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { ActivityMemberOwnerRef } from '../../../contracts/activity.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
@@ -406,7 +408,11 @@ export class SeedActivityMembersRepository {
       const owner: ActivityMemberOwnerRef = { ownerType: 'group', ownerId: group.ownerId };
       for (const userId of group.userIds) {
         const user = this.resolveDemoUser(userId, [...usersById.values()], usersById);
-        const metAtIso = SeedScheduleBuilder.rebaseDateTime('2026-03-22T18:00:00.000Z')
+        const metAtIso = AppUtils.rebaseDateTime(
+          '2026-03-22T18:00:00.000Z',
+          SEED_SCHEDULE_REFERENCE_DATE,
+          environment.bootstrapOffsetInDays
+        )
           ?? '2026-03-22T18:00:00.000Z';
         records.push(this.toRecord(owner, {
           id: `home-fic-seed:${group.ownerId}:${user.id}`.toLowerCase().replace(/[^a-z0-9:-]+/g, '-'),
@@ -451,7 +457,11 @@ export class SeedActivityMembersRepository {
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityContracts.ActivityMemberEntry[] {
-    const seedBaseDate = SeedScheduleBuilder.shiftDate(new Date('2026-02-24T12:00:00.000Z'));
+    const seedBaseDate = AppUtils.shiftDate(
+      new Date('2026-02-24T12:00:00.000Z'),
+      SEED_SCHEDULE_REFERENCE_DATE,
+      environment.bootstrapOffsetInDays
+    );
     const owner = this.resolveDemoUser(ownerUserId, users, usersById, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
     const ownerEntry: ActivityContracts.ActivityMemberEntry = {
       id: `${asset.id}:owner`,

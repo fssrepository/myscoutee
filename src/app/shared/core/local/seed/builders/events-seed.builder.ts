@@ -1,9 +1,10 @@
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
+import { environment } from '../../../../../../environments/environment';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { PricingBuilder } from '../../../base/builders/pricing.builder';
 import { SeedEventBuilder } from './event-seed.builder';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
@@ -2013,7 +2014,7 @@ export class SeedEventsBuilder {
   ): string {
     const startAt = new Date(startAtIso);
     if (Number.isNaN(startAt.getTime())) {
-      return AppUtils.toIsoDateTimeLocal(SeedScheduleBuilder.anchorDate());
+      return AppUtils.toIsoDateTimeLocal(AppUtils.anchorDate(environment.bootstrapOffsetInDays));
     }
     const seed = AppUtils.hashText(`event-duration:${this.recordSeedKey(record)}`);
     const durationMinutes = 90 + ((seed % 5) * 30);
@@ -2425,7 +2426,7 @@ export class SeedEventsBuilder {
   }
 
   static rebaseSeedDateTime(value: string | Date | null | undefined): string | undefined {
-    return SeedScheduleBuilder.rebaseDateTime(value);
+    return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays);
   }
 
   private static normalizeGeneratedSeedDateTime(value: string | Date | null | undefined): string | undefined {

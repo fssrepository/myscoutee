@@ -1,4 +1,5 @@
 import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../source/entity/chat.entity';
+import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
 import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 import type { ChatRecord } from '../../../contracts/chat.interface';
@@ -6,8 +7,8 @@ import type { UserDto } from '../../../contracts/user.interface';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventBuilder } from './event-seed.builder';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
 
@@ -517,7 +518,11 @@ export class SeedChatsBuilder {
 
   private static buildDateIso(ownerUserId: string, item: ChatRecord): string {
     const seed = AppUtils.hashText(`chat-date:${ownerUserId}:${item.id}:${item.title}`);
-    const value = SeedScheduleBuilder.shiftDate(new Date(this.FALLBACK_TIME));
+    const value = AppUtils.shiftDate(
+      new Date(this.FALLBACK_TIME),
+      SEED_SCHEDULE_REFERENCE_DATE,
+      environment.bootstrapOffsetInDays
+    );
     value.setDate(value.getDate() + (seed % 9));
     value.setHours(8 + (seed % 11), (seed % 4) * 15, 0, 0);
     return AppUtils.toIsoDateTime(value);
@@ -614,7 +619,7 @@ export class SeedChatsBuilder {
   }
 
   private static rebaseDateIso(value: string): string {
-    return SeedScheduleBuilder.rebaseDateTime(value) ?? value;
+    return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
   }
 
   private static buildSupportCaseMessages(

@@ -1,7 +1,8 @@
 import type { EventFeedbackPersistedState } from '../../source/entity/event.entity';
+import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivityMemberRole } from '../../../common/constants';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { ActivityEventSeedItem } from '../entity';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { EventFeedbackCard, EventFeedbackOption, EventFeedbackTraitOption } from '../../../base/models';
@@ -280,7 +281,11 @@ export class SeedEventFeedbackBuilder {
   ): string {
     const startMs = this.eventStartAtMs(eventId, eventDatesById);
     const baseMs = startMs === null
-      ? SeedScheduleBuilder.shiftDate(new Date(Date.UTC(2026, 2, 20, 18, 0, 0, 0))).getTime()
+      ? AppUtils.shiftDate(
+        new Date(Date.UTC(2026, 2, 20, 18, 0, 0, 0)),
+        SEED_SCHEDULE_REFERENCE_DATE,
+        environment.bootstrapOffsetInDays
+      ).getTime()
       : startMs + eventFeedbackUnlockDelayMs;
     const offsetMinutes = 45 + (seed % 180);
     return new Date(baseMs + (offsetMinutes * 60 * 1000)).toISOString();

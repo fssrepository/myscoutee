@@ -14,6 +14,7 @@ import type {
   UserLocationEligibilityResponseDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
+  UserMenuCountersDto,
   UserRealtimeLongPollResponseDto,
   UserSelectorListItemDto,
   UserSelectorRole,
@@ -29,7 +30,6 @@ import {
   LocalUserRealtimeSnapshotBuilder,
   type LocalUserRealtimeSnapshotState
 } from '../builders';
-import { UserMenuCountersBuilder } from '../../../base/builders';
 import {
   LocalProfileExperiencesMapper,
   LocalUserFilterPreferencesMapper,
@@ -439,15 +439,61 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return LocalUsersMapper.toDto(savedUser);
   }
 
-  private buildInitialMenuCounterOverrides(user: UserDto) {
-    return UserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
-      cars: user.activities.cars ?? 0,
-      accommodation: user.activities.accommodation ?? 0,
-      supplies: user.activities.supplies ?? 0,
-      tickets: user.activities.tickets ?? 0,
-      contacts: user.activities.contacts ?? 0,
-      feedback: user.activities.feedback ?? 0
-    });
+  private buildInitialMenuCounterOverrides(user: UserDto): UserMenuCountersDto {
+    const normalizeCounter = (value: unknown): number => {
+      const count = Number(value);
+      return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+    };
+
+    const activities = user.activities;
+    const events = normalizeCounter(activities?.events);
+    const invitations = normalizeCounter(activities?.invitations);
+    const hosting = normalizeCounter(activities?.hosting);
+    const feedback = normalizeCounter(activities?.feedback);
+    const cars = normalizeCounter(activities?.cars);
+    const accommodation = normalizeCounter(activities?.accommodation);
+    const supplies = normalizeCounter(activities?.supplies);
+    const tickets = normalizeCounter(activities?.tickets);
+    const event = activities?.event;
+    const asset = activities?.asset;
+    const eventFeedback = activities?.eventFeedback;
+
+    return {
+      game: normalizeCounter(activities?.game),
+      chat: normalizeCounter(activities?.chat),
+      invitations,
+      events,
+      hosting,
+      cars,
+      accommodation,
+      supplies,
+      tickets,
+      contacts: normalizeCounter(activities?.contacts),
+      feedback,
+      event: {
+        all: normalizeCounter(event?.all ?? events + invitations + hosting),
+        active: normalizeCounter(event?.active ?? events),
+        pending: normalizeCounter(event?.pending),
+        invitations: normalizeCounter(event?.invitations ?? invitations),
+        hosting: normalizeCounter(event?.hosting ?? hosting),
+        drafts: normalizeCounter(event?.drafts),
+        trash: normalizeCounter(event?.trash)
+      },
+      asset: {
+        cars: normalizeCounter(asset?.cars ?? cars),
+        accommodation: normalizeCounter(asset?.accommodation ?? accommodation),
+        supplies: normalizeCounter(asset?.supplies ?? supplies),
+        tickets: normalizeCounter(asset?.tickets ?? tickets)
+      },
+      eventFeedback: {
+        ownEvents: normalizeCounter(eventFeedback?.ownEvents),
+        pending: normalizeCounter(eventFeedback?.pending ?? feedback),
+        feedbacked: normalizeCounter(eventFeedback?.feedbacked),
+        removed: normalizeCounter(eventFeedback?.removed)
+      },
+      adminJobs: normalizeCounter(activities?.adminJobs),
+      adminMetrics: normalizeCounter(activities?.adminMetrics)
+    };
   }
 
   private withActivityCounts(

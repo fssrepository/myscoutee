@@ -1,9 +1,9 @@
 import { AppUtils } from '../../../../app-utils';
+import { environment } from '../../../../../../environments/environment';
 import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import type { ActivityEventSeedItem, ActivityHostingSeedItem } from '../entity';
 import type { UserDto } from '../../../contracts/user.interface';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 
 export class SeedEventBuilder {
@@ -88,7 +88,7 @@ export class SeedEventBuilder {
       dateSource?.endIso
       ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
     );
-    const startMs = Number.isNaN(start.getTime()) ? SeedScheduleBuilder.anchorDate().getTime() : start.getTime();
+    const startMs = Number.isNaN(start.getTime()) ? AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() : start.getTime();
     const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
       ? (startMs + (4 * 60 * 60 * 1000))
       : end.getTime();
@@ -124,7 +124,7 @@ export class SeedEventBuilder {
       dateSource?.endIso
       ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
     );
-    const startMs = Number.isNaN(start.getTime()) ? SeedScheduleBuilder.anchorDate().getTime() : start.getTime();
+    const startMs = Number.isNaN(start.getTime()) ? AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() : start.getTime();
     const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
       ? (startMs + (4 * 60 * 60 * 1000))
       : end.getTime();
