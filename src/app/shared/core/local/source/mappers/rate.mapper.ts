@@ -2,7 +2,7 @@ import type {
   ContextualDtoToRecordMapper,
   DtoRecordMapper,
   NullableRecordToDtoMapper
-} from '../../../base/mappers/mapper.types';
+} from './mapper.types';
 import type { ActivityRateDTO, UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
 import type { UserFilterPreferencesRecord, UserRateRecord } from '../entity/rate.entity';
 

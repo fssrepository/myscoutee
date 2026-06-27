@@ -3,7 +3,7 @@ import type {
   ChatDTO,
   ChatPopupMessage
 } from '../../../contracts/chat.interface';
-import type { RecordToDtoListMapper } from '../../../base/mappers/mapper.types';
+import type { RecordToDtoListMapper } from './mapper.types';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 
 

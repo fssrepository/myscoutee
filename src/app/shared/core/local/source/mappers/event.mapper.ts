@@ -1,4 +1,4 @@
-import type { DtoListMapper, DtoMapper } from '../../../base/mappers/mapper.types';
+import type { DtoListMapper, DtoMapper } from './mapper.types';
 import { AppUtils } from '../../../../app-utils';
 import { PricingBuilder } from '../../../base/builders';
 import {

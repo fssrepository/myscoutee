@@ -22,10 +22,6 @@ export interface ContextualDtoToRecordMapper<TContext, TDto, TRecord> {
   toRecord(context: TContext, dto: TDto): TRecord;
 }
 
-export interface ContextualRecordToDtoMapper<TContext, TRecord, TDto> {
-  toDto(context: TContext, record: TRecord): TDto;
-}
-
 export interface DtoRecordMapper<TRecord, TDto>
   extends RecordToDtoListMapper<TRecord, TDto>,
     DtoToRecordListMapper<TDto, TRecord> {}
