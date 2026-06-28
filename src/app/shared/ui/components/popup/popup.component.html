@@ -1,5 +1,5 @@
 <div class="ui-popup" [style.z-index]="zIndex ?? null">
-  <div class="ui-popup__backdrop" (click)="onBackdropClick($event)"></div>
+  <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>
   <section
     class="ui-popup__panel"
     [ngClass]="[panelSizeClass(), panelHeightClass()]"
@@ -30,11 +30,12 @@
                 <app-menu
                   class="ui-popup__control"
                   [kind]="control.menuKind ?? 'select'"
-                  [trigger]="control.trigger"
+                  [trigger]="control.trigger ?? null"
                   [items]="control.items ?? []"
                   [model]="control.model ?? null"
                   [panelAlign]="control.panelAlign ?? 'auto'"
                   [panelMode]="control.panelMode ?? 'auto'"
+                  [mobileBreakpointPx]="control.mobileBreakpointPx ?? 760"
                   [closeOnSelect]="control.closeOnSelect ?? true"
                   (itemSelect)="selectMenuItem(control, $event)"
                 ></app-menu>
@@ -96,11 +97,12 @@
                 <app-menu
                   class="ui-popup__control"
                   [kind]="control.menuKind ?? 'select'"
-                  [trigger]="control.trigger"
+                  [trigger]="control.trigger ?? null"
                   [items]="control.items ?? []"
                   [model]="control.model ?? null"
                   [panelAlign]="control.panelAlign ?? 'auto'"
                   [panelMode]="control.panelMode ?? 'auto'"
+                  [mobileBreakpointPx]="control.mobileBreakpointPx ?? 760"
                   [closeOnSelect]="control.closeOnSelect ?? true"
                   (itemSelect)="selectMenuItem(control, $event)"
                 ></app-menu>
@@ -132,11 +134,12 @@
                 <app-menu
                   class="ui-popup__control"
                   [kind]="control.menuKind ?? 'select'"
-                  [trigger]="control.trigger"
+                  [trigger]="control.trigger ?? null"
                   [items]="control.items ?? []"
                   [model]="control.model ?? null"
                   [panelAlign]="control.panelAlign ?? 'auto'"
                   [panelMode]="control.panelMode ?? 'auto'"
+                  [mobileBreakpointPx]="control.mobileBreakpointPx ?? 760"
                   [closeOnSelect]="control.closeOnSelect ?? true"
                   (itemSelect)="selectMenuItem(control, $event)"
                 ></app-menu>

@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
@@ -19,16 +18,19 @@ import {
 import { AssetEditorPopupComponent } from '../asset-editor-popup/asset-editor-popup.component';
 import { AssetTicketScanPopupComponent } from '../asset-ticket-scan-popup/asset-ticket-scan-popup.component';
 import {
-  AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   AppMenuTriggerComponent,
   InfoCardComponent,
+  PopupComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupModel,
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuAction,
@@ -88,12 +90,11 @@ type AssetPopupMenuContext =
   standalone: true,
   imports: [
     CommonModule,
-    MatButtonModule,
     MatIconModule,
-    AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     InfoCardComponent,
+    PopupComponent,
     SmartListComponent,
     ConfirmationDialogComponent,
     I18nPipe,
@@ -264,6 +265,124 @@ export class AssetPopupComponent {
       return context.parentTitle || subEventName || 'Event';
     }
     return this.ownedAssetsStore.ticketPopup() ? this.assetPopupStore.ticketHeaderSummary() : '';
+  }
+
+  protected assetPopupModel(): PopupModel<AssetPopupMenuContext> {
+    return {
+      title: this.assetPopupTitle(),
+      subtitle: this.assetPopupSubtitle(),
+      ariaLabel: this.assetPopupTitle(),
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: this.isBasketMode() ? 'dim' : 'default',
+      headerControls: this.assetPopupHeaderControls(),
+      toolbarControls: this.assetPopupToolbarControls(),
+      onClose: event => this.closeAssetPopup(event),
+      onAction: event => this.onAssetPopupAction(event),
+      onMenuSelect: event => this.onAssetPopupMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected assetPopupZIndex(): number {
+    return this.isBasketMode() ? 14000 : 12000;
+  }
+
+  protected assetSupplyRequestsPopupModel(asset: AppDTOs.AssetDTO): PopupModel<AssetPopupMenuContext> {
+    return {
+      title: asset.title,
+      subtitle: this.assetRequestListSubtitle(),
+      ariaLabel: asset.title,
+      closeAriaLabel: 'asset.requests.close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: [{
+        kind: 'menu',
+        id: 'supply-request-filter',
+        trigger: this.supplyRequestFilterMenuTrigger(),
+        items: this.supplyRequestFilterMenuItems(),
+        mobileBreakpointPx: 900
+      }],
+      onClose: event => this.closeSupplyRequestList(event),
+      onMenuSelect: event => this.onAssetPopupMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected assetSupplyRequestsPopupZIndex(): number {
+    return 12200;
+  }
+
+  private assetPopupHeaderControls(): PopupControl<AssetPopupMenuContext>[] {
+    if (this.isBasketMode()) {
+      return [{
+        kind: 'menu',
+        id: 'asset-assign-actions',
+        menuKind: 'inline',
+        items: this.assetAssignBasketActionItems(),
+        panelAlign: 'end',
+        mobileBreakpointPx: 900,
+        closeOnSelect: false
+      }];
+    }
+    if (!this.ownedAssetsStore.ticketPopup()) {
+      return [];
+    }
+    return [{
+      kind: 'menu',
+      id: 'ticket-order',
+      trigger: this.ticketOrderMenuTrigger(),
+      items: this.ticketOrderMenuItems()
+    }];
+  }
+
+  private assetPopupToolbarControls(): PopupControl<AssetPopupMenuContext>[] {
+    if (this.isBasketMode()) {
+      return [];
+    }
+    const controls: PopupControl<AssetPopupMenuContext>[] = [{
+      kind: 'menu',
+      id: 'asset-filter',
+      trigger: this.assetFilterMenuTrigger(),
+      items: this.assetFilterMenuItems(),
+      mobileBreakpointPx: 900
+    }];
+    if (this.ownedAssetsStore.ticketPopup()) {
+      controls.push({
+        id: 'ticket-scan',
+        align: 'end',
+        icon: 'qr_code_scanner',
+        label: 'Scan Ticket',
+        ariaLabel: 'Scan ticket',
+        palette: 'sky',
+        compactOnMobile: true
+      });
+    } else {
+      controls.push({
+        id: 'asset-add',
+        align: 'end',
+        icon: 'add',
+        ariaLabel: 'Add asset',
+        palette: 'green'
+      });
+    }
+    return controls;
+  }
+
+  private onAssetPopupAction(event: PopupActionEvent): void {
+    switch (event.action.id) {
+      case 'asset-add':
+        this.openAssetEditorCreate();
+        return;
+      case 'ticket-scan':
+        this.openTicketScannerPopup(event.sourceEvent);
+        return;
+      default:
+        return;
+    }
   }
 
   protected pendingOwnedAssetDeleteLabel(): string {

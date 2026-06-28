@@ -14,6 +14,7 @@ export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
 export type PopupBodyLayout = 'default' | 'fill';
 export type PopupControlAlign = 'start' | 'end';
+export type PopupBackdropTone = 'default' | 'dim';
 
 export interface PopupControlBase {
   id: string;
@@ -33,11 +34,12 @@ export interface PopupAction extends PopupControlBase {
 export interface PopupMenuControl<TContext = unknown> extends PopupControlBase {
   kind: 'menu';
   menuKind?: AppMenuKind;
-  trigger: AppMenuTrigger;
+  trigger?: AppMenuTrigger | null;
   items?: readonly AppMenuItem<string, TContext>[];
   model?: AppMenuModel<string, TContext> | null;
   panelAlign?: AppMenuPanelAlign;
   panelMode?: AppMenuPanelMode;
+  mobileBreakpointPx?: number;
   closeOnSelect?: boolean;
 }
 
@@ -58,6 +60,7 @@ export interface PopupModel<TContext = unknown> {
   height?: PopupHeight;
   headerTone?: PopupHeaderTone;
   bodyLayout?: PopupBodyLayout;
+  backdropTone?: PopupBackdropTone;
   headerControls?: readonly PopupControl<TContext>[];
   toolbarControls?: readonly PopupControl<TContext>[];
   headerActions?: readonly PopupAction[];

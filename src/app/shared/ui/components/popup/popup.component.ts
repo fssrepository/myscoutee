@@ -142,6 +142,10 @@ export class PopupComponent<TContext = unknown> {
     return `ui-popup__body--${this.popupModel.bodyLayout ?? 'default'}`;
   }
 
+  protected backdropToneClass(): string {
+    return `ui-popup__backdrop--${this.popupModel.backdropTone ?? 'default'}`;
+  }
+
   protected emitClose(event: Event): void {
     this.popupModel.onClose?.(event);
     this.close.emit(event);

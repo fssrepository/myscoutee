@@ -1,147 +1,42 @@
 <div class="asset-popup" [attr.data-owned-assets-ui-rev]="ownedAssetsStore.uiRevision()">
   @if (ownedAssetsStore.popupOpen()) {
-    <section
-      class="app-popup"
-      [class.app-popup-stacked]="isBasketMode()"
-      [class.app-popup-super-stacked]="isBasketMode()"
-      [class.app-popup-super-stacked-over-subevents]="isBasketMode()"
-      [class.asset-popup-basket-shell]="isBasketMode()"
-      >
-      <div class="app-popup-backdrop" (click)="closeAssetPopup()"></div>
+    <app-popup [model]="assetPopupModel()" [zIndex]="assetPopupZIndex()">
       <div
-        class="app-popup-panel popup-panel-assets"
-        [class.popup-panel-friends-picker]="isBasketMode()"
-        [class.popup-panel-friends-picker-members]="isBasketMode()"
-        [class.popup-panel-subevent-asset-assign]="isBasketMode()"
-        [class.popup-panel-wide]="isBasketMode()"
-        [class.popup-panel-full-height]="isBasketMode()"
-        [class.asset-popup-basket-panel]="isBasketMode()"
-        (click)="$event.stopPropagation()"
+        class="experience-popup assets-popup assets-popup-smart-list asset-popup-content"
+        [class.assets-popup-tickets]="ownedAssetsStore.ticketPopup()"
+        [class.assets-popup-basket]="isBasketMode()"
         >
-        <div
-          class="popup-header"
-          [class.popup-header-with-progress]="!isBasketMode()"
-          [class.popup-header-friends-picker]="isBasketMode()"
-          >
-          <div class="popup-title" [class.popup-title-members]="isBasketMode()">
-            @if (isBasketMode()) {
-              <div class="popup-chat-title-block">
-                <h2>{{ assetPopupTitle() }}</h2>
-                @if (assetPopupSubtitle()) {
-                  <p>{{ assetPopupSubtitle() }}</p>
-                }
-              </div>
-            } @else {
-              <h2>{{ assetPopupTitle() }}</h2>
-              @if (assetPopupSubtitle()) {
-                <p class="popup-subtitle-activities">{{ assetPopupSubtitle() }}</p>
-              }
-            }
-          </div>
-          @if (isBasketMode()) {
-            <div class="popup-header-inline-controls asset-popup-basket-controls">
-              <app-menu
-                class="asset-popup-assign-menu"
-                kind="inline"
-                [items]="assetAssignBasketActionItems()"
-                [panelAlign]="'end'"
-                [mobileBreakpointPx]="900"
-                [closeOnSelect]="false"
-                (itemSelect)="onAssetPopupMenuSelect($event)"
-              ></app-menu>
-              <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          } @else {
-            @if (ownedAssetsStore.ticketPopup()) {
-              <app-menu
-                class="ticket-order-picker"
-                kind="select"
-                [trigger]="ticketOrderMenuTrigger()"
-                [items]="ticketOrderMenuItems()"
-                (itemSelect)="onAssetPopupMenuSelect($event)"
-              ></app-menu>
-            }
-            <button mat-icon-button class="popup-close" (click)="closeAssetPopup($event)" aria-label="Close">
-              <mat-icon>close</mat-icon>
-            </button>
+        @if (isBasketMode()) {
+          @if (basketSaveErrorMessage()) {
+            <p class="asset-popup-basket-error">{{ basketSaveErrorMessage() }}</p>
           }
-        </div>
-        <div
-          class="popup-body popup-body-assets-list"
-          [class.popup-body-assets-tickets]="ownedAssetsStore.ticketPopup()"
-          [class.popup-body-friends-picker]="isBasketMode()"
-          [class.popup-body-subevent-asset-assign]="isBasketMode()"
-          >
-            <div
-              class="experience-popup assets-popup assets-popup-smart-list"
-              [class.assets-popup-tickets]="ownedAssetsStore.ticketPopup()"
-              [class.assets-popup-basket]="isBasketMode()"
-              >
-            @if (isBasketMode()) {
-              @if (basketSaveErrorMessage()) {
-                <p class="asset-popup-basket-error">{{ basketSaveErrorMessage() }}</p>
-              }
-            } @else {
-              <div class="experience-toolbar assets-toolbar">
-                <app-menu
-                  class="assets-primary-filter-select"
-                  kind="select"
-                  [trigger]="assetFilterMenuTrigger()"
-                  [items]="assetFilterMenuItems()"
-                  [mobileBreakpointPx]="900"
-                  (itemSelect)="onAssetPopupMenuSelect($event)"
-                ></app-menu>
-                @if (!ownedAssetsStore.ticketPopup()) {
-                  <button
-                    type="button"
-                    class="popup-header-add-btn assets-add-btn"
-                    (click)="openAssetEditorCreate()"
-                    aria-label="Add asset"
-                    >
-                    <mat-icon>add</mat-icon>
-                  </button>
-                }
-                @if (ownedAssetsStore.ticketPopup()) {
-                  <button
-                    type="button"
-                    class="popup-header-add-btn assets-add-btn ticket-toolbar-scanner-btn"
-                    (click)="openTicketScannerPopup($event)"
-                    aria-label="Scan ticket"
-                    >
-                    <mat-icon>qr_code_scanner</mat-icon>
-                    <span>Scan Ticket</span>
-                  </button>
-                }
-              </div>
-            }
-            @if (ownedAssetsStore.ticketPopup() && !isBasketMode()) {
-              <app-smart-list
-                [config]="ticketSmartListConfig"
-                [loadPage]="ticketSmartListLoadPage"
-                [itemTemplate]="ticketItemTemplate"
-                [query]="ticketSmartListQuery"
-                (stateChange)="onTicketSmartListStateChange($event)"
-              ></app-smart-list>
-            } @else {
-              <app-smart-list
-                #assetSmartList
-                [config]="assetSmartListConfig"
-                [loadPage]="assetSmartListLoadPage"
-                [itemTemplate]="assetItemTemplate"
-                [query]="assetSmartListQuery"
-                (itemSelect)="onAssetSmartListItemSelect($event)"
-                (menuItemSelect)="onAssetDispatchedMenuSelect($event)"
-                (stateChange)="onAssetSmartListStateChange($event)"
-              ></app-smart-list>
-            }
-            @if (!isBasketMode()) {
-              <app-asset-editor-popup></app-asset-editor-popup>
-            }
-            @if (!isBasketMode()) {
-              <app-confirmation-dialog
-                [useStore]="false"
+        }
+        @if (ownedAssetsStore.ticketPopup() && !isBasketMode()) {
+          <app-smart-list
+            [config]="ticketSmartListConfig"
+            [loadPage]="ticketSmartListLoadPage"
+            [itemTemplate]="ticketItemTemplate"
+            [query]="ticketSmartListQuery"
+            (stateChange)="onTicketSmartListStateChange($event)"
+          ></app-smart-list>
+        } @else {
+          <app-smart-list
+            #assetSmartList
+            [config]="assetSmartListConfig"
+            [loadPage]="assetSmartListLoadPage"
+            [itemTemplate]="assetItemTemplate"
+            [query]="assetSmartListQuery"
+            (itemSelect)="onAssetSmartListItemSelect($event)"
+            (menuItemSelect)="onAssetDispatchedMenuSelect($event)"
+            (stateChange)="onAssetSmartListStateChange($event)"
+          ></app-smart-list>
+        }
+        @if (!isBasketMode()) {
+          <app-asset-editor-popup></app-asset-editor-popup>
+        }
+        @if (!isBasketMode()) {
+          <app-confirmation-dialog
+            [useStore]="false"
             [dialog]="{
               visible: !!ownedAssetsStore.pendingAssetDeleteCardId(),
               title: 'Delete asset',
@@ -154,116 +49,86 @@
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"
-              ></app-confirmation-dialog>
+          ></app-confirmation-dialog>
+        }
+      </div>
+    </app-popup>
+
+    @if (!isBasketMode() && showSupplyRequestList && selectedSupplyAsset(); as supplyAsset) {
+      <app-popup [model]="assetSupplyRequestsPopupModel(supplyAsset)" [zIndex]="assetSupplyRequestsPopupZIndex()">
+        <div
+          class="asset-supply-requests-content"
+          >
+          <div class="asset-supply-requests-sections">
+            @if (supplyRequestRows().length > 0) {
+              <div class="asset-supply-request-list">
+                @for (row of supplyRequestRows(); track row.id) {
+                  <article
+                    class="asset-supply-request-row"
+                    [class.asset-supply-request-row--pending]="row.status === 'pending'"
+                    [class.asset-supply-request-row--accepted]="row.status === 'accepted'"
+                    [class.asset-supply-request-row--assigned]="row.status === 'assigned'"
+                    >
+                    <div class="asset-supply-request-avatar">{{ row.avatarInitials }}</div>
+                    <div class="asset-supply-request-copy">
+                      <strong>{{ row.title }}</strong>
+                      @if (row.subtitle) {
+                        <span class="asset-supply-request-event">{{ row.subtitle }}</span>
+                      }
+                      @if ((row.metaRows?.[0] ?? '')) {
+                        <span class="asset-supply-request-schedule">{{ row.metaRows?.[0] }}</span>
+                      }
+                      @if (row.detail) {
+                        <p>{{ row.detail }}</p>
+                      }
+                    </div>
+                    <div class="asset-supply-request-side">
+                      <span
+                        class="asset-supply-request-availability-badge"
+                        [class.asset-supply-request-availability-badge--empty]="supplyRequestRowInventoryState(row) === 'empty'"
+                        [class.asset-supply-request-availability-badge--over]="supplyRequestRowInventoryState(row) === 'over'"
+                        [attr.aria-label]="supplyRequestRowInventoryLabel(row)"
+                        >
+                        {{ row.sideLabel }}
+                      </span>
+                      @if (supplyRequestFilter === 'all') {
+                        <span
+                          class="asset-supply-request-status"
+                          [class.asset-supply-request-status--pending]="row.status === 'pending'"
+                          [class.asset-supply-request-status--borrowed]="row.status === 'accepted'"
+                          [class.asset-supply-request-status--assigned]="row.status === 'assigned'"
+                          >
+                          {{ supplyRequestRowStatusLabel(row) | i18n }}
+                        </span>
+                      }
+                      @if (hasSupplyRequestRowActions(row)) {
+                        <div class="asset-supply-request-menu-anchor">
+                          <app-menu-trigger
+                            class="asset-supply-request-row-menu-trigger"
+                            [menuId]="supplyRequestRowActionMenuId(row)"
+                            kind="select"
+                            [title]="row.title"
+                            [trigger]="supplyRequestRowActionMenuTrigger(row)"
+                            [items]="supplyRequestRowActionMenuItems(row)"
+                            [panelAlign]="'auto'"
+                            [mobileBreakpointPx]="900"
+                          ></app-menu-trigger>
+                        </div>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            } @else {
+              <section class="asset-supply-requests-empty">
+                <mat-icon>inventory_2</mat-icon>
+                <span>{{ supplyRequestEmptyLabel() | i18n }}</span>
+              </section>
             }
           </div>
         </div>
-      </div>
-
-      @if (!isBasketMode() && showSupplyRequestList && selectedSupplyAsset(); as supplyAsset) {
-        <section class="app-popup app-popup-stacked app-popup-super-stacked asset-supply-requests-shell">
-          <div class="app-popup-backdrop" (click)="closeSupplyRequestList()"></div>
-          <div
-            class="app-popup-panel popup-panel-wide popup-panel-full-height asset-supply-requests-panel"
-            (click)="$event.stopPropagation()"
-            >
-            <div class="popup-header popup-header-friends-picker asset-supply-requests-head">
-              <div class="popup-title popup-title-members">
-                <div class="popup-chat-title-block">
-                  <h2>{{ supplyAsset.title }}</h2>
-                  <p>{{ assetRequestListSubtitle() | i18n }}</p>
-                </div>
-              </div>
-              <div class="asset-supply-requests-actions">
-                <div class="popup-filter-picker asset-supply-request-filter-picker">
-                  <app-menu
-                    class="asset-supply-request-filter-menu"
-                    kind="select"
-                    [trigger]="supplyRequestFilterMenuTrigger()"
-                    [items]="supplyRequestFilterMenuItems()"
-                    [mobileBreakpointPx]="900"
-                    (itemSelect)="onAssetPopupMenuSelect($event)"
-                  ></app-menu>
-                </div>
-                <button mat-icon-button class="popup-close" (click)="closeSupplyRequestList($event)" [attr.aria-label]="'asset.requests.close' | i18n">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            </div>
-
-            <div class="popup-body popup-body-friends-picker asset-supply-requests-body">
-              <div class="asset-supply-requests-sections">
-                @if (supplyRequestRows().length > 0) {
-                  <div class="asset-supply-request-list">
-                    @for (row of supplyRequestRows(); track row.id) {
-                      <article
-                        class="asset-supply-request-row"
-                        [class.asset-supply-request-row--pending]="row.status === 'pending'"
-                        [class.asset-supply-request-row--accepted]="row.status === 'accepted'"
-                        [class.asset-supply-request-row--assigned]="row.status === 'assigned'"
-                        >
-                        <div class="asset-supply-request-avatar">{{ row.avatarInitials }}</div>
-                        <div class="asset-supply-request-copy">
-                          <strong>{{ row.title }}</strong>
-                          @if (row.subtitle) {
-                            <span class="asset-supply-request-event">{{ row.subtitle }}</span>
-                          }
-                          @if ((row.metaRows?.[0] ?? '')) {
-                            <span class="asset-supply-request-schedule">{{ row.metaRows?.[0] }}</span>
-                          }
-                          @if (row.detail) {
-                            <p>{{ row.detail }}</p>
-                          }
-                        </div>
-                        <div class="asset-supply-request-side">
-                          <span
-                            class="asset-supply-request-availability-badge"
-                            [class.asset-supply-request-availability-badge--empty]="supplyRequestRowInventoryState(row) === 'empty'"
-                            [class.asset-supply-request-availability-badge--over]="supplyRequestRowInventoryState(row) === 'over'"
-                            [attr.aria-label]="supplyRequestRowInventoryLabel(row)"
-                            >
-                            {{ row.sideLabel }}
-                          </span>
-                          @if (supplyRequestFilter === 'all') {
-                            <span
-                              class="asset-supply-request-status"
-                              [class.asset-supply-request-status--pending]="row.status === 'pending'"
-                              [class.asset-supply-request-status--borrowed]="row.status === 'accepted'"
-                              [class.asset-supply-request-status--assigned]="row.status === 'assigned'"
-                              >
-                              {{ supplyRequestRowStatusLabel(row) | i18n }}
-                            </span>
-                          }
-                          @if (hasSupplyRequestRowActions(row)) {
-                            <div class="asset-supply-request-menu-anchor">
-                              <app-menu-trigger
-                                class="asset-supply-request-row-menu-trigger"
-                                [menuId]="supplyRequestRowActionMenuId(row)"
-                                kind="select"
-                                [title]="row.title"
-                                [trigger]="supplyRequestRowActionMenuTrigger(row)"
-                                [items]="supplyRequestRowActionMenuItems(row)"
-                                [panelAlign]="'auto'"
-                                [mobileBreakpointPx]="900"
-                              ></app-menu-trigger>
-                            </div>
-                          }
-                        </div>
-                      </article>
-                    }
-                  </div>
-                } @else {
-                  <section class="asset-supply-requests-empty">
-                    <mat-icon>inventory_2</mat-icon>
-                    <span>{{ supplyRequestEmptyLabel() | i18n }}</span>
-                  </section>
-                }
-              </div>
-            </div>
-          </div>
-        </section>
-      }
-    </section>
+      </app-popup>
+    }
   }
 
   <ng-template #ticketItemTemplate let-row let-groupLabel="groupLabel">

@@ -24,6 +24,11 @@ app-popup {
   background: #e9edf5;
 }
 
+.ui-popup__backdrop--dim {
+  background: rgba(8, 16, 30, 0.56);
+  backdrop-filter: blur(3px);
+}
+
 .ui-popup__panel {
   position: relative;
   z-index: 1;
