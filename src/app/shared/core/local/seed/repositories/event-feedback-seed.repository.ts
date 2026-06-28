@@ -22,10 +22,10 @@ export class SeedEventFeedbackRepository {
     seedUsers: readonly UserRecord[],
     eventItemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>,
     itemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>
-  ): void {
+  ): boolean {
     const users = [...seedUsers];
     if (users.length === 0) {
-      return;
+      return false;
     }
 
     const currentTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
@@ -68,7 +68,7 @@ export class SeedEventFeedbackRepository {
     }
 
     if (!changed) {
-      return;
+      return false;
     }
 
     this.memoryDb.write(state => ({
@@ -78,6 +78,7 @@ export class SeedEventFeedbackRepository {
         ids: nextIds
       }
     }));
+    return true;
   }
 
   private seedOrganizerFeedbackShowcaseRecords(
@@ -125,7 +126,7 @@ export class SeedEventFeedbackRepository {
         continue;
       }
 
-      const feedbackRecord = this.toFeedbackViewerDemoEventRecord(record, viewerUserIds);
+      const feedbackEventSnapshot = this.toFeedbackEventSnapshotForViewers(record, viewerUserIds);
       for (const viewerUserId of viewerUserIds) {
         if (visibleEntryCount >= SeedEventFeedbackRepository.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
           break;
@@ -139,7 +140,7 @@ export class SeedEventFeedbackRepository {
           continue;
         }
         const seededRecord = SeedEventFeedbackBuilder.buildSeededSubmittedState({
-          eventRecord: feedbackRecord,
+          eventRecord: feedbackEventSnapshot,
           users,
           activeUser: viewer,
           eventFeedbackUnlockDelayMs: SeedEventFeedbackRepository.EVENT_FEEDBACK_UNLOCK_DELAY_MS,
@@ -210,7 +211,7 @@ export class SeedEventFeedbackRepository {
     return selected;
   }
 
-  private toFeedbackViewerDemoEventRecord(record: ActivityEventRecord, viewerUserIds: readonly string[] = []): ActivityEventRecord {
+  private toFeedbackEventSnapshotForViewers(record: ActivityEventRecord, viewerUserIds: readonly string[] = []): ActivityEventRecord {
     const summary = this.activityMemberSummaryByOwner('event', record.id);
     const acceptedMemberUserIds = [...new Set([
       ...(summary.acceptedMemberUserIds ?? []),

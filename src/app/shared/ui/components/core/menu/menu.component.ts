@@ -425,6 +425,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
     const bounds = this.layoutBounds();
     const estimatedWidth = this.estimatedPanelWidth();
+    const startOverflow = this.panelHorizontalOverflow('start', rect, bounds, estimatedWidth);
+    const endOverflow = this.panelHorizontalOverflow('end', rect, bounds, estimatedWidth);
+    if (startOverflow !== endOverflow) {
+      return startOverflow < endOverflow ? 'start' : 'end';
+    }
     const spaceRight = Math.max(0, bounds.right - rect.left - AppMenuComponent.DESKTOP_MARGIN_PX);
     const spaceLeft = Math.max(0, rect.right - bounds.left - AppMenuComponent.DESKTOP_MARGIN_PX);
     if (spaceRight >= estimatedWidth) {
@@ -1546,13 +1551,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return true;
     }
     const className = element.className.toString();
-    if (/(popup-body|scroll-area|popup-panel|app-popup-panel)/.test(className)) {
+    if (/(ui-popup__panel|ui-popup__body|popup-body|scroll-area|popup-panel|app-popup-panel)/.test(className)) {
       return true;
     }
     if (/(hidden|clip)/.test(overflow)) {
       return element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth;
     }
     return false;
+  }
+
+  private panelHorizontalOverflow(
+    align: 'start' | 'end',
+    rect: DOMRect,
+    bounds: { left: number; right: number },
+    width: number
+  ): number {
+    const left = align === 'start' ? rect.left : rect.right - width;
+    const right = left + width;
+    return Math.max(0, bounds.left - left) + Math.max(0, right - bounds.right);
   }
 
   private viewportWidth(): number {

@@ -134,6 +134,7 @@ export class SeedDemoBootstrapService {
     const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
     const alreadyReady = this.readyUserIds.has(normalizedUserId);
     let contextualChatsChanged = false;
+    let eventFeedbackChanged = false;
 
     if (!alreadyReady) {
       onProgress?.(bootstrapProcessStep('session'));
@@ -145,6 +146,10 @@ export class SeedDemoBootstrapService {
         normalizedUserId,
         this.eventsSeed.queryItemsByUser(normalizedUserId)
       );
+
+      onProgress?.(bootstrapProcessStep('sessionFeedback'));
+      await this.process.waitForUiYield();
+      eventFeedbackChanged = this.seedEventFeedbackState();
     }
 
     const activityCountersChanged = this.usersSeed.stampSeededActivityCountsForUser(normalizedUserId);
@@ -153,7 +158,8 @@ export class SeedDemoBootstrapService {
       filterPreferencesChanged,
       activityCountersChanged,
       impressionsChanged,
-      contextualChatsChanged
+      contextualChatsChanged,
+      eventFeedbackChanged
     });
 
     this.emitSessionReady(onProgress, alreadyReady ? undefined : normalizedUserId);
@@ -281,13 +287,6 @@ export class SeedDemoBootstrapService {
         this.profileExperiencesSeed.seedDefaults();
         await this.flushBootstrapTables([PROFILE_EXPERIENCES_TABLE_NAME]);
       });
-      await this.runBootstrapStep('feedback', async () => {
-        const eventItemsByUserId = this.eventsSeed.queryEventItemsByUsers(seededUserIds);
-        const itemsByUserId = this.eventsSeed.queryItemsByUsers(seededUserIds);
-        this.registry.registerEventsByUserId(itemsByUserId);
-        this.eventFeedbackSeed.seedDefaults(seededUsers, eventItemsByUserId, itemsByUserId);
-        await this.flushBootstrapTables([EVENT_FEEDBACK_TABLE_NAME]);
-      });
       await this.runBootstrapStep('ratings', async () => {
         this.usersRatingsSeed.seedDefaults(seededUsers);
         await this.flushBootstrapTables([USER_RATES_TABLE_NAME]);
@@ -355,6 +354,7 @@ export class SeedDemoBootstrapService {
       activityCountersChanged: boolean;
       impressionsChanged: boolean;
       contextualChatsChanged: boolean;
+      eventFeedbackChanged: boolean;
     }
   ): Promise<void> {
     const tableNames = this.sessionFlushTables(options);
@@ -381,6 +381,7 @@ export class SeedDemoBootstrapService {
     activityCountersChanged: boolean;
     impressionsChanged: boolean;
     contextualChatsChanged: boolean;
+    eventFeedbackChanged: boolean;
   }): string[] {
     const tableNames: string[] = [];
     if (options.filterPreferencesChanged) {
@@ -392,7 +393,24 @@ export class SeedDemoBootstrapService {
     if (options.contextualChatsChanged) {
       tableNames.push(CHATS_TABLE_NAME);
     }
+    if (options.eventFeedbackChanged) {
+      tableNames.push(EVENT_FEEDBACK_TABLE_NAME);
+    }
     return tableNames;
+  }
+
+  private seedEventFeedbackState(): boolean {
+    const seededUsers = this.usersSeed.seedDefaults();
+    const seededUserIds = seededUsers
+      .map(user => user.id.trim())
+      .filter(userId => userId.length > 0);
+    if (seededUsers.length === 0 || seededUserIds.length === 0) {
+      return false;
+    }
+
+    const eventItemsByUserId = this.eventsSeed.queryEventItemsByUsers(seededUserIds);
+    const itemsByUserId = this.eventsSeed.queryItemsByUsers(seededUserIds);
+    return this.eventFeedbackSeed.seedDefaults(seededUsers, eventItemsByUserId, itemsByUserId);
   }
 
   private emitProgress(state: BootstrapProcessState): void {

@@ -489,6 +489,7 @@ export class SeedUsersRepository {
       if (
         this.isEventAdminRecord(item, normalizedUserId)
         || this.eventInvitedMemberUserIds(item).includes(normalizedUserId)
+        || !this.eventAcceptedMemberUserIds(item).includes(normalizedUserId)
         || item.status === 'T'
       ) {
         return false;

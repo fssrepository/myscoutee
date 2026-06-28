@@ -84,6 +84,13 @@ export class LocalEventsRepository {
       .filter(record => !this.isInvitationRecordForUser(record, userId));
   }
 
+  queryFeedbackCandidateItemsByUser(userId: string): ActivityEventRecord[] {
+    return this.queryUserRecords(userId)
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => !this.isInvitationRecordForUser(record, userId))
+      .filter(record => this.isAcceptedEventRecord(record, userId));
+  }
+
   queryItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
     return this.queryUserRecordsByUsers(userIds, this.memoryDb.read()[EVENTS_TABLE_NAME]);
   }
@@ -1232,7 +1239,7 @@ export class LocalEventsRepository {
     if (!normalizedUserId) {
       return 0;
     }
-    const eventItems = this.queryEventItemsByUser(normalizedUserId);
+    const eventItems = this.queryFeedbackCandidateItemsByUser(normalizedUserId);
     const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
     const nowMs = Date.now();
     return eventItems.filter(item => {

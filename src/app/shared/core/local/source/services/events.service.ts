@@ -185,8 +185,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return new EventFeedbackPageResultDto();
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
+    const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId);
+    const organizerRecords = this.eventsRepository.queryHostingItemsByUser(normalizedUserId);
     const events = LocalActivityEventsMapper.toDtoList(records);
+    const organizerEvents = LocalActivityEventsMapper.toDtoList(organizerRecords);
     const users = this.usersRepository.queryAllUsers();
     const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);
     const activeUser = activeUserRecord ? LocalUsersMapper.toDto(activeUserRecord) : users[0] ?? null;
@@ -196,6 +198,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return LocalEventFeedbackMapper.toPageResult({
       query,
       events,
+      organizerEvents,
       users,
       activeUser,
       states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
@@ -210,7 +213,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    const records = this.eventsRepository.queryItemsByUser(normalizedUserId);
+    const records = this.eventsRepository.queryFeedbackCandidateItemsByUser(normalizedUserId);
     const events = LocalActivityEventsMapper.toDtoList(records);
     const users = this.usersRepository.queryAllUsers();
     const activeUserRecord = this.usersRepository.queryUserById(normalizedUserId);

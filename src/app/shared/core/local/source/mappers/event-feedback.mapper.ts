@@ -22,6 +22,7 @@ export class LocalEventFeedbackMapper {
   static toPageResult(options: {
     query: EventFeedbackPageQueryDto;
     events: readonly ActivityEventDTO[];
+    organizerEvents?: readonly ActivityEventDTO[];
     users: readonly UserDto[];
     activeUser: UserDto;
     states: readonly EventFeedbackStateDto[];
@@ -31,6 +32,7 @@ export class LocalEventFeedbackMapper {
   }): EventFeedbackPageResultDto {
     const query = this.normalizeQuery(options.query);
     const events = this.uniqueEvents(options.events);
+    const organizerEvents = this.uniqueEvents(options.organizerEvents ?? options.events);
     const users = this.uniqueUsers(options.users, options.activeUser);
     const state = this.stateSnapshotFromDtos(options.states);
     const receivedEvents = this.cloneReceivedEvents(options.receivedEvents);
@@ -53,7 +55,7 @@ export class LocalEventFeedbackMapper {
       eventFeedbackUnlockDelayMs: unlockDelayMs,
       nowMs
     });
-    const organizerItems = this.toOrganizerItems(events, receivedByEventId);
+    const organizerItems = this.toOrganizerItems(organizerEvents, receivedByEventId);
     const filtered = this.filterItems(query.filter, allItems, organizerItems);
     const pageItems = filtered.slice(query.page * query.pageSize, (query.page * query.pageSize) + query.pageSize);
 
