@@ -36,7 +36,7 @@
           <div class="asset-editor-layout">
             <div class="experience-form-grid asset-editor-fields">
               <div class="experience-description-field asset-image-field">
-                <app-editable-image-carousel
+                <app-image-carousel
                   class="asset-image-carousel"
                   [slotCount]="1"
                   [compact]="true"
@@ -47,7 +47,7 @@
                   [uploadEntityId]="assetImageUploadEntity()"
                   [ngModel]="assetImageUrls()"
                   (ngModelChange)="onAssetImageUrlsChange($event)"
-                ></app-editable-image-carousel>
+                ></app-image-carousel>
               </div>
 
               <label class="asset-title-field">

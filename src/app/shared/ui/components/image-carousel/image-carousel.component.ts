@@ -20,20 +20,20 @@ import { LazyBgImageDirective } from '../../directives';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 
 @Component({
-  selector: 'app-editable-image-carousel',
+  selector: 'app-image-carousel',
   standalone: true,
   imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => EditableImageCarouselComponent),
+      useExisting: forwardRef(() => ImageCarouselComponent),
       multi: true
     }
   ],
-  templateUrl: './editable-image-carousel.component.html',
-  styleUrl: './editable-image-carousel.component.scss'
+  templateUrl: './image-carousel.component.html',
+  styleUrl: './image-carousel.component.scss'
 })
-export class EditableImageCarouselComponent implements ControlValueAccessor, OnChanges {
+export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @ViewChild('carouselViewport')
   private carouselViewportRef?: ElementRef<HTMLDivElement>;
 
@@ -59,25 +59,25 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
   private carouselScrollLockTargetIndex: number | null = null;
   private carouselScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
 
-  @HostBinding('class.editable-image-carousel-host')
+  @HostBinding('class.image-carousel-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.editable-image-carousel-host--compact')
+  @HostBinding('class.image-carousel-host--compact')
   protected get compactClass(): boolean {
     return this.compact;
   }
 
-  @HostBinding('class.editable-image-carousel-host--auto-size')
+  @HostBinding('class.image-carousel-host--auto-size')
   protected get autoSizeClass(): boolean {
     return this.autoSize;
   }
 
-  @HostBinding('class.editable-image-carousel-host--preview')
+  @HostBinding('class.image-carousel-host--preview')
   protected get previewClass(): boolean {
     return this.previewMode;
   }
 
-  @HostBinding('class.editable-image-carousel-host--single-slot')
+  @HostBinding('class.image-carousel-host--single-slot')
   protected get singleSlotClass(): boolean {
     return this.normalizedSlotCount() === 1;
   }
@@ -515,7 +515,7 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
   }
 
   private currentPageIndex(viewport: HTMLDivElement): number {
-    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.editable-image-carousel__page'));
+    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.image-carousel__page'));
     if (pages.length === 0) {
       return 0;
     }
@@ -533,7 +533,7 @@ export class EditableImageCarouselComponent implements ControlValueAccessor, OnC
   }
 
   private pageOffsetLeft(viewport: HTMLDivElement, pageIndex: number): number {
-    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.editable-image-carousel__page'));
+    const pages = Array.from(viewport.querySelectorAll<HTMLElement>('.image-carousel__page'));
     if (pages.length === 0) {
       return -1;
     }

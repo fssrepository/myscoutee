@@ -35,7 +35,7 @@ import {
 } from '../../../shared/ui/context/stores/asset.store';
 import {
   AppMenuComponent,
-  EditableImageCarouselComponent,
+  ImageCarouselComponent,
   EventPoliciesInputComponent,
   LocationInputComponent,
   type EventPoliciesInputConfig,
@@ -65,7 +65,7 @@ type AssetEditorMenuContext =
     FormsModule,
     MatIconModule,
     AppMenuComponent,
-    EditableImageCarouselComponent,
+    ImageCarouselComponent,
     EventPoliciesInputComponent,
     LocationInputComponent,
     PricingEditorInputComponent,

@@ -39,8 +39,8 @@ import {
   type CardMenuAction
 } from '../../../shared/ui/components/smart-list/card';
 import {
-  EditableImageCarouselComponent
-} from '../../../shared/ui/components/editable-image-carousel';
+  ImageCarouselComponent
+} from '../../../shared/ui/components/image-carousel';
 import {
   AppMenuDispatcher,
   AppMenuComponent,
@@ -127,7 +127,7 @@ interface IdeaPostLangCache {
     AppMenuOutletComponent,
     SmartListComponent,
     InfoCardComponent,
-    EditableImageCarouselComponent,
+    ImageCarouselComponent,
     ProgressIndicatorComponent
   ],
   templateUrl: './admin-idea-editor-popup.component.html',

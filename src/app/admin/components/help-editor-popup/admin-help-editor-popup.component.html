@@ -299,14 +299,14 @@
                                   @if (openDraftSectionId === section.localId) {
                                     <div class="help-editor-preview-section-body help-editor-section-edit">
                                       @if (documentKind === 'explanation') {
-                                        <app-editable-image-carousel
+                                        <app-image-carousel
                                           [name]="'sectionImages' + sectionIndex"
                                           [(ngModel)]="section.imageUrls"
                                           [disabled]="saving"
                                           [compact]="true"
                                           [uploadOwnerId]="actorUserId()"
                                           ariaLabel="Explanation image slots"
-                                        ></app-editable-image-carousel>
+                                        ></app-image-carousel>
                                       }
                                       @if (section.mode === 'html') {
                                         <textarea

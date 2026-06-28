@@ -218,7 +218,7 @@
                         </label>
                       }
                       @let image = imageConfig(control);
-                      <app-editable-image-carousel
+                      <app-image-carousel
                         [slotCount]="image.slotCount ?? 8"
                         [compact]="image.compact === true"
                         [previewMode]="image.previewMode === true && !isMobileViewport"
@@ -227,7 +227,7 @@
                         [uploadEntityId]="image.uploadEntityId || 'image'"
                         [ngModel]="controlStringArrayValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
-                      ></app-editable-image-carousel>
+                      ></app-image-carousel>
                     } @else if (control.kind === 'textarea') {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

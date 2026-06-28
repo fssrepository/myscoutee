@@ -206,13 +206,13 @@
             </label>
           </div>
 
-          <app-editable-image-carousel
+          <app-image-carousel
             name="ideaImages"
             [(ngModel)]="editDraft.imageUrls"
             [disabled]="saving"
             [uploadOwnerId]="actorUserId()"
             ariaLabel="Article image slots"
-          ></app-editable-image-carousel>
+          ></app-image-carousel>
 
           <section class="idea-editor-html-panel">
             <div class="idea-editor-html-head">

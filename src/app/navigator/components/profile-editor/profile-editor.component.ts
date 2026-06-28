@@ -33,7 +33,7 @@ import {
   UserDto
 } from '../../../shared/core/contracts/user.interface';
 import {
-  EditableImageCarouselComponent,
+  ImageCarouselComponent,
   HeaderCardComponent,
   type HeaderCardModel,
   ProfileExperienceManagerComponent
@@ -84,7 +84,7 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
     AppMenuComponent,
     AppMenuOutletComponent,
     FormFlowComponent,
-    EditableImageCarouselComponent,
+    ImageCarouselComponent,
     HeaderCardComponent,
     ProfileExperienceManagerComponent
   ],

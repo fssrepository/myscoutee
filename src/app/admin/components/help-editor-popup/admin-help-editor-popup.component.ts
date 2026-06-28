@@ -36,8 +36,8 @@ import type {
   HelpCenterStateDto
 } from '../../../shared/core/contracts';
 import {
-  EditableImageCarouselComponent
-} from '../../../shared/ui/components/editable-image-carousel';
+  ImageCarouselComponent
+} from '../../../shared/ui/components/image-carousel';
 import {
   ProgressIndicatorComponent
 } from '../../../shared/ui/components/progress-indicator';
@@ -133,7 +133,7 @@ interface HelpEditorLanguageMenuContext {
     FormsModule,
     MatIconModule,
     AppMenuComponent,
-    EditableImageCarouselComponent,
+    ImageCarouselComponent,
     ProgressIndicatorComponent,
     LazyBgImageDirective
   ],
