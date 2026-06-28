@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
-import { EventFeedbackBuilder, PricingBuilder } from '../../../core/base/builders';
+import { PricingBuilder } from '../../../core/base/builders';
 import type { ActivityPendingReason } from '../../common/constants';
 import type {
   EventTournamentGroupDeleteRequestDTO,
@@ -16,22 +16,25 @@ import type {
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
-import { ActivityEventDetailDTO, type ActivityEventDTO } from '../../contracts/activity.interface';
+import {
+  ActivityEventDetailDTO,
+  EventFeedbackDetailDto,
+  EventFeedbackPageResultDto,
+  type ActivityEventDTO
+} from '../../contracts/activity.interface';
+import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
-  EventFeedbackDetailDto,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
-  EventFeedbackPageResultDto,
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
-  ActivityEventActivitiesListQueryResult,
-  ActivityEventActivitiesQuery,
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
@@ -86,69 +89,12 @@ export class HttpEventsService implements IEventsService {
     return this.getRecords('/activities/events/trash', userId);
   }
 
-  async queryActivitiesEventListPage(
-    query: ActivityEventActivitiesQuery,
-    signal?: AbortSignal
-  ): Promise<ActivityEventActivitiesListQueryResult> {
-    const normalizedUserId = query.userId.trim();
-    if (!normalizedUserId) {
-      return {
-        records: [],
-        total: 0,
-        nextCursor: null
-      };
-    }
-    try {
-      const response = await this.requestWithAbort(
-        this.http.post<ActivityEventDTO[] | ActivityEventActivitiesListQueryResult | null>(
-          `${this.apiBaseUrl}/activities/events/filter`,
-          {
-            userId: normalizedUserId,
-            filter: query.filter,
-            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
-            secondaryFilter: query.secondaryFilter,
-            sort: query.sort,
-            view: query.view,
-            limit: query.limit,
-            cursor: query.cursor ?? null,
-            anchorDate: query.anchorDate,
-            rangeStart: query.rangeStart,
-            rangeEnd: query.rangeEnd
-          } satisfies HttpEventsFilterRequest
-        ),
-        signal
-      );
-      if (Array.isArray(response)) {
-        const records = this.cloneDTOs(response);
-        return {
-          records,
-          total: records.length,
-          nextCursor: null
-        };
-      }
-      const records = this.cloneDTOs(response?.records);
-      return {
-        records,
-        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : records.length,
-        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
-      };
-    } catch (error) {
-      if (this.isAbortError(error)) {
-        throw error;
-      }
-      return {
-        records: [],
-        total: 0,
-        nextCursor: null
-      };
-    }
-  }
-
   async queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
-    const normalizedUserId = query.userId.trim();
+    const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
         items: [],
@@ -160,19 +106,7 @@ export class HttpEventsService implements IEventsService {
       const response = await this.requestWithAbort(
         this.http.post<ActivityEventDTO[] | ActivityEventPageResultDTO | null>(
           `${this.apiBaseUrl}/activities/events/filter`,
-          {
-            userId: normalizedUserId,
-            filter: query.filter,
-            hostingPublicationFilter: query.hostingPublicationFilter ?? 'all',
-            secondaryFilter: query.secondaryFilter,
-            sort: query.sort,
-            view: query.view,
-            limit: query.limit,
-            cursor: query.cursor ?? null,
-            anchorDate: query.anchorDate,
-            rangeStart: query.rangeStart,
-            rangeEnd: query.rangeEnd
-          } satisfies HttpEventsFilterRequest
+          this.toHttpEventsFilterRequest(normalizedUserId, query)
         ),
         signal
       );
@@ -200,6 +134,72 @@ export class HttpEventsService implements IEventsService {
         nextCursor: null
       };
     }
+  }
+
+  private toHttpEventsFilterRequest(
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>
+  ): HttpEventsFilterRequest {
+    const view = this.activitiesView(query);
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    return {
+      userId,
+      filter: this.activitiesEventScopeFilter(query),
+      hostingPublicationFilter: this.activitiesHostingPublicationFilter(query),
+      secondaryFilter,
+      sort: this.activitiesSort(query, view, secondaryFilter),
+      view,
+      limit: Math.max(1, Math.trunc(Number(query.pageSize) || 10)),
+      cursor: query.cursor ?? null,
+      anchorDate: query.anchorDate,
+      rangeStart: query.rangeStart,
+      rangeEnd: query.rangeEnd
+    };
+  }
+
+  private activitiesEventScopeFilter(query: ListQuery<ActivitiesFeedFilters>): ActivityEventScopeFilter {
+    const value = query.filters?.eventScopeFilter;
+    if (
+      value === 'all'
+      || value === 'active-events'
+      || value === 'pending'
+      || value === 'invitations'
+      || value === 'my-events'
+      || value === 'drafts'
+      || value === 'trash'
+    ) {
+      return value;
+    }
+    return 'active-events';
+  }
+
+  private activitiesHostingPublicationFilter(query: ListQuery<ActivitiesFeedFilters>): HttpEventsFilterRequest['hostingPublicationFilter'] {
+    return query.filters?.hostingPublicationFilter === 'drafts' ? 'drafts' : 'all';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): HttpEventsFilterRequest['secondaryFilter'] {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesView(query: ListQuery<ActivitiesFeedFilters>): HttpEventsFilterRequest['view'] {
+    const value = query.view;
+    return value === 'month' || value === 'week' || value === 'distance' ? value : 'day';
+  }
+
+  private activitiesSort(
+    query: ListQuery<ActivitiesFeedFilters>,
+    view: HttpEventsFilterRequest['view'],
+    secondaryFilter: HttpEventsFilterRequest['secondaryFilter']
+  ): HttpEventsFilterRequest['sort'] {
+    const value = query.sort;
+    if (value === 'date' || value === 'distance' || value === 'relevance') {
+      return value;
+    }
+    if (view === 'distance') {
+      return 'distance';
+    }
+    return secondaryFilter === 'relevant' ? 'relevance' : 'date';
   }
 
   async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {
@@ -327,6 +327,10 @@ export class HttpEventsService implements IEventsService {
 
   peekExploreItems(_userId: string): ActivityEventRecord[] {
     return [];
+  }
+
+  peekKnownItemById(_userId: string, _itemId: string): ActivityEventDTO | null {
+    return null;
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
@@ -546,14 +550,14 @@ export class HttpEventsService implements IEventsService {
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
     } = {}
-  ): Promise<ActivityEventRecord | null> {
+  ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
     const response = await this.http
-      .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/join`, {
+      .post<EventParticipationActionResultDTO | null>(`${this.apiBaseUrl}/activities/events/join`, {
         userId: normalizedUserId,
         type: 'events',
         sourceId: normalizedSourceId,
@@ -568,7 +572,7 @@ export class HttpEventsService implements IEventsService {
           : (options.pendingReason === 'approval' ? 'approval' : null)
       })
       .toPromise();
-    return response ? this.cloneRecords([response])[0] ?? null : null;
+    return this.normalizeParticipationActionResult(response);
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
@@ -665,7 +669,7 @@ export class HttpEventsService implements IEventsService {
   async loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
-      return EventFeedbackBuilder.emptyPageResult(query.filter);
+      return new EventFeedbackPageResultDto();
     }
     try {
       const response = await this.http
@@ -676,9 +680,9 @@ export class HttpEventsService implements IEventsService {
           pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
         })
         .toPromise();
-      return EventFeedbackBuilder.clonePageResult(response);
+      return new EventFeedbackPageResultDto(response);
     } catch {
-      return EventFeedbackBuilder.emptyPageResult(query.filter);
+      return new EventFeedbackPageResultDto();
     }
   }
 
@@ -686,7 +690,7 @@ export class HttpEventsService implements IEventsService {
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
     if (!normalizedUserId || !normalizedEventId) {
-      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
+      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
     try {
       const response = await this.http
@@ -695,12 +699,12 @@ export class HttpEventsService implements IEventsService {
           eventId: normalizedEventId
         })
         .toPromise();
-      return EventFeedbackBuilder.cloneDetail({
+      return new EventFeedbackDetailDto({
         ...(response ?? {}),
         eventId: response?.eventId?.trim() || normalizedEventId
       });
     } catch {
-      return EventFeedbackBuilder.emptyDetail(normalizedEventId);
+      return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
   }
 
@@ -903,6 +907,39 @@ export class HttpEventsService implements IEventsService {
       capacityMax,
       membersAccepted: Math.max(0, Math.trunc(Number(group?.membersAccepted) || 0)),
       membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0))
+    };
+  }
+
+  private normalizeParticipationActionResult(
+    result: EventParticipationActionResultDTO | null | undefined
+  ): EventParticipationActionResultDTO | null {
+    if (!result) {
+      return null;
+    }
+    const sourceId = `${result.sourceId ?? ''}`.trim();
+    if (!sourceId) {
+      return null;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(result.pendingMembers) || 0));
+    const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(result.capacityTotal) || 0));
+    const pendingReason: ActivityPendingReason = result.pendingReason === 'waitlist'
+      ? 'waitlist'
+      : result.pendingReason === 'approval'
+        ? 'approval'
+        : null;
+    const membershipStatus = `${result.membershipStatus ?? ''}`.trim() || (pendingReason ? 'pending' : 'accepted');
+    return {
+      sourceId,
+      slotSourceId: `${result.slotSourceId ?? ''}`.trim() || null,
+      action: `${result.action ?? ''}`.trim() || 'join',
+      membershipStatus,
+      pendingReason,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null
     };
   }
 

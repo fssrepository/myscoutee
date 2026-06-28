@@ -1,55 +1,13 @@
 import { AppUtils } from '../../../app-utils';
-import type { InfoCardData, CardMenuActionId } from '../../../ui';
-import type * as AppTypes from '../models';
 import type * as ContractTypes from '../../contracts';
-import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
-import type * as AppDTOs from '../dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
-export interface ActivitySubEventResourceInfoCardOptions {
-  groupLabel?: string | null;
-  canOpenMap?: boolean;
-  occupancyLabel: string;
-  canOpenBadgeDetails?: boolean;
-  canOpenAssetMembers?: boolean;
-  canEditRoute?: boolean;
-  canJoin?: boolean;
-  canLeave?: boolean;
-  canReportResourceManager?: boolean;
-}
+
+type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
 
 export class ActivityResourceBuilder {
-  static buildSubEventResourceInfoCard(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardOptions
-  ): InfoCardData {
-    return {
-      id: card.id,
-      groupLabel: options.groupLabel ?? null,
-      title: card.title,
-      imageUrl: card.imageUrl,
-      metaRows: [`${card.type} · ${card.subtitle} · ${card.city}`],
-      description: card.details,
-      leadingIcon: {
-        icon: this.resourceTypeIcon(card.type)
-      },
-      mediaStart: this.resourceMediaStart(card, options.canOpenMap === true),
-      mediaEnd: {
-        variant: 'badge',
-        tone: 'default',
-        label: options.occupancyLabel,
-        interactive: options.canOpenBadgeDetails === true,
-        pendingCount: card.pending,
-        ariaLabel: options.canOpenAssetMembers === true
-          ? 'Open member requests'
-          : 'Open resource details'
-      },
-      menuActions: this.resourceMenuActions(card, options),
-      clickable: false
-    };
-  }
-
   static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}`;
   }
@@ -192,9 +150,9 @@ export class ActivityResourceBuilder {
   }
 
   static cloneFallbackAssetCardsByType(
-    source: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> | null | undefined
-  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> {
-    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetCardDTO[]>> = {};
+    source: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> | null | undefined
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> {
+    const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> = {};
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
       const cards = source?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
@@ -208,7 +166,7 @@ export class ActivityResourceBuilder {
   static resolveAssignedAssetIds(
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     type: AppConstants.AssetType,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): string[] {
     const eligibleIds = this.resolveAvailableAssetCards(type, state, assets).map(card => card.id);
     const eligible = new Set(eligibleIds);
@@ -242,7 +200,7 @@ export class ActivityResourceBuilder {
     subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
@@ -272,7 +230,7 @@ export class ActivityResourceBuilder {
     subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
@@ -299,7 +257,7 @@ export class ActivityResourceBuilder {
     subEvent: ContractTypes.SubEventDTO,
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[],
+    assets: readonly ActivityResourceAssetDTO[],
     accepted: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {
@@ -335,7 +293,7 @@ export class ActivityResourceBuilder {
 
   static buildSeededState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
-    assets: readonly AppDTOs.AssetCardDTO[]
+    assets: readonly ActivityResourceAssetDTO[]
   ): AppDTOs.ActivitySubEventResourceStateDTO {
     return this.createEmptyState(ref);
   }
@@ -343,21 +301,21 @@ export class ActivityResourceBuilder {
   private static resolveAssignedCards(
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
-  ): AppDTOs.AssetCardDTO[] {
+    assets: readonly ActivityResourceAssetDTO[]
+  ): ActivityResourceAssetDTO[] {
     const assignedIds = this.resolveAssignedAssetIds(state, type, assets);
     const availableCards = this.resolveAvailableAssetCards(type, state, assets);
     return assignedIds
       .map(id => availableCards.find(card => card.id === id && card.type === type) ?? null)
-      .filter((card): card is AppDTOs.AssetCardDTO => card !== null);
+      .filter((card): card is ActivityResourceAssetDTO => card !== null);
   }
 
   private static resolveAvailableAssetCards(
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
-    assets: readonly AppDTOs.AssetCardDTO[]
-  ): AppDTOs.AssetCardDTO[] {
-    const nextById = new Map<string, AppDTOs.AssetCardDTO>();
+    assets: readonly ActivityResourceAssetDTO[]
+  ): ActivityResourceAssetDTO[] {
+    const nextById = new Map<string, ActivityResourceAssetDTO>();
     for (const card of assets) {
       if (card.type !== type) {
         continue;
@@ -393,7 +351,7 @@ export class ActivityResourceBuilder {
   }
 
   static subEventOccupancyRequestCount(
-    card: AppDTOs.AssetCardDTO,
+    card: ActivityResourceAssetDTO,
     subEventId: string,
     status: AppConstants.AssetRequestStatus
   ): number {
@@ -421,7 +379,75 @@ export class ActivityResourceBuilder {
     });
   }
 
-  private static cloneAssetCard(card: AppDTOs.AssetCardDTO): AppDTOs.AssetCardDTO {
+  static subEventAssetAssignmentKey(subEventId: string, type: AppConstants.AssetType): string {
+    return `${subEventId}:${type}`;
+  }
+
+  static subEventSupplyAssignmentKey(subEventId: string, cardId: string): string {
+    return `${subEventId}:${cardId}`;
+  }
+
+  static assetDetailText(card: { details?: string | null; description?: string | null }): string {
+    return `${card.details ?? card.description ?? ''}`.trim();
+  }
+
+  static assetSourceLink(card: { sourceLink?: string | null }): string {
+    return `${card.sourceLink ?? ''}`.trim();
+  }
+
+  static normalizeAssetRoutes(
+    type: AppConstants.AssetType,
+    routes: readonly string[] | undefined | null
+  ): string[] {
+    if (type === 'Supplies') {
+      return [];
+    }
+    const cleaned = (routes ?? [])
+      .map(value => `${value ?? ''}`.trim())
+      .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
+    if (type === 'Accommodation') {
+      return cleaned.length > 0 ? [cleaned[0]] : [''];
+    }
+    return cleaned.length > 0 ? cleaned : [''];
+  }
+
+  static assetRequestTimeframeLabel(startAtIso: string, endAtIso: string): string {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    if (!start || !end) {
+      return '';
+    }
+    const sameDay = start.toDateString() === end.toDateString();
+    const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return sameDay
+      ? `${startDate} · ${startTime} - ${endTime}`
+      : `${startDate} ${startTime} - ${endDate} ${endTime}`;
+  }
+
+  static defaultAssetExploreRange(
+    subEvent: ContractTypes.SubEventDTO
+  ): { startAtIso: string; endAtIso: string } {
+    const startAtIso = `${subEvent.startAt ?? ''}`.trim() || AppUtils.toIsoDateTimeLocal(new Date());
+    const endAtIso = `${subEvent.endAt ?? ''}`.trim();
+    if (endAtIso) {
+      return {
+        startAtIso,
+        endAtIso
+      };
+    }
+    const base = AppUtils.isoLocalDateTimeToDate(startAtIso) ?? new Date();
+    const nextEnd = new Date(base);
+    nextEnd.setHours(nextEnd.getHours() + 2);
+    return {
+      startAtIso,
+      endAtIso: AppUtils.toIsoDateTimeLocal(nextEnd)
+    };
+  }
+
+  private static cloneAssetCard(card: AppDTOs.AssetDetailDTO): AppDTOs.AssetDetailDTO {
     return {
       ...card,
       routes: [...(card.routes ?? [])],
@@ -447,49 +473,5 @@ export class ActivityResourceBuilder {
     return routes
       .map(route => `${route ?? ''}`.trim())
       .filter(route => route.length > 0);
-  }
-
-  private static resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string {
-    return type === 'Members'
-      ? 'groups'
-      : AssetDefaultsBuilder.assetTypeIcon(type);
-  }
-
-  private static resourceMediaStart(
-    card: AppDTOs.SubEventResourceCardDTO,
-    canOpenMap: boolean
-  ): NonNullable<InfoCardData['mediaStart']> | null {
-    if (!canOpenMap) {
-      return null;
-    }
-    return {
-      variant: 'avatar',
-      tone: 'default',
-      icon: 'location_on',
-      interactive: true,
-      ariaLabel: card.type === 'Car' ? 'Open route map' : 'Open accommodation map'
-    };
-  }
-
-  private static resourceMenuActions(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardOptions
-  ): readonly CardMenuActionId[] {
-    const actions: CardMenuActionId[] = ['viewAsset'];
-    if (options.canEditRoute === true) {
-      actions.push('editAsset');
-    }
-    if (options.canJoin === true) {
-      actions.push('joinResource');
-    } else if (options.canLeave === true) {
-      actions.push('leaveResource');
-    }
-    actions.push('contactOrganizer');
-    actions.push('shareAsset');
-    if (options.canReportResourceManager === true) {
-      actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
-    }
-    actions.push('removeAssignment');
-    return actions;
   }
 }

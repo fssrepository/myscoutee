@@ -1,10 +1,12 @@
 import { AppUtils } from '../../../../app-utils';
-import type * as AppTypes from '../../../base/models';
+import { environment } from '../../../../../../environments/environment';
 import type * as ContractTypes from '../../../contracts';
-import type { ActivityEventSeedItem, ActivityHostingSeedItem } from '../entity';
+import type {
+  ActivityEventSeedItem,
+  ActivityHostingSeedItem,
+  SeedActivityDateTimeRange
+} from '../entity';
 import type { UserDto } from '../../../contracts/user.interface';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
-import { SeedUserBuilder } from './user-seed.builder';
 
 export class SeedEventBuilder {
   static seededTournamentGroupIdForUser<TGroup extends { id: string }>(
@@ -27,10 +29,10 @@ export class SeedEventBuilder {
     activeUserId: string
   ): string[] {
     const normalizedActiveUserId = activeUserId.trim();
-    if (!normalizedActiveUserId || SeedUserBuilder.isEmptyOnboardingProfileUserId(normalizedActiveUserId)) {
+    if (!normalizedActiveUserId) {
       return [];
     }
-    const seedableUsers = users.filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id));
+    const seedableUsers = [...users];
     const count = Math.max(4, Math.min(Math.max(4, targetCount), seedableUsers.length));
     const others = seedableUsers.filter(user => user.id !== normalizedActiveUserId);
     const seeded: string[] = [normalizedActiveUserId];
@@ -70,7 +72,7 @@ export class SeedEventBuilder {
     source: ActivityEventSeedItem | ActivityHostingSeedItem,
     options: {
       isHosting: boolean;
-      activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
+      activityDateTimeRangeById: Record<string, SeedActivityDateTimeRange>;
       hostingDatesById: Record<string, string>;
       eventDatesById: Record<string, string>;
       eventCapacityById: Record<string, ContractTypes.EventCapacityRange>;
@@ -88,7 +90,7 @@ export class SeedEventBuilder {
       dateSource?.endIso
       ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
     );
-    const startMs = Number.isNaN(start.getTime()) ? SeedScheduleBuilder.anchorDate().getTime() : start.getTime();
+    const startMs = Number.isNaN(start.getTime()) ? AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() : start.getTime();
     const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
       ? (startMs + (4 * 60 * 60 * 1000))
       : end.getTime();
@@ -107,7 +109,7 @@ export class SeedEventBuilder {
     source: ActivityEventSeedItem | ActivityHostingSeedItem,
     options: {
       isHosting: boolean;
-      activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange>;
+      activityDateTimeRangeById: Record<string, SeedActivityDateTimeRange>;
       hostingDatesById: Record<string, string>;
       eventDatesById: Record<string, string>;
       eventCapacityById: Record<string, ContractTypes.EventCapacityRange>;
@@ -124,7 +126,7 @@ export class SeedEventBuilder {
       dateSource?.endIso
       ?? new Date(start.getTime() + (4 * 60 * 60 * 1000)).toISOString().slice(0, 19)
     );
-    const startMs = Number.isNaN(start.getTime()) ? SeedScheduleBuilder.anchorDate().getTime() : start.getTime();
+    const startMs = Number.isNaN(start.getTime()) ? AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() : start.getTime();
     const endMs = Number.isNaN(end.getTime()) || end.getTime() <= startMs
       ? (startMs + (4 * 60 * 60 * 1000))
       : end.getTime();

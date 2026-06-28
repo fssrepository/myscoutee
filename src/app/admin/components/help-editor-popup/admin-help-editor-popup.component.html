@@ -48,10 +48,10 @@
       <div class="popup-body help-editor-body">
         @if (loading()) {
           <div class="help-editor-state-card help-editor-loading-state" aria-busy="true">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ loadingRevisionsLabel() }}</span>
           </div>
         } @else {
@@ -88,7 +88,7 @@
                             <div class="help-editor-revision-actions help-editor-draft-header-actions">
                               <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="saving">
                                 @if (saving) {
-                                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                                  <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                                 }
                                 <button
                                   type="submit"
@@ -299,14 +299,14 @@
                                   @if (openDraftSectionId === section.localId) {
                                     <div class="help-editor-preview-section-body help-editor-section-edit">
                                       @if (documentKind === 'explanation') {
-                                        <app-editable-image-carousel
+                                        <app-image-carousel
                                           [name]="'sectionImages' + sectionIndex"
                                           [(ngModel)]="section.imageUrls"
                                           [disabled]="saving"
                                           [compact]="true"
                                           [uploadOwnerId]="actorUserId()"
                                           ariaLabel="Explanation image slots"
-                                        ></app-editable-image-carousel>
+                                        ></app-image-carousel>
                                       }
                                       @if (section.mode === 'html') {
                                         <textarea
@@ -378,7 +378,7 @@
                           </button>
                           <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="activatingRevisionId === revision.id">
                             @if (activatingRevisionId === revision.id) {
-                              <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                              <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                             }
                             <button
                               type="button"

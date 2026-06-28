@@ -1,16 +1,37 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import {
+  NgComponentOutlet
+} from '@angular/common';
+import {
+  Component,
+  OnInit,
+  inject
+} from '@angular/core';
+import {
+  ActivatedRoute,
+  Router
+} from '@angular/router';
 
-import { AppPopupContext } from '../../../shared/ui';
-import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, type ShareTokenResolvedItem } from '../../../shared/core';
-import type { AssetCardDTO } from '../../../shared/core/base/dto';
+import {
+  AssetDefaultsBuilder
+} from '../../../shared/core/base/builders/asset-defaults.builder';
+import {
+  AdminWorkspaceDataService
+} from '../../../shared/core/base/services/admin-workspace-data.service';
+import {
+  EventsService
+} from '../../../shared/core/base/services/events.service';
+import {
+  SessionService
+} from '../../../shared/core/base/services/session.service';
+import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
+import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
 import type { AssetType } from '../../../shared/core/common/constants';
-import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
-  imports: [DemoBootstrapSelectorComponent],
+  imports: [NgComponentOutlet],
   templateUrl: './admin-help-session-page.component.html',
   styleUrl: './admin-help-session-page.component.scss'
 })
@@ -20,9 +41,10 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly eventsService = inject(EventsService);
-  private readonly popupCtx = inject(AppPopupContext);
-
+  private readonly popupStore = inject(PopupStore);
   protected error = '';
+  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
 
   async ngOnInit(): Promise<void> {
     await this.openSharedUserView();
@@ -75,7 +97,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private openSharedUserSelector(userId: string, targetUrl: string): void {
-    this.popupCtx.openDemoBootstrapSelector({
+    this.popupStore.openDemoBootstrapSelector({
       mode: 'member',
       title: 'Demo felhasználó választása',
       subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
@@ -107,7 +129,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private fail(message: string): void {
-    this.popupCtx.closeDemoBootstrapSelector();
+    this.popupStore.closeDemoBootstrapSelector();
     this.error = message;
   }
 
@@ -217,11 +239,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
     if (supportTarget === 'service-chat' || supportTarget === 'chats' || supportTarget === 'chat-message') {
-      this.popupCtx.openNavigatorActivitiesRequest('chats');
+      this.popupStore.openNavigatorActivitiesRequest('chats');
     } else if (supportTarget === 'member') {
       const ownerId = `${parsed.searchParams.get('ownerId') ?? ''}`.trim();
       if (ownerId) {
-        this.popupCtx.requestActivitiesNavigation({
+        this.popupStore.requestActivitiesNavigation({
           type: 'members',
           ownerId,
           ownerType: 'event',
@@ -230,30 +252,30 @@ export class AdminHelpSessionPageComponent implements OnInit {
           subtitle: 'Reported member context'
         });
       } else {
-        this.popupCtx.openNavigatorActivitiesRequest('events');
+        this.popupStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'event') {
       const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
-      const eventRecord = eventId ? await this.eventsService.queryKnownItemById(userId, eventId) : null;
+      const eventRecord = eventId ? await this.eventsService.queryKnownRecordById(userId, eventId) : null;
       if (eventRecord) {
-        this.popupCtx.requestActivitiesNavigation({
+        this.popupStore.requestActivitiesNavigation({
           type: 'eventEditor',
           eventId: eventRecord.id,
           target: eventRecord.type === 'hosting' || eventRecord.creatorUserId === userId ? 'hosting' : 'events',
           readOnly: true
         });
       } else {
-        this.popupCtx.openNavigatorActivitiesRequest('events');
+        this.popupStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'events') {
-      this.popupCtx.openNavigatorActivitiesRequest('events');
+      this.popupStore.openNavigatorActivitiesRequest('events');
     } else if (supportTarget === 'rates') {
-      this.popupCtx.openNavigatorActivitiesRequest('rates');
+      this.popupStore.openNavigatorActivitiesRequest('rates');
     } else if (supportTarget === 'asset') {
       const assetFilter = this.toAssetFilter(parsed.searchParams.get('assetFilter'));
       if (assetFilter) {
         const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
-        this.popupCtx.requestActivitiesNavigation({
+        this.popupStore.requestActivitiesNavigation({
           type: 'assetExplore',
           assetType: assetFilter,
           assetId: assetId || undefined,
@@ -265,7 +287,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
     return parsed.pathname || '/game';
   }
 
-  private buildSupportFallbackAsset(assetType: AssetType, parsed: URL): AssetCardDTO | undefined {
+  private buildSupportFallbackAsset(assetType: AssetType, parsed: URL): AssetDTO | undefined {
     const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
     if (!assetId) {
       return undefined;
@@ -289,13 +311,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
       city: city || this.defaultSupportAssetCity(assetType),
       capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === 'Supplies' ? 4 : 1),
       quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === 'Supplies' ? 4 : 1),
-      details: details || subtitle || title,
+      description: details || subtitle || title,
       imageUrl,
-      sourceLink: this.safeImageUrl(parsed.searchParams.get('assetSourceLink')) || imageUrl,
-      routes: [],
-      topics: [],
-      policies: [],
-      pricing: null,
       visibility: 'Public',
       ownerUserId: '',
       requests: []

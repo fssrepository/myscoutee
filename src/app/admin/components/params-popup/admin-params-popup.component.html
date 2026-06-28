@@ -17,10 +17,10 @@
       <div class="popup-body admin-params-body">
         @if (loading()) {
           <div class="admin-params-loading-state" aria-busy="true">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ 'admin.params.loading' | i18n }}</span>
           </div>
         } @else if (state(); as paramsState) {
@@ -94,7 +94,7 @@
         <div class="admin-params-header-actions">
           <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="saving()">
             @if (saving()) {
-              <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+              <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
             }
             <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" [attr.aria-label]="'save' | i18n">
               <mat-icon>check</mat-icon>
@@ -166,10 +166,10 @@
       <div class="popup-body admin-params-history-body">
         @if (historyLoading()) {
           <div class="admin-params-loading-state admin-params-history-loading-state" aria-busy="true">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ 'admin.params.history.loading' | i18n }}</span>
           </div>
         } @else {
@@ -186,7 +186,7 @@
                 <div class="admin-params-history-actions">
                   <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="revertingVersion() === item.version">
                     @if (revertingVersion() === item.version) {
-                      <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                      <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                     }
                     <button
                       type="button"

@@ -70,12 +70,12 @@
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
           @if (panel === 'image') {
             <div class="image-editor-wrap">
-              <app-editable-image-carousel
+              <app-image-carousel
                 [previewMode]="true"
                 [ngModel]="profileEditorData.profile.images"
                 (ngModelChange)="onProfileImagesChange($event)"
                 [uploadOwnerId]="user.id"
-              ></app-editable-image-carousel>
+              ></app-image-carousel>
             </div>
           }
           @if (panel === 'experience') {

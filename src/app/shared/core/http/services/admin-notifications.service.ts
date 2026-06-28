@@ -8,8 +8,8 @@ import type {
   AdminNotificationRuleLiveEvent,
   AdminNotificationRunResult
 } from '../../contracts/admin.interface';
-import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
+import { SessionService } from '../../base/services/session.service';
 
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
 const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
@@ -20,8 +20,8 @@ const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
 })
 export class HttpAdminNotificationsService {
   private readonly http = inject(HttpClient);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadNotificationCenter(adminUserId?: string | null): Promise<AdminNotificationCenterState> {
@@ -125,8 +125,8 @@ export class HttpAdminNotificationsService {
       baseUrl.searchParams.set('adminUserId', normalizedAdminUserId);
       baseUrl.searchParams.set('userId', normalizedAdminUserId);
     }
-    if (this.firebaseAuthService.enabled) {
-      const token = await this.firebaseAuthService.getIdToken();
+    if (this.sessionService.authMode === 'firebase') {
+      const token = await this.sessionService.getFirebaseIdToken();
       if (!token) {
         return null;
       }
@@ -134,4 +134,5 @@ export class HttpAdminNotificationsService {
     }
     return baseUrl.toString();
   }
+
 }

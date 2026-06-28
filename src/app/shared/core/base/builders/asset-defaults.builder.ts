@@ -1,7 +1,6 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
-import type * as AppTypes from '../models';
 
-import type * as AppDTOs from '../dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 export class AssetDefaultsBuilder {
   static assetTypeLabel(type: AppConstants.AssetFilterType): string {

@@ -1,20 +1,73 @@
-import { Component, HostListener, OnDestroy, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
-import { AppPopupContext } from '../../../shared/ui';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
-import { tap } from 'rxjs/operators';
-
-import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent, AppMenuTriggerComponent, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type SmartListConfig, type SmartListLoadPage
+  Component,
+  HostListener,
+  OnDestroy,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
+import {
+  tap
+} from 'rxjs/operators';
+
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AppMenuComponent,
+  AppMenuTriggerComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type ListQuery,
+  type PageResult,
+  type PopupActionEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AppContext } from '../../../shared/ui';
-import { ContactsService as ContactsDataService, ExplanationGuideService, UsersService, type ActivityMemberEntry, type ContactFormValue, type ContactListFilters, type ContactListItem, type ContactMethodDraft, type ContactMethodItem, type ContactMethodOption, type ContactMethodType, type StoredContact, type UserDto } from '../../../shared/core';
-import { NavigatorService } from '../../navigator.service';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ContactsService as ContactsDataService,
+  ExplanationGuideService,
+  UsersService,
+  type ActivityMemberEntry,
+  type ContactFormValue,
+  type ContactListFilters,
+  type ContactListItem,
+  type ContactMethodDraft,
+  type ContactMethodItem,
+  type ContactMethodOption,
+  type ContactMethodType,
+  type StoredContact,
+  type UserDto
+} from '../../../shared/core';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   {
@@ -142,25 +195,25 @@ type ContactsMenuContext =
   imports: [
     CommonModule,
     FormsModule,
-    MatButtonModule,
     MatIconModule,
     AppMenuComponent,
     AppMenuTriggerComponent,
-    ProgressIndicatorComponent,
+    PopupComponent,
     SmartListComponent
   ],
   templateUrl: './contacts-popup.component.html',
   styleUrl: './contacts-popup.component.scss'
 })
 export class ContactsPopupComponent implements OnDestroy {
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly popupStore = inject(PopupStore);
+  private readonly dialogStore = inject(DialogStore);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly contactsDataService = inject(ContactsDataService);
-  protected readonly contactsPopupOpen = this.navigatorService.contactsPopupOpen;
+  protected readonly contactsPopupOpen = this.navigatorStore.contactsPopupOpen;
   protected readonly contactMethodOptions = CONTACT_METHOD_OPTIONS;
   protected readonly searchText = signal('');
   protected readonly editingContact = signal<ContactFormValue | null>(null);
@@ -201,7 +254,7 @@ export class ContactsPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.setContactsExplanationContext(this.navigatorService.contactsPopupOpen() ? 'contacts' : null);
+      this.setContactsExplanationContext(this.navigatorStore.contactsPopupOpen() ? 'contacts' : null);
     });
 
     effect(() => {
@@ -250,7 +303,7 @@ export class ContactsPopupComponent implements OnDestroy {
     emptyStickyLabel: 'No contacts',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',
@@ -267,10 +320,75 @@ export class ContactsPopupComponent implements OnDestroy {
     onDelete: (contact: ContactListItem, event?: Event) => this.confirmDelete(contact, event)
   }));
 
+  protected contactsPopupModel(): PopupModel<ContactsMenuContext> {
+    return {
+      title: 'Contacts',
+      subtitle: this.summaryLabel(),
+      ariaLabel: 'Contacts',
+      closeAriaLabel: 'Close contacts',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerActions: [{
+        id: 'create-contact',
+        icon: 'person_add',
+        label: 'Create contact',
+        ariaLabel: 'Create contact',
+        palette: 'sky',
+        compactOnMobile: true
+      }],
+      onClose: event => this.closePopup(event),
+      onAction: event => this.onContactsPopupAction(event)
+    };
+  }
+
+  protected contactsPopupZIndex(): number {
+    return 12340;
+  }
+
+  protected contactFormPopupModel(contact: ContactFormValue): PopupModel<ContactsMenuContext> {
+    return {
+      title: 'Edit Contact',
+      subtitle: `${contact.name}${contact.city ? ' - ' + contact.city : ''}`,
+      ariaLabel: 'Edit Contact',
+      closeAriaLabel: 'Close contact form',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      headerActions: [{
+        id: 'save-contact',
+        icon: 'done',
+        ariaLabel: 'Save contact',
+        palette: 'green',
+        disabled: this.isFormSavePending()
+      }],
+      onClose: event => this.closeFormPopup(event),
+      onAction: event => this.onContactsPopupAction(event)
+    };
+  }
+
+  protected contactFormPopupZIndex(): number {
+    return 12420;
+  }
+
+  private onContactsPopupAction(event: PopupActionEvent): void {
+    switch (event.action.id) {
+      case 'create-contact':
+        void this.openCreateContactPicker(event.sourceEvent);
+        return;
+      case 'save-contact':
+        void this.saveForm(event.sourceEvent);
+        return;
+      default:
+        return;
+    }
+  }
+
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (!this.navigatorService.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
+    if (!this.navigatorStore.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -295,7 +413,7 @@ export class ContactsPopupComponent implements OnDestroy {
     this.searchText.set('');
     this.editingContact.set(null);
     this.formErrorMessage.set('');
-    this.navigatorService.closeContactsPopup();
+    this.navigatorStore.closeContactsPopup();
   }
 
   private setContactsExplanationContext(contextKey: string | null): void {
@@ -347,7 +465,7 @@ export class ContactsPopupComponent implements OnDestroy {
     if (!userId) {
       return;
     }
-    this.navigatorService.openProfileView({
+    this.navigatorStore.openProfileView({
       userId,
       label: contact.name
     });
@@ -422,7 +540,7 @@ export class ContactsPopupComponent implements OnDestroy {
   protected confirmDelete(contact: ContactListItem, event?: Event): void {
     event?.stopPropagation();
     this.closeActionMenu();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: `Delete ${contact.name}?`,
       message: 'This removes the contact and all saved availability methods from your local list.',
       confirmLabel: 'Delete',
@@ -583,7 +701,7 @@ export class ContactsPopupComponent implements OnDestroy {
       return;
     }
 
-    this.popupCtx.openActivityInvitePopup({
+    this.popupStore.openActivityInvitePopup({
       ownerId: activeUserId,
       ownerType: 'asset',
       title: 'Create contact',
@@ -1028,7 +1146,7 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private randomId(prefix: string): string {

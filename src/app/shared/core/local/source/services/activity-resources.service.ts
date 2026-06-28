@@ -1,13 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from './route-delay.service';
-import type * as AppTypes from '../../../base/models';
 import type { ActivitySubEventResourceRecord } from '../entity/activity.entity';
 import { LocalActivityResourcesMapper } from '../mappers';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
 })

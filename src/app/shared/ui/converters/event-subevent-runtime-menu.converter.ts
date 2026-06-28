@@ -1,7 +1,7 @@
 import type { SubEventResourceFilter } from '../../core/common/constants';
 import type { ActivityEventDetailDTO, ActivityEventSubEventRuntimeDTO } from '../../core/contracts/activity.interface';
 import type { EventMode, TournamentStageStatus } from '../../core/contracts/event.interface';
-import type { AppMenuItem, AppMenuPalette } from '../components/menu';
+import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
 
 export type EventSubeventRuntimeStageAction =
   | 'start-tournament'

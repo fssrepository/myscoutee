@@ -1,19 +1,37 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
-import { AppUtils } from '../../../shared/app-utils';
-import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  ActivityResourceBuilder,
+  ActivityResourcesService,
+  EventsService
+} from '../../../shared/core';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
   AccordionComponent,
   AppMenuComponent,
   FormFlowComponent,
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
@@ -21,20 +39,33 @@ import {
   type AppMenuTrigger,
   type FormFlowControlModel,
   type FormFlowModel,
+  type UiAccordionActionMenuSelectEvent,
   type UiAccordionItem,
+  type UiAccordionModel,
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
-import { AppContext, AppPopupContext } from '../../../shared/ui/context';
-import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/app-popup.context';
+import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/popup.store';
 import {
   EventTournamentGroupsPopupConverter,
   type EventTournamentGroupsAccordionContext,
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  EventSubeventGroupFormPopupComponent
+} from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type TournamentGroupsAction =
   | 'add-entry'
@@ -117,7 +148,7 @@ interface FifaRow {
     AppMenuComponent,
     AccordionComponent,
     FormFlowComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     EventSubeventGroupFormPopupComponent
   ],
   templateUrl: './event-tournament-groups-popup.component.html',
@@ -125,13 +156,14 @@ interface FifaRow {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventTournamentGroupsPopupComponent {
-  private readonly popupCtx = inject(AppPopupContext);
-  private readonly appCtx = inject(AppContext);
+  private readonly popupStore = inject(PopupStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly assetStore = inject(AssetStore);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected state: ContractTypes.EventTournamentGroupsStateDTO | null = null;
@@ -162,7 +194,7 @@ export class EventTournamentGroupsPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.eventTournamentGroupsPopup();
+      const request = this.popupStore.eventTournamentGroupsPopup();
       if (!request) {
         this.resetState();
         return;
@@ -182,7 +214,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs === this.handledMembersSyncMs) {
         return;
       }
@@ -198,7 +230,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityResourceSync();
+      const sync = this.activityStore.activityResourceSync();
       if (!sync || sync.updatedMs === this.handledResourceSyncMs) {
         return;
       }
@@ -210,7 +242,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      this.ownedAssets.assetListRevision();
+      this.assetStore.assetListRevision();
       if (!this.isOpen()) {
         return;
       }
@@ -237,11 +269,11 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupCtx.eventTournamentGroupsPopup());
+    return Boolean(this.popupStore.eventTournamentGroupsPopup());
   }
 
   protected close(): void {
-    this.popupCtx.closeEventTournamentGroupsPopup();
+    this.popupStore.closeEventTournamentGroupsPopup();
   }
 
   protected viewModel(): EventTournamentGroupsPopupModel {
@@ -250,6 +282,36 @@ export class EventTournamentGroupsPopupComponent {
       selectedStageId: this.selectedStageId,
       openGroupIds: this.openGroupIds
     });
+  }
+
+  protected accordionModel(
+    vm: EventTournamentGroupsPopupModel
+  ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext> {
+    return {
+      ...vm.accordion,
+      items: vm.accordion.items.map(item => {
+        const accordionItem = item as UiAccordionItem<
+          string,
+          EventTournamentGroupsAccordionContext,
+          TournamentGroupsActionContext
+        >;
+        const groupId = item.context?.groupId ?? item.id;
+        const group = this.groupById(vm.selectedStage, groupId);
+        if (!vm.selectedStage || !group) {
+          return accordionItem;
+        }
+        return {
+          ...accordionItem,
+          actionMenu: {
+            kind: 'select',
+            trigger: this.groupActionTrigger(group),
+            model: this.groupActionModelFor(vm.selectedStage, group),
+            panelAlign: 'auto',
+            mobileBreakpointPx: 900
+          }
+        };
+      })
+    };
   }
 
   protected headerActionItems(): readonly AppMenuItem<string, TournamentGroupsHeaderActionContext>[] {
@@ -305,6 +367,12 @@ export class EventTournamentGroupsPopupComponent {
     this.cdr.markForCheck();
   }
 
+  protected onAccordionActionSelect(
+    event: UiAccordionActionMenuSelectEvent<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext>
+  ): void {
+    this.onGroupActionSelect(event.itemSelect);
+  }
+
   protected groupActionTrigger(group: ContractTypes.EventTournamentGroupDTO): AppMenuTrigger {
     return {
       icon: 'more_vert',
@@ -315,14 +383,10 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
-  protected groupActionModel(
-    item: UiAccordionItem<string, EventTournamentGroupsAccordionContext>
+  private groupActionModelFor(
+    stage: ContractTypes.EventTournamentStageDTO,
+    group: ContractTypes.EventTournamentGroupDTO
   ): AppMenuModel<string, TournamentGroupsActionContext> {
-    const stage = this.viewModel().selectedStage;
-    const group = this.groupForItem(item);
-    if (!stage || !group) {
-      return { nodes: [] };
-    }
     const contextBase = { stageId: stage.subEventId, groupId: group.id };
     const actionItems: AppMenuItem<string, TournamentGroupsActionContext>[] = [];
     if (this.canManageGroups()) {
@@ -986,7 +1050,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private async loadGroupsForStage(stageId: string): Promise<void> {
-    const request = this.popupCtx.eventTournamentGroupsPopup();
+    const request = this.popupStore.eventTournamentGroupsPopup();
     const eventId = `${request?.eventId ?? ''}`.trim();
     const normalizedStageId = `${stageId ?? ''}`.trim();
     if (!eventId || !normalizedStageId) {
@@ -1120,7 +1184,7 @@ export class EventTournamentGroupsPopupComponent {
     state: AppDTOs.ActivitySubEventResourceStateDTO | null
   ): TournamentResourceMetricsByType {
     const subEvent = this.resourceSubEventForStage(stage);
-    const assets = this.ownedAssets.assetCards;
+    const assets = this.assetStore.assetCards();
     return Object.fromEntries(TOURNAMENT_RESOURCE_TYPES.map(type => {
       const joined = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assets);
       const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assets);
@@ -1178,7 +1242,7 @@ export class EventTournamentGroupsPopupComponent {
     subEvent: ContractTypes.SubEventDTO,
     type: AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null,
-    assets: readonly AppDTOs.AssetCardDTO[],
+    assets: readonly AppDTOs.AssetDTO[],
     joined: number,
     pending: number
   ): { capacityMin: number; capacityMax: number } {
@@ -1223,20 +1287,20 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    return this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   private eventId(): string {
-    const request = this.popupCtx.eventTournamentGroupsPopup();
+    const request = this.popupStore.eventTournamentGroupsPopup();
     return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
   }
 
   private requestEventId(): string {
-    return `${this.popupCtx.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+    return `${this.popupStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
   }
 
   private requestSlotId(): string | null {
-    const slotId = `${this.popupCtx.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
+    const slotId = `${this.popupStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
     return slotId || null;
   }
 
@@ -1375,7 +1439,7 @@ export class EventTournamentGroupsPopupComponent {
     if (!this.canManageGroups()) {
       return;
     }
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: 'Delete Group',
       message: `Delete ${group.name}?`,
       cancelLabel: 'Cancel',
@@ -1422,7 +1486,7 @@ export class EventTournamentGroupsPopupComponent {
   ): void {
     event?.stopPropagation();
     const isMembersPopup = type === 'Members';
-    this.eventEditorService.requestSubEventResourcePopup({
+    this.eventEditorStore.requestSubEventResourcePopup({
       type,
       ownerId: this.eventId(),
       parentTitle: this.state?.title ?? '',

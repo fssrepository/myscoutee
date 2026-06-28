@@ -1,0 +1,283 @@
+@use '../../../../../styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+@include ui.form-controls();
+
+.editor-list-card {
+  border: 1px solid rgba(13, 25, 44, 0.12);
+  border-radius: 11px;
+  padding: 0.56rem;
+  background: #fbfdff;
+}
+
+.editor-list-card h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
+
+.editor-list-card p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.experience-popup {
+  position: relative;
+  display: grid;
+  gap: 0.72rem;
+  padding-bottom: 0.5rem;
+  align-content: start;
+}
+
+.experience-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: -0.16rem;
+}
+
+.experience-inline-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.experience-filter-select {
+  min-width: 174px;
+  width: 174px;
+  max-width: 174px;
+  height: 36px;
+}
+
+.experience-delete-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 4200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.8rem;
+}
+
+.experience-delete-confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.46);
+}
+
+.experience-delete-confirm-panel {
+  position: relative;
+  z-index: 1;
+  width: min(420px, 100%);
+  border: 1px solid rgba(42, 67, 101, 0.28);
+  border-radius: 12px;
+  background: #fff;
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.4rem;
+  text-align: center;
+  justify-items: center;
+}
+
+.experience-delete-confirm-panel h4,
+.experience-delete-confirm-panel p {
+  margin: 0;
+}
+
+.experience-delete-btn {
+  background: linear-gradient(180deg, #ef5f5f 0%, #d63a3a 100%);
+  border-color: rgba(156, 30, 30, 0.9);
+  color: #fff;
+}
+
+.experience-delete-btn:hover {
+  background: linear-gradient(180deg, #f06d6d 0%, #da4343 100%);
+  border-color: rgba(145, 24, 24, 0.96);
+}
+
+.experience-import-popup {
+  width: min(560px, 100%);
+}
+
+.experience-import-panel {
+  display: grid;
+  gap: 0.78rem;
+}
+
+.experience-import-progress-card {
+  border: 1px solid rgba(38, 67, 103, 0.16);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(247, 250, 255, 0.94) 0%, rgba(241, 246, 255, 0.92) 100%);
+  padding: 0.78rem 0.84rem;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.experience-import-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: #203b60;
+}
+
+.experience-import-progress-meta span {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.experience-import-progress-meta strong {
+  font-size: 0.8rem;
+  color: #3b5f91;
+}
+
+.experience-import-progress-bar {
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(74, 106, 152, 0.12);
+}
+
+.experience-import-progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #f29d2e 0%, #ed7f2e 55%, #da5a39 100%);
+  transition: width 0.18s ease;
+}
+
+.experience-import-error {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: flex-start;
+  gap: 0.72rem;
+  border: 1px solid rgba(191, 68, 55, 0.24);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 244, 242, 0.96) 0%, rgba(255, 236, 233, 0.92) 100%);
+  color: #8a3228;
+  padding: 0.78rem 0.84rem;
+}
+
+.experience-import-error .mat-icon {
+  color: #cf4a3c;
+}
+
+.experience-import-error strong,
+.experience-import-error p {
+  margin: 0;
+}
+
+.experience-import-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.58rem;
+}
+
+.experience-import-stat {
+  border: 1px solid rgba(38, 67, 103, 0.14);
+  border-radius: 14px;
+  background: #fbfdff;
+  padding: 0.72rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.experience-import-stat span {
+  font-size: 0.74rem;
+  color: rgba(22, 44, 73, 0.68);
+}
+
+.experience-import-stat strong {
+  font-size: 1.1rem;
+  color: #203b60;
+}
+
+.experience-import-type-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.48rem;
+}
+
+.experience-import-type-chip {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  border-radius: 999px;
+  padding: 0.42rem 0.62rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  border: 1px solid rgba(45, 75, 111, 0.16);
+}
+
+.experience-import-type-chip .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+  line-height: 16px;
+}
+
+.experience-import-type-chip span {
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.experience-import-type-chip strong {
+  margin-left: 0.08rem;
+  font-size: 0.76rem;
+}
+
+.experience-import-warnings {
+  display: grid;
+  gap: 0.36rem;
+}
+
+.experience-import-warnings h4 {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #213b60;
+}
+
+.experience-import-warnings ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.24rem;
+  color: rgba(22, 44, 73, 0.78);
+}
+
+.experience-import-actions {
+  justify-content: flex-end;
+}
+
+.image-file-input-hidden {
+  display: none;
+}
+
+.experience-type-field .experience-type-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .experience-toolbar {
+    align-items: stretch;
+  }
+
+  .experience-import-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .experience-import-type-stats {
+    flex-direction: column;
+  }
+
+  .experience-import-type-chip {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

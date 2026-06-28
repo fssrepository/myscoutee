@@ -1,6 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { AppUtils } from '../../../app-utils';
+import {
+  AppUtils
+} from '../../../app-utils';
 import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
@@ -12,24 +17,27 @@ import type {
   SubEventLeaderboardState
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
-import type { ActivitiesFeedFilters, ActivitiesPageRequest } from '../../contracts';
+import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
+  EventParticipationActionResultDTO,
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
   EventFeedbackPageResultDto,
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
-import { LocalEventsService } from '../../local';
-import { HttpEventsService } from '../../http';
+import {
+  LocalEventsService
+} from '../../local';
+import {
+  HttpEventsService
+} from '../../http';
 import type {
-  ActivityEventActivitiesListQueryResult,
-  ActivityEventActivitiesQuery,
   ActivityEventDetailDTO,
   ActivityEventDTO,
   ActivityEventStageActionRequestDTO,
@@ -42,11 +50,13 @@ import type {
   ActivityEventSubEventsResultDTO
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
-import type { ListQuery, PageResult } from '../../../ui';
-import { AppContext } from '../../../ui/context';
-import { toActivitiesPageRequest, toActivityEventActivitiesQuery } from '../mappers';
-import { BaseRouteModeService } from './base-route-mode.service';
-import { UsersService } from './users.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import {
+  UsersService
+} from './users.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -54,7 +64,7 @@ import { UsersService } from './users.service';
 export class EventsService extends BaseRouteModeService implements IEventsService {
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
 
   get localModeEnabled(): boolean {
@@ -85,38 +95,39 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.queryTrashedItemsByUser(userId);
   }
 
-  async queryActivitiesEventListPage(
-    query: ActivityEventActivitiesQuery,
-    signal?: AbortSignal
-  ): Promise<ActivityEventActivitiesListQueryResult> {
-    if (this.isLocalRouteEnabled('/activities/events')) {
-      return this.localEventsService.queryActivitiesEventListPage(query, signal);
-    }
-    return this.httpEventsService.queryActivitiesEventListPage(query, signal);
-  }
-
   async queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO> {
     if (this.isLocalRouteEnabled('/activities/events')) {
-      return this.localEventsService.queryActivitiesEventDTOPage(query, signal);
+      return this.localEventsService.queryActivitiesEventDTOPage(userId, query, signal);
     }
-    return this.httpEventsService.queryActivitiesEventDTOPage(query, signal);
+    return this.httpEventsService.queryActivitiesEventDTOPage(userId, query, signal);
   }
 
   async loadActivityEvents(
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}
   ): Promise<PageResult<ActivityEventDTO>> {
-    const request = toActivitiesPageRequest(query);
     const activeUserId = this.resolveActiveUserId();
     const page = await this.queryActivitiesEventDTOPage(
-      toActivityEventActivitiesQuery(request, activeUserId),
+      activeUserId,
+      query,
       options.signal
     );
-    if (this.isCalendarActivitiesView(request.view)) {
-      return this.paginateActivityEventDTOs(page.items, request);
+    if (this.isCalendarActivitiesView(query.view)) {
+      const items = AppUtils.filterItemsByDateOnlyRange(
+        page.items,
+        query.rangeStart,
+        query.rangeEnd,
+        item => item.startAtIso,
+        item => item.endAtIso
+      );
+      return {
+        items,
+        total: items.length
+      };
     }
     return {
       items: page.items,
@@ -153,7 +164,15 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.httpEventsService.peekEventExplorePage(query);
   }
 
-  peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {
+  peekKnownItemById(userId: string, itemId: string): ActivityEventDTO | null {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return null;
+    }
+    return this.eventsService.peekKnownItemById(userId, normalizedItemId);
+  }
+
+  peekKnownRecordById(userId: string, itemId: string): ActivityEventRecord | null {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
@@ -165,20 +184,12 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return known.find(record => record.id === normalizedItemId) ?? null;
   }
 
-  peekKnownItemDTOById(userId: string, itemId: string): ActivityEventDTO | null {
-    const normalizedItemId = itemId.trim();
-    if (!normalizedItemId || !this.isLocalRouteEnabled('/activities/events')) {
-      return null;
-    }
-    return this.localEventsService.peekKnownItemDTOById(userId, normalizedItemId);
-  }
-
-  async queryKnownItemById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
+  async queryKnownRecordById(userId: string, itemId: string): Promise<ActivityEventRecord | null> {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return null;
     }
-    const cached = this.peekKnownItemById(userId, normalizedItemId);
+    const cached = this.peekKnownRecordById(userId, normalizedItemId);
     if (cached) {
       return cached;
     }
@@ -275,7 +286,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
     } = {}
-  ): Promise<ActivityEventRecord | null> {
+  ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
   }
 
@@ -324,11 +335,11 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.appCtx.activeUserProfile()?.id?.trim();
+    const activeUserProfileId = this.userProfileStore.activeUserProfile()?.id?.trim();
     if (activeUserProfileId) {
       return activeUserProfileId;
     }
-    const activeUserId = this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }
@@ -342,88 +353,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.usersService.peekCachedUsers()[0]?.id ?? '';
   }
 
-  private paginateActivityEventDTOs(
-    items: readonly ActivityEventDTO[],
-    request: ActivitiesPageRequest
-  ): PageResult<ActivityEventDTO> {
-    if (this.isCalendarActivitiesView(request.view)) {
-      const range = this.activitiesQueryRange(request);
-      const filteredItems = range
-        ? items.filter(item => this.doesActivityEventDTOOverlapRange(item, range.start, range.end))
-        : [...items];
-      return {
-        items: filteredItems,
-        total: filteredItems.length
-      };
-    }
-
-    const startIndex = request.page * request.pageSize;
-    return {
-      items: items.slice(startIndex, startIndex + request.pageSize),
-      total: items.length
-    };
-  }
-
-  private activitiesQueryRange(request: ActivitiesPageRequest): { start: Date; end: Date } | null {
-    const start = this.parseSmartListDate(request.rangeStart);
-    const end = this.parseSmartListDate(request.rangeEnd);
-    if (!start || !end) {
-      return null;
-    }
-    return {
-      start,
-      end: AppUtils.dateOnly(end)
-    };
-  }
-
-  private doesActivityEventDTOOverlapRange(item: ActivityEventDTO, start: Date, end: Date): boolean {
-    const range = this.resolveActivityEventDTORange(item);
-    if (!range) {
-      return false;
-    }
-    return this.dateRangeOverlaps(
-      AppUtils.dateOnly(range.start),
-      AppUtils.dateOnly(range.end),
-      start,
-      end
-    );
-  }
-
-  private dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
-    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
-  }
-
-  private resolveActivityEventDTORange(item: ActivityEventDTO): { start: Date; end: Date } | null {
-    const start = new Date(item.startAtIso);
-    const end = new Date(item.endAtIso || new Date(start.getTime() + (2 * 60 * 60 * 1000)).toISOString());
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-      return null;
-    }
-    return end.getTime() > start.getTime()
-      ? { start, end }
-      : { start, end: new Date(start.getTime() + (2 * 60 * 60 * 1000)) };
-  }
-
-  private isCalendarActivitiesView(view: ActivitiesPageRequest['view']): boolean {
+  private isCalendarActivitiesView(view: string | undefined): boolean {
     return view === 'week' || view === 'month';
-  }
-
-  private parseSmartListDate(value: string | undefined): Date | null {
-    if (!value) {
-      return null;
-    }
-    const trimmed = value.trim();
-    const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (match) {
-      const year = Number.parseInt(match[1], 10);
-      const month = Number.parseInt(match[2], 10) - 1;
-      const day = Number.parseInt(match[3], 10);
-      return new Date(year, month, day);
-    }
-    const parsed = new Date(trimmed);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return AppUtils.dateOnly(parsed);
   }
 }

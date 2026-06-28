@@ -36,11 +36,11 @@
       <div class="popup-body notifications-body">
         @if (loading()) {
           <div class="notifications-state notifications-loading-state" aria-busy="true">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
               [durationMs]="notificationsService.notificationCenterLoadProgressWindowMs()"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ 'admin.jobs.loading' | i18n }}</span>
           </div>
         } @else {
@@ -91,7 +91,7 @@
                         </button>
                         <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.suspend)">
                           @if (isRowActionPending(rule, processRowAction.suspend)) {
-                            <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                            <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                           }
                           <button
                             type="button"
@@ -106,7 +106,7 @@
                         </span>
                         <span class="process-icon-ring-shell" [class.is-loading]="isRowActionPending(rule, processRowAction.run)">
                           @if (isRowActionPending(rule, processRowAction.run)) {
-                            <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                            <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                           }
                           <button
                             type="button"
@@ -148,7 +148,7 @@
                   <div class="notification-header-actions">
                     <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
                       @if (saving()) {
-                        <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                        <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                       }
 	                      <button
 	                        type="button"
@@ -299,7 +299,7 @@
             <div class="notification-header-actions">
               <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
                 @if (saving()) {
-                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                  <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                 }
                 <button
                   type="button"
@@ -361,7 +361,7 @@
             <div class="notification-header-actions">
               <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
                 @if (saving()) {
-                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                  <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                 }
                 <button
                   type="button"

@@ -8,7 +8,7 @@ import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserGameMode, UserRatesSyncResult } from '../../../contracts/activity.interface';
@@ -27,7 +27,7 @@ export class LocalRatesRepository {
 
   queryRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
     const normalizedRaterId = raterUserId.trim();
-    if (!normalizedRaterId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedRaterId)) {
+    if (!normalizedRaterId) {
       return [];
     }
     const state = this.memoryDb.read();
@@ -64,13 +64,12 @@ export class LocalRatesRepository {
     }
 
     return Array.from(ratedUserIds)
-      .filter(id => id.length > 0)
-      .filter(id => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(id));
+      .filter(id => id.length > 0);
   }
 
   queryRatedGameCardPairKeys(ownerUserId: string): string[] {
     const normalizedOwnerUserId = ownerUserId.trim();
-    if (!normalizedOwnerUserId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedOwnerUserId)) {
+    if (!normalizedOwnerUserId) {
       return [];
     }
     const pairKeys = new Set(this.rateOutboxRepository.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
@@ -157,9 +156,6 @@ export class LocalRatesRepository {
     if (!normalizedUserId) {
       return [];
     }
-    if (UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId)) {
-      return [];
-    }
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     const recordsById = new Map<string, UserRateRecord>();
     const usersById = this.usersById();
@@ -176,15 +172,8 @@ export class LocalRatesRepository {
     return [...recordsById.values()]
       .filter((record): record is UserRateRecord => Boolean(record))
       .flatMap(record => this.buildDynamicRateItemsForUser(record, normalizedUserId))
-      .filter(item => !this.referencesEmptyOnboardingProfile(item))
       .filter(item => this.activityRateItemUsersAreVisible(item, normalizedUserId, usersById))
       .sort((left, right) => AppUtils.toSortableDate(right.happenedAt) - AppUtils.toSortableDate(left.happenedAt));
-  }
-
-  private referencesEmptyOnboardingProfile(item: ActivityRateDTO): boolean {
-    return UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.userId)
-      || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.secondaryUserId ?? '')
-      || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(item.bridgeUserId ?? '');
   }
 
   private activityRateItemUsersAreVisible(
@@ -203,7 +192,7 @@ export class LocalRatesRepository {
       && ids.indexOf(userId) === index
     );
     return displayedUserIds.every(userId =>
-      UserProfileStateBuilder.isActivityRateVisibleProfile(usersById.get(userId))
+      UserProfileState.isActivityRateVisibleProfile(usersById.get(userId))
     );
   }
 

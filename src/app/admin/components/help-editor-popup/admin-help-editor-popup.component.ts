@@ -1,12 +1,31 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, effect, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext } from '../../../shared/ui';
-import { HelpCenterService, I18nService } from '../../../shared/core';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  HelpCenterService,
+  I18nService
+} from '../../../shared/core';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
@@ -16,17 +35,28 @@ import type {
   HelpCenterSectionDto,
   HelpCenterStateDto
 } from '../../../shared/core/contracts';
-import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
+import {
+  ImageCarouselComponent
+} from '../../../shared/ui/components/core/image-carousel';
+import {
+  IndicatorComponent
+} from '../../../shared/ui/components/core/indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel
-} from '../../../shared/ui/components/menu';
-import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminShellService } from '../../services/admin-shell.service';
+} from '../../../shared/ui/components/core/menu';
+import {
+  LazyBgImageDirective
+} from '../../../shared/ui/directives';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type EditorTab = 'html' | 'preview';
 
@@ -103,8 +133,8 @@ interface HelpEditorLanguageMenuContext {
     FormsModule,
     MatIconModule,
     AppMenuComponent,
-    EditableImageCarouselComponent,
-    ProgressIndicatorComponent,
+    ImageCarouselComponent,
+    IndicatorComponent,
     LazyBgImageDirective
   ],
   templateUrl: './admin-help-editor-popup.component.html',
@@ -137,10 +167,10 @@ export class AdminHelpEditorPopupComponent {
     'track',
     'wbr'
   ]);
-  protected readonly admin = inject(AdminShellService);
-  private readonly appCtx = inject(AppContext);
+  protected readonly admin = inject(AdminPopupStore);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly dialogStore = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -993,7 +1023,7 @@ export class AdminHelpEditorPopupComponent {
     if (this.saving || this.activatingRevisionId) {
       return;
     }
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: `Delete v${revision.version}?`,
       message: revision.title,
       confirmLabel: 'Delete',
@@ -1060,7 +1090,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   protected documentLabel(): string {

@@ -1,8 +1,8 @@
 import { AppUtils } from '../../app-utils';
-import { AssetTicketMapper } from '../../core/base/mappers';
+import { AssetTicketBuilder } from '../../core/base/builders';
 import type * as AssetContracts from '../../core/contracts/asset.interface';
 import type * as AppConstants from '../../core/common/constants';
-import type { InfoCardData } from '../components/smart-list/card';
+import type { InfoCardData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export type AssetTicketInfoCardModel = InfoCardData;
@@ -54,12 +54,16 @@ export class AssetTicketInfoCardConverter {
     return rows.map(row => this.convert(row, options));
   }
 
+  static groupLabel(dateIso: string): string {
+    return AssetTicketBuilder.groupLabel(dateIso);
+  }
+
   private static ticketImageUrl(row: AssetContracts.AssetTicketDTO): string {
     return `${row.imageUrl ?? ''}`.trim() || 'https://picsum.photos/seed/event-default/1200/700';
   }
 
   private static ticketMetaLine(row: AssetContracts.AssetTicketDTO): string {
-    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketMapper.buildTicketDateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
+    return `${row.type === 'hosting' ? 'Hosting' : 'Event'} · ${AssetTicketBuilder.dateLabel(row)} · ${this.ticketDistanceLabel(row.distanceMetersExact)}`;
   }
 
   private static ticketDistanceLabel(distanceMeters: number | null | undefined): string {

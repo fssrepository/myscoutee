@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
-import type { ActivitiesPageRequest } from '../../contracts';
+import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
 import type { UserRatesSyncResult } from '../../contracts/activity.interface';
 import type { IRatesService } from '../../contracts/activity.interface';
@@ -71,7 +71,7 @@ export class HttpRatesService implements IRatesService {
 
   async queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityRatePageResultDTO> {
     this.throwIfAborted(signal);
@@ -83,25 +83,26 @@ export class HttpRatesService implements IRatesService {
     this.throwIfAborted(signal);
     await this.queryRateItemsByUser(userId);
     this.throwIfAborted(signal);
-    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
+    const [mode, direction] = this.activitiesRateFilter(query).split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
     let params = new HttpParams()
       .set('userId', userId)
       .set('mode', mode === 'pair' ? 'pair' : 'single')
       .set('direction', direction)
-      .set('sort', request.sort ?? 'happenedAt')
-      .set('socialBadgeEnabled', request.rateSocialBadgeEnabled === true ? 'true' : 'false')
-      .set('limit', String(Math.max(1, Math.trunc(request.pageSize || 10))));
-    if (request.secondaryFilter === 'recent' || request.secondaryFilter === 'past' || request.secondaryFilter === 'relevant') {
-      params = params.set('secondaryFilter', request.secondaryFilter);
+      .set('sort', query.sort ?? 'happenedAt')
+      .set('socialBadgeEnabled', query.filters?.rateSocialBadgeEnabled === true ? 'true' : 'false')
+      .set('limit', String(Math.max(1, Math.trunc(query.pageSize || 10))));
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    if (secondaryFilter === 'recent' || secondaryFilter === 'past' || secondaryFilter === 'relevant') {
+      params = params.set('secondaryFilter', secondaryFilter);
     }
-    if (request.cursor) {
-      params = params.set('cursor', request.cursor);
+    if (query.cursor) {
+      params = params.set('cursor', query.cursor);
     }
-    if (request.rangeStart) {
-      params = params.set('rangeStartIso', request.rangeStart);
+    if (query.rangeStart) {
+      params = params.set('rangeStartIso', query.rangeStart);
     }
-    if (request.rangeEnd) {
-      params = params.set('rangeEndIso', request.rangeEnd);
+    if (query.rangeEnd) {
+      params = params.set('rangeEndIso', query.rangeEnd);
     }
 
     try {
@@ -124,13 +125,13 @@ export class HttpRatesService implements IRatesService {
         users: Array.isArray(response?.users) ? response.users.map(user => this.cloneUser(user)) : []
       };
       return this.shouldUseCachedActivitiesRatePage(page, userId)
-        ? this.buildCachedActivitiesRatePage(userId, request)
+        ? this.buildCachedActivitiesRatePage(userId, query)
         : page;
     } catch (error) {
       if (this.isAbortError(error)) {
         throw error;
       }
-      return this.buildCachedActivitiesRatePage(userId, request);
+      return this.buildCachedActivitiesRatePage(userId, query);
     }
   }
 
@@ -195,16 +196,32 @@ export class HttpRatesService implements IRatesService {
       && this.peekRateItemsByUser(userId).length > 0;
   }
 
-  private buildCachedActivitiesRatePage(userId: string, request: ActivitiesPageRequest): ActivityRatePageResultDTO {
-    const [mode, direction] = request.rateFilter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
-    const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
-    const pageIndex = Math.max(0, Math.trunc(Number(request.page) || 0));
+  private activitiesRateFilter(query: ListQuery<ActivitiesFeedFilters>): NonNullable<ActivitiesFeedFilters['rateFilter']> {
+    const value = query.filters?.rateFilter;
+    return value === 'individual-received'
+      || value === 'individual-mutual'
+      || value === 'individual-met'
+      || value === 'pair-given'
+      || value === 'pair-received'
+      ? value
+      : 'individual-given';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): NonNullable<ActivitiesFeedFilters['secondaryFilter']> {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private buildCachedActivitiesRatePage(userId: string, query: ListQuery<ActivitiesFeedFilters>): ActivityRatePageResultDTO {
+    const [mode, direction] = this.activitiesRateFilter(query).split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
     const filtered = this.peekRateItemsByUser(userId)
       .filter(item => item.mode === mode && item.direction === direction)
-      .filter(item => this.matchesRateSocialFilter(item, request.rateSocialBadgeEnabled === true))
-      .filter(item => this.matchesRateRange(item, request))
-      .sort((left, right) => this.compareRateItems(left, right, request));
-    const cursorId = this.resolveRateCursorId(request.cursor);
+      .filter(item => this.matchesRateSocialFilter(item, query.filters?.rateSocialBadgeEnabled === true))
+      .filter(item => this.matchesRateRange(item, query))
+      .sort((left, right) => this.compareRateItems(left, right, query));
+    const cursorId = this.resolveRateCursorId(query.cursor);
     const startIndex = cursorId
       ? Math.max(0, filtered.findIndex(item => item.id === cursorId) + 1)
       : pageIndex * pageSize;
@@ -222,10 +239,10 @@ export class HttpRatesService implements IRatesService {
     };
   }
 
-  private matchesRateRange(item: ActivityRateDTO, request: ActivitiesPageRequest): boolean {
+  private matchesRateRange(item: ActivityRateDTO, query: ListQuery<ActivitiesFeedFilters>): boolean {
     const happenedAtMs = AppUtils.toSortableDate(item.happenedAt ?? '');
-    const rangeStartMs = request.rangeStart ? AppUtils.toSortableDate(request.rangeStart) : null;
-    const rangeEndMs = request.rangeEnd ? AppUtils.toSortableDate(request.rangeEnd) : null;
+    const rangeStartMs = query.rangeStart ? AppUtils.toSortableDate(query.rangeStart) : null;
+    const rangeEndMs = query.rangeEnd ? AppUtils.toSortableDate(query.rangeEnd) : null;
     if (rangeStartMs !== null && happenedAtMs < rangeStartMs) {
       return false;
     }
@@ -247,8 +264,8 @@ export class HttpRatesService implements IRatesService {
     return true;
   }
 
-  private compareRateItems(left: ActivityRateDTO, right: ActivityRateDTO, request: ActivitiesPageRequest): number {
-    if (request.sort === 'distance') {
+  private compareRateItems(left: ActivityRateDTO, right: ActivityRateDTO, query: ListQuery<ActivitiesFeedFilters>): number {
+    if (query.sort === 'distance') {
       const distanceDelta = this.rateDistanceValue(left) - this.rateDistanceValue(right);
       if (distanceDelta !== 0) {
         return distanceDelta;
@@ -256,7 +273,7 @@ export class HttpRatesService implements IRatesService {
       return left.id.localeCompare(right.id);
     }
 
-    if (request.sort === 'relevance') {
+    if (query.sort === 'relevance') {
       const relevanceDelta = this.rateRelevanceScore(right) - this.rateRelevanceScore(left);
       if (relevanceDelta !== 0) {
         return relevanceDelta;
@@ -264,8 +281,8 @@ export class HttpRatesService implements IRatesService {
       return right.id.localeCompare(left.id);
     }
 
-    const sortDirection = request.direction === 'asc' || request.direction === 'desc'
-      ? request.direction
+    const sortDirection = query.direction === 'asc' || query.direction === 'desc'
+      ? query.direction
       : 'desc';
     const happenedAtDelta = sortDirection === 'asc'
       ? AppUtils.toSortableDate(left.happenedAt ?? '') - AppUtils.toSortableDate(right.happenedAt ?? '')

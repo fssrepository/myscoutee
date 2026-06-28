@@ -1,19 +1,39 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import type * as AppTypes from '../../../shared/core/base/models';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AppContext } from '../../../shared/ui';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  ViewChild,
+  computed,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 import {
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UsersService
 } from '../../../shared/core';
-import { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
 import {
-  EditableImageCarouselComponent,
+  ProfileExtDto,
+  UserDto
+} from '../../../shared/core/contracts/user.interface';
+import {
+  ImageCarouselComponent,
   HeaderCardComponent,
   type HeaderCardModel,
   ProfileExperienceManagerComponent
@@ -25,23 +45,29 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette
-} from '../../../shared/ui/components/menu';
+} from '../../../shared/ui/components/core/menu';
 import {
   FormFlowComponent,
   type FormFlowActionEvent,
   type FormFlowDraft,
   type FormFlowModel
-} from '../../../shared/ui/components/form/flow';
+} from '../../../shared/ui/components/core/form/flow';
 import {
   ProfileFormFlowConverter,
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { NavigatorService } from '../../navigator.service';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 
@@ -58,7 +84,7 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
     AppMenuComponent,
     AppMenuOutletComponent,
     FormFlowComponent,
-    EditableImageCarouselComponent,
+    ImageCarouselComponent,
     HeaderCardComponent,
     ProfileExperienceManagerComponent
   ],
@@ -71,16 +97,17 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
 export class ProfileEditorComponent {
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
-  private readonly appCtx = inject(AppContext);
+  private readonly dialogStore = inject(DialogStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
-  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
 
-  protected readonly isOpen = this.navigatorService.profileEditorOpen;
-  protected readonly activeUserIsAdmin = this.appCtx.activeUserIsAdmin;
+  protected readonly isOpen = this.navigatorStore.profileEditorOpen;
+  protected readonly activeUserIsAdmin = this.userProfileStore.activeUserIsAdmin;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
@@ -96,9 +123,9 @@ export class ProfileEditorComponent {
 
   constructor() {
     effect(() => {
-      const isOpen = this.navigatorService.profileEditorOpen();
-      const activeProfileExt = this.appCtx.activeUserProfileExt();
-      const activeUser = activeProfileExt?.profile ?? this.appCtx.activeUserProfile();
+      const isOpen = this.navigatorStore.profileEditorOpen();
+      const activeProfileExt = this.userProfileStore.activeUserProfileExt();
+      const activeUser = activeProfileExt?.profile ?? this.userProfileStore.activeUserProfile();
       const activeUserId = activeUser?.id.trim() ?? '';
 
       if (!isOpen) {
@@ -182,7 +209,7 @@ export class ProfileEditorComponent {
       this.panel = 'profile';
       return;
     }
-    this.navigatorService.closeProfileEditor();
+    this.navigatorStore.closeProfileEditor();
     this.resetTransientUiState();
   }
 
@@ -192,7 +219,7 @@ export class ProfileEditorComponent {
       return;
     }
     await this.commitProfileForm(false);
-    this.navigatorService.closeProfileEditor();
+    this.navigatorStore.closeProfileEditor();
     this.resetTransientUiState();
   }
 
@@ -431,7 +458,7 @@ export class ProfileEditorComponent {
     }
     await this.usersService.saveUserProfileExt(this.profileEditorData);
     if (showAlert) {
-      this.confirmationDialogService.openInfo('Profile saved', {
+      this.dialogStore.openInfo('Profile saved', {
         title: 'Profile updated',
         confirmTone: 'neutral'
       });

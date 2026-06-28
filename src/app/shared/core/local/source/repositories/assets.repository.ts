@@ -1,8 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import type * as AppTypes from '../../../base/models';
+import { PricingBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import type { UserDto } from '../../../contracts/user.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
@@ -18,7 +18,7 @@ import {
   type ActivityMembersRecordCollection
 } from '../entity/activity.entity';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 @Injectable({
   providedIn: 'root'
@@ -29,7 +29,7 @@ export class LocalAssetsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private readonly usersRepository = inject(LocalUsersRepository);
 
-  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetCardDTO[] {
+  peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -37,7 +37,7 @@ export class LocalAssetsRepository {
     return this.readOwnerAssets(normalizedUserId);
   }
 
-  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetCardDTO | null {
+  peekOwnedAssetById(userId: string, assetId: string): AppDTOs.AssetDTO | null {
     const normalizedAssetId = assetId.trim();
     if (!normalizedAssetId) {
       return null;
@@ -45,13 +45,13 @@ export class LocalAssetsRepository {
     return this.peekOwnedAssetsByUser(userId).find(card => card.id === normalizedAssetId) ?? null;
   }
 
-  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetCardDTO[]> {
+  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
     const normalizedUserIds = [...new Set(
       userIds
         .map(userId => userId.trim())
         .filter(Boolean)
     )];
-    const assetsByUserId = new Map<string, AppDTOs.AssetCardDTO[]>(
+    const assetsByUserId = new Map<string, AppDTOs.AssetDTO[]>(
       normalizedUserIds.map(userId => [userId, []])
     );
     if (normalizedUserIds.length === 0) {
@@ -64,13 +64,13 @@ export class LocalAssetsRepository {
         .filter((record): record is AssetRecord => Boolean(record))
         .filter(record => !this.isSuppressedAssetStatus(record.status))
         .sort((left, right) => right.updatedMs - left.updatedMs)
-        .map(record => this.toAssetCard(record, userId));
+        .map(record => this.toAssetDto(record, userId));
       assetsByUserId.set(userId, assets);
     }
     return assetsByUserId;
   }
 
-  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -78,16 +78,20 @@ export class LocalAssetsRepository {
     return this.readOwnerAssets(normalizedUserId);
   }
 
-  async loadFullOwnedAssetById(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async loadOwnedAssetDetailById(userId: string, assetId: string): Promise<AppDTOs.AssetDetailDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
-    return this.readOwnerAssets(normalizedUserId).find(card => card.id === normalizedAssetId) ?? null;
+    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const record = table.byId[normalizedAssetId];
+    return record && record.ownerUserId === normalizedUserId && !this.isSuppressedAssetStatus(record.status)
+      ? this.toAssetDetailDto(record, normalizedUserId)
+      : null;
   }
 
-  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetCardDTO[]> {
+  async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -98,7 +102,7 @@ export class LocalAssetsRepository {
       .filter(card => !normalizedCategory || card.category === normalizedCategory);
   }
 
-  peekVisibleAssetById(userId: string, type: AppConstants.AssetType, assetId: string): AppDTOs.AssetCardDTO | null {
+  peekVisibleAssetById(userId: string, type: AppConstants.AssetType, assetId: string): AppDTOs.AssetDTO | null {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -108,41 +112,37 @@ export class LocalAssetsRepository {
       .find(card => card.type === type && card.id === normalizedAssetId) ?? null;
   }
 
-  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetCardDTO): Promise<AppDTOs.AssetCardDTO> {
+  async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
-    const normalizedAsset = LocalAssetsMapper.normalizeCard(asset);
-    if (!normalizedUserId || !normalizedAsset) {
-      return asset;
+    const normalizedDetail = LocalAssetsMapper.normalizeDetail(asset);
+    const incomingRecord = normalizedDetail
+      ? LocalAssetsMapper.toAssetRecord(normalizedDetail, normalizedUserId)
+      : null;
+    if (!normalizedUserId || !normalizedDetail || !incomingRecord) {
+      return LocalAssetsMapper.fallbackAssetDto(asset);
     }
     const now = new Date();
-    const nowIso = now.toISOString();
     const nowMs = now.getTime();
+    let saved: AssetRecord | null = null;
 
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
-      const existing = table.byId[normalizedAsset.id];
-      const nextRecord = this.withResolvedAssetRelevance({
-        ...normalizedAsset,
-        ownerUserId: normalizedUserId,
-        visibility: normalizedAsset.visibility ?? existing?.visibility ?? 'Public',
-        createdAtIso: existing?.createdAtIso ?? nowIso,
-        updatedAtIso: nowIso,
-        createdMs: existing?.createdMs ?? nowMs,
-        updatedMs: nowMs
-      });
+      const existing = table.byId[incomingRecord.id];
+      const nextRecord = this.withResolvedAssetRelevance(this.mergeAssetRecord(existing, incomingRecord, nowMs, 'detail'));
+      saved = nextRecord;
       return {
         ...state,
         [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, nextRecord)
       };
     });
 
-    return LocalAssetsMapper.cloneCards([normalizedAsset])[0] ?? normalizedAsset;
+    return saved ? this.toAssetDto(saved, normalizedUserId) : LocalAssetsMapper.normalizeCard(normalizedDetail)!;
   }
 
   async replaceOwnedAssets(
     userId: string,
-    assets: readonly AppDTOs.AssetCardDTO[]
-  ): Promise<AppDTOs.AssetCardDTO[]> {
+    assets: readonly AppDTOs.AssetDTO[]
+  ): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -156,17 +156,13 @@ export class LocalAssetsRepository {
 
     for (const asset of normalizedAssets) {
       const existing = currentTable.byId[asset.id];
+      const incomingRecord = LocalAssetsMapper.toAssetRecord(asset, normalizedUserId);
+      if (!incomingRecord) {
+        continue;
+      }
       const nowMs = timestampMs;
       timestampMs += 1;
-      nextRecords.push(this.withResolvedAssetRelevance({
-        ...asset,
-        ownerUserId: normalizedUserId,
-        visibility: asset.visibility ?? existing?.visibility ?? 'Public',
-        createdAtIso: existing?.createdAtIso ?? new Date(nowMs).toISOString(),
-        updatedAtIso: new Date(nowMs).toISOString(),
-        createdMs: existing?.createdMs ?? nowMs,
-        updatedMs: nowMs
-      }));
+      nextRecords.push(this.withResolvedAssetRelevance(this.mergeAssetRecord(existing, incomingRecord, nowMs, 'summary')));
       seenIds.add(asset.id);
     }
 
@@ -187,7 +183,7 @@ export class LocalAssetsRepository {
       };
     });
 
-    return LocalAssetsMapper.cloneCards(normalizedAssets);
+    return nextRecords.map(record => this.toAssetDto(record, normalizedUserId));
   }
 
   async deleteOwnedAsset(userId: string, assetId: string): Promise<void> {
@@ -209,7 +205,7 @@ export class LocalAssetsRepository {
     });
   }
 
-  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetCardDTO | null> {
+  async takeOverOwnedAsset(userId: string, assetId: string): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -237,14 +233,14 @@ export class LocalAssetsRepository {
         [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
       };
     });
-    return saved ? this.toAssetCard(saved, normalizedUserId) : null;
+    return saved ? this.toAssetDto(saved, normalizedUserId) : null;
   }
 
   async makeAssetManager(
     userId: string,
     assetId: string,
     targetUserId: string
-  ): Promise<AppDTOs.AssetCardDTO | null> {
+  ): Promise<AppDTOs.AssetDTO | null> {
     const normalizedUserId = userId.trim();
     const normalizedAssetId = assetId.trim();
     const normalizedTargetUserId = targetUserId.trim();
@@ -276,12 +272,11 @@ export class LocalAssetsRepository {
         [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, saved)
       };
     });
-    return saved ? this.toAssetCard(saved, normalizedUserId) : null;
+    return saved ? this.toAssetDto(saved, normalizedUserId) : null;
   }
 
   private queryUsers(): UserDto[] {
-    return (this.usersRepository.queryGameStackUsers() as UserDto[])
-      .filter(user => !UserProfileStateBuilder.isEmptyOnboardingProfileUserId(user.id));
+    return this.usersRepository.queryGameStackUsers() as UserDto[];
   }
 
   private assetMemberRecords(assetId: string): ActivityMemberRecord[] {
@@ -529,17 +524,17 @@ export class LocalAssetsRepository {
       && profileStatus !== 'inactive';
   }
 
-  private readOwnerAssets(ownerUserId: string): AppDTOs.AssetCardDTO[] {
+  private readOwnerAssets(ownerUserId: string): AppDTOs.AssetDTO[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => !this.isSuppressedAssetStatus(record.status))
       .sort((left, right) => right.updatedMs - left.updatedMs)
-      .map(record => this.toAssetCard(record, ownerUserId));
+      .map(record => this.toAssetDto(record, ownerUserId));
   }
 
-  private readVisibleAssets(activeUserId: string): AppDTOs.AssetCardDTO[] {
+  private readVisibleAssets(activeUserId: string): AppDTOs.AssetDTO[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     const visibleOwnerIds = new Set(this.queryVisibleExploreOwners(activeUserId).map(user => user.id));
     const viewerAffinity = this.queryUserAffinity(activeUserId);
@@ -549,9 +544,9 @@ export class LocalAssetsRepository {
       .filter(record => record.ownerUserId !== activeUserId)
       .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
-        || (record.visibility === 'Friends only' && UserProfileStateBuilder.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
+        || (record.visibility === 'Friends only' && UserProfileState.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
       .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity))
-      .map(record => this.toAssetCard(record, activeUserId));
+      .map(record => this.toAssetDto(record, activeUserId));
   }
 
   private compareVisibleAssetRecords(
@@ -585,36 +580,58 @@ export class LocalAssetsRepository {
     return Number.isFinite(stored) ? Math.max(0, stored) : this.resolveAssetBoost(record);
   }
 
-  private toAssetCard(record: AssetRecord, viewerUserId = ''): AppDTOs.AssetCardDTO {
+  private toAssetDto(record: AssetRecord, viewerUserId = ''): AppDTOs.AssetDTO {
+    return LocalAssetsMapper.toAssetDto(record, {
+      viewerUserId,
+      resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
+      resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
+    });
+  }
+
+  private toAssetDetailDto(record: AssetRecord, viewerUserId = ''): AppDTOs.AssetDetailDTO {
+    return LocalAssetsMapper.toAssetDetailDto(record, {
+      viewerUserId,
+      resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
+      resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
+    });
+  }
+
+  private mergeAssetRecord(
+    existing: AssetRecord | undefined,
+    incoming: AssetRecord,
+    timestampMs: number,
+    mode: 'summary' | 'detail'
+  ): AssetRecord {
+    const timestampIso = new Date(timestampMs).toISOString();
+    const preserveDetail = mode === 'summary';
     return {
-      id: record.id,
-      type: record.type,
-      title: record.title,
-      subtitle: record.subtitle,
-      category: AssetDefaultsBuilder.normalizeCategory(record.type, record.category),
-      city: record.city,
-      capacityTotal: record.capacityTotal,
-      quantity: AssetCardBuilder.storedQuantityValue({
-        type: record.type,
-        quantity: record.quantity,
-        capacityTotal: record.capacityTotal
-      }),
-      details: record.details,
-      imageUrl: record.imageUrl,
-      sourceLink: record.sourceLink,
-      routes: [...(record.routes ?? [])],
-      topics: [...(record.topics ?? [])],
-      policies: (record.policies ?? []).map(item => ({ ...item })),
-      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
-      visibility: record.visibility,
-      status: LocalAssetsMapper.normalizeAssetStatus(record.status),
-      ownerUserId: record.ownerUserId,
-      ownerName: record.ownerName,
-      requests: record.requests.map(request => ({
-        ...LocalAssetsMapper.cloneRequest(request),
-        menuActions: this.resolveRequestMenuActions(record, request, viewerUserId)
-      })),
-      menuActions: this.resolveMenuActions(record, viewerUserId)
+      ...incoming,
+      details: preserveDetail ? (existing?.details ?? incoming.details) : incoming.details,
+      sourceLink: preserveDetail ? (existing?.sourceLink ?? incoming.sourceLink) : incoming.sourceLink,
+      routes: preserveDetail
+        ? [...(existing?.routes ?? incoming.routes ?? [])]
+        : [...(incoming.routes ?? [])],
+      topics: preserveDetail
+        ? [...(existing?.topics ?? incoming.topics ?? [])]
+        : [...(incoming.topics ?? [])],
+      policies: preserveDetail
+        ? (existing?.policies ?? incoming.policies ?? []).map(item => ({ ...item }))
+        : (incoming.policies ?? []).map(item => ({ ...item })),
+      pricing: preserveDetail
+        ? (existing?.pricing ? PricingBuilder.clonePricingConfig(existing.pricing) : incoming.pricing)
+        : (incoming.pricing ? PricingBuilder.clonePricingConfig(incoming.pricing) : incoming.pricing),
+      visibility: incoming.visibility ?? existing?.visibility ?? 'Public',
+      status: incoming.status ?? existing?.status ?? 'A',
+      statusBeforeSuppression: existing?.statusBeforeSuppression ?? incoming.statusBeforeSuppression ?? null,
+      ownerName: incoming.ownerName ?? existing?.ownerName,
+      requests: incoming.requests.map(request => LocalAssetsMapper.cloneRequest(request)),
+      menuActions: [...(incoming.menuActions ?? existing?.menuActions ?? [])],
+      createdAtIso: existing?.createdAtIso ?? timestampIso,
+      updatedAtIso: timestampIso,
+      createdMs: existing?.createdMs ?? timestampMs,
+      updatedMs: timestampMs,
+      affinity: existing?.affinity,
+      boost: existing?.boost
     };
   }
 
@@ -719,7 +736,7 @@ export class LocalAssetsRepository {
 
   private queryVisibleExploreOwners(activeUserId: string): UserDto[] {
     const allUsers = this.queryUsers();
-    const prioritizedFriends = UserProfileStateBuilder.friendUsersForActiveUser(
+    const prioritizedFriends = UserProfileState.friendUsersForActiveUser(
       allUsers,
       activeUserId,
       Math.min(8, LocalAssetsRepository.VISIBLE_EXPLORE_OWNER_LIMIT)

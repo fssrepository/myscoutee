@@ -1,9 +1,9 @@
-@use '../_asset-interactions.shared' as asset-interactions;
+@use '../../../shared/ui/styles' as ui;
 
-@include asset-interactions.host-motion-vars;
-@include asset-interactions.interactive-feedback('.link-btn');
+@include ui.interactive-motion();
 
 :host {
+  display: block;
   height: 100%;
   min-height: 0;
 }

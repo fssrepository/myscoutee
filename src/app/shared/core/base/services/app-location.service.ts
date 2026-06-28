@@ -1,15 +1,36 @@
-import { Injectable, effect, inject } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
+import {
+  Injectable,
+  Injector,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  HttpErrorResponse
+} from '@angular/common/http';
+import {
+  Router
+} from '@angular/router';
 
-import { HttpUsersService } from '../../http';
-import { AppContext } from '../../../ui/context';
+import {
+  environment
+} from '../../../../../environments/environment';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import { UsersService } from './users.service';
-import { SessionService } from './session.service';
-import { ConfirmationDialogService } from '../../../ui/services/confirmation-dialog.service';
-import { appLocationStorageKey } from '../../common/storage-scope';
+import {
+  resolveRouteConfig
+} from '../config';
+import {
+  SessionService
+} from './session.service';
+import {
+  DialogStore
+} from '../../../ui/context/stores/dialog.store';
+import {
+  appLocationStorageKey
+} from '../../common/storage-scope';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+
+type HttpUsersServiceInstance = import('../../http/services/users.service').HttpUsersService;
 
 @Injectable({
   providedIn: 'root'
@@ -19,12 +40,12 @@ export class AppLocationService {
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
 
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
-  private readonly httpUsersService = inject(HttpUsersService);
-  private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly dialogStore = inject(DialogStore);
+  private httpUsersServicePromise: Promise<HttpUsersServiceInstance> | null = null;
   private readonly syncingUserIds = new Set<string>();
   private readonly blockedUserIds = new Set<string>();
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
@@ -40,7 +61,7 @@ export class AppLocationService {
     this.initialized = true;
 
     effect(() => {
-      const activeUserId = this.appCtx.activeUserId().trim();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
       if (!activeUserId) {
         this.stopCoordinateWatch();
         return;
@@ -64,12 +85,12 @@ export class AppLocationService {
       return null;
     }
 
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     if (activeUser?.id?.trim() === normalizedUserId) {
       return activeUser;
     }
 
-    const cachedUser = this.appCtx.getUserProfile(normalizedUserId);
+    const cachedUser = this.userProfileStore.getUserProfile(normalizedUserId);
     if (cachedUser) {
       return cachedUser;
     }
@@ -85,7 +106,7 @@ export class AppLocationService {
       session.profile.initials,
       session.profile.imageUrl
     );
-    this.appCtx.setUserProfile(bootstrapUser);
+    this.userProfileStore.setUserProfile(bootstrapUser);
     return bootstrapUser;
   }
 
@@ -139,7 +160,7 @@ export class AppLocationService {
 
     const stored = this.readStoredCoordinates(userId);
     if (stored && !this.sameCoordinates(activeUser.locationCoordinates, stored)) {
-      this.appCtx.setUserProfile({
+      this.userProfileStore.setUserProfile({
         ...activeUser,
         locationCoordinates: stored
       });
@@ -200,7 +221,7 @@ export class AppLocationService {
       return;
     }
 
-    this.appCtx.setUserProfile({
+    this.userProfileStore.setUserProfile({
       ...activeUser,
       locationCoordinates: coordinates
     });
@@ -311,7 +332,7 @@ export class AppLocationService {
     coordinates: LocationCoordinates
   ): void {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
-    if (this.usersService.localModeEnabled || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
+    if (this.isLocalUserRouteEnabled() || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
       return;
     }
 
@@ -327,7 +348,7 @@ export class AppLocationService {
     userId: string,
     fallbackUser: UserDto
   ): Promise<void> {
-    if (this.usersService.localModeEnabled || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
+    if (this.isLocalUserRouteEnabled() || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
       return;
     }
 
@@ -348,12 +369,12 @@ export class AppLocationService {
       if (currentUser.admin === true) {
         return;
       }
-      const savedUser = await this.httpUsersService.saveUserProfile({
+      const savedUser = await (await this.httpUsersService()).saveUserProfile({
         ...currentUser,
         locationCoordinates: normalizedCoordinates
       });
       if (savedUser?.id?.trim()) {
-        this.appCtx.setUserProfile(savedUser);
+        this.userProfileStore.setUserProfile(savedUser);
         this.lastPersistedCoordinatesByUserId.set(
           userId,
           this.normalizeCoordinates(savedUser.locationCoordinates) ?? normalizedCoordinates
@@ -365,7 +386,7 @@ export class AppLocationService {
       if (this.isIneligibleRegionError(error)) {
         if (!this.blockedUserIds.has(userId)) {
           this.blockedUserIds.add(userId);
-          this.confirmationDialogService.openInfo(this.resolveIneligibleRegionMessage(error), {
+          this.dialogStore.openInfo(this.resolveIneligibleRegionMessage(error), {
             title: AppLocationService.ACCESS_RESTRICTED_TITLE,
             confirmLabel: 'OK',
             allowBackdropClose: false,
@@ -387,6 +408,26 @@ export class AppLocationService {
 
   private isIneligibleRegionError(error: unknown): boolean {
     return error instanceof HttpErrorResponse && (error.status === 403 || error.status === 422);
+  }
+
+  private isLocalUserRouteEnabled(): boolean {
+    const routeConfig = resolveRouteConfig('/auth/me');
+    if (routeConfig.mode) {
+      return routeConfig.mode === 'local';
+    }
+    if (routeConfig.http) {
+      return false;
+    }
+    return environment.activitiesDataSource !== 'http'
+      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
+  }
+
+  private async httpUsersService(): Promise<HttpUsersServiceInstance> {
+    if (!this.httpUsersServicePromise) {
+      this.httpUsersServicePromise = import('../../http/services/users.service')
+        .then(module => this.injector.get(module.HttpUsersService));
+    }
+    return this.httpUsersServicePromise;
   }
 
   private resolveIneligibleRegionMessage(error: unknown): string {

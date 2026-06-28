@@ -1,8 +1,9 @@
 import { AppUtils } from '../../../../app-utils';
+import { environment } from '../../../../../../environments/environment';
 import type { ActivityRateDTO } from '../../../contracts/activity.interface';
 import type { UserRateRecord } from '../../source/entity/rate.entity';
 import { LocalUserRatesMapper } from '../../source/mappers';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 type RateUserRef = {
   id: string;
@@ -147,7 +148,11 @@ export class SeedUserRatesBuilder {
     const seed = AppUtils.hashText(
       `rate-grid:${activeUserId}:${targetUserId}:${secondaryUserId ?? ''}:${mode}:${direction}:${variantIndex}`
     );
-    const happenedAtDate = SeedScheduleBuilder.shiftDate(new Date('2026-03-01T20:00:00'));
+    const happenedAtDate = AppUtils.shiftDate(
+      new Date('2026-03-01T20:00:00'),
+      SEED_SCHEDULE_REFERENCE_DATE,
+      environment.bootstrapOffsetInDays
+    );
     happenedAtDate.setDate(happenedAtDate.getDate() - ((laneIndex * 17) + userIndex + 1 + (variantIndex * 2)));
     const happenedAt = AppUtils.toIsoDateTime(happenedAtDate);
     let scoreGiven = 0;

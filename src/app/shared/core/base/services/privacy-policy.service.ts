@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 
 import type {
+  EntryConsentStateDto,
   HelpCenterRevisionDto,
   HelpCenterSectionDto,
   HelpCenterStateDto,
@@ -18,6 +19,7 @@ export interface PrivacyPolicyOpenOptions {
   providedIn: 'root'
 })
 export class PrivacyPolicyService {
+  private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = APP_STORAGE_KEYS.optionalPrivacyApprovals;
 
   private readonly helpCenter = inject(HelpCenterService);
@@ -54,6 +56,21 @@ export class PrivacyPolicyService {
 
   async saveConsent(request: PrivacyConsentSaveRequestDto): Promise<PrivacyConsentDto> {
     return this.helpCenter.savePrivacyConsent(request);
+  }
+
+  async syncAnonymousEntryConsent(userId: string, revision: HelpCenterRevisionDto): Promise<boolean> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.loadAnonymousEntryConsent(revision)) {
+      return false;
+    }
+    await this.saveConsent({
+      userId: normalizedUserId,
+      revisionId: revision.id,
+      revisionVersion: revision.version,
+      approvedOptionalSectionIds: Array.from(this.loadEntryOptionalApprovals(revision)).sort(),
+      source: 'entry'
+    });
+    return true;
   }
 
   loadEntryOptionalApprovals(revision: HelpCenterRevisionDto): Set<string> {
@@ -95,6 +112,38 @@ export class PrivacyPolicyService {
 
   revisionKey(revision: HelpCenterRevisionDto): string {
     return `${revision.id}:v${revision.version}`;
+  }
+
+  private loadAnonymousEntryConsent(revision: HelpCenterRevisionDto): EntryConsentStateDto | null {
+    if (typeof localStorage === 'undefined') {
+      return null;
+    }
+    const raw = localStorage.getItem(PrivacyPolicyService.ENTRY_CONSENT_KEY);
+    if (!raw) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(raw) as Partial<EntryConsentStateDto>;
+      if (
+        parsed.version !== this.entryConsentVersion(revision) ||
+        parsed.accepted !== true ||
+        typeof parsed.acceptedAtIso !== 'string' ||
+        parsed.acceptedAtIso.trim().length === 0
+      ) {
+        return null;
+      }
+      return {
+        version: parsed.version,
+        accepted: true,
+        acceptedAtIso: parsed.acceptedAtIso
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private entryConsentVersion(revision: HelpCenterRevisionDto): string {
+    return `privacy:${this.revisionKey(revision)}`;
   }
 
   private optionalSectionIds(sections: readonly HelpCenterSectionDto[]): Set<string> {

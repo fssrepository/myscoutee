@@ -4,7 +4,6 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
-import { ActivityEventRecordBuilder } from '../../../base/builders';
 import { SeedEventsBuilder } from '../builders';
 
 @Injectable({
@@ -148,7 +147,7 @@ export class SeedEventsRepository {
     const shouldAdoptSeedSubEvents = existingSubEvents.length === 0 && seededSubEvents.length > 0;
     const shouldAdoptSeedSlots = existingSlotTemplates.length === 0 && seededSlotTemplates.length > 0;
 
-    return ActivityEventRecordBuilder.cloneRecord({
+    return SeedEventsBuilder.cloneRecord({
       ...existing,
       pricing: existing.pricing ?? seeded.pricing,
       policiesEnabled: existing.policiesEnabled ?? seeded.policiesEnabled,
@@ -208,7 +207,7 @@ export class SeedEventsRepository {
   }
 
   private seedMigrationComparableRecord(record: ActivityEventRecord): ActivityEventRecord {
-    const comparable = ActivityEventRecordBuilder.cloneRecord(record);
+    const comparable = SeedEventsBuilder.cloneRecord(record);
     delete comparable.acceptedMemberUserIds;
     delete comparable.pendingMemberUserIds;
     return comparable;

@@ -1,13 +1,26 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, Type, computed, effect, inject, signal } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { NavigationEnd, Router } from '@angular/router';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  NavigationEnd,
+  Router
+} from '@angular/router';
 import type { Subscription } from 'rxjs';
 import {
   type ActivityCounters,
-  AppContext,
   AppMenuComponent,
-  AppPopupContext,
   type ActivityCounterKey,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -17,28 +30,67 @@ import {
   type HeaderCardModel,
   type UserImpressionChangeFlags
 } from '../../../shared/ui';
-import { ProfileHeaderCardConverter } from '../../../shared/ui/converters';
-import { AppUtils } from '../../../shared/app-utils';
-import { AssetPopupStateService } from '../../../asset/asset-popup-state.service';
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
-import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import { EventEditorPopupStateService } from '../../../activity/services/event-editor-popup-state.service';
+import {
+  ProfileHeaderCardConverter
+} from '../../../shared/ui/converters';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AssetPopupStore
+} from '../../../shared/ui/context/stores/asset-popup.store';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  SubEventResourcePopupStore
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
   HelpCenterService,
   PrivacyPolicyService,
+  SessionService,
   TermsPolicyService,
+  UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY,
+  type HelpCenterRevisionDto,
+  type PrivacyConsentDto,
   type UserDto
 } from '../../../shared/core';
-import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { SubEventResourcePopupController } from '../../../activity/services/sub-event-resource-popup.controller';
-import { NavigatorService } from '../../navigator.service';
-import { resolveNavigatorPresentation } from '../../navigator-presenters';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import {
+  USER_LOGOUT_CONTEXT_KEY
+} from '../../../shared/core/base/services/users.service';
+import {
+  DialogComponent
+} from '../../../shared/ui/components/core/dialog/dialog.component';
+import {
+  NavigatorSettingsPopupsComponent
+} from '../navigator-settings-popups/navigator-settings-popups.component';
+import {
+  NavigatorStore,
+  type NavigatorBindings
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  resolveNavigatorPresentation
+} from './navigator-presenters';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  APP_STORAGE_KEYS
+} from '../../../shared/core/common/storage-scope';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -105,80 +157,78 @@ type NavigatorHeaderActionMenuItemId =
     AppMenuComponent,
     HeaderCardComponent,
     NavigatorSettingsPopupsComponent,
-    ConfirmationDialogComponent
+    DialogComponent
   ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
 })
 export class NavigatorComponent implements OnDestroy {
+  private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
 
   private readonly router = inject(Router);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
-  private readonly navigatorService = inject(NavigatorService);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
-  private readonly assetPopupService = inject(AssetPopupStateService);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
-  private readonly eventEditorService = inject(EventEditorPopupStateService);
-  protected readonly subEventResources = inject(SubEventResourcePopupController);
+  private readonly usersService = inject(UsersService);
+  private readonly sessionService = inject(SessionService);
+  private readonly dialogStore = inject(DialogStore);
+  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly assetPopupStore = inject(AssetPopupStore);
+  private readonly assetStore = inject(AssetStore);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
+  protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
-  private readonly activeUserLoadState = this.appCtx.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
-  private readonly profileSaveLoadState = this.appCtx.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
-  private readonly userLogoutLoadState = this.appCtx.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
+  private readonly activeUserLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly userLogoutLoadState = this.runtimeStore.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
+  private readonly hydrationRequestKeyRef = signal('');
+  private readonly privacyConsentCheckKeyRef = signal('');
+  private readonly navigatorBindings: NavigatorBindings = {};
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
+  private hydrationRequestVersion = 0;
+  private stopUserRealtimeLongPollInterval: (() => void) | null = null;
+  private userRealtimeLongPollInFlight = false;
+  private reactivationPromptUserId = '';
+  private privacyConsentCheckToken = 0;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
-  private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly explanationPopupComponentRef = signal<Type<unknown> | null>(null);
-
-  protected readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
-  protected readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
-  protected readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
-  protected readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
-  protected readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
-  protected readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
-  protected readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
-  protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
-  protected readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
-  protected readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
-  protected readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
-  protected readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
-  protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
-  protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
-  protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
-  protected readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
-  protected readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
-  protected readonly bindings = this.navigatorService.bindings;
-  protected readonly activeUser = this.appCtx.activeUserProfile;
+  protected readonly navigatorImpressionsPopupComponent = this.navigatorStore.navigatorImpressionsPopupComponent;
+  protected readonly profileEditorComponent = this.navigatorStore.profileEditorComponent;
+  protected readonly profileViewPopupComponent = this.navigatorStore.profileViewPopupComponent;
+  protected readonly eventMembersPopupComponent = this.activitiesStore.eventMembersPopupComponent;
+  protected readonly eventResourcePopupComponent = this.subEventResourceStore.eventResourcePopupComponent;
+  protected readonly eventResourceAssetExploreComponent = this.subEventResourceStore.eventResourceAssetExploreComponent;
+  protected readonly eventSupplyContributionsPopupComponent = this.subEventResourceStore.eventSupplyContributionsPopupComponent;
+  protected readonly assetMemberPickerPopupComponent = this.assetPopupStore.assetMemberPickerPopupComponent;
+  protected readonly eventEditorPopupComponent = this.eventEditorStore.eventEditorPopupComponent;
+  protected readonly eventSubeventsListPopupComponent = this.popupStore.eventSubeventsListPopupComponent;
+  protected readonly eventTournamentGroupsPopupComponent = this.popupStore.eventTournamentGroupsPopupComponent;
+  protected readonly eventChatPopupComponent = this.activitiesStore.eventChatPopupComponent;
+  protected readonly eventExplorePopupComponent = this.activitiesStore.eventExplorePopupComponent;
+  protected readonly activitiesPopupComponent = this.activitiesStore.activitiesPopupComponent;
+  protected readonly assetPopupComponent = this.assetPopupStore.assetPopupComponent;
+  protected readonly eventFeedbackPopupComponent = this.activitiesStore.eventFeedbackPopupComponent;
+  protected readonly contactsPopupComponent = this.navigatorStore.contactsPopupComponent;
+  protected readonly explanationPopupComponent = this.navigatorStore.explanationPopupComponent;
+  protected readonly bindings = this.navigatorStore.bindings;
+  protected readonly activeUser = this.userProfileStore.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
   protected readonly helpVersionLabel = this.helpCenterService.activeVersionLabel;
   protected readonly hasActiveHelpRevision = this.helpCenterService.hasActiveRevision;
   protected readonly privacyVersionLabel = this.privacyPolicy.activeVersionLabel;
   protected readonly termsVersionLabel = this.termsPolicy.activeVersionLabel;
-  protected readonly isOnline = this.appCtx.isOnline;
+  protected readonly isOnline = this.runtimeStore.isOnline;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
     const user = this.activeUser();
     return {
@@ -186,8 +236,11 @@ export class NavigatorComponent implements OnDestroy {
       imageUrl: AppUtils.firstImageUrl(user?.images) || null
     };
   });
-  protected readonly menuUiState = this.navigatorService.menuUiState;
-  protected readonly isCoveredByAssetPopup = this.navigatorService.navigatorCoveredByAssetPopup;
+  protected readonly menuUiState = this.navigatorStore.menuUiState;
+  protected readonly isCoveredByAssetPopup = computed(() =>
+    this.assetPopupStore.visible()
+    || this.popupStore.activityInvitePopup() !== null
+  );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
     return path !== '/' && !path.startsWith('/entry');
@@ -195,7 +248,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
-    !this.appCtx.isOnline() && this.activeUser() !== null
+    !this.runtimeStore.isOnline() && this.activeUser() !== null
   );
   protected readonly canToggleAvatarMenu = computed(() =>
     this.avatarVisible()
@@ -297,11 +350,11 @@ export class NavigatorComponent implements OnDestroy {
     }];
   });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     if (!activeUser) {
       return null;
     }
-    const activityOverrides = this.appCtx.getUserCounterOverrides(activeUser.id);
+    const activityOverrides = this.activityStore.getUserCounterOverrides(activeUser.id);
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
       chat: activityOverrides.chat ?? activeUser.activities?.chat ?? 0,
@@ -317,9 +370,9 @@ export class NavigatorComponent implements OnDestroy {
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
-    const impressionChangeFlags = this.appCtx.getUserImpressionChangeFlags(activeUser.id);
+    const impressionChangeFlags = this.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveNavigatorPresentation('trait', activeUser.traitLabel ?? '');
-    const totalBadgeCount = this.appCtx.isAdminUserProfile(activeUser)
+    const totalBadgeCount = this.userProfileStore.isAdminUserProfile(activeUser)
       ? (
         mergedActivities.game +
         mergedActivities.feedback +
@@ -345,7 +398,7 @@ export class NavigatorComponent implements OnDestroy {
     return {
       ...activeUser,
       completion: this.resolveCompletionPercent(activeUser),
-      impressions: this.appCtx.getUserImpressions(activeUser.id) ?? activeUser.impressions,
+      impressions: this.userProfileStore.getUserImpressions(activeUser.id) ?? activeUser.impressions,
       activities: mergedActivities,
       impressionChangeFlags,
       memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
@@ -742,10 +795,97 @@ export class NavigatorComponent implements OnDestroy {
   });
 
   constructor() {
+    this.navigatorStore.registerBindings(this.navigatorBindings);
+
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentRoutePathRef.set(AppUtils.normalizeRoutePath(event.urlAfterRedirects));
       }
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      if (!session || this.userProfileStore.activeUserId().trim()) {
+        return;
+      }
+      const bootstrapUserId = session.kind === 'firebase'
+        ? session.profile.id.trim()
+        : session.userId.trim();
+      if (bootstrapUserId) {
+        this.userProfileStore.setActiveUserId(bootstrapUserId);
+      }
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+      const routeUrl = this.currentRoutePathRef();
+
+      if (!session) {
+        this.clearHydrationState();
+        return;
+      }
+      if (this.isAdminWorkspaceRoute(routeUrl) || !this.isNavigatorHydrationRoute(routeUrl)) {
+        this.clearHydrationState();
+        return;
+      }
+
+      const requestKey = session.kind === 'firebase'
+        ? `firebase:${session.profile.id}`
+        : (activeUserId ? `demo:${activeUserId}` : '');
+
+      if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
+        return;
+      }
+
+      this.hydrationRequestKeyRef.set(requestKey);
+      void this.hydrateUserAfterLogin(activeUserId || undefined);
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+
+      if (!session || !activeUserId) {
+        this.stopUserRealtimeLongPoll();
+        this.navigatorStore.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        return;
+      }
+      if (this.isAdminWorkspaceRoute() || this.userProfileStore.activeUserIsAdmin()) {
+        this.navigatorStore.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        this.activateUserRealtimeLongPoll(activeUserId);
+        return;
+      }
+
+      this.activateUserRealtimeLongPoll(activeUserId);
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+      const revision = this.privacyPolicy.activeRevision();
+      const shouldCheckPrivacyConsent = Boolean(activeUserId)
+        && (Boolean(session) || this.isAdminWorkspaceRoute());
+
+      if (!shouldCheckPrivacyConsent) {
+        this.privacyConsentCheckKeyRef.set('');
+        this.navigatorStore.clearPrivacyConsentRequirement();
+        return;
+      }
+      if (!revision) {
+        void this.privacyPolicy.prepareOpen();
+        return;
+      }
+
+      const checkKey = this.privacyConsentKey(activeUserId, revision);
+      if (this.privacyConsentCheckKeyRef() === checkKey) {
+        return;
+      }
+
+      this.privacyConsentCheckKeyRef.set(checkKey);
+      void this.ensureActivePrivacyConsent(activeUserId, revision, checkKey);
     });
 
     effect(() => {
@@ -754,7 +894,7 @@ export class NavigatorComponent implements OnDestroy {
       const status = this.activeUserLoadState().status;
 
       if (!isInternal) {
-        this.navigatorService.closeMenu();
+        this.navigatorStore.closeMenu();
         this.clearUserMenuLoadState();
         return;
       }
@@ -774,144 +914,170 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isOpen = this.navigatorService.impressionsPopupOpen();
-      if (isOpen && !this.navigatorImpressionsPopupComponentRef()) {
-        void this.ensureNavigatorImpressionsPopupLoaded();
+      const isOpen = this.navigatorStore.impressionsPopupOpen();
+      if (isOpen) {
+        void this.navigatorStore.ensureNavigatorImpressionsPopupLoaded();
       }
     });
 
     effect(() => {
-      const isOpen = this.navigatorService.profileEditorOpen();
-      if (isOpen && !this.profileEditorComponentRef()) {
-        void this.ensureProfileEditorLoaded();
+      const isOpen = this.navigatorStore.profileEditorOpen();
+      if (isOpen) {
+        void this.navigatorStore.ensureProfileEditorLoaded();
       }
     });
 
     effect(() => {
-      const isOpen = this.navigatorService.profileViewOpen();
-      if (isOpen && !this.profileViewPopupComponentRef()) {
-        void this.ensureProfileViewPopupLoaded();
+      const isOpen = this.navigatorStore.profileViewOpen();
+      if (isOpen) {
+        void this.navigatorStore.ensureProfileViewPopupLoaded();
       }
     });
 
     effect(() => {
-      const isOpen = this.eventEditorService.isOpen();
-      if (isOpen && !this.eventEditorPopupComponentRef()) {
-        void this.ensureEventEditorPopupLoaded();
+      const isOpen = this.eventEditorStore.isOpen();
+      if (isOpen) {
+        void this.eventEditorStore.ensureEventEditorPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.eventSubeventsListPopup();
-      if (request && !this.eventSubeventsListPopupComponentRef()) {
-        void this.ensureEventSubeventsListPopupLoaded();
+      const request = this.popupStore.eventSubeventsListPopup();
+      if (request) {
+        void this.popupStore.ensureEventSubeventsListPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.eventTournamentGroupsPopup();
-      if (request && !this.eventTournamentGroupsPopupComponentRef()) {
-        void this.ensureEventTournamentGroupsPopupLoaded();
+      const request = this.popupStore.eventTournamentGroupsPopup();
+      if (request) {
+        void this.popupStore.ensureEventTournamentGroupsPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
-      void this.ensureEventEditorPopupLoaded();
+      void this.eventEditorStore.ensureEventEditorPopupLoaded();
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      void this.ensureEventMembersPopupLoaded();
+      void this.activitiesStore.ensureEventMembersPopupLoaded();
     });
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      void this.ensureEventExplorePopupLoaded();
+      void this.activitiesStore.ensureEventExplorePopupLoaded();
     });
 
     effect(() => {
-      const session = this.activitiesContext.eventChatSession();
-      if (session && !this.eventChatPopupComponentRef()) {
-        void this.ensureEventChatPopupLoaded();
+      const request = this.popupStore.activitiesNavigationRequest();
+      if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
+        return;
+      }
+      void this.subEventResourceStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      const request = this.eventEditorStore.subEventResourcePopupRequest();
+      if (!request) {
+        return;
+      }
+      void this.subEventResourceStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      const session = this.activitiesStore.eventChatSession();
+      if (session) {
+        void this.activitiesStore.ensureEventChatPopupLoaded();
       }
     });
 
     effect(() => {
-      const isActivitiesOpen = this.activitiesContext.activitiesOpen();
-      if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
-        void this.ensureActivitiesPopupLoaded();
+      const isActivitiesOpen = this.activitiesStore.activitiesOpen();
+      if (isActivitiesOpen) {
+        void this.activitiesStore.ensureActivitiesPopupLoaded();
       }
     });
 
     effect(() => {
-      const isContactsOpen = this.navigatorService.contactsPopupOpen();
-      if (isContactsOpen && !this.contactsPopupComponentRef()) {
-        void this.ensureContactsPopupLoaded();
+      const isContactsOpen = this.navigatorStore.contactsPopupOpen();
+      if (isContactsOpen) {
+        void this.navigatorStore.ensureContactsPopupLoaded();
       }
     });
 
     effect(() => {
-      const isAssetPopupVisible = this.assetPopupService.visible();
-      if (isAssetPopupVisible && !this.assetPopupComponentRef()) {
-        void this.ensureAssetPopupLoaded();
+      const isAssetPopupVisible = this.assetPopupStore.visible();
+      if (isAssetPopupVisible) {
+        void this.assetPopupStore.ensureAssetPopupLoaded();
       }
     });
 
     effect(() => {
-      const resourceHost = this.subEventResources.resourceHost();
-      if (resourceHost && !this.eventResourcePopupComponentRef()) {
-        void this.ensureEventResourcePopupLoaded();
+      const resourcePopupVisible = this.subEventResourceStore.popupContextRef() !== null;
+      if (resourcePopupVisible) {
+        void this.subEventResourceStore.ensureEventResourcePopupLoaded();
       }
     });
 
     effect(() => {
-      const supplyContributionsHost = this.subEventResources.supplyContributionsHost();
-      if (supplyContributionsHost && !this.eventSupplyContributionsPopupComponentRef()) {
-        void this.ensureEventSupplyContributionsPopupLoaded();
+      const assetExploreVisible = this.subEventResourceStore.assetExplorePopupRef() !== null;
+      if (assetExploreVisible) {
+        void this.subEventResourceStore.ensureEventResourceAssetExploreLoaded();
       }
     });
 
     effect(() => {
-      const activityInvitePopup = this.popupCtx.activityInvitePopup();
-      if (activityInvitePopup?.ownerId?.trim() && !this.assetMemberPickerPopupComponentRef()) {
-        void this.ensureAssetMemberPickerPopupLoaded();
+      const supplyContributionsVisible = this.subEventResourceStore.popupContextRef() !== null
+        && !this.subEventResourceStore.assetExploreOnlyRef()
+        && this.subEventResourceStore.supplyPopupRef() !== null;
+      if (supplyContributionsVisible) {
+        void this.subEventResourceStore.ensureEventSupplyContributionsPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.navigatorActivitiesRequest();
+      const activityInvitePopup = this.popupStore.activityInvitePopup();
+      if (activityInvitePopup?.ownerId?.trim()) {
+        void this.assetPopupStore.ensureAssetMemberPickerPopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const request = this.popupStore.navigatorActivitiesRequest();
       if (!request || request.updatedMs <= this.lastHandledActivitiesRequestMs) {
         return;
       }
       this.lastHandledActivitiesRequestMs = request.updatedMs;
-      this.activitiesContext.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
+      this.activitiesStore.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
         adminServiceOnly: request.adminServiceOnly === true
       });
-      this.popupCtx.clearNavigatorActivitiesRequest();
+      this.popupStore.clearNavigatorActivitiesRequest();
     });
 
     effect(() => {
-      const request = this.popupCtx.navigatorAssetRequest();
+      const request = this.popupStore.navigatorAssetRequest();
       if (!request || request.updatedMs <= this.lastHandledAssetRequestMs) {
         return;
       }
       this.lastHandledAssetRequestMs = request.updatedMs;
-      this.ownedAssets.openPopup(request.assetFilter);
-      this.popupCtx.clearNavigatorAssetRequest();
+      this.assetStore.openAssetPopup(request.assetFilter);
+      this.assetPopupStore.primaryVisibleRef.set(true);
+      this.popupStore.clearNavigatorAssetRequest();
     });
 
     effect(() => {
-      const request = this.popupCtx.navigatorEventFeedbackRequest();
+      const request = this.popupStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
         return;
       }
@@ -921,20 +1087,20 @@ export class NavigatorComponent implements OnDestroy {
 
     effect(() => {
       const isVisible = this.explanationGuide.hasVisiblePopup();
-      if (isVisible && !this.explanationPopupComponentRef()) {
-        void this.ensureExplanationPopupLoaded();
+      if (isVisible) {
+        void this.navigatorStore.ensureExplanationPopupLoaded();
       }
     });
   }
 
   @HostListener('window:online')
   protected onWindowOnline(): void {
-    this.appCtx.setOnlineState(true);
+    this.runtimeStore.setOnlineState(true);
   }
 
   @HostListener('window:offline')
   protected onWindowOffline(): void {
-    this.appCtx.setOnlineState(false);
+    this.runtimeStore.setOnlineState(false);
   }
 
   protected onAvatarMenuSelect(
@@ -943,11 +1109,11 @@ export class NavigatorComponent implements OnDestroy {
     if (event.context?.kind !== 'toggle-menu' || !this.canToggleAvatarMenu()) {
       return;
     }
-    this.navigatorService.toggleMenu();
+    this.navigatorStore.toggleMenu();
   }
 
   protected onCloseMenu(): void {
-    this.navigatorService.closeMenu();
+    this.navigatorStore.closeMenu();
   }
 
   protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
@@ -967,10 +1133,10 @@ export class NavigatorComponent implements OnDestroy {
         this.openSettingsPopup(event.id);
         return;
       case 'delete-account':
-        this.navigatorService.openDeleteAccountConfirm();
+        this.openDeleteAccountConfirm();
         return;
       case 'logout':
-        this.navigatorService.openLogoutConfirm();
+        this.openLogoutConfirm();
         return;
       case 'report-bugs':
         return;
@@ -1114,10 +1280,10 @@ export class NavigatorComponent implements OnDestroy {
       return;
     }
     if (this.isAdminMode()) {
-      this.popupCtx.openAdminNavigatorRequest('profile');
+      this.popupStore.openAdminNavigatorRequest('profile');
       return;
     }
-    this.navigatorService.openProfileEditor();
+    this.navigatorStore.openProfileEditor();
   }
 
   protected impressionShortcutBadgeCount(user: NavigatorMenuUser): number {
@@ -1129,7 +1295,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.navigatorService.openImpressionsPopup();
+    this.openImpressionsPopup();
   }
 
   protected openRatesShortcut(event?: Event): void {
@@ -1166,7 +1332,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorAssetRequest('Car');
+    this.popupStore.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
@@ -1174,7 +1340,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorAssetRequest('Accommodation');
+    this.popupStore.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
@@ -1182,17 +1348,19 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorAssetRequest('Supplies');
+    this.popupStore.openNavigatorAssetRequest('Supplies');
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.openNavigatorAssetRequest('Ticket');
+    this.popupStore.openNavigatorAssetRequest('Ticket');
   }
 
   protected openContactsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.navigatorService.openContactsPopup();
+    if (this.userProfileStore.activeUserId().trim()) {
+      this.navigatorStore.openContactsPopup();
+    }
   }
 
   protected openEventFeedbackPopup(event?: Event): void {
@@ -1200,7 +1368,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.openNavigatorEventFeedbackRequest();
+    this.popupStore.openNavigatorEventFeedbackRequest();
   }
 
   protected isAdminMode(): boolean {
@@ -1212,7 +1380,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('reports');
+    this.popupStore.openAdminNavigatorRequest('reports');
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {
@@ -1220,7 +1388,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('feedback');
+    this.popupStore.openAdminNavigatorRequest('feedback');
   }
 
   protected openAdminChatShortcut(event?: Event): void {
@@ -1228,7 +1396,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('chat');
+    this.popupStore.openAdminNavigatorRequest('chat');
   }
 
   protected openAdminProfileShortcut(event?: Event): void {
@@ -1236,7 +1404,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('profile');
+    this.popupStore.openAdminNavigatorRequest('profile');
   }
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
@@ -1244,7 +1412,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('help-editor');
+    this.popupStore.openAdminNavigatorRequest('help-editor');
   }
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
@@ -1252,7 +1420,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('idea-editor');
+    this.popupStore.openAdminNavigatorRequest('idea-editor');
   }
 
   protected openAdminNotificationsShortcut(event?: Event): void {
@@ -1260,7 +1428,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('notifications');
+    this.popupStore.openAdminNavigatorRequest('notifications');
   }
 
   protected openAdminParamsShortcut(event?: Event): void {
@@ -1268,7 +1436,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('params');
+    this.popupStore.openAdminNavigatorRequest('params');
   }
 
   protected openAdminStatsShortcut(event?: Event): void {
@@ -1276,7 +1444,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('stats');
+    this.popupStore.openAdminNavigatorRequest('stats');
   }
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
@@ -1284,7 +1452,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('affinity-graph');
+    this.popupStore.openAdminNavigatorRequest('affinity-graph');
   }
 
   protected openAdminMonitoringShortcut(event?: Event): void {
@@ -1292,12 +1460,366 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.openAdminNavigatorRequest('monitoring');
+    this.popupStore.openAdminNavigatorRequest('monitoring');
   }
 
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
+    this.navigatorStore.clearBindings(this.navigatorBindings);
+    this.stopUserRealtimeLongPoll();
     this.clearUserMenuLoadState();
+  }
+
+  private async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
+    if (this.isAdminWorkspaceRoute()) {
+      return null;
+    }
+    const requestVersion = ++this.hydrationRequestVersion;
+    const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
+    const loadedProfileExt = await this.usersService.loadProfileExtById(isFirebaseSession ? undefined : userId);
+    const loadedUser = loadedProfileExt?.profile ?? null;
+    if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
+      return null;
+    }
+    if (this.shouldPromptDeletedAccountReactivation(loadedUser)) {
+      this.navigatorStore.setDeletedAccountReactivationPending(true);
+      this.openDeletedAccountReactivationPrompt(loadedUser, requestVersion);
+      return loadedUser;
+    }
+
+    this.syncHydratedUser(loadedUser);
+    void this.helpCenterService.preload('help');
+    return loadedUser;
+  }
+
+  private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
+    if (user.profileStatus !== 'deleted') {
+      return false;
+    }
+    const deletedAtMs = Date.parse(`${user.deletedAtIso ?? ''}`.trim());
+    if (!Number.isFinite(deletedAtMs)) {
+      return true;
+    }
+    return Date.now() - deletedAtMs <= NavigatorComponent.ACCOUNT_REACTIVATION_WINDOW_MS;
+  }
+
+  private openDeletedAccountReactivationPrompt(user: UserDto, requestVersion: number): void {
+    const userId = user.id.trim();
+    if (!userId || this.reactivationPromptUserId === userId) {
+      return;
+    }
+    this.reactivationPromptUserId = userId;
+    this.dialogStore.open({
+      title: 'Reactivate account?',
+      message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Reactivate',
+      busyConfirmLabel: 'Reactivating...',
+      confirmTone: 'accent',
+      allowBackdropClose: false,
+      allowEscapeClose: false,
+      failureMessage: 'Unable to reactivate account.',
+      onCancel: async () => {
+        this.reactivationPromptUserId = '';
+        this.navigatorStore.setDeletedAccountReactivationPending(false);
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      },
+      onConfirm: async () => {
+        const restoredProfileStatus = this.resolveReactivatedProfileStatus(user);
+        const reactivatedUser: UserDto = {
+          ...user,
+          profileStatus: restoredProfileStatus,
+          previousProfileStatus: null,
+          deletedAtIso: null
+        };
+        const saved = await this.usersService.saveUserProfile(reactivatedUser);
+        if (!saved) {
+          throw new Error('Unable to reactivate account.');
+        }
+        this.reactivationPromptUserId = '';
+        setTimeout(() => {
+          if (requestVersion === this.hydrationRequestVersion) {
+            this.syncHydratedUser(saved);
+          }
+          this.navigatorStore.setDeletedAccountReactivationPending(false);
+        }, 0);
+      }
+    });
+  }
+
+  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevisionDto, checkKey: string): Promise<void> {
+    const requestToken = ++this.privacyConsentCheckToken;
+    try {
+      const existingConsent = await this.privacyPolicy.loadConsent(userId, revision.id, revision.version);
+      if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        return;
+      }
+      if (this.isPrivacyConsentCurrent(existingConsent, revision)) {
+        this.navigatorStore.clearPrivacyConsentRequirement();
+        return;
+      }
+
+      const syncedAnonymousConsent = await this.privacyPolicy.syncAnonymousEntryConsent(userId, revision);
+      if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        return;
+      }
+      if (syncedAnonymousConsent) {
+        this.navigatorStore.clearPrivacyConsentRequirement();
+        return;
+      }
+
+      this.navigatorStore.setPrivacyConsentRequiredKey(checkKey);
+      this.openSettingsPopup('privacy');
+    } catch {
+      if (this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        this.navigatorStore.setPrivacyConsentRequiredKey(checkKey);
+        this.openSettingsPopup('privacy');
+      }
+    }
+  }
+
+  private isCurrentPrivacyConsentCheck(checkKey: string, requestToken: number): boolean {
+    return this.privacyConsentCheckToken === requestToken
+      && this.privacyConsentCheckKeyRef() === checkKey;
+  }
+
+  private isPrivacyConsentCurrent(consent: PrivacyConsentDto | null, revision: HelpCenterRevisionDto): boolean {
+    if (!consent) {
+      return false;
+    }
+    const consentRevisionId = `${consent.revisionId ?? ''}`.trim();
+    const consentVersion = Math.trunc(Number(consent.revisionVersion) || 0);
+    const currentVersion = Math.trunc(Number(revision.version) || 0);
+    return consentRevisionId === revision.id && consentVersion >= currentVersion && currentVersion > 0;
+  }
+
+  private privacyConsentKey(userId: string, revision: HelpCenterRevisionDto): string {
+    return `${userId.trim()}::${revision.id}:v${revision.version}`;
+  }
+
+  private isActivePrivacyConsentRequired(): boolean {
+    const requiredKey = this.navigatorStore.privacyConsentRequiredKey();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    const revision = this.privacyPolicy.activeRevision();
+    if (!requiredKey || !activeUserId || !revision) {
+      return false;
+    }
+    return requiredKey === this.privacyConsentKey(activeUserId, revision);
+  }
+
+  private resolveReactivatedProfileStatus(user: UserDto): UserDto['profileStatus'] {
+    switch (user.previousProfileStatus) {
+      case 'blocked':
+      case 'friends only':
+      case 'host only':
+      case 'inactive':
+      case 'public':
+        return user.previousProfileStatus;
+      default:
+        return 'public';
+    }
+  }
+
+  private syncHydratedUser(user: UserDto): void {
+    this.userProfileStore.setActiveUserProfile(user);
+    this.navigatorStore.bindings()?.syncHydratedUser?.(user);
+  }
+
+  private clearHydrationState(): void {
+    this.hydrationRequestVersion += 1;
+    this.hydrationRequestKeyRef.set('');
+    this.navigatorStore.setDeletedAccountReactivationPending(false);
+  }
+
+  private clearHydratedUser(): void {
+    this.clearHydrationState();
+  }
+
+  private closeSettingsPopup(): void {
+    this.navigatorStore.closeSettingsPopup({
+      keepPrivacyOpen: this.isActivePrivacyConsentRequired()
+    });
+  }
+
+  private openImpressionsPopup(userId?: string): void {
+    const normalizedUserId = `${userId ?? ''}`.trim() || this.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    const cachedUser = normalizedUserId
+      ? (this.userProfileStore.getUserProfile(normalizedUserId)
+        ?? (normalizedUserId === activeUserId ? this.userProfileStore.activeUserProfile() : null))
+      : null;
+    if (normalizedUserId && !cachedUser) {
+      void this.usersService.loadUserById(normalizedUserId);
+    }
+    this.navigatorStore.openImpressionsPopup(normalizedUserId);
+  }
+
+  private openDeleteAccountConfirm(): void {
+    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
+    this.dialogStore.open({
+      title: 'Delete account?',
+      message: activeUserName,
+      warningMessage: 'You can reactivate within 30 days. After that, the account is permanently purged.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      confirmTone: 'danger',
+      onConfirm: async () => {
+        this.navigatorStore.closeMenu();
+        this.closeSettingsPopup();
+        this.navigatorStore.closeProfileEditor();
+        this.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
+          this.clearHydratedUser();
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(NavigatorComponent.ADMIN_SESSION_STORAGE_KEY);
+          }
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
+        const activeUserId = this.userProfileStore.activeUserId().trim();
+        if (activeUserId) {
+          const result = await this.usersService.deleteUser(activeUserId);
+          if (!result.submitted) {
+            this.dialogStore.openInfo(
+              result.message ?? 'Unable to delete account.',
+              {
+                title: 'Delete account',
+                confirmLabel: 'OK',
+                confirmTone: 'danger'
+              }
+            );
+            return;
+          }
+        }
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      }
+    });
+  }
+
+  private openLogoutConfirm(): void {
+    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
+    this.dialogStore.open({
+      title: 'Biztosan kilép?',
+      message: activeUserName,
+      cancelLabel: 'Mégsem',
+      confirmLabel: 'Kilépés',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        this.navigatorStore.closeMenu();
+        this.closeSettingsPopup();
+        this.navigatorStore.closeProfileEditor();
+        this.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        const activeUserId = this.userProfileStore.activeUserId().trim();
+        if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
+          if (activeUserId) {
+            const result = await this.usersService.logoutUser(activeUserId);
+            if (!result.submitted) {
+              this.dialogStore.openInfo(
+                result.message ?? 'Unable to log out.',
+                {
+                  title: 'Logout',
+                  confirmLabel: 'OK',
+                  confirmTone: 'neutral'
+                }
+              );
+              return;
+            }
+          }
+          this.clearHydratedUser();
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(NavigatorComponent.ADMIN_SESSION_STORAGE_KEY);
+          }
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
+        if (activeUserId) {
+          const result = await this.usersService.logoutUser(activeUserId);
+          if (!result.submitted) {
+            this.dialogStore.openInfo(
+              result.message ?? 'Unable to log out.',
+              {
+                title: 'Logout',
+                confirmLabel: 'OK',
+                confirmTone: 'neutral'
+              }
+            );
+            return;
+          }
+        }
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      }
+    });
+  }
+
+  private closeImpressionsPopup(): void {
+    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
+    this.userProfileStore.markUserRealtimeImpressionsClosed(userId);
+    this.navigatorStore.closeImpressionsPopup();
+  }
+
+  private activateUserRealtimeLongPoll(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.userProfileStore.activeUserId().trim() !== normalizedUserId) {
+      return;
+    }
+    this.startUserRealtimeLongPoll();
+  }
+
+  private startUserRealtimeLongPoll(): void {
+    if (this.stopUserRealtimeLongPollInterval) {
+      return;
+    }
+    this.stopUserRealtimeLongPollInterval = this.usersService.startUserRealtimeLongPoll(() => this.runUserRealtimeLongPollTick());
+  }
+
+  private stopUserRealtimeLongPoll(): void {
+    this.stopUserRealtimeLongPollInterval?.();
+    this.stopUserRealtimeLongPollInterval = null;
+    this.userRealtimeLongPollInFlight = false;
+    this.userProfileStore.setUserRealtimePollInFlight(false);
+  }
+
+  private isAdminWorkspaceRoute(routeUrl = this.currentRoutePathRef()): boolean {
+    const path = AppUtils.normalizeRoutePath(routeUrl);
+    return path === '/admin'
+      || path === '/admin/'
+      || path === '/admin/workspace'
+      || path === '/admin/workspace/';
+  }
+
+  private isNavigatorHydrationRoute(routeUrl = this.currentRoutePathRef()): boolean {
+    const path = AppUtils.normalizeRoutePath(routeUrl);
+    return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
+  }
+
+  private async runUserRealtimeLongPollTick(): Promise<void> {
+    if (this.userRealtimeLongPollInFlight) {
+      return;
+    }
+    const userId = this.userProfileStore.activeUserId().trim();
+    if (!userId) {
+      return;
+    }
+    this.userRealtimeLongPollInFlight = true;
+    this.userProfileStore.setUserRealtimePollInFlight(true);
+    try {
+      const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
+      const snapshot = await this.usersService.pollUserRealtimeSnapshot(userId, cursor);
+      if (!snapshot || this.userProfileStore.activeUserId().trim() !== userId) {
+        return;
+      }
+      this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
+    } finally {
+      this.userRealtimeLongPollInFlight = false;
+      this.userProfileStore.setUserRealtimePollInFlight(false);
+    }
   }
 
   private beginUserMenuLoadWindow(): void {
@@ -1328,7 +1850,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private resolveUserBadgeCount(user: UserDto): number {
-    if (this.appCtx.isAdminUserProfile(user)) {
+    if (this.userProfileStore.isAdminUserProfile(user)) {
       return (
         this.resolveActivityBadge(user, 'game') +
         this.resolveActivityBadge(user, 'chat') +
@@ -1337,7 +1859,7 @@ export class NavigatorComponent implements OnDestroy {
         this.resolveActivityBadge(user, 'adminMetrics')
       );
     }
-    const impressionFlags = this.appCtx.getUserImpressionChangeFlags(user.id);
+    const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
     return (
       (impressionFlags.host ? 1 : 0) +
       (impressionFlags.member ? 1 : 0) +
@@ -1356,7 +1878,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {
-    const override = this.appCtx.getUserCounterOverride(user.id, key);
+    const override = this.activityStore.getUserCounterOverride(user.id, key);
     if (override !== null) {
       return override;
     }
@@ -1370,7 +1892,16 @@ export class NavigatorComponent implements OnDestroy {
     if (popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
       return;
     }
-    this.navigatorService.openSettingsPopup(popup);
+    if (popup === 'privacy') {
+      void this.privacyPolicy.prepareOpen();
+    }
+    if (popup === 'terms') {
+      void this.termsPolicy.prepareOpen();
+    }
+    if (popup === 'help') {
+      void this.helpCenterService.preload('help');
+    }
+    this.navigatorStore.openSettingsPopup(popup);
   }
 
   private openActivitiesShortcut(
@@ -1380,7 +1911,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
-    this.popupCtx.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+    this.popupStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
   private openBlockedUserSupportChat(): void {
@@ -1390,7 +1921,7 @@ export class NavigatorComponent implements OnDestroy {
     }
     const activeUserId = user.id.trim();
     const adminUserId = 'myscoutee-admin';
-    const chat: ChatRecord & { ownerUserId?: string } = {
+    const chat: ChatDTO & { ownerUserId?: string } = {
       id: `c-support-blocked-${activeUserId}`,
       avatar: 'MS',
       title: 'MyScoutee Support',
@@ -1403,169 +1934,33 @@ export class NavigatorComponent implements OnDestroy {
       serviceContext: 'notification',
       ownerUserId: activeUserId
     };
-    this.activitiesContext.openActivities('chats');
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openActivities('chats');
+    this.activitiesStore.openEventChat(chat);
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {
     return Number.isFinite(user?.completion) ? Math.max(0, Math.trunc(Number(user?.completion))) : 0;
   }
 
-  private async ensureNavigatorImpressionsPopupLoaded(): Promise<void> {
-    if (this.navigatorImpressionsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../navigator-impressions-popup/navigator-impressions-popup.component');
-    this.navigatorImpressionsPopupComponentRef.set(module.NavigatorImpressionsPopupComponent);
-  }
-
-  private async ensureProfileEditorLoaded(): Promise<void> {
-    if (this.profileEditorComponentRef()) {
-      return;
-    }
-    const module = await import('../profile-editor/profile-editor.component');
-    this.profileEditorComponentRef.set(module.ProfileEditorComponent);
-  }
-
-  private async ensureProfileViewPopupLoaded(): Promise<void> {
-    if (this.profileViewPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../profile-view-popup/profile-view-popup.component');
-    this.profileViewPopupComponentRef.set(module.ProfileViewPopupComponent);
-  }
-
-  private async ensureEventMembersPopupLoaded(): Promise<void> {
-    if (this.eventMembersPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-members-popup/event-members-popup.component');
-    this.eventMembersPopupComponentRef.set(module.EventMembersPopupComponent);
-  }
-
-  private async ensureEventResourcePopupLoaded(): Promise<void> {
-    if (this.eventResourcePopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-resource-popup/event-resource-popup.component');
-    this.eventResourcePopupComponentRef.set(module.EventResourcePopupComponent);
-  }
-
-  private async ensureEventSupplyContributionsPopupLoaded(): Promise<void> {
-    if (this.eventSupplyContributionsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component');
-    this.eventSupplyContributionsPopupComponentRef.set(module.EventSupplyContributionsPopupComponent);
-  }
-
-  private async ensureAssetMemberPickerPopupLoaded(): Promise<void> {
-    if (this.assetMemberPickerPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component');
-    this.assetMemberPickerPopupComponentRef.set(module.AssetMemberPickerPopupComponent);
-  }
-
-  private async ensureEventEditorPopupLoaded(): Promise<void> {
-    if (this.eventEditorPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-editor-popup/event-editor-popup.component');
-    this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
-  }
-
-  private async ensureEventSubeventsListPopupLoaded(): Promise<void> {
-    if (this.eventSubeventsListPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-subevents-list-popup/event-subevents-list-popup.component');
-    this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
-  }
-
-  private async ensureEventTournamentGroupsPopupLoaded(): Promise<void> {
-    if (this.eventTournamentGroupsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-tournament-groups-popup/event-tournament-groups-popup.component');
-    this.eventTournamentGroupsPopupComponentRef.set(module.EventTournamentGroupsPopupComponent);
-  }
-
-  private async ensureEventChatPopupLoaded(): Promise<void> {
-    if (this.eventChatPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-chat-popup/event-chat-popup.component');
-    this.eventChatPopupComponentRef.set(module.EventChatPopupComponent);
-  }
-
-  private async ensureEventExplorePopupLoaded(): Promise<void> {
-    if (this.eventExplorePopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-explore-popup/event-explore-popup.component');
-    this.eventExplorePopupComponentRef.set(module.EventExplorePopupComponent);
-  }
-
-  private async ensureActivitiesPopupLoaded(): Promise<void> {
-    if (this.activitiesPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/activities-popup/activities-popup.component');
-    this.activitiesPopupComponentRef.set(module.ActivitiesPopupComponent);
-  }
-
-  private async ensureAssetPopupLoaded(): Promise<void> {
-    if (this.assetPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../asset/components/asset-popup/asset-popup.component');
-    this.assetPopupComponentRef.set(module.AssetPopupComponent);
-  }
-
-  private async ensureEventFeedbackPopupLoaded(): Promise<void> {
-    if (this.eventFeedbackPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-feedback-popup/event-feedback-popup.component');
-    this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
-  }
-
-  private async ensureContactsPopupLoaded(): Promise<void> {
-    if (this.contactsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../contacts-popup/contacts-popup.component');
-    this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
-  }
-
-  private async ensureExplanationPopupLoaded(): Promise<void> {
-    if (this.explanationPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../shared/ui/components/explanation-popup/explanation-popup.component');
-    this.explanationPopupComponentRef.set(module.ExplanationPopupComponent);
-  }
-
   private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {
-    await this.ensureEventFeedbackPopupLoaded();
+    await this.activitiesStore.ensureEventFeedbackPopupLoaded();
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])
   protected onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
     if (popupEvent.detail?.type === 'eventExplore') {
-      this.popupCtx.requestActivitiesNavigation({ type: 'eventExplore' });
-      void this.ensureEventExplorePopupLoaded();
+      this.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
+      void this.activitiesStore.ensureEventExplorePopupLoaded();
       return;
     }
     if (popupEvent.detail?.type !== 'eventEditor') {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target: 'events'
     });
-    void this.ensureEventEditorPopupLoaded();
+    void this.eventEditorStore.ensureEventEditorPopupLoaded();
   }
 }

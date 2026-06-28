@@ -1,26 +1,36 @@
 import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import {
+  HttpClient,
+  HttpParams
+} from '@angular/common/http';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
+import {
+  environment
+} from '../../../../../environments/environment';
 import type * as ContractTypes from '../../contracts';
-import { AppUtils } from '../../../app-utils';
+import {
+  AppUtils
+} from '../../../app-utils';
 import type {
   ActivitiesChatPageResultDTO,
-  ChatDTO,
-  ChatRecord
+  ChatDTO
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
-import type { ActivitiesPageRequest } from '../../contracts';
-import { activityChatContextFilterKey } from '../../base/mappers';
-import { AppContext } from '../../../ui/context';
-import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
-import { SessionService } from '../../base/services/session.service';
+import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
+import {
+  SessionService
+} from '../../base/services/session.service';
 
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../base/dto';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+
 interface HttpChatSummaryDto {
   id: string;
   avatar: string;
@@ -187,8 +197,7 @@ export class HttpChatsService implements IChatsService {
   private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 3000;
 
   private readonly http = inject(HttpClient);
-  private readonly appCtx = inject(AppContext);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly chatItemsByUserId = new Map<string, ChatThreadRecord[]>();
@@ -218,7 +227,7 @@ export class HttpChatsService implements IChatsService {
   private shouldEmitReconnectEvent = false;
   private socketMessageSequence = 0;
 
-  async queryChatItemsByUser(userId: string): Promise<ChatThreadRecord[]> {
+  async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
@@ -235,7 +244,7 @@ export class HttpChatsService implements IChatsService {
           : []
       );
       this.chatItemsByUserId.set(normalizedUserId, records.map(record => this.cloneChatRecord(record)));
-      return records.map(record => this.cloneChatRecord(record));
+      return records.map(record => this.toChatDTO(record));
     } catch {
       return this.peekChatItemsByUser(normalizedUserId);
     }
@@ -243,8 +252,8 @@ export class HttpChatsService implements IChatsService {
 
   async queryActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
-    options: { chatItems?: readonly ChatRecord[] } = {}
+    query: ListQuery<ActivitiesFeedFilters>,
+    options: { chatItems?: readonly ChatDTO[] } = {}
   ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -257,31 +266,34 @@ export class HttpChatsService implements IChatsService {
 
     let params = new HttpParams()
       .set('userId', normalizedUserId)
-      .set('limit', String(Math.max(1, Math.trunc(request.pageSize || 10))))
-      .set('sort', request.sort ?? 'date');
-    if (request.direction) {
-      params = params.set('sortDirection', request.direction);
+      .set('limit', String(Math.max(1, Math.trunc(query.pageSize || 10))))
+      .set('sort', query.sort ?? 'date');
+    if (query.direction) {
+      params = params.set('sortDirection', query.direction);
     }
-    if (request.secondaryFilter === 'recent' || request.secondaryFilter === 'past' || request.secondaryFilter === 'relevant') {
-      params = params.set('secondaryFilter', request.secondaryFilter);
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    if (secondaryFilter === 'recent' || secondaryFilter === 'past' || secondaryFilter === 'relevant') {
+      params = params.set('secondaryFilter', secondaryFilter);
     }
-    if (request.chatContextFilter && request.chatContextFilter !== 'all') {
-      params = params.set('contextFilter', request.chatContextFilter);
+    const chatContextFilter = this.activitiesChatContextFilter(query);
+    if (chatContextFilter !== 'all') {
+      params = params.set('contextFilter', chatContextFilter);
     }
-    if (request.cursor) {
-      params = params.set('cursor', request.cursor);
+    if (query.cursor) {
+      params = params.set('cursor', query.cursor);
     }
-    if (request.rangeStart) {
-      params = params.set('rangeStartIso', request.rangeStart);
+    if (query.rangeStart) {
+      params = params.set('rangeStartIso', query.rangeStart);
     }
-    if (request.rangeEnd) {
-      params = params.set('rangeEndIso', request.rangeEnd);
+    if (query.rangeEnd) {
+      params = params.set('rangeEndIso', query.rangeEnd);
     }
-    if (request.adminServiceOnly === true) {
+    if (query.filters?.adminServiceOnly === true) {
       params = params.set('adminServiceOnly', 'true');
     }
-    if (request.supportCaseFilter && request.supportCaseFilter !== 'all') {
-      params = params.set('supportCaseFilter', request.supportCaseFilter);
+    const supportCaseFilter = this.activitiesSupportCaseFilter(query);
+    if (supportCaseFilter !== 'all') {
+      params = params.set('supportCaseFilter', supportCaseFilter);
     }
 
     try {
@@ -303,23 +315,23 @@ export class HttpChatsService implements IChatsService {
           : null
       };
       const resultPage = this.shouldUseCachedActivitiesChatPage(page, normalizedUserId, options.chatItems ?? [])
-        ? this.buildCachedActivitiesChatPage(normalizedUserId, request, options.chatItems ?? [])
+        ? this.buildCachedActivitiesChatPage(normalizedUserId, query, options.chatItems ?? [])
         : page;
       return this.toActivitiesChatPageDTO(resultPage);
     } catch {
       return this.toActivitiesChatPageDTO(
-        this.buildCachedActivitiesChatPage(normalizedUserId, request, options.chatItems ?? [])
+        this.buildCachedActivitiesChatPage(normalizedUserId, query, options.chatItems ?? [])
       );
     }
   }
 
-  peekChatItemsByUser(userId: string): ChatThreadRecord[] {
+  peekChatItemsByUser(userId: string): ChatDTO[] {
     const normalizedUserId = userId.trim();
     const records = this.chatItemsByUserId.get(normalizedUserId) ?? [];
-    return records.map(record => this.cloneChatRecord(record));
+    return records.map(record => this.toChatDTO(record));
   }
 
-  async loadChatMessages(chat: ChatRecord): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
     try {
       const response = await this.http
         .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
@@ -357,12 +369,12 @@ export class HttpChatsService implements IChatsService {
     }
   }
 
-  async sendChatMessage(chat: ChatRecord, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
   async sendChatMessageWithAttachments(
-    chat: ChatRecord,
+    chat: ChatDTO,
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[] = [],
     clientId?: string,
@@ -406,7 +418,7 @@ export class HttpChatsService implements IChatsService {
     }
   }
 
-  async sendChatTyping(chat: ChatRecord, typing: boolean): Promise<void> {
+  async sendChatTyping(chat: ChatDTO, typing: boolean): Promise<void> {
     const socket = await this.ensureSocket(chat);
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       return;
@@ -418,7 +430,7 @@ export class HttpChatsService implements IChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async markChatRead(chat: ChatRecord, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
     const normalizedIds = messageIds
       .map(messageId => `${messageId ?? ''}`.trim())
       .filter(messageId => messageId.length > 0);
@@ -436,7 +448,7 @@ export class HttpChatsService implements IChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): Promise<ChatThreadRecord | null> {
+  async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     const userId = this.activeUserId();
     if (!normalizedChatId || !userId) {
@@ -450,14 +462,14 @@ export class HttpChatsService implements IChatsService {
           { params: this.withUserId(new HttpParams(), userId) }
         )
         .toPromise();
-      return response ? this.mapChatRecord(response, userId) : null;
+      return response ? this.toChatDTO(this.mapChatRecord(response, userId)) : null;
     } catch {
       return null;
     }
   }
 
   async updateChatMessage(
-    chat: ChatRecord,
+    chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
   ): Promise<ContractTypes.ChatPopupMessage | null> {
@@ -510,7 +522,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   async watchChatEvents(
-    chat: ChatRecord,
+    chat: ChatDTO,
     onEvent: (event: ContractTypes.ChatLiveEvent) => void
   ): Promise<() => void> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
@@ -533,7 +545,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   async watchChatMessages(
-    chat: ChatRecord,
+    chat: ChatDTO,
     onMessage: (message: ContractTypes.ChatPopupMessage) => void
   ): Promise<() => void> {
     return this.watchChatEvents(chat, event => {
@@ -608,7 +620,7 @@ export class HttpChatsService implements IChatsService {
   private shouldUseCachedActivitiesChatPage(
     page: { items: readonly ChatThreadRecord[]; total: number; nextCursor?: string | null },
     userId: string,
-    cachedChatItems: readonly ChatRecord[]
+    cachedChatItems: readonly ChatDTO[]
   ): boolean {
     return page.items.length === 0
       && page.total === 0
@@ -617,16 +629,16 @@ export class HttpChatsService implements IChatsService {
 
   private buildCachedActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
-    cachedChatItems: readonly ChatRecord[]
+    query: ListQuery<ActivitiesFeedFilters>,
+    cachedChatItems: readonly ChatDTO[]
   ): { items: ChatThreadRecord[]; total: number; nextCursor: null } {
-    const pageSize = Math.max(1, Math.trunc(Number(request.pageSize) || 10));
-    const pageIndex = Math.max(0, Math.trunc(Number(request.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
     const filtered = this.resolveCachedActivitiesChatItems(userId, cachedChatItems).filter(item =>
-      this.matchesActivitiesChatContextFilter(item, request.chatContextFilter)
-      && this.matchesSupportCaseFilter(item, request.supportCaseFilter)
+      this.matchesActivitiesChatContextFilter(item, this.activitiesChatContextFilter(query))
+      && this.matchesSupportCaseFilter(item, this.activitiesSupportCaseFilter(query))
     );
-    const sorted = this.sortActivitiesChatPageRecords(filtered, request);
+    const sorted = this.sortActivitiesChatPageRecords(filtered, query);
     const startIndex = pageIndex * pageSize;
     return {
       items: sorted.slice(startIndex, startIndex + pageSize).map(item => this.cloneChatRecord(item)),
@@ -637,7 +649,7 @@ export class HttpChatsService implements IChatsService {
 
   private resolveCachedActivitiesChatItems(
     userId: string,
-    cachedChatItems: readonly ChatRecord[]
+    cachedChatItems: readonly ChatDTO[]
   ): ChatThreadRecord[] {
     const source = cachedChatItems.length > 0
       ? cachedChatItems
@@ -645,7 +657,7 @@ export class HttpChatsService implements IChatsService {
     return this.deduplicateChatRecords(source.map(item => this.toCachedDemoChatRecord(item, userId)));
   }
 
-  private toCachedDemoChatRecord(item: ChatRecord, ownerUserId: string): ChatThreadRecord {
+  private toCachedDemoChatRecord(item: ChatDTO, ownerUserId: string): ChatThreadRecord {
     return {
       id: `${item.id ?? ''}`.trim(),
       avatar: `${item.avatar ?? ''}`.trim(),
@@ -716,7 +728,40 @@ export class HttpChatsService implements IChatsService {
     const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service'
       ? filter
       : 'all';
-    return normalizedFilter === 'all' || activityChatContextFilterKey(item) === normalizedFilter;
+    return normalizedFilter === 'all' || this.activityChatContextFilterKey(item) === normalizedFilter;
+  }
+
+  private activityChatContextFilterKey(
+    item: Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>
+  ): ContractTypes.ActivitiesChatContextFilter {
+    if (item.channelType === 'serviceEvent' || item.serviceContext) {
+      return 'service';
+    }
+    if (item.channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    if (item.channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (item.channelType === 'mainEvent') {
+      return 'event';
+    }
+    return 'all';
+  }
+
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
+    const value = query.filters?.chatContextFilter;
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+  }
+
+  private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
+    const value = query.filters?.supportCaseFilter;
+    return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }
 
   private matchesSupportCaseFilter(
@@ -731,10 +776,10 @@ export class HttpChatsService implements IChatsService {
 
   private sortActivitiesChatPageRecords(
     records: readonly ChatThreadRecord[],
-    request: ActivitiesPageRequest
+    query: ListQuery<ActivitiesFeedFilters>
   ): ChatThreadRecord[] {
     const sorted = records.map(record => this.cloneChatRecord(record));
-    if (request.secondaryFilter === 'relevant') {
+    if (this.activitiesSecondaryFilter(query) === 'relevant') {
       return sorted.sort((left, right) =>
         this.chatMetricScore(right) - this.chatMetricScore(left)
         || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
@@ -1015,7 +1060,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private updateCachedChatSummaryAfterMessage(
-    chat: ChatRecord,
+    chat: ChatDTO,
     message: ContractTypes.ChatPopupMessage
   ): void {
     const ownerUserId = this.activeUserId();
@@ -1039,7 +1084,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private buildCachedChatRecordFromMessage(
-    chat: ChatRecord,
+    chat: ChatDTO,
     ownerUserId: string,
     message: ContractTypes.ChatPopupMessage,
     existingRecord: ChatThreadRecord | null
@@ -1070,7 +1115,7 @@ export class HttpChatsService implements IChatsService {
     } satisfies ChatThreadRecord;
   }
 
-  private resolveCachedChatMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
+  private resolveCachedChatMessages(chat: ChatDTO): ContractTypes.ChatPopupMessage[] {
     const ownerUserId = this.activeUserId();
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!ownerUserId || !normalizedChatId) {
@@ -1230,7 +1275,7 @@ export class HttpChatsService implements IChatsService {
       || Object.prototype.hasOwnProperty.call(payload, 'sentAtIso');
   }
 
-  private async ensureSocket(chat: ChatRecord): Promise<WebSocket | null> {
+  private async ensureSocket(chat: ChatDTO): Promise<WebSocket | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!normalizedChatId || typeof WebSocket === 'undefined' || typeof window === 'undefined') {
       return null;
@@ -1335,8 +1380,8 @@ export class HttpChatsService implements IChatsService {
     if (this.sessionService.currentSession()?.kind === 'demo') {
       baseUrl.searchParams.set('sessionKind', 'demo');
     }
-    if (this.firebaseAuthService.enabled && this.sessionService.currentSession()?.kind !== 'demo') {
-      const token = await this.firebaseAuthService.getIdToken();
+    if (this.sessionService.currentSession()?.kind === 'firebase') {
+      const token = await this.sessionService.getFirebaseIdToken();
       if (!token) {
         return null;
       }
@@ -1346,7 +1391,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private activeUserParams(): HttpParams {

@@ -1,0 +1,25 @@
+@if (dialogState(); as state) {
+  <section class="dialog">
+    <div class="dialog-backdrop" (click)="closeFromBackdrop($event)"></div>
+    <div class="dialog-panel" (click)="$event.stopPropagation()">
+      <h3>{{ state.title | i18n }}</h3>
+      @if (state.message) {
+        <p>{{ state.message | i18n }}</p>
+      }
+      @if (state.warningMessage) {
+        <p class="dialog-warning">{{ state.warningMessage | i18n }}</p>
+      }
+      @if (state.errorMessage) {
+        <p class="dialog-error">{{ state.errorMessage | i18n }}</p>
+      }
+      <div class="dialog-actions" [class.dialog-actions-single]="!state.cancelLabel">
+        <app-menu
+          class="dialog-actions-menu"
+          kind="inline"
+          [items]="dialogActionItems(state)"
+          (itemSelect)="onDialogActionSelect($event)"
+        ></app-menu>
+      </div>
+    </div>
+  </section>
+}

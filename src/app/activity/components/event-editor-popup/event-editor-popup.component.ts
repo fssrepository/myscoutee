@@ -1,23 +1,63 @@
-import { Component, inject, OnInit, OnDestroy, HostListener, effect, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { AppContext, AppPopupContext } from '../../../shared/ui';
-import { Subscription } from 'rxjs';
-import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
-import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { EventEditorBuilder, PricingBuilder } from '../../../shared/core/base/builders';
-import type * as AppTypes from '../../../shared/core/base/models';
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  HostListener,
+  effect,
+  signal
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  MatFormFieldModule
+} from '@angular/material/form-field';
+import {
+  MatInputModule
+} from '@angular/material/input';
+import {
+  Subscription
+} from 'rxjs';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  EventCheckoutDraftStore,
+  type EventCheckoutDraft
+} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  PricingBuilder
+} from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  ActivityMembersService, EventsService, ExplanationGuideService, RouteDelayService, RouteIntervalSchedulerService } from '../../../shared/core';
-import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
+  ActivityMembersService,
+  EventsService,
+  ExplanationGuideService,
+  RouteDelayService,
+  RouteIntervalSchedulerService
+} from '../../../shared/core';
+import {
+  ActivityEventDetailDTO
+} from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
   buildTabbedMenuModel,
@@ -28,7 +68,7 @@ import {
   type AppMenuTrigger,
   DateInputComponent,
   type DateInputModel,
-  EditableImageCarouselComponent,
+  ImageCarouselComponent,
   EventPoliciesInputComponent,
   EventSlotsInputComponent,
   type EventSlotsInputConfig,
@@ -37,12 +77,17 @@ import {
   type LocationInputConfig,
   PricingEditorInputComponent,
   type PricingEditorConfig,
-  ProgressIndicatorComponent
+  IndicatorComponent
 } from '../../../shared/ui';
-import { EventSubeventDefinitionsPanelComponent } from '../event-subevent-definitions-panel';
+import {
+  EventSubeventDefinitionsPanelComponent
+} from '../event-subevent-definitions-panel';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
@@ -70,26 +115,27 @@ interface SlotOverrideEditorState {
     MatInputModule,
     AppMenuComponent,
     DateInputComponent,
-    EditableImageCarouselComponent,
+    ImageCarouselComponent,
     EventPoliciesInputComponent,
     EventSlotsInputComponent,
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
-    ProgressIndicatorComponent
+    IndicatorComponent
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']
 })
 export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private static readonly EVENTS_ROUTE = '/activities/events';
-  protected readonly eventEditorService = inject(EventEditorPopupStateService);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  protected readonly eventEditorStore = inject(EventEditorPopupStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
@@ -102,7 +148,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private draftEventId: string | null = null;
   private currentSourcePublished = false;
   private publishedCapacityMaxFloor = 0;
-  private currentMemberSummary: ActivityContracts.ActivityMembersSummary | null = null;
+  private currentMemberSummary: ActivityContracts.ActivityMembersSummaryDto | null = null;
   private lastHandledActivityMembersSyncMs = 0;
   private pricingSlotCatalogCacheKey = '';
   private pricingSlotCatalogCache: ContractTypes.PricingSlotReference[] = [];
@@ -119,11 +165,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
-      this.popupCtx.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventEditorCreate') {
         this.openCreateRequest(request.target);
         return;
@@ -132,9 +178,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      const sourceEvent: any = this.eventEditorService.sourceEvent();
-      const isOpen = this.eventEditorService.isOpen();
-      const mode = this.eventEditorService.mode();
+      const sourceEvent: any = this.eventEditorStore.sourceEvent();
+      const isOpen = this.eventEditorStore.isOpen();
+      const mode = this.eventEditorStore.mode();
       this.setEventEditorExplanationContext(isOpen ? 'event.editor' : null);
 
       if (!isOpen) {
@@ -160,8 +206,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
-      const isOpen = this.eventEditorService.isOpen();
+      const sync = this.activityStore.activityMembersSync();
+      const isOpen = this.eventEditorStore.isOpen();
       if (!isOpen || !sync || sync.updatedMs <= this.lastHandledActivityMembersSyncMs) {
         return;
       }
@@ -188,11 +234,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.openSubscription = this.eventEditorService.onOpen$.subscribe(() => {
+    this.openSubscription = this.eventEditorStore.onOpen$.subscribe(() => {
       this.slotOverrideEditor = null;
     });
 
-    this.closeSubscription = this.eventEditorService.onClose$.subscribe(() => {
+    this.closeSubscription = this.eventEditorStore.onClose$.subscribe(() => {
       this.slotOverrideEditor = null;
       this.eventDetailLoadSequence += 1;
       this.isLoadingEventData.set(false);
@@ -263,12 +309,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.isLoadingEventData.set(false);
     this.eventVisibilityReady.set(false);
     this.clearEventEditorExplanationContext();
-    this.eventEditorService.close();
+    this.eventEditorStore.close();
   }
 
   getPopupTitle(): string {
-    const mode = this.eventEditorService.mode();
-    const readOnly = this.eventEditorService.readOnly();
+    const mode = this.eventEditorStore.mode();
+    const readOnly = this.eventEditorStore.readOnly();
 
     if (mode === 'create') {
       return 'Create Event';
@@ -283,13 +329,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected isPublishedManageMode(): boolean {
-    return this.eventEditorService.mode() === 'edit'
-      && !this.eventEditorService.readOnly()
+    return this.eventEditorStore.mode() === 'edit'
+      && !this.eventEditorStore.readOnly()
       && this.currentSourcePublished;
   }
 
   protected eventStructureReadOnly(): boolean {
-    return this.eventEditorService.readOnly() || this.isPublishedManageMode();
+    return this.eventEditorStore.readOnly() || this.isPublishedManageMode();
   }
 
   protected eventPoliciesReadOnly(): boolean {
@@ -297,7 +343,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventCapacityMinReadOnly(): boolean {
-    return this.eventEditorService.readOnly() || this.isPublishedManageMode();
+    return this.eventEditorStore.readOnly() || this.isPublishedManageMode();
   }
 
   protected eventCapacityMaxMinimum(): number {
@@ -408,7 +454,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   canSaveEventDetailDTO(): boolean {
-    if (this.eventEditorService.readOnly()) {
+    if (this.eventEditorStore.readOnly()) {
       return false;
     }
     return Boolean(
@@ -513,7 +559,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         active: this.eventDetailDTO.topics.length > 0,
         checked: this.eventDetailDTO.topics.length > 0,
         palette: 'violet',
-        disabled: this.eventEditorService.readOnly(),
+        disabled: this.eventEditorStore.readOnly(),
         closeOnSelect: false,
         filterable: true,
         ariaLabel: 'Open topics',
@@ -529,7 +575,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         active: this.eventDetailDTO.autoInviter,
         checked: this.eventDetailDTO.autoInviter,
         palette: this.eventDetailDTO.autoInviter ? 'cyan' : 'slate',
-        disabled: this.eventEditorService.readOnly(),
+        disabled: this.eventEditorStore.readOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-auto-inviter' }
       },
@@ -640,8 +686,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
-    this.eventCheckoutDraftService.drafts();
-    if (!this.eventEditorService.readOnly()) {
+    this.eventCheckoutDraftStore.drafts();
+    if (!this.eventEditorStore.readOnly()) {
       return null;
     }
     const eventId = this.currentEventIdentity();
@@ -649,7 +695,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!eventId || !activeUserId) {
       return null;
     }
-    return this.eventCheckoutDraftService.read(activeUserId, eventId);
+    return this.eventCheckoutDraftStore.read(activeUserId, eventId);
   }
 
   protected eventEditorCheckoutStatusMenuItems(draft: EventCheckoutDraft): readonly AppMenuItem<string, EventEditorMenuContext>[] {
@@ -704,7 +750,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private toggleEventTopic(topic: string, action: AppMenuItemSelectEvent<string, EventEditorMenuContext>['action']): void {
-    if (this.eventEditorService.readOnly()) {
+    if (this.eventEditorStore.readOnly()) {
       return;
     }
     const normalizedTopics = ActivityEventDetailDTO.normalizeTopics(this.eventDetailDTO.topics);
@@ -787,11 +833,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private continueEventEditorCheckoutDraft(sourceId: string, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    const draft = this.eventCheckoutDraftService.read(this.activeUserId(), sourceId);
+    const draft = this.eventCheckoutDraftStore.read(this.activeUserId(), sourceId);
     if (!draft || !this.eventEditorCanContinueCheckoutDraft(draft)) {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventCheckoutDraft',
       sourceId: draft.sourceId
     });
@@ -1306,7 +1352,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   toggleEventAutoInviter(event: Event): void {
     event.preventDefault();
-    if (this.eventEditorService.readOnly()) {
+    if (this.eventEditorStore.readOnly()) {
       return;
     }
     this.eventDetailDTO.autoInviter = !this.eventDetailDTO.autoInviter;
@@ -1328,7 +1374,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (!this.eventEditorService.isOpen() || keyboardEvent.defaultPrevented) {
+    if (!this.eventEditorStore.isOpen() || keyboardEvent.defaultPrevented) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -1339,11 +1385,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private openCreateRequest(target: ContractTypes.EventEditorTarget): void {
     this.resetEditorContext();
     this.editorTarget = target;
-    this.draftEventId = EventEditorBuilder.buildCreatedEventEditorId(target);
+    this.draftEventId = this.buildCreatedEventEditorId(target);
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(this.draftEventId);
     this.resetForm(target);
     this.eventVisibilityReady.set(true);
-    this.eventEditorService.openCreate();
+    this.eventEditorStore.openCreate();
     void this.refreshCurrentMemberSummary(this.draftEventId);
   }
 
@@ -1359,7 +1405,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.editorTarget = target;
     this.editingEventId = eventId;
     this.currentMemberSummary = this.activityMembersService.peekSummaryByOwnerId(eventId);
-    this.eventEditorService.open('edit', undefined, readOnly);
+    this.eventEditorStore.open('edit', undefined, readOnly);
     void this.refreshCurrentMemberSummary(eventId);
 
     if (!activeUserId) {
@@ -1393,20 +1439,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private isCurrentEventDetailLoad(sequence: number, eventId: string): boolean {
     return this.eventDetailLoadSequence === sequence
-      && this.eventEditorService.isOpen()
+      && this.eventEditorStore.isOpen()
       && this.editingEventId === eventId;
   }
 
   private openEventDetailDTO(eventDetailDTO: ActivityEventDetailDTO, readOnly: boolean, _target: ContractTypes.EventEditorTarget): void {
     if (readOnly) {
-      this.eventEditorService.openView(eventDetailDTO);
+      this.eventEditorStore.openView(eventDetailDTO);
       return;
     }
-    this.eventEditorService.openEdit(eventDetailDTO);
+    this.eventEditorStore.openEdit(eventDetailDTO);
   }
 
   private async persistEventDetailDTO(options: { allowIncomplete?: boolean } = {}): Promise<boolean> {
-    if (this.eventEditorService.readOnly()) {
+    if (this.eventEditorStore.readOnly()) {
       return false;
     }
 
@@ -1422,7 +1468,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const eventId = this.eventDetailDTO.id.trim()
       || this.editingEventId
       || this.draftEventId
-      || EventEditorBuilder.buildCreatedEventEditorId(this.editorTarget);
+      || this.buildCreatedEventEditorId(this.editorTarget);
     this.eventDetailDTO.id = eventId;
     this.eventDetailDTO.imageUrl = this.normalizedEventImageUrl();
     const memberSummary = await this.resolveCurrentEventMembersSummary(eventId, normalizedCapacity);
@@ -1438,8 +1484,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!displaySync) {
       throw new Error('Event sync did not return an event DTO.');
     }
-    this.activitiesContext.emitActivityEventSaveResult(displaySync);
+    this.activitiesStore.emitActivityEventSaveResult(displaySync);
     return true;
+  }
+
+  private buildCreatedEventEditorId(target: ContractTypes.EventEditorTarget, timestampMs = Date.now()): string {
+    return target === 'hosting' ? `h${timestampMs}` : `e${timestampMs}`;
   }
 
   private async runImmediateSave(): Promise<void> {
@@ -1452,7 +1502,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
       this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
       this.isSavePending = false;
-      this.eventEditorService.close();
+      this.eventEditorStore.close();
     } catch {
       this.isSavePending = false;
     }
@@ -1483,10 +1533,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private shouldAutosaveDraft(): boolean {
-    if (!this.eventEditorService.isOpen() || this.eventEditorService.readOnly() || this.isSavePending || this.isDraftAutosavePending) {
+    if (!this.eventEditorStore.isOpen() || this.eventEditorStore.readOnly() || this.isSavePending || this.isDraftAutosavePending) {
       return false;
     }
-    if (this.eventEditorService.mode() === 'create') {
+    if (this.eventEditorStore.mode() === 'create') {
       return true;
     }
     return this.editorTarget === 'hosting' && this.eventDetailDTO.status === 'DR';
@@ -1514,8 +1564,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private buildDraftAutosaveSignature(): string {
     return JSON.stringify({
       target: this.editorTarget,
-      editorMode: this.eventEditorService.mode(),
-      readOnly: this.eventEditorService.readOnly(),
+      editorMode: this.eventEditorStore.mode(),
+      readOnly: this.eventEditorStore.readOnly(),
       editingEventId: this.editingEventId,
       draftEventId: this.draftEventId,
       mode: this.eventDetailDTO.mode,
@@ -1562,7 +1612,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    return this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   private eventDetailDTOBelongsToActiveAdmin(eventDetailDTO: ActivityEventDetailDTO): boolean {
@@ -1580,7 +1630,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     const summary = await this.activityMembersService.querySummaryByOwnerId(normalizedOwnerId);
-    if (this.currentEventIdentity() !== normalizedOwnerId || !this.eventEditorService.isOpen()) {
+    if (this.currentEventIdentity() !== normalizedOwnerId || !this.eventEditorStore.isOpen()) {
       return;
     }
     this.currentMemberSummary = summary;
@@ -1589,7 +1639,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async resolveCurrentEventMembersSummary(
     eventId: string,
     normalizedCapacity: ContractTypes.EventCapacityRange
-  ): Promise<ActivityContracts.ActivityMembersSummary> {
+  ): Promise<ActivityContracts.ActivityMembersSummaryDto> {
     const queriedSummary = eventId ? await this.activityMembersService.querySummaryByOwnerId(eventId) : null;
     const summary = queriedSummary ?? this.currentMemberSummary;
     const acceptedMembers = summary?.acceptedMembers ?? 0;
@@ -1628,7 +1678,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       pendingMemberUserIds: [...(dto.pendingMemberUserIds ?? [])]
     };
     this.editingEventId = dto.id.trim() || this.editingEventId;
-    this.currentSourcePublished = this.eventEditorService.mode() === 'edit' && dto.status === 'A';
+    this.currentSourcePublished = this.eventEditorStore.mode() === 'edit' && dto.status === 'A';
     this.publishedCapacityMaxFloor = Math.max(0, Number(dto.capacityMax ?? 0) || 0);
     this.eventDetailDTO = dto;
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
@@ -1647,7 +1697,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const start = new Date();
     const end = new Date(start.getTime() + (60 * 60 * 1000));
     const activeUserId = this.activeUserId();
-    const activeUserProfile = activeUserId ? this.appCtx.getUserProfile(activeUserId) : null;
+    const activeUserProfile = activeUserId ? this.userProfileStore.getUserProfile(activeUserId) : null;
 
     this.currentSourcePublished = false;
     this.publishedCapacityMaxFloor = 0;

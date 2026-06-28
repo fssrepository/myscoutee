@@ -1,13 +1,38 @@
-import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
-import { AppContext } from '../../../shared/ui';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
 import {
-  AdminStatsService, type AdminStatsBreakdownItemDto, type AdminStatsDashboardDto, type AdminStatsGraphDto, type AdminStatsGraphTimelinePointDto, type AdminStatsMetricDto, type AdminStatsRevenueDto, type AdminStatsRevenueTimelinePointDto, type AdminStatsSegmentDto, type AdminStatsTimelinePointDto } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminShellService } from '../../services/admin-shell.service';
+  AdminStatsService,
+  type AdminStatsBreakdownItemDto,
+  type AdminStatsDashboardDto,
+  type AdminStatsGraphDto,
+  type AdminStatsGraphTimelinePointDto,
+  type AdminStatsMetricDto,
+  type AdminStatsRevenueDto,
+  type AdminStatsRevenueTimelinePointDto,
+  type AdminStatsSegmentDto,
+  type AdminStatsTimelinePointDto
+} from '../../../shared/core';
+import {
+  I18nPipe
+} from '../../../shared/ui';
+import {
+  IndicatorComponent
+} from '../../../shared/ui/components/core/indicator';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type AdminStatsTimelineMetric = 'activeUsers' | 'registrations' | 'ratings' | 'activity' | 'messages' | 'moderation';
 type AdminStatsGraphTimelineMetric = 'activeEdges' | 'newEdges' | 'recurringEdges' | 'weakTies' | 'networkQuality' | 'clusterQuality';
@@ -18,14 +43,14 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
 @Component({
   selector: 'app-admin-stats-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe],
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })
 export class AdminStatsPopupComponent {
-  protected readonly admin = inject(AdminShellService);
+  protected readonly admin = inject(AdminPopupStore);
   protected readonly statsService = inject(AdminStatsService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly stats = signal<AdminStatsDashboardDto | null>(null);
@@ -658,6 +683,6 @@ export class AdminStatsPopupComponent {
   }
 
   private activeAdminId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 }

@@ -118,7 +118,8 @@
               },
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "namedChunks": true
             },
             "dev": {
               "fileReplacements": [
@@ -133,7 +134,8 @@
               },
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "namedChunks": true
             },
             "e2e": {
               "outputPath": {
@@ -175,7 +177,21 @@
           "builder": "@angular/build:dev-server",
           "options": {
             "host": "0.0.0.0",
-            "allowedHosts": true
+            "allowedHosts": true,
+            "hmr": false,
+            "poll": 2000,
+            "prebundle": {
+              "exclude": [
+                "firebase",
+                "@firebase/app",
+                "@firebase/auth",
+                "@firebase/component",
+                "@firebase/installations",
+                "@firebase/logger",
+                "@firebase/messaging",
+                "@firebase/util"
+              ]
+            }
           },
           "configurations": {
             "production": {

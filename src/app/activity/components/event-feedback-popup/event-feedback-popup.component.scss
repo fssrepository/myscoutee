@@ -4,22 +4,36 @@
   display: contents;
 }
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
 
-.app-popup-panel.popup-panel-event-feedback {
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
+.event-feedback-popup-module,
+.event-feedback-parent-popup {
+  display: contents;
 }
 
-.app-popup.event-feedback-parent-hidden {
+.event-feedback-parent-hidden {
   visibility: hidden;
   pointer-events: none;
 }
 
-.popup-title h2 {
-  color: var(--text-main);
+.event-feedback-stacked-content {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.event-feedback-stacked-content--detail,
+.event-feedback-stacked-content--organizer {
+  height: 100%;
+  overflow: hidden;
+}
+
+.event-feedback-stacked-content--organizer {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .link-btn {
@@ -180,11 +194,6 @@ app-smart-list.event-feedback-list-surface {
   overflow-x: hidden;
   display: grid;
   gap: 0.44rem;
-}
-
-.event-feedback-filter-picker {
-  position: relative;
-  z-index: 48;
 }
 
 :host ::ng-deep .event-feedback-list-surface .smart-list__header-progress-shell {

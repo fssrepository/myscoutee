@@ -8,26 +8,51 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { AppContext, AppPopupContext, type ActivityMembersSyncState } from '../../../shared/ui';
-import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  type ActivityMembersSyncState
+} from '../../../shared/ui';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
 import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type * as ContractTypes from '../../../shared/core/contracts';
-import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
-import { AppUtils } from '../../../shared/app-utils';
 import {
-  ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventExploreBuilder, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
-import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import {
+  ActivityEventDetailDTO
+} from '../../../shared/core/contracts/activity.interface';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  ActivityMembersBuilder,
+  ActivityMembersService,
+  ActivitiesService,
+  EventsService,
+  GameService,
+  ShareTokensService,
+  UsersService,
+  type UserDto
+} from '../../../shared/core';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   AppMenuDispatcher,
   AppMenuComponent,
   AppMenuOutletComponent,
   appMenuPaletteFromToneClass,
   buildTabbedMenuModel,
+  EventExploreInfoCardConverter,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
@@ -46,14 +71,27 @@ import {
   type SmartListItemTemplateContext,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
-import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
-import { NavigatorService } from '../../../navigator';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  EventCheckoutDraftStore,
+  type EventCheckoutDraft
+} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import {
+  EventCheckoutDialogStore
+} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -97,14 +135,16 @@ export class EventExplorePopupComponent {
   private readonly gameService = inject(GameService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
-  protected readonly navigatorService = inject(NavigatorService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
-  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
-  private readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
+  private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
@@ -160,7 +200,6 @@ export class EventExplorePopupComponent {
 
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
     from(this.loadEventExplorePage(query));
-  protected readonly EventExploreBuilder = EventExploreBuilder;
 
   protected readonly eventExploreSmartListConfig: SmartListConfig<ActivityEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
@@ -170,7 +209,7 @@ export class EventExplorePopupComponent {
     emptyDescription: 'Try another filter or check back later.',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     presentation: 'list',
     listLayout: 'card-grid',
@@ -189,18 +228,18 @@ export class EventExplorePopupComponent {
       }
       return scrollable;
     },
-    groupBy: (record, query) => EventExploreBuilder.buildGroupLabel(record, query.filters?.view ?? this.eventExploreView)
+    groupBy: (record, query) => this.buildEventExploreGroupLabel(record, query.filters?.view ?? this.eventExploreView)
   };
 
   constructor() {
     this.refreshUsersDirectory();
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      this.popupCtx.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventCheckoutDraft') {
         void this.continueCheckoutDraftBySourceId(request.sourceId);
         return;
@@ -209,7 +248,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const nextActiveUserId = this.appCtx.activeUserId().trim();
+      const nextActiveUserId = this.userProfileStore.activeUserId().trim();
       if (nextActiveUserId === this.activeUserId) {
         return;
       }
@@ -223,7 +262,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -232,7 +271,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.activitiesContext.activityEventSave();
+      const sync = this.activitiesStore.activityEventSave();
       if (!sync) {
         return;
       }
@@ -240,7 +279,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      this.eventCheckoutDraftService.drafts();
+      this.eventCheckoutDraftStore.drafts();
       const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
       const removedPendingDraftSourceIds = [...this.lastPendingCheckoutDraftSourceIds]
         .filter(sourceId => !nextPendingDraftSourceIds.has(sourceId));
@@ -637,7 +676,7 @@ export class EventExplorePopupComponent {
     if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
       ownerType: 'event',
@@ -685,7 +724,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: record.id,
       target: record.type === 'hosting' ? 'hosting' : 'events',
@@ -704,14 +743,14 @@ export class EventExplorePopupComponent {
       return;
     }
     if (record.creatorUserId === activeUserId) {
-      this.confirmationDialogService.openInfo(`You already host ${record.title}.`, {
+      this.dialogStore.openInfo(`You already host ${record.title}.`, {
         title: 'Already hosting',
         confirmTone: 'neutral'
       });
       return;
     }
     if (this.hasTrackedMembership(record, activeUserId)) {
-      this.confirmationDialogService.openInfo(`A membership entry already exists for ${record.title}.`, {
+      this.dialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
         title: 'Already requested',
         confirmTone: 'neutral'
       });
@@ -721,7 +760,7 @@ export class EventExplorePopupComponent {
       this.openEventExploreCheckout(record);
       return;
     }
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: record.title,
       cancelLabel: 'Cancel',
@@ -738,9 +777,9 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.appCtx.setUserProfile(this.resolveUser(record.creatorUserId, record));
+    this.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
-    this.navigatorService.openImpressionsPopup(record.creatorUserId);
+    this.navigatorStore.openImpressionsPopup(record.creatorUserId);
   }
 
   protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {
@@ -775,11 +814,11 @@ export class EventExplorePopupComponent {
 
   protected checkoutDraftEntries(): CheckoutDraftEntry[] {
     const activeUserId = this.activeUserId.trim();
-    return this.eventCheckoutDraftService.listByUser(activeUserId)
+    return this.eventCheckoutDraftStore.listByUser(activeUserId)
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
-        record: this.eventsService.peekKnownItemById(activeUserId, draft.sourceId)
+        record: this.eventsService.peekKnownRecordById(activeUserId, draft.sourceId)
       }));
   }
 
@@ -876,11 +915,11 @@ export class EventExplorePopupComponent {
       return;
     }
     const { draft } = entry;
-    const record = this.eventsService.peekKnownItemById(this.activeUserId, draft.sourceId)
-      ?? await this.eventsService.queryKnownItemById(this.activeUserId, draft.sourceId);
+    const record = this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
-      this.eventCheckoutDraftService.clear(this.activeUserId, draft.sourceId);
-      this.confirmationDialogService.openInfo('This checkout draft can no longer be restored.', {
+      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
+      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
         title: 'Basket unavailable',
         confirmTone: 'neutral'
       });
@@ -897,19 +936,19 @@ export class EventExplorePopupComponent {
     if (!normalizedSourceId) {
       return;
     }
-    const activeUserId = this.activeUserId.trim() || this.appCtx.activeUserId().trim() || this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.activeUserId.trim() || this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
     if (!activeUserId) {
       return;
     }
     this.activeUserId = activeUserId;
-    const draft = this.eventCheckoutDraftService.read(activeUserId, normalizedSourceId);
+    const draft = this.eventCheckoutDraftStore.read(activeUserId, normalizedSourceId);
     if (!draft) {
       return;
     }
     const entry: CheckoutDraftEntry = {
       draft,
-      record: this.eventsService.peekKnownItemById(activeUserId, normalizedSourceId)
-        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedSourceId)
+      record: this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedSourceId)
     };
     await this.continueCheckoutDraft(entry);
   }
@@ -924,10 +963,10 @@ export class EventExplorePopupComponent {
     }
     const sourceId = entry.draft.sourceId.trim();
     const record = entry.record
-      ?? this.eventsService.peekKnownItemById(this.activeUserId, sourceId)
-      ?? await this.eventsService.queryKnownItemById(this.activeUserId, sourceId);
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, sourceId);
     if (!record) {
-      this.confirmationDialogService.openInfo('This event can no longer be opened.', {
+      this.dialogStore.openInfo('This event can no longer be opened.', {
         title: 'Event unavailable',
         confirmTone: 'neutral'
       });
@@ -945,7 +984,7 @@ export class EventExplorePopupComponent {
     const activeUserId = this.activeUserId.trim();
     const sourceId = draft.sourceId.trim();
     if (!activeUserId || !sourceId) {
-      this.eventCheckoutDraftService.clear(activeUserId, sourceId);
+      this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
       this.cdr.markForCheck();
       return;
     }
@@ -954,11 +993,11 @@ export class EventExplorePopupComponent {
     }
 
     this.checkoutDraftReleaseSourceIds.add(sourceId);
-    this.eventCheckoutDraftService.clear(activeUserId, sourceId);
+    this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
-      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId)
-        ?? await this.eventsService.queryKnownItemById(activeUserId, sourceId);
+      const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, sourceId);
 
       if (!record) {
         return;
@@ -980,7 +1019,7 @@ export class EventExplorePopupComponent {
       const eventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers);
       const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
       this.checkoutDraftClearSaveSourceIds.add(sourceId);
-      const persistence = this.activitiesContext.emitActivityEventSave(eventDetailDTO);
+      const persistence = this.emitActivityEventSave(eventDetailDTO);
       this.restoreVisibleEventExploreRecord(nextRecord);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
@@ -1025,11 +1064,26 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
-    return EventExploreBuilder.buildInfoCard(record, {
+    return EventExploreInfoCardConverter.convert(record, {
       groupLabel,
       topicToneGroups: this.topicFilterGroups,
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
+  }
+
+  private buildEventExploreGroupLabel(
+    record: ActivityEventRecord,
+    view: ContractTypes.EventExploreView
+  ): string {
+    if (view === 'distance') {
+      const bucket = Math.max(5, Math.ceil(record.distanceKm / 5) * 5);
+      return `${bucket} km`;
+    }
+    const parsed = new Date(record.startAtIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Date unavailable';
+    }
+    return AppUtils.smartListDayLabel(parsed);
   }
 
   private runEventExploreServiceChatAction(record: ActivityEventRecord): void {
@@ -1037,10 +1091,10 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
-  private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatRecord & { ownerUserId?: string }) | null {
+  private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatDTO & { ownerUserId?: string }) | null {
     const activeUserId = this.activeUserId.trim();
     if (!activeUserId) {
       return null;
@@ -1068,7 +1122,7 @@ export class EventExplorePopupComponent {
     if (!targetUserId || targetUserId === this.activeUserId.trim()) {
       return;
     }
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId,
       targetName: record.creatorName?.trim() || 'Organizer',
       eventId: record.id,
@@ -1089,7 +1143,7 @@ export class EventExplorePopupComponent {
   }
 
   private openShareLinkDialog(title: string, shareToken: string): void {
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title,
       message: shareToken,
       confirmLabel: 'Copy link',
@@ -1112,7 +1166,7 @@ export class EventExplorePopupComponent {
     if (!record) {
       return;
     }
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: `${record.title}\n${slot.timeframe}`,
       cancelLabel: 'Cancel',
@@ -1185,6 +1239,18 @@ export class EventExplorePopupComponent {
     if (changed) {
       this.cdr.markForCheck();
     }
+  }
+
+  private emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
+    return this.eventsService.saveActivityEvent(payload)
+      .then(displaySync => {
+        if (displaySync) {
+          this.activitiesStore.emitActivityEventSaveResult(displaySync);
+        }
+      })
+      .catch(() => {
+        // Demo persistence is best-effort; UI state stays optimistic.
+      });
   }
 
   private applyActivityEventSave(sync: ActivityEventDTO): void {
@@ -1353,7 +1419,7 @@ export class EventExplorePopupComponent {
   }
 
   private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {
-    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftService.read(userId, sourceId));
+    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftStore.read(userId, sourceId));
   }
 
   private pendingCheckoutDraftSourceIds(): Set<string> {
@@ -1362,7 +1428,7 @@ export class EventExplorePopupComponent {
       return new Set<string>();
     }
     return new Set(
-      this.eventCheckoutDraftService.listByUser(activeUserId)
+      this.eventCheckoutDraftStore.listByUser(activeUserId)
         .filter(draft => this.isTrackableCheckoutDraft(draft))
         .map(draft => draft.sourceId.trim())
         .filter(sourceId => sourceId.length > 0)
@@ -1489,7 +1555,7 @@ export class EventExplorePopupComponent {
     const dialogOptions = {
       approvalGranted: options.approvalGranted === true
     };
-    this.eventCheckoutDialogService.open({
+    this.eventCheckoutDialogStore.open({
       mode: 'join',
       userId: this.activeUserId,
       record,
@@ -1544,7 +1610,7 @@ export class EventExplorePopupComponent {
     const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
     const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
     this.locallyTrackedMembershipSourceIds.add(record.id);
-    this.activitiesContext.emitActivityEventSave(nextEventDetailDTO);
+    this.emitActivityEventSave(nextEventDetailDTO);
 
     try {
       const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1556,19 +1622,20 @@ export class EventExplorePopupComponent {
         bookingConfirmed: isAcceptedBooking,
         pendingReason
       });
-      const [joinedRecord] = await Promise.all([requestJoinPromise, exitPromise]);
-      if (!joinedRecord) {
+      const [joinResult] = await Promise.all([requestJoinPromise, exitPromise]);
+      if (!joinResult || joinResult.membershipStatus === 'unchanged') {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
       const authoritativeMembers = this.sortMembersByActionTimeDesc(
-        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(joinedRecord))
+        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(record))
       );
       const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
-      this.activitiesContext.emitActivityEventSave(
-        this.buildActivityEventDetailDTO(joinedRecord, displayMembers, selection?.paymentSessionId ?? null)
+      const nextRecord = this.withEventExploreMemberSummary(record, displayMembers);
+      this.emitActivityEventSave(
+        this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
       if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembersRecord = joinedRecord;
+        this.selectedMembersRecord = nextRecord;
         this.selectedMembers = displayMembers;
       }
       this.cdr.markForCheck();
@@ -1576,7 +1643,7 @@ export class EventExplorePopupComponent {
       await exitPromise;
       this.locallyTrackedMembershipSourceIds.delete(record.id);
       this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
-      this.activitiesContext.emitActivityEventSave(rollbackEventDetailDTO);
+      this.emitActivityEventSave(rollbackEventDetailDTO);
       throw error;
     }
   }
@@ -1653,7 +1720,7 @@ export class EventExplorePopupComponent {
       return;
     }
     sourceIds.forEach(sourceId => {
-      const record = this.eventsService.peekKnownItemById(activeUserId, sourceId.trim());
+      const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId.trim());
       if (record) {
         this.restoreVisibleEventExploreRecord(record);
       }
@@ -1988,7 +2055,7 @@ export class EventExplorePopupComponent {
 
   private refreshUsersDirectory(): void {
     const users = this.gameService.getGameCardsUsersSnapshot();
-    const activeProfile = this.appCtx.activeUserProfile();
+    const activeProfile = this.userProfileStore.activeUserProfile();
     const nextUsers = [...users];
 
     if (activeProfile && !nextUsers.some(user => user.id === activeProfile.id)) {

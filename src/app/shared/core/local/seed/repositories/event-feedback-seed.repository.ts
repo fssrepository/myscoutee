@@ -4,14 +4,10 @@ import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { UserDto } from '../../../contracts/user.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord } from '../../source/entity/activity.entity';
-import type { ActivityEventSeedItem } from '../entity';
-
-
+import type { UserRecord } from '../../source/entity/user.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { SeedEventFeedbackBuilder } from '../builders';
-import { ActivityEventSeedMapper } from '../mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -23,13 +19,13 @@ export class SeedEventFeedbackRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
   seedDefaults(
-    seedUsers: readonly UserDto[],
+    seedUsers: readonly UserRecord[],
     eventItemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>,
     itemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>
-  ): void {
+  ): boolean {
     const users = [...seedUsers];
     if (users.length === 0) {
-      return;
+      return false;
     }
 
     const currentTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
@@ -43,11 +39,9 @@ export class SeedEventFeedbackRepository {
         continue;
       }
       const seededRecords = SeedEventFeedbackBuilder.buildSeededPersistedStates({
-        eventItems: eventRecords.map(record => ActivityEventSeedMapper.fromActivityEventRecord(record, { avatar: record.creatorInitials })),
+        eventRecords,
         users,
         activeUser,
-        eventDatesById: Object.fromEntries(eventRecords.map(record => [record.id, record.startAtIso])),
-        activityImageById: Object.fromEntries(eventRecords.map(record => [record.id, record.imageUrl ?? ''])),
         eventFeedbackUnlockDelayMs: SeedEventFeedbackRepository.EVENT_FEEDBACK_UNLOCK_DELAY_MS,
         eventOverallOptions: APP_STATIC_DATA.eventFeedbackEventOverallOptions,
         hostImproveOptions: APP_STATIC_DATA.eventFeedbackHostImproveOptions,
@@ -74,7 +68,7 @@ export class SeedEventFeedbackRepository {
     }
 
     if (!changed) {
-      return;
+      return false;
     }
 
     this.memoryDb.write(state => ({
@@ -84,10 +78,11 @@ export class SeedEventFeedbackRepository {
         ids: nextIds
       }
     }));
+    return true;
   }
 
   private seedOrganizerFeedbackShowcaseRecords(
-    users: UserDto[],
+    users: UserRecord[],
     nextById: Record<string, EventFeedbackPersistedState>,
     nextIds: string[],
     itemsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>
@@ -131,7 +126,7 @@ export class SeedEventFeedbackRepository {
         continue;
       }
 
-      const feedbackItem = this.toFeedbackViewerDemoEventSeedItem(record, viewerUserIds);
+      const feedbackEventSnapshot = this.toFeedbackEventSnapshotForViewers(record, viewerUserIds);
       for (const viewerUserId of viewerUserIds) {
         if (visibleEntryCount >= SeedEventFeedbackRepository.ORGANIZER_FEEDBACK_SHOWCASE_TARGET_COUNT) {
           break;
@@ -145,15 +140,9 @@ export class SeedEventFeedbackRepository {
           continue;
         }
         const seededRecord = SeedEventFeedbackBuilder.buildSeededSubmittedState({
-          eventItem: feedbackItem,
+          eventRecord: feedbackEventSnapshot,
           users,
           activeUser: viewer,
-          eventDatesById: {
-            [record.id]: record.startAtIso
-          },
-          activityImageById: {
-            [record.id]: record.imageUrl ?? ''
-          },
           eventFeedbackUnlockDelayMs: SeedEventFeedbackRepository.EVENT_FEEDBACK_UNLOCK_DELAY_MS,
           eventOverallOptions: APP_STATIC_DATA.eventFeedbackEventOverallOptions,
           hostImproveOptions: APP_STATIC_DATA.eventFeedbackHostImproveOptions,
@@ -189,9 +178,9 @@ export class SeedEventFeedbackRepository {
 
   private organizerFeedbackShowcaseViewerUserIds(
     record: ActivityEventRecord,
-    users: readonly UserDto[],
+    users: readonly UserRecord[],
     hostUserId: string,
-    usersById: ReadonlyMap<string, UserDto>
+    usersById: ReadonlyMap<string, UserRecord>
   ): string[] {
     const summary = this.activityMemberSummaryByOwner('event', record.id);
     const memberUserIds = [...new Set([
@@ -222,7 +211,7 @@ export class SeedEventFeedbackRepository {
     return selected;
   }
 
-  private toFeedbackViewerDemoEventSeedItem(record: ActivityEventRecord, viewerUserIds: readonly string[] = []): ActivityEventSeedItem {
+  private toFeedbackEventSnapshotForViewers(record: ActivityEventRecord, viewerUserIds: readonly string[] = []): ActivityEventRecord {
     const summary = this.activityMemberSummaryByOwner('event', record.id);
     const acceptedMemberUserIds = [...new Set([
       ...(summary.acceptedMemberUserIds ?? []),
@@ -231,9 +220,8 @@ export class SeedEventFeedbackRepository {
     const pendingMemberUserIds = (summary.pendingMemberUserIds ?? [])
       .filter(userId => !acceptedMemberUserIds.includes(userId));
     return {
-      ...ActivityEventSeedMapper.fromActivityEventRecord(record, { avatar: record.creatorInitials }),
+      ...record,
       activity: 0,
-      isAdmin: false,
       acceptedMembers: Math.max(record.acceptedMembers, acceptedMemberUserIds.length),
       capacityTotal: Math.max(record.capacityTotal, acceptedMemberUserIds.length),
       acceptedMemberUserIds,

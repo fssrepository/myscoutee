@@ -1,0 +1,187 @@
+@use '../../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.form-controls();
+@include ui.interactive-motion();
+
+.event-resource-popup-shell .experience-form-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.event-resource-popup-shell .experience-form-overlay-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 16, 30, 0.54);
+  backdrop-filter: blur(2px);
+}
+
+.event-resource-popup-shell .experience-form-popup {
+  position: relative;
+  z-index: 1;
+  width: min(620px, calc(100% - 2rem));
+  max-width: min(620px, calc(100vw - 2rem));
+  max-height: calc(100% - 1.8rem);
+  border-radius: 16px;
+  border: 1px solid rgba(42, 66, 102, 0.28);
+  background: #fff;
+  box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  font-family: inherit;
+}
+
+.event-resource-popup-shell .subevent-group-popup {
+  width: min(620px, calc(100% - 2rem));
+}
+
+.event-resource-popup-shell .experience-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.82rem 1rem;
+  border-bottom: 1px solid rgba(187, 199, 217, 0.7);
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
+}
+
+.event-resource-popup-shell .experience-form-header h3 {
+  margin: 0;
+  color: #1e385a;
+  font-size: 1.12rem;
+  font-weight: 700;
+}
+
+.event-resource-popup-shell .subevent-group-header {
+  align-items: flex-start;
+}
+
+.event-resource-popup-shell .subevent-group-header-main {
+  min-width: 0;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.event-resource-popup-shell .subevent-group-stage-subtitle {
+  margin: 0;
+  color: rgba(35, 57, 88, 0.76);
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.24;
+}
+
+.event-resource-popup-shell .experience-form-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+}
+
+.event-resource-popup-shell .experience-form-panel {
+  border: 1px solid rgba(43, 71, 107, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+  padding: 0.74rem;
+  display: grid;
+  gap: 0.78rem;
+  margin: 0;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.event-resource-popup-shell .subevent-group-form-panel {
+  background: linear-gradient(180deg, #f1f9ff 0%, #e8f3ff 100%);
+  border-color: rgba(63, 118, 188, 0.28);
+}
+
+.event-resource-popup-shell .experience-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  justify-content: stretch;
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+}
+
+.event-resource-popup-shell .subevent-group-form-grid {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  align-items: start;
+}
+
+.event-resource-popup-shell .subevent-group-form-grid label {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.22rem !important;
+}
+
+.event-resource-popup-shell .subevent-capacity-range-field {
+  width: 100%;
+}
+
+.event-resource-popup-shell .subevent-capacity-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.42rem;
+}
+
+.event-resource-popup-shell .subevent-capacity-range input {
+  width: 100%;
+}
+
+.event-resource-popup-shell .subevent-capacity-separator {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: rgba(31, 56, 89, 0.72);
+  line-height: 1;
+}
+
+.event-resource-popup-shell .subevent-resource-editor-error {
+  margin: 0;
+  color: #9b2c37;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .event-resource-popup-shell .experience-form-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    width: auto;
+    height: auto;
+    padding: 0;
+    transform: none;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .event-resource-popup-shell .experience-form-popup,
+  .event-resource-popup-shell .subevent-group-popup {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    border-radius: 0;
+  }
+
+  .event-resource-popup-shell .experience-form-panel {
+    min-height: 0;
+    flex: 1 1 auto;
+    border-radius: 0;
+  }
+}

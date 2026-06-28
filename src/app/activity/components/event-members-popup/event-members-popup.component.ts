@@ -1,4 +1,6 @@
-import { CommonModule } from '@angular/common';
+import {
+  CommonModule
+} from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -9,15 +11,27 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
-import type * as AppTypes from '../../../shared/core/base/models';
-import { AppUtils } from '../../../shared/app-utils';
+import type * as AppUiTypes from '../../../shared/ui/models';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
-import { AppContext, AppPopupContext } from '../../../shared/ui';
-import { ActivityMembersService, ChatsService, EventsService, UsersService } from '../../../shared/core';
+import {
+  ActivityMembersService,
+  ChatsService,
+  EventsService,
+  UsersService
+} from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   CounterBadgePipe,
@@ -37,11 +51,19 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { NavigatorService } from '../../../navigator';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -79,14 +101,16 @@ type MembersSummaryState = {
 })
 export class EventMembersPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -103,7 +127,7 @@ export class EventMembersPopupComponent {
   protected acceptedCount = 0;
   protected capacityTotal = 0;
   protected canShowInviteButton = false;
-  private lookupRef: AppTypes.PopupHeaderLookup | null = null;
+  private lookupRef: AppUiTypes.PopupHeaderLookup | null = null;
 
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
@@ -141,7 +165,7 @@ export class EventMembersPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -166,11 +190,11 @@ export class EventMembersPopupComponent {
     this.syncMobileViewFromViewport();
 
     effect(() => {
-      const request = this.popupCtx.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      this.popupCtx.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
@@ -194,7 +218,7 @@ export class EventMembersPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -214,7 +238,7 @@ export class EventMembersPopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented || this.isSuspendedForAssetInvite()) {
       return;
     }
-    if (this.confirmationDialogService.dialog()) {
+    if (this.dialogStore.dialog()) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -284,7 +308,7 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.popupCtx.openActivityInvitePopup({
+    this.popupStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
       title: this.subtitle,
@@ -294,7 +318,7 @@ export class EventMembersPopupComponent {
   }
 
   protected isSuspendedForAssetInvite(): boolean {
-    const invitePopup = this.popupCtx.activityInvitePopup();
+    const invitePopup = this.popupStore.activityInvitePopup();
     return !!invitePopup && invitePopup.ownerId === this.ownerId;
   }
 
@@ -419,7 +443,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Approve request?',
       message: `Approve ${entry.name} for this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -438,7 +462,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: this.memberRemovalTitle(entry),
       message: this.memberRemovalMessage(entry),
       cancelLabel: 'Cancel',
@@ -457,7 +481,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Disqualify member?',
       message: `Disqualify ${entry.name} from this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -476,7 +500,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Reinstate member?',
       message: `Reinstate ${entry.name} to this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -494,7 +518,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.membersSmartList?.closeMenu();
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId: entry.userId,
       targetName: entry.name,
       memberEntryId: entry.id,
@@ -574,7 +598,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.membersSmartList?.closeMenu();
-    this.navigatorService.openProfileView({
+    this.navigatorStore.openProfileView({
       userId,
       label: entry.name
     });
@@ -844,7 +868,7 @@ export class EventMembersPopupComponent {
       canManage?: boolean;
       viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
-      lookup?: AppTypes.PopupHeaderLookup;
+      lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
@@ -944,13 +968,13 @@ export class EventMembersPopupComponent {
     }
   ): Promise<void> {
     const activeUserId = this.activeUserId();
-    const cachedRecord = this.eventsService.peekKnownItemById(activeUserId, ownerId);
+    const cachedRecord = this.eventsService.peekKnownRecordById(activeUserId, ownerId);
     if (cachedRecord) {
       this.applyOwnerRecord(cachedRecord, options);
       return;
     }
 
-    const record = await this.eventsService.queryKnownItemById(activeUserId, ownerId);
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, ownerId);
     if (!record || !this.isOpen || this.ownerId !== ownerId) {
       return;
     }
@@ -1320,7 +1344,7 @@ export class EventMembersPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private resetSummaryState(): void {

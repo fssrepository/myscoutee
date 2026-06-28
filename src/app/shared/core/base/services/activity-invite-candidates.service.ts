@@ -1,20 +1,35 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
 import type {
   IActivityInviteCandidatesService,
   ActivityInviteOwnerContext,
   ActivityEventRecord
 } from '../../contracts/activity.interface';
-import { LocalActivityInviteCandidatesService } from '../../local/source/services/activity-invite-candidates.service';
-import { HttpActivityInviteCandidatesService } from '../../http/services/activity-invite-candidates.service';
-import { ActivityMembersService } from './activity-members.service';
-import { AppContext } from '../../../ui/context';
-import { EventsService } from './events.service';
-import { BaseRouteModeService } from './base-route-mode.service';
-import { AppUtils } from '../../../app-utils';
+import {
+  LocalActivityInviteCandidatesService
+} from '../../local/source/services/activity-invite-candidates.service';
+import {
+  HttpActivityInviteCandidatesService
+} from '../../http/services/activity-invite-candidates.service';
+import {
+  ActivityMembersService
+} from './activity-members.service';
+import {
+  EventsService
+} from './events.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import {
+  AppUtils
+} from '../../../app-utils';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import type * as AppConstants from '../../common/constants';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 const ACTIVITY_INVITE_CANDIDATES_ROUTE = '/activities/events/invite-candidates';
 
 @Injectable({
@@ -25,9 +40,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   private readonly httpActivityInviteCandidatesService = inject(HttpActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventsService = inject(EventsService);
-  private readonly appCtx = inject(AppContext);
-
-
+  private readonly userProfileStore = inject(UserProfileStore);
   private get inviteCandidatesService(): IActivityInviteCandidatesService {
     return this.resolveRouteService(
       ACTIVITY_INVITE_CANDIDATES_ROUTE,
@@ -102,8 +115,8 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     }
     const summary = this.activityMembersService.peekSummaryByOwner(ownerRef);
     const ownerRecord = ownerType === 'event'
-      ? (this.eventsService.peekKnownItemById(activeUserId, normalizedOwnerId)
-        ?? await this.eventsService.queryKnownItemById(activeUserId, normalizedOwnerId))
+      ? (this.eventsService.peekKnownRecordById(activeUserId, normalizedOwnerId)
+        ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedOwnerId))
       : null;
     const nextMembers = [...currentMembers, ...additions];
     await this.activityMembersService.replaceMembersByOwner(
@@ -133,7 +146,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
         isAdmin: true
       };
     }
-    const record = this.eventsService.peekKnownItemById(activeUserId, owner.ownerId);
+    const record = this.eventsService.peekKnownRecordById(activeUserId, owner.ownerId);
     if (!record) {
       return {
         ownerId: owner.ownerId,
@@ -182,7 +195,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
   }
 
   private activeUserId(): string {
-    const activeUserId = this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }

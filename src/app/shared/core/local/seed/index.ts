@@ -32,4 +32,3 @@ export type {
   ActivityHostingSeedItem,
   ActivityInvitationSeedItem
 } from './entity';
-export { ActivityEventSeedMapper } from './mappers';

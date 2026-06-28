@@ -2,27 +2,23 @@ import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../entity/event.en
 import type { ActivityEventRecordCollection } from '../entity/event.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
 
-import { ActivityEventRecordBuilder, ScheduleDateBuilder, UserProfileStateBuilder } from '../../../base/builders';
-import { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from '../mappers/event.mapper';
+import { UserProfileState } from '../../../common/user-profile-state';
 import {
   ActivityEventDetailDTO,
-  type ActivityEventActivitiesListQueryResult,
-  type ActivityEventActivitiesQuery,
   type ActivityEventExploreQuery,
   type ActivityEventExploreQueryResult,
   type ActivityEventRecord,
   type ActivityEventSubEventRuntimeDTO,
   type ActivityEventSubEventsQueryDTO,
-  type ActivityEventSubEventsResultDTO,
   type ActivityEventScopeFilter,
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 
 import type { LocationCoordinates } from '../../../contracts/user.interface';
@@ -34,6 +30,23 @@ interface ActivityEventActivitiesCursor {
   distanceMeters: number;
   boost: number;
   startAtMs: number;
+}
+
+interface ActivityEventActivitiesRecordQueryResult {
+  records: ActivityEventRecord[];
+  total: number;
+  nextCursor: string | null;
+}
+
+interface ActivityEventActivitiesPageOptions {
+  secondaryFilter: ContractTypes.ActivitiesSecondaryFilter;
+  sort: ContractTypes.ActivityEventActivitiesSort;
+  view: ContractTypes.ActivitiesView;
+}
+
+interface ActivityEventSubEventsRecordResult {
+  event: ActivityEventRecord;
+  items: ActivityEventSubEventRuntimeDTO[];
 }
 
 type ActivityEventExploreSortTuple = readonly [number, number, number, number];
@@ -69,6 +82,13 @@ export class LocalEventsRepository {
     return this.queryUserRecords(userId)
       .filter(record => !this.isEventAdminRecord(record, userId))
       .filter(record => !this.isInvitationRecordForUser(record, userId));
+  }
+
+  queryFeedbackCandidateItemsByUser(userId: string): ActivityEventRecord[] {
+    return this.queryUserRecords(userId)
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => !this.isInvitationRecordForUser(record, userId))
+      .filter(record => this.isAcceptedEventRecord(record, userId));
   }
 
   queryItemsByUsers(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
@@ -313,8 +333,11 @@ export class LocalEventsRepository {
     return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId);
   }
 
-  queryActivitiesEventListPage(query: ActivityEventActivitiesQuery): ActivityEventActivitiesListQueryResult {
-    const normalizedUserId = query.userId.trim();
+  queryActivitiesEventRecordPage(
+    userId: string,
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ActivityEventActivitiesRecordQueryResult {
+    const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return {
         records: [],
@@ -323,21 +346,28 @@ export class LocalEventsRepository {
       };
     }
 
+    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    const view = this.activitiesView(query);
+    const pageOptions: ActivityEventActivitiesPageOptions = {
+      secondaryFilter,
+      view,
+      sort: this.activitiesSort(query, view, secondaryFilter)
+    };
     const filteredRecords = this.queryEventRecordsByFilter(
       normalizedUserId,
-      query.filter,
-      query.hostingPublicationFilter ?? 'all'
+      this.activitiesEventScopeFilter(query),
+      this.activitiesHostingPublicationFilter(query)
     );
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const normalizedRecords = filteredRecords
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
-      .filter(record => this.matchesActivitiesSecondaryFilter(record, query.secondaryFilter))
-      .sort((left, right) => this.compareActivitiesRecords(left, right, query));
+      .filter(record => this.matchesActivitiesSecondaryFilter(record, secondaryFilter))
+      .sort((left, right) => this.compareActivitiesRecords(left, right, pageOptions));
     const total = normalizedRecords.length;
 
-    if (query.view === 'week' || query.view === 'month') {
+    if (view === 'week' || view === 'month') {
       return {
-        records: normalizedRecords.map(record => LocalActivityEventsMapper.toDto(record)),
+        records: normalizedRecords,
         total,
         nextCursor: null
       };
@@ -345,19 +375,70 @@ export class LocalEventsRepository {
 
     const cursor = this.parseActivitiesCursor(query.cursor);
     const remaining = cursor
-      ? normalizedRecords.filter(record => this.compareRecordToCursor(record, cursor, query) > 0)
+      ? normalizedRecords.filter(record => this.compareRecordToCursor(record, cursor, pageOptions) > 0)
       : normalizedRecords;
-    const limit = Math.max(1, Math.trunc(query.limit));
+    const limit = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
     const records = remaining.slice(0, limit);
     const nextCursor = remaining.length > limit && records.length > 0
       ? this.serializeActivitiesCursor(this.buildActivitiesCursor(records[records.length - 1]))
       : null;
 
     return {
-      records: records.map(record => LocalActivityEventsMapper.toDto(record)),
+      records,
       total,
       nextCursor
     };
+  }
+
+  private activitiesEventScopeFilter(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ActivityEventScopeFilter {
+    const value = query.filters?.eventScopeFilter;
+    if (
+      value === 'all'
+      || value === 'active-events'
+      || value === 'pending'
+      || value === 'invitations'
+      || value === 'my-events'
+      || value === 'drafts'
+      || value === 'trash'
+    ) {
+      return value;
+    }
+    return 'active-events';
+  }
+
+  private activitiesHostingPublicationFilter(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ContractTypes.HostingPublicationFilter {
+    return query.filters?.hostingPublicationFilter === 'drafts' ? 'drafts' : 'all';
+  }
+
+  private activitiesSecondaryFilter(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>
+  ): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
+  private activitiesView(query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>): ContractTypes.ActivitiesView {
+    const value = query.view;
+    return value === 'month' || value === 'week' || value === 'distance' ? value : 'day';
+  }
+
+  private activitiesSort(
+    query: ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>,
+    view: ContractTypes.ActivitiesView,
+    secondaryFilter: ContractTypes.ActivitiesSecondaryFilter
+  ): ContractTypes.ActivityEventActivitiesSort {
+    const value = query.sort;
+    if (value === 'date' || value === 'distance' || value === 'relevance') {
+      return value;
+    }
+    if (view === 'distance') {
+      return 'distance';
+    }
+    return secondaryFilter === 'relevant' ? 'relevance' : 'date';
   }
 
   queryExploreItems(userId: string): ActivityEventRecord[] {
@@ -375,11 +456,11 @@ export class LocalEventsRepository {
       }
       const existing = byEventId.get(record.id);
       if (!existing || this.shouldPreferExploreRecord(record, existing)) {
-        byEventId.set(record.id, this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
+        byEventId.set(record.id, this.withResolvedSlotContext(record, table));
       }
     }
 
-    return [...byEventId.values()].map(record => ActivityEventRecordBuilder.cloneRecord(record));
+    return [...byEventId.values()];
   }
 
   queryEventRecordById(userId: string, eventId: string): ActivityEventRecord | null {
@@ -395,7 +476,7 @@ export class LocalEventsRepository {
     }
     const viewerCoordinates = this.queryUserLocationCoordinates(userId);
     return this.withResolvedDistance(
-      this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table),
+      this.withResolvedSlotContext(record, table),
       viewerCoordinates
     );
   }
@@ -404,7 +485,7 @@ export class LocalEventsRepository {
     userId: string,
     eventId: string,
     query?: ActivityEventSubEventsQueryDTO
-  ): ActivityEventSubEventsResultDTO | null {
+  ): ActivityEventSubEventsRecordResult | null {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
@@ -421,11 +502,9 @@ export class LocalEventsRepository {
     const parentRecord = preferredRecords.find(item => item.id === parentEventId && !this.isGeneratedSlotRecord(item))
       ?? selectedRecord;
     const viewerCoordinates = this.queryUserLocationCoordinates(userId);
-    const event = LocalActivityEventDetailsMapper.toDto(
-      this.withResolvedDistance(
-        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(parentRecord), table),
-        viewerCoordinates
-      )
+    const event = this.withResolvedDistance(
+      this.withResolvedSlotContext(parentRecord, table),
+      viewerCoordinates
     );
     const allGeneratedSlots = preferredRecords
       .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
@@ -586,66 +665,16 @@ export class LocalEventsRepository {
     };
   }
 
-  syncEventSnapshot(payload: ActivityEventDetailDTO): ActivityEventRecord | null {
-    const normalizedId = payload.id.trim();
-    const creatorUserId = payload.creatorUserId?.trim() ?? '';
-    if (!normalizedId || !creatorUserId) {
+  saveEventSnapshot(record: ActivityEventRecord): ActivityEventRecord | null {
+    if (!record.id || !record.creatorUserId) {
       return null;
     }
-
-    const creatorName = payload.creatorName?.trim() || 'Unknown Host';
-    const creatorInitials = payload.creatorInitials?.trim() || AppUtils.initialsFromText(creatorName);
-    const startAtIso = payload.startAtIso?.trim() || new Date().toISOString();
-    const endAtIso = payload.endAtIso?.trim()
-      || new Date(new Date(startAtIso).getTime() + (2 * 60 * 60 * 1000)).toISOString();
-    const normalizedPayload = payload.clone().apply({
-      id: normalizedId,
-      creatorUserId
-    });
-    const acceptedMembers = this.normalizeCount(normalizedPayload.acceptedMembers)
-      ?? this.eventMemberUserIdsByStatus(normalizedId, 'accepted').length;
-    const pendingMembers = this.normalizeCount(normalizedPayload.pendingMembers)
-      ?? this.eventMemberUserIdsByStatus(normalizedId, 'pending').length;
-    const capacityTotal = Math.max(
-      acceptedMembers,
-      this.normalizeCount(normalizedPayload.capacityTotal)
-        ?? this.normalizeCount(normalizedPayload.capacityMax)
-        ?? acceptedMembers
-    );
-    const existing = this.findItem(creatorUserId, normalizedId);
-    const usersTable = this.memoryDb.read()[USERS_TABLE_NAME];
-    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
-    const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'accepted');
-    const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, normalizedId, 'pending');
-    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
-      member.status === 'pending' && this.isInvitationMember(member)
-    );
-    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(membersTable, normalizedId, member =>
-      member.status === 'pending' && !this.isInvitationMember(member)
-    );
-    const baseRecord = LocalActivityEventDetailsMapper.toRecord(normalizedPayload, {
-      existing,
-      userId: creatorUserId,
-      creatorName,
-      creatorInitials,
-      startAtIso,
-      endAtIso,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal,
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      invitedMemberUserIds,
-      pendingRequestMemberUserIds,
-      creator: usersTable.byId[creatorUserId] ?? null,
-      acceptedUsers: acceptedMemberUserIds.map(userId => usersTable.byId[userId] ?? null)
-    });
 
     this.memoryDb.write(state => {
       const table = state[EVENTS_TABLE_NAME];
       const nextById = { ...table.byId };
       const nextIds = [...table.ids];
-      this.upsertRecord(nextById, nextIds, baseRecord);
+      this.upsertRecord(nextById, nextIds, record);
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
@@ -655,7 +684,7 @@ export class LocalEventsRepository {
       };
     });
     this.materializeSlotRecords();
-    return this.peekKnownItemById(creatorUserId, normalizedId);
+    return this.peekKnownItemById(record.creatorUserId, record.id);
   }
 
   trashItem(userId: string, sourceId: string): void {
@@ -1210,7 +1239,7 @@ export class LocalEventsRepository {
     if (!normalizedUserId) {
       return 0;
     }
-    const eventItems = this.queryEventItemsByUser(normalizedUserId);
+    const eventItems = this.queryFeedbackCandidateItemsByUser(normalizedUserId);
     const feedbackTable = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
     const nowMs = Date.now();
     return eventItems.filter(item => {
@@ -1306,7 +1335,7 @@ export class LocalEventsRepository {
       return null;
     }
     const record = this.memoryDb.read()[EVENTS_TABLE_NAME].byId[recordKey];
-    return record ? ActivityEventRecordBuilder.cloneRecord(record) : null;
+    return record ? record : null;
   }
 
   private resolveRecordKey(
@@ -1347,7 +1376,7 @@ export class LocalEventsRepository {
       .filter((record): record is ActivityEventRecord => Boolean(record))
       .filter(record => record.userId === normalizedUserId)
       .filter(record => this.shouldIncludeUserDirectRecord(record, normalizedUserId, preferredRecordByEventId.get(record.id)))
-      .map(record => this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table));
+      .map(record => this.withResolvedSlotContext(record, table));
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
@@ -1390,7 +1419,7 @@ export class LocalEventsRepository {
         continue;
       }
       recordsByUserId.get(recordUserId)?.push(
-        this.withResolvedSlotContext(ActivityEventRecordBuilder.cloneRecord(record), table)
+        this.withResolvedSlotContext(record, table)
       );
       const directIds = directIdsByUserId.get(recordUserId) ?? new Set<string>();
       directIds.add(record.id);
@@ -1415,7 +1444,7 @@ export class LocalEventsRepository {
     const normalizedUserId = userId.trim();
     const pending = this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId);
     return {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
+      ...record,
       userId,
       type: 'events',
       pendingReason: pending ? (record.pendingReason ?? 'approval') : null
@@ -1459,9 +1488,7 @@ export class LocalEventsRepository {
       return false;
     }
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
-    return user
-      ? UserProfileStateBuilder.isEmptyOnboardingProfile(user)
-      : UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
+    return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 
   private computePreferredEventRecords(table: ActivityEventRecordCollection): ActivityEventRecord[] {
@@ -1514,11 +1541,11 @@ export class LocalEventsRepository {
   ): ActivityEventRecord {
     const eventCoordinates = this.normalizeLocationCoordinates(record.locationCoordinates);
     if (!viewerCoordinates || !eventCoordinates) {
-      return ActivityEventRecordBuilder.cloneRecord(record);
+      return record;
     }
     const distanceMeters = this.haversineDistanceMeters(viewerCoordinates, eventCoordinates);
     return {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
+      ...record,
       distanceKm: Math.round((distanceMeters / 1000) * 10) / 10
     };
   }
@@ -1526,10 +1553,10 @@ export class LocalEventsRepository {
   private compareActivitiesRecords(
     left: ActivityEventRecord,
     right: ActivityEventRecord,
-    query: ActivityEventActivitiesQuery
+    options: ActivityEventActivitiesPageOptions
   ): number {
-    if (query.view === 'distance' || query.sort === 'distance') {
-      if (query.secondaryFilter === 'relevant') {
+    if (options.view === 'distance' || options.sort === 'distance') {
+      if (options.secondaryFilter === 'relevant') {
         return this.distanceOrderValue(left) - this.distanceOrderValue(right)
           || this.boostOrderValue(right) - this.boostOrderValue(left)
           || this.timestampOrderValue(right) - this.timestampOrderValue(left)
@@ -1540,14 +1567,14 @@ export class LocalEventsRepository {
         || this.compareRecordIdentity(left, right);
     }
 
-    if (query.secondaryFilter === 'relevant') {
+    if (options.secondaryFilter === 'relevant') {
       return this.dayOrderValue(left) - this.dayOrderValue(right)
         || this.boostOrderValue(right) - this.boostOrderValue(left)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
     }
 
-    if (query.secondaryFilter === 'past') {
+    if (options.secondaryFilter === 'past') {
       return this.dayOrderValue(right) - this.dayOrderValue(left)
         || this.timestampOrderValue(right) - this.timestampOrderValue(left)
         || this.compareRecordIdentity(left, right);
@@ -1561,16 +1588,16 @@ export class LocalEventsRepository {
   private compareRecordToCursor(
     record: ActivityEventRecord,
     cursor: ActivityEventActivitiesCursor,
-    query: ActivityEventActivitiesQuery
+    options: ActivityEventActivitiesPageOptions
   ): number {
     const cursorRecord: ActivityEventRecord = {
-      ...ActivityEventRecordBuilder.cloneRecord(record),
+      ...record,
       id: cursor.id,
       distanceKm: cursor.distanceMeters / 1000,
       boost: cursor.boost,
       startAtIso: new Date(cursor.startAtMs).toISOString()
     };
-    return this.compareActivitiesRecords(record, cursorRecord, query);
+    return this.compareActivitiesRecords(record, cursorRecord, options);
   }
 
   private buildActivitiesCursor(record: ActivityEventRecord): ActivityEventActivitiesCursor {
@@ -1634,7 +1661,7 @@ export class LocalEventsRepository {
 
   private matchesActivitiesSecondaryFilter(
     record: ActivityEventRecord,
-    secondaryFilter: ActivityEventActivitiesQuery['secondaryFilter']
+    secondaryFilter: ContractTypes.ActivitiesSecondaryFilter
   ): boolean {
     if (secondaryFilter === 'past') {
       return this.isPastActivitiesRecord(record);
@@ -1804,7 +1831,7 @@ export class LocalEventsRepository {
       record.creatorUserId,
       ...this.eventAcceptedMemberUserIds(record)
     ].some(userId =>
-      userId !== activeUserId && UserProfileStateBuilder.isFriendOfActiveUser(userId, activeUserId)
+      userId !== activeUserId && UserProfileState.isFriendOfActiveUser(userId, activeUserId)
     );
   }
 
@@ -1855,7 +1882,7 @@ export class LocalEventsRepository {
     if (record.visibility === 'Invitation only') {
       return false;
     }
-    if (record.visibility === 'Friends only' && !UserProfileStateBuilder.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
+    if (record.visibility === 'Friends only' && !UserProfileState.isFriendOfActiveUser(record.creatorUserId, activeUserId)) {
       return false;
     }
     return true;
@@ -1875,8 +1902,8 @@ export class LocalEventsRepository {
     ids: string[],
     record: ActivityEventRecord
   ): void {
-    const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
-    byId[recordKey] = ActivityEventRecordBuilder.cloneRecord(record);
+    const recordKey = `${record.userId}:${record.type}:${record.id}`;
+    byId[recordKey] = record;
     if (!ids.includes(recordKey)) {
       ids.push(recordKey);
     }
@@ -2558,14 +2585,14 @@ export class LocalEventsRepository {
         if (!desired) {
           return true;
         }
-        return recordKey !== ActivityEventRecordBuilder.buildRecordKey(desired.userId, desired.type, desired.id);
+        return recordKey !== `${desired.userId}:${desired.type}:${desired.id}`;
       });
       for (const recordKey of staleRecordKeys) {
         delete nextById[recordKey];
         changed = true;
       }
       for (const record of generatedRecords) {
-        const recordKey = ActivityEventRecordBuilder.buildRecordKey(record.userId, record.type, record.id);
+        const recordKey = `${record.userId}:${record.type}:${record.id}`;
         const current = nextById[recordKey];
         if (!current || JSON.stringify(current) !== JSON.stringify(record)) {
           nextById[recordKey] = record;
@@ -2600,7 +2627,7 @@ export class LocalEventsRepository {
       return [];
     }
 
-    const scheduleAnchorMs = ScheduleDateBuilder.anchorDate().getTime();
+    const scheduleAnchorMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
     const dayMs = 24 * 60 * 60 * 1000;
     const horizonStart = new Date(Math.max(parentStart.getTime(), scheduleAnchorMs - dayMs));
     const horizonEnd = new Date(Math.min(parentEnd.getTime(), scheduleAnchorMs + (45 * dayMs)));

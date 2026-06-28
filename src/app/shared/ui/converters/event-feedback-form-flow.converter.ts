@@ -1,12 +1,11 @@
-import type * as AppTypes from '../../core/base/models';
-import { EventFeedbackBuilder } from '../../core/base/builders';
+import type * as AppTypes from '../models';
 import { EventFeedbackDetailDto } from '../../core/contracts/activity.interface';
 import type {
   AppMenuItem,
   AppMenuModel,
   AppMenuPalette
-} from '../components/menu';
-import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/form/flow';
+} from '../components/core/menu';
+import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/core/form/flow';
 import type { UiConverter } from './converter.types';
 import {
   EventFeedbackDetailConverter,
@@ -28,8 +27,8 @@ export class EventFeedbackFormFlowConverter {
     detail: EventFeedbackDetailDto | null | undefined,
     options: EventFeedbackFormFlowConverterOptions = {}
   ): FormFlowModel {
-    const normalizedDetail = EventFeedbackBuilder.cloneDetail(detail);
-    const cards = this.cardsForDetail(normalizedDetail);
+    const normalizedDetail = new EventFeedbackDetailDto(detail);
+    const cards = EventFeedbackDetailConverter.convert(normalizedDetail);
     return {
       title: 'Event Feedback',
       subtitle: options.eventTitle?.trim() || normalizedDetail.title,
@@ -253,9 +252,5 @@ export class EventFeedbackFormFlowConverter {
       return 'sky';
     }
     return 'blue';
-  }
-
-  private static cardsForDetail(detail: EventFeedbackDetailDto): AppTypes.EventFeedbackCard[] {
-    return EventFeedbackDetailConverter.convert(detail);
   }
 }

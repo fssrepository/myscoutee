@@ -1,7 +1,14 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import {
+  HttpClient
+} from '@angular/common/http';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
+import {
+  environment
+} from '../../../../../environments/environment';
 import type {
   ProfileExtDto,
   ProfileExtByIdQueryResponse,
@@ -15,6 +22,8 @@ import type {
   UserMenuCountersDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
+  UserRealtimeLongPollStop,
+  UserRealtimeLongPollTask,
   UserReportUserSubmitRequestDto,
   UserSelectorRole,
   UserService,
@@ -23,12 +32,23 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import { AppContext } from '../../../ui/context';
-import { UserRealtimeSnapshotMapper } from '../../base/mappers';
-import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
-import { OfflineCacheService } from '../../base/services/offline-cache.service';
-import { RouteDelayService } from '../../base/services/route-delay.service';
-import { SessionService } from '../../base/services/session.service';
+import {
+  bootstrapProcessStep,
+  type BootstrapProcessState
+} from '../../base/services/bootstrap.service';
+import {
+  OfflineCacheService
+} from '../../base/services/offline-cache.service';
+import {
+  RouteDelayService
+} from '../../base/services/route-delay.service';
+import {
+  RouteIntervalSchedulerService
+} from '../../base/services/route-interval-scheduler.service';
+import {
+  SessionService
+} from '../../base/services/session.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -44,9 +64,10 @@ export class HttpUsersService implements UserService {
   private static readonly USER_DELETE_ROUTE = '/auth/me/delete';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private readonly http = inject(HttpClient);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly offlineCache = inject(OfflineCacheService);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -84,7 +105,7 @@ export class HttpUsersService implements UserService {
 
   peekCachedUserById(userId: string): UserDto | null {
     const cached = this.offlineCache.readUser(userId.trim());
-    return cached?.user ? this.cloneUser(cached.user) : null;
+    return cached?.user ?? null;
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -131,12 +152,11 @@ export class HttpUsersService implements UserService {
       if (!me) {
         return this.readUserByIdFallback(normalizedUserId) ?? { user: null };
       }
-      const user = this.cloneUser(me);
       return this.cacheUserResponse({
-        user,
+        user: me,
         filterCount: Number.isFinite(me.filterCount) ? Math.max(0, Math.trunc(Number(me.filterCount))) : undefined,
         filterPreferences: me.filterPreferences ?? null,
-        counterOverrides: this.buildInitialMenuCounterOverrides(user, me.counterOverrides)
+        counterOverrides: this.buildInitialMenuCounterOverrides(me, me.counterOverrides)
       });
     } catch (error) {
       if (this.isTimeoutError(error, 'User details request timeout.')) {
@@ -160,7 +180,7 @@ export class HttpUsersService implements UserService {
         'User profile request timeout.',
         requestTimeoutMs
       );
-      const profileExt = this.cloneProfileExt(response?.profileExt ?? null);
+      const profileExt = response?.profileExt ?? null;
       if (!profileExt) {
         const cached = this.readProfileExtByIdFallback(normalizedUserId);
         return cached ?? { profileExt: null };
@@ -210,15 +230,28 @@ export class HttpUsersService implements UserService {
         requestTimeoutMs
       );
       if (!response || !response.counters) {
-        return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
+        return null;
       }
-      return UserRealtimeSnapshotMapper.snapshot(response, normalizedUserId, cursor);
+      return {
+        userId: response.userId ?? normalizedUserId,
+        counters: response.counters,
+        impressions: response.impressions,
+        cursor: response.cursor,
+        serverTsIso: response.serverTsIso
+      };
     } catch (error) {
       if (this.isTimeoutError(error, 'User realtime request timeout.')) {
         throw error;
       }
-      return this.buildFallbackLongPollSnapshot(normalizedUserId, cursor);
+      return null;
     }
+  }
+
+  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop {
+    return this.routeIntervalScheduler.startInterval(
+      HttpUsersService.USER_REALTIME_LONG_POLL_ROUTE,
+      task
+    );
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
@@ -254,9 +287,9 @@ export class HttpUsersService implements UserService {
       requestTimeoutMs
     );
     if (!response) {
-      return this.cloneUser(user);
+      return user;
     }
-    return this.cloneUser(response);
+    return response;
   }
 
   async saveUserProfileExt(request: ProfileExtDto, requestTimeoutMs?: number): Promise<UserDto | null> {
@@ -272,9 +305,9 @@ export class HttpUsersService implements UserService {
       requestTimeoutMs
     );
     if (!response) {
-      return this.cloneUser(request.profile);
+      return request.profile;
     }
-    return this.cloneUser(response);
+    return response;
   }
 
   async submitUserFeedback(
@@ -425,84 +458,6 @@ export class HttpUsersService implements UserService {
     }
   }
 
-  private cloneUser(user: UserDto): UserDto {
-    return {
-      ...user,
-      locationCoordinates: user.locationCoordinates
-        ? {
-            latitude: Number(user.locationCoordinates.latitude),
-            longitude: Number(user.locationCoordinates.longitude)
-          }
-        : undefined,
-      languages: [...(user.languages ?? [])],
-      images: [...(user.images ?? [])],
-      profileDetails: this.cloneProfileDetails(user.profileDetails),
-      impressions: UserRealtimeSnapshotMapper.impressions(user.impressions),
-      activities: {
-        game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
-        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
-        invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
-        events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
-        hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
-        cars: Math.max(0, Math.trunc(Number(user.activities?.cars) || 0)),
-        accommodation: Math.max(0, Math.trunc(Number(user.activities?.accommodation) || 0)),
-        supplies: Math.max(0, Math.trunc(Number(user.activities?.supplies) || 0)),
-        tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
-        contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
-        feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
-        event: {
-          all: this.normalizeInitialCounterValue(user.activities?.event?.all, 0),
-          active: this.normalizeInitialCounterValue(user.activities?.event?.active, 0),
-          pending: this.normalizeInitialCounterValue(user.activities?.event?.pending, 0),
-          invitations: this.normalizeInitialCounterValue(user.activities?.event?.invitations, 0),
-          hosting: this.normalizeInitialCounterValue(user.activities?.event?.hosting, 0),
-          drafts: this.normalizeInitialCounterValue(user.activities?.event?.drafts, 0),
-          trash: this.normalizeInitialCounterValue(user.activities?.event?.trash, 0)
-        },
-        asset: {
-          cars: this.normalizeInitialCounterValue(user.activities?.asset?.cars, 0),
-          accommodation: this.normalizeInitialCounterValue(user.activities?.asset?.accommodation, 0),
-          supplies: this.normalizeInitialCounterValue(user.activities?.asset?.supplies, 0),
-          tickets: this.normalizeInitialCounterValue(user.activities?.asset?.tickets, 0)
-        },
-        eventFeedback: {
-          ownEvents: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.ownEvents, 0),
-          pending: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.pending, 0),
-          feedbacked: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.feedbacked, 0),
-          removed: this.normalizeInitialCounterValue(user.activities?.eventFeedback?.removed, 0)
-        },
-        adminJobs: Math.max(0, Math.trunc(Number(user.activities?.adminJobs) || 0)),
-        adminMetrics: Math.max(0, Math.trunc(Number(user.activities?.adminMetrics) || 0))
-      }
-    };
-  }
-
-  private cloneProfileDetails(groups: UserDto['profileDetails']): UserDto['profileDetails'] {
-    if (!groups) {
-      return undefined;
-    }
-    return groups.map(group => ({
-      title: `${group.title ?? ''}`,
-      rows: (group.rows ?? []).map(row => ({
-        labelKey: `${row.labelKey ?? ''}`,
-        value: `${row.value ?? ''}`,
-        privacy: row.privacy,
-        options: [...(row.options ?? [])]
-      }))
-    }));
-  }
-
-  private cloneProfileExt(profileExt: ProfileExtDto | null | undefined): ProfileExtDto | null {
-    const profile = profileExt?.profile ? this.cloneUser(profileExt.profile) : null;
-    if (!profile) {
-      return null;
-    }
-    return {
-      profile,
-      experienceEntries: (profileExt?.experienceEntries ?? []).map(entry => ({ ...entry }))
-    };
-  }
-
   private cacheUserResponse(response: UserByIdQueryResponse): UserByIdQueryResponse {
     if (!response.user?.id?.trim()) {
       return response;
@@ -516,7 +471,7 @@ export class HttpUsersService implements UserService {
     if (cached?.user) {
       return {
         profileExt: {
-          profile: this.cloneUser(cached.user),
+          profile: cached.user,
           experienceEntries: []
         },
         filterCount: cached.filterCount,
@@ -529,7 +484,7 @@ export class HttpUsersService implements UserService {
     return fallback?.user
       ? {
           profileExt: {
-            profile: this.cloneUser(fallback.user),
+            profile: fallback.user,
             experienceEntries: []
           },
           filterCount: fallback.filterCount,
@@ -545,10 +500,10 @@ export class HttpUsersService implements UserService {
       return null;
     }
 
-    const activeProfile = this.appCtx.activeUserProfile();
+    const activeProfile = this.userProfileStore.activeUserProfile();
     if (activeProfile) {
       return {
-        user: this.cloneUser(activeProfile)
+        user: activeProfile
       };
     }
 
@@ -566,7 +521,7 @@ export class HttpUsersService implements UserService {
       return null;
     }
 
-    return this.cloneUser({
+    return {
       id: session.profile.id.trim(),
       name: session.profile.name.trim(),
       age: 0,
@@ -622,7 +577,7 @@ export class HttpUsersService implements UserService {
         adminJobs: 0,
         adminMetrics: 0
       }
-    });
+    };
   }
 
   private buildInitialMenuCounterOverrides(
@@ -675,19 +630,6 @@ export class HttpUsersService implements UserService {
       return Math.max(0, Math.trunc(Number(fallbackValue)));
     }
     return 0;
-  }
-
-  private async buildFallbackLongPollSnapshot(
-    normalizedUserId: string,
-    cursor: string | null
-  ): Promise<UserRealtimeLongPollResponseDto | null> {
-    const byIdResponse = await this.queryUserById(normalizedUserId);
-    if (!byIdResponse.user) {
-      return null;
-    }
-    return UserRealtimeSnapshotMapper.snapshotFromUser(byIdResponse.user, cursor, {
-      userId: normalizedUserId
-    });
   }
 
   private postAbortable<T>(url: string, body: unknown, signal?: AbortSignal): Promise<T | null> {

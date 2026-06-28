@@ -28,12 +28,23 @@ export {
   type ActivityEventInfoCardConverterOptions
 } from './activity-event-info-card.converter';
 export {
+  EventExploreInfoCardConverter,
+  eventExploreInfoCardConverter,
+  type EventExploreInfoCardConverterOptions,
+  type EventExploreTopicToneGroup
+} from './event-explore-info-card.converter';
+export {
   ActivityEventInfoCardMenuConverter,
   activityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuContext,
   type ActivityEventInfoCardMenuConverterOptions,
   type ActivityEventInfoCardMenuSubject
 } from './activity-event-info-card-menu.converter';
+export {
+  ActivitySubEventResourceInfoCardConverter,
+  activitySubEventResourceInfoCardConverter,
+  type ActivitySubEventResourceInfoCardConverterOptions
+} from './activity-sub-event-resource-info-card.converter';
 export {
   ActivityRateImageCardConverter,
   activityRateImageCardConverter,
@@ -103,6 +114,11 @@ export {
   ProfileHeaderCardConverter,
   type ProfileHeaderCardConverterOptions
 } from './profile-header-card.converter';
+export {
+  UserRealtimeUiConverter,
+  type UserRealtimeUiPatch,
+  type UserRealtimeUiPatchInput
+} from './user-realtime-ui.converter';
 export {
   CalendarCardConverter,
   calendarCardConverter,

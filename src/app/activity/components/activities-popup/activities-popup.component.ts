@@ -10,31 +10,78 @@ import {
   OnDestroy,
   ViewChild
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type { ChatDTO, ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import {
+  APP_STATIC_DATA,
+  type RateFilterEntry
+} from '../../../shared/app-static-data';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
   type ActivityEventDTO,
-  type ActivityMembersSummary
+  type ActivityMembersSummaryDto
 } from '../../../shared/core/contracts/activity.interface';
 import type {
   ActivityRateDTO
 } from '../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { AppUtils } from '../../../shared/app-utils';
-import { AppContext, AppPopupContext, type ActivityCounterKey, type ActivityCounters, type ActivityMembersSyncState } from '../../../shared/ui';
-import { ActivitiesPopupStateService } from '../../services/activities-popup-state.service';
-import { EventEditorPopupStateService } from '../../services/event-editor-popup-state.service';
-import { OwnedAssetsPopupFacadeService } from '../../../asset/owned-assets-popup-facade.service';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  type ActivityCounterKey,
+  type ActivityCounters,
+  type ActivityMembersSyncState
+} from '../../../shared/ui';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
-import type * as AppTypes from '../../../shared/core/base/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuComponent, AppMenuDispatcher, type AppMenuGroup, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, I18nPipe, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuDispatcher,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  EventCheckoutPopupComponent,
+  type CardProfileViewData,
+  type ImageCardData,
+  type InfoCardData,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type CardMenuActionEvent,
+  type ListQuery,
+  type PageResult,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListLoadContext,
+  type SmartListLoadPage,
+  type SmartListMenuItemsContext,
+  type SmartListItemSelectEvent,
+  type SmartListPresentation,
+  type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -46,27 +93,55 @@ import type {
   ActivityEventInfoCardMenuContext,
   ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { EventCheckoutDialogService } from '../../../shared/ui/services/event-checkout-dialog.service';
-import { EventCheckoutDraftService, type EventCheckoutDraft } from '../../../shared/ui/services/event-checkout-draft.service';
-import { NavigatorService } from '../../../navigator';
-import { ActivitiesPopupToolbarController } from './activities-popup-toolbar.controller';
 import {
-  ActivitiesChatTemplateComponent, ActivitiesChatsController
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  EventCheckoutDialogStore
+} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import {
+  EventCheckoutDraftStore,
+  type EventCheckoutDraft
+} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ActivitiesChatTemplateComponent,
+  ActivitiesChatsController
 } from './templates/chat/activities-chat-template.component';
 import {
-  ActivitiesEventTemplateComponent, ActivitiesEventsController
+  ActivitiesEventTemplateComponent,
+  ActivitiesEventsController
 } from './templates/event/activities-event-template.component';
 import {
-  ActivitiesRateTemplateComponent, ActivitiesRatesController, type ActivitiesRateTemplateContext
+  ActivitiesRateTemplateComponent,
+  ActivitiesRatesController,
+  type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import {
-  ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, ExplanationGuideService, RatesService, ShareTokensService, UsersService } from '../../../shared/core';
-import { I18nService } from '../../../shared/core';
+  ActivityMembersBuilder,
+  ActivitiesService,
+  ActivityMembersService,
+  ActivityResourcesService,
+  ChatsService,
+  EventsService,
+  ExplanationGuideService,
+  RatesService,
+  ShareTokensService,
+  UsersService
+} from '../../../shared/core';
+import {
+  I18nService
+} from '../../../shared/core';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
-import type * as AppDTOs from '../../../shared/core/base/dto';
+import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
@@ -74,6 +149,11 @@ type ActivityEventSaveMessage = ActivityEventDTO;
 type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 type ActivityPopupEventType = 'events' | 'hosting' | 'invitations';
 type ActivitySmartListDTO = ActivityEventDTO | ChatDTO | ActivityRateDTO;
+
+interface ActivityDateTimeRange {
+  startIso: string;
+  endIso: string;
+}
 
 interface ActivityPopupCardBase {
   id: string;
@@ -127,13 +207,7 @@ type ActivityPopupCard =
   | ActivityPopupRateCard
   | ActivityPopupChatCard;
 
-interface ActivitiesEventScopeOption {
-  key: ContractTypes.ActivitiesEventScope;
-  label: string;
-  icon: string;
-}
-
-type ActivitiesToolbarMenuContext =
+type ActivitiesPopupMenuContext =
   | { menu: 'primary'; value: ContractTypes.ActivitiesPrimaryFilter }
   | { menu: 'event-scope'; value: ContractTypes.ActivitiesEventScope }
   | { menu: 'chat-context'; value: ContractTypes.ActivitiesChatContextFilter }
@@ -150,13 +224,12 @@ type ActivitiesToolbarMenuContext =
   imports: [
     CommonModule,
     MatIconModule,
-    AppMenuComponent,
     SmartListComponent,
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
     EventCheckoutPopupComponent,
-    I18nPipe
+    PopupComponent,
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
@@ -164,7 +237,6 @@ type ActivitiesToolbarMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
-  readonly activitiesToolbar = new ActivitiesPopupToolbarController(this as never);
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
   private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
@@ -172,23 +244,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // ── injected ──────────────────────────────────────────────────────────────
   protected readonly cdr = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  protected readonly activitiesContext = inject(ActivitiesPopupStateService);
+  protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activitiesService = inject(ActivitiesService);
-  protected readonly eventEditorService = inject(EventEditorPopupStateService);
+  protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly ratesService = inject(RatesService);
   protected readonly activityMembersService = inject(ActivityMembersService);
   protected readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
   protected readonly eventsService = inject(EventsService);
   protected readonly shareTokensService = inject(ShareTokensService);
-  protected readonly appCtx = inject(AppContext);
-  protected readonly popupCtx = inject(AppPopupContext);
-  private readonly ownedAssets = inject(OwnedAssetsPopupFacadeService);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly usersService = inject(UsersService);
-  protected readonly confirmationDialogService = inject(ConfirmationDialogService);
-  protected readonly eventCheckoutDialogService = inject(EventCheckoutDialogService);
-  protected readonly navigatorService = inject(NavigatorService);
-  private readonly eventCheckoutDraftService = inject(EventCheckoutDraftService);
+  protected readonly dialogStore = inject(DialogStore);
+  protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
+  protected readonly navigatorStore = inject(NavigatorStore);
+  private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
@@ -204,7 +278,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getRateItems: () => this.rateItems,
     getSmartListCursorItem: () => this.activitiesSmartList?.cursorItem() ?? null,
     getActivitiesListScrollElement: () => this.activitiesListScrollElement(),
-    getPaginationHostElement: () => this.activitiesSmartList?.paginationHostElement() ?? null,
+    getPaginationMenuHeight: () => this.activitiesSmartList?.paginationMenuHeightPx() ?? 0,
+    isPaginationMenuTarget: target => this.activitiesSmartList?.isPaginationMenuTarget(target) ?? false,
     isMobileView: () => this.isMobileView,
     isCalendarLayoutView: () => this.isCalendarLayoutView(),
     shouldShowFullscreenToggle: () => this.shouldShowRatesFullscreenToggle(),
@@ -232,8 +307,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getActivityRateDraftById: () => this.activityRateDraftById,
     getActivityRateDirectionOverrideById: () => this.activityRateDirectionOverrideById,
     getPendingActivityRateDirectionOverrideById: () => this.pendingActivityRateDirectionOverrideById,
-    setSelectedRateIdInContext: value => this.activitiesContext.setActivitiesSelectedRateId(value),
-    setFullscreenModeInContext: value => this.activitiesContext.setActivitiesRatesFullscreenMode(value),
+    setSelectedRateIdInContext: value => this.activitiesStore.setActivitiesSelectedRateId(value),
+    setFullscreenModeInContext: value => this.activitiesStore.setActivitiesRatesFullscreenMode(value),
     recordActivityRate: (item, score, direction) => this.ratesService.recordActivityRate(this.activeUser.id, item, score, direction),
     refreshRateCards: rowId => this.refreshActivitiesRateCards(rowId),
     markForCheck: () => this.cdr.markForCheck(),
@@ -248,12 +323,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected get users(): UserDto[] {
     return this.usersService.peekCachedUsers() as UserDto[];
   }
-  protected activeUser: UserDto = (this.appCtx.activeUserProfile() as UserDto | null)
+  protected activeUser: UserDto = (this.userProfileStore.activeUserProfile() as UserDto | null)
     ?? this.users[0]
     ?? this.createFallbackActiveUser();
 
   protected activityItems: ActivitySmartListDTO[] = [];
-  protected chatItems: ChatRecord[] = [];
+  protected chatItems: ChatDTO[] = [];
   protected rateItems: ActivityRateDTO[] = [];
 
   protected get chatBadge(): number { return this.activityCounterValue('chat'); }
@@ -268,7 +343,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected activeHostingIds: ReadonlySet<string> = new Set<string>();
 
-  protected activityDateTimeRangeById: Record<string, AppTypes.ActivityDateTimeRange> = {};
+  protected activityDateTimeRangeById: Record<string, ActivityDateTimeRange> = {};
 
   protected eventDatesById: Record<string, string> = {};
   protected hostingDatesById: Record<string, string> = {};
@@ -289,31 +364,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
-  private adminSupportBoardPollTimer: ReturnType<typeof setInterval> | null = null;
+  private stopAdminSupportBoardPoll: (() => void) | null = null;
+  private adminSupportBoardPollInFlight = false;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
 
-  protected get assetCards(): AppDTOs.AssetCardDTO[] {
-    return this.ownedAssets.assetCards;
+  protected get assetCards(): AppDTOs.AssetDTO[] {
+    return this.assetStore.assetCards();
   }
 
   private activityCounterValue(key: ActivityCounterKey): number {
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     const activeUserId = activeUser?.id?.trim() ?? '';
     if (!activeUser || !activeUserId) {
       return 0;
     }
-    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
     return this.normalizeBadgeCounter(overrides[key] ?? activeUser.activities?.[key]);
   }
 
   private eventCounterValue(key: ActivityEventCounterKey): number {
-    const activeUser = this.appCtx.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     const activeUserId = activeUser?.id?.trim() ?? '';
     if (!activeUser || !activeUserId) {
       return 0;
     }
-    const overrides = this.appCtx.getUserCounterOverrides(activeUserId);
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
     return this.normalizeBadgeCounter(overrides.event?.[key] ?? activeUser.activities?.event?.[key]);
   }
 
@@ -332,46 +408,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesSmartList?: SmartListComponent<ActivityPopupCard, ActivitiesSmartListFilters>;
   // ── Static data ───────────────────────────────────────────────────────────
   protected readonly activityRatingScale   = APP_STATIC_DATA.activityRatingScale;
-  protected readonly activitiesPrimaryFilters: Array<{ key: ContractTypes.ActivitiesPrimaryFilter; label: string; icon: string }> = [
-    { key: 'rates', label: 'Rates', icon: 'star' },
-    { key: 'chats', label: 'Chats', icon: 'chat' },
-    { key: 'events', label: 'Events', icon: 'event' }
-  ];
-  protected readonly activitiesEventScopeFilters: ReadonlyArray<ActivitiesEventScopeOption> = [
-    { key: 'all', label: 'All', icon: 'widgets' },
-    { key: 'active-events', label: 'Active Events', icon: 'event' },
-    { key: 'pending', label: 'Pending', icon: 'pending_actions' },
-    { key: 'invitations', label: 'Invitations', icon: 'mail' },
-    { key: 'my-events', label: 'My Events', icon: 'stadium' },
-    { key: 'drafts', label: 'Drafts', icon: 'drafts' },
-    { key: 'trash', label: 'Trash', icon: 'delete' }
-  ];
-  protected readonly activitiesSecondaryFilters: Array<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }>
-    = [...APP_STATIC_DATA.activitiesSecondaryFilters];
-  protected readonly activitiesChatContextFilters: Array<{ key: ContractTypes.ActivitiesChatContextFilter; label: string; icon: string }>
-    = [...APP_STATIC_DATA.activitiesChatContextFilters];
-  protected readonly activitiesSupportCaseFilters: Array<{ key: ContractTypes.SupportCaseFilter; labelKey: string; icon: string }> = [
-    { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
-    { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
-    { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
-    { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
-    { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
-  ];
-  protected readonly rateFilters: Array<{ key: ContractTypes.RateFilterKey; label: string }>
-    = [...APP_STATIC_DATA.rateFilters];
-  protected readonly rateFilterEntries: AppTypes.RateFilterEntry[]
-    = [...APP_STATIC_DATA.rateFilterEntries];
-  protected readonly activitiesViewOptions: Array<{ key: ContractTypes.ActivitiesView; label: string; icon: string }>
-    = [...APP_STATIC_DATA.activitiesViewOptions];
   protected activitiesRateSocialBadgeEnabled = false;
   protected activitiesIndividualRateSocialBadgeEnabled = false;
   protected activitiesPairRateSocialBadgeEnabled = false;
 
   protected get isBlockedUser(): boolean {
-    return this.appCtx.activeUserProfile()?.profileStatus === 'blocked';
+    return this.userProfileStore.activeUserProfile()?.profileStatus === 'blocked';
   }
 
-  // ── Filter / view state – backed by EventEditorPopupStateService signals ───────────
+  // ── Filter / view state – backed by popup store signals ───────────
   // Local copies are kept in sync via an effect() so that OnPush CD fires
   // correctly without needing toSignal() everywhere in the template.
   protected activitiesPrimaryFilter: ContractTypes.ActivitiesPrimaryFilter        = 'chats';
@@ -410,7 +455,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     footerSpacerHeight: null,
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     pagination: {
       mode: () => {
@@ -508,27 +553,27 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected selectedActivityMembersRowId: string | null = null;
   protected readonly trashedActivityRowsByKey: Record<string, ActivityPopupCard> = {};
 
-  protected getChatLastSender(item: ChatRecord): UserDto {
+  protected getChatLastSender(item: ChatDTO): UserDto {
     return this.activitiesChats.getChatLastSender(item);
   }
 
-  protected getChatMemberCount(item: ChatRecord): number {
+  protected getChatMemberCount(item: ChatDTO): number {
     return this.activitiesChats.getChatMemberCount(item);
   }
 
-  protected chatChannelType(item: ChatRecord): ContractTypes.ChatChannelType {
+  protected chatChannelType(item: ChatDTO): ContractTypes.ChatChannelType {
     return this.activitiesChats.chatChannelType(item);
   }
 
-  protected chatItemsForActivities(): ChatRecord[] {
+  protected chatItemsForActivities(): ChatDTO[] {
     return this.activitiesChats.chatItemsForActivities();
   }
 
-  protected activityChatContextFilterKey(item: ChatRecord): ContractTypes.ActivitiesChatContextFilter | null {
+  protected activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {
     return this.activitiesChats.activityChatContextFilterKey(item);
   }
 
-  protected openActivityChat(chat: ChatRecord): void {
+  protected openActivityChat(chat: ChatDTO): void {
     this.activitiesChats.openActivityChat(chat);
   }
 
@@ -547,11 +592,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (!resolvedChat) {
         return;
       }
-      const activeSession = this.activitiesContext.eventChatSession();
+      const activeSession = this.activitiesStore.eventChatSession();
       if (activeSession?.item.id !== resolvedChat.id) {
         return;
       }
-      this.activitiesContext.patchEventChatSessionItem(current =>
+      this.activitiesStore.patchEventChatSessionItem(current =>
         current.id === resolvedChat.id
           ? resolvedChat
           : current
@@ -587,7 +632,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const owner = this.activityMembersOwnerForRow(membersRow);
     const summary = this.resolveActivityMembersPopupSummary(membersRow);
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: owner.ownerId,
       ownerType: owner.ownerType,
@@ -613,7 +658,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!subject) {
       return context.menu.items;
     }
-    const activeUserId = this.appCtx.activeUserId().trim() || this.activeUser.id;
+    const activeUserId = this.userProfileStore.activeUserId().trim() || this.activeUser.id;
     return ActivityEventInfoCardMenuConverter.convert(subject, {
       activeUserId,
       hiddenActions: ['editEvent', 'manageEvent']
@@ -666,7 +711,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
-    this.navigatorService.openProfileView(profileView);
+    this.navigatorStore.openProfileView(profileView);
   }
 
   protected isActivityIdentityTrashed(type: ActivityPopupCard['type'], id: string): boolean {
@@ -691,32 +736,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.hydrateStandaloneFallbackState();
     this.syncMobileViewFromViewport();
 
-    // Sync service signal state → local properties so OnPush CD fires.
+    // Sync store signal state → local properties so OnPush CD fires.
     effect(() => {
-      const svc = this.activitiesContext;
-      this.activitiesPrimaryFilter       = svc.activitiesPrimaryFilter() as ContractTypes.ActivitiesPrimaryFilter;
-      this.activitiesEventScope         = svc.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
-      this.activitiesChatContextFilter   = svc.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;
-      this.activitiesSupportCaseFilter   = svc.activitiesSupportCaseFilter() as ContractTypes.SupportCaseFilter;
-      this.activitiesSecondaryFilter     = svc.activitiesSecondaryFilter() as ContractTypes.ActivitiesSecondaryFilter;
-      this.hostingPublicationFilter      = svc.activitiesHostingPublicationFilter() as ContractTypes.HostingPublicationFilter;
-      this.activitiesRateFilter          = svc.activitiesRateFilter() as ContractTypes.RateFilterKey;
-      this.activitiesRateSocialBadgeEnabled = svc.activitiesRateSocialBadgeEnabled();
-      this.activitiesIndividualRateSocialBadgeEnabled = svc.activitiesIndividualRateSocialBadgeEnabled();
-      this.activitiesPairRateSocialBadgeEnabled = svc.activitiesPairRateSocialBadgeEnabled();
-      this.activitiesView                = svc.activitiesView() as ContractTypes.ActivitiesView;
-      this.showActivitiesViewPicker      = svc.activitiesShowViewPicker();
-      this.showActivitiesSecondaryPicker = svc.activitiesShowSecondaryPicker();
-      this.activitiesStickyValue         = svc.activitiesStickyValue();
-      this.activitiesRatesFullscreenMode = svc.activitiesRatesFullscreenMode();
-      this.selectedActivityRateId        = svc.activitiesSelectedRateId();
+      const store = this.activitiesStore;
+      this.activitiesPrimaryFilter       = store.activitiesPrimaryFilter() as ContractTypes.ActivitiesPrimaryFilter;
+      this.activitiesEventScope          = store.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
+      this.activitiesChatContextFilter   = store.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;
+      this.activitiesSupportCaseFilter   = store.activitiesSupportCaseFilter() as ContractTypes.SupportCaseFilter;
+      this.activitiesSecondaryFilter     = store.activitiesSecondaryFilter() as ContractTypes.ActivitiesSecondaryFilter;
+      this.hostingPublicationFilter      = store.activitiesHostingPublicationFilter() as ContractTypes.HostingPublicationFilter;
+      this.activitiesRateFilter          = store.activitiesRateFilter() as ContractTypes.RateFilterKey;
+      this.activitiesRateSocialBadgeEnabled = store.activitiesRateSocialBadgeEnabled();
+      this.activitiesIndividualRateSocialBadgeEnabled = store.activitiesIndividualRateSocialBadgeEnabled();
+      this.activitiesPairRateSocialBadgeEnabled = store.activitiesPairRateSocialBadgeEnabled();
+      this.activitiesView                = store.activitiesView() as ContractTypes.ActivitiesView;
+      this.showActivitiesViewPicker      = store.activitiesShowViewPicker();
+      this.showActivitiesSecondaryPicker = store.activitiesShowSecondaryPicker();
+      this.activitiesStickyValue         = store.activitiesStickyValue();
+      this.activitiesRatesFullscreenMode = store.activitiesRatesFullscreenMode();
+      this.selectedActivityRateId        = store.activitiesSelectedRateId();
       this.syncActivitiesSmartListQuery();
       this.cdr.markForCheck();
     });
 
     effect(() => {
-      const activeUserId = this.appCtx.activeUserId().trim();
-      const nextActiveUser = (this.appCtx.activeUserProfile() as UserDto | null)
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+      const nextActiveUser = (this.userProfileStore.activeUserProfile() as UserDto | null)
         ?? this.users.find(user => user.id === activeUserId)
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
@@ -727,8 +772,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isOpen = this.activitiesContext.activitiesOpen();
-      const primaryFilter = this.activitiesContext.activitiesPrimaryFilter();
+      const isOpen = this.activitiesStore.activitiesOpen();
+      const primaryFilter = this.activitiesStore.activitiesPrimaryFilter();
       const contextKey = isOpen && primaryFilter === 'rates'
         ? 'activities.rates'
         : isOpen && primaryFilter === 'chats'
@@ -740,7 +785,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const session = this.activitiesContext.eventChatSession();
+      const session = this.activitiesStore.eventChatSession();
       if (!session) {
         return;
       }
@@ -749,20 +794,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     effect(() => {
       this.configureAdminSupportBoardPolling(
-        this.activitiesContext.activitiesOpen() && this.activitiesContext.activitiesAdminServiceOnly()
+        this.activitiesStore.activitiesOpen() && this.activitiesStore.activitiesAdminServiceOnly()
       );
     });
 
     effect(() => {
       if (this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant') {
-        this.activitiesContext.setActivitiesSecondaryFilter('recent');
+        this.activitiesStore.setActivitiesSecondaryFilter('recent');
       }
     });
 
     // React to open events: reset scroll state whenever the popup is opened.
     effect(() => {
-      const isOpen = this.activitiesContext.activitiesOpen();
-      const openRevision = this.activitiesContext.activitiesOpenRevision();
+      const isOpen = this.activitiesStore.activitiesOpen();
+      const openRevision = this.activitiesStore.activitiesOpenRevision();
       if (!isOpen) {
         this.lastHandledActivitiesOpenRevision = openRevision;
         return;
@@ -774,7 +819,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const sync = this.activitiesContext.activityEventSave();
+      const sync = this.activitiesStore.activityEventSave();
       if (!sync) {
         return;
       }
@@ -783,7 +828,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.eventCheckoutDraftService.drafts();
+      this.eventCheckoutDraftStore.drafts();
       const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
       const hadPendingDraftRemoval = [...this.lastPendingCheckoutDraftSourceIds]
         .some(sourceId => !nextPendingDraftSourceIds.has(sourceId));
@@ -791,7 +836,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
       this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       this.refreshSectionBadges();
-      const shouldReloadEventList = this.activitiesContext.activitiesOpen()
+      const shouldReloadEventList = this.activitiesStore.activitiesOpen()
         && (hadPendingDraftRemoval || hasNewPendingDraft)
         && this.activitiesPrimaryFilter === 'events'
         && this.activitiesEventScope !== 'pending';
@@ -802,12 +847,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
-      if (this.eventEditorService.isOpen()) {
+      if (this.eventEditorStore.isOpen()) {
         return;
       }
       this.applyActivityMembersSyncState(sync);
@@ -815,7 +860,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.ownedAssets.assetListRevision();
+      this.assetStore.assetListRevision();
       this.cdr.markForCheck();
     });
 
@@ -827,13 +872,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (keyboardEvent.defaultPrevented) {
       return;
     }
-    if (!this.activitiesContext.activitiesOpen()) {
+    if (!this.activitiesStore.activitiesOpen()) {
       return;
     }
-    if (this.confirmationDialogService.dialog()) {
+    if (this.dialogStore.dialog()) {
       return;
     }
-    if (this.eventEditorService.isOpen()) {
+    if (this.eventEditorStore.isOpen()) {
       return;
     }
     event.stopPropagation();
@@ -894,7 +939,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private createFallbackActiveUser(): UserDto {
     return {
-      id: this.appCtx.activeUserId().trim(),
+      id: this.userProfileStore.activeUserId().trim(),
       name: 'Demo User',
       age: 0,
       birthday: '',
@@ -919,7 +964,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private hydrateStandaloneFallbackState(): void {
     if (!this.activeUser) {
-      this.activeUser = (this.appCtx.activeUserProfile() as UserDto | null)
+      this.activeUser = (this.userProfileStore.activeUserProfile() as UserDto | null)
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
     }
@@ -948,13 +993,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
         ...item,
         memberIds: [...(item.memberIds ?? [])]
       }));
-      const activeSessionChat = this.activitiesContext.eventChatSession()?.item ?? null;
+      const activeSessionChat = this.activitiesStore.eventChatSession()?.item ?? null;
       if (activeSessionChat) {
         const activeSessionIndex = nextItems.findIndex(item => item.id === activeSessionChat.id);
         if (activeSessionIndex >= 0) {
           nextItems[activeSessionIndex] = {
             ...nextItems[activeSessionIndex],
             ...activeSessionChat,
+            ownerUserId: activeSessionChat.ownerUserId?.trim() || nextItems[activeSessionIndex].ownerUserId,
             memberIds: [...(activeSessionChat.memberIds ?? [])]
           };
           nextItems = this.sortChatRecords(nextItems);
@@ -980,27 +1026,107 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private configureAdminSupportBoardPolling(enabled: boolean): void {
     if (!enabled) {
-      if (this.adminSupportBoardPollTimer) {
-        clearInterval(this.adminSupportBoardPollTimer);
-        this.adminSupportBoardPollTimer = null;
-      }
+      this.stopAdminSupportBoardPoll?.();
+      this.stopAdminSupportBoardPoll = null;
+      this.adminSupportBoardPollInFlight = false;
       return;
     }
-    if (this.adminSupportBoardPollTimer) {
+    if (this.stopAdminSupportBoardPoll) {
       return;
     }
-    this.adminSupportBoardPollTimer = setInterval(() => {
-      if (!this.activitiesContext.activitiesOpen() || !this.isAdminServiceChatMode()) {
-        return;
-      }
-      if (this.confirmationDialogService.dialog() || this.activitiesContext.eventChatSession()) {
-        return;
-      }
-      this.activitiesSmartList?.reload();
-    }, 30000);
+    this.stopAdminSupportBoardPoll = this.activitiesService.startActivityChatsPoll(() => {
+      void this.refreshAdminSupportBoardFromPoll();
+    });
   }
 
-  private syncChatItemFromOpenSession(chat: ChatRecord): void {
+  private async refreshAdminSupportBoardFromPoll(): Promise<void> {
+    const canPoll = () =>
+      this.activitiesStore.activitiesOpen()
+      && this.isAdminServiceChatMode()
+      && this.activitiesPrimaryFilter === 'chats'
+      && !this.isCalendarLayoutView()
+      && !this.dialogStore.dialog()
+      && !this.activitiesStore.eventChatSession();
+    const pollSignature = () => [
+      this.activeUser?.id ?? '',
+      this.activitiesView,
+      this.activitiesSecondaryFilter,
+      this.activitiesChatContextFilter,
+      this.activitiesSupportCaseFilter
+    ].join('|');
+
+    if (this.adminSupportBoardPollInFlight || !canPoll()) {
+      return;
+    }
+    const querySignature = pollSignature();
+    const smartList = this.activitiesSmartList;
+    const visibleLimit = Math.max(
+      1,
+      smartList?.itemsSnapshot().length ?? 0,
+      this.activitiesPageSize * 2
+    );
+    const currentFilters = this.activitiesSmartListQuery.filters ?? {};
+    this.adminSupportBoardPollInFlight = true;
+    try {
+      const page = await this.activitiesService.loadActivityChats(
+        {
+          ...this.activitiesSmartListQuery,
+          page: 0,
+          pageSize: visibleLimit,
+          cursor: undefined,
+          view: this.activitiesView,
+          filters: {
+            ...currentFilters,
+            primaryFilter: 'chats',
+            secondaryFilter: this.activitiesSecondaryFilter,
+            chatContextFilter: 'service',
+            supportCaseFilter: this.activitiesSupportCaseFilter,
+            adminServiceOnly: true
+          }
+        },
+        { chatItems: this.chatItems }
+      );
+      if (!canPoll() || querySignature !== pollSignature()) {
+        return;
+      }
+      const items = Array.isArray(page.items)
+        ? page.items.map(item => this.cloneChatRecord(item))
+        : [];
+      const total = Number.isFinite(page.total)
+        ? Math.max(0, Math.trunc(Number(page.total)))
+        : items.length;
+      const isSupportChat = (chat: ChatDTO) =>
+        Boolean(chat.supportCaseStatus) || `${chat.id ?? ''}`.trim().startsWith('c-support-admin-');
+      if ((page.nextCursor ?? null) === null && total <= items.length && this.activitiesSupportCaseFilter === 'all') {
+        this.chatItems = this.sortChatRecords([
+          ...this.chatItems.filter(item => !isSupportChat(item)),
+          ...items
+        ]);
+      } else {
+        const itemsById = new Map(this.chatItems.map(item => [item.id, this.cloneChatRecord(item)]));
+        for (const item of items) {
+          itemsById.set(item.id, item);
+        }
+        this.chatItems = this.sortChatRecords([...itemsById.values()]);
+      }
+
+      if (smartList?.syncVisibleItems(
+        this.buildActivityChatCards(items.slice(0, visibleLimit)),
+        { total }
+      )) {
+        this.visibleActivityRows = [...smartList.itemsSnapshot()];
+        this.visibleActivityRowsSource = smartList.itemsSnapshot();
+      }
+      this.refreshSectionBadges();
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the current board snapshot if the background poll is unavailable.
+    } finally {
+      this.adminSupportBoardPollInFlight = false;
+    }
+  }
+
+  private syncChatItemFromOpenSession(chat: ChatDTO): void {
     const currentIndex = this.chatItems.findIndex(item => item.id === chat.id);
     if (currentIndex < 0) {
       const nextChat = this.cloneChatRecord(chat);
@@ -1023,7 +1149,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private syncVisibleChatRow(chat: ChatRecord): void {
+  private syncVisibleChatRow(chat: ChatDTO): void {
     const smartList = this.activitiesSmartList;
     if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
       return;
@@ -1040,7 +1166,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.replaceVisibleActivityItems(nextItems);
   }
 
-  private doesChatMatchActiveContextFilter(chat: ChatRecord): boolean {
+  private doesChatMatchActiveContextFilter(chat: ChatDTO): boolean {
     if (this.activitiesChatContextFilter === 'all') {
       return this.doesChatMatchActiveSupportCaseFilter(chat);
     }
@@ -1049,42 +1175,217 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isAdminServiceChatMode(): boolean {
-    return this.activitiesContext.activitiesAdminServiceOnly();
+    return this.activitiesStore.activitiesAdminServiceOnly();
   }
 
-  protected supportCaseFilterLabelKey(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
+  protected activitiesPopupModel(): PopupModel<ActivitiesPopupMenuContext> {
+    return {
+      title: 'Activities',
+      subtitle: this.activitiesHeaderLineOne(),
+      secondarySubtitle: this.activitiesHeaderLineTwo(),
+      ariaLabel: 'Activities',
+      closeAriaLabel: 'Close activities',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.activitiesPopupHeaderControls(),
+      toolbarControls: this.activitiesPopupToolbarControls(),
+      onClose: () => this.closeActivitiesPopup(),
+      onAction: event => this.onActivitiesPopupAction(event),
+      onMenuSelect: event => this.onActivitiesPopupMenuSelect(event)
+    };
   }
 
-  protected supportCaseFilterIcon(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return this.activitiesSupportCaseFilters.find(option => option.key === filter)?.icon ?? 'list';
-  }
-
-  protected supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): number {
-    const normalized = this.normalizeSupportCaseFilter(filter);
-    const supportCases = this.chatItems.filter(chat => Boolean(chat.supportCaseStatus));
-    if (normalized === 'all') {
-      return supportCases.length;
+  private onActivitiesPopupAction(event: PopupActionEvent): void {
+    switch (event.action.id) {
+      case 'event-explore':
+        this.requestOpenEventExplore();
+        return;
+      case 'rates-fullscreen-toggle':
+        this.activitiesRates.toggleFullscreenMode(event.sourceEvent);
+        return;
+      default:
+        return;
     }
-    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
   }
 
-  protected supportCaseFilterClass(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
-    return `support-case-filter-${filter === 'all' ? 'all' : filter}`;
+  private onActivitiesPopupMenuSelect(event: PopupMenuSelectEvent<ActivitiesPopupMenuContext>): void {
+    const context = event.itemSelect.context;
+    if (!context) {
+      return;
+    }
+    switch (context.menu) {
+      case 'primary':
+        this.selectActivitiesPrimaryFilter(context.value);
+        return;
+      case 'event-scope':
+        this.selectActivitiesEventScope(context.value);
+        return;
+      case 'chat-context':
+        this.selectActivitiesChatContextFilter(context.value);
+        return;
+      case 'rate':
+        this.selectActivitiesRateFilter(context.value);
+        return;
+      case 'rate-social':
+        this.toggleRateSocialBadgeForGroup(context.value);
+        return;
+      case 'secondary':
+        this.selectActivitiesSecondaryFilter(context.value);
+        return;
+      case 'view':
+        this.setActivitiesView(context.value, event.itemSelect.sourceEvent);
+        return;
+      case 'support-case':
+        this.selectActivitiesSupportCaseFilter(context.value);
+        return;
+      case 'quick-action':
+        if (context.value === 'explore') {
+          this.requestOpenEventExplore();
+          return;
+        }
+        this.requestOpenEventEditor();
+        return;
+      default:
+        return;
+    }
   }
 
-  protected activitiesSupportCaseMenuTrigger(): AppMenuTrigger {
+  private activitiesPopupHeaderControls(): PopupControl<ActivitiesPopupMenuContext>[] {
+    const controls: PopupControl<ActivitiesPopupMenuContext>[] = [];
+    if (this.activitiesPrimaryFilter === 'chats' && this.isAdminServiceChatMode()) {
+      controls.push({
+        kind: 'menu',
+        id: 'support-case',
+        trigger: this.activitiesSupportCaseMenuTrigger(),
+        items: this.activitiesSupportCaseMenuItems()
+      });
+    }
+    if (!this.isCalendarLayoutView() && this.activitiesPrimaryFilter !== 'chats') {
+      controls.push({
+        kind: 'menu',
+        id: 'secondary',
+        trigger: this.activitiesSecondaryMenuTrigger(),
+        items: this.activitiesSecondaryMenuItems()
+      });
+    }
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      controls.push({
+        kind: 'menu',
+        id: 'view',
+        trigger: this.activitiesViewMenuTrigger(),
+        items: this.activitiesViewMenuItems()
+      });
+    }
+    return controls;
+  }
+
+  private activitiesPopupToolbarControls(): PopupControl<ActivitiesPopupMenuContext>[] {
+    const controls: PopupControl<ActivitiesPopupMenuContext>[] = [];
+    if (!this.isAdminServiceChatMode()) {
+      controls.push({
+        kind: 'menu',
+        id: 'primary',
+        trigger: this.activitiesPrimaryMenuTrigger(),
+        items: this.activitiesPrimaryMenuItems()
+      });
+    }
+    if (this.isEventActivitiesPrimaryFilter()) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-scope',
+        trigger: this.activitiesEventScopeMenuTrigger(),
+        items: this.activitiesEventScopeMenuItems()
+      });
+    }
+    if (this.activitiesPrimaryFilter === 'chats' && !this.isAdminServiceChatMode()) {
+      controls.push({
+        kind: 'menu',
+        id: 'chat-context',
+        trigger: this.activitiesChatContextMenuTrigger(),
+        items: this.activitiesChatContextMenuItems()
+      });
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      controls.push({
+        kind: 'menu',
+        id: 'rate',
+        trigger: this.activitiesRateMenuTrigger(),
+        model: this.activitiesRateMenuModel()
+      });
+    }
+    if (this.shouldShowStandaloneEventExploreAction()) {
+      controls.push({
+        id: 'event-explore',
+        align: 'end',
+        icon: 'explore',
+        label: 'Explore',
+        ariaLabel: 'Open event explore',
+        palette: 'violet',
+        compactOnMobile: true
+      });
+    }
+    if (this.shouldShowRatesFullscreenToggle()) {
+      controls.push({
+        id: 'rates-fullscreen-toggle',
+        align: 'end',
+        icon: this.isRatesFullscreenModeActive() ? 'fullscreen_exit' : 'fullscreen',
+        ariaLabel: this.isRatesFullscreenModeActive() ? 'Exit rates fullscreen mode' : 'Open rates fullscreen mode',
+        palette: this.isRatesFullscreenModeActive() ? 'blue' : 'gold',
+        active: this.isRatesFullscreenModeActive()
+      });
+    }
+    if (this.shouldShowActivitiesQuickActions()) {
+      controls.push({
+        kind: 'menu',
+        id: 'quick-actions',
+        align: 'end',
+        trigger: this.activitiesQuickActionsMenuTrigger(),
+        items: this.activitiesQuickActionsMenuItems(),
+        panelAlign: 'end'
+      });
+    }
+    return controls;
+  }
+
+  private activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return this.activitiesChatsHeaderLabel();
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+      const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+      return `${group} · ${label}`;
+    }
+    if (this.isEventActivitiesPrimaryFilter()) {
+      if (this.isCalendarLayoutView()) {
+        return `Events · ${this.activitiesEventScopeLabel()}`;
+      }
+      return this.activitiesEventScopeLabel();
+    }
+    if (this.isCalendarLayoutView()) {
+      return this.activitiesPrimaryFilterLabel();
+    }
+    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+  }
+
+  private activitiesHeaderLineTwo(): string {
+    return '';
+  }
+
+  private activitiesSupportCaseMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
       label: this.supportCaseFilterLabelKey(),
       icon: this.supportCaseFilterIcon(),
       palette: this.supportCasePalette(this.activitiesSupportCaseFilter),
-      counter: this.supportCaseFilterCount(),
+      counter: this.supportCaseFilterCount(this.activitiesSupportCaseFilter),
       layout: 'pill'
     });
   }
 
-  protected activitiesSupportCaseMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesSupportCaseFilters.map(option => this.activitiesMenuItem({
+  private activitiesSupportCaseMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.activitiesSupportCaseFilters().map(option => this.activitiesMenuItem({
       id: `support-case:${option.key}`,
       label: option.labelKey,
       icon: option.icon,
@@ -1095,102 +1396,102 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }));
   }
 
-  protected activitiesPrimaryMenuTrigger(): AppMenuTrigger {
+  private activitiesPrimaryMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesPrimaryFilterLabel(),
-      icon: this.activitiesToolbar.activitiesPrimaryFilterIcon(),
+      label: this.activitiesPrimaryFilterLabel(),
+      icon: this.activitiesPrimaryFilterIcon(),
       palette: this.activitiesPrimaryPalette(this.activitiesPrimaryFilter),
-      counter: this.activitiesToolbar.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
+      counter: this.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
     });
   }
 
-  protected activitiesPrimaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesPrimaryFilters.map(option => this.activitiesMenuItem({
+  private activitiesPrimaryMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.activitiesPrimaryFilters().map(option => this.activitiesMenuItem({
       id: `primary:${option.key}`,
       label: option.label,
       icon: option.icon,
       palette: this.activitiesPrimaryPalette(option.key),
-      counter: this.activitiesToolbar.activitiesPrimaryFilterCount(option.key),
+      counter: this.activitiesPrimaryFilterCount(option.key),
       active: option.key === this.activitiesPrimaryFilter,
       context: { menu: 'primary', value: option.key }
     }));
   }
 
-  protected activitiesEventScopeMenuTrigger(): AppMenuTrigger {
+  private activitiesEventScopeMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
       label: this.activitiesEventScopeLabel(),
-      icon: this.activitiesToolbar.activitiesEventScopeIcon(),
+      icon: this.activitiesEventScopeIcon(),
       palette: this.activitiesEventScopePalette(this.activitiesEventScope),
-      counter: this.activitiesToolbar.activitiesEventScopeCount()
+      counter: this.activitiesEventScopeCount(this.activitiesEventScope)
     });
   }
 
-  protected activitiesEventScopeMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesEventScopeFilters.map(option => this.activitiesMenuItem({
+  private activitiesEventScopeMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.activitiesEventScopeFilters().map(option => this.activitiesMenuItem({
       id: `event-scope:${option.key}`,
       label: option.label,
       icon: option.icon,
       palette: this.activitiesEventScopePalette(option.key),
-      counter: this.activitiesToolbar.activitiesEventScopeCount(option.key),
+      counter: this.activitiesEventScopeCount(option.key),
       active: option.key === this.activitiesEventScope,
       context: { menu: 'event-scope', value: option.key }
     }));
   }
 
-  protected activitiesChatContextMenuTrigger(): AppMenuTrigger {
+  private activitiesChatContextMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesChatContextFilterLabel(),
-      icon: this.activitiesToolbar.activitiesChatContextFilterIcon(),
+      label: this.activitiesChatContextFilterLabel(),
+      icon: this.activitiesChatContextFilterIcon(),
       palette: this.activitiesChatContextPalette(this.activitiesChatContextFilter),
-      counter: this.activitiesToolbar.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
+      counter: this.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
     });
   }
 
-  protected activitiesChatContextMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesChatContextFilters.map(option => this.activitiesMenuItem({
+  private activitiesChatContextMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return APP_STATIC_DATA.activitiesChatContextFilters.map(option => this.activitiesMenuItem({
       id: `chat-context:${option.key}`,
       label: option.label,
       icon: option.icon,
       palette: this.activitiesChatContextPalette(option.key),
-      counter: this.activitiesToolbar.activitiesChatContextFilterCount(option.key),
+      counter: this.activitiesChatContextFilterCount(option.key),
       active: option.key === this.activitiesChatContextFilter,
       context: { menu: 'chat-context', value: option.key }
     }));
   }
 
-  protected activitiesRateMenuTrigger(): AppMenuTrigger {
+  private activitiesRateMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesRateFilterLabel(),
-      icon: this.activitiesToolbar.activitiesRateFilterIcon(this.activitiesRateFilter),
+      label: this.activitiesRateFilterLabel(),
+      icon: this.activitiesRateFilterIcon(this.activitiesRateFilter),
       palette: this.activitiesRatePalette(this.activitiesRateFilter),
-      counter: this.activitiesToolbar.selectedRateFilterCount()
+      counter: this.rateFilterCount(this.activitiesRateFilter)
     });
   }
 
-  protected activitiesRateMenuModel(): AppMenuModel<string, ActivitiesToolbarMenuContext> {
-    type RateMenuNode = Omit<AppMenuGroup<string, ActivitiesToolbarMenuContext>, 'items' | 'headerActions'> & {
-      items: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
-      headerActions?: AppMenuItem<string, ActivitiesToolbarMenuContext>[];
+  private activitiesRateMenuModel(): AppMenuModel<string, ActivitiesPopupMenuContext> {
+    type RateMenuNode = Omit<AppMenuGroup<string, ActivitiesPopupMenuContext>, 'items' | 'headerActions'> & {
+      items: AppMenuItem<string, ActivitiesPopupMenuContext>[];
+      headerActions?: AppMenuItem<string, ActivitiesPopupMenuContext>[];
     };
     const nodes: RateMenuNode[] = [];
-    let currentNode: typeof nodes[number] | null = null;
-    for (const option of this.rateFilterEntries) {
+    let currentNode: RateMenuNode | null = null;
+    for (const option of APP_STATIC_DATA.rateFilterEntries as RateFilterEntry[]) {
       if (option.kind === 'group') {
         const groupLabel = option.label;
         const groupPalette = this.activitiesRateGroupPalette(groupLabel);
         currentNode = {
           id: `rate-group:${groupLabel}`,
-          label: this.activitiesToolbar.rateGroupOptionLabelKey(groupLabel),
-          icon: this.activitiesToolbar.rateSocialBadgeGroupIconForGroup(groupLabel),
+          label: this.rateGroupOptionLabelKey(groupLabel),
+          icon: this.rateSocialBadgeGroupIconForGroup(groupLabel),
           palette: groupPalette,
           items: [],
-          headerActions: this.activitiesToolbar.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
+          headerActions: this.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
             ? [{
               id: `rate-social:${groupLabel}`,
-              label: this.activitiesToolbar.rateSocialBadgeButtonLabelForGroup(groupLabel),
-              icon: this.activitiesToolbar.rateSocialBadgeToggleIconForGroup(groupLabel),
+              label: this.rateSocialBadgeButtonLabelForGroup(groupLabel),
+              icon: this.rateSocialBadgeToggleIconForGroup(groupLabel),
               kind: 'toggle',
-              active: this.activitiesToolbar.isRateSocialBadgeToggleActiveForGroup(groupLabel),
+              active: this.isRateSocialBadgeToggleActiveForGroup(groupLabel),
               closeOnSelect: false,
               palette: groupPalette,
               context: { menu: 'rate-social', value: groupLabel }
@@ -1212,10 +1513,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       currentNode.items.push(this.activitiesMenuItem({
         id: `rate:${option.key}`,
-        label: this.activitiesToolbar.rateFilterOptionLabel(option.key),
-        icon: this.activitiesToolbar.activitiesRateFilterIcon(option.key),
+        label: this.rateFilterOptionLabel(option.key),
+        icon: this.activitiesRateFilterIcon(option.key),
         palette: this.activitiesRatePalette(option.key),
-        counter: this.activitiesToolbar.rateFilterCount(option.key),
+        counter: this.rateFilterCount(option.key),
         active: option.key === this.activitiesRateFilter,
         context: { menu: 'rate', value: option.key }
       }));
@@ -1223,21 +1524,21 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return { nodes };
   }
 
-  protected activitiesSecondaryMenuTrigger(): AppMenuTrigger {
+  private activitiesSecondaryMenuTrigger(): AppMenuTrigger {
     const filter = this.effectiveActivitiesSecondaryFilter();
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activitiesSecondaryFilterLabel(),
-      icon: this.activitiesToolbar.activitiesSecondaryFilterIcon(),
+      label: this.activitiesSecondaryFilterLabel(),
+      icon: this.activitiesSecondaryFilterIcon(),
       palette: this.activitiesSecondaryPalette(filter),
       layout: 'pill',
       hideLabel: this.isMobileView
     });
   }
 
-  protected activitiesSecondaryMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesToolbar.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
+  private activitiesSecondaryMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
       id: `secondary:${option.key}`,
-      label: this.activitiesToolbar.activitiesSecondaryFilterOptionLabel(option.key),
+      label: this.activitiesSecondaryFilterOptionLabel(option.key),
       icon: option.icon,
       palette: this.activitiesSecondaryPalette(option.key),
       active: option.key === this.effectiveActivitiesSecondaryFilter(),
@@ -1245,18 +1546,18 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }));
   }
 
-  protected activitiesViewMenuTrigger(): AppMenuTrigger {
+  private activitiesViewMenuTrigger(): AppMenuTrigger {
     return this.activitiesSelectTrigger({
-      label: this.activitiesToolbar.activityViewLabel(),
-      icon: this.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
+      label: this.activityViewLabel(),
+      icon: APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
       palette: this.activitiesViewPalette(this.activitiesView),
       layout: 'pill',
       hideLabel: this.isMobileView
     });
   }
 
-  protected activitiesViewMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
-    return this.activitiesViewOptions.map(option => this.activitiesMenuItem({
+  private activitiesViewMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return APP_STATIC_DATA.activitiesViewOptions.map(option => this.activitiesMenuItem({
       id: `view:${option.key}`,
       label: option.label,
       icon: option.icon,
@@ -1266,7 +1567,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }));
   }
 
-  protected activitiesQuickActionsMenuTrigger(): AppMenuTrigger {
+  private activitiesQuickActionsMenuTrigger(): AppMenuTrigger {
     return {
       icon: 'add',
       closeIcon: 'close',
@@ -1277,7 +1578,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  protected activitiesQuickActionsMenuItems(): readonly AppMenuItem<string, ActivitiesToolbarMenuContext>[] {
+  private activitiesQuickActionsMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
     return [
       {
         id: 'quick-action:explore',
@@ -1298,46 +1599,190 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ];
   }
 
-  protected onActivitiesToolbarMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    const context = event.context as ActivitiesToolbarMenuContext | undefined;
-    if (!context) {
-      return;
+  private shouldShowStandaloneEventExploreAction(): boolean {
+    return this.isEventActivitiesPrimaryFilter()
+      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
+  }
+
+  private activitiesSupportCaseFilters(): Array<{ key: ContractTypes.SupportCaseFilter; labelKey: string; icon: string }> {
+    return [
+      { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
+      { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
+      { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
+      { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
+      { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
+    ];
+  }
+
+  private activitiesPrimaryFilters(): Array<{ key: ContractTypes.ActivitiesPrimaryFilter; label: string; icon: string }> {
+    return [
+      { key: 'rates', label: 'Rates', icon: 'star' },
+      { key: 'chats', label: 'Chats', icon: 'chat' },
+      { key: 'events', label: 'Events', icon: 'event' }
+    ];
+  }
+
+  private activitiesEventScopeFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesEventScope; label: string; icon: string }> {
+    return [
+      { key: 'all', label: 'All', icon: 'widgets' },
+      { key: 'active-events', label: 'Active Events', icon: 'event' },
+      { key: 'pending', label: 'Pending', icon: 'pending_actions' },
+      { key: 'invitations', label: 'Invitations', icon: 'mail' },
+      { key: 'my-events', label: 'My Events', icon: 'stadium' },
+      { key: 'drafts', label: 'Drafts', icon: 'drafts' },
+      { key: 'trash', label: 'Trash', icon: 'delete' }
+    ];
+  }
+
+  private supportCaseFilterLabelKey(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters().find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
+  }
+
+  private supportCaseFilterIcon(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters().find(option => option.key === filter)?.icon ?? 'list';
+  }
+
+  private activitiesPrimaryFilterLabel(): string {
+    return this.activitiesPrimaryFilters().find(option => option.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
+  }
+
+  private activitiesPrimaryFilterIcon(): string {
+    return this.activitiesPrimaryFilters().find(option => option.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
+  }
+
+  private activitiesPrimaryFilterCount(filter: ContractTypes.ActivitiesPrimaryFilter): number {
+    return this.countFrom(this.activitiesToolbarPrimaryCounts(), filter);
+  }
+
+  private activitiesEventScopeIcon(): string {
+    return this.activitiesEventScopeFilters().find(option => option.key === this.activitiesEventScope)?.icon ?? 'event';
+  }
+
+  private activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
+    return this.countFrom(this.activitiesToolbarEventScopeCounts(), scope);
+  }
+
+  private activitiesChatContextFilterLabel(): string {
+    return APP_STATIC_DATA.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.label ?? 'All';
+  }
+
+  private activitiesChatContextFilterIcon(): string {
+    return APP_STATIC_DATA.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
+  }
+
+  private activitiesChatsHeaderLabel(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    if (this.activitiesChatContextFilter === 'all') {
+      return primary;
     }
-    switch (context.menu) {
-      case 'primary':
-        this.activitiesToolbar.selectActivitiesPrimaryFilter(context.value);
-        return;
-      case 'event-scope':
-        this.activitiesToolbar.selectActivitiesEventScope(context.value);
-        return;
-      case 'chat-context':
-        this.activitiesToolbar.selectActivitiesChatContextFilter(context.value);
-        return;
-      case 'rate':
-        this.activitiesToolbar.selectActivitiesRateFilter(context.value);
-        return;
-      case 'rate-social':
-        this.activitiesToolbar.toggleRateSocialBadgeForGroup(context.value);
-        return;
-      case 'secondary':
-        this.activitiesToolbar.selectActivitiesSecondaryFilter(context.value);
-        return;
-      case 'view':
-        this.activitiesToolbar.setActivitiesView(context.value, event.sourceEvent);
-        return;
-      case 'support-case':
-        this.selectActivitiesSupportCaseFilter(context.value);
-        return;
-      case 'quick-action':
-        if (context.value === 'explore') {
-          this.activitiesToolbar.requestOpenEventExplore();
-          return;
-        }
-        this.activitiesToolbar.requestOpenEventEditor();
-        return;
-      default:
-        return;
+    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
+  }
+
+  private activitiesSecondaryFilterLabel(): string {
+    return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
+  }
+
+  private activitiesSecondaryFilterOptionLabel(filter: ContractTypes.ActivitiesSecondaryFilter): string {
+    if (filter === 'recent') {
+      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
     }
+    return APP_STATIC_DATA.activitiesSecondaryFilters.find(option => option.key === filter)?.label ?? 'Relevant';
+  }
+
+  private activitiesSecondaryFilterIcon(): string {
+    return APP_STATIC_DATA.activitiesSecondaryFilters.find(option => option.key === this.effectiveActivitiesSecondaryFilter())?.icon ?? 'schedule';
+  }
+
+  private activitiesRateFilterLabel(): string {
+    const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+    if (!label) {
+      return `${this.rateGroupLabelKeyForKey('individual-given')} · Given`;
+    }
+    const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+    return `${group} · ${label}`;
+  }
+
+  private rateFilterOptionLabel(key: ContractTypes.RateFilterKey): string {
+    return this.rateFilterLabelForKey(key);
+  }
+
+  private rateGroupOptionLabelKey(label: string): string {
+    const normalized = label.trim().toLowerCase();
+    if (normalized === 'preferences') {
+      return 'activity.rates.group.preferences';
+    }
+    if (normalized === 'suggestions') {
+      return 'activity.rates.group.suggestions';
+    }
+    return label;
+  }
+
+  private activitiesRateFilterIcon(key: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
+    const icons: Record<ContractTypes.RateFilterKey, string> = {
+      'individual-given': 'north_east',
+      'individual-received': 'south_west',
+      'individual-mutual': 'sync_alt',
+      'individual-met': 'handshake',
+      'pair-given': 'group_add',
+      'pair-received': 'groups_2'
+    };
+    return icons[key] ?? 'star';
+  }
+
+  private shouldShowRateSocialBadgeToggle(): boolean {
+    return this.activitiesPrimaryFilter === 'rates';
+  }
+
+  private shouldShowRateSocialBadgeToggleForGroup(label: string): boolean {
+    if (!this.shouldShowRateSocialBadgeToggle()) {
+      return false;
+    }
+    const normalized = label.trim().toLowerCase();
+    return normalized === 'individual'
+      || normalized === 'pair'
+      || normalized === 'preferences'
+      || normalized === 'suggestions'
+      || normalized === this.rateGroupLabelKeyForKey('individual-given')
+      || normalized === this.rateGroupLabelKeyForKey('pair-given');
+  }
+
+  private rateSocialBadgeButtonLabelForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'Social on' : 'Social off';
+  }
+
+  private rateSocialBadgeToggleIconForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'sell' : 'sell_off';
+  }
+
+  private rateSocialBadgeGroupIconForGroup(label: string): string {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'groups_2' : 'person';
+  }
+
+  private isRateSocialBadgeToggleActiveForGroup(label: string): boolean {
+    const group = this.rateSocialGroupForLabel(label);
+    return group === 'pair'
+      ? this.activitiesPairRateSocialBadgeEnabled
+      : this.activitiesIndividualRateSocialBadgeEnabled;
+  }
+
+  private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
+    return APP_STATIC_DATA.rateFilters.find(option => option.key === key)?.label ?? 'Given';
+  }
+
+  private rateGroupLabelKeyForKey(key: ContractTypes.RateFilterKey): string {
+    return key.startsWith('individual')
+      ? 'activity.rates.group.preferences'
+      : 'activity.rates.group.suggestions';
+  }
+
+  private activityViewLabel(): string {
+    return APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'View';
+  }
+
+  private availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
+    return this.isEventActivitiesPrimaryFilter()
+      ? APP_STATIC_DATA.activitiesSecondaryFilters.filter(option => option.key !== 'relevant')
+      : APP_STATIC_DATA.activitiesSecondaryFilters;
   }
 
   private activitiesSelectTrigger(options: {
@@ -1366,8 +1811,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     palette: AppMenuPalette;
     counter?: number;
     active: boolean;
-    context: ActivitiesToolbarMenuContext;
-  }): AppMenuItem<string, ActivitiesToolbarMenuContext> {
+    context: ActivitiesPopupMenuContext;
+  }): AppMenuItem<string, ActivitiesPopupMenuContext> {
     const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
     return {
       id: options.id,
@@ -1495,14 +1940,90 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activitiesRateGroupPalette(label: string): AppMenuPalette {
-    return this.activitiesToolbar.isRateGroupSeparator(label) ? 'violet' : 'blue';
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'violet' : 'blue';
+  }
+
+  private countFrom<T extends string>(counts: Partial<Record<T, number>>, key: T): number {
+    const value = Number(counts[key] ?? 0);
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(value));
+  }
+
+  protected activitiesToolbarPrimaryCounts(): Partial<Record<ContractTypes.ActivitiesPrimaryFilter, number>> {
+    return {
+      chats: this.chatBadge,
+      events: this.eventsBadge,
+      rates: this.gameBadge
+    };
+  }
+
+  protected activitiesToolbarEventScopeCounts(): Partial<Record<ContractTypes.ActivitiesEventScope, number>> {
+    return {
+      all: this.allEventsScopeBadge,
+      'active-events': this.eventsBadge,
+      pending: this.pendingBadge,
+      invitations: this.invitationsBadge,
+      'my-events': this.hostingBadge,
+      drafts: this.draftsBadge,
+      trash: this.trashBadge
+    };
+  }
+
+  protected activitiesToolbarChatContextCounts(): Partial<Record<ContractTypes.ActivitiesChatContextFilter, number>> {
+    return {
+      all: this.activitiesChatContextFilterCount('all'),
+      event: this.activitiesChatContextFilterCount('event'),
+      subEvent: this.activitiesChatContextFilterCount('subEvent'),
+      group: this.activitiesChatContextFilterCount('group'),
+      service: this.activitiesChatContextFilterCount('service')
+    };
+  }
+
+  protected activitiesToolbarSupportCaseCounts(): Partial<Record<ContractTypes.SupportCaseFilter, number>> {
+    return {
+      all: this.supportCaseFilterCount('all'),
+      pending: this.supportCaseFilterCount('pending'),
+      picked: this.supportCaseFilterCount('picked'),
+      solved: this.supportCaseFilterCount('solved'),
+      blocked: this.supportCaseFilterCount('blocked')
+    };
+  }
+
+  protected activitiesToolbarRateFilterCounts(): Partial<Record<ContractTypes.RateFilterKey, number>> {
+    return APP_STATIC_DATA.rateFilters.reduce<Partial<Record<ContractTypes.RateFilterKey, number>>>((counts, option) => {
+      counts[option.key] = this.rateFilterCount(option.key);
+      return counts;
+    }, {});
+  }
+
+  private activitiesChatContextFilterCount(filter: ContractTypes.ActivitiesChatContextFilter): number {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return 0;
+    }
+    return this.chatItemsForActivities().filter(item => {
+      if (filter === 'all') {
+        return true;
+      }
+      return this.activityChatContextFilterKey(item) === filter;
+    }).length;
+  }
+
+  private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
+    const normalized = this.normalizeSupportCaseFilter(filter);
+    const supportCases = this.chatItems.filter(chat => Boolean(chat.supportCaseStatus));
+    if (normalized === 'all') {
+      return supportCases.length;
+    }
+    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
   }
 
   protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
     if (!this.isAdminServiceChatMode()) {
       return;
     }
-    this.activitiesContext.setActivitiesSupportCaseFilter(filter);
+    this.activitiesStore.setActivitiesSupportCaseFilter(filter);
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -1518,7 +2039,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : 'all';
   }
 
-  private doesChatMatchActiveSupportCaseFilter(chat: ChatRecord): boolean {
+  private doesChatMatchActiveSupportCaseFilter(chat: ChatDTO): boolean {
     if (!this.isAdminServiceChatMode()) {
       return true;
     }
@@ -1535,7 +2056,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const config = this.supportCaseActionDialogConfig(action);
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: this.i18n(config.titleKey),
       message: this.i18n(config.messageKey),
       cancelLabel: this.i18n('cancel'),
@@ -1609,7 +2130,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.i18nService.translate(key);
   }
 
-  private applySupportCaseUpdate(chat: ChatRecord): void {
+  private applySupportCaseUpdate(chat: ChatDTO): void {
     const nextChat = this.cloneChatRecord(chat);
     const currentIndex = this.chatItems.findIndex(item => item.id === nextChat.id);
     if (currentIndex >= 0) {
@@ -1633,7 +2154,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private patchVisibleChatRow(chat: ChatRecord): void {
+  private patchVisibleChatRow(chat: ChatDTO): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
       return;
@@ -1809,7 +2330,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return 'events';
   }
 
-  private sortChatRecords<T extends ChatRecord>(items: readonly T[]): T[] {
+  private sortChatRecords<T extends ChatDTO>(items: readonly T[]): T[] {
     const secondaryFilter = this.effectiveActivitiesSecondaryFilter();
     return [...items].sort((left, right) => {
       if (secondaryFilter === 'relevant') {
@@ -1835,7 +2356,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private chatMenuMetricScore(chat: ChatRecord): number {
+  private chatMenuMetricScore(chat: ChatDTO): number {
     const unread = Math.max(0, Math.trunc(Number(chat.unread) || 0));
     return unread * 10 + this.activitiesChats.getChatMemberCount(chat);
   }
@@ -1847,19 +2368,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
         + Math.max(0, Math.trunc(Number(row.memberCount) || 0));
   }
 
-  private cloneChatRecord<T extends ChatRecord>(chat: T): T {
+  private cloneChatRecord<T extends ChatDTO>(chat: T): T {
     return {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])]
     } as T;
   }
 
-  protected chatRecordForRow(row: ActivityPopupCard): ChatRecord | null {
+  protected chatRecordForRow(row: ActivityPopupCard): ChatDTO | null {
     const existing = this.chatItems.find(item => item.id === row.id);
     return existing ? this.cloneChatRecord(existing) : null;
   }
 
-  private chatRecordPreviewForRow(row: ActivityPopupCard): ChatRecord | null {
+  private chatRecordPreviewForRow(row: ActivityPopupCard): ChatDTO | null {
     if (row.type !== 'chats') {
       return null;
     }
@@ -1906,7 +2427,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private async resolveChatRecordForRow(
     row: ActivityPopupCard,
     options: { skipCache?: boolean } = {}
-  ): Promise<ChatRecord | null> {
+  ): Promise<ChatDTO | null> {
     if (row.type !== 'chats') {
       return null;
     }
@@ -1929,7 +2450,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return resolved ? this.cloneChatRecord(resolved) : null;
   }
 
-  private areChatRecordsEqual(left: ChatRecord, right: ChatRecord): boolean {
+  private areChatRecordsEqual(left: ChatDTO, right: ChatDTO): boolean {
     const leftMemberIds = left.memberIds ?? [];
     const rightMemberIds = right.memberIds ?? [];
     if (
@@ -1962,10 +2483,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activityItems = items.map(item =>
       this.isActivityEventDTOItem(item) ? this.cloneActivityEventDTO(item) : ({ ...item } as ActivitySmartListDTO)
     );
-  }
-
-  private currentActivityEventItems(): ActivityEventDTO[] {
-    return this.activityItems.filter(item => this.isActivityEventDTOItem(item));
   }
 
   private cacheActivityEventItems(items: readonly ActivityEventDTO[]): void {
@@ -2012,8 +2529,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private applyActivityEventDTO(update: ActivityEventDTO): ActivityEventDTO {
-    const existingDTO = this.currentActivityEventItems().find(item => item.id === update.id)
-      ?? this.eventsService.peekKnownItemDTOById(this.activeUser.id, update.id);
+    const existingDTO = this.activityItems
+      .filter(item => this.isActivityEventDTOItem(item))
+      .find(item => item.id === update.id)
+      ?? this.eventsService.peekKnownItemById(this.activeUser.id, update.id);
     const nextDTO = existingDTO
       ? this.patchActivityEventDTO(existingDTO, update)
       : this.cloneActivityEventDTO(update);
@@ -2160,6 +2679,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     smartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
     });
+    this.visibleActivityRows = [...nextItems];
+    this.visibleActivityRowsSource = smartList.itemsSnapshot();
   }
 
   protected removeVisibleActivityRow(row: ActivityPopupCard): void {
@@ -2326,7 +2847,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   // =========================================================================
 
   protected closeActivitiesPopup(): void {
-    this.activitiesContext.closeActivities();
+    this.activitiesStore.closeActivities();
   }
 
   // =========================================================================
@@ -2343,7 +2864,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return new Set<string>();
     }
     return new Set(
-      this.eventCheckoutDraftService.listByUser(activeUserId)
+      this.eventCheckoutDraftStore.listByUser(activeUserId)
         .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
         .map(draft => draft.sourceId.trim())
         .filter(sourceId => sourceId.length > 0)
@@ -2364,7 +2885,23 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesEventScopeLabel(): string {
-    return this.activitiesEventScopeFilters.find(option => option.key === this.activitiesEventScope)?.label ?? 'Active Events';
+    switch (this.activitiesEventScope) {
+      case 'all':
+        return 'All';
+      case 'pending':
+        return 'Pending';
+      case 'invitations':
+        return 'Invitations';
+      case 'my-events':
+        return 'My Events';
+      case 'drafts':
+        return 'Drafts';
+      case 'trash':
+        return 'Trash';
+      case 'active-events':
+      default:
+        return 'Active Events';
+    }
   }
 
   protected shouldShowRatesFullscreenToggle(): boolean {
@@ -2387,6 +2924,321 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant'
       ? 'recent'
       : this.activitiesSecondaryFilter;
+  }
+
+  rateFilterCount(filter: ContractTypes.RateFilterKey): number {
+    return this.rateItems.filter((item: any) => this.activitiesRates.matchesFilter(item, filter)).length;
+  }
+
+  toggleRateSocialBadgeForGroup(labelOrGroup: string): void {
+    const group = this.rateSocialGroupForLabel(labelOrGroup);
+    const nextEnabled = group === 'pair'
+      ? !this.activitiesPairRateSocialBadgeEnabled
+      : !this.activitiesIndividualRateSocialBadgeEnabled;
+    if (group === 'pair') {
+      this.activitiesPairRateSocialBadgeEnabled = nextEnabled;
+    } else {
+      this.activitiesIndividualRateSocialBadgeEnabled = nextEnabled;
+    }
+    if (this.activitiesRateFilter.startsWith(group)) {
+      this.activitiesRateSocialBadgeEnabled = nextEnabled;
+    }
+    this.activitiesStore.setActivitiesRateSocialBadgeEnabledForGroup(group, nextEnabled);
+    if (this.activitiesRateFilter.startsWith(group)) {
+      this.lastRateIndicatorPulseRowId = null;
+      this.selectedActivityRateId = null;
+      this.activitiesStore.setActivitiesSelectedRateId(null);
+      this.resetActivitiesScroll();
+      this.syncActivitiesSmartListQuery();
+      this.activitiesSmartList?.reload();
+    }
+    this.cdr.markForCheck();
+  }
+
+  private rateSocialGroupForLabel(labelOrGroup: string): 'individual' | 'pair' {
+    const normalized = labelOrGroup.trim().toLowerCase();
+    if (
+      normalized === 'pair'
+      || normalized === 'suggestions'
+      || normalized === 'activity.rates.group.suggestions'
+    ) {
+      return 'pair';
+    }
+    return 'individual';
+  }
+
+  isHostingPublicationFilterVisible(): boolean {
+    return false;
+  }
+
+  shouldShowActivitiesQuickActions(): boolean {
+    return this.isEventActivitiesPrimaryFilter()
+      && this.activitiesEventScope !== 'all'
+      && this.activitiesEventScope !== 'active-events'
+      && this.activitiesEventScope !== 'pending'
+      && this.activitiesEventScope !== 'invitations'
+      && this.activitiesEventScope !== 'trash';
+  }
+
+  selectActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): void {
+    if (this.activitiesPrimaryFilter === 'rates' || filter === 'rates') {
+      this.activitiesRates.commitPendingDirectionOverrides();
+    }
+    if (filter !== 'rates') {
+      this.activitiesRates.disableFullscreenMode();
+    }
+    this.activitiesStore.setActivitiesPrimaryFilter(filter);
+    if (filter === 'events' && this.activitiesSecondaryFilter === 'relevant') {
+      this.activitiesStore.setActivitiesSecondaryFilter('recent');
+    }
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  toggleActivitiesEventScopePicker(event: Event): void {
+    if (!this.isEventActivitiesPrimaryFilter()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
+  }
+
+  selectActivitiesEventScope(scope: ContractTypes.ActivitiesEventScope): void {
+    const currentScope = this.activitiesStore.activitiesEventScope() as ContractTypes.ActivitiesEventScope;
+    if (!this.isEventActivitiesPrimaryFilter() || currentScope === scope) {
+      this.showActivitiesEventScopePicker = false;
+      return;
+    }
+    this.activitiesStore.setActivitiesEventScope(scope);
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectActivitiesChatContextFilter(filter: ContractTypes.ActivitiesChatContextFilter): void {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
+    this.activitiesStore.setActivitiesChatContextFilter(filter);
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectHostingPublicationFilter(filter: ContractTypes.HostingPublicationFilter): void {
+    if (!this.isHostingPublicationFilterVisible() || this.hostingPublicationFilter === filter) {
+      return;
+    }
+    this.activitiesStore.setActivitiesHostingPublicationFilter(filter);
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectActivitiesSecondaryFilter(filter: ContractTypes.ActivitiesSecondaryFilter): void {
+    const normalizedFilter = this.isEventActivitiesPrimaryFilter() && filter === 'relevant'
+      ? 'recent'
+      : filter;
+    if (this.activitiesPrimaryFilter === 'rates') {
+      this.activitiesRates.commitPendingDirectionOverrides();
+    }
+    this.activitiesStore.setActivitiesSecondaryFilter(normalizedFilter);
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  selectActivitiesRateFilter(filter: ContractTypes.RateFilterKey): void {
+    const currentFilter = this.activitiesStore.activitiesRateFilter() as ContractTypes.RateFilterKey;
+    if (currentFilter === filter) {
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesSecondaryPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
+    this.activitiesRates.commitPendingDirectionOverrides(filter);
+    this.activitiesStore.setActivitiesRateFilter(filter);
+    this.lastRateIndicatorPulseRowId = null;
+    this.selectedActivityRateId = null;
+    this.activitiesStore.setActivitiesSelectedRateId(null);
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  toggleActivitiesViewPicker(event: Event): void {
+    event.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return;
+    }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.activitiesStore.toggleActivitiesViewPicker();
+  }
+
+  toggleActivitiesSecondaryPicker(event: Event): void {
+    event.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return;
+    }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.activitiesStore.toggleActivitiesSecondaryPicker();
+  }
+
+  setActivitiesView(view: ContractTypes.ActivitiesView, event?: Event): void {
+    event?.stopPropagation();
+    if (this.activitiesPrimaryFilter === 'rates') {
+      this.activitiesRates.commitPendingDirectionOverrides();
+    }
+    if (view !== 'distance') {
+      this.activitiesRates.disableFullscreenMode();
+    }
+    this.activitiesStore.setActivitiesView(view as 'day' | 'week' | 'month' | 'distance');
+    this.lastRateIndicatorPulseRowId = null;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.resetActivitiesScroll();
+    this.cdr.markForCheck();
+  }
+
+  toggleActivitiesQuickActionsMenu(event: Event): void {
+    if (!this.shouldShowActivitiesQuickActions()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = !this.showActivitiesQuickActionsMenu;
+  }
+
+  openMobileActivitiesPrimaryFilterSelector(event: Event): void {
+    if (!this.isMobileView) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesPrimaryPicker = !this.showActivitiesPrimaryPicker;
+  }
+
+  openMobileActivitiesEventScopeSelector(event: Event): void {
+    if (!this.isMobileView || !this.isEventActivitiesPrimaryFilter()) {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesEventScopePicker = !this.showActivitiesEventScopePicker;
+  }
+
+  openMobileActivitiesChatContextFilterSelector(event: Event): void {
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'chats') {
+      return;
+    }
+    event.stopPropagation();
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesRatePicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesChatContextPicker = !this.showActivitiesChatContextPicker;
+  }
+
+  openMobileActivitiesRateFilterSelector(event: Event): void {
+    event.stopPropagation();
+    if (!this.isMobileView || this.activitiesPrimaryFilter !== 'rates') {
+      return;
+    }
+    this.showActivitiesPrimaryPicker = false;
+    this.showActivitiesEventScopePicker = false;
+    this.showActivitiesChatContextPicker = false;
+    this.showActivitiesViewPicker = false;
+    this.showActivitiesSecondaryPicker = false;
+    this.showActivitiesQuickActionsMenu = false;
+    this.showActivitiesRatePicker = !this.showActivitiesRatePicker;
+  }
+
+  requestOpenEventEditor(): void {
+    const target: ContractTypes.EventEditorTarget = this.isEventActivitiesPrimaryFilter()
+      ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
+      : 'events';
+    this.showActivitiesQuickActionsMenu = false;
+    this.popupStore.requestActivitiesNavigation({
+      type: 'eventEditorCreate',
+      target
+    });
+  }
+
+  requestOpenEventEditorForRow(
+    row: any,
+    readOnly = false,
+    stacked = true
+  ): void {
+    void stacked;
+    this.openActivityRowInEventModule(row, readOnly);
+  }
+
+  requestOpenEventExplore(): void {
+    this.showActivitiesQuickActionsMenu = false;
+    this.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================
@@ -2472,8 +3324,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityEventDTOForRow(row: ActivityPopupEventCard): ActivityEventDTO | null {
-    return this.currentActivityEventItems().find(item => item.id === row.id)
-      ?? this.eventsService.peekKnownItemDTOById(this.activeUser.id, row.id);
+    return this.activityItems
+      .filter(item => this.isActivityEventDTOItem(item))
+      .find(item => item.id === row.id)
+      ?? this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
   }
 
   private activityMembersOwnerForRow(row: ActivityPopupEventCard): ActivityMemberOwnerRef {
@@ -2483,7 +3337,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     };
   }
 
-  private resolveActivityMembersPopupSummary(row: ActivityPopupEventCard): ActivityMembersSummary | null {
+  private resolveActivityMembersPopupSummary(row: ActivityPopupEventCard): ActivityMembersSummaryDto | null {
     const persistedSummary = this.activityMembersService.peekSummaryByOwner(this.activityMembersOwnerForRow(row));
     if (persistedSummary) {
       return {
@@ -2634,7 +3488,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.userById(normalizedUserId) ?? this.activeUser;
   }
 
-  private applyActivityMembersSummary(row: ActivityPopupEventCard, summary: ActivityMembersSummary): void {
+  private applyActivityMembersSummary(row: ActivityPopupEventCard, summary: ActivityMembersSummaryDto): void {
     this.activityCapacityById[row.id] = `${summary.acceptedMembers} / ${summary.capacityTotal}`;
     this.activityPendingMembersById[row.id] = summary.pendingMembers;
     this.applyActivityMembersSummaryToRow(row, summary);
@@ -2681,7 +3535,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
   }
 
-  private applyActivityMembersSummaryToRow(row: ActivityPopupEventCard, summary: ActivityMembersSummary): void {
+  private applyActivityMembersSummaryToRow(row: ActivityPopupEventCard, summary: ActivityMembersSummaryDto): void {
     const dto = this.activityEventDTOForRow(row);
     if (!dto) {
       return;
@@ -2691,26 +3545,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal
     }), undefined, row.type as ActivityPopupEventType));
-  }
-
-  private async loadActivityMembersForRow(
-    owner: ActivityMemberOwnerRef,
-    row: ActivityPopupEventCard,
-    rowSelectionId: string
-  ): Promise<void> {
-    const members = await this.activityMembersService.queryMembersByOwner(owner);
-    if (this.selectedActivityMembersRowId !== rowSelectionId || this.selectedActivityMembersRow?.id !== row.id) {
-      return;
-    }
-    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(members);
-    this.activityMembersByRowId[rowSelectionId] = [...this.selectedActivityMembers];
-    const summary = ActivityMembersBuilder.buildActivityMembersSummary(
-      owner,
-      members,
-      this.activityCapacityTotal(row, members.filter(member => member.status === 'accepted').length)
-    );
-    this.applyActivityMembersSummary(row, summary);
-    this.cdr.markForCheck();
   }
 
   protected persistSelectedActivityMembers(): void {
@@ -2732,13 +3566,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private syncEventOwnerMemberCountsFromEventRows(): void {
-    const eventRecords = this.currentActivityEventItems().map(item => ({
-      id: item.id,
-      row: this.buildActivityEventCard(item),
-      acceptedMembers: item.acceptedMembers ?? 0,
-      capacityTotal: item.capacityTotal ?? 0,
-      pendingMembers: item.pendingMembers ?? 0
-    }));
+    const eventRecords = this.activityItems
+      .filter(item => this.isActivityEventDTOItem(item))
+      .map(item => ({
+        id: item.id,
+        row: this.buildActivityEventCard(item),
+        acceptedMembers: item.acceptedMembers ?? 0,
+        capacityTotal: item.capacityTotal ?? 0,
+        pendingMembers: item.pendingMembers ?? 0
+      }));
     for (const record of eventRecords) {
       const owner = this.activityMembersOwnerForRow(record.row);
       const summary = this.activityMembersService.peekSummaryByOwner(owner);
@@ -2767,8 +3603,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     if (
-      target.closest('[data-rating-star-bar-dock]')
-      || target.closest('.app-menu__rating-item')
+      this.activitiesSmartList?.isPaginationMenuTarget(target)
       || target.closest('.activities-rate-score-badge')
       || target.closest('.activities-rate-profile-card.is-rate-editor-selected')
     ) {
@@ -2812,7 +3647,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.visibleActivityRows = [];
     this.visibleActivityRowsSource = null;
     this.activitiesStickyValue = '';
-    this.activitiesContext.setActivitiesStickyValue('');
+    this.activitiesStore.setActivitiesStickyValue('');
     this.activitiesListScrollable = true;
     this.activitiesInitialLoadPending = true;
     this.cdr.markForCheck();
@@ -3055,7 +3890,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const acceptedMemberUserIds = this.uniqueUserIds(persistedSummary?.acceptedMemberUserIds ?? []);
     const pendingMemberUserIds = this.uniqueUserIds(persistedSummary?.pendingMemberUserIds ?? [])
       .filter(userId => !acceptedMemberUserIds.includes(userId));
-    const summary: ActivityMembersSummary = {
+    const summary: ActivityMembersSummaryDto = {
       ownerType: 'event',
       ownerId: sync.id,
       acceptedMembers,
@@ -3098,7 +3933,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       hostingPublicationFilter: this.hostingPublicationFilter,
       rateFilter: this.activitiesRateFilter,
       rateSocialBadgeEnabled: this.activitiesRateSocialBadgeEnabled,
-      adminServiceOnly: this.activitiesContext.activitiesAdminServiceOnly()
+      adminServiceOnly: this.activitiesStore.activitiesAdminServiceOnly()
     };
     const currentFilters = this.activitiesSmartListQuery.filters ?? {};
     if (
@@ -3151,7 +3986,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     if (this.activitiesStickyValue !== change.stickyLabel) {
       this.activitiesStickyValue = change.stickyLabel;
-      this.activitiesContext.setActivitiesStickyValue(change.stickyLabel);
+      this.activitiesStore.setActivitiesStickyValue(change.stickyLabel);
       shouldMarkForCheck = true;
     }
 

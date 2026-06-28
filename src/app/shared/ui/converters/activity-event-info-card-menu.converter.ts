@@ -1,11 +1,11 @@
 import type {
   AppMenuItem,
   AppMenuPalette
-} from '../components/menu';
+} from '../components/core/menu';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction
-} from '../components/smart-list/card';
+} from '../components/core/smart-list/card';
 import type { UiConverter } from './converter.types';
 
 export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {

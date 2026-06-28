@@ -1,13 +1,13 @@
 import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
-import type { ChatThreadRecord } from '../../source/entity/chat.entity';
+import type { ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { UserProfileStateBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
 import { LocalChatThreadMapper } from '../../source/mappers';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
+import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
@@ -307,8 +307,6 @@ export class SeedChatsRepository {
       return false;
     }
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
-    return user
-      ? UserProfileStateBuilder.isEmptyOnboardingProfile(user)
-      : UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId);
+    return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 }

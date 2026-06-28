@@ -1,16 +1,19 @@
 export {
   LocalActivityInviteCandidatesMapper,
-  LocalActivityMembersMapper,
+  LocalActivityMembersBuilder,
   LocalActivityResourcesMapper,
   type ActivityMemberProfileFallback,
   type ActivityMemberProfileResolver,
-  type LocalActivityInviteCandidateRecord
+  type LocalActivityInviteCandidateRecord,
+  type LocalActivityMembersOwnerSnapshot
 } from './activity.mapper';
 export { LocalContactsMapper } from './contacts.mapper';
 export { LocalActivityEventDetailsMapper, LocalActivityEventsMapper } from './event.mapper';
+export { LocalEventFeedbackMapper } from './event-feedback.mapper';
+export { LocalEventParticipationActionMapper } from './event-participation-action.mapper';
 export { LocalHelpCenterMapper } from './help-center.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
 export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';
 export { LocalChatThreadMapper } from './chat-thread.mapper';
-export { LocalUserRatesMapper } from './rate.mapper';
+export { LocalUserFilterPreferencesMapper, LocalUserRatesMapper } from './rate.mapper';
 export { LocalUsersMapper } from './user.mapper';

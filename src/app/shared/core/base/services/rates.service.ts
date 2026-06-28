@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 
-import type { ActivitiesPageRequest } from '../../contracts';
+import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
 import type { IRatesService } from '../../contracts/activity.interface';
 import { LocalRatesService } from '../../local';
@@ -43,9 +43,9 @@ export class RatesService extends BaseRouteModeService implements IRatesService 
 
   async queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityRatePageResultDTO> {
-    return this.ratesService.queryActivitiesRatePage(userId, request, signal);
+    return this.ratesService.queryActivitiesRatePage(userId, query, signal);
   }
 }

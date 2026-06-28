@@ -23,7 +23,7 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventSubeventStageFormPopupComponent,
   type EventSubeventStageFormModel,
@@ -71,7 +71,7 @@ interface SubEventDefinitionFormState {
 })
 export class EventSubeventDefinitionsPanelComponent implements ControlValueAccessor {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly dialogStore = inject(DialogStore);
   private onChange: (value: SubEventDefinitionDTO[]) => void = () => undefined;
   private onTouched: () => void = () => undefined;
   private revision = 0;
@@ -542,7 +542,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       return;
     }
     const label = this.definitionSequenceLabel(index);
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: this.mode === 'Tournament' ? 'Delete Stage Definition' : 'Delete Sub Event Definition',
       message: `Delete ${label} - ${item.name}?`,
       cancelLabel: 'Cancel',

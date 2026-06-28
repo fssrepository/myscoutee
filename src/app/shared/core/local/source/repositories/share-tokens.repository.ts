@@ -153,9 +153,9 @@ export class LocalShareTokensRepository {
       ownerUserId: asset.ownerUserId ?? record.ownerUserId ?? null,
       title: asset.title,
       subtitle: [asset.type, asset.city].filter(Boolean).join(' - '),
-      description: asset.details || asset.subtitle,
+      description: asset.description || asset.subtitle,
       imageUrl: asset.imageUrl,
-      url: asset.sourceLink
+      url: ''
     };
   }
 

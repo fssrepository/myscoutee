@@ -1,6 +1,8 @@
 import { APP_STATIC_DATA } from '../../../../app-static-data';
+import { AppUtils } from '../../../../app-utils';
+import { environment } from '../../../../../../environments/environment';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 export class SeedIdeaPostsBuilder {
   static buildDefaultPosts(): IdeaPostDto[] {
@@ -246,7 +248,7 @@ export class SeedIdeaPostsBuilder {
   }
 
   private static rebaseSeedDateTime(value: string): string {
-    return SeedScheduleBuilder.rebaseDateTime(value) ?? value;
+    return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
   }
 
   private static seedImageUrl(postId: string): string {

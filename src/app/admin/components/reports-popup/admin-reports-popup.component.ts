@@ -1,15 +1,40 @@
-import { CommonModule } from '@angular/common';
-import { Location } from '@angular/common';
-import { Component, TemplateRef, ViewChild, inject, signal } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
-
-import { ActivitiesPopupStateService } from '../../../activity/services/activities-popup-state.service';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AdminModerationService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
 import {
-  AppContext,
+  CommonModule
+} from '@angular/common';
+import {
+  Location
+} from '@angular/common';
+import {
+  Component,
+  TemplateRef,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
+
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AdminModerationService,
+  AdminWorkspaceDataService,
+  type AdminModerationActionResult,
+  type AdminReportedUserDto,
+  type AdminReportDto
+} from '../../../shared/core';
+import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
   ActivityChatSingleRowConverter,
@@ -27,13 +52,25 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import type { ChatRecord } from '../../../shared/core/contracts/chat.interface';
+import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
-import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
-import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  AdminWorkspaceStore
+} from '../../../shared/ui/context/stores/admin-workspace.store';
+import {
+  AdminChatReviewPopupComponent
+} from '../chat-review-popup/admin-chat-review-popup.component';
+import {
+  AdminItemPreviewPopupComponent
+} from '../item-preview-popup/admin-item-preview-popup.component';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 interface AdminReportListItem {
   id: string;
@@ -82,16 +119,18 @@ interface AdminReportActionsMenuContext {
     AdminItemPreviewPopupComponent
   ],
   templateUrl: './admin-reports-popup.component.html',
-  styleUrl: '../admin-popups.scss',
+  styleUrl: './admin-reports-popup.component.scss',
   providers: [AppMenuDispatcher]
 })
 export class AdminReportsPopupComponent {
-  protected readonly admin = inject(AdminShellService);
-  private readonly appCtx = inject(AppContext);
-  private readonly workspace = inject(AdminWorkspaceService);
+  protected readonly admin = inject(AdminPopupStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly workspace = inject(AdminWorkspaceStore);
+  private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly moderationData = inject(AdminModerationService);
-  private readonly activitiesContext = inject(ActivitiesPopupStateService);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly location = inject(Location);
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
   protected reportDetail: AdminReportListItem | null = null;
@@ -133,7 +172,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -163,7 +202,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -248,7 +287,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected blockUser(user: AdminReportedUserDto): void {
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: `Block ${user.name}?`,
       message: 'The user will be blocked and a support chat message will be sent.',
       confirmLabel: 'Block',
@@ -360,7 +399,7 @@ export class AdminReportsPopupComponent {
   protected unblockUser(user: AdminReportedUserDto, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: `Unblock ${user.name}?`,
       message: 'The user profile status will be restored and they can use MyScoutee again.',
       confirmLabel: 'Unblock',
@@ -677,7 +716,7 @@ export class AdminReportsPopupComponent {
     }
     const result = await this.moderationData.blockUser(
       normalizedUserId,
-      this.appCtx.activeAdminUser(),
+      this.userProfileStore.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -690,7 +729,7 @@ export class AdminReportsPopupComponent {
     }
     const result = await this.moderationData.unblockUser(
       normalizedUserId,
-      this.appCtx.activeAdminUser()
+      this.userProfileStore.activeAdminUser()
     );
     this.applyModerationActionResult(normalizedUserId, result);
   }
@@ -753,11 +792,11 @@ export class AdminReportsPopupComponent {
       return;
     }
     this.admin.closePopup();
-    this.activitiesContext.openEventChat(chat);
+    this.activitiesStore.openEventChat(chat);
   }
 
-  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatRecord & { ownerUserId?: string }) | null {
-    const admin = this.appCtx.activeAdminUser();
+  private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {
+    const admin = this.userProfileStore.activeAdminUser();
     if (!admin) {
       return null;
     }
@@ -779,7 +818,7 @@ export class AdminReportsPopupComponent {
   }
 
   private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
-    const rows = this.reportRowsForUsers(await this.workspace.loadReportedUsers());
+    const rows = this.reportRowsForUsers(await this.loadReportedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -791,7 +830,7 @@ export class AdminReportsPopupComponent {
   }
 
   private async loadBlockedUsersPage(query: ListQuery<AdminBlockedUserListFilters>): Promise<PageResult<AdminBlockedUserListItem>> {
-    const rows = this.blockedUserRowsForUsers(await this.workspace.loadBlockedUsers());
+    const rows = this.blockedUserRowsForUsers(await this.loadBlockedUsers());
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -806,6 +845,18 @@ export class AdminReportsPopupComponent {
     return this.blockedUserRowsForUsers(this.blockedUsers());
   }
 
+  private async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
+    return this.workspace.applyReportedUsers(
+      await this.workspaceData.loadReportedUsers(this.workspace.currentAdminUserId())
+    );
+  }
+
+  private async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {
+    return this.workspace.applyBlockedUsers(
+      await this.workspaceData.loadBlockedUsers(this.workspace.currentAdminUserId())
+    );
+  }
+
   private blockedUserRowsForUsers(users: readonly AdminReportedUserDto[]): AdminBlockedUserListItem[] {
     return users.map(user => ({
       id: user.userId,
@@ -817,7 +868,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildBlockedUserActivityRow(user: AdminReportedUserDto): SingleRowData {
-    const source: ChatRecord = {
+    const source: ChatDTO = {
       id: user.userId,
       avatar: user.initials,
       title: user.name,
@@ -845,7 +896,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildReportActivityRow(user: AdminReportedUserDto, report: AdminReportDto): SingleRowData {
-    const source: ChatRecord = {
+    const source: ChatDTO = {
       id: report.id,
       avatar: this.reporterInitial(report),
       title: this.reportTitle(user, report),

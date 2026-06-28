@@ -1,4 +1,8 @@
-@use '../admin-popups';
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.interactive-motion();
+@include ui.form-controls();
 
 :host {
   display: contents;

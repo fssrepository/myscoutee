@@ -1,0 +1,634 @@
+<div class="app-menu" [class.app-menu--open]="panelVisible">
+  @if (hasTrigger) {
+    <button
+      type="button"
+      class="app-menu__trigger"
+      [ngClass]="triggerPaletteClass()"
+      [class.app-menu__trigger--open]="open"
+      [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
+      [class.app-menu__trigger--placeholder]="usesDefaultSelectTriggerLabel()"
+      [class.app-menu__trigger--layout-field]="triggerLayout() === 'field'"
+      [class.app-menu__trigger--layout-pill]="triggerLayout() === 'pill'"
+      [class.app-menu__trigger--layout-icon]="triggerLayout() === 'icon'"
+      [disabled]="triggerDisabled()"
+      [attr.aria-expanded]="open"
+      [attr.aria-haspopup]="triggerAriaHasPopup()"
+      [attr.aria-label]="triggerAriaLabel()"
+      (click)="toggleMenu($event)"
+      >
+      @if (triggerIcon()) {
+        <mat-icon [class.app-menu__trigger-icon--symbol]="isSymbolIcon(triggerIcon())">{{ triggerIcon() }}</mat-icon>
+      }
+      @if (!trigger?.hideLabel && triggerLabel()) {
+        <span class="app-menu__trigger-label">{{ triggerLabel() | i18n }}</span>
+      }
+      @if (triggerTrailingIcon()) {
+        <mat-icon
+          class="app-menu__trigger-caret"
+          [class.app-menu__trigger-caret--static]="!triggerCaretRotates()"
+          >
+          {{ triggerTrailingIcon() }}
+        </mat-icon>
+      }
+      @if (hasTriggerCounter()) {
+        <span
+          class="app-menu__counter app-menu__counter--trigger"
+          [class.app-menu__counter--pulse]="isCounterPulsing(triggerCounterKey())"
+          >
+          {{ triggerCounterLabel() }}
+        </span>
+      }
+    </button>
+  }
+
+  @if (isInlineRowLayout) {
+    <div class="app-menu__button-row" role="toolbar">
+      @for (item of actionRowItems; track trackByItemId($index, item)) {
+        @if (!isDivider(item) && !isSection(item)) {
+          <button
+            type="button"
+            class="app-menu__button-row-item"
+            [ngClass]="itemPaletteClass(item)"
+            [class.app-menu__button-row-item--active]="isItemActive(item)"
+            [class.app-menu__button-row-item--open]="isActionRowItemOpen(item)"
+            [class.app-menu__button-row-item--toggle]="isToggleItem(item)"
+            [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
+            [class.app-menu__button-row-item--action]="isActionLayoutItem(item)"
+            [class.app-menu__button-row-item--image]="isImageLayoutItem(item)"
+            [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
+            [class.app-menu__button-row-item--progress]="itemProgressState(item) !== null"
+            [class.app-menu__button-row-item--progress-loading]="itemProgressState(item) === 'loading'"
+            [class.app-menu__button-row-item--progress-error]="itemProgressState(item) === 'error'"
+            [class.app-menu__button-row-item--progress-success]="itemProgressState(item) === 'success'"
+            [disabled]="isItemDisabled(item)"
+            [attr.aria-expanded]="hasNestedItems(item) ? isActionRowItemOpen(item) : null"
+            [attr.aria-haspopup]="hasNestedItems(item) ? 'menu' : null"
+            [attr.aria-pressed]="isToggleItem(item) ? isItemActive(item) : null"
+            [attr.aria-label]="actionRowItemAriaLabel(item)"
+            [title]="isItemDisabled(item) ? null : actionRowItemAriaLabel(item) || actionRowItemLabel(item)"
+            (click)="selectActionRowItem(item, $event)"
+            >
+            @if (itemProgressState(item); as progressState) {
+              <span class="app-menu__button-row-ring" aria-hidden="true">
+                <app-indicator
+                  kind="action-ring"
+                  [shape]="itemProgressShape(item)"
+                  [state]="progressState"
+                  [tone]="itemProgressTone(item)"
+                  [perimeter]="itemProgressPerimeter(item)"
+                  [durationMs]="itemProgressDurationMs(item)"
+                ></app-indicator>
+              </span>
+            }
+            @if (isImageLayoutItem(item)) {
+              <span class="app-menu__button-row-image">
+                @if (actionRowItemImageUrl(item); as imageUrl) {
+                  <img [src]="imageUrl" [alt]="actionRowItemImageAlt(item)" />
+                } @else if (actionRowItemImageFallback(item)) {
+                  <span>{{ actionRowItemImageFallback(item) }}</span>
+                } @else if (actionRowItemIcon(item)) {
+                  <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
+                }
+              </span>
+            } @else if (actionRowItemIcon(item)) {
+              <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
+            }
+            @if (isInlineRowBig) {
+              <span class="app-menu__button-row-copy">
+                @if (actionRowItemLabel(item)) {
+                  <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+                }
+                @if (actionRowItemDetail(item); as detail) {
+                  <span class="app-menu__button-row-detail">
+                    <span>{{ detail | i18n }}</span>
+                  </span>
+                }
+              </span>
+              @if (hasNestedItems(item)) {
+                <span class="app-menu__button-row-trailing">
+                  <mat-icon class="app-menu__button-row-caret">chevron_right</mat-icon>
+                </span>
+              }
+              @if (hasActionRowItemSummaryCounter(item)) {
+                <span
+                  class="app-menu__counter app-menu__counter--value-corner"
+                  [class.app-menu__counter--pulse]="isCounterPulsing(actionRowItemSummaryCounterKey(item))"
+                  >
+                  {{ actionRowItemSummaryCounterLabel(item) }}
+                </span>
+              }
+              @if (hasItemCounter(item)) {
+                <span
+                  class="app-menu__counter app-menu__counter--trigger"
+                  [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                  >
+                  {{ itemCounterLabel(item) }}
+                </span>
+              }
+            } @else {
+              @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
+                <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+              }
+              @if (hasItemCounter(item)) {
+                <span
+                  class="app-menu__counter app-menu__counter--trigger"
+                  [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                  >
+                  {{ itemCounterLabel(item) }}
+                </span>
+              }
+              @if (isLabeledActionRowItem(item) && hasNestedItems(item)) {
+                <mat-icon class="app-menu__button-row-caret">expand_more</mat-icon>
+              }
+            }
+          </button>
+        }
+      }
+    </div>
+  }
+
+  @if (panelVisible) {
+    @if (showMobileBackdrop) {
+      <button
+        type="button"
+        class="app-menu__backdrop"
+        (click)="closeFromBackdrop($event)"
+        aria-label="Close menu"
+      ></button>
+    }
+
+    <div
+      class="app-menu__panel"
+      [class.app-menu__panel--inline]="usesInlinePanel"
+      [class.app-menu__panel--dropdown-list]="!currentTabbedModelLayout && (isDropdownListKind || isInlineRowLayout || activeBranch)"
+      [class.app-menu__panel--fab]="isFabKind"
+      [class.app-menu__panel--tabs]="currentTabbedModelLayout"
+      [class.app-menu__panel--has-branch-header]="showBranchBack"
+      [class.app-menu__panel--open-up]="resolvedOpenUp"
+      [class.app-menu__panel--align-start]="resolvedPanelAlign === 'start'"
+      [class.app-menu__panel--dock-to-host]="panelDockToHost"
+      role="menu"
+      (click)="$event.stopPropagation()"
+      >
+      @if (resolvedTitle) {
+        <div class="app-menu__title">{{ resolvedTitle | i18n }}</div>
+      }
+
+      @if (isInlineGridLayout && hasMenuNodes) {
+        <div class="app-menu__groups">
+          @for (group of menuNodes; track trackByGroupId($index, group)) {
+            <section class="app-menu__group" role="group" [attr.aria-label]="groupAriaLabel(group)">
+              @if (groupLabel(group) || groupIcon(group)) {
+                <div class="app-menu__group-header" [ngClass]="groupPaletteClass(group)">
+                  <span class="app-menu__group-badge">
+                    @if (groupIcon(group)) {
+                      <mat-icon>{{ groupIcon(group) }}</mat-icon>
+                    }
+                    @if (groupLabel(group)) {
+                      <span>{{ groupLabel(group) | i18n }}</span>
+                    }
+                  </span>
+                  <span class="app-menu__group-line"></span>
+                </div>
+              }
+              <div class="app-menu__tile-grid">
+                @for (item of groupItems(group); track trackByItemId($index, item)) {
+                  @if (isDivider(item)) {
+                    <div class="app-menu__divider app-menu__tile-divider" role="separator"></div>
+                  } @else if (isSection(item)) {
+                    <div class="app-menu__section-label app-menu__tile-section">{{ itemLabel(item) | i18n }}</div>
+                  } @else {
+                    <button
+                      type="button"
+                      class="app-menu__tile-item"
+                      [ngClass]="itemPaletteClass(item)"
+                      [class.app-menu__tile-item--active]="isItemActive(item)"
+                      [class.app-menu__tile-item--disabled]="isItemDisabled(item)"
+                      [class.app-menu__tile-item--segmented]="hasItemSegments(item)"
+                      [style.grid-column]="itemGridColumn(item)"
+                      [disabled]="isItemDisabled(item)"
+                      [attr.role]="itemRole(item)"
+                      [attr.aria-checked]="isItemChecked(item)"
+                      [attr.aria-label]="itemAriaLabel(item)"
+                      [title]="itemAriaLabel(item) || itemLabel(item)"
+                      (click)="selectItem(item, $event)"
+                      >
+                      @if (hasItemSegments(item)) {
+                        <span class="app-menu__segments" aria-hidden="true">
+                          @for (segment of itemSegments(item); track trackBySegmentId($index, segment)) {
+                            <span class="app-menu__segment" [ngClass]="segmentPaletteClass(segment)">
+                              @if (segmentIcon(segment)) {
+                                <mat-icon>{{ segmentIcon(segment) }}</mat-icon>
+                              }
+                              <span class="app-menu__segment-text">
+                                @if (segmentLabel(segment)) {
+                                  <span class="app-menu__segment-label">{{ segmentLabel(segment) | i18n }}</span>
+                                }
+                                @if (segmentDescription(segment)) {
+                                  <span class="app-menu__segment-description">{{ segmentDescription(segment) | i18n }}</span>
+                                }
+                              </span>
+                            </span>
+                          }
+                        </span>
+                      } @else {
+                        @if (itemIcon(item)) {
+                          <mat-icon class="app-menu__tile-icon">{{ itemIcon(item) }}</mat-icon>
+                        }
+                        <span class="app-menu__tile-label">{{ itemLabel(item) | i18n }}</span>
+                        @if (itemDescription(item)) {
+                          <span class="app-menu__tile-description">{{ itemDescription(item) | i18n }}</span>
+                        }
+                      }
+                      @if (hasItemCounter(item)) {
+                        <span
+                          class="app-menu__counter app-menu__counter--tile"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
+                          >
+                          {{ itemCounterLabel(item) }}
+                        </span>
+                      }
+                    </button>
+                  }
+                }
+              </div>
+            </section>
+          }
+        </div>
+      } @else if (currentTabbedModelLayout && hasTabsGroups) {
+        <div class="app-menu__tabs">
+          @if (isTabsFilterable()) {
+            <div class="app-menu__tabs-head">
+              <div class="app-menu__tabs-filter" (click)="$event.stopPropagation()">
+                <mat-icon>search</mat-icon>
+                <input
+                  type="text"
+                  class="app-menu__tabs-filter-input"
+                  [value]="tabsFilterText"
+                  [attr.placeholder]="resolvedTitle || 'Search'"
+                  (input)="updateTabsFilter($event)"
+                  (keydown)="$event.stopPropagation()"
+                  />
+                @if (tabsFilterText) {
+                  <button
+                    type="button"
+                    class="app-menu__tabs-filter-clear"
+                    aria-label="Clear search"
+                    title="Clear search"
+                    (click)="clearTabsFilter($event)"
+                    >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          @if (showTabsBar()) {
+            <div class="app-menu__tabs-tabs" role="tablist" [attr.aria-label]="resolvedTitle || 'Menu tabs'">
+              @for (group of visibleTabsGroups; track trackByGroupId($index, group)) {
+                <button
+                  type="button"
+                  class="app-menu__tabs-tab"
+                  [ngClass]="groupPaletteClass(group)"
+                  [class.app-menu__tabs-tab--active]="isTabsGroupActive(group)"
+                  [attr.id]="tabsId(group)"
+                  role="tab"
+                  [attr.aria-selected]="isTabsGroupActive(group)"
+                  [attr.aria-controls]="tabsPanelId(group)"
+                  (click)="selectTabsGroup(group, $event)"
+                  >
+                  @if (groupIcon(group)) {
+                    <mat-icon>{{ groupIcon(group) }}</mat-icon>
+                  }
+                  @if (groupLabel(group)) {
+                    <span>{{ groupLabel(group) | i18n }}</span>
+                  }
+                  @if (tabsGroupSelectedCount(group) > 0) {
+                    <span class="app-menu__counter app-menu__counter--tabs-tab">{{ tabsGroupSelectedCount(group) }}</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+          @if (activeTabsGroup(); as group) {
+            <div
+              class="app-menu__tabs-panel"
+              [attr.id]="tabsPanelId(group)"
+              role="tabpanel"
+              [attr.aria-labelledby]="showTabsBar() ? tabsId(group) : null"
+              >
+              <div
+                class="app-menu__tabs-items"
+                [class.app-menu__tabs-items--fixed-columns]="tabsColumnCount() !== null"
+                [style.--app-menu-tabs-columns]="tabsColumnCount()"
+              >
+                @for (item of tabsGroupItems(group); track trackByItemId($index, item)) {
+                  @if (isDivider(item)) {
+                    <div class="app-menu__divider app-menu__tabs-divider" role="separator"></div>
+                  } @else if (isSection(item)) {
+                    <div class="app-menu__section-label app-menu__tabs-section" [ngClass]="itemPaletteClass(item)">
+                      @if (itemIcon(item)) {
+                        <mat-icon>{{ itemIcon(item) }}</mat-icon>
+                      }
+                      <span>{{ itemLabel(item) | i18n }}</span>
+                    </div>
+                  } @else {
+                    <button
+                      type="button"
+                      class="app-menu__tabs-item"
+                      [ngClass]="itemPaletteClass(item)"
+                      [class.app-menu__tabs-item--active]="isItemActive(item)"
+                      [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
+                      [class.app-menu__tabs-item--with-description]="itemDescription(item)"
+                      [disabled]="isItemDisabled(item)"
+                      [attr.role]="itemRole(item)"
+                      [attr.aria-checked]="isItemChecked(item)"
+                      [attr.aria-label]="itemAriaLabel(item)"
+                      [title]="itemAriaLabel(item) || itemLabel(item)"
+                      (click)="selectItem(item, $event)"
+                      >
+                      @if (itemIcon(item)) {
+                        <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
+                      }
+                      <span class="app-menu__tabs-item-main">
+                        <span class="app-menu__tabs-item-label">
+                          @for (part of itemLabelFilterParts(item); track $index) {
+                            @if (part.match) {
+                              <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
+                            } @else {
+                              <span>{{ part.text }}</span>
+                            }
+                          }
+                        </span>
+                        @if (itemDescription(item)) {
+                          <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
+                        }
+                      </span>
+                      @if (hasItemCounter(item)) {
+                        <span
+                          class="app-menu__counter"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
+                          >
+                          {{ itemCounterLabel(item) }}
+                        </span>
+                      }
+                      @if (showTabsItemToggle(item)) {
+                        <span class="app-menu__tabs-toggle" [class.app-menu__tabs-toggle--active]="isItemActive(item)" aria-hidden="true">
+                          <span></span>
+                        </span>
+                      }
+                    </button>
+                  }
+                }
+                @if (!hasVisibleTabsItems(group)) {
+                  <div class="app-menu__tabs-empty">No matches</div>
+                }
+              </div>
+            </div>
+          } @else {
+            <div class="app-menu__tabs-empty">No matches</div>
+          }
+        </div>
+      } @else {
+        @if (activeBranch; as branch) {
+          @if (showBranchBack) {
+            <div class="app-menu__branch-header">
+              <button
+                type="button"
+                class="app-menu__branch-back"
+                aria-label="Back to menu"
+                title="Back to menu"
+                (click)="closeActiveBranch($event)"
+                >
+                <mat-icon>arrow_back</mat-icon>
+              </button>
+              <span class="app-menu__branch-title">{{ itemLabel(branch) | i18n }}</span>
+              @for (action of branchHeaderActions(branch); track trackByItemId($index, action)) {
+                <button
+                  type="button"
+                  class="app-menu__branch-action"
+                  [class.app-menu__branch-action--icon-only]="!itemLabel(action)"
+                  [ngClass]="itemPaletteClass(action)"
+                  [disabled]="isItemDisabled(action)"
+                  [attr.aria-label]="itemAriaLabel(action)"
+                  [title]="itemAriaLabel(action) || itemLabel(action)"
+                  (click)="selectBranchHeaderAction(action, $event)"
+                  >
+                  @if (itemIcon(action)) {
+                    <mat-icon>{{ itemIcon(action) }}</mat-icon>
+                  }
+                  @if (itemLabel(action)) {
+                    <span>{{ itemLabel(action) | i18n }}</span>
+                  }
+                </button>
+              }
+            </div>
+          }
+        }
+        <div class="app-menu__items">
+          @for (item of visibleListItems; track trackByItemId($index, item)) {
+            @if (isDivider(item)) {
+              <div class="app-menu__divider" role="separator"></div>
+            } @else if (isSection(item)) {
+              <div class="app-menu__section-label" [ngClass]="itemPaletteClass(item)">
+                @if (itemIcon(item)) {
+                  <mat-icon>{{ itemIcon(item) }}</mat-icon>
+                }
+                <span>{{ itemLabel(item) | i18n }}</span>
+                @for (action of itemHeaderActions(item); track trackByItemId($index, action)) {
+                  <button
+                    type="button"
+                    class="app-menu__section-action"
+                    [class.app-menu__section-action--active]="isItemActive(action)"
+                    [ngClass]="itemPaletteClass(action)"
+                    [disabled]="isItemDisabled(action)"
+                    [attr.aria-pressed]="isToggleItem(action) ? isItemActive(action) : null"
+                    [attr.aria-label]="itemAriaLabel(action)"
+                    [title]="itemAriaLabel(action) || itemLabel(action)"
+                    (click)="selectBranchHeaderAction(action, $event)"
+                    >
+                    @if (itemIcon(action)) {
+                      <mat-icon>{{ itemIcon(action) }}</mat-icon>
+                    }
+                    @if (itemLabel(action)) {
+                      <span>{{ itemLabel(action) | i18n }}</span>
+                    }
+                  </button>
+                }
+              </div>
+            } @else if (isRateItem(item)) {
+              <div
+                class="app-menu__rate-item"
+                [class.app-menu__rate-item--disabled]="isItemDisabled(item)"
+                role="none"
+                (click)="$event.stopPropagation()"
+                >
+                <app-menu-rate
+                  [config]="itemRateConfig(item)"
+                  (valueChange)="updateRateItemValue(item, $event)"
+                  (scoreSelect)="selectRateItem(item, $event)"
+                ></app-menu-rate>
+              </div>
+            } @else if (itemHref(item)) {
+              <a
+                class="app-menu__item"
+                [ngClass]="itemPaletteClass(item)"
+                [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
+                [class.app-menu__item--active]="isItemActive(item)"
+                [class.app-menu__item--disabled]="isItemDisabled(item)"
+                [class.app-menu__item--with-description]="itemDescription(item)"
+                [attr.href]="isItemDisabled(item) ? null : itemHref(item)"
+                [attr.target]="itemTarget(item)"
+                [attr.rel]="itemRel(item)"
+                [attr.role]="itemRole(item)"
+                [attr.aria-disabled]="isItemDisabled(item) ? 'true' : null"
+                [attr.aria-checked]="isItemChecked(item)"
+                [attr.aria-label]="itemAriaLabel(item)"
+                (click)="selectLinkItem(item, $event)"
+                >
+                @if (itemIcon(item)) {
+                  <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
+                }
+                <span class="app-menu__item-main">
+                  <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                  @if (itemDescription(item)) {
+                    <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                  }
+                  @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
+                    <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                  }
+                </span>
+                @if (hasItemCounter(item)) {
+                  <span
+                    class="app-menu__counter"
+                    [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                    >
+                    {{ itemCounterLabel(item) }}
+                  </span>
+                }
+                @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
+                  <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                }
+                @if (showItemCheck(item)) {
+                  <mat-icon class="app-menu__item-check">done</mat-icon>
+                }
+                @if (hasNestedItems(item)) {
+                  <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                }
+              </a>
+            } @else {
+              @if (isItemRemovable(item)) {
+                <div
+                  class="app-menu__item-row"
+                  [ngClass]="itemPaletteClass(item)"
+                  [class.app-menu__item-row--pill]="itemVisualLayout(item) === 'pill'"
+                  >
+                  <button
+                    type="button"
+                    class="app-menu__item app-menu__item--row-primary"
+                    [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                    [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
+                    [class.app-menu__item--active]="isItemActive(item)"
+                    [class.app-menu__item--disabled]="isItemDisabled(item)"
+                    [class.app-menu__item--with-description]="itemDescription(item)"
+                    [disabled]="isItemDisabled(item)"
+                    [attr.role]="itemRole(item)"
+                    [attr.aria-checked]="isItemChecked(item)"
+                    [attr.aria-label]="itemAriaLabel(item)"
+                    (click)="selectItem(item, $event)"
+                    >
+                    @if (itemIcon(item)) {
+                      <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
+                    }
+                    <span class="app-menu__item-main">
+                      <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                      @if (itemDescription(item)) {
+                        <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                      }
+                      @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
+                        <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                      }
+                    </span>
+                    @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
+                      <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                    }
+                    @if (hasItemCounter(item)) {
+                      <span
+                        class="app-menu__counter"
+                        [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                        >
+                        {{ itemCounterLabel(item) }}
+                      </span>
+                    }
+                    @if (showItemCheck(item)) {
+                      <mat-icon class="app-menu__item-check">done</mat-icon>
+                    }
+                    @if (hasNestedItems(item)) {
+                      <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                    }
+                  </button>
+                  <button
+                    type="button"
+                    class="app-menu__item-remove"
+                    [disabled]="isItemDisabled(item)"
+                    [attr.aria-label]="itemRemoveAriaLabel(item)"
+                    (click)="removeItem(item, $event)"
+                    >
+                    <mat-icon>{{ itemRemoveIcon(item) }}</mat-icon>
+                  </button>
+                </div>
+              } @else {
+                <button
+                  type="button"
+                  class="app-menu__item"
+                  [ngClass]="itemPaletteClass(item)"
+                  [class.app-menu__item--surface-tinted]="itemSurface(item) === 'tinted'"
+                  [class.app-menu__item--layout-pill]="itemVisualLayout(item) === 'pill'"
+                  [class.app-menu__item--active]="isItemActive(item)"
+                  [class.app-menu__item--disabled]="isItemDisabled(item)"
+                  [class.app-menu__item--with-description]="itemDescription(item)"
+                  [disabled]="isItemDisabled(item)"
+                  [attr.role]="itemRole(item)"
+                  [attr.aria-checked]="isItemChecked(item)"
+                  [attr.aria-label]="itemAriaLabel(item)"
+                  (click)="selectItem(item, $event)"
+                >
+                  @if (itemIcon(item)) {
+                    <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
+                  }
+                  <span class="app-menu__item-main">
+                    <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                    @if (itemDescription(item)) {
+                      <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                    }
+                    @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
+                      <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                    }
+                  </span>
+                  @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
+                    <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
+                  }
+                  @if (hasItemCounter(item)) {
+                    <span
+                      class="app-menu__counter"
+                      [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                      >
+                      {{ itemCounterLabel(item) }}
+                    </span>
+                  }
+                  @if (showItemCheck(item)) {
+                    <mat-icon class="app-menu__item-check">done</mat-icon>
+                  }
+                  @if (hasNestedItems(item)) {
+                    <mat-icon class="app-menu__item-branch">chevron_right</mat-icon>
+                  }
+                </button>
+              }
+            }
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

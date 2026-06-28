@@ -14,23 +14,33 @@ import type {
   UserLocationEligibilityResponseDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
+  UserMenuCountersDto,
   UserRealtimeLongPollResponseDto,
+  UserRealtimeLongPollStop,
+  UserRealtimeLongPollTask,
   UserSelectorListItemDto,
   UserSelectorRole,
   UserService,
   UserSubmitActionResponseDto
 } from '../../../contracts/user.interface';
-import type { UserGameFilterPreferencesDto } from '../../../contracts/activity.interface';
+import {
+  defaultUserGameFilterPreferences,
+  type UserGameFilterPreferencesDto
+} from '../../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import {
   LocalUserRealtimeSnapshotBuilder,
   type LocalUserRealtimeSnapshotState
 } from '../builders';
-import { UserFilterPreferencesBuilder, UserMenuCountersBuilder } from '../../../base/builders';
-import { LocalProfileExperiencesMapper } from '../mappers';
+import {
+  LocalProfileExperiencesMapper,
+  LocalUserFilterPreferencesMapper,
+  LocalUsersMapper
+} from '../mappers';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
+import { RouteIntervalSchedulerService } from '../../../base/services/route-interval-scheduler.service';
 
 @Injectable({
   providedIn: 'root'
@@ -43,7 +53,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private static readonly USER_PROFILE_EXT_ROUTE = '/auth/me/profile-ext';
   private static readonly USER_FEEDBACK_ROUTE = '/auth/me/feedback';
   private static readonly USER_REPORT_USER_ROUTE = '/auth/me/report-user';
-  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
+  private static readonly USER_REALTIME_LONG_POLL_DELAY_KEY = '/local/users/realtime/long-poll';
   private static readonly USER_FILTER_PREFERENCES_ROUTE = '/auth/me/preferences';
   private static readonly USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS = 30000;
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -51,13 +61,16 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
   private readonly realtimeStateByUserId: Record<string, LocalUserRealtimeSnapshotState> = {};
 
   async queryAvailableDemoUsers(selectorRole: UserSelectorRole = 'member'): Promise<UserSelectorListItemDto[]> {
     await this.waitForRouteDelay(LocalUsersService.DEMO_USERS_ROUTE);
-    return this.usersRepository.queryAvailableDemoUsers(selectorRole);
+    return LocalUsersMapper.toSelectorListItemList(
+      this.usersRepository.queryAvailableDemoUsers(selectorRole)
+    );
   }
 
   async prepareUserSession(
@@ -84,7 +97,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       return null;
     }
     const user = this.usersRepository.queryUserById(normalizedUserId);
-    return user ? { ...user } : null;
+    return user ? LocalUsersMapper.toDto(user) : null;
   }
 
   async checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto> {
@@ -150,7 +163,8 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         filterPreferences: null
       };
     }
-    const loadedUser = this.usersRepository.queryUserById(normalizedUserId);
+    const loadedRecord = this.usersRepository.queryUserById(normalizedUserId);
+    const loadedUser = loadedRecord ? LocalUsersMapper.toDto(loadedRecord) : null;
     if (loadedUser?.profileStatus === 'deleted' && this.isDeletedAccountPastPurgeWindow(loadedUser)) {
       this.usersRepository.purgeUser(normalizedUserId);
       this.clearRealtimeState(normalizedUserId);
@@ -175,7 +189,11 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       filterCount,
       counterOverrides,
       filterPreferences: user
-        ? (persistedFilterPreferences ?? UserFilterPreferencesBuilder.buildDefaultFilterPreferences(user))
+        ? (
+            persistedFilterPreferences
+              ? LocalUserFilterPreferencesMapper.toDto(persistedFilterPreferences)
+              : defaultUserGameFilterPreferences()
+          )
         : null
     };
   }
@@ -203,7 +221,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     cursor?: string | null,
     _requestTimeoutMs?: number
   ): Promise<UserRealtimeLongPollResponseDto | null> {
-    await this.waitForRouteDelay(LocalUsersService.USER_REALTIME_LONG_POLL_ROUTE);
+    await this.waitForRouteDelay(LocalUsersService.USER_REALTIME_LONG_POLL_DELAY_KEY);
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return null;
@@ -226,6 +244,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
       suppressImpressionChangeFlags: !advanced
     });
+  }
+
+  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop {
+    return this.routeIntervalScheduler.startInterval(
+      LocalUsersService.USER_REALTIME_LONG_POLL_DELAY_KEY,
+      task,
+      { fallbackIntervalMs: LocalUsersService.USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS }
+    );
   }
 
   private primeLocalRealtimeState(user: UserDto): void {
@@ -293,7 +319,10 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {
-    this.usersRepository.upsertUserFilterPreferences(userId, preferences);
+    this.usersRepository.upsertUserFilterPreferences(
+      userId,
+      LocalUserFilterPreferencesMapper.toRecord(preferences)
+    );
     await this.usersRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalUsersService.USER_FILTER_PREFERENCES_ROUTE);
   }
@@ -302,7 +331,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!user?.id?.trim()) {
       return null;
     }
-    const savedUser = this.usersRepository.upsertUser(user);
+    const savedUser = this.upsertUser(user);
     this.clearRealtimeState(savedUser.id);
     await this.usersRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalUsersService.USER_BY_ID_ROUTE);
@@ -314,7 +343,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     if (!profile?.id?.trim()) {
       return null;
     }
-    const savedUser = this.usersRepository.upsertUser(profile);
+    const savedUser = this.upsertUser(profile);
     this.profileExperiencesRepository.replaceUserExperienceRecords(
       savedUser.id,
       request.experienceEntries ?? []
@@ -405,12 +434,12 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       const previousProfileStatus = user.profileStatus === 'deleted'
         ? (user.previousProfileStatus ?? 'public')
         : user.profileStatus;
-      this.usersRepository.upsertUser({
+      this.upsertUser(LocalUsersMapper.toDto({
         ...user,
         profileStatus: 'deleted',
         previousProfileStatus,
         deletedAtIso: new Date().toISOString()
-      });
+      }));
       this.clearRealtimeState(normalizedUserId);
     }
     return {
@@ -419,15 +448,67 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     };
   }
 
-  private buildInitialMenuCounterOverrides(user: UserDto) {
-    return UserMenuCountersBuilder.buildInitialMenuCounterOverrides(user, {
-      cars: user.activities.cars ?? 0,
-      accommodation: user.activities.accommodation ?? 0,
-      supplies: user.activities.supplies ?? 0,
-      tickets: user.activities.tickets ?? 0,
-      contacts: user.activities.contacts ?? 0,
-      feedback: user.activities.feedback ?? 0
-    });
+  private upsertUser(user: UserDto): UserDto {
+    const normalizedUser = LocalUsersMapper.toRecord(user);
+    const savedUser = this.usersRepository.upsertUser(normalizedUser);
+    return LocalUsersMapper.toDto(savedUser);
+  }
+
+  private buildInitialMenuCounterOverrides(user: UserDto): UserMenuCountersDto {
+    const normalizeCounter = (value: unknown): number => {
+      const count = Number(value);
+      return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+    };
+
+    const activities = user.activities;
+    const events = normalizeCounter(activities?.events);
+    const invitations = normalizeCounter(activities?.invitations);
+    const hosting = normalizeCounter(activities?.hosting);
+    const feedback = normalizeCounter(activities?.feedback);
+    const cars = normalizeCounter(activities?.cars);
+    const accommodation = normalizeCounter(activities?.accommodation);
+    const supplies = normalizeCounter(activities?.supplies);
+    const tickets = normalizeCounter(activities?.tickets);
+    const event = activities?.event;
+    const asset = activities?.asset;
+    const eventFeedback = activities?.eventFeedback;
+
+    return {
+      game: normalizeCounter(activities?.game),
+      chat: normalizeCounter(activities?.chat),
+      invitations,
+      events,
+      hosting,
+      cars,
+      accommodation,
+      supplies,
+      tickets,
+      contacts: normalizeCounter(activities?.contacts),
+      feedback,
+      event: {
+        all: normalizeCounter(event?.all ?? events + invitations + hosting),
+        active: normalizeCounter(event?.active ?? events),
+        pending: normalizeCounter(event?.pending),
+        invitations: normalizeCounter(event?.invitations ?? invitations),
+        hosting: normalizeCounter(event?.hosting ?? hosting),
+        drafts: normalizeCounter(event?.drafts),
+        trash: normalizeCounter(event?.trash)
+      },
+      asset: {
+        cars: normalizeCounter(asset?.cars ?? cars),
+        accommodation: normalizeCounter(asset?.accommodation ?? accommodation),
+        supplies: normalizeCounter(asset?.supplies ?? supplies),
+        tickets: normalizeCounter(asset?.tickets ?? tickets)
+      },
+      eventFeedback: {
+        ownEvents: normalizeCounter(eventFeedback?.ownEvents),
+        pending: normalizeCounter(eventFeedback?.pending ?? feedback),
+        feedbacked: normalizeCounter(eventFeedback?.feedbacked),
+        removed: normalizeCounter(eventFeedback?.removed)
+      },
+      adminJobs: normalizeCounter(activities?.adminJobs),
+      adminMetrics: normalizeCounter(activities?.adminMetrics)
+    };
   }
 
   private withActivityCounts(

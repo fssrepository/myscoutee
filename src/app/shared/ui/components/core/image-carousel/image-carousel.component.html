@@ -1,0 +1,136 @@
+@let slots = imageSlots();
+@let slotPages = pages();
+
+<div class="image-carousel" role="region" [attr.aria-label]="ariaLabel" aria-roledescription="carousel">
+  @if (previewMode) {
+    @let previewUrl = selectedPreviewUrl(slots);
+    <div
+      class="image-carousel__preview"
+      [class.is-empty]="!previewUrl"
+      [appLazyBgImage]="previewUrl || null"
+    >
+      @if (!previewUrl) {
+        <span>Select a slot to upload an image</span>
+      }
+      @if (isSelectedPreviewUploading(slots)) {
+        <span class="image-carousel__preview-ring" aria-label="Uploading image">
+          <app-indicator kind="spinner-ring"></app-indicator>
+        </span>
+      }
+    </div>
+  }
+
+  <div class="image-carousel__carousel">
+    @if (slotPages.length > 1 && carouselIndex > 0) {
+      <button
+        type="button"
+        class="image-carousel__arrow image-carousel__arrow--prev"
+        data-motion="none"
+        [disabled]="isDisabled() || uploadingSlotIndex !== null"
+        (click)="showPreviousPage($event)"
+        aria-label="Previous image slot"
+        title="Previous"
+      >
+        <mat-icon>chevron_left</mat-icon>
+      </button>
+    }
+
+    <div
+      #carouselViewport
+      class="image-carousel__window"
+      (scroll)="onCarouselScroll()"
+    >
+      <div class="image-carousel__strip" [style.transform]="carouselTransform()">
+        @for (page of slotPages; track $index) {
+          <div class="image-carousel__page">
+            @for (slotIndex of page; track slotIndex) {
+              @let imageUrl = slots[slotIndex];
+              <article
+                class="image-carousel__slot"
+                [class.is-selected]="isSelected(slotIndex)"
+                [class.is-filled]="imageUrl"
+                [class.is-uploading]="isUploading(slotIndex)"
+                [appLazyBgImage]="imageUrl || null"
+              >
+                <span class="image-carousel__slot-index">{{ slotIndex + 1 }}</span>
+
+                @if (isUploading(slotIndex)) {
+                  <span class="image-carousel__upload-ring" aria-label="Uploading image">
+                    <app-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-indicator>
+                  </span>
+                } @else if (imageUrl) {
+                  <button
+                    type="button"
+                    class="image-carousel__slot-action image-carousel__slot-action--copy"
+                    (click)="copySlot(imageUrl, slotIndex, $event)"
+                    aria-label="Copy image link"
+                    title="Copy link"
+                  >
+                    <mat-icon>content_copy</mat-icon>
+                  </button>
+                  <button
+                    type="button"
+                    class="image-carousel__slot-action image-carousel__slot-action--remove"
+                    (click)="removeSlot(imageUrl, slotIndex, $event)"
+                    aria-label="Remove image"
+                    title="Remove"
+                  >
+                    <mat-icon>close</mat-icon>
+                  </button>
+                } @else {
+                  <span class="image-carousel__slot-add">+</span>
+                }
+
+                <input
+                  #imageSlotInput
+                  class="image-carousel__slot-input"
+                  type="file"
+                  accept="image/*"
+                  [disabled]="isDisabled() || uploadingSlotIndex !== null"
+                  (change)="uploadFromInput($event, slotIndex)"
+                />
+                <button
+                  type="button"
+                  class="image-carousel__slot-hit"
+                  [disabled]="isDisabled() || uploadingSlotIndex !== null || isUploading(slotIndex)"
+                  (click)="openSlot(imageSlotInput, slotIndex, imageUrl, $event)"
+                  [attr.aria-label]="imageUrl ? 'Replace image slot ' + (slotIndex + 1) : 'Upload image slot ' + (slotIndex + 1)"
+                  [title]="imageUrl ? 'Replace image' : 'Upload image'"
+                ></button>
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (slotPages.length > 1 && carouselIndex < slotPages.length - 1) {
+      <button
+        type="button"
+        class="image-carousel__arrow image-carousel__arrow--next"
+        data-motion="none"
+        [disabled]="isDisabled() || uploadingSlotIndex !== null"
+        (click)="showNextPage($event)"
+        aria-label="Next image slot"
+        title="Next"
+      >
+        <mat-icon>chevron_right</mat-icon>
+      </button>
+    }
+
+    @if (slotPages.length > 1) {
+      <div class="image-carousel__dots" aria-label="Image slot pages">
+        @for (page of slotPages; track $index; let pageIndex = $index) {
+          <button
+            type="button"
+            class="image-carousel__dot"
+            [class.is-active]="carouselIndex === pageIndex"
+            [attr.aria-current]="carouselIndex === pageIndex ? 'true' : null"
+            [attr.aria-label]="'Show image slot page ' + (pageIndex + 1)"
+            (click)="showPage(pageIndex, $event)"
+          ></button>
+        }
+      </div>
+    }
+  </div>
+</div>

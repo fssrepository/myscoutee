@@ -179,7 +179,7 @@ export class EntryFirebaseAuthPopupComponent {
   }
 
   protected passwordHasLetter(): boolean {
-    return /\p{L}/u.test(this.password);
+    return this.hasTextLetter(this.password);
   }
 
   protected passwordHasNumber(): boolean {
@@ -187,7 +187,7 @@ export class EntryFirebaseAuthPopupComponent {
   }
 
   protected passwordHasOptionalSymbol(): boolean {
-    return /[^\p{L}\d]/u.test(this.password);
+    return Array.from(this.password).some(char => !this.isTextLetter(char) && !/\d/.test(char));
   }
 
   protected passwordConfirmationMatches(): boolean {
@@ -196,6 +196,14 @@ export class EntryFirebaseAuthPopupComponent {
 
   private isCreatePasswordValid(): boolean {
     return this.passwordHasMinimumLength() && this.passwordHasLetter() && this.passwordHasNumber();
+  }
+
+  private hasTextLetter(value: string): boolean {
+    return Array.from(value).some(char => this.isTextLetter(char));
+  }
+
+  private isTextLetter(value: string): boolean {
+    return value.toLocaleLowerCase('en-US') !== value.toLocaleUpperCase('en-US');
   }
 
   private isValidEmail(value: string): boolean {

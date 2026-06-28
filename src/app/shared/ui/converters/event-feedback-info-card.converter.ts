@@ -2,7 +2,7 @@ import type {
   EventFeedbackDto,
   EventFeedbackPageStateSnapshotDto,
 } from '../../core/contracts/activity.interface';
-import type { InfoCardData, CardMenuActionId } from '../components/smart-list/card';
+import type { InfoCardData, CardMenuActionId } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface EventFeedbackInfoCardConverterOptions {

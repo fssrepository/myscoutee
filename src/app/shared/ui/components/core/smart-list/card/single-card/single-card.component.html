@@ -1,0 +1,179 @@
+@if (resolvedPresentation() === 'fullscreen') {
+  <div #fullscreenShell class="activities-rates-fullscreen">
+    <article
+      class="activities-rate-profile-card activities-row-item activities-rates-fullscreen-card"
+      [class.activities-rates-fullscreen-card-active]="resolvedState() === 'active'"
+      [class.activities-rates-fullscreen-card-leaving]="resolvedState() === 'leaving'"
+      [attr.data-activity-rate-row-id]="card?.rowId"
+      [style.width]="fullscreenCardWidth"
+      [style.height]="fullscreenCardHeight"
+      >
+      <ng-container *ngTemplateOutlet="cardBody"></ng-container>
+    </article>
+  </div>
+} @else {
+  <article
+    class="activities-rate-profile-card activities-row-item"
+    [attr.data-activity-rate-row-id]="card?.rowId"
+    [attr.data-group-label]="card?.groupLabel"
+    >
+    <ng-container *ngTemplateOutlet="cardBody"></ng-container>
+  </article>
+}
+
+
+<ng-template #cardBody>
+  <div
+    class="activities-rate-profile-stack"
+    [ngClass]="resolvedStackClasses()"
+    [class.is-pane-loading]="loading"
+    [class.has-card-score-badge]="!!card?.badge"
+    [class.has-card-context-badge]="!!card?.contextBadge"
+    >
+    @if (resolvedSlides().length > 1) {
+      <div class="image-stack-indicators activities-rate-profile-indicators">
+        @if (isInteractive()) {
+          @for (slide of resolvedSlides(); track trackBySlide($index, slide); let imageIndex = $index) {
+            <button
+              type="button"
+              class="image-stack-line"
+              [class.active]="imageIndex === clampedActiveIndex()"
+              (click)="onSlideSelect(imageIndex, $event)"
+              aria-label="Select profile image"
+            ></button>
+          }
+        } @else {
+          @for (slide of resolvedSlides(); track trackBySlide($index, slide); let imageIndex = $index) {
+            <span
+              class="image-stack-line"
+              [class.active]="imageIndex === clampedActiveIndex()"
+            ></span>
+          }
+        }
+      </div>
+    }
+
+    <div
+      class="activities-rate-profile-layer activities-rate-profile-layer-active"
+      [appLazyBgImage]="currentSlideImageUrl()"
+      >
+      @if (currentSlideImageUrl()) {
+        <span class="activities-rate-image-loader" aria-hidden="true">
+          <app-indicator kind="spinner-ring"></app-indicator>
+        </span>
+      }
+      @if (hasOverlay(currentSlide())) {
+        <div class="activities-rate-profile-overlay">
+          <p class="activities-rate-profile-line activities-rate-profile-line-primary">{{ currentSlide()?.primaryLine }}</p>
+          <p class="activities-rate-profile-line activities-rate-profile-line-secondary">{{ currentSlide()?.secondaryLine }}</p>
+        </div>
+      }
+    </div>
+
+    @if (isInteractive() && resolvedSlides().length > 1) {
+      <div class="image-stack-hit-area activities-rate-profile-hit-area">
+        @for (slide of resolvedSlides(); track trackBySlide($index, slide); let imageIndex = $index) {
+          <button
+            type="button"
+            class="image-stack-hit-segment"
+            (click)="onSlideSelect(imageIndex, $event)"
+            aria-label="Select profile image"
+          ></button>
+        }
+      </div>
+    }
+
+    @if (card?.statusBadgeLabel; as statusBadge) {
+      <span class="shared-card-status-badge">
+        {{ statusBadge }}
+      </span>
+    }
+
+    @if (card?.contextBadge; as contextBadge) {
+      @if (contextBadge.profileView) {
+        <button
+          type="button"
+          class="shared-card-context-avatar-badge"
+          [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'View related profile'"
+          [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
+          (click)="onContextBadgeClick(contextBadge, $event)"
+          >
+          @if (contextBadgeImageUrl(contextBadge)) {
+            <img [src]="contextBadgeImageUrl(contextBadge)" alt="" />
+          } @else {
+            <span>{{ contextBadgeLabel(contextBadge) }}</span>
+          }
+          @if (contextBadge.counterLabel) {
+            <em>{{ contextBadge.counterLabel }}</em>
+          }
+        </button>
+      } @else {
+        <span
+          class="shared-card-context-avatar-badge"
+          [attr.aria-label]="contextBadge.ariaLabel || contextBadge.title || 'Related profile'"
+          [attr.title]="contextBadge.title || contextBadge.ariaLabel || null"
+          >
+          @if (contextBadgeImageUrl(contextBadge)) {
+            <img [src]="contextBadgeImageUrl(contextBadge)" alt="" />
+          } @else {
+            <span>{{ contextBadgeLabel(contextBadge) }}</span>
+          }
+          @if (contextBadge.counterLabel) {
+            <em>{{ contextBadge.counterLabel }}</em>
+          }
+        </span>
+      }
+    }
+
+    @if (card?.profileView; as profileView) {
+      <button
+        type="button"
+        class="shared-card-profile-view-btn"
+        (click)="onProfileClick(profileView, $event)"
+        [attr.aria-label]="'View ' + (profileView.label || 'profile')"
+        >
+        <mat-icon>visibility</mat-icon>
+      </button>
+    }
+
+    @if (card?.badge; as cardBadge) {
+      @if (isBadgeInteractive()) {
+        <button
+          type="button"
+          class="activities-rate-score-badge"
+          [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
+          [class.activities-rate-score-badge-between]="usesBetweenBadge()"
+          [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
+          [class.is-active]="cardBadge.active || badgeMenuOpen"
+          [class.is-pending]="cardBadge.pending"
+          [class.is-disabled]="cardBadge.disabled"
+          [class.is-blink]="isBadgeBlinking()"
+          [disabled]="cardBadge.disabled"
+          [attr.aria-label]="cardBadge.ariaLabel"
+          (pointerdown)="onBadgePointerDown($event)"
+          (mousedown)="onBadgePointerDown($event)"
+          (touchstart)="onBadgePointerDown($event)"
+          (click)="onBadgeClick($event)"
+          >
+          <mat-icon>star</mat-icon>
+          <span>{{ cardBadge.label }}</span>
+        </button>
+      } @else {
+        <span
+          class="activities-rate-score-badge"
+          [class.activities-rate-score-badge-floating]="usesFloatingBadge()"
+          [class.activities-rate-score-badge-between]="usesBetweenBadge()"
+          [class.activities-rate-score-badge-floating-pair-overlap]="usesPairOverlapBadge()"
+          [class.is-active]="cardBadge.active"
+          [class.is-pending]="cardBadge.pending"
+          [class.is-disabled]="cardBadge.disabled"
+          [class.is-blink]="isBadgeBlinking()"
+          [attr.aria-label]="cardBadge.ariaLabel"
+          >
+          <mat-icon>star</mat-icon>
+          <span>{{ cardBadge.label }}</span>
+        </span>
+      }
+    }
+  </div>
+</ng-template>

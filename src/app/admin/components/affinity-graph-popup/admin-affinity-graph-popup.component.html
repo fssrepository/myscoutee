@@ -49,18 +49,18 @@
       @if (graphProgressVisible()) {
         <div class="affinity-graph-progress-shell">
           @if (graphDataLoading()) {
-            <app-progress-indicator
+            <app-indicator
               kind="bar"
               placement="inline"
               [state]="graphProgressState(true)"
-            ></app-progress-indicator>
+            ></app-indicator>
           } @else {
-            <app-progress-indicator
+            <app-indicator
               kind="bar"
               placement="inline"
               [state]="graphProgressState(false)"
               [position]="graphZoomProgress()"
-            ></app-progress-indicator>
+            ></app-indicator>
           }
         </div>
       }

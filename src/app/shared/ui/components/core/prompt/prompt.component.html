@@ -1,0 +1,74 @@
+@if (visible) {
+  <section
+    class="ui-prompt"
+    [class.ui-prompt--top]="promptModel.position !== 'bottom'"
+    [class.ui-prompt--bottom]="promptModel.position === 'bottom'"
+    [class.ui-prompt--info]="promptModel.tone === 'info'"
+    [class.ui-prompt--success]="promptModel.tone === 'success'"
+    [class.ui-prompt--warning]="promptModel.tone === 'warning'"
+    [class.ui-prompt--danger]="promptModel.tone === 'danger'"
+    aria-live="polite"
+    [attr.aria-label]="ariaLabel"
+  >
+    <div class="ui-prompt__panel">
+      @if (promptModel.icon; as icon) {
+        <span class="ui-prompt__icon">
+          @if (iconSource(icon); as src) {
+            <img
+              class="ui-prompt__image"
+              [src]="src"
+              [alt]="iconAlt(icon)"
+              width="40"
+              height="40"
+            />
+          } @else if (iconName(icon); as name) {
+            <mat-icon
+              class="ui-prompt__material-icon"
+              [attr.aria-label]="iconAriaLabel(icon)"
+              [attr.aria-hidden]="iconAriaLabel(icon) ? null : 'true'"
+            >{{ name }}</mat-icon>
+          }
+        </span>
+      }
+
+      <div class="ui-prompt__copy">
+        @if (promptModel.title) {
+          <h2>{{ promptModel.title }}</h2>
+        }
+        @if (promptModel.description) {
+          <p>{{ promptModel.description }}</p>
+        }
+      </div>
+
+      <div class="ui-prompt__actions">
+        @if (promptModel.action; as actionModel) {
+          <button
+            type="button"
+            class="ui-prompt__primary"
+            [class.ui-prompt__primary--compact-mobile]="actionModel.icon"
+            [disabled]="actionDisabled(actionModel)"
+            [attr.aria-label]="actionAriaLabel(actionModel)"
+            (click)="emitAction(actionModel, $event)"
+          >
+            @if (actionModel.icon) {
+              <mat-icon>{{ actionModel.icon }}</mat-icon>
+            }
+            <span class="ui-prompt__primary-label">{{ actionLabel(actionModel) }}</span>
+          </button>
+        }
+
+        @if (dismissible) {
+          <button
+            type="button"
+            class="ui-prompt__close"
+            [disabled]="busy"
+            [attr.aria-label]="closeAriaLabel"
+            (click)="emitDismiss($event)"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </div>
+    </div>
+  </section>
+}

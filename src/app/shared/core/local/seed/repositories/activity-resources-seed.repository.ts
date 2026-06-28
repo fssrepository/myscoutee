@@ -1,17 +1,17 @@
 import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type * as AppTypes from '../../../base/models';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ACTIVITY_RESOURCES_TABLE_NAME, type ActivityResourcesRecordCollection, type ActivitySubEventResourceRecord } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
+import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
-import { SeedScheduleBuilder, SeedUserBuilder } from '../builders';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
 })
@@ -22,13 +22,12 @@ export class SeedActivityResourcesRepository {
   seedDefaults(
     ownerUserIds?: readonly string[],
     sourceRecordsByUserId?: ReadonlyMap<string, readonly ActivityEventRecord[]>,
-    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetCardDTO[]>
+    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetDTO[]>
   ): void {
     const normalizedUserIds = Array.from(new Set(
       (ownerUserIds ?? [])
         .map(userId => `${userId ?? ''}`.trim())
         .filter(userId => userId.length > 0)
-        .filter(userId => !SeedUserBuilder.isEmptyOnboardingProfileUserId(userId))
     ));
     if (normalizedUserIds.length === 0) {
       return;
@@ -116,7 +115,7 @@ export class SeedActivityResourcesRepository {
   private buildSeededRecordsForUser(
     userId: string,
     seedSourceRecords?: readonly ActivityEventRecord[],
-    seedAssets?: readonly AppDTOs.AssetCardDTO[],
+    seedAssets?: readonly AppDTOs.AssetDTO[],
     contributorUserIdsByEventId?: Map<string, string[]>
   ): ActivitySubEventResourceRecord[] {
     const normalizedUserId = userId.trim();
@@ -127,7 +126,7 @@ export class SeedActivityResourcesRepository {
     const sourceRecords = seedSourceRecords ?? [];
     const seenRecordIds = new Set<string>();
     const nextRecords: ActivitySubEventResourceRecord[] = [];
-    let createdMs = SeedScheduleBuilder.anchorDate().getTime();
+    let createdMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
 
     for (const record of sourceRecords) {
       if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId, contributorUserIdsByEventId)) {
@@ -292,21 +291,16 @@ export class SeedActivityResourcesRepository {
     return `${status ?? 'A'}`.trim() === 'A';
   }
 
-  private readOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetCardDTO[]> {
+  private readOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
     const table = this.normalizeAssetsCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    const assetsByUserId = new Map<string, AppDTOs.AssetCardDTO[]>();
+    const assetsByUserId = new Map<string, AppDTOs.AssetDTO[]>();
     for (const userId of userIds) {
       assetsByUserId.set(
         userId,
         (table.idsByOwnerUserId[userId] ?? [])
           .map(id => table.byId[id])
           .filter((record): record is AssetRecord => Boolean(record))
-          .map(record => ({
-            ...record,
-            requests: [...(record.requests ?? [])],
-            routes: [...(record.routes ?? [])],
-            topics: [...(record.topics ?? [])]
-          }))
+          .map(record => LocalAssetsMapper.toAssetDto(record))
       );
     }
     return assetsByUserId;

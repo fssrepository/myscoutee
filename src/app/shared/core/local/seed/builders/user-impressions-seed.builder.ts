@@ -1,6 +1,7 @@
 import { AppUtils } from '../../../../app-utils';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
+import { environment } from '../../../../../../environments/environment';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto, UserPersonalityTraitDto } from '../../../contracts/user.interface';
 
 export class SeedUserImpressionsBuilder {
@@ -187,8 +188,12 @@ export class SeedUserImpressionsBuilder {
       label: entry.trait.label,
       percent: percents[index],
       evidenceCount: this.seededMetric(user, 90 + index + (scope === 'host' ? 0 : 13), 2, 12),
-      lastRatedAtIso: SeedScheduleBuilder
-        .shiftDate(new Date(Date.UTC(2026, 2, this.seededMetric(user, 120 + index + (scope === 'host' ? 0 : 13), 1, 24), 12, 0, 0)))
+      lastRatedAtIso: AppUtils
+        .shiftDate(
+          new Date(Date.UTC(2026, 2, this.seededMetric(user, 120 + index + (scope === 'host' ? 0 : 13), 1, 24), 12, 0, 0)),
+          SEED_SCHEDULE_REFERENCE_DATE,
+          environment.bootstrapOffsetInDays
+        )
         .toISOString()
     }));
   }
