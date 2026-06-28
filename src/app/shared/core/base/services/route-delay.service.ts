@@ -12,14 +12,6 @@ function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 
   return normalizeDelayMs(fallbackTimeoutMs);
 }
 
-function resolveCurrentRouteIntervalMs(route: string, fallbackIntervalMs = 0): number {
-  const routeConfig = resolveRouteConfig(route);
-  if (routeConfig.intervalMs > 0) {
-    return routeConfig.intervalMs;
-  }
-  return normalizeDelayMs(fallbackIntervalMs);
-}
-
 @Injectable({
   providedIn: 'root'
 })
@@ -47,7 +39,16 @@ export class RouteDelayService {
   }
 
   resolveIntervalMs(route: string, fallbackIntervalMs = 0): number {
-    return resolveCurrentRouteIntervalMs(route, fallbackIntervalMs);
+    const routeConfig = resolveRouteConfig(route);
+    const demoRouteMode = this.sessionService.currentSession()?.kind === 'demo'
+      || (environment.activitiesDataSource !== 'http' && !environment.firebaseLoginEnabled);
+    const configuredIntervalMs = demoRouteMode && routeConfig.demoIntervalMs > 0
+      ? routeConfig.demoIntervalMs
+      : routeConfig.intervalMs;
+    if (configuredIntervalMs > 0) {
+      return configuredIntervalMs;
+    }
+    return normalizeDelayMs(fallbackIntervalMs);
   }
 
   withRequestTimeout<T>(

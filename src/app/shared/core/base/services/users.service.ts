@@ -23,6 +23,12 @@ import type {
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
+import { RouteDelayService } from './route-delay.service';
+import {
+  RouteIntervalSchedulerService,
+  type RouteIntervalStop,
+  type RouteIntervalTask
+} from './route-interval-scheduler.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -37,9 +43,13 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
+  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
+
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
+  private readonly routeDelay = inject(RouteDelayService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
 
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/auth/me');
@@ -388,6 +398,17 @@ export class UsersService extends BaseRouteModeService {
     } catch {
       return null;
     }
+  }
+
+  resolveUserRealtimeLongPollIntervalMs(): number {
+    return this.routeDelay.resolveIntervalMs(UsersService.USER_REALTIME_LONG_POLL_ROUTE);
+  }
+
+  startUserRealtimeLongPoll(task: RouteIntervalTask): RouteIntervalStop {
+    return this.routeIntervalScheduler.startInterval(
+      UsersService.USER_REALTIME_LONG_POLL_ROUTE,
+      task
+    );
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {

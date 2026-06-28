@@ -3,6 +3,7 @@ export interface RouteConfigEntry {
   demoDelayMs?: number;
   requestTimeoutMs?: number;
   intervalMs?: number;
+  demoIntervalMs?: number;
   mode?: RouteMode | null;
   http?: boolean;
 }
@@ -21,6 +22,7 @@ export interface ResolvedRouteConfig {
   demoDelayMs: number;
   requestTimeoutMs: number;
   intervalMs: number;
+  demoIntervalMs: number;
   mode: RouteMode | null;
   http: boolean;
 }
@@ -60,7 +62,9 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/auth/me/realtime/long-poll',
-      demoDelayMs: 1500
+      demoDelayMs: 0,
+      intervalMs: 30000,
+      demoIntervalMs: 10000
     },
     {
       routePrefix: '/auth/me/logout',
@@ -309,6 +313,7 @@ export function resolveRouteConfig(url: string): ResolvedRouteConfig {
     demoDelayMs: normalizeDelayMs(entry?.demoDelayMs ?? ROUTE_CONFIG.defaultDemoDelayMs),
     requestTimeoutMs: normalizeDelayMs(entry?.requestTimeoutMs ?? ROUTE_CONFIG.defaultRequestTimeoutMs),
     intervalMs: normalizeDelayMs(entry?.intervalMs ?? ROUTE_CONFIG.defaultIntervalMs),
+    demoIntervalMs: normalizeDelayMs(entry?.demoIntervalMs ?? ROUTE_CONFIG.defaultIntervalMs),
     mode: configuredMode,
     http: entry?.http === true || configuredMode === 'http'
   };

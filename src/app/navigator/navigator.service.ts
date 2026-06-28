@@ -3,7 +3,7 @@ import { type ActivityCounters } from '../shared/ui';
 import { NavigationEnd, Router } from '@angular/router';
 import { AppContext } from '../shared/ui';
 import { AppUtils } from '../shared/app-utils';
-import { HelpCenterService, PrivacyPolicyService, RouteIntervalSchedulerService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
+import { HelpCenterService, PrivacyPolicyService, SessionService, TermsPolicyService, UsersService, type EntryConsentStateDto, type HelpCenterRevisionDto, type PrivacyConsentDto, type UserDto, type UserImpressionsSectionDto, type UserRealtimeLongPollResponseDto } from '../shared/core';
 import { APP_STORAGE_KEYS } from '../shared/core/common/storage-scope';
 import { ConfirmationDialogStore } from '../shared/ui/context/stores/confirmation-dialog.store';
 import { NavigatorStore, type NavigatorSettingsPopup } from '../shared/ui/context/stores/navigator.store';
@@ -12,9 +12,6 @@ import { NavigatorStore, type NavigatorSettingsPopup } from '../shared/ui/contex
   providedIn: 'root'
 })
 export class NavigatorService {
-  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
-  private static readonly USER_REALTIME_LONG_POLL_INTERVAL_MS = 30000;
-  private static readonly DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS = 10000;
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ENTRY_CONSENT_KEY = APP_STORAGE_KEYS.entryConsent;
   private static readonly OPTIONAL_PRIVACY_APPROVAL_KEY = APP_STORAGE_KEYS.optionalPrivacyApprovals;
@@ -27,7 +24,6 @@ export class NavigatorService {
   private readonly sessionService = inject(SessionService);
   private readonly appCtx = inject(AppContext);
   private readonly router = inject(Router);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly currentRouteUrlRef = signal(AppUtils.normalizeRoutePath(this.router.url));
@@ -565,18 +561,14 @@ export class NavigatorService {
   }
 
   private startUserRealtimeLongPoll(): void {
-    const fallbackIntervalMs = this.resolveUserRealtimeLongPollIntervalMs();
-    const intervalKey = `${NavigatorService.USER_REALTIME_LONG_POLL_ROUTE}:${fallbackIntervalMs}`;
+    const intervalMs = this.usersService.resolveUserRealtimeLongPollIntervalMs();
+    const intervalKey = `${intervalMs}`;
     if (this.stopUserRealtimeLongPollInterval && this.userRealtimeLongPollActiveIntervalKey === intervalKey) {
       return;
     }
     this.stopUserRealtimeLongPollInterval?.();
     this.userRealtimeLongPollActiveIntervalKey = intervalKey;
-    this.stopUserRealtimeLongPollInterval = this.routeIntervalScheduler.startInterval(
-      NavigatorService.USER_REALTIME_LONG_POLL_ROUTE,
-      () => this.runUserRealtimeLongPollTick(),
-      { fallbackIntervalMs }
-    );
+    this.stopUserRealtimeLongPollInterval = this.usersService.startUserRealtimeLongPoll(() => this.runUserRealtimeLongPollTick());
   }
 
   private stopUserRealtimeLongPoll(): void {
@@ -584,12 +576,6 @@ export class NavigatorService {
     this.stopUserRealtimeLongPollInterval = null;
     this.userRealtimeLongPollInFlight = false;
     this.userRealtimeLongPollActiveIntervalKey = '';
-  }
-
-  private resolveUserRealtimeLongPollIntervalMs(): number {
-    return this.usersService.localModeEnabled
-      ? NavigatorService.DEMO_USER_REALTIME_LONG_POLL_INTERVAL_MS
-      : NavigatorService.USER_REALTIME_LONG_POLL_INTERVAL_MS;
   }
 
   private isAdminWorkspaceRoute(routeUrl = this.currentRouteUrlRef()): boolean {
