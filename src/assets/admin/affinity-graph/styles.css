@@ -118,6 +118,12 @@ h1 {
   color: var(--ink);
 }
 
+.metrics dd.is-pruned {
+  font-size: 0.86rem;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
 .control-panel {
   padding: 15px;
   border-radius: 8px;
