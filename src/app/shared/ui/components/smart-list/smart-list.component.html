@@ -7,31 +7,31 @@
 >
   <div class="smart-list__stage">
     <div class="smart-list__stage-list-shell" [class.is-occluded]="shouldRenderHostedFullscreenOverlay()">
-      @if (isCalendarMode()) {
+      @if (isPageMode()) {
         <div
-          class="smart-list__calendar-shell"
-          [class.smart-list__calendar-shell--presentation-list]="resolvedPresentation() === 'list'"
-          [class.smart-list__calendar-shell--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
+          class="smart-list__page-shell"
+          [class.smart-list__page-shell--presentation-list]="resolvedPresentation() === 'list'"
+          [class.smart-list__page-shell--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
         >
-          <app-calendar-card
+          <app-smart-list-page-card
             #scrollHost
-            class="smart-list smart-list--calendar"
+            class="smart-list smart-list--page"
             [class.smart-list--month]="isMonthMode()"
             [class.smart-list--week]="isWeekMode()"
             [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
             [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
-            [class.smart-list--calendar-touching]="isTouchingSurface"
-            [model]="calendarCardModel()"
-            (scroll)="onCalendarScroll($event)"
-            (scrollend)="onCalendarScrollEnd($event)"
+            [class.smart-list--page-touching]="isTouchingSurface"
+            [model]="pageCardModel()"
+            (scroll)="onPageScroll($event)"
+            (scrollend)="onPageScrollEnd($event)"
             (touchstart)="onSurfaceTouchStart()"
             (touchend)="onSurfaceTouchEnd()"
             (touchcancel)="onSurfaceTouchEnd()"
           >
             @if (shouldShowStickyHeader()) {
               <div
-                calendar-card-header
-                class="smart-list__sticky smart-list__sticky--calendar"
+                smart-list-page-card-header
+                class="smart-list__sticky smart-list__sticky--page"
                 [ngClass]="resolvedStickyHeaderClass()"
               >
                 <span class="smart-list__sticky-label">{{ stickyLabel }}</span>
@@ -39,7 +39,7 @@
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
-                    (click)="navigateCalendarHeader(-1, $event)"
+                    (click)="navigatePageHeader(-1, $event)"
                     aria-label="Previous period"
                   >
                     <mat-icon>chevron_left</mat-icon>
@@ -47,7 +47,7 @@
                   <button
                     type="button"
                     class="smart-list__sticky-action-btn"
-                    (click)="navigateCalendarHeader(1, $event)"
+                    (click)="navigatePageHeader(1, $event)"
                     aria-label="Next period"
                   >
                     <mat-icon>chevron_right</mat-icon>
@@ -55,7 +55,7 @@
                 </span>
               </div>
             }
-          </app-calendar-card>
+          </app-smart-list-page-card>
         </div>
       } @else {
         @if (shouldRenderListHeaderOutsideScroll()) {

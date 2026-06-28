@@ -3,7 +3,7 @@ import { ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular
 
 import {
   countSmartListCalendarOverlaps
-} from '../../smart-list-calendar-builder.helper';
+} from '../../smart-list-calendar.adapter';
 import type {
   ListQuery,
   SmartListCalendarConfig,
@@ -20,7 +20,7 @@ import type {
 import type { CalendarCardModel } from './calendar-card.types';
 
 @Component({
-  selector: 'app-calendar-card',
+  selector: 'app-calendar-card, app-smart-list-page-card',
   standalone: true,
   imports: [CommonModule],
   templateUrl: './calendar-card.component.html',
@@ -51,11 +51,17 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     this.calendarTrackKey(index, badge.item);
 
   protected monthPages(): readonly SmartListCalendarMonthPage<T>[] {
-    return this.model?.monthPages ?? [];
+    if (this.model?.mode === 'week') {
+      return [];
+    }
+    return (this.model?.pages ?? []) as readonly SmartListCalendarMonthPage<T>[];
   }
 
   protected weekPages(): readonly SmartListCalendarWeekPage<T>[] {
-    return this.model?.weekPages ?? [];
+    if (this.model?.mode !== 'week') {
+      return [];
+    }
+    return (this.model?.pages ?? []) as readonly SmartListCalendarWeekPage<T>[];
   }
 
   protected isMonthMode(): boolean {
@@ -217,7 +223,7 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
   }
 
   private calendar(): SmartListCalendarConfig<T, TFilters> | null {
-    return this.model?.calendar ?? null;
+    return (this.model?.config ?? null) as SmartListCalendarConfig<T, TFilters> | null;
   }
 
   private query(): ListQuery<TFilters> | null {

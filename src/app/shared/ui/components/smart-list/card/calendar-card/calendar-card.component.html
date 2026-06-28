@@ -1,10 +1,11 @@
+<ng-content select="[smart-list-page-card-header]"></ng-content>
 <ng-content select="[calendar-card-header]"></ng-content>
 
 <div class="calendar-card__pages">
   @if (isMonthMode()) {
     @for (page of monthPages(); track trackByCalendarPageKey($index, page)) {
       <section
-        class="smart-list__calendar-page smart-list__calendar-page--month"
+        class="smart-list__page smart-list__page--month smart-list__calendar-page smart-list__calendar-page--month"
         [style.--month-week-count]="page.weeks.length"
         [class.smart-list__calendar-page--month-six-weeks]="page.weeks.length === 6"
         [class.smart-list__calendar-page--month-rates]="isRateCountCalendarVariant()"
@@ -62,7 +63,7 @@
     }
   } @else {
     @for (page of weekPages(); track trackByCalendarPageKey($index, page)) {
-      <section class="smart-list__calendar-page smart-list__calendar-page--week">
+      <section class="smart-list__page smart-list__page--week smart-list__calendar-page smart-list__calendar-page--week">
       <div class="smart-list__week-board" [style.--week-slot-count]="calendarWeekHours().length">
         <div class="smart-list__week-board-corner"></div>
         @for (day of page.days; track trackByCalendarDayKey($index, day); let dayIndex = $index) {

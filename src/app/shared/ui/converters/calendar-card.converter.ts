@@ -1,19 +1,17 @@
 import type {
   ListQuery,
   SmartListCalendarConfig,
-  SmartListCalendarMonthPage,
   SmartListCalendarVariant,
-  SmartListCalendarWeekPage,
   SmartListFilters,
   SmartListViewMode
 } from '../components/smart-list/smart-list.types';
 import type { CalendarCardModel } from '../components/smart-list/card/calendar-card';
+import type { SmartListPage } from '../components/smart-list/smart-list-page.adapter';
 import type { UiConverter } from './converter.types';
 
 export interface CalendarCardConverterInput<T, TFilters extends SmartListFilters = SmartListFilters> {
   viewMode: SmartListViewMode;
-  monthPages: readonly SmartListCalendarMonthPage<T>[];
-  weekPages: readonly SmartListCalendarWeekPage<T>[];
+  pages: readonly SmartListPage<T>[];
   calendar: SmartListCalendarConfig<T, TFilters> | null;
   query: ListQuery<TFilters>;
   variant: SmartListCalendarVariant;
@@ -28,9 +26,8 @@ export class CalendarCardConverter {
   ): CalendarCardModel<T, TFilters> {
     return {
       mode: input.viewMode === 'week' ? 'week' : 'month',
-      monthPages: input.monthPages,
-      weekPages: input.weekPages,
-      calendar: input.calendar,
+      pages: input.pages,
+      config: input.calendar,
       query: input.query,
       variant: input.variant,
       touching: input.touching,

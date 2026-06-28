@@ -662,7 +662,7 @@
   height: 100%;
 }
 
-.smart-list__calendar-shell {
+.smart-list__page-shell {
   display: flex;
   flex: 1;
   min-height: 0;
@@ -670,11 +670,11 @@
   gap: 0.4rem;
 }
 
-.smart-list__calendar-shell--presentation-fullscreen {
+.smart-list__page-shell--presentation-fullscreen {
   height: 100%;
 }
 
-.smart-list--calendar {
+.smart-list--page {
   display: flex;
   flex-direction: column;
   overflow-x: auto;
@@ -690,23 +690,23 @@
   padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
 }
 
-.smart-list--calendar.smart-list--week {
+.smart-list--page.smart-list--week {
   overflow-y: auto;
   touch-action: pan-x pan-y;
   overscroll-behavior-y: contain;
   padding-bottom: 0;
 }
 
-.smart-list--calendar.smart-list--month {
+.smart-list--page.smart-list--month {
   overflow-y: clip;
 }
 
-.smart-list--calendar.smart-list--calendar-touching {
+.smart-list--page.smart-list--page-touching {
   scroll-snap-type: none;
   scroll-behavior: auto;
 }
 
-.smart-list--calendar::-webkit-scrollbar {
+.smart-list--page::-webkit-scrollbar {
   display: none;
 }
 
@@ -725,11 +725,11 @@
   margin-bottom: 0.06rem;
 }
 
-.smart-list__sticky--calendar {
+.smart-list__sticky--page {
   left: 0;
 }
 
-.smart-list__sticky--calendar,
+.smart-list__sticky--page,
 .smart-list__sticky--list-header {
   display: flex;
   align-items: center;
@@ -846,7 +846,7 @@
     --smart-list-fullscreen-bottom-offset: calc(5.25rem + env(safe-area-inset-bottom));
   }
 
-  .smart-list--calendar.smart-list--month {
+  .smart-list--page.smart-list--month {
     padding-bottom: 0;
     overflow-y: hidden;
   }
