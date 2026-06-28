@@ -364,7 +364,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
-  private adminSupportBoardPollTimer: ReturnType<typeof setInterval> | null = null;
+  private stopAdminSupportBoardPoll: (() => void) | null = null;
+  private adminSupportBoardPollInFlight = false;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
 
@@ -1025,24 +1026,104 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private configureAdminSupportBoardPolling(enabled: boolean): void {
     if (!enabled) {
-      if (this.adminSupportBoardPollTimer) {
-        clearInterval(this.adminSupportBoardPollTimer);
-        this.adminSupportBoardPollTimer = null;
-      }
+      this.stopAdminSupportBoardPoll?.();
+      this.stopAdminSupportBoardPoll = null;
+      this.adminSupportBoardPollInFlight = false;
       return;
     }
-    if (this.adminSupportBoardPollTimer) {
+    if (this.stopAdminSupportBoardPoll) {
       return;
     }
-    this.adminSupportBoardPollTimer = setInterval(() => {
-      if (!this.activitiesStore.activitiesOpen() || !this.isAdminServiceChatMode()) {
+    this.stopAdminSupportBoardPoll = this.activitiesService.startActivityChatsPoll(() => {
+      void this.refreshAdminSupportBoardFromPoll();
+    });
+  }
+
+  private async refreshAdminSupportBoardFromPoll(): Promise<void> {
+    const canPoll = () =>
+      this.activitiesStore.activitiesOpen()
+      && this.isAdminServiceChatMode()
+      && this.activitiesPrimaryFilter === 'chats'
+      && !this.isCalendarLayoutView()
+      && !this.dialogStore.dialog()
+      && !this.activitiesStore.eventChatSession();
+    const pollSignature = () => [
+      this.activeUser?.id ?? '',
+      this.activitiesView,
+      this.activitiesSecondaryFilter,
+      this.activitiesChatContextFilter,
+      this.activitiesSupportCaseFilter
+    ].join('|');
+
+    if (this.adminSupportBoardPollInFlight || !canPoll()) {
+      return;
+    }
+    const querySignature = pollSignature();
+    const smartList = this.activitiesSmartList;
+    const visibleLimit = Math.max(
+      1,
+      smartList?.itemsSnapshot().length ?? 0,
+      this.activitiesPageSize * 2
+    );
+    const currentFilters = this.activitiesSmartListQuery.filters ?? {};
+    this.adminSupportBoardPollInFlight = true;
+    try {
+      const page = await this.activitiesService.loadActivityChats(
+        {
+          ...this.activitiesSmartListQuery,
+          page: 0,
+          pageSize: visibleLimit,
+          cursor: undefined,
+          view: this.activitiesView,
+          filters: {
+            ...currentFilters,
+            primaryFilter: 'chats',
+            secondaryFilter: this.activitiesSecondaryFilter,
+            chatContextFilter: 'service',
+            supportCaseFilter: this.activitiesSupportCaseFilter,
+            adminServiceOnly: true
+          }
+        },
+        { chatItems: this.chatItems }
+      );
+      if (!canPoll() || querySignature !== pollSignature()) {
         return;
       }
-      if (this.dialogStore.dialog() || this.activitiesStore.eventChatSession()) {
-        return;
+      const items = Array.isArray(page.items)
+        ? page.items.map(item => this.cloneChatRecord(item))
+        : [];
+      const total = Number.isFinite(page.total)
+        ? Math.max(0, Math.trunc(Number(page.total)))
+        : items.length;
+      const isSupportChat = (chat: ChatDTO) =>
+        Boolean(chat.supportCaseStatus) || `${chat.id ?? ''}`.trim().startsWith('c-support-admin-');
+      if ((page.nextCursor ?? null) === null && total <= items.length && this.activitiesSupportCaseFilter === 'all') {
+        this.chatItems = this.sortChatRecords([
+          ...this.chatItems.filter(item => !isSupportChat(item)),
+          ...items
+        ]);
+      } else {
+        const itemsById = new Map(this.chatItems.map(item => [item.id, this.cloneChatRecord(item)]));
+        for (const item of items) {
+          itemsById.set(item.id, item);
+        }
+        this.chatItems = this.sortChatRecords([...itemsById.values()]);
       }
-      this.activitiesSmartList?.reload();
-    }, 30000);
+
+      if (smartList?.syncVisibleItems(
+        this.buildActivityChatCards(items.slice(0, visibleLimit)),
+        { total }
+      )) {
+        this.visibleActivityRows = [...smartList.itemsSnapshot()];
+        this.visibleActivityRowsSource = smartList.itemsSnapshot();
+      }
+      this.refreshSectionBadges();
+      this.cdr.markForCheck();
+    } catch {
+      // Keep the current board snapshot if the background poll is unavailable.
+    } finally {
+      this.adminSupportBoardPollInFlight = false;
+    }
   }
 
   private syncChatItemFromOpenSession(chat: ChatDTO): void {
@@ -2598,6 +2679,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     smartList.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
     });
+    this.visibleActivityRows = [...nextItems];
+    this.visibleActivityRowsSource = smartList.itemsSnapshot();
   }
 
   protected removeVisibleActivityRow(row: ActivityPopupCard): void {

@@ -790,6 +790,54 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.refreshSurfaceSoon();
   }
 
+  public syncVisibleItems(
+    items: readonly T[],
+    options: {
+      total?: number;
+      equals?: (current: T, next: T, index: number) => boolean;
+      trackBy?: (index: number, item: T) => unknown;
+    } = {}
+  ): boolean {
+    if (this.currentViewMode !== 'list') {
+      return false;
+    }
+    const nextItems = [...items];
+    const nextTotal = Number.isFinite(options.total)
+      ? Math.max(nextItems.length, Math.trunc(Number(options.total)))
+      : nextItems.length;
+    const sameShape = this.total === nextTotal
+      && this.items.length === nextItems.length
+      && this.items.every((item, index) =>
+        this.visibleSyncTrackKey(item, index, options.trackBy)
+          === this.visibleSyncTrackKey(nextItems[index], index, options.trackBy)
+      );
+
+    if (!sameShape) {
+      this.replaceVisibleItems(nextItems, { total: nextTotal });
+      return true;
+    }
+
+    const equals = options.equals ?? ((current: T, next: T) => current === next);
+    let changed = false;
+    const patchedItems = this.items.map((item, index) => {
+      const nextItem = nextItems[index];
+      if (nextItem === undefined || equals(item, nextItem, index)) {
+        return item;
+      }
+      changed = true;
+      return nextItem;
+    });
+    if (!changed) {
+      return false;
+    }
+    this.items = patchedItems;
+    this.syncGroups();
+    this.finiteStepper.syncBounds();
+    this.emitState();
+    this.cdr.markForCheck();
+    return true;
+  }
+
   public async moveCursor(delta: number): Promise<boolean> {
     if (!Number.isFinite(delta) || delta === 0) {
       return false;
@@ -2112,6 +2160,22 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const normalized = String(key).trim();
     return normalized.length > 0 ? normalized : null;
+  }
+
+  private visibleSyncTrackKey(
+    item: T | undefined,
+    index: number,
+    trackBy?: (index: number, item: T) => unknown
+  ): string | number {
+    if (item === undefined) {
+      return `smart-list-sync:missing:${index}`;
+    }
+    const key = trackBy?.(index, item) ?? this.config.trackBy?.(index, item);
+    if (key === null || key === undefined) {
+      return index;
+    }
+    const normalized = String(key).trim();
+    return normalized.length > 0 ? normalized : index;
   }
 
   private fallbackResolvedTrackKey(index: number, item: T): string {

@@ -26,6 +26,10 @@ import {
 import {
   BaseRouteModeService
 } from './base-route-mode.service';
+import type {
+  RouteIntervalStop,
+  RouteIntervalTask
+} from './route-interval-scheduler.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
@@ -59,6 +63,10 @@ export class ActivitiesService extends BaseRouteModeService {
     return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), query, {
       chatItems: options.chatItems
     });
+  }
+
+  startActivityChatsPoll(task: RouteIntervalTask): RouteIntervalStop {
+    return this.chatsService.startActivityChatsPoll(task);
   }
 
   async loadActivityRates(
