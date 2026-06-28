@@ -13,22 +13,17 @@ import type {
   UserLocationEligibilityResponseDto,
   UserDto,
   UserMenuCountersDto,
-  UserRealtimeCountersDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
+  UserRealtimeLongPollStop,
+  UserRealtimeLongPollTask,
   UserSubmitActionResponseDto,
   UserService
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import { BaseRouteModeService } from './base-route-mode.service';
-import { RouteDelayService } from './route-delay.service';
-import {
-  RouteIntervalSchedulerService,
-  type RouteIntervalStop,
-  type RouteIntervalTask
-} from './route-interval-scheduler.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -43,13 +38,9 @@ export const USER_DELETE_CONTEXT_KEY = 'user-delete';
   providedIn: 'root'
 })
 export class UsersService extends BaseRouteModeService {
-  private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
-
   private readonly localUsersService = inject(LocalUsersService);
   private readonly httpUsersService = inject(HttpUsersService);
   private readonly appCtx = inject(AppContext);
-  private readonly routeDelay = inject(RouteDelayService);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
 
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/auth/me');
@@ -393,22 +384,14 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
     try {
-      const snapshot = await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
-      return snapshot ? this.normalizeRealtimeSnapshot(snapshot, normalizedUserId, cursor) : null;
+      return await this.userService.queryUserRealtimeLongPoll(normalizedUserId, cursor, requestTimeoutMs);
     } catch {
       return null;
     }
   }
 
-  resolveUserRealtimeLongPollIntervalMs(): number {
-    return this.routeDelay.resolveIntervalMs(UsersService.USER_REALTIME_LONG_POLL_ROUTE);
-  }
-
-  startUserRealtimeLongPoll(task: RouteIntervalTask): RouteIntervalStop {
-    return this.routeIntervalScheduler.startInterval(
-      UsersService.USER_REALTIME_LONG_POLL_ROUTE,
-      task
-    );
+  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop {
+    return this.userService.startUserRealtimeLongPoll(task);
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
@@ -497,92 +480,6 @@ export class UsersService extends BaseRouteModeService {
     const onAbort = () => abortController.abort();
     signal.addEventListener('abort', onAbort, { once: true });
     return () => signal.removeEventListener('abort', onAbort);
-  }
-
-  private normalizeRealtimeSnapshot(
-    snapshot: UserRealtimeLongPollResponseDto,
-    fallbackUserId: string,
-    fallbackCursor: string | null
-  ): UserRealtimeLongPollResponseDto {
-    const normalizedFallbackUserId = fallbackUserId.trim();
-    const normalizedUserId = `${snapshot.userId ?? normalizedFallbackUserId}`.trim() || normalizedFallbackUserId;
-    return {
-      userId: normalizedUserId,
-      counters: this.normalizeRealtimeCounters(snapshot.counters),
-      impressions: snapshot.impressions,
-      cursor: typeof snapshot.cursor === 'string' ? snapshot.cursor.trim() : fallbackCursor,
-      serverTsIso: typeof snapshot.serverTsIso === 'string' && snapshot.serverTsIso.trim()
-        ? snapshot.serverTsIso
-        : new Date().toISOString()
-    };
-  }
-
-  private normalizeRealtimeCounters(counters: UserRealtimeCountersDto | null | undefined): UserRealtimeCountersDto {
-    const normalized: UserRealtimeCountersDto = {};
-    const setCounter = <Key extends keyof UserRealtimeCountersDto>(key: Key, value: unknown): void => {
-      const counter = this.normalizeCounter(value);
-      if (counter !== undefined) {
-        normalized[key] = counter as UserRealtimeCountersDto[Key];
-      }
-    };
-
-    setCounter('game', counters?.game);
-    setCounter('chat', counters?.chat);
-    setCounter('invitations', counters?.invitations);
-    setCounter('events', counters?.events);
-    setCounter('hosting', counters?.hosting);
-    setCounter('cars', counters?.cars);
-    setCounter('accommodation', counters?.accommodation);
-    setCounter('supplies', counters?.supplies);
-    setCounter('tickets', counters?.tickets);
-    setCounter('contacts', counters?.contacts);
-    setCounter('feedback', counters?.feedback);
-    setCounter('adminJobs', counters?.adminJobs);
-    setCounter('adminMetrics', counters?.adminMetrics);
-
-    if (counters?.event) {
-      normalized.event = {
-        all: this.counterValue(counters.event.all),
-        active: this.counterValue(counters.event.active),
-        pending: this.counterValue(counters.event.pending),
-        invitations: this.counterValue(counters.event.invitations),
-        hosting: this.counterValue(counters.event.hosting),
-        drafts: this.counterValue(counters.event.drafts),
-        trash: this.counterValue(counters.event.trash)
-      };
-    }
-    if (counters?.asset) {
-      normalized.asset = {
-        cars: this.counterValue(counters.asset.cars),
-        accommodation: this.counterValue(counters.asset.accommodation),
-        supplies: this.counterValue(counters.asset.supplies),
-        tickets: this.counterValue(counters.asset.tickets)
-      };
-    }
-    if (counters?.eventFeedback) {
-      normalized.eventFeedback = {
-        ownEvents: this.counterValue(counters.eventFeedback.ownEvents),
-        pending: this.counterValue(counters.eventFeedback.pending),
-        feedbacked: this.counterValue(counters.eventFeedback.feedbacked),
-        removed: this.counterValue(counters.eventFeedback.removed)
-      };
-    }
-
-    normalized.impressionsHostChanged = counters?.impressionsHostChanged === true;
-    normalized.impressionsMemberChanged = counters?.impressionsMemberChanged === true;
-    return normalized;
-  }
-
-  private counterValue(value: unknown): number {
-    return this.normalizeCounter(value) ?? 0;
-  }
-
-  private normalizeCounter(value: unknown): number | undefined {
-    const numericValue = Number(value);
-    if (!Number.isFinite(numericValue)) {
-      return undefined;
-    }
-    return Math.max(0, Math.trunc(numericValue));
   }
 
   private normalizeCounterOverrides(

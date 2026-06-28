@@ -51,7 +51,6 @@ import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confi
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
-import { NavigatorService } from '../../../navigator';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
@@ -99,7 +98,6 @@ export class EventExplorePopupComponent {
   private readonly gameService = inject(GameService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
-  protected readonly navigatorService = inject(NavigatorService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
@@ -742,7 +740,7 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.appCtx.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
-    this.navigatorService.openImpressionsPopup(record.creatorUserId);
+    this.navigatorStore.openImpressionsPopup(record.creatorUserId);
   }
 
   protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {

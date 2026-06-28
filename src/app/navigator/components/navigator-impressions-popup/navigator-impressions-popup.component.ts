@@ -10,8 +10,7 @@ import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../
 import {
   resolveNavigatorPresentation,
   type NavigatorPresentation
-} from '../../navigator-presenters';
-import { NavigatorService } from '../../navigator.service';
+} from '../navigator/navigator-presenters';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 interface NavigatorImpressionsPulseFlags {
@@ -80,7 +79,6 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   };
 
   private readonly appCtx = inject(AppContext);
-  private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
   private readonly pulseFlagsRef = signal<NavigatorImpressionsPulseFlags>({
@@ -210,7 +208,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   protected closePopup(): void {
-    this.navigatorService.closeImpressionsPopup();
+    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    this.appCtx.userProfileStore.markUserRealtimeImpressionsClosed(userId);
+    this.navigatorStore.closeImpressionsPopup();
   }
 
   ngOnDestroy(): void {

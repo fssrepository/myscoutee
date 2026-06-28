@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
 import { AppPopupContext } from '../../../shared/ui';
-import { NavigatorComponent } from '../../../navigator';
+import { NavigatorComponent } from '../../../navigator/components/navigator/navigator.component';
 import {
   AdminWorkspaceDataService,
   HelpCenterService,

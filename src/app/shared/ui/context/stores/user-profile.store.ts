@@ -1,7 +1,15 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 
-import type { ProfileExtDto, UserDto, UserImpressionsDto } from '../../../core/contracts/user.interface';
+import type {
+  ProfileExtDto,
+  UserDto,
+  UserImpressionsDto,
+  UserRealtimeLongPollResponseDto
+} from '../../../core/contracts/user.interface';
+import { UserRealtimeUiConverter } from '../../converters/user-realtime-ui.converter';
 import {
+  ACTIVITY_COUNTER_KEYS,
+  type ActivityCounters,
   DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
   type AppContextAdminUserDto,
   type UserGameFilterPreferencesDto,
@@ -9,17 +17,29 @@ import {
 } from '../app-context.types';
 import {
   adminUserFromProfile,
+  cloneAssetCounters,
+  cloneEventCounters,
+  cloneEventFeedbackCounters,
   cloneImpressions,
   cloneProfileExt,
   cloneUserProfile,
   normalizeCounterValue,
   normalizeFilterPreferences
 } from './app-context-store.utils';
+import { ActivityStore } from './activity.store';
+
+export interface UserRealtimeProfilePatch {
+  counterPatch: Partial<ActivityCounters>;
+  impressions: UserImpressionsDto | undefined;
+  changeFlags: UserImpressionChangeFlags | null;
+  clearChangeFlags: boolean;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserProfileStore {
+  private readonly activityStore = inject(ActivityStore);
   private readonly _userProfilesByUserId = signal<Record<string, UserDto>>({});
   private readonly _profileExtByUserId = signal<Record<string, ProfileExtDto>>({});
   private readonly _filterCountByUserId = signal<Record<string, number>>({});
@@ -27,6 +47,10 @@ export class UserProfileStore {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activeUserId = signal<string>('');
+  private readonly realtimeCursorByUserId: Record<string, string> = {};
+  private readonly realtimeSeenImpressionsCursorByUserId: Record<string, string> = {};
+  private readonly realtimeIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
+  private realtimePollInFlight = false;
 
   readonly userProfilesByUserId = this._userProfilesByUserId.asReadonly();
   readonly profileExtByUserId = this._profileExtByUserId.asReadonly();
@@ -87,6 +111,35 @@ export class UserProfileStore {
         id: normalizedUserId
       })
     }));
+  }
+
+  setActiveUserProfile(user: UserDto): void {
+    const normalizedUserId = user.id.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const normalizedUser = cloneUserProfile({
+      ...user,
+      id: normalizedUserId
+    });
+    this._userProfilesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: normalizedUser
+    }));
+    this._activeUserId.set(normalizedUserId);
+    this._impressionsByUserId.update(state => {
+      if (normalizedUser.impressions) {
+        return {
+          ...state,
+          [normalizedUserId]: cloneImpressions(normalizedUser.impressions)
+        };
+      }
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
   }
 
   getProfileExt(userId: string): ProfileExtDto | null {
@@ -335,5 +388,145 @@ export class UserProfileStore {
       const { [normalizedUserId]: _removed, ...rest } = state;
       return rest;
     });
+  }
+
+  getUserRealtimeCursor(userId: string): string | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this.realtimeCursorByUserId[normalizedUserId] ?? null;
+  }
+
+  setUserRealtimePollInFlight(inFlight: boolean): void {
+    this.realtimePollInFlight = inFlight;
+  }
+
+  markUserRealtimeImpressionsClosed(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    const cursor = this.realtimeCursorByUserId[normalizedUserId] ?? '';
+    if (cursor) {
+      this.realtimeSeenImpressionsCursorByUserId[normalizedUserId] = cursor;
+    }
+    if (this.realtimePollInFlight) {
+      this.realtimeIgnoreNextImpressionsSnapshotByUserId[normalizedUserId] = true;
+    }
+  }
+
+  applyUserRealtimeSnapshot(userId: string, snapshot: UserRealtimeLongPollResponseDto): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+
+    const nextCursor = typeof snapshot.cursor === 'string' ? snapshot.cursor.trim() : '';
+    const shouldIgnoreNextImpressionsSnapshot = this.realtimeIgnoreNextImpressionsSnapshotByUserId[normalizedUserId] === true;
+    const isSeenCursor = nextCursor.length > 0 && this.realtimeSeenImpressionsCursorByUserId[normalizedUserId] === nextCursor;
+    const uiPatch = UserRealtimeUiConverter.convert({
+      snapshot,
+      previousImpressions: this.getUserImpressions(normalizedUserId),
+      currentChangeFlags: this.getUserImpressionChangeFlags(normalizedUserId),
+      suppressImpressionBadges: shouldIgnoreNextImpressionsSnapshot || isSeenCursor
+    });
+
+    this.activityStore.patchUserCounterOverrides(normalizedUserId, uiPatch.counterPatch);
+    this.applyUserRealtimePatch(normalizedUserId, uiPatch);
+
+    if (nextCursor.length > 0) {
+      this.realtimeCursorByUserId[normalizedUserId] = nextCursor;
+      if (shouldIgnoreNextImpressionsSnapshot) {
+        this.realtimeSeenImpressionsCursorByUserId[normalizedUserId] = nextCursor;
+      }
+    }
+    delete this.realtimeIgnoreNextImpressionsSnapshotByUserId[normalizedUserId];
+  }
+
+  private applyUserRealtimePatch(userId: string, patch: UserRealtimeProfilePatch): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+
+    const impressions = patch.impressions ? cloneImpressions(patch.impressions) : null;
+    const currentUser = this._userProfilesByUserId()[normalizedUserId] ?? null;
+    let nextUser: UserDto | null = null;
+
+    if (currentUser) {
+      nextUser = cloneUserProfile({
+        ...currentUser,
+        activities: this.applyActivityCounterPatch(currentUser.activities, patch.counterPatch),
+        impressions: impressions ?? undefined
+      });
+      this._userProfilesByUserId.update(state => ({
+        ...state,
+        [normalizedUserId]: nextUser as UserDto
+      }));
+    }
+
+    this._impressionsByUserId.update(state => {
+      if (impressions) {
+        return {
+          ...state,
+          [normalizedUserId]: impressions
+        };
+      }
+      if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+        return state;
+      }
+      const { [normalizedUserId]: _removed, ...rest } = state;
+      return rest;
+    });
+
+    this._impressionChangeFlagsByUserId.update(state => {
+      if (patch.clearChangeFlags) {
+        if (!Object.prototype.hasOwnProperty.call(state, normalizedUserId)) {
+          return state;
+        }
+        const { [normalizedUserId]: _removed, ...rest } = state;
+        return rest;
+      }
+      if (!patch.changeFlags) {
+        return state;
+      }
+      return {
+        ...state,
+        [normalizedUserId]: {
+          host: patch.changeFlags.host === true,
+          member: patch.changeFlags.member === true
+        }
+      };
+    });
+
+    return nextUser ? cloneUserProfile(nextUser) : null;
+  }
+
+  private applyActivityCounterPatch(
+    current: UserDto['activities'],
+    patch: Partial<ActivityCounters>
+  ): UserDto['activities'] {
+    const next: UserDto['activities'] = { ...current };
+    for (const key of ACTIVITY_COUNTER_KEYS) {
+      if (!Object.prototype.hasOwnProperty.call(patch, key)) {
+        continue;
+      }
+      const value = patch[key];
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+      next[key] = normalizeCounterValue(value);
+    }
+    if (patch.event) {
+      next.event = cloneEventCounters(patch.event);
+    }
+    if (patch.asset) {
+      next.asset = cloneAssetCounters(patch.asset);
+    }
+    if (patch.eventFeedback) {
+      next.eventFeedback = cloneEventFeedbackCounters(patch.eventFeedback);
+    }
+    return next;
   }
 }

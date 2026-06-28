@@ -9,7 +9,6 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
-import { NavigatorService } from '../../navigator.service';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 @Component({
@@ -20,7 +19,6 @@ import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.stor
   styleUrl: './navigator-report-user-popup.component.scss'
 })
 export class NavigatorReportUserPopupComponent implements OnDestroy {
-  private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly appCtx = inject(AppContext);
@@ -89,7 +87,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
 
   protected closePopup(): void {
     this.abortActiveSubmit();
-    this.navigatorService.closeSettingsPopup();
+    this.navigatorStore.closeSettingsPopup();
   }
 
   protected get reportUserHandleLength(): number {

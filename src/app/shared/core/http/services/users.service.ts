@@ -15,6 +15,8 @@ import type {
   UserMenuCountersDto,
   UserRealtimeCountersDto,
   UserRealtimeLongPollResponseDto,
+  UserRealtimeLongPollStop,
+  UserRealtimeLongPollTask,
   UserReportUserSubmitRequestDto,
   UserSelectorRole,
   UserService,
@@ -27,6 +29,7 @@ import { AppContext } from '../../../ui/context';
 import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
 import { OfflineCacheService } from '../../base/services/offline-cache.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
+import { RouteIntervalSchedulerService } from '../../base/services/route-interval-scheduler.service';
 import { SessionService } from '../../base/services/session.service';
 
 @Injectable({
@@ -46,6 +49,7 @@ export class HttpUsersService implements UserService {
   private readonly appCtx = inject(AppContext);
   private readonly offlineCache = inject(OfflineCacheService);
   private readonly routeDelay = inject(RouteDelayService);
+  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
@@ -223,6 +227,13 @@ export class HttpUsersService implements UserService {
       }
       return null;
     }
+  }
+
+  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop {
+    return this.routeIntervalScheduler.startInterval(
+      HttpUsersService.USER_REALTIME_LONG_POLL_ROUTE,
+      task
+    );
   }
 
   async saveUserFilterPreferences(userId: string, preferences: UserGameFilterPreferencesDto): Promise<void> {

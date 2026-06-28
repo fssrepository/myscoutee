@@ -8,7 +8,7 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
-import { NavigatorComponent, NavigatorService } from './navigator';
+import { NavigatorComponent } from './navigator/components/navigator/navigator.component';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from './shared/app-calendar-date-adapter';
 import { Subscription } from 'rxjs';
 import { AppInstallPromptComponent } from './shared/ui/components/app-install-prompt/app-install-prompt.component';
@@ -58,7 +58,6 @@ export class App implements OnDestroy {
   private readonly appLocationService = inject(AppLocationService);
   private readonly firebaseMessagingService = inject(FirebaseMessagingService);
   private readonly i18nService = inject(I18nService);
-  protected readonly navigatorService = inject(NavigatorService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly navigatorBindings: NavigatorBindings = {};
   private readonly routerEventsSubscription: Subscription;

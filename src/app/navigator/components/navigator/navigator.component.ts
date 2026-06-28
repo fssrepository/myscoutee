@@ -28,18 +28,23 @@ import {
   ExplanationGuideService,
   HelpCenterService,
   PrivacyPolicyService,
+  SessionService,
   TermsPolicyService,
+  UsersService,
   USER_BY_ID_LOAD_CONTEXT_KEY,
   USER_PROFILE_SAVE_CONTEXT_KEY,
+  type HelpCenterRevisionDto,
+  type PrivacyConsentDto,
   type UserDto
 } from '../../../shared/core';
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { NavigatorService } from '../../navigator.service';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
-import { resolveNavigatorPresentation } from '../../navigator-presenters';
+import { resolveNavigatorPresentation } from './navigator-presenters';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -112,6 +117,8 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './navigator.component.scss'
 })
 export class NavigatorComponent implements OnDestroy {
+  private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+  private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
 
   private readonly router = inject(Router);
@@ -121,7 +128,9 @@ export class NavigatorComponent implements OnDestroy {
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly usersService = inject(UsersService);
+  private readonly sessionService = inject(SessionService);
+  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
@@ -134,9 +143,16 @@ export class NavigatorComponent implements OnDestroy {
   private readonly profileSaveLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private readonly userLogoutLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
+  private readonly hydrationRequestKeyRef = signal('');
+  private readonly privacyConsentCheckKeyRef = signal('');
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
+  private hydrationRequestVersion = 0;
+  private stopUserRealtimeLongPollInterval: (() => void) | null = null;
+  private userRealtimeLongPollInFlight = false;
+  private reactivationPromptUserId = '';
+  private privacyConsentCheckToken = 0;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
@@ -751,6 +767,91 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
+      const session = this.sessionService.session();
+      if (!session || this.appCtx.userProfileStore.activeUserId().trim()) {
+        return;
+      }
+      const bootstrapUserId = session.kind === 'firebase'
+        ? session.profile.id.trim()
+        : session.userId.trim();
+      if (bootstrapUserId) {
+        this.appCtx.userProfileStore.setActiveUserId(bootstrapUserId);
+      }
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const routeUrl = this.currentRoutePathRef();
+
+      if (!session) {
+        this.clearHydrationState();
+        return;
+      }
+      if (this.isAdminWorkspaceRoute(routeUrl) || !this.isNavigatorHydrationRoute(routeUrl)) {
+        this.clearHydrationState();
+        return;
+      }
+
+      const requestKey = session.kind === 'firebase'
+        ? `firebase:${session.profile.id}`
+        : (activeUserId ? `demo:${activeUserId}` : '');
+
+      if (!requestKey || this.hydrationRequestKeyRef() === requestKey) {
+        return;
+      }
+
+      this.hydrationRequestKeyRef.set(requestKey);
+      void this.hydrateUserAfterLogin(activeUserId || undefined);
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+
+      if (!session || !activeUserId) {
+        this.stopUserRealtimeLongPoll();
+        this.navigatorStore.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        return;
+      }
+      if (this.isAdminWorkspaceRoute() || this.appCtx.userProfileStore.activeUserIsAdmin()) {
+        this.navigatorStore.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        this.activateUserRealtimeLongPoll(activeUserId);
+        return;
+      }
+
+      this.activateUserRealtimeLongPoll(activeUserId);
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const revision = this.privacyPolicy.activeRevision();
+      const shouldCheckPrivacyConsent = Boolean(activeUserId)
+        && (Boolean(session) || this.isAdminWorkspaceRoute());
+
+      if (!shouldCheckPrivacyConsent) {
+        this.privacyConsentCheckKeyRef.set('');
+        this.navigatorStore.clearPrivacyConsentRequirement();
+        return;
+      }
+      if (!revision) {
+        void this.privacyPolicy.prepareOpen();
+        return;
+      }
+
+      const checkKey = this.privacyConsentKey(activeUserId, revision);
+      if (this.privacyConsentCheckKeyRef() === checkKey) {
+        return;
+      }
+
+      this.privacyConsentCheckKeyRef.set(checkKey);
+      void this.ensureActivePrivacyConsent(activeUserId, revision, checkKey);
+    });
+
+    effect(() => {
       const isInternal = this.avatarVisible();
       const hasBindings = this.hasBindings();
       const status = this.activeUserLoadState().status;
@@ -988,10 +1089,10 @@ export class NavigatorComponent implements OnDestroy {
         this.openSettingsPopup(event.id);
         return;
       case 'delete-account':
-        this.navigatorService.openDeleteAccountConfirm();
+        this.openDeleteAccountConfirm();
         return;
       case 'logout':
-        this.navigatorService.openLogoutConfirm();
+        this.openLogoutConfirm();
         return;
       case 'report-bugs':
         return;
@@ -1150,7 +1251,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.navigatorService.openImpressionsPopup();
+    this.openImpressionsPopup();
   }
 
   protected openRatesShortcut(event?: Event): void {
@@ -1320,7 +1421,360 @@ export class NavigatorComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
+    this.stopUserRealtimeLongPoll();
     this.clearUserMenuLoadState();
+  }
+
+  private async hydrateUserAfterLogin(userId?: string): Promise<UserDto | null> {
+    if (this.isAdminWorkspaceRoute()) {
+      return null;
+    }
+    const requestVersion = ++this.hydrationRequestVersion;
+    const isFirebaseSession = this.sessionService.currentSession()?.kind === 'firebase';
+    const loadedProfileExt = await this.usersService.loadProfileExtById(isFirebaseSession ? undefined : userId);
+    const loadedUser = loadedProfileExt?.profile ?? null;
+    if (!loadedUser || requestVersion !== this.hydrationRequestVersion) {
+      return null;
+    }
+    if (this.shouldPromptDeletedAccountReactivation(loadedUser)) {
+      this.navigatorStore.setDeletedAccountReactivationPending(true);
+      this.openDeletedAccountReactivationPrompt(loadedUser, requestVersion);
+      return loadedUser;
+    }
+
+    this.syncHydratedUser(loadedUser);
+    void this.helpCenterService.preload('help');
+    return loadedUser;
+  }
+
+  private shouldPromptDeletedAccountReactivation(user: UserDto): boolean {
+    if (user.profileStatus !== 'deleted') {
+      return false;
+    }
+    const deletedAtMs = Date.parse(`${user.deletedAtIso ?? ''}`.trim());
+    if (!Number.isFinite(deletedAtMs)) {
+      return true;
+    }
+    return Date.now() - deletedAtMs <= NavigatorComponent.ACCOUNT_REACTIVATION_WINDOW_MS;
+  }
+
+  private openDeletedAccountReactivationPrompt(user: UserDto, requestVersion: number): void {
+    const userId = user.id.trim();
+    if (!userId || this.reactivationPromptUserId === userId) {
+      return;
+    }
+    this.reactivationPromptUserId = userId;
+    this.confirmationDialogStore.open({
+      title: 'Reactivate account?',
+      message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Reactivate',
+      busyConfirmLabel: 'Reactivating...',
+      confirmTone: 'accent',
+      allowBackdropClose: false,
+      allowEscapeClose: false,
+      failureMessage: 'Unable to reactivate account.',
+      onCancel: async () => {
+        this.reactivationPromptUserId = '';
+        this.navigatorStore.setDeletedAccountReactivationPending(false);
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      },
+      onConfirm: async () => {
+        const restoredProfileStatus = this.resolveReactivatedProfileStatus(user);
+        const reactivatedUser: UserDto = {
+          ...user,
+          profileStatus: restoredProfileStatus,
+          previousProfileStatus: null,
+          deletedAtIso: null
+        };
+        const saved = await this.usersService.saveUserProfile(reactivatedUser);
+        if (!saved) {
+          throw new Error('Unable to reactivate account.');
+        }
+        this.reactivationPromptUserId = '';
+        setTimeout(() => {
+          if (requestVersion === this.hydrationRequestVersion) {
+            this.syncHydratedUser(saved);
+          }
+          this.navigatorStore.setDeletedAccountReactivationPending(false);
+        }, 0);
+      }
+    });
+  }
+
+  private async ensureActivePrivacyConsent(userId: string, revision: HelpCenterRevisionDto, checkKey: string): Promise<void> {
+    const requestToken = ++this.privacyConsentCheckToken;
+    try {
+      const existingConsent = await this.privacyPolicy.loadConsent(userId, revision.id, revision.version);
+      if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        return;
+      }
+      if (this.isPrivacyConsentCurrent(existingConsent, revision)) {
+        this.navigatorStore.clearPrivacyConsentRequirement();
+        return;
+      }
+
+      const syncedAnonymousConsent = await this.privacyPolicy.syncAnonymousEntryConsent(userId, revision);
+      if (!this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        return;
+      }
+      if (syncedAnonymousConsent) {
+        this.navigatorStore.clearPrivacyConsentRequirement();
+        return;
+      }
+
+      this.navigatorStore.setPrivacyConsentRequiredKey(checkKey);
+      this.openSettingsPopup('privacy');
+    } catch {
+      if (this.isCurrentPrivacyConsentCheck(checkKey, requestToken)) {
+        this.navigatorStore.setPrivacyConsentRequiredKey(checkKey);
+        this.openSettingsPopup('privacy');
+      }
+    }
+  }
+
+  private isCurrentPrivacyConsentCheck(checkKey: string, requestToken: number): boolean {
+    return this.privacyConsentCheckToken === requestToken
+      && this.privacyConsentCheckKeyRef() === checkKey;
+  }
+
+  private isPrivacyConsentCurrent(consent: PrivacyConsentDto | null, revision: HelpCenterRevisionDto): boolean {
+    if (!consent) {
+      return false;
+    }
+    const consentRevisionId = `${consent.revisionId ?? ''}`.trim();
+    const consentVersion = Math.trunc(Number(consent.revisionVersion) || 0);
+    const currentVersion = Math.trunc(Number(revision.version) || 0);
+    return consentRevisionId === revision.id && consentVersion >= currentVersion && currentVersion > 0;
+  }
+
+  private privacyConsentKey(userId: string, revision: HelpCenterRevisionDto): string {
+    return `${userId.trim()}::${revision.id}:v${revision.version}`;
+  }
+
+  private isActivePrivacyConsentRequired(): boolean {
+    const requiredKey = this.navigatorStore.privacyConsentRequiredKey();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const revision = this.privacyPolicy.activeRevision();
+    if (!requiredKey || !activeUserId || !revision) {
+      return false;
+    }
+    return requiredKey === this.privacyConsentKey(activeUserId, revision);
+  }
+
+  private resolveReactivatedProfileStatus(user: UserDto): UserDto['profileStatus'] {
+    switch (user.previousProfileStatus) {
+      case 'blocked':
+      case 'friends only':
+      case 'host only':
+      case 'inactive':
+      case 'public':
+        return user.previousProfileStatus;
+      default:
+        return 'public';
+    }
+  }
+
+  private syncHydratedUser(user: UserDto): void {
+    this.appCtx.userProfileStore.setActiveUserProfile(user);
+    this.navigatorStore.bindings()?.syncHydratedUser?.(user);
+  }
+
+  private clearHydrationState(): void {
+    this.hydrationRequestVersion += 1;
+    this.hydrationRequestKeyRef.set('');
+    this.navigatorStore.setDeletedAccountReactivationPending(false);
+  }
+
+  private clearHydratedUser(): void {
+    this.clearHydrationState();
+  }
+
+  private closeSettingsPopup(): void {
+    this.navigatorStore.closeSettingsPopup({
+      keepPrivacyOpen: this.isActivePrivacyConsentRequired()
+    });
+  }
+
+  private openImpressionsPopup(userId?: string): void {
+    const normalizedUserId = `${userId ?? ''}`.trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const cachedUser = normalizedUserId
+      ? (this.appCtx.userProfileStore.getUserProfile(normalizedUserId)
+        ?? (normalizedUserId === activeUserId ? this.appCtx.userProfileStore.activeUserProfile() : null))
+      : null;
+    if (normalizedUserId && !cachedUser) {
+      void this.usersService.loadUserById(normalizedUserId);
+    }
+    this.navigatorStore.openImpressionsPopup(normalizedUserId);
+  }
+
+  private openDeleteAccountConfirm(): void {
+    const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
+    this.confirmationDialogStore.open({
+      title: 'Delete account?',
+      message: activeUserName,
+      warningMessage: 'You can reactivate within 30 days. After that, the account is permanently purged.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      confirmTone: 'danger',
+      onConfirm: async () => {
+        this.navigatorStore.closeMenu();
+        this.closeSettingsPopup();
+        this.navigatorStore.closeProfileEditor();
+        this.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
+          this.clearHydratedUser();
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(NavigatorComponent.ADMIN_SESSION_STORAGE_KEY);
+          }
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
+        const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+        if (activeUserId) {
+          const result = await this.usersService.deleteUser(activeUserId);
+          if (!result.submitted) {
+            this.confirmationDialogStore.openInfo(
+              result.message ?? 'Unable to delete account.',
+              {
+                title: 'Delete account',
+                confirmLabel: 'OK',
+                confirmTone: 'danger'
+              }
+            );
+            return;
+          }
+        }
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      }
+    });
+  }
+
+  private openLogoutConfirm(): void {
+    const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || '';
+    this.confirmationDialogStore.open({
+      title: 'Biztosan kilép?',
+      message: activeUserName,
+      cancelLabel: 'Mégsem',
+      confirmLabel: 'Kilépés',
+      confirmTone: 'accent',
+      onConfirm: async () => {
+        this.navigatorStore.closeMenu();
+        this.closeSettingsPopup();
+        this.navigatorStore.closeProfileEditor();
+        this.closeImpressionsPopup();
+        this.navigatorStore.closeContactsPopup();
+        const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+        if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
+          if (activeUserId) {
+            const result = await this.usersService.logoutUser(activeUserId);
+            if (!result.submitted) {
+              this.confirmationDialogStore.openInfo(
+                result.message ?? 'Unable to log out.',
+                {
+                  title: 'Logout',
+                  confirmLabel: 'OK',
+                  confirmTone: 'neutral'
+                }
+              );
+              return;
+            }
+          }
+          this.clearHydratedUser();
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem(NavigatorComponent.ADMIN_SESSION_STORAGE_KEY);
+          }
+          window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          return;
+        }
+        if (activeUserId) {
+          const result = await this.usersService.logoutUser(activeUserId);
+          if (!result.submitted) {
+            this.confirmationDialogStore.openInfo(
+              result.message ?? 'Unable to log out.',
+              {
+                title: 'Logout',
+                confirmLabel: 'OK',
+                confirmTone: 'neutral'
+              }
+            );
+            return;
+          }
+        }
+        this.clearHydratedUser();
+        await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
+      }
+    });
+  }
+
+  private closeImpressionsPopup(): void {
+    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    this.appCtx.userProfileStore.markUserRealtimeImpressionsClosed(userId);
+    this.navigatorStore.closeImpressionsPopup();
+  }
+
+  private activateUserRealtimeLongPoll(userId: string): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.appCtx.userProfileStore.activeUserId().trim() !== normalizedUserId) {
+      return;
+    }
+    this.startUserRealtimeLongPoll();
+  }
+
+  private startUserRealtimeLongPoll(): void {
+    if (this.stopUserRealtimeLongPollInterval) {
+      return;
+    }
+    this.stopUserRealtimeLongPollInterval = this.usersService.startUserRealtimeLongPoll(() => this.runUserRealtimeLongPollTick());
+  }
+
+  private stopUserRealtimeLongPoll(): void {
+    this.stopUserRealtimeLongPollInterval?.();
+    this.stopUserRealtimeLongPollInterval = null;
+    this.userRealtimeLongPollInFlight = false;
+    this.appCtx.userProfileStore.setUserRealtimePollInFlight(false);
+  }
+
+  private isAdminWorkspaceRoute(routeUrl = this.currentRoutePathRef()): boolean {
+    const path = AppUtils.normalizeRoutePath(routeUrl);
+    return path === '/admin'
+      || path === '/admin/'
+      || path === '/admin/workspace'
+      || path === '/admin/workspace/';
+  }
+
+  private isNavigatorHydrationRoute(routeUrl = this.currentRoutePathRef()): boolean {
+    const path = AppUtils.normalizeRoutePath(routeUrl);
+    return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
+  }
+
+  private async runUserRealtimeLongPollTick(): Promise<void> {
+    if (this.userRealtimeLongPollInFlight) {
+      return;
+    }
+    const userId = this.appCtx.userProfileStore.activeUserId().trim();
+    if (!userId) {
+      return;
+    }
+    this.userRealtimeLongPollInFlight = true;
+    this.appCtx.userProfileStore.setUserRealtimePollInFlight(true);
+    try {
+      const cursor = this.appCtx.userProfileStore.getUserRealtimeCursor(userId);
+      const snapshot = await this.usersService.pollUserRealtimeSnapshot(userId, cursor);
+      if (!snapshot || this.appCtx.userProfileStore.activeUserId().trim() !== userId) {
+        return;
+      }
+      this.appCtx.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
+    } finally {
+      this.userRealtimeLongPollInFlight = false;
+      this.appCtx.userProfileStore.setUserRealtimePollInFlight(false);
+    }
   }
 
   private beginUserMenuLoadWindow(): void {
@@ -1393,7 +1847,16 @@ export class NavigatorComponent implements OnDestroy {
     if (popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
       return;
     }
-    this.navigatorService.openSettingsPopup(popup);
+    if (popup === 'privacy') {
+      void this.privacyPolicy.prepareOpen();
+    }
+    if (popup === 'terms') {
+      void this.termsPolicy.prepareOpen();
+    }
+    if (popup === 'help') {
+      void this.helpCenterService.preload('help');
+    }
+    this.navigatorStore.openSettingsPopup(popup);
   }
 
   private openActivitiesShortcut(

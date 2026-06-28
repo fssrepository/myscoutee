@@ -115,6 +115,11 @@ export {
   type ProfileHeaderCardConverterOptions
 } from './profile-header-card.converter';
 export {
+  UserRealtimeUiConverter,
+  type UserRealtimeUiPatch,
+  type UserRealtimeUiPatchInput
+} from './user-realtime-ui.converter';
+export {
   CalendarCardConverter,
   calendarCardConverter,
   type CalendarCardConverterInput

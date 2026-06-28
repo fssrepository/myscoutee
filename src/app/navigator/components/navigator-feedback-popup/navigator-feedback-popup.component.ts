@@ -9,7 +9,7 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
-import { NavigatorService } from '../../navigator.service';
+import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 
 @Component({
   selector: 'app-navigator-feedback-popup',
@@ -19,7 +19,7 @@ import { NavigatorService } from '../../navigator.service';
   styleUrl: './navigator-feedback-popup.component.scss'
 })
 export class NavigatorFeedbackPopupComponent implements OnDestroy {
-  private readonly navigatorService = inject(NavigatorService);
+  private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly appCtx = inject(AppContext);
   private readonly submitLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
@@ -56,7 +56,7 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
 
   protected closePopup(): void {
     this.abortActiveSubmit();
-    this.navigatorService.closeSettingsPopup();
+    this.navigatorStore.closeSettingsPopup();
   }
 
   protected get feedbackDetailsLength(): number {

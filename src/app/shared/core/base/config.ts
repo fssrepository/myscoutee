@@ -67,6 +67,12 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoIntervalMs: 10000
     },
     {
+      routePrefix: '/local/users/realtime/long-poll',
+      demoDelayMs: 0,
+      intervalMs: 30000,
+      demoIntervalMs: 10000
+    },
+    {
       routePrefix: '/auth/me/logout',
       demoDelayMs: 1500
     },

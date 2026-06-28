@@ -16,7 +16,6 @@ import {
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
 import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
-import { NavigatorService } from '../../navigator.service';
 import { NavigatorStore, type NavigatorSettingsPopup } from '../../../shared/ui/context/stores/navigator.store';
 import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
 import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
@@ -36,7 +35,6 @@ import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popu
   styleUrl: './navigator-settings-popups.component.scss'
 })
 export class NavigatorSettingsPopupsComponent {
-  private readonly navigatorService = inject(NavigatorService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -84,12 +82,14 @@ export class NavigatorSettingsPopupsComponent {
   }
 
   protected closePopup(): void {
-    this.navigatorService.closeSettingsPopup();
+    this.navigatorStore.closeSettingsPopup({
+      keepPrivacyOpen: this.privacyConsentRequired()
+    });
   }
 
   protected completePrivacyPopup(): void {
-    this.navigatorService.markActivePrivacyConsentApproved();
-    this.navigatorService.closeSettingsPopup();
+    this.navigatorStore.clearPrivacyConsentRequirement();
+    this.navigatorStore.closeSettingsPopup();
   }
 
   protected privacyDocumentConfig(): DocumentViewerConfig {
