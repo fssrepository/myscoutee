@@ -2,14 +2,13 @@ import { Component, HostListener, OnDestroy, ViewChild, computed, effect, inject
 import { AppPopupContext } from '../../../shared/ui';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 import { tap } from 'rxjs/operators';
 
 import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent, AppMenuTriggerComponent, ProgressIndicatorComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type SmartListConfig, type SmartListLoadPage
+  AppMenuComponent, AppMenuTriggerComponent, PopupComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type PopupActionEvent, type PopupModel, type SmartListConfig, type SmartListLoadPage
 } from '../../../shared/ui';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
@@ -142,11 +141,10 @@ type ContactsMenuContext =
   imports: [
     CommonModule,
     FormsModule,
-    MatButtonModule,
     MatIconModule,
     AppMenuComponent,
     AppMenuTriggerComponent,
-    ProgressIndicatorComponent,
+    PopupComponent,
     SmartListComponent
   ],
   templateUrl: './contacts-popup.component.html',
@@ -266,6 +264,71 @@ export class ContactsPopupComponent implements OnDestroy {
     groupBy: contact => contact.groupLabel,
     onDelete: (contact: ContactListItem, event?: Event) => this.confirmDelete(contact, event)
   }));
+
+  protected contactsPopupModel(): PopupModel<ContactsMenuContext> {
+    return {
+      title: 'Contacts',
+      subtitle: this.summaryLabel(),
+      ariaLabel: 'Contacts',
+      closeAriaLabel: 'Close contacts',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerActions: [{
+        id: 'create-contact',
+        icon: 'person_add',
+        label: 'Create contact',
+        ariaLabel: 'Create contact',
+        palette: 'sky',
+        compactOnMobile: true
+      }],
+      onClose: event => this.closePopup(event),
+      onAction: event => this.onContactsPopupAction(event)
+    };
+  }
+
+  protected contactsPopupZIndex(): number {
+    return 12340;
+  }
+
+  protected contactFormPopupModel(contact: ContactFormValue): PopupModel<ContactsMenuContext> {
+    return {
+      title: 'Edit Contact',
+      subtitle: `${contact.name}${contact.city ? ' - ' + contact.city : ''}`,
+      ariaLabel: 'Edit Contact',
+      closeAriaLabel: 'Close contact form',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      headerActions: [{
+        id: 'save-contact',
+        icon: 'done',
+        ariaLabel: 'Save contact',
+        palette: 'green',
+        disabled: this.isFormSavePending()
+      }],
+      onClose: event => this.closeFormPopup(event),
+      onAction: event => this.onContactsPopupAction(event)
+    };
+  }
+
+  protected contactFormPopupZIndex(): number {
+    return 12420;
+  }
+
+  private onContactsPopupAction(event: PopupActionEvent): void {
+    switch (event.action.id) {
+      case 'create-contact':
+        void this.openCreateContactPicker(event.sourceEvent);
+        return;
+      case 'save-contact':
+        void this.saveForm(event.sourceEvent);
+        return;
+      default:
+        return;
+    }
+  }
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {

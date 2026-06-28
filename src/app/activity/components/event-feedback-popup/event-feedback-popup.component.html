@@ -1,99 +1,49 @@
 <div class="event-feedback-popup-module">
-  <!-- Parent List Popup -->
   @if (isPopupOpen()) {
-    <section class="app-popup" [class.event-feedback-parent-hidden]="isStackedPopupOpen()">
-      <div class="app-popup-backdrop" (click)="closePopup()"></div>
-      <div class="app-popup-panel popup-panel-event-feedback" (click)="$event.stopPropagation()">
-        <div class="popup-header">
-          <div class="popup-title">
-            <h2>Event Feedback</h2>
-          </div>
-          @let filterMenu = eventFeedbackFilterMenu();
-          <app-menu
-            class="event-explore-order-picker event-feedback-filter-picker"
-            kind="select"
-            [trigger]="filterMenu.trigger"
-            [items]="filterMenu.items"
-            (itemSelect)="onEventFeedbackMenuSelect($event)"
-          ></app-menu>
-          <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <div class="popup-body">
-          <div class="support-popup event-feedback-list-popup">
-            @if (eventFeedbackListSubmitMessage()) {
-              <div class="support-submit-success">{{ eventFeedbackListSubmitMessage() }}</div>
-            }
-            <app-smart-list
-              #eventFeedbackSmartList
-              class="event-feedback-list-surface"
-              [config]="eventFeedbackSmartListConfig"
-              [loadPage]="eventFeedbackSmartListLoadPage"
-              [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
-              [query]="eventFeedbackSmartListQuery"
-              (menuItemSelect)="onEventFeedbackDispatchedMenuSelect($event)"
-            ></app-smart-list>
-            <ng-template #eventFeedbackItemTemplate let-item>
-              <div
-                class="event-feedback-info-card-shell"
-                [class.is-feedbacked]="item.status === 'feedbacked'"
-                [class.is-removed]="item.status === 'removed'"
-                [class.is-own-event]="item.status === 'own-event'"
-                >
-                <app-info-card
-                  [card]="item"
-                  [useSharedMenuTrigger]="true"
-                  [sharedMenuContext]="{ menu: 'info-card', card: item }"
-                  (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
-                  (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
-                ></app-info-card>
-              </div>
-            </ng-template>
-          </div>
-        </div>
-      </div>
-    </section>
-  }
-
-  <!-- Stacked Popups -->
-  @if (isStackedPopupOpen()) {
-    <section class="app-popup app-popup-stacked">
-      <div class="app-popup-backdrop" (click)="closeStackedPopup()"></div>
-      <div
-        class="app-popup-panel"
-        [class.popup-panel-event-feedback]="stackedPopupMode() === 'eventFeedback' || stackedPopupMode() === 'organizerEventFeedback'"
-        (click)="$event.stopPropagation()"
-        >
-        <div class="popup-header">
-          @if (stackedPopupMode() === 'eventFeedback') {
-            <div class="popup-title popup-title-feedback">
-              <h2>Event Feedback</h2>
-              <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ eventFeedbackCurrentEventTitle() }}</p>
-            </div>
-          } @else if (stackedPopupMode() === 'organizerEventFeedback') {
-            <div class="popup-title popup-title-feedback">
-              <h2>Own Event Feedback</h2>
-              <p class="popup-subtitle-activities popup-subtitle-feedback-event">{{ eventFeedbackCurrentEventTitle() }}</p>
-            </div>
-          } @else {
-            <div class="popup-title">
-              <h2>Organizer Feedback</h2>
-            </div>
+    <div class="event-feedback-parent-popup" [class.event-feedback-parent-hidden]="isStackedPopupOpen()">
+      <app-popup [model]="eventFeedbackPopupModel()" [zIndex]="eventFeedbackPopupZIndex()">
+        <div class="support-popup event-feedback-list-popup">
+          @if (eventFeedbackListSubmitMessage()) {
+            <div class="support-submit-success">{{ eventFeedbackListSubmitMessage() }}</div>
           }
-          <ng-template #textNoteHeader>
-            <div class="popup-title">
-              <h2>Organizer Feedback</h2>
+          <app-smart-list
+            #eventFeedbackSmartList
+            class="event-feedback-list-surface"
+            [config]="eventFeedbackSmartListConfig"
+            [loadPage]="eventFeedbackSmartListLoadPage"
+            [itemTemplate]="eventFeedbackItemTemplateRef ?? null"
+            [query]="eventFeedbackSmartListQuery"
+            (menuItemSelect)="onEventFeedbackDispatchedMenuSelect($event)"
+          ></app-smart-list>
+          <ng-template #eventFeedbackItemTemplate let-item>
+            <div
+              class="event-feedback-info-card-shell"
+              [class.is-feedbacked]="item.status === 'feedbacked'"
+              [class.is-removed]="item.status === 'removed'"
+              [class.is-own-event]="item.status === 'own-event'"
+              >
+              <app-info-card
+                [card]="item"
+                [useSharedMenuTrigger]="true"
+                [sharedMenuContext]="{ menu: 'info-card', card: item }"
+                (mediaEndClick)="onEventFeedbackCardPrimaryAction(item)"
+                (menuAction)="onEventFeedbackCardMenuAction(item, $event)"
+              ></app-info-card>
             </div>
           </ng-template>
-          <button mat-icon-button class="popup-close" (click)="closeStackedPopup()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
         </div>
-        <div
-          class="popup-body"
-          [class.popup-body-event-feedback]="stackedPopupMode() === 'eventFeedback'"
-          >
+      </app-popup>
+    </div>
+  }
+
+  @if (isStackedPopupOpen()) {
+    <app-popup [model]="eventFeedbackStackedPopupModel()" [zIndex]="eventFeedbackStackedPopupZIndex()">
+      <div
+        class="event-feedback-stacked-content"
+        [class.event-feedback-stacked-content--detail]="stackedPopupMode() === 'eventFeedback'"
+        [class.event-feedback-stacked-content--organizer]="stackedPopupMode() === 'organizerEventFeedback'"
+        [class.event-feedback-stacked-content--note]="stackedPopupMode() === 'eventFeedbackNote'"
+        >
           @if (stackedPopupMode() === 'eventFeedback') {
             <div class="support-popup event-feedback-popup">
               @if (!eventFeedbackSubmitted()) {
@@ -132,13 +82,6 @@
               }
             </div>
           }
-          <ng-template #eventFeedbackSentState>
-            <article class="editor-list-card support-card event-feedback-empty-card">
-              @if (eventFeedbackSubmitMessage()) {
-                <div class="support-submit-success">{{ eventFeedbackSubmitMessage() }}</div>
-              }
-            </article>
-          </ng-template>
           @if (stackedPopupMode() === 'organizerEventFeedback') {
             <div class="support-popup event-feedback-organizer-popup">
               @if (selectedOrganizerEventFeedbackItem(); as item) {
@@ -304,16 +247,7 @@
               }
             </div>
           }
-          <ng-template #eventFeedbackNoteSubmittedState>
-            <article class="editor-list-card support-card event-feedback-empty-card">
-              <div class="support-submit-success">{{ eventFeedbackNoteSubmitMessage() }}</div>
-              <div class="popup-actions support-actions">
-                <button type="button" class="link-btn primary-btn" (click)="closeStackedPopup()">Done</button>
-              </div>
-            </article>
-          </ng-template>
-        </div>
       </div>
-    </section>
+    </app-popup>
   }
 </div>

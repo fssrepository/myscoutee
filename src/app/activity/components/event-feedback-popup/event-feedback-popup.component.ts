@@ -2,11 +2,9 @@ import { Component, TemplateRef, ViewChild, computed, effect, inject, signal } f
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
 import { from } from 'rxjs';
 
 import {
-  AppMenuComponent,
   AppContext,
   AppPopupContext,
   EventFeedbackFormFlowConverter,
@@ -20,17 +18,22 @@ import {
   FormFlowComponent,
   ProgressIndicatorComponent,
   type FormFlowSaveEvent,
+  type AppMenuItem,
   type AppMenuItemSelectEvent,
   type EventFeedbackFilterMenuContext,
   type EventFeedbackOrganizerCarouselSectionData,
   type EventFeedbackOrganizerItemData,
   InfoCardComponent,
+  PopupComponent,
   SmartListComponent,
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuAction,
   type ListQuery,
   type PageResult,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
@@ -67,10 +70,9 @@ interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialog
     CommonModule,
     FormsModule,
     MatIconModule,
-    MatButtonModule,
-    AppMenuComponent,
     FormFlowComponent,
     ProgressIndicatorComponent,
+    PopupComponent,
     SmartListComponent,
     InfoCardComponent
   ],
@@ -208,6 +210,79 @@ export class EventFeedbackPopupComponent {
     trackBy: (_index, item) => item.id
   };
 
+  protected eventFeedbackPopupModel(): PopupModel<EventFeedbackMenuContext> {
+    return {
+      title: 'Event Feedback',
+      ariaLabel: 'Event Feedback',
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.eventFeedbackPopupHeaderControls(),
+      onClose: event => this.closePopup(event),
+      onMenuSelect: event => this.onEventFeedbackPopupMenuSelect(event)
+    };
+  }
+
+  protected eventFeedbackPopupZIndex(): number {
+    return 12500;
+  }
+
+  protected eventFeedbackStackedPopupModel(): PopupModel<EventFeedbackMenuContext> {
+    const isFullHeight = this.stackedPopupMode() === 'eventFeedback'
+      || this.stackedPopupMode() === 'organizerEventFeedback';
+    return {
+      title: this.eventFeedbackStackedPopupTitle(),
+      subtitle: this.eventFeedbackStackedPopupSubtitle(),
+      ariaLabel: this.eventFeedbackStackedPopupTitle(),
+      closeAriaLabel: 'Close',
+      size: isFullHeight ? 'wide' : 'default',
+      height: isFullHeight ? 'full' : 'auto',
+      headerTone: 'accent',
+      bodyLayout: isFullHeight ? 'fill' : 'default',
+      backdropTone: 'dim',
+      onClose: event => this.closeStackedPopup(event)
+    };
+  }
+
+  protected eventFeedbackStackedPopupZIndex(): number {
+    return 12600;
+  }
+
+  private eventFeedbackPopupHeaderControls(): PopupControl<EventFeedbackMenuContext>[] {
+    const filterMenu = this.eventFeedbackFilterMenu();
+    return [{
+      kind: 'menu',
+      id: 'event-feedback-filter',
+      trigger: filterMenu.trigger,
+      items: filterMenu.items as readonly AppMenuItem<string, EventFeedbackMenuContext>[],
+      mobileBreakpointPx: 900
+    }];
+  }
+
+  private eventFeedbackStackedPopupTitle(): string {
+    switch (this.stackedPopupMode()) {
+      case 'eventFeedback':
+        return 'Event Feedback';
+      case 'organizerEventFeedback':
+        return 'Own Event Feedback';
+      default:
+        return 'Organizer Feedback';
+    }
+  }
+
+  private eventFeedbackStackedPopupSubtitle(): string | null {
+    if (this.stackedPopupMode() !== 'eventFeedback' && this.stackedPopupMode() !== 'organizerEventFeedback') {
+      return null;
+    }
+    return this.eventFeedbackCurrentEventTitle();
+  }
+
+  private onEventFeedbackPopupMenuSelect(event: PopupMenuSelectEvent<EventFeedbackMenuContext>): void {
+    this.onEventFeedbackMenuSelect(event.itemSelect);
+  }
+
   protected onEventFeedbackMenuSelect(event: AppMenuItemSelectEvent<string, EventFeedbackMenuContext>): void {
     if (event.context?.menu !== 'filter') {
       return;
@@ -298,11 +373,13 @@ export class EventFeedbackPopupComponent {
     this.isPopupOpen.set(true);
   }
 
-  protected closePopup(): void {
+  protected closePopup(event?: Event): void {
+    event?.stopPropagation();
     this.isPopupOpen.set(false);
   }
 
-  protected closeStackedPopup(): void {
+  protected closeStackedPopup(event?: Event): void {
+    event?.stopPropagation();
     this.isStackedPopupOpen.set(false);
     this.stackedPopupMode.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
