@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { ProgressIndicatorComponent } from '../../../../shared/ui';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
+import { ProgressIndicatorComponent } from '../../../../shared/ui/components/progress-indicator/progress-indicator.component';
 
 export interface AssignedAssetJoinDialogViewState {
   title: string;

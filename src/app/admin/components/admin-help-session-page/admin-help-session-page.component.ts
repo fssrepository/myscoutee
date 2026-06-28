@@ -1,16 +1,20 @@
+import { NgComponentOutlet } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 
-import { AppPopupContext } from '../../../shared/ui';
-import { AdminWorkspaceDataService, AssetDefaultsBuilder, EventsService, SessionService, type ShareTokenResolvedItem } from '../../../shared/core';
-import type { AssetDTO } from '../../../shared/core/contracts';
+import { AssetDefaultsBuilder } from '../../../shared/core/base/builders/asset-defaults.builder';
+import { AdminWorkspaceDataService } from '../../../shared/core/base/services/admin-workspace-data.service';
+import { EventsService } from '../../../shared/core/base/services/events.service';
+import { SessionService } from '../../../shared/core/base/services/session.service';
+import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
+import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
 import type { AssetType } from '../../../shared/core/common/constants';
-import { DemoBootstrapSelectorComponent } from '../../../shared/ui';
+import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
 
 @Component({
   selector: 'app-admin-help-session-page',
   standalone: true,
-  imports: [DemoBootstrapSelectorComponent],
+  imports: [NgComponentOutlet],
   templateUrl: './admin-help-session-page.component.html',
   styleUrl: './admin-help-session-page.component.scss'
 })
@@ -23,6 +27,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly popupCtx = inject(AppPopupContext);
 
   protected error = '';
+  protected readonly demoBootstrapSelector = this.popupCtx.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupCtx.popupStore.demoBootstrapSelectorComponent;
 
   async ngOnInit(): Promise<void> {
     await this.openSharedUserView();

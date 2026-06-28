@@ -1,4 +1,5 @@
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, inject } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
+import { ChangeDetectorRef, Component, HostListener, Injector, OnDestroy, inject } from '@angular/core';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -8,24 +9,21 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
-import { NavigatorComponent } from './navigator/components/navigator/navigator.component';
 import { AppCalendarDateAdapter, AppCalendarDateFormats } from './shared/app-calendar-date-adapter';
 import { Subscription } from 'rxjs';
+import { environment } from '../environments/environment';
 import { AppInstallPromptComponent } from './shared/ui/components/app-install-prompt/app-install-prompt.component';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
-import { FirebaseMessagingService } from './shared/core/base/services/firebase-messaging.service';
 import { PwaService } from './shared/core/base/services/pwa.service';
-import { I18nService } from './shared/core';
-import { DemoBootstrapSelectorComponent } from './shared/ui';
+import { I18nService } from './shared/core/base/services/i18n.service';
 import { NavigatorStore, type NavigatorBindings } from './shared/ui/context/stores/navigator.store';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
-    NavigatorComponent,
-    AppInstallPromptComponent,
-    DemoBootstrapSelectorComponent
+    NgComponentOutlet,
+    AppInstallPromptComponent
   ],
   providers: [
     { provide: DateAdapter, useClass: AppCalendarDateAdapter },
@@ -53,10 +51,10 @@ export class App implements OnDestroy {
   ].join(',');
   private static readonly CLOSE_RIPPLE_DURATION_MS = 520;
   private readonly router = inject(Router);
+  private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly pwaService = inject(PwaService);
   private readonly appLocationService = inject(AppLocationService);
-  private readonly firebaseMessagingService = inject(FirebaseMessagingService);
   private readonly i18nService = inject(I18nService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly navigatorBindings: NavigatorBindings = {};
@@ -66,6 +64,7 @@ export class App implements OnDestroy {
   private mobileResumeRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private initialLandingWarmupPending = false;
   protected showNavigator = false;
+  protected readonly navigatorComponent = this.navigatorStore.navigatorComponent;
   protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
   protected readonly installPromptBusy = this.pwaService.installBusy;
@@ -75,7 +74,9 @@ export class App implements OnDestroy {
     this.i18nService.initialize();
     void this.pwaService.initialize();
     this.appLocationService.initialize();
-    this.firebaseMessagingService.initialize();
+    if (this.shouldInitializeFirebaseMessaging()) {
+      void this.initializeFirebaseMessaging();
+    }
     this.navigatorStore.registerBindings(this.navigatorBindings);
     this.syncNavigatorVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
@@ -136,6 +137,9 @@ export class App implements OnDestroy {
 
   private syncNavigatorVisibility(url: string): void {
     this.showNavigator = this.shouldShowNavigator(url);
+    if (this.showNavigator) {
+      void this.navigatorStore.ensureNavigatorComponentLoaded();
+    }
   }
 
   private showCloseActionRipple(event: PointerEvent): void {
@@ -165,6 +169,29 @@ export class App implements OnDestroy {
   private shouldShowNavigator(url: string): boolean {
     const normalizedPath = (url || '/').split('?')[0].trim() || '/';
     return normalizedPath !== '/' && !normalizedPath.startsWith('/entry') && !normalizedPath.startsWith('/admin');
+  }
+
+  private shouldInitializeFirebaseMessaging(): boolean {
+    return environment.activitiesDataSource === 'http'
+      && environment.firebaseMessagingEnabled
+      && !this.isLoopbackBrowserHost();
+  }
+
+  private isLoopbackBrowserHost(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    const hostname = window.location.hostname.toLowerCase();
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '[::1]'
+      || hostname === '::1'
+      || hostname.endsWith('.localhost');
+  }
+
+  private async initializeFirebaseMessaging(): Promise<void> {
+    const { FirebaseMessagingService } = await import('./shared/core/base/services/firebase-messaging.service');
+    this.injector.get(FirebaseMessagingService).initialize();
   }
 
   protected onRouteActivated(): void {
@@ -283,8 +310,16 @@ export class App implements OnDestroy {
   protected async onInstallRequested(): Promise<void> {
     const accepted = await this.pwaService.promptInstall();
     if (accepted) {
-      await this.firebaseMessagingService.requestAndRegisterForActiveUser();
+      await this.requestFirebaseMessagingRegistration();
     }
+  }
+
+  private async requestFirebaseMessagingRegistration(): Promise<void> {
+    if (!this.shouldInitializeFirebaseMessaging()) {
+      return;
+    }
+    const { FirebaseMessagingService } = await import('./shared/core/base/services/firebase-messaging.service');
+    await this.injector.get(FirebaseMessagingService).requestAndRegisterForActiveUser();
   }
 
   protected onInstallDismissed(): void {

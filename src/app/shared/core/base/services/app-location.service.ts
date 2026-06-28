@@ -1,15 +1,17 @@
-import { Injectable, effect, inject } from '@angular/core';
+import { Injectable, Injector, effect, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Router } from '@angular/router';
 
-import { HttpUsersService } from '../../http';
-import { AppContext } from '../../../ui/context';
+import { AppContext } from '../../../ui/context/app.context';
+import { environment } from '../../../../../environments/environment';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import { UsersService } from './users.service';
+import { resolveRouteConfig } from '../config';
 import { SessionService } from './session.service';
 import { ConfirmationDialogStore } from '../../../ui/context/stores/confirmation-dialog.store';
 import { appLocationStorageKey } from '../../common/storage-scope';
+
+type HttpUsersServiceInstance = import('../../http/services/users.service').HttpUsersService;
 
 @Injectable({
   providedIn: 'root'
@@ -20,11 +22,11 @@ export class AppLocationService {
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
 
   private readonly appCtx = inject(AppContext);
+  private readonly injector = inject(Injector);
   private readonly router = inject(Router);
-  private readonly httpUsersService = inject(HttpUsersService);
-  private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private httpUsersServicePromise: Promise<HttpUsersServiceInstance> | null = null;
   private readonly syncingUserIds = new Set<string>();
   private readonly blockedUserIds = new Set<string>();
   private readonly pendingCoordinatesByUserId = new Map<string, LocationCoordinates>();
@@ -311,7 +313,7 @@ export class AppLocationService {
     coordinates: LocationCoordinates
   ): void {
     const normalizedCoordinates = this.normalizeCoordinates(coordinates);
-    if (this.usersService.localModeEnabled || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
+    if (this.isLocalUserRouteEnabled() || !activeUser?.id?.trim() || activeUser.admin === true || !normalizedCoordinates) {
       return;
     }
 
@@ -327,7 +329,7 @@ export class AppLocationService {
     userId: string,
     fallbackUser: UserDto
   ): Promise<void> {
-    if (this.usersService.localModeEnabled || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
+    if (this.isLocalUserRouteEnabled() || !fallbackUser?.id?.trim() || fallbackUser.admin === true || this.syncingUserIds.has(userId)) {
       return;
     }
 
@@ -348,7 +350,7 @@ export class AppLocationService {
       if (currentUser.admin === true) {
         return;
       }
-      const savedUser = await this.httpUsersService.saveUserProfile({
+      const savedUser = await (await this.httpUsersService()).saveUserProfile({
         ...currentUser,
         locationCoordinates: normalizedCoordinates
       });
@@ -387,6 +389,26 @@ export class AppLocationService {
 
   private isIneligibleRegionError(error: unknown): boolean {
     return error instanceof HttpErrorResponse && (error.status === 403 || error.status === 422);
+  }
+
+  private isLocalUserRouteEnabled(): boolean {
+    const routeConfig = resolveRouteConfig('/auth/me');
+    if (routeConfig.mode) {
+      return routeConfig.mode === 'local';
+    }
+    if (routeConfig.http) {
+      return false;
+    }
+    return environment.activitiesDataSource !== 'http'
+      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
+  }
+
+  private async httpUsersService(): Promise<HttpUsersServiceInstance> {
+    if (!this.httpUsersServicePromise) {
+      this.httpUsersServicePromise = import('../../http/services/users.service')
+        .then(module => this.injector.get(module.HttpUsersService));
+    }
+    return this.httpUsersServicePromise;
   }
 
   private resolveIneligibleRegionMessage(error: unknown): string {

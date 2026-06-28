@@ -7,7 +7,9 @@
 </main>
 
 @if (showNavigator) {
-  <app-navigator></app-navigator>
+  @if (navigatorComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
 }
 
 <app-install-prompt
@@ -16,8 +18,6 @@
   (installRequested)="onInstallRequested()"
   (dismissRequested)="onInstallDismissed()"
 ></app-install-prompt>
-
-<app-demo-bootstrap-selector></app-demo-bootstrap-selector>
 
 @if (routeWarmupVisible) {
   <section class="app-route-warmup" role="status" aria-live="polite" aria-label="Loading MyScoutee">

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, EventEmitter, HostListener, Output, ViewChild, ViewEncapsulation, computed, inject } from '@angular/core';
+import { Component, DoCheck, HostListener, ViewChild, ViewEncapsulation, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -147,8 +147,6 @@ interface AssetExploreBorrowDraftViewState {
   providers: [AppMenuDispatcher]
 })
 export class EventResourceAssetExploreComponent implements DoCheck {
-  @Output() closeAllRequested = new EventEmitter<Event | undefined>();
-
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly appCtx = inject(AppContext);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -681,7 +679,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     this.assetViewId = null;
     this.showBorrowBasket = false;
     if (this.resourcePopupStore.assetExploreOnlyRef()) {
-      this.closeAllRequested.emit(event);
+      this.resourcePopupStore.closeResourcePopup();
       return;
     }
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);

@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityEventDTO } from '../../../core/contracts/activity.interface';
@@ -16,6 +16,11 @@ export class ActivitiesPopupStore {
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
+  private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
   readonly activitiesOpen = computed(() => this._uiState().open);
@@ -39,6 +44,11 @@ export class ActivitiesPopupStore {
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activityEventSave = this._activityEventSave.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
+  readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
+  readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
+  readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
+  readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
+  readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
@@ -274,6 +284,46 @@ export class ActivitiesPopupStore {
       ...session,
       item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
     });
+  }
+
+  async ensureActivitiesPopupLoaded(): Promise<void> {
+    if (this.activitiesPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/activities-popup/activities-popup.component');
+    this.activitiesPopupComponentRef.set(module.ActivitiesPopupComponent);
+  }
+
+  async ensureEventChatPopupLoaded(): Promise<void> {
+    if (this.eventChatPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-chat-popup/event-chat-popup.component');
+    this.eventChatPopupComponentRef.set(module.EventChatPopupComponent);
+  }
+
+  async ensureEventExplorePopupLoaded(): Promise<void> {
+    if (this.eventExplorePopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-explore-popup/event-explore-popup.component');
+    this.eventExplorePopupComponentRef.set(module.EventExplorePopupComponent);
+  }
+
+  async ensureEventMembersPopupLoaded(): Promise<void> {
+    if (this.eventMembersPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-members-popup/event-members-popup.component');
+    this.eventMembersPopupComponentRef.set(module.EventMembersPopupComponent);
+  }
+
+  async ensureEventFeedbackPopupLoaded(): Promise<void> {
+    if (this.eventFeedbackPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-feedback-popup/event-feedback-popup.component');
+    this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
   }
 
   private patchUiState(patch: Partial<ActivitiesUiState>): void {

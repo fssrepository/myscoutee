@@ -44,3 +44,9 @@
   (completed)="onOnboardingCompleted($event)"
   (dismissed)="onOnboardingDismissed()"
 ></app-profile-onboarding-popup>
+
+@if (demoBootstrapSelector()) {
+  @if (demoBootstrapSelectorComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
+}

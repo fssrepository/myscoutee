@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, Type, computed, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 
 import type { EventEditorSubEventResourcePopupRequest } from '../event-editor-popup.types';
@@ -12,6 +12,7 @@ export class EventEditorPopupStore {
   private readonly _sourceEvent = signal<any>(null);
   private readonly _readOnly = signal(false);
   private readonly _subEventResourcePopupRequest = signal<EventEditorSubEventResourcePopupRequest | null>(null);
+  private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly _onOpen = new Subject<void>();
   private readonly _onClose = new Subject<void>();
 
@@ -20,6 +21,7 @@ export class EventEditorPopupStore {
   readonly sourceEvent = this._sourceEvent.asReadonly();
   readonly readOnly = this._readOnly.asReadonly();
   readonly subEventResourcePopupRequest = this._subEventResourcePopupRequest.asReadonly();
+  readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
 
   readonly isOpenBoolean = computed(() => this._isOpen());
   readonly onOpen$ = this._onOpen.asObservable();
@@ -83,5 +85,13 @@ export class EventEditorPopupStore {
 
   clearSubEventResourcePopupRequest(): void {
     this._subEventResourcePopupRequest.set(null);
+  }
+
+  async ensureEventEditorPopupLoaded(): Promise<void> {
+    if (this.eventEditorPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-editor-popup/event-editor-popup.component');
+    this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
   }
 }

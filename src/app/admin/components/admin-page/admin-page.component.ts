@@ -4,16 +4,13 @@ import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatRippleModule } from '@angular/material/core';
 
-import { AppPopupContext } from '../../../shared/ui';
 import { NavigatorComponent } from '../../../navigator/components/navigator/navigator.component';
-import {
-  AdminWorkspaceDataService,
-  HelpCenterService,
-  SessionService,
-  type AdminBootstrapProcessState,
-  type AdminDashboardDto
-} from '../../../shared/core';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components';
+import { AdminWorkspaceDataService } from '../../../shared/core/base/services/admin-workspace-data.service';
+import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
+import { SessionService } from '../../../shared/core/base/services/session.service';
+import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
+import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
 import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
@@ -62,6 +59,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
+  protected readonly demoBootstrapSelector = this.popupCtx.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupCtx.popupStore.demoBootstrapSelectorComponent;
 
   constructor() {
     this.document.documentElement.classList.add('admin-document-no-scroll');

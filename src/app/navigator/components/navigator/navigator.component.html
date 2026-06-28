@@ -93,6 +93,11 @@
     <ng-container *ngComponentOutlet="resourceComponent"></ng-container>
   }
 }
+@if (subEventResourceStore.assetExplorePopupRef()) {
+  @if (eventResourceAssetExploreComponent(); as assetExploreComponent) {
+    <ng-container *ngComponentOutlet="assetExploreComponent"></ng-container>
+  }
+}
 @if (subEventResourceStore.popupContextRef() && !subEventResourceStore.assetExploreOnlyRef() && subEventResourceStore.supplyPopupRef()) {
   @if (eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
     <ng-container *ngComponentOutlet="supplyContributionsComponent"></ng-container>

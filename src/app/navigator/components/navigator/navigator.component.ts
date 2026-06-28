@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, Type, computed, effect, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { NavigationEnd, Router } from '@angular/router';
 import type { Subscription } from 'rxjs';
@@ -154,41 +154,24 @@ export class NavigatorComponent implements OnDestroy {
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
-  private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventEditorPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly explanationPopupComponentRef = signal<Type<unknown> | null>(null);
-
-  protected readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
-  protected readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
-  protected readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
-  protected readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
-  protected readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
-  protected readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
-  protected readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
-  protected readonly eventEditorPopupComponent = this.eventEditorPopupComponentRef.asReadonly();
-  protected readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
-  protected readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
-  protected readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
-  protected readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
-  protected readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
-  protected readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
-  protected readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
-  protected readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
-  protected readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
+  protected readonly navigatorImpressionsPopupComponent = this.navigatorStore.navigatorImpressionsPopupComponent;
+  protected readonly profileEditorComponent = this.navigatorStore.profileEditorComponent;
+  protected readonly profileViewPopupComponent = this.navigatorStore.profileViewPopupComponent;
+  protected readonly eventMembersPopupComponent = this.activitiesStore.eventMembersPopupComponent;
+  protected readonly eventResourcePopupComponent = this.subEventResourceStore.eventResourcePopupComponent;
+  protected readonly eventResourceAssetExploreComponent = this.subEventResourceStore.eventResourceAssetExploreComponent;
+  protected readonly eventSupplyContributionsPopupComponent = this.subEventResourceStore.eventSupplyContributionsPopupComponent;
+  protected readonly assetMemberPickerPopupComponent = this.assetPopupStore.assetMemberPickerPopupComponent;
+  protected readonly eventEditorPopupComponent = this.eventEditorStore.eventEditorPopupComponent;
+  protected readonly eventSubeventsListPopupComponent = this.popupCtx.popupStore.eventSubeventsListPopupComponent;
+  protected readonly eventTournamentGroupsPopupComponent = this.popupCtx.popupStore.eventTournamentGroupsPopupComponent;
+  protected readonly eventChatPopupComponent = this.activitiesStore.eventChatPopupComponent;
+  protected readonly eventExplorePopupComponent = this.activitiesStore.eventExplorePopupComponent;
+  protected readonly activitiesPopupComponent = this.activitiesStore.activitiesPopupComponent;
+  protected readonly assetPopupComponent = this.assetPopupStore.assetPopupComponent;
+  protected readonly eventFeedbackPopupComponent = this.activitiesStore.eventFeedbackPopupComponent;
+  protected readonly contactsPopupComponent = this.navigatorStore.contactsPopupComponent;
+  protected readonly explanationPopupComponent = this.navigatorStore.explanationPopupComponent;
   protected readonly bindings = this.navigatorStore.bindings;
   protected readonly activeUser = this.appCtx.userProfileStore.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
@@ -878,43 +861,43 @@ export class NavigatorComponent implements OnDestroy {
 
     effect(() => {
       const isOpen = this.navigatorStore.impressionsPopupOpen();
-      if (isOpen && !this.navigatorImpressionsPopupComponentRef()) {
-        void this.ensureNavigatorImpressionsPopupLoaded();
+      if (isOpen) {
+        void this.navigatorStore.ensureNavigatorImpressionsPopupLoaded();
       }
     });
 
     effect(() => {
       const isOpen = this.navigatorStore.profileEditorOpen();
-      if (isOpen && !this.profileEditorComponentRef()) {
-        void this.ensureProfileEditorLoaded();
+      if (isOpen) {
+        void this.navigatorStore.ensureProfileEditorLoaded();
       }
     });
 
     effect(() => {
       const isOpen = this.navigatorStore.profileViewOpen();
-      if (isOpen && !this.profileViewPopupComponentRef()) {
-        void this.ensureProfileViewPopupLoaded();
+      if (isOpen) {
+        void this.navigatorStore.ensureProfileViewPopupLoaded();
       }
     });
 
     effect(() => {
       const isOpen = this.eventEditorStore.isOpen();
-      if (isOpen && !this.eventEditorPopupComponentRef()) {
-        void this.ensureEventEditorPopupLoaded();
+      if (isOpen) {
+        void this.eventEditorStore.ensureEventEditorPopupLoaded();
       }
     });
 
     effect(() => {
       const request = this.popupCtx.popupStore.eventSubeventsListPopup();
-      if (request && !this.eventSubeventsListPopupComponentRef()) {
-        void this.ensureEventSubeventsListPopupLoaded();
+      if (request) {
+        void this.popupCtx.popupStore.ensureEventSubeventsListPopupLoaded();
       }
     });
 
     effect(() => {
       const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
-      if (request && !this.eventTournamentGroupsPopupComponentRef()) {
-        void this.ensureEventTournamentGroupsPopupLoaded();
+      if (request) {
+        void this.popupCtx.popupStore.ensureEventTournamentGroupsPopupLoaded();
       }
     });
 
@@ -923,7 +906,7 @@ export class NavigatorComponent implements OnDestroy {
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
-      void this.ensureEventEditorPopupLoaded();
+      void this.eventEditorStore.ensureEventEditorPopupLoaded();
     });
 
     effect(() => {
@@ -931,7 +914,7 @@ export class NavigatorComponent implements OnDestroy {
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      void this.ensureEventMembersPopupLoaded();
+      void this.activitiesStore.ensureEventMembersPopupLoaded();
     });
 
     effect(() => {
@@ -939,7 +922,7 @@ export class NavigatorComponent implements OnDestroy {
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      void this.ensureEventExplorePopupLoaded();
+      void this.activitiesStore.ensureEventExplorePopupLoaded();
     });
 
     effect(() => {
@@ -947,7 +930,7 @@ export class NavigatorComponent implements OnDestroy {
       if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
-      void this.ensureEventResourcePopupLoaded();
+      void this.subEventResourceStore.ensureEventResourcePopupLoaded();
     });
 
     effect(() => {
@@ -955,41 +938,48 @@ export class NavigatorComponent implements OnDestroy {
       if (!request) {
         return;
       }
-      void this.ensureEventResourcePopupLoaded();
+      void this.subEventResourceStore.ensureEventResourcePopupLoaded();
     });
 
     effect(() => {
       const session = this.activitiesStore.eventChatSession();
-      if (session && !this.eventChatPopupComponentRef()) {
-        void this.ensureEventChatPopupLoaded();
+      if (session) {
+        void this.activitiesStore.ensureEventChatPopupLoaded();
       }
     });
 
     effect(() => {
       const isActivitiesOpen = this.activitiesStore.activitiesOpen();
-      if (isActivitiesOpen && !this.activitiesPopupComponentRef()) {
-        void this.ensureActivitiesPopupLoaded();
+      if (isActivitiesOpen) {
+        void this.activitiesStore.ensureActivitiesPopupLoaded();
       }
     });
 
     effect(() => {
       const isContactsOpen = this.navigatorStore.contactsPopupOpen();
-      if (isContactsOpen && !this.contactsPopupComponentRef()) {
-        void this.ensureContactsPopupLoaded();
+      if (isContactsOpen) {
+        void this.navigatorStore.ensureContactsPopupLoaded();
       }
     });
 
     effect(() => {
       const isAssetPopupVisible = this.assetPopupStore.visible();
-      if (isAssetPopupVisible && !this.assetPopupComponentRef()) {
-        void this.ensureAssetPopupLoaded();
+      if (isAssetPopupVisible) {
+        void this.assetPopupStore.ensureAssetPopupLoaded();
       }
     });
 
     effect(() => {
       const resourcePopupVisible = this.subEventResourceStore.popupContextRef() !== null;
-      if (resourcePopupVisible && !this.eventResourcePopupComponentRef()) {
-        void this.ensureEventResourcePopupLoaded();
+      if (resourcePopupVisible) {
+        void this.subEventResourceStore.ensureEventResourcePopupLoaded();
+      }
+    });
+
+    effect(() => {
+      const assetExploreVisible = this.subEventResourceStore.assetExplorePopupRef() !== null;
+      if (assetExploreVisible) {
+        void this.subEventResourceStore.ensureEventResourceAssetExploreLoaded();
       }
     });
 
@@ -997,15 +987,15 @@ export class NavigatorComponent implements OnDestroy {
       const supplyContributionsVisible = this.subEventResourceStore.popupContextRef() !== null
         && !this.subEventResourceStore.assetExploreOnlyRef()
         && this.subEventResourceStore.supplyPopupRef() !== null;
-      if (supplyContributionsVisible && !this.eventSupplyContributionsPopupComponentRef()) {
-        void this.ensureEventSupplyContributionsPopupLoaded();
+      if (supplyContributionsVisible) {
+        void this.subEventResourceStore.ensureEventSupplyContributionsPopupLoaded();
       }
     });
 
     effect(() => {
       const activityInvitePopup = this.popupCtx.popupStore.activityInvitePopup();
-      if (activityInvitePopup?.ownerId?.trim() && !this.assetMemberPickerPopupComponentRef()) {
-        void this.ensureAssetMemberPickerPopupLoaded();
+      if (activityInvitePopup?.ownerId?.trim()) {
+        void this.assetPopupStore.ensureAssetMemberPickerPopupLoaded();
       }
     });
 
@@ -1043,8 +1033,8 @@ export class NavigatorComponent implements OnDestroy {
 
     effect(() => {
       const isVisible = this.explanationGuide.hasVisiblePopup();
-      if (isVisible && !this.explanationPopupComponentRef()) {
-        void this.ensureExplanationPopupLoaded();
+      if (isVisible) {
+        void this.navigatorStore.ensureExplanationPopupLoaded();
       }
     });
   }
@@ -1897,144 +1887,8 @@ export class NavigatorComponent implements OnDestroy {
     return Number.isFinite(user?.completion) ? Math.max(0, Math.trunc(Number(user?.completion))) : 0;
   }
 
-  private async ensureNavigatorImpressionsPopupLoaded(): Promise<void> {
-    if (this.navigatorImpressionsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../navigator-impressions-popup/navigator-impressions-popup.component');
-    this.navigatorImpressionsPopupComponentRef.set(module.NavigatorImpressionsPopupComponent);
-  }
-
-  private async ensureProfileEditorLoaded(): Promise<void> {
-    if (this.profileEditorComponentRef()) {
-      return;
-    }
-    const module = await import('../profile-editor/profile-editor.component');
-    this.profileEditorComponentRef.set(module.ProfileEditorComponent);
-  }
-
-  private async ensureProfileViewPopupLoaded(): Promise<void> {
-    if (this.profileViewPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../profile-view-popup/profile-view-popup.component');
-    this.profileViewPopupComponentRef.set(module.ProfileViewPopupComponent);
-  }
-
-  private async ensureEventMembersPopupLoaded(): Promise<void> {
-    if (this.eventMembersPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-members-popup/event-members-popup.component');
-    this.eventMembersPopupComponentRef.set(module.EventMembersPopupComponent);
-  }
-
-  private async ensureEventResourcePopupLoaded(): Promise<void> {
-    if (this.eventResourcePopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-resource-popup/event-resource-popup.component');
-    this.eventResourcePopupComponentRef.set(module.EventResourcePopupComponent);
-  }
-
-  private async ensureEventSupplyContributionsPopupLoaded(): Promise<void> {
-    if (this.eventSupplyContributionsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component');
-    this.eventSupplyContributionsPopupComponentRef.set(module.EventSupplyContributionsPopupComponent);
-  }
-
-  private async ensureAssetMemberPickerPopupLoaded(): Promise<void> {
-    if (this.assetMemberPickerPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component');
-    this.assetMemberPickerPopupComponentRef.set(module.AssetMemberPickerPopupComponent);
-  }
-
-  private async ensureEventEditorPopupLoaded(): Promise<void> {
-    if (this.eventEditorPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-editor-popup/event-editor-popup.component');
-    this.eventEditorPopupComponentRef.set(module.EventEditorPopupComponent);
-  }
-
-  private async ensureEventSubeventsListPopupLoaded(): Promise<void> {
-    if (this.eventSubeventsListPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-subevents-list-popup/event-subevents-list-popup.component');
-    this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
-  }
-
-  private async ensureEventTournamentGroupsPopupLoaded(): Promise<void> {
-    if (this.eventTournamentGroupsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-tournament-groups-popup/event-tournament-groups-popup.component');
-    this.eventTournamentGroupsPopupComponentRef.set(module.EventTournamentGroupsPopupComponent);
-  }
-
-  private async ensureEventChatPopupLoaded(): Promise<void> {
-    if (this.eventChatPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-chat-popup/event-chat-popup.component');
-    this.eventChatPopupComponentRef.set(module.EventChatPopupComponent);
-  }
-
-  private async ensureEventExplorePopupLoaded(): Promise<void> {
-    if (this.eventExplorePopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-explore-popup/event-explore-popup.component');
-    this.eventExplorePopupComponentRef.set(module.EventExplorePopupComponent);
-  }
-
-  private async ensureActivitiesPopupLoaded(): Promise<void> {
-    if (this.activitiesPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/activities-popup/activities-popup.component');
-    this.activitiesPopupComponentRef.set(module.ActivitiesPopupComponent);
-  }
-
-  private async ensureAssetPopupLoaded(): Promise<void> {
-    if (this.assetPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../asset/components/asset-popup/asset-popup.component');
-    this.assetPopupComponentRef.set(module.AssetPopupComponent);
-  }
-
-  private async ensureEventFeedbackPopupLoaded(): Promise<void> {
-    if (this.eventFeedbackPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../activity/components/event-feedback-popup/event-feedback-popup.component');
-    this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
-  }
-
-  private async ensureContactsPopupLoaded(): Promise<void> {
-    if (this.contactsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../contacts-popup/contacts-popup.component');
-    this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
-  }
-
-  private async ensureExplanationPopupLoaded(): Promise<void> {
-    if (this.explanationPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../shared/ui/components/explanation-popup/explanation-popup.component');
-    this.explanationPopupComponentRef.set(module.ExplanationPopupComponent);
-  }
-
   private async openEventFeedbackPopupFromNavigatorRequest(): Promise<void> {
-    await this.ensureEventFeedbackPopupLoaded();
+    await this.activitiesStore.ensureEventFeedbackPopupLoaded();
   }
 
   @HostListener('window:openFeaturePopup', ['$event'])
@@ -2042,7 +1896,7 @@ export class NavigatorComponent implements OnDestroy {
     const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
     if (popupEvent.detail?.type === 'eventExplore') {
       this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
-      void this.ensureEventExplorePopupLoaded();
+      void this.activitiesStore.ensureEventExplorePopupLoaded();
       return;
     }
     if (popupEvent.detail?.type !== 'eventEditor') {
@@ -2052,6 +1906,6 @@ export class NavigatorComponent implements OnDestroy {
       type: 'eventEditorCreate',
       target: 'events'
     });
-    void this.ensureEventEditorPopupLoaded();
+    void this.eventEditorStore.ensureEventEditorPopupLoaded();
   }
 }

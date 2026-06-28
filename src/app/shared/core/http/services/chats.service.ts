@@ -1,6 +1,6 @@
 import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type * as ContractTypes from '../../contracts';
@@ -12,13 +12,15 @@ import type {
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import { AppContext } from '../../../ui/context';
-import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { SessionService } from '../../base/services/session.service';
 
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
+
+type FirebaseAuthServiceInstance = import('../../base/services/firebase-auth.service').FirebaseAuthService;
+
 interface HttpChatSummaryDto {
   id: string;
   avatar: string;
@@ -185,10 +187,11 @@ export class HttpChatsService implements IChatsService {
   private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 3000;
 
   private readonly http = inject(HttpClient);
+  private readonly injector = inject(Injector);
   private readonly appCtx = inject(AppContext);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
   private readonly chatItemsByUserId = new Map<string, ChatThreadRecord[]>();
   private socket: WebSocket | null = null;
   private socketChatId: string | null = null;
@@ -1369,8 +1372,12 @@ export class HttpChatsService implements IChatsService {
     if (this.sessionService.currentSession()?.kind === 'demo') {
       baseUrl.searchParams.set('sessionKind', 'demo');
     }
-    if (this.firebaseAuthService.enabled && this.sessionService.currentSession()?.kind !== 'demo') {
-      const token = await this.firebaseAuthService.getIdToken();
+    if (this.sessionService.currentSession()?.kind !== 'demo') {
+      const firebaseAuthService = await this.firebaseAuthService();
+      if (!firebaseAuthService.enabled) {
+        return baseUrl.toString();
+      }
+      const token = await firebaseAuthService.getIdToken();
       if (!token) {
         return null;
       }
@@ -1381,6 +1388,14 @@ export class HttpChatsService implements IChatsService {
 
   private activeUserId(): string {
     return this.appCtx.userProfileStore.activeUserId().trim();
+  }
+
+  private async firebaseAuthService(): Promise<FirebaseAuthServiceInstance> {
+    if (!this.firebaseAuthServicePromise) {
+      this.firebaseAuthServicePromise = import('../../base/services/firebase-auth.service')
+        .then(module => this.injector.get(module.FirebaseAuthService));
+    }
+    return this.firebaseAuthServicePromise;
   }
 
   private activeUserParams(): HttpParams {

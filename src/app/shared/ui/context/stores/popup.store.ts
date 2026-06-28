@@ -1,4 +1,8 @@
-import { Injectable, signal } from '@angular/core';
+import {
+  Injectable,
+  Type,
+  signal
+} from '@angular/core';
 
 import type { ActivityMemberOwnerType, AssetFilterType } from '../../../core/common/constants';
 import type { ActivityMemberEntry } from '../../../core/contracts/activity.interface';
@@ -30,6 +34,9 @@ export class PopupStore {
   private readonly _eventTournamentGroupsPopup = signal<EventTournamentGroupsPopupRequest | null>(null);
   private readonly _adminNavigatorRequest = signal<AdminNavigatorRequest | null>(null);
   private readonly _activitiesNavigationRequest = signal<ActivitiesNavigationRequest | null>(null);
+  private readonly demoBootstrapSelectorComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly activityInvitePopup = this._activityInvitePopup.asReadonly();
   readonly demoBootstrapSelector = this._demoBootstrapSelector.asReadonly();
@@ -40,6 +47,9 @@ export class PopupStore {
   readonly eventTournamentGroupsPopup = this._eventTournamentGroupsPopup.asReadonly();
   readonly adminNavigatorRequest = this._adminNavigatorRequest.asReadonly();
   readonly activitiesNavigationRequest = this._activitiesNavigationRequest.asReadonly();
+  readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorComponentRef.asReadonly();
+  readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
+  readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
 
   openActivityInvitePopup(payload: {
     ownerId: string;
@@ -86,6 +96,7 @@ export class PopupStore {
     onNewProfile?: () => boolean | Promise<boolean>;
     onClose?: () => void;
   }): void {
+    void this.ensureDemoBootstrapSelectorLoaded();
     this._demoBootstrapSelector.set({
       updatedMs: Date.now(),
       mode: payload.mode === 'admin' ? 'admin' : 'member',
@@ -233,5 +244,29 @@ export class PopupStore {
 
   clearActivitiesNavigationRequest(): void {
     this._activitiesNavigationRequest.set(null);
+  }
+
+  async ensureDemoBootstrapSelectorLoaded(): Promise<void> {
+    if (this.demoBootstrapSelectorComponentRef()) {
+      return;
+    }
+    const module = await import('../../components/demo-bootstrap-selector/demo-bootstrap-selector.component');
+    this.demoBootstrapSelectorComponentRef.set(module.DemoBootstrapSelectorComponent);
+  }
+
+  async ensureEventSubeventsListPopupLoaded(): Promise<void> {
+    if (this.eventSubeventsListPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-subevents-list-popup/event-subevents-list-popup.component');
+    this.eventSubeventsListPopupComponentRef.set(module.EventSubeventsListPopupComponent);
+  }
+
+  async ensureEventTournamentGroupsPopupLoaded(): Promise<void> {
+    if (this.eventTournamentGroupsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-tournament-groups-popup/event-tournament-groups-popup.component');
+    this.eventTournamentGroupsPopupComponentRef.set(module.EventTournamentGroupsPopupComponent);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type * as AssetContracts from '../../../core/contracts/asset.interface';
 
@@ -20,6 +20,8 @@ export class AssetPopupStore {
   readonly selectedTicketCodeValueRef = signal('');
   readonly ticketScannerStateRef = signal<AssetTicketScannerState>('idle');
   readonly ticketScannerResultRef = signal<AssetContracts.TicketScanPayloadDTO | null>(null);
+  private readonly assetPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly assetMemberPickerPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly visible = computed(() =>
     this.primaryVisibleRef()
@@ -32,6 +34,8 @@ export class AssetPopupStore {
   readonly ticketScannerState = this.ticketScannerStateRef.asReadonly();
   readonly ticketScannerResult = this.ticketScannerResultRef.asReadonly();
   readonly ticketDateOrder = this.ticketDateOrderRef.asReadonly();
+  readonly assetPopupComponent = this.assetPopupComponentRef.asReadonly();
+  readonly assetMemberPickerPopupComponent = this.assetMemberPickerPopupComponentRef.asReadonly();
   readonly ticketHeaderSummary = computed(() => {
     const count = this.ticketTotalCountRef();
     return count === 1 ? '1 ticketed event' : `${count} ticketed events`;
@@ -97,6 +101,22 @@ export class AssetPopupStore {
   applyTicketScannerIdle(): void {
     this.ticketScannerResultRef.set(null);
     this.ticketScannerStateRef.set('idle');
+  }
+
+  async ensureAssetPopupLoaded(): Promise<void> {
+    if (this.assetPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../asset/components/asset-popup/asset-popup.component');
+    this.assetPopupComponentRef.set(module.AssetPopupComponent);
+  }
+
+  async ensureAssetMemberPickerPopupLoaded(): Promise<void> {
+    if (this.assetMemberPickerPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../asset/components/asset-member-picker-popup/asset-member-picker-popup.component');
+    this.assetMemberPickerPopupComponentRef.set(module.AssetMemberPickerPopupComponent);
   }
 
   private clearTicketSelection(): void {

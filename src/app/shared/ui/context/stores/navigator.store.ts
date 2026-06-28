@@ -1,4 +1,4 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
@@ -60,6 +60,12 @@ export class NavigatorStore {
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly contactsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
+  private readonly navigatorComponentRef = signal<Type<unknown> | null>(null);
+  private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
+  private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly explanationPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly bindings = this.bindingsRef.asReadonly();
   readonly profileEditorOpen = this.profileEditorOpenRef.asReadonly();
@@ -73,6 +79,12 @@ export class NavigatorStore {
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
   readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
+  readonly navigatorComponent = this.navigatorComponentRef.asReadonly();
+  readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
+  readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
+  readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
+  readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
+  readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
@@ -210,5 +222,53 @@ export class NavigatorStore {
 
   closeContactsPopup(): void {
     this.contactsPopupOpenRef.set(false);
+  }
+
+  async ensureNavigatorComponentLoaded(): Promise<void> {
+    if (this.navigatorComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../navigator/components/navigator/navigator.component');
+    this.navigatorComponentRef.set(module.NavigatorComponent);
+  }
+
+  async ensureNavigatorImpressionsPopupLoaded(): Promise<void> {
+    if (this.navigatorImpressionsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../navigator/components/navigator-impressions-popup/navigator-impressions-popup.component');
+    this.navigatorImpressionsPopupComponentRef.set(module.NavigatorImpressionsPopupComponent);
+  }
+
+  async ensureProfileEditorLoaded(): Promise<void> {
+    if (this.profileEditorComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../navigator/components/profile-editor/profile-editor.component');
+    this.profileEditorComponentRef.set(module.ProfileEditorComponent);
+  }
+
+  async ensureProfileViewPopupLoaded(): Promise<void> {
+    if (this.profileViewPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../navigator/components/profile-view-popup/profile-view-popup.component');
+    this.profileViewPopupComponentRef.set(module.ProfileViewPopupComponent);
+  }
+
+  async ensureContactsPopupLoaded(): Promise<void> {
+    if (this.contactsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../navigator/components/contacts-popup/contacts-popup.component');
+    this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
+  }
+
+  async ensureExplanationPopupLoaded(): Promise<void> {
+    if (this.explanationPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../components/explanation-popup/explanation-popup.component');
+    this.explanationPopupComponentRef.set(module.ExplanationPopupComponent);
   }
 }

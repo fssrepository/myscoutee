@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, Type, signal } from '@angular/core';
 
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
@@ -40,6 +40,13 @@ export class SubEventResourcePopupStore {
   readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   readonly assignContextRef = signal<{ subEventId: string; type: AppConstants.AssetType } | null>(null);
   readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+  private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventResourceAssetExploreComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
+
+  readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
+  readonly eventResourceAssetExploreComponent = this.eventResourceAssetExploreComponentRef.asReadonly();
+  readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
 
   openResourcePopup(context: ResourcePopupContext, type: AppConstants.AssetType): void {
     this.popupContextRef.set(context);
@@ -76,5 +83,29 @@ export class SubEventResourcePopupStore {
 
   supplyContributionEntries(subEventId: string, cardId: string): AppDTOs.SubEventSupplyContributionEntryDTO[] {
     return this.supplyContributionEntriesByAssignmentKey[this.supplyAssignmentKey(subEventId, cardId)] ?? [];
+  }
+
+  async ensureEventResourcePopupLoaded(): Promise<void> {
+    if (this.eventResourcePopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-resource-popup/event-resource-popup.component');
+    this.eventResourcePopupComponentRef.set(module.EventResourcePopupComponent);
+  }
+
+  async ensureEventResourceAssetExploreLoaded(): Promise<void> {
+    if (this.eventResourceAssetExploreComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-resource-popup/asset-explore/event-resource-asset-explore.component');
+    this.eventResourceAssetExploreComponentRef.set(module.EventResourceAssetExploreComponent);
+  }
+
+  async ensureEventSupplyContributionsPopupLoaded(): Promise<void> {
+    if (this.eventSupplyContributionsPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../../../../activity/components/event-supply-contributions-popup/event-supply-contributions-popup.component');
+    this.eventSupplyContributionsPopupComponentRef.set(module.EventSupplyContributionsPopupComponent);
   }
 }

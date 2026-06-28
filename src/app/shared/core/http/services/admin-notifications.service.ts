@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type {
@@ -8,21 +8,23 @@ import type {
   AdminNotificationRuleLiveEvent,
   AdminNotificationRunResult
 } from '../../contracts/admin.interface';
-import { FirebaseAuthService } from '../../base/services/firebase-auth.service';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
 const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
 const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
 
+type FirebaseAuthServiceInstance = import('../../base/services/firebase-auth.service').FirebaseAuthService;
+
 @Injectable({
   providedIn: 'root'
 })
 export class HttpAdminNotificationsService {
   private readonly http = inject(HttpClient);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly injector = inject(Injector);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
+  private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
 
   async loadNotificationCenter(adminUserId?: string | null): Promise<AdminNotificationCenterState> {
     const state = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_LOAD_ROUTE, this.http
@@ -125,13 +127,22 @@ export class HttpAdminNotificationsService {
       baseUrl.searchParams.set('adminUserId', normalizedAdminUserId);
       baseUrl.searchParams.set('userId', normalizedAdminUserId);
     }
-    if (this.firebaseAuthService.enabled) {
-      const token = await this.firebaseAuthService.getIdToken();
+    const firebaseAuthService = await this.firebaseAuthService();
+    if (firebaseAuthService.enabled) {
+      const token = await firebaseAuthService.getIdToken();
       if (!token) {
         return null;
       }
       baseUrl.searchParams.set('token', token);
     }
     return baseUrl.toString();
+  }
+
+  private async firebaseAuthService(): Promise<FirebaseAuthServiceInstance> {
+    if (!this.firebaseAuthServicePromise) {
+      this.firebaseAuthServicePromise = import('../../base/services/firebase-auth.service')
+        .then(module => this.injector.get(module.FirebaseAuthService));
+    }
+    return this.firebaseAuthServicePromise;
   }
 }

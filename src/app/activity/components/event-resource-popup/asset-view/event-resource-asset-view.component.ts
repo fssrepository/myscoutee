@@ -13,11 +13,11 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
-import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders';
+import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import { CounterBadgePipe } from '../../../../shared/ui';
+import { CounterBadgePipe } from '../../../../shared/ui/pipes/counter-badge.pipe';
 import type { ResourceAssetDTO } from '../../../../shared/ui/context/sub-event-resource-popup.types';
 
 export interface EventResourceAssetViewModel {

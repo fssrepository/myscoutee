@@ -1,20 +1,22 @@
-import { inject } from '@angular/core';
+import { Injector, inject } from '@angular/core';
 import { CanActivateFn, Router, Routes } from '@angular/router';
 
 import { AppUtils } from './shared/app-utils';
 import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
-import { SessionService, UsersService } from './shared/core';
+import { SessionService } from './shared/core/base/services/session.service';
 import type { UserDto } from './shared/core/contracts/user.interface';
 
 const loadEntryPage = () => import('./entry/components/entry-page/entry-page.component').then(m => m.EntryPageComponent);
 
 const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
+  const injector = inject(Injector);
   const sessionService = inject(SessionService);
-  const usersService = inject(UsersService);
   const router = inject(Router);
   const session = await sessionService.ensureSession();
   if (session) {
     if (session.kind === 'firebase') {
+      const { UsersService } = await import('./shared/core/base/services/users.service');
+      const usersService = injector.get(UsersService);
       const user = await usersService.loadUserById(undefined, 8000).catch(() => null);
       if (user?.admin === true) {
         return router.createUrlTree(['/admin']);

@@ -868,7 +868,7 @@ export class I18nService {
   }
 
   private hasLetters(value: string): boolean {
-    return /\p{L}/u.test(value);
+    return Array.from(value).some(char => char.toLocaleLowerCase('en-US') !== char.toLocaleUpperCase('en-US'));
   }
 
   private shouldSkipAttributeElement(element: Element): boolean {

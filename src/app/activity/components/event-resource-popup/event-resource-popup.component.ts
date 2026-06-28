@@ -4,22 +4,23 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 
-import { type CardMenuActionEvent, type InfoCardData } from '../../../shared/ui';
-import { AppContext, AppPopupContext, type ActivitiesNavigationRequest } from '../../../shared/ui';
+import { ActivityResourceBuilder } from '../../../shared/core/base/builders/activity-resource.builder';
+import { AssetCardBuilder } from '../../../shared/core/base/builders/asset-card.builder';
+import { AssetDefaultsBuilder } from '../../../shared/core/base/builders/asset-defaults.builder';
+import { PricingBuilder } from '../../../shared/core/base/builders/pricing.builder';
+import { ActivityResourcesService } from '../../../shared/core/base/services/activity-resources.service';
+import { AssetsService as SharedAssetsService } from '../../../shared/core/base/services/assets.service';
+import { EventsService } from '../../../shared/core/base/services/events.service';
+import { ShareTokensService } from '../../../shared/core/base/services/share-tokens.service';
+import { UsersService } from '../../../shared/core/base/services/users.service';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../shared/core/base/builders';
-import {
-  ActivityResourceBuilder,
-  ActivityResourcesService,
-  AssetsService as SharedAssetsService,
-  EventsService,
-  ShareTokensService,
-  UsersService,
-  type UserDto
-} from '../../../shared/core';
+import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/smart-list/card/card.types';
+import { AppContext } from '../../../shared/ui/context/app.context';
+import { AppPopupContext, type ActivitiesNavigationRequest } from '../../../shared/ui/context/app-popup.context';
 import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
 import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
 import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
@@ -42,7 +43,6 @@ import {
   EventResourceAssignedAssetJoinDialogComponent,
   type AssignedAssetJoinDialogViewState
 } from './assigned-asset-join-dialog/event-resource-assigned-asset-join-dialog.component';
-import { EventResourceAssetExploreComponent } from './asset-explore/event-resource-asset-explore.component';
 import {
   EventResourceListComponent,
   type EventResourceListModel
@@ -80,7 +80,6 @@ interface ResourceAssignmentRemovalRequest {
     EventResourceCapacityEditorComponent,
     EventResourceRouteEditorComponent,
     EventResourceAssignedAssetJoinDialogComponent,
-    EventResourceAssetExploreComponent,
     EventResourceListComponent
   ],
   templateUrl: './event-resource-popup.component.html',

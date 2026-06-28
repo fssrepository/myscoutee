@@ -93,3 +93,9 @@
     </div>
   </section>
 }
+
+@if (demoBootstrapSelector()) {
+  @if (demoBootstrapSelectorComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
+}

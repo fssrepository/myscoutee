@@ -1,35 +1,33 @@
+import { NgComponentOutlet } from '@angular/common';
 import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { AppUtils } from '../../../shared/app-utils';
-import { AppPopupContext } from '../../../shared/ui';
-import {
-  HelpCenterService,
-  LandingContentService,
-  PrivacyPolicyService,
-  SessionService,
-  TermsPolicyService,
-  UsersService,
-  type AppSession,
-  type UserDto,
-  type UserLocationEligibilityResponseDto
-} from '../../../shared/core';
+import { CURRENT_PROFILE_FORM_VERSION, type AuthMode } from '../../../shared/core/common/constants';
+import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
+import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts/content.interface';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
   FirebaseAuthProfileDto,
   FirebaseAuthRequestDto,
-  LocationCoordinates
+  LocationCoordinates,
+  UserDto,
+  UserLocationEligibilityResponseDto
 } from '../../../shared/core/contracts/user.interface';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
-import { CURRENT_PROFILE_FORM_VERSION, type AuthMode } from '../../../shared/core/common/constants';
-import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
+import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
+import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
+import { SessionService, type AppSession } from '../../../shared/core/base/services/session.service';
+import { TermsPolicyService } from '../../../shared/core/base/services/terms-policy.service';
+import { UsersService } from '../../../shared/core/base/services/users.service';
+import { SeedStaticContentService } from '../../../shared/core/local/seed/services/static-content.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { I18nService } from '../../../shared/core';
-import { SeedStaticContentService } from '../../../shared/core/local/seed';
-import type { InfoCardData } from '../../../shared/ui';
+import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
+import type { InfoCardData } from '../../../shared/ui/components/smart-list/card/card.types';
 import {
   DocumentViewerComponent,
   type DocumentViewerAction,
@@ -37,7 +35,7 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
+import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
 import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
 import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
 import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
@@ -57,6 +55,7 @@ interface EntryDemoNewProfileRequestEvent {
   selector: 'app-entry-page',
   standalone: true,
   imports: [
+    NgComponentOutlet,
     EntryLandingComponent,
     DocumentViewerComponent,
     EntryFirebaseAuthPopupComponent,
@@ -106,6 +105,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
+  protected readonly demoBootstrapSelector = this.popupCtx.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupCtx.popupStore.demoBootstrapSelectorComponent;
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;

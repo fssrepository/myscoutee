@@ -1,11 +1,12 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
-import { AppContext } from '../../../ui/context';
+import { AppContext } from '../../../ui/context/app.context';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
-import { FirebaseAuthService } from './firebase-auth.service';
+
+type FirebaseAuthServiceInstance = import('./firebase-auth.service').FirebaseAuthService;
 
 export interface SupportSessionContext {
   kind: 'admin-support';
@@ -23,11 +24,12 @@ export class SessionService {
   private static readonly SESSION_STORAGE_KEY = APP_STORAGE_KEYS.session;
   private static readonly DEMO_ACTIVE_USER_KEY = APP_STORAGE_KEYS.demoActiveUser;
 
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
+  private readonly injector = inject(Injector);
   private readonly appCtx = inject(AppContext);
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
   private readonly firebaseBusyRef = signal(false);
   private readonly firebaseNoticeRef = signal('');
+  private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
 
   readonly session = this.sessionRef.asReadonly();
   readonly firebaseBusy = this.firebaseBusyRef.asReadonly();
@@ -54,7 +56,7 @@ export class SessionService {
     if (current.kind === 'demo') {
       return current;
     }
-    const restoredProfile = await this.firebaseAuthService.restoreSessionProfile();
+    const restoredProfile = await (await this.firebaseAuthService()).restoreSessionProfile();
     if (!restoredProfile) {
       this.clearStoredSession();
       return null;
@@ -92,7 +94,7 @@ export class SessionService {
     this.firebaseBusyRef.set(true);
     this.firebaseNoticeRef.set('');
     try {
-      const result = await this.firebaseAuthService.signIn(request);
+      const result = await (await this.firebaseAuthService()).signIn(request);
       if (result.emailVerificationSent) {
         const email = result.email?.trim();
         this.firebaseNoticeRef.set(email
@@ -126,7 +128,7 @@ export class SessionService {
     this.firebaseBusyRef.set(true);
     this.firebaseNoticeRef.set('');
     try {
-      const profile = await this.firebaseAuthService.restoreSessionProfile();
+      const profile = await (await this.firebaseAuthService()).restoreSessionProfile();
       if (!profile) {
         this.clearStoredSession();
         return null;
@@ -148,8 +150,16 @@ export class SessionService {
     this.clearStoredSession();
     localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
     if (current?.kind === 'firebase') {
-      await this.firebaseAuthService.signOut();
+      await (await this.firebaseAuthService()).signOut();
     }
+  }
+
+  private async firebaseAuthService(): Promise<FirebaseAuthServiceInstance> {
+    if (!this.firebaseAuthServicePromise) {
+      this.firebaseAuthServicePromise = import('./firebase-auth.service')
+        .then(module => this.injector.get(module.FirebaseAuthService));
+    }
+    return this.firebaseAuthServicePromise;
   }
 
   private persistSession(session: AppSession): void {
